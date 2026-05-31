@@ -10,7 +10,6 @@ import '../../models/delivery_session.dart';
 import 'pallet_calculator_screen.dart';
 import '../scanner/barcode_reader_screen.dart';
 import '../calculator/global_calculator_sheet.dart';
-import '../../utils/haptics.dart';
 
 class SessionDetailScreen extends ConsumerStatefulWidget {
   final int sessionId;

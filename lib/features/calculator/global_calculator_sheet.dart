@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../utils/haptics.dart';
 import '../../providers/general_note_provider.dart';
-import '../../models/general_note.dart';
 
 class GlobalCalculatorSheet extends ConsumerStatefulWidget {
   const GlobalCalculatorSheet({super.key});

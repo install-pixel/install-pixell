@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import '../../providers/db_provider.dart';
-import '../../providers/delivery_provider.dart';
 import '../../models/delivery_session.dart';
 
 class PalletCalculatorScreen extends ConsumerStatefulWidget {
@@ -200,7 +199,7 @@ class _PalletCalculatorScreenState extends ConsumerState<PalletCalculatorScreen>
               }
             }
 
-            String block = '📦 $currentSku: Всього палетомісць: $totalPlaces\n' + details.join('\n');
+            String block = '📦 $currentSku: Всього палетомісць: $totalPlaces\n${details.join('\n')}';
             
             // Змінюємо останній ├ на └ для красивої "ялинки"
             int lastIndex = block.lastIndexOf('├');
