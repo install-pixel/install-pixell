@@ -1,0 +1,48 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*' # Пайплайн запустится только тогда, когда ты пушишь тег версии (например, v1.0.0)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Клонируем репозиторий на виртуальную машину GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Java, без нее Android-приложение не соберется
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Ставим Flutter (берется стабильная ветка)
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # 4. Скачиваем зависимости (pub packages)
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 5. Собираем чистый релизный APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 6. Публикуем APK на вкладку Releases в твоем GitHub
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Этот токен GitHub создает сам автоматически
