@@ -1,0 +1,38 @@
+# Складський словник для перекладу · Słownik magazynowy · Warehouse glossary
+# Колонки: українська | polski | English. Перша форма в клітинці — та, що підставляється в переклад;
+# інші форми через «/» лише розпізнаються; «*» в кінці слова — будь-яке закінчення.
+склад / складі / складу / складом | magazyn / magazyn* | warehouse / warehouses
+комірник / комірник* | magazynier / magazynier* | warehouse worker
+накладна / накладн* | list przewozowy / list* przewozow* | delivery note / delivery notes
+рахунок-фактура / рахунк*-фактур* | faktura / faktur* | invoice / invoices
+палета / палет* / піддон* | paleta / palet* | pallet / pallets
+рампа / рамп* | rampa / ramp* | loading dock / loading docks / dock
+комплектація / комплектаці* | kompletacja / kompletacj* | order picking / picking
+комплектувальник / комплектувальник* | kompletujący / kompletując* | picker / pickers
+відвантаження / відвантаженн* | wysyłka / wysyłk* | shipment / shipments / dispatch
+приймання товару / приймання / прийманн* | przyjęcie towaru / przyjęci* towar* | goods receipt
+інвентаризація / інвентаризаці* | inwentaryzacja / inwentaryzacj* | stocktaking / stock count / inventory count
+залишок / залишк* | stan magazynowy / stan* magazynow* | stock level / stock levels
+штрихкод / штрихкод* / штрих-код* | kod kreskowy / kod* kreskow* | barcode / barcodes
+сканер / сканер* | skaner / skaner* | scanner / scanners
+навантажувач / навантажувач* | wózek widłowy / wózk* widłow* | forklift / forklifts
+рохля / рохл* / гідравлічний візок | wózek paletowy / wózk* paletow* | pallet truck / pallet jack
+стрейч-плівка / стрейч-плівк* / стрейч | folia stretch / foli* stretch | stretch film / stretch wrap
+коробка / коробк* | karton / karton* | box / boxes / carton / cartons
+етикетка / етикетк* | etykieta / etykiet* | label / labels
+замовлення / замовленн* | zamówienie / zamówieni* | order / orders
+рекламація / рекламаці* | reklamacja / reklamacj* | complaint / complaints
+повернення / поверненн* | zwrot / zwrot* | return / returns
+постачальник / постачальник* | dostawca / dostawc* | supplier / suppliers
+перевізник / перевізник* | przewoźnik / przewoźnik* | carrier / carriers
+вантажівка / вантажівк* / фура / фур* | ciężarówka / ciężarówk* / tir / tir* | truck / trucks / lorry
+бригадир / бригадир* | brygadzista / brygadzist* | team leader / shift leader
+нестача / нестач* | brak / brak* | shortage / shortages
+пошкоджений / пошкоджен* | uszkodzony / uszkodzon* | damaged
+стелаж / стелаж* | regał / regał* | rack / racks / shelving
+комірка / комірк* | lokalizacja / lokalizacj* | bin location / location
+термін придатності / термін* придатності | data ważności / dat* ważności | expiry date / best before date
+партія товару / парті* товару | partia towaru / parti* towaru | batch / lot
+зміна / зміни / зміну | zmiana / zmian* | shift / shifts
+нічна зміна / нічн* змін* | nocna zmiana / nocn* zmian* | night shift
+понаднормові / понаднормов* | nadgodziny / nadgodzin* | overtime

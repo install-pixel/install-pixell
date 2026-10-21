@@ -214,4 +214,12 @@
     <string name="translation_direction_hint">З мови клавіатури на цю мову. Кнопка перекладу над клавішами перемикає між двома іншими мовами.</string>
     <string name="models_accurate_tag">точна</string>
     <string name="models_download_accurate">Точніша модель (близько %1$d МБ, повільніша)</string>
+    <string name="accent_grey">Сірий</string>
+    <string name="page_glossary">Словник перекладу (ваші виправлення)</string>
+    <string name="page_glossary_summary">Записів: %1$d · слова й фрази, які переклад має передати саме так</string>
+    <string name="glossary_intro">Якщо переклад помиляється в слові (наприклад, у складських термінах), запишіть тут правильний переклад. Клавіатура сама підставить ці слова в переклад; рядок, що є цілим реченням, використовується як переклад цього речення.</string>
+    <string name="glossary_format">Один рядок — одне слово: українська | polski | English. Кілька форм — через «/»: перша підставляється в переклад. «*» у кінці — будь-яке закінчення, наприклад палет* = палета, палети, палетах. Рядки з # — примітки.</string>
+    <string name="glossary_field">Словник</string>
+    <string name="glossary_saved">Збережено · записів: %1$d</string>
+    <string name="glossary_add_example">Додати складський приклад</string>
 </resources>

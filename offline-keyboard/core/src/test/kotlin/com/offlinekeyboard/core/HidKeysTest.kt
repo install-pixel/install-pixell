@@ -38,6 +38,13 @@ class HidKeysTest {
     }
 
     @Test
+    fun `control characters become ctrl keys`() {
+        assertEquals(HidStroke(0, 0x29), HidKeys.forText("\u001b", Language.UK))
+        assertEquals(HidStroke(HidKeys.CTRL, 0x12), HidKeys.forText("\u000f", Language.EN))
+        assertEquals(HidStroke(0, 0x28), HidKeys.forText("\n", Language.PL))
+    }
+
+    @Test
     fun `characters a layout cannot type are refused`() {
         assertNull(HidKeys.forText("ы", Language.UK))
         assertNull(HidKeys.forText("@", Language.UK))

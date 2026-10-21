@@ -1,22 +1,58 @@
-# Vim / Neovim in a terminal. The Win combinations type a command; use them in normal mode (after Esc).
+# Vim / Neovim in a terminal (Termux and similar). Every Win combination starts with Esc, so it works
+# from insert mode too. \e = Esc, \n = Enter, \x12 = Ctrl+R.
 title = Vim
-about = Win+W saves, Win+Q quits, Win+X saves and quits. Press Esc first.
-about.uk = Win+W — зберегти, Win+Q — вийти, Win+X — зберегти й вийти. Спочатку натисніть Esc.
-about.pl = Win+W — zapisz, Win+Q — wyjdź, Win+X — zapisz i wyjdź. Najpierw naciśnij Esc.
+about = 18 commands on Win+letter: save, quit, undo, search, lines, replace. They press Esc first, so they work in any mode.
+about.uk = 18 команд на Win+літера: зберегти, вийти, скасувати, пошук, рядки, заміна. Спочатку самі натискають Esc, тож працюють у будь-якому режимі.
+about.pl = 18 poleceń pod Win+litera: zapisz, wyjdź, cofnij, szukaj, wiersze, zamiana. Najpierw same naciskają Esc, więc działają w każdym trybie.
 
-tip = Esc — normal mode, i — insert mode
-tip = u / Ctrl+R — undo / redo
-tip = dd / yy / p — cut line / copy line / paste
-tip = /text, n — search, next match
-tip.uk = Esc — звичайний режим, i — режим вставки
-tip.uk = u / Ctrl+R — скасувати / повторити
-tip.uk = dd / yy / p — вирізати рядок / копіювати рядок / вставити
-tip.uk = /текст, n — пошук, наступний збіг
-tip.pl = Esc — tryb normalny, i — tryb wstawiania
-tip.pl = u / Ctrl+R — cofnij / ponów
-tip.pl = dd / yy / p — wytnij wiersz / kopiuj wiersz / wklej
-tip.pl = /tekst, n — szukaj, następne trafienie
+tip = Esc — normal mode, i — insert, v — select, : — command
+tip = h j k l — left / down / up / right; w / b — next / previous word
+tip = 0 / $ — start / end of line; gg / G — first / last line
+tip = x — delete character; dw — delete word; cw — change word
+tip = yy / dd / p — copy line / cut line / paste
+tip = u / Ctrl+R — undo / redo; . — repeat last change
+tip = /text, n / N — search, next / previous
+tip = :%s/old/new/g — replace everywhere
+tip = :e file — open; :w name — save as; :q! — quit without saving
+tip.uk = Esc — звичайний режим, i — вставка, v — виділення, : — команда
+tip.uk = h j k l — ліворуч / вниз / вгору / праворуч; w / b — наступне / попереднє слово
+tip.uk = 0 / $ — початок / кінець рядка; gg / G — перший / останній рядок
+tip.uk = x — видалити символ; dw — видалити слово; cw — замінити слово
+tip.uk = yy / dd / p — копіювати рядок / вирізати рядок / вставити
+tip.uk = u / Ctrl+R — скасувати / повторити; . — повторити останню зміну
+tip.uk = /текст, n / N — пошук, наступний / попередній збіг
+tip.uk = :%s/старе/нове/g — замінити всюди
+tip.uk = :e файл — відкрити; :w ім'я — зберегти як; :q! — вийти без збереження
+tip.pl = Esc — tryb normalny, i — wstawianie, v — zaznaczanie, : — polecenie
+tip.pl = h j k l — lewo / dół / góra / prawo; w / b — następne / poprzednie słowo
+tip.pl = 0 / $ — początek / koniec wiersza; gg / G — pierwszy / ostatni wiersz
+tip.pl = x — usuń znak; dw — usuń słowo; cw — zmień słowo
+tip.pl = yy / dd / p — kopiuj wiersz / wytnij wiersz / wklej
+tip.pl = u / Ctrl+R — cofnij / ponów; . — powtórz ostatnią zmianę
+tip.pl = /tekst, n / N — szukaj, następne / poprzednie trafienie
+tip.pl = :%s/stare/nowe/g — zamień wszędzie
+tip.pl = :e plik — otwórz; :w nazwa — zapisz jako; :q! — wyjdź bez zapisu
 
-Win+W = text ":w\n"
-Win+Q = text ":q\n"
-Win+X = text ":wq\n"
+# save, quit
+Win+W = text "\e:w\n"
+Win+Q = text "\e:q\n"
+Win+X = text "\e:wq\n"
+Win+Z = text "\e:q!\n"
+# undo, redo
+Win+U = text "\eu"
+Win+R = text "\e\x12"
+# search
+Win+F = text "\e/"
+Win+N = text "\en"
+Win+H = text "\e:noh\n"
+Win+S = text "\e:%s/"
+# moving
+Win+G = text "\egg"
+Win+E = text "\eG"
+# lines
+Win+D = text "\edd"
+Win+Y = text "\eyy"
+Win+P = text "\ep"
+Win+O = text "\eo"
+Win+A = text "\eA"
+Win+L = text "\e:set number!\n"

@@ -99,6 +99,10 @@ object HidKeys {
         if (text.length != 1) return null
         val c = text[0]
         if (c == ' ' || c == '\n' || c == '\t') return HidStroke(0, usageOf(c)!!)
+        if (c == '\r') return HidStroke(0, 0x28)
+        if (c == '\u001b') return HidStroke(0, 0x29)
+        // Control characters from shortcut texts: Ctrl+letter.
+        if (c.code in 1..26) return HidStroke(CTRL, 0x04 + c.code - 1)
         layoutStrokes(language)[text]?.let { return it }
         if (language == Language.PL) {
             val i = POLISH.indexOf(c.lowercaseChar())

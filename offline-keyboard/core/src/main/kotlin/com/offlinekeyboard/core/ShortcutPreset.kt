@@ -16,7 +16,8 @@ package com.offlinekeyboard.core
  * ```
  *
  * `key.<lang>` lines override `key` for that interface language. Actions: language, mode, voice,
- * translate, translate-clipboard, hide, text "…" (with \n, \t, \" and \\ escapes).
+ * translate, translate-clipboard, hide, text "…" (with \n, \t, \e = Esc, \xNN = control character such as
+ * \x0f for Ctrl+O, \" and \\ escapes).
  */
 data class ShortcutPreset(
     val title: String,
@@ -119,6 +120,13 @@ data class ShortcutPreset(
                             when (val n = body[i + 1]) {
                                 'n' -> '\n'
                                 't' -> '\t'
+                                'e' -> '\u001b'
+                                'x' -> {
+                                    // \xNN: a control character such as \x0f (Ctrl+O) for terminal programs.
+                                    val code = body.substring(i + 2, minOf(i + 4, body.length)).toIntOrNull(16) ?: return null
+                                    i += 2
+                                    code.toChar()
+                                }
                                 else -> n
                             },
                         )

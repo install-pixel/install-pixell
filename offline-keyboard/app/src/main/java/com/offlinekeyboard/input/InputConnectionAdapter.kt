@@ -54,7 +54,15 @@ class InputConnectionAdapter(private val service: InputMethodService) {
     private fun commitText(ic: InputConnection, text: String) {
         if (field.isRawKeyField) {
             // Terminal-like fields expect key events; sendKeyChar maps digits/newline to keys, the rest to text.
-            text.forEach { service.sendKeyChar(it) }
+            // Control characters from shortcut texts (Esc, Ctrl+letter) become the real key presses.
+            for (c in text) {
+                when {
+                    c == ESC -> sendKey(ic, "ESCAPE", KeyMods())
+                    c.code in 1..26 && c != '\t' && c != '\n' && c != '\r' ->
+                        sendKey(ic, ('A' + (c.code - 1)).toString(), KeyMods(ctrl = true))
+                    else -> service.sendKeyChar(c)
+                }
+            }
         } else {
             ic.commitText(text, 1)
         }
@@ -201,6 +209,7 @@ class InputConnectionAdapter(private val service: InputMethodService) {
     )
 
     private companion object {
+        const val ESC = '\u001b'
         const val CONTEXT_CHARS = 64
         const val MAX_EXTRACTED_CHARS = 20_000
     }

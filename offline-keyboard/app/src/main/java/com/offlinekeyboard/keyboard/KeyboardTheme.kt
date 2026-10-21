@@ -13,6 +13,7 @@ enum class Accent(val color: Int) {
     LAVENDER(0xFFB3A6DF.toInt()),
     PEACH(0xFFF0B49A.toInt()),
     ROSE(0xFFE6A6BA.toInt()),
+    GREY(0xFFB4BAC4.toInt()),
 }
 
 /** All colours of the keyboard window; the views never read colour resources directly. */

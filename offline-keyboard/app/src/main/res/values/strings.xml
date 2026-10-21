@@ -214,4 +214,12 @@
     <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
     <string name="models_accurate_tag">accurate</string>
     <string name="models_download_accurate">More accurate model (about %1$d MB, slower)</string>
+    <string name="accent_grey">Grey</string>
+    <string name="page_glossary">Translation glossary (your corrections)</string>
+    <string name="page_glossary_summary">Entries: %1$d · words and phrases the translation must keep</string>
+    <string name="glossary_intro">If the translation gets a word wrong (for example warehouse terms), write the right translation here. The keyboard puts these words into the translation itself; a line that is a whole sentence is used as the translation of that sentence.</string>
+    <string name="glossary_format">One line per word: українська | polski | English. Several forms with «/»: the first is used in translations. «*» at the end matches any ending, e.g. палет* = палета, палети, палетах. Lines starting with # are notes.</string>
+    <string name="glossary_field">Glossary</string>
+    <string name="glossary_saved">Saved · entries: %1$d</string>
+    <string name="glossary_add_example">Add warehouse example</string>
 </resources>

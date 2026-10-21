@@ -94,7 +94,7 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH }
+internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSSARY }
 
 internal typealias UpdateSettings = ((KeyboardSettings) -> KeyboardSettings) -> Unit
 
@@ -126,6 +126,7 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
         Page.DICTIONARY -> DictionaryPage(s, update, onBack = { page = Page.MAIN })
         Page.MODELS -> ModelsPage(onBack = { page = Page.MAIN })
         Page.BLUETOOTH -> BluetoothPage(s, update, onBack = { page = Page.MAIN })
+        Page.GLOSSARY -> GlossaryPage(onBack = { page = Page.MAIN })
     }
 }
 
@@ -347,6 +348,11 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 }
             }
             Text(stringResource(R.string.translation_direction_hint), style = MaterialTheme.typography.bodySmall)
+            HorizontalDivider()
+            val glossarySize = remember { com.offlinekeyboard.translation.GlossaryStore.get(context).glossary.size }
+            NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) {
+                onOpen(Page.GLOSSARY)
+            }
         }
 
         Section(stringResource(R.string.section_privacy)) {

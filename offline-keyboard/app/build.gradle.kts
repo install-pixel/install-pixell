@@ -7,6 +7,8 @@ plugins {
 android {
     // Shortcut presets ship inside the APK from the same folder that is published on GitHub.
     sourceSets["main"].assets.srcDir("../shortcut-presets")
+    // The example translation glossary, the same file as offline-keyboard/glossary/ on GitHub.
+    sourceSets["main"].assets.srcDir("../glossary")
 
     namespace = "com.offlinekeyboard"
     compileSdk = 35

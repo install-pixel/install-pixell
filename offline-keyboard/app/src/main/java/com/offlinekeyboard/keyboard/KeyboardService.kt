@@ -43,6 +43,7 @@ import com.offlinekeyboard.settings.SettingsActivity
 import com.offlinekeyboard.settings.SettingsRepository
 import com.offlinekeyboard.speech.SpeechController
 import com.offlinekeyboard.speech.VoskSpeechEngine
+import com.offlinekeyboard.translation.GlossaryStore
 import com.offlinekeyboard.translation.TranslationController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -106,7 +107,7 @@ class KeyboardService : InputMethodService(),
         models = ModelStore(this)
         speechEngine = VoskSpeechEngine(models)
         speech = SpeechController(this, speechEngine).also { it.host = this }
-        translation = TranslationController(models)
+        translation = TranslationController(models, GlossaryStore.get(this))
         dictionary = UserDictionaryStore.get(this)
         // One small local read so the first keyboard already has the right mode and language.
         settings = runBlocking { withTimeoutOrNull(STARTUP_SETTINGS_TIMEOUT_MS) { repository.settings.first() } }
@@ -588,8 +589,22 @@ class KeyboardService : InputMethodService(),
         // Let the phone keyboard update itself (one-shot Shift used up, Win+Space switches the labels too),
         // but nothing is typed into the phone's field.
         handler.removeCallbacks(firePendingShortcut)
-        if (key != null) controller.onKey(key) else controller.onAlternative(alternative.orEmpty())
+        val commands = if (key != null) controller.onKey(key) else controller.onAlternative(alternative.orEmpty())
+        // A shortcut that inserts text (Excel formulas, Vim commands ...) is typed on the computer letter by letter.
+        val shortcutText = (commands.singleOrNull() as? EditorCommand.CommitText)?.text
+            ?.takeIf { (keyMods.ctrl || keyMods.alt || keyMods.meta) && it != output }
         when {
+            shortcutText != null -> {
+                val strokes = shortcutText.map { HidKeys.forText(it.toString(), language) }
+                val missing = shortcutText.filterIndexed { i, _ -> strokes[i] == null }
+                if (missing.isNotEmpty()) {
+                    rootView?.showStatus(getString(R.string.bluetooth_cannot_send, missing.take(3)))
+                } else if (!strokes.all { Bluetooth.send(it!!) }) {
+                    rootView?.showStatus(getString(R.string.bluetooth_not_connected))
+                } else {
+                    shortcutText.forEach { rememberSent(null, it.toString(), KeyMods()) }
+                }
+            }
             stroke == null -> rootView?.showStatus(getString(R.string.bluetooth_cannot_send, output ?: "?"))
             !Bluetooth.send(stroke) -> rootView?.showStatus(getString(R.string.bluetooth_not_connected))
             else -> rememberSent(special, output, keyMods)
@@ -605,7 +620,7 @@ class KeyboardService : InputMethodService(),
             SpecialKey.BACKSPACE -> if (sentText.isNotEmpty()) sentText.setLength(sentText.length - 1)
             SpecialKey.SPACE -> sentText.append(' ')
             SpecialKey.ENTER -> sentText.setLength(0)
-            null -> output?.let(sentText::append)
+            null -> output?.let { sentText.append(it.filter { c -> c >= ' ' }) }
             else -> Unit
         }
         if (sentText.length > SENT_TEXT_MAX) sentText.delete(0, sentText.length - SENT_TEXT_MAX)

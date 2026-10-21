@@ -1,24 +1,47 @@
-# GNU nano in a terminal (Termux and similar). Tap Ctrl, then the letter.
+# GNU nano in a terminal (Termux and similar). The Win combinations send nano's own keys,
+# e.g. \x0f = Ctrl+O, \e = Esc (Alt), \n = Enter.
 title = Nano
-about = Nano understands Ctrl and Alt combinations directly; the keyboard sends them as real keys in terminals.
-about.uk = Nano сам розуміє Ctrl і Alt — у терміналі клавіатура надсилає їх як справжні клавіші.
-about.pl = Nano sam rozumie Ctrl i Alt — w terminalu klawiatura wysyła je jako prawdziwe klawisze.
+about = 15 commands on Win+letter: save, exit, search, replace, cut and paste lines, undo, go to line. Nano's own Ctrl and Alt keys also work directly.
+about.uk = 15 команд на Win+літера: зберегти, вийти, пошук, заміна, вирізати й вставити рядок, скасувати, перейти на рядок. Власні Ctrl і Alt нано теж працюють напряму.
+about.pl = 15 poleceń pod Win+litera: zapisz, wyjdź, szukaj, zamień, wytnij i wklej wiersz, cofnij, idź do wiersza. Własne skróty Ctrl i Alt nano też działają bezpośrednio.
 
-tip = Ctrl+O, Enter — save
-tip = Ctrl+X — exit
-tip = Ctrl+W — search, Alt+W — next match
+tip = Ctrl+O, Enter — save; Ctrl+X — exit
+tip = Ctrl+W — search; Alt+W — next match; Alt+R — replace
 tip = Ctrl+K / Ctrl+U — cut line / paste
+tip = Alt+A — start selecting; Alt+6 — copy selection
 tip = Alt+U / Alt+E — undo / redo
-tip = Ctrl+_ — go to line
-tip.uk = Ctrl+O, Enter — зберегти
-tip.uk = Ctrl+X — вийти
-tip.uk = Ctrl+W — пошук, Alt+W — наступний збіг
+tip = Alt+G — go to line; Ctrl+C — where am I
+tip = Alt+\ / Alt+/ — start / end of file
+tip = Ctrl+G — help
+tip.uk = Ctrl+O, Enter — зберегти; Ctrl+X — вийти
+tip.uk = Ctrl+W — пошук; Alt+W — наступний збіг; Alt+R — заміна
 tip.uk = Ctrl+K / Ctrl+U — вирізати рядок / вставити
+tip.uk = Alt+A — почати виділення; Alt+6 — копіювати виділене
 tip.uk = Alt+U / Alt+E — скасувати / повторити
-tip.uk = Ctrl+_ — перейти на рядок
-tip.pl = Ctrl+O, Enter — zapisz
-tip.pl = Ctrl+X — wyjdź
-tip.pl = Ctrl+W — szukaj, Alt+W — następne trafienie
+tip.uk = Alt+G — перейти на рядок; Ctrl+C — де курсор
+tip.uk = Alt+\ / Alt+/ — початок / кінець файла
+tip.uk = Ctrl+G — довідка
+tip.pl = Ctrl+O, Enter — zapisz; Ctrl+X — wyjdź
+tip.pl = Ctrl+W — szukaj; Alt+W — następne trafienie; Alt+R — zamień
 tip.pl = Ctrl+K / Ctrl+U — wytnij wiersz / wklej
+tip.pl = Alt+A — zacznij zaznaczanie; Alt+6 — kopiuj zaznaczenie
 tip.pl = Alt+U / Alt+E — cofnij / ponów
-tip.pl = Ctrl+_ — idź do wiersza
+tip.pl = Alt+G — idź do wiersza; Ctrl+C — gdzie jestem
+tip.pl = Alt+\ / Alt+/ — początek / koniec pliku
+tip.pl = Ctrl+G — pomoc
+
+Win+S = text "\x0f\n"
+Win+Q = text "\x18"
+Win+F = text "\x17"
+Win+N = text "\ew"
+Win+R = text "\er"
+Win+K = text "\x0b"
+Win+U = text "\x15"
+Win+A = text "\ea"
+Win+Y = text "\e6"
+Win+Z = text "\eu"
+Win+E = text "\ee"
+Win+G = text "\eg"
+Win+L = text "\x03"
+Win+B = text "\e\\"
+Win+H = text "\x07"

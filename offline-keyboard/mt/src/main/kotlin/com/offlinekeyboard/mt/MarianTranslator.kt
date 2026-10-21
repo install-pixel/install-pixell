@@ -5,6 +5,7 @@ import ai.onnxruntime.OnnxValue
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import com.offlinekeyboard.core.speech.EngineAvailability
+import com.offlinekeyboard.core.translation.Glossary
 import com.offlinekeyboard.core.translation.Phrasebook
 import com.offlinekeyboard.core.translation.TranslationCheck
 import com.offlinekeyboard.core.translation.TranslationDirection
@@ -359,13 +360,20 @@ class MarianTranslationEngine(private val pkg: MarianPackage, threads: Int = 2) 
         }
     }
 
+    /** The user's corrections; terms in it are put into the sentence in the target language first. */
+    @Volatile
+    var glossary: Glossary = Glossary.EMPTY
+
     @Synchronized
     fun translateSentence(sentence: String): String {
+        val glossary = glossary
+        glossary.sentence(sentence, pkg.direction)?.let { return it }
         Phrasebook.lookup(sentence, pkg.direction)?.let { return it }
+        val prepared = glossary.prepare(sentence, pkg.direction)
         // The models were trained on whole sentences; an unfinished phrase without a final mark makes them
         // invent text. Translate it as a sentence and drop the added full stop again.
-        val needsStop = sentence.last() !in SENTENCE_MARKS
-        val input = if (needsStop) "$sentence." else sentence
+        val needsStop = prepared.last() !in SENTENCE_MARKS
+        val input = if (needsStop) "$prepared." else prepared
         val ids = tokenizer.encode(input)
         val limit = minOf(model.maxLength, ids.size * 2 + 10)
         val tokens = if (beams > 1) model.generateBeam(ids, limit, beams) else model.generate(ids, limit)

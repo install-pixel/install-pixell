@@ -15,6 +15,11 @@ on:
       - 'offline-keyboard/mt/**'
       - '.github/workflows/offline-keyboard-models.yml'
 
+# A newer push replaces a run still in progress for the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

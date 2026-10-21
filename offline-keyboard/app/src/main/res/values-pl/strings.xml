@@ -214,4 +214,12 @@
     <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
     <string name="models_accurate_tag">dokładny</string>
     <string name="models_download_accurate">Dokładniejszy model (około %1$d MB, wolniejszy)</string>
+    <string name="accent_grey">Szary</string>
+    <string name="page_glossary">Słownik tłumaczenia (Twoje poprawki)</string>
+    <string name="page_glossary_summary">Wpisów: %1$d · słowa i zwroty, które tłumaczenie ma oddać dokładnie tak</string>
+    <string name="glossary_intro">Jeśli tłumaczenie myli się w słowie (np. w terminach magazynowych), wpisz tu poprawne tłumaczenie. Klawiatura sama wstawi te słowa do tłumaczenia; wiersz będący całym zdaniem jest używany jako tłumaczenie tego zdania.</string>
+    <string name="glossary_format">Jeden wiersz — jedno słowo: українська | polski | English. Kilka form przez «/»: pierwsza trafia do tłumaczenia. «*» na końcu — dowolna końcówka, np. palet* = paleta, palety, paletach. Wiersze z # to notatki.</string>
+    <string name="glossary_field">Słownik</string>
+    <string name="glossary_saved">Zapisano · wpisów: %1$d</string>
+    <string name="glossary_add_example">Dodaj przykład magazynowy</string>
 </resources>

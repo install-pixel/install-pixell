@@ -16,7 +16,7 @@ import java.util.concurrent.Executors
  * Two kinds of requests: final translations (inserted into the field; beam search when [accurate]) and
  * previews while typing (fast greedy decoding; only the newest preview is computed, older ones are dropped).
  */
-class TranslationController(private val models: ModelStore) {
+class TranslationController(private val models: ModelStore, private val glossary: GlossaryStore? = null) {
 
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -59,7 +59,9 @@ class TranslationController(private val models: ModelStore) {
     }
 
     private fun run(text: String, direction: TranslationDirection, beams: Int): TranslationResult = try {
-        engineFor(direction).translate(text, direction, beams)
+        val engine = engineFor(direction)
+        glossary?.let { engine.glossary = it.glossary }
+        engine.translate(text, direction, beams)
     } catch (e: Throwable) {
         // OutOfMemoryError included: report instead of crashing the keyboard.
         release(direction)

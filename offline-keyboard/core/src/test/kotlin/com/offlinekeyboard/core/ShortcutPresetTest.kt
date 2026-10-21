@@ -56,6 +56,27 @@ class ShortcutPresetTest {
     }
 
     @Test
+    fun `escapes for terminal keys`() {
+        val preset = ShortcutPreset.parse(
+            "title = T\nWin+W = text \"\\e:w\\n\"\nWin+S = text \"\\x0f\\n\"\nWin+B = text \"\\e\\\\\"",
+            "en",
+        )
+        assertEquals("\u001b:w\n", preset.shortcuts[0].text)
+        assertEquals("\u000f\n", preset.shortcuts[1].text)
+        assertEquals("\u001b\\", preset.shortcuts[2].text)
+    }
+
+    @Test
+    fun `bigger sets for vim nano and excel`() {
+        for ((name, min) in listOf("vim.txt" to 15, "nano.txt" to 12, "excel.txt" to 15)) {
+            val preset = ShortcutPreset.parse(File(presetDir, name).readText(), "uk")
+            assertTrue("$name: ${preset.shortcuts.size}", preset.shortcuts.size >= min)
+            // Every shortcut can be stored and read back.
+            assertEquals(preset.shortcuts, Shortcut.decode(Shortcut.encode(preset.shortcuts)))
+        }
+    }
+
+    @Test
     fun `broken lines are reported with their number`() {
         for (bad in listOf("title = X\nWin+W = fly", "title = X\nShift+A = language", "title = X\nwhat", "about = no title")) {
             try {
