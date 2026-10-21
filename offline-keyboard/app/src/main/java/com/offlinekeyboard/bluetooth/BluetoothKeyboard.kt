@@ -137,8 +137,8 @@ object BluetoothKeyboard {
         return proxy.sendReport(device, REPORT_ID, down) && proxy.sendReport(device, REPORT_ID, up)
     }
 
-    private fun set(state: State, device: BluetoothDevice? = host) {
-        _status.value = Status(state, device?.let(::deviceName))
+    private fun set(state: BluetoothState, device: BluetoothDevice? = host) {
+        _status.value = BluetoothStatus(state, device?.let(::deviceName))
     }
 
     private val profileListener = object : BluetoothProfile.ServiceListener {
