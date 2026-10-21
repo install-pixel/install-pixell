@@ -91,7 +91,8 @@ class KeyboardUiTest {
         useLanguage(Language.UK)
         longPressText("е", screenshotName = "popup-e")
         longPressText("и")
-        assertEquals("єы", text(activity.plain))
+        // On the mobile layout є has its own key, so е offers э first.
+        assertEquals("эы", text(activity.plain))
     }
 
     @Test

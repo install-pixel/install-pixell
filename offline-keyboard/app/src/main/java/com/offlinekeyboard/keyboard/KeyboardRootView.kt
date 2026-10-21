@@ -196,9 +196,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private fun suggestionView() = TextView(context).apply {
         gravity = Gravity.CENTER
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
         maxLines = 1
-        ellipsize = TextUtils.TruncateAt.END
+        // Long words get a smaller font instead of being cut.
+        setAutoSizeTextTypeUniformWithConfiguration(11, 16, 1, TypedValue.COMPLEX_UNIT_SP)
         setPadding(dp(2), 0, dp(2), 0)
         isFocusable = false
         setOnClickListener { (it as TextView).text?.toString()?.takeIf(String::isNotEmpty)?.let { w -> toolbarListener?.onSuggestionPicked(w) } }

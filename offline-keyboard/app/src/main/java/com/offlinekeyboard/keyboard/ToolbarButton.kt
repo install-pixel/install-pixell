@@ -58,8 +58,14 @@ class ToolbarButton(context: Context) : View(context) {
         textPaint.color = foreground
         textPaint.textSize = textSizeSp * scaledDensity
         textPaint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-        val gap = 6f * density
-        val available = width - 12f * density - (if (icon != null) iconSize + gap else 0f)
+        val gap = 5f * density
+        val available = width - 10f * density - (if (icon != null) iconSize + gap else 0f)
+        // Shrink a little before cutting the text, so narrow phones still show whole words.
+        var size = textSizeSp
+        while (size > MIN_TEXT_SP && textPaint.measureText(text) > available) {
+            size -= 0.5f
+            textPaint.textSize = size * scaledDensity
+        }
         val shown = if (text.isEmpty()) "" else TextUtils.ellipsize(text, textPaint, maxOf(available, 0f), TextUtils.TruncateAt.END).toString()
         val textWidth = if (shown.isEmpty()) 0f else textPaint.measureText(shown)
         val total = (if (icon != null) iconSize else 0f) + (if (icon != null && shown.isNotEmpty()) gap else 0f) + textWidth
@@ -91,5 +97,9 @@ class ToolbarButton(context: Context) : View(context) {
             pressed = value
             invalidate()
         }
+    }
+
+    private companion object {
+        const val MIN_TEXT_SP = 11f
     }
 }

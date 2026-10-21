@@ -125,6 +125,7 @@ jobs:
       # Screenshots on a fixed release page so they can be viewed without logging in to Actions.
       - name: Publish screenshots
         if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-ui-screens
