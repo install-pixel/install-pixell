@@ -145,81 +145,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
             )
         }
 
-        val s = settings ?: return@Column
-
-        Section(stringResource(R.string.section_keyboard)) {
-            Text(stringResource(R.string.default_mode), style = MaterialTheme.typography.titleSmall)
-            RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
-                update { it.copy(defaultMode = KeyboardMode.MOBILE) }
-            }
-            RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
-                update { it.copy(defaultMode = KeyboardMode.COMPUTER) }
-            }
-            SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
-                update { it.copy(rememberLastMode = v) }
-            }
-            HorizontalDivider()
-            Text(stringResource(R.string.input_languages), style = MaterialTheme.typography.titleSmall)
-            for (language in Language.entries) {
-                val checked = language in s.enabledLanguages
-                CheckRow(languageName(language), checked) { v ->
-                    update {
-                        val next = if (v) it.enabledLanguages + language else it.enabledLanguages - language
-                        // At least one layout must stay enabled.
-                        if (next.isEmpty()) it else it.copy(enabledLanguages = Language.entries.filter { l -> l in next })
-                    }
-                }
-            }
-            HorizontalDivider()
-            Text(
-                stringResource(R.string.key_height, (s.keyHeightScale * 100).toInt()),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Slider(
-                value = s.keyHeightScale,
-                onValueChange = { v -> update { it.copy(keyHeightScale = v) } },
-                valueRange = KeyboardSettings.MIN_KEY_HEIGHT_SCALE..KeyboardSettings.MAX_KEY_HEIGHT_SCALE,
-                steps = 6,
-            )
-            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
-                update { it.copy(mobileCursorRow = v) }
-            }
-            SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v ->
-                update { it.copy(autoCapitalize = v) }
-            }
-            SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
-                update { it.copy(spaceSwipeSwitchesLanguage = v) }
-            }
-            SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v ->
-                update { it.copy(hapticFeedback = v) }
-            }
-            Text(stringResource(R.string.autocorrect_not_available), style = MaterialTheme.typography.bodySmall)
-        }
-
-        Section(stringResource(R.string.section_voice)) {
-            Text(stringResource(R.string.voice_language), style = MaterialTheme.typography.titleSmall)
-            for (language in Language.entries) {
-                RadioRow(languageName(language), s.voiceLanguage == language) {
-                    update { it.copy(voiceLanguage = language) }
-                }
-            }
-            Text(stringResource(R.string.voice_model_status), style = MaterialTheme.typography.bodyMedium)
-        }
-
-        Section(stringResource(R.string.section_translation)) {
-            Text(stringResource(R.string.translation_status), style = MaterialTheme.typography.bodyMedium)
-        }
-
-        Section(stringResource(R.string.section_privacy)) {
-            val networkPermissions = remember { OfflinePolicy.requestedNetworkPermissions(context) }
-            StatusLine(stringResource(R.string.privacy_no_network), networkPermissions.isEmpty())
-            Text(stringResource(R.string.privacy_text), style = MaterialTheme.typography.bodyMedium)
-        }
-
-        Section(stringResource(R.string.section_about)) {
-            Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME))
-            OutlinedButton(onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
-        }
+        settings?.let { s -> PreferenceSections(s, update = { t -> update(t) }, onResetClick = { showResetDialog = true }) }
         Spacer(Modifier.heightIn(min = 24.dp))
     }
 
@@ -238,6 +164,89 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 TextButton(onClick = { showResetDialog = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
+    }
+}
+
+@Composable
+private fun PreferenceSections(
+    s: KeyboardSettings,
+    update: ((KeyboardSettings) -> KeyboardSettings) -> Unit,
+    onResetClick: () -> Unit,
+) {
+    val context = LocalContext.current
+
+    Section(stringResource(R.string.section_keyboard)) {
+        Text(stringResource(R.string.default_mode), style = MaterialTheme.typography.titleSmall)
+        RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
+            update { it.copy(defaultMode = KeyboardMode.MOBILE) }
+        }
+        RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
+            update { it.copy(defaultMode = KeyboardMode.COMPUTER) }
+        }
+        SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
+            update { it.copy(rememberLastMode = v) }
+        }
+        HorizontalDivider()
+        Text(stringResource(R.string.input_languages), style = MaterialTheme.typography.titleSmall)
+        for (language in Language.entries) {
+            val checked = language in s.enabledLanguages
+            CheckRow(languageName(language), checked) { v ->
+                update {
+                    val next = if (v) it.enabledLanguages + language else it.enabledLanguages - language
+                    // At least one layout must stay enabled.
+                    if (next.isEmpty()) it else it.copy(enabledLanguages = Language.entries.filter { l -> l in next })
+                }
+            }
+        }
+        HorizontalDivider()
+        Text(
+            stringResource(R.string.key_height, (s.keyHeightScale * 100).toInt()),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Slider(
+            value = s.keyHeightScale,
+            onValueChange = { v -> update { it.copy(keyHeightScale = v) } },
+            valueRange = KeyboardSettings.MIN_KEY_HEIGHT_SCALE..KeyboardSettings.MAX_KEY_HEIGHT_SCALE,
+            steps = 6,
+        )
+        SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
+            update { it.copy(mobileCursorRow = v) }
+        }
+        SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v ->
+            update { it.copy(autoCapitalize = v) }
+        }
+        SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
+            update { it.copy(spaceSwipeSwitchesLanguage = v) }
+        }
+        SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v ->
+            update { it.copy(hapticFeedback = v) }
+        }
+        Text(stringResource(R.string.autocorrect_not_available), style = MaterialTheme.typography.bodySmall)
+    }
+
+    Section(stringResource(R.string.section_voice)) {
+        Text(stringResource(R.string.voice_language), style = MaterialTheme.typography.titleSmall)
+        for (language in Language.entries) {
+            RadioRow(languageName(language), s.voiceLanguage == language) {
+                update { it.copy(voiceLanguage = language) }
+            }
+        }
+        Text(stringResource(R.string.voice_model_status), style = MaterialTheme.typography.bodyMedium)
+    }
+
+    Section(stringResource(R.string.section_translation)) {
+        Text(stringResource(R.string.translation_status), style = MaterialTheme.typography.bodyMedium)
+    }
+
+    Section(stringResource(R.string.section_privacy)) {
+        val networkPermissions = remember { OfflinePolicy.requestedNetworkPermissions(context) }
+        StatusLine(stringResource(R.string.privacy_no_network), networkPermissions.isEmpty())
+        Text(stringResource(R.string.privacy_text), style = MaterialTheme.typography.bodyMedium)
+    }
+
+    Section(stringResource(R.string.section_about)) {
+        Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME))
+        OutlinedButton(onClick = onResetClick) { Text(stringResource(R.string.reset_settings)) }
     }
 }
 

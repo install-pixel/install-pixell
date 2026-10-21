@@ -52,7 +52,8 @@ class SettingsRepository(context: Context) {
             val updated = transform(prefs.toSettings())
             prefs[Keys.DEFAULT_MODE] = updated.defaultMode.name
             prefs[Keys.REMEMBER_LAST_MODE] = updated.rememberLastMode
-            updated.lastMode?.let { prefs[Keys.LAST_MODE] = it.name } ?: prefs.remove(Keys.LAST_MODE)
+            val lastMode = updated.lastMode
+            if (lastMode != null) prefs[Keys.LAST_MODE] = lastMode.name else prefs.remove(Keys.LAST_MODE)
             prefs[Keys.LAST_LANGUAGE] = updated.lastLanguage.name
             prefs[Keys.ENABLED_LANGUAGES] = updated.enabledLanguages.map { it.name }.toSet()
             prefs[Keys.MOBILE_CURSOR_ROW] = updated.mobileCursorRow

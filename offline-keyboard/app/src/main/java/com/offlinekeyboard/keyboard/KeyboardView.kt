@@ -12,7 +12,6 @@ import android.util.SparseArray
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import androidx.core.util.forEach
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.KeyLabels
 import com.offlinekeyboard.core.LabelContext
@@ -99,7 +98,7 @@ class KeyboardView(context: Context) : View(context) {
 
     /** Stops repeats and popups, e.g. when the keyboard is hidden mid-press. */
     fun cancelAllPointers() {
-        pointers.forEach { _, state -> state.cancelCallbacks() }
+        for (i in 0 until pointers.size()) pointers.valueAt(i).cancelCallbacks()
         pointers.clear()
         popup = null
         invalidate()
@@ -138,7 +137,7 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val ctx = labelContext ?: return
         val pressedKeys = HashSet<Key>()
-        pointers.forEach { _, state -> state.key?.let(pressedKeys::add) }
+        for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
 
         for ((key, rect) in keyRects) {
             if (key.style == KeyStyle.SPACER) continue
