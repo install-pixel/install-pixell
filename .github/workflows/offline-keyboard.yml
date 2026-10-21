@@ -71,6 +71,8 @@ jobs:
   ui-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: offline-keyboard
@@ -119,3 +121,16 @@ jobs:
             offline-keyboard/build/screens/
             offline-keyboard/app/build/reports/androidTests/
             offline-keyboard/app/build/outputs/androidTest-results/
+
+      # Screenshots on a fixed release page so they can be viewed without logging in to Actions.
+      - name: Publish screenshots
+        if: always() && github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-ui-screens
+          name: Offline Keyboard — UI screenshots
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          files: offline-keyboard/build/screens/**/*.png
+          body: Screenshots from the latest emulator UI test run (commit ${{ github.sha }}).

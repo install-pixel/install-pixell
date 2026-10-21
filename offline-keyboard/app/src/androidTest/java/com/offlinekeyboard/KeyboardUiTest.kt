@@ -163,7 +163,8 @@ class KeyboardUiTest {
         useLanguage(Language.UK)
         for (dark in listOf(false, true)) {
             for (accent in Accent.entries) {
-                instrumentation.runOnMainSync { service().applyThemeForTest(KeyboardTheme.create(dark, accent)) }
+                val keyboard = service()
+                instrumentation.runOnMainSync { keyboard.applyThemeForTest(KeyboardTheme.create(dark, accent)) }
                 instrumentation.waitForIdleSync()
                 screenshot("theme-${if (dark) "dark" else "light"}-${accent.name.lowercase()}")
             }
@@ -229,7 +230,8 @@ class KeyboardUiTest {
 
     private fun keyCenter(match: (Key) -> Boolean): android.graphics.PointF? {
         val ref = AtomicReference<android.graphics.PointF?>()
-        instrumentation.runOnMainSync { ref.set(service().inputRootForTest?.keyboardView?.keyCenterOnScreen(match)) }
+        val keyboard = service()
+        instrumentation.runOnMainSync { ref.set(keyboard.inputRootForTest?.keyboardView?.keyCenterOnScreen(match)) }
         return ref.get()
     }
 
