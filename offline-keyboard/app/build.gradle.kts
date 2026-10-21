@@ -15,9 +15,9 @@ android {
         versionCode = 2
         versionName = "0.2.0"
 
-        // Native code of Vosk and ONNX Runtime: phones (64/32-bit ARM) and the x86_64 emulator.
+        // Native code of Vosk and ONNX Runtime for phones only (64- and 32-bit ARM).
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
     }
 
@@ -40,6 +40,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // Store native libraries compressed: a much smaller APK to download (they are unpacked once on install).
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     lint {
