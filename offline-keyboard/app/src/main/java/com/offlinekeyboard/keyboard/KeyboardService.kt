@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.KeyboardController
@@ -68,7 +69,13 @@ class KeyboardService : InputMethodService(),
     private var settings = KeyboardSettings()
 
     private val editor = InputConnectionAdapter(this)
-    private val composer = TranslationComposer { currentInputConnection }
+    private val composer = TranslationComposer(
+        connection = { currentInputConnection },
+        cursorPosition = ::cursorPosition,
+    )
+
+    /** Translate state just chosen by the user, until DataStore confirms it (an older emission must not undo it). */
+    private var pendingTranslateState: Pair<Boolean, TranslationDirection>? = null
     private var currentField = FieldInfo(0, 0)
     private var rootView: KeyboardRootView? = null
 
@@ -126,8 +133,17 @@ class KeyboardService : InputMethodService(),
         }
     }
 
-    private fun applySettings(new: KeyboardSettings) {
+    private fun applySettings(incoming: KeyboardSettings) {
         val old = settings
+        val pending = pendingTranslateState
+        val new = if (pending == null) {
+            incoming
+        } else if (incoming.translateEnabled == pending.first && incoming.translationDirection == pending.second) {
+            pendingTranslateState = null
+            incoming
+        } else {
+            incoming.copy(translateEnabled = pending.first, translationDirection = pending.second)
+        }
         settings = new
         controller.enabledLanguages = new.enabledLanguages
         controller.shortcuts = new.shortcuts
@@ -187,12 +203,10 @@ class KeyboardService : InputMethodService(),
         candidatesStart: Int, candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        val cursorLeftComposing = candidatesStart < 0 || newSelStart != candidatesEnd || newSelEnd != candidatesEnd
-        if (!composer.isEmpty && cursorLeftComposing) {
+        if (!composer.isEmpty && !composer.isOwnCursorUpdate(newSelStart, newSelEnd, candidatesStart, candidatesEnd)) {
             // The user moved the cursor away from the segment being translated.
             leaveSegment()
         }
-        if (partialShown && candidatesStart < 0) partialShown = false
         updateAutoShift()
         updateSuggestions()
         render()
@@ -310,7 +324,17 @@ class KeyboardService : InputMethodService(),
         }
     }
 
+    /**
+     * Absolute cursor position from the field's own text, or -1. The last reported position is not used:
+     * cursor reports lag behind fast typing, and a wrong start would end the segment by mistake.
+     */
+    private fun cursorPosition(): Int {
+        val extracted = currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0) ?: return -1
+        return if (extracted.selectionEnd >= 0) extracted.startOffset + extracted.selectionEnd else -1
+    }
+
     private fun setTranslateEnabled(enabled: Boolean, direction: TranslationDirection) {
+        pendingTranslateState = enabled to direction
         scope.launch { repository.update { it.copy(translateEnabled = enabled, translationDirection = direction) } }
         settings = settings.copy(translateEnabled = enabled, translationDirection = direction)
     }
