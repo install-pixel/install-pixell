@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple keyboard glyph inside the 108dp adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M30,38h48a4,4 0,0 1,4 4v24a4,4 0,0 1,-4 4h-48a4,4 0,0 1,-4 -4v-24a4,4 0,0 1,4 -4z" />
+    <path
+        android:fillColor="#FF2F6FDE"
+        android:pathData="M32,43h6v6h-6zM41,43h6v6h-6zM50,43h6v6h-6zM59,43h6v6h-6zM68,43h8v6h-8zM32,52h8v6h-8zM43,52h6v6h-6zM52,52h6v6h-6zM61,52h6v6h-6zM70,52h6v6h-6zM38,61h32v5h-32z" />
+</vector>

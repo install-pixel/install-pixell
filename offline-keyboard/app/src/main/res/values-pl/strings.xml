@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Offline Computer Keyboard</string>
+    <string name="ime_name">Offline Computer Keyboard</string>
+
+    <string name="toolbar_language_description">Zmień język wprowadzania</string>
+    <string name="toolbar_voice_description">Wprowadzanie głosowe</string>
+    <string name="toolbar_mode_description">Przełącz klawiaturę komputerową i mobilną</string>
+    <string name="toolbar_settings_description">Ustawienia klawiatury</string>
+    <string name="toolbar_hide_description">Ukryj klawiaturę</string>
+
+    <string name="voice_blocked_sensitive">Wprowadzanie głosowe jest wyłączone w polach haseł i polach prywatnych.</string>
+    <string name="voice_not_available">Wprowadzanie głosowe offline nie jest jeszcze częścią tej wersji.</string>
+    <string name="voice_model_missing">Model głosowy offline dla tego języka nie jest zainstalowany.</string>
+    <string name="voice_permission_needed">Zezwól na dostęp do mikrofonu w Ustawieniach, aby dyktować.</string>
+
+    <string name="section_setup">Konfiguracja</string>
+    <string name="setup_enabled">Klawiatura jest włączona w ustawieniach systemu</string>
+    <string name="setup_selected">Klawiatura jest bieżącą metodą wprowadzania</string>
+    <string name="setup_instructions">1. Otwórz ustawienia klawiatur i włącz „Offline Computer Keyboard”. 2. Stuknij „Wybierz klawiaturę” i wybierz ją. Android pokazuje standardowe ostrzeżenie dla każdej zewnętrznej klawiatury; ta klawiatura nie ma dostępu do sieci.</string>
+    <string name="setup_open_settings">Ustawienia klawiatur</string>
+    <string name="setup_choose_keyboard">Wybierz klawiaturę</string>
+
+    <string name="section_try">Wypróbuj</string>
+    <string name="try_hint">Pisz tutaj, aby przetestować klawiaturę</string>
+
+    <string name="section_keyboard">Klawiatura</string>
+    <string name="default_mode">Domyślna klawiatura</string>
+    <string name="mode_mobile">Mobilna (uproszczona)</string>
+    <string name="mode_computer">Komputerowa (klawisze PC)</string>
+    <string name="remember_last_mode">Otwieraj w ostatnio używanym trybie</string>
+    <string name="input_languages">Języki wprowadzania</string>
+    <string name="key_height">Wysokość klawiszy: %1$d%%</string>
+    <string name="mobile_cursor_row">Rząd klawiszy kursora w trybie mobilnym</string>
+    <string name="auto_capitalize">Wielka litera na początku zdania (tryb mobilny)</string>
+    <string name="space_swipe">Zmiana języka przesunięciem spacji</string>
+    <string name="haptic">Wibracja przy naciśnięciu</string>
+    <string name="autocorrect_not_available">Podpowiedzi słów i autokorekta wymagają słownika offline i nie są jeszcze dostępne. Wpisany tekst nie jest zmieniany automatycznie.</string>
+
+    <string name="section_voice">Wprowadzanie głosowe</string>
+    <string name="voice_language">Język dyktowania</string>
+    <string name="voice_model_status">Stan modelu: nie zainstalowany. Rozpoznawanie mowy offline jest zaplanowane na kolejny etap; klawiatura nigdy nie używa rozpoznawania online.</string>
+
+    <string name="section_translation">Tłumaczenie (ukraiński ↔ polski)</string>
+    <string name="translation_status">Zaplanowane. Modele tłumaczenia offline zostaną dodane po wprowadzaniu głosowym.</string>
+
+    <string name="section_privacy">Prywatność</string>
+    <string name="privacy_no_network">Aplikacja nie ma uprawnienia do internetu</string>
+    <string name="privacy_text">Bez serwera, konta i analityki. Wpisany tekst nie jest zapisywany ani logowany. Ustawienia pozostają na urządzeniu i są wyłączone z kopii zapasowej w chmurze.</string>
+
+    <string name="section_about">O aplikacji</string>
+    <string name="about_version">Wersja %1$s</string>
+    <string name="reset_settings">Resetuj ustawienia</string>
+    <string name="reset_confirm">Przywrócić domyślne ustawienia klawiatury?</string>
+    <string name="reset">Resetuj</string>
+    <string name="cancel">Anuluj</string>
+
+    <string name="language_uk">Ukraiński</string>
+    <string name="language_pl">Polski</string>
+    <string name="language_en">Angielski</string>
+</resources>

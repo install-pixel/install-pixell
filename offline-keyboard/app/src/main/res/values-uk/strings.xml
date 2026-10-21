@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Offline Computer Keyboard</string>
+    <string name="ime_name">Offline Computer Keyboard</string>
+
+    <string name="toolbar_language_description">Змінити мову введення</string>
+    <string name="toolbar_voice_description">Голосове введення</string>
+    <string name="toolbar_mode_description">Перемкнути комп\'ютерну та мобільну клавіатуру</string>
+    <string name="toolbar_settings_description">Налаштування клавіатури</string>
+    <string name="toolbar_hide_description">Сховати клавіатуру</string>
+
+    <string name="voice_blocked_sensitive">Голосове введення вимкнене в полях паролів і приватних полях.</string>
+    <string name="voice_not_available">Офлайн-голосове введення ще не входить до цієї версії.</string>
+    <string name="voice_model_missing">Офлайн-модель голосу для цієї мови не встановлена.</string>
+    <string name="voice_permission_needed">Дозвольте доступ до мікрофона в налаштуваннях, щоб диктувати.</string>
+
+    <string name="section_setup">Налаштування системи</string>
+    <string name="setup_enabled">Клавіатуру ввімкнено в налаштуваннях системи</string>
+    <string name="setup_selected">Клавіатура вибрана як поточна</string>
+    <string name="setup_instructions">1. Відкрийте налаштування клавіатур і ввімкніть «Offline Computer Keyboard». 2. Натисніть «Вибрати клавіатуру» й виберіть її. Android показує стандартне попередження для будь-якої сторонньої клавіатури; ця клавіатура не має доступу до мережі.</string>
+    <string name="setup_open_settings">Налаштування клавіатур</string>
+    <string name="setup_choose_keyboard">Вибрати клавіатуру</string>
+
+    <string name="section_try">Перевірка</string>
+    <string name="try_hint">Надрукуйте тут, щоб перевірити клавіатуру</string>
+
+    <string name="section_keyboard">Клавіатура</string>
+    <string name="default_mode">Типова клавіатура</string>
+    <string name="mode_mobile">Мобільна (спрощена)</string>
+    <string name="mode_computer">Комп\'ютерна (клавіші ПК)</string>
+    <string name="remember_last_mode">Відкривати в останньому режимі</string>
+    <string name="input_languages">Мови введення</string>
+    <string name="key_height">Висота клавіш: %1$d%%</string>
+    <string name="mobile_cursor_row">Ряд курсорних клавіш у мобільному режимі</string>
+    <string name="auto_capitalize">Велика літера на початку речення (мобільний режим)</string>
+    <string name="space_swipe">Зміна мови свайпом по пробілу</string>
+    <string name="haptic">Вібрація під час натискання</string>
+    <string name="autocorrect_not_available">Підказки слів і автокорекція потребують офлайн-словника й поки не включені. Набраний текст автоматично не змінюється.</string>
+
+    <string name="section_voice">Голосове введення</string>
+    <string name="voice_language">Мова диктування</string>
+    <string name="voice_model_status">Стан моделі: не встановлена. Офлайн-розпізнавання мовлення заплановане на наступний етап; клавіатура ніколи не використовує онлайн-розпізнавання.</string>
+
+    <string name="section_translation">Переклад (українська ↔ польська)</string>
+    <string name="translation_status">Заплановано. Офлайн-моделі перекладу буде додано після голосового введення.</string>
+
+    <string name="section_privacy">Приватність</string>
+    <string name="privacy_no_network">Застосунок не має дозволу на інтернет</string>
+    <string name="privacy_text">Без сервера, облікового запису й аналітики. Набраний текст не зберігається і не журналюється. Налаштування залишаються на пристрої та виключені з хмарного резервного копіювання.</string>
+
+    <string name="section_about">Про застосунок</string>
+    <string name="about_version">Версія %1$s</string>
+    <string name="reset_settings">Скинути налаштування</string>
+    <string name="reset_confirm">Повернути всі налаштування клавіатури до типових?</string>
+    <string name="reset">Скинути</string>
+    <string name="cancel">Скасувати</string>
+
+    <string name="language_uk">Українська</string>
+    <string name="language_pl">Польська</string>
+    <string name="language_en">Англійська</string>
+</resources>

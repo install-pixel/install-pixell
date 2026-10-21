@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="kb_background">#FF1E1F22</color>
+    <color name="kb_key">#FF3A3C41</color>
+    <color name="kb_key_function">#FF2A2C30</color>
+    <color name="kb_key_action">#FF3B7BEA</color>
+    <color name="kb_key_pressed">#FF5A5D64</color>
+    <color name="kb_key_active">#FF3B7BEA</color>
+    <color name="kb_text">#FFECEDEF</color>
+    <color name="kb_text_on_action">#FFFFFFFF</color>
+    <color name="kb_hint">#FF9AA0A8</color>
+    <color name="kb_popup">#FF4A4D53</color>
+    <color name="kb_toolbar_text">#FFDADCE0</color>
+</resources>

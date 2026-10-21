@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="kb_background">#FFD5D8DD</color>
+    <color name="kb_key">#FFFFFFFF</color>
+    <color name="kb_key_function">#FFB4BAC3</color>
+    <color name="kb_key_action">#FF2F6FDE</color>
+    <color name="kb_key_pressed">#FF9AA3AF</color>
+    <color name="kb_key_active">#FF4A8AF4</color>
+    <color name="kb_text">#FF1B1D21</color>
+    <color name="kb_text_on_action">#FFFFFFFF</color>
+    <color name="kb_hint">#FF6B7280</color>
+    <color name="kb_popup">#FFF5F6F8</color>
+    <color name="kb_toolbar_text">#FF30343B</color>
+    <color name="ic_launcher_background">#FF2F6FDE</color>
+</resources>
