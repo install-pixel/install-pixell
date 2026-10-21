@@ -206,6 +206,7 @@ class KeyboardService : InputMethodService(),
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         if (!restarting) controller.onStartField(currentField.isNumeric)
+        syncTranslateSource(showProblems = false)
         if (translateActive) translation.preload(settings.translationDirection)
         updateAutoShift()
         updateSuggestions()
@@ -374,7 +375,10 @@ class KeyboardService : InputMethodService(),
             rootView?.showStatus(getString(R.string.clipboard_empty))
             return
         }
-        val direction = TranslationDirection.detect(source) ?: settings.translationDirection
+        // Into the language being written; text already in that language goes to the translation target.
+        val writing = if (translateActive) settings.translationDirection.target else controller.language
+        val direction = TranslationDirection.detect(source, writing, settings.translationDirection.target)
+            ?: settings.translationDirection
         if (!translation.isInstalled(direction)) {
             rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)))
             return
@@ -626,11 +630,6 @@ class KeyboardService : InputMethodService(),
 
     // ------------------------------------------------------------------ toolbar
 
-    override fun onToolbarLanguage() {
-        controller.nextLanguage()
-        render()
-    }
-
     /** "Aa Text" chip: plain typing (turns translation off). */
     override fun onModeText() {
         if (!settings.translateEnabled) return
@@ -640,26 +639,34 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
-    /** "⇄" chip: turns translation on; when already on, swaps the direction. */
+    /**
+     * Translate chip. Off → on: from the keyboard language to the last target. On → the next target
+     * language (Укр→Pol → Укр→Eng → Укр→Pol). The source always follows the keyboard language.
+     */
     override fun onModeTranslate() {
         if (!translateOffered) {
             rootView?.showStatus(getString(R.string.translate_not_here))
             return
         }
-        val direction = when {
-            settings.translateEnabled -> if (settings.translationDirection == TranslationDirection.UK_TO_PL) {
-                TranslationDirection.PL_TO_UK
-            } else {
-                TranslationDirection.UK_TO_PL
-            }
-            else -> TranslationDirection.suggestedFor(controller.language) ?: settings.translationDirection
+        val source = controller.language
+        val current = settings.translationDirection
+        val direction = if (settings.translateEnabled) {
+            val others = Language.entries.filter { it != source }
+            // Next target in order, preferring one whose model is installed.
+            val ordered = others.dropWhile { it != current.target }.drop(1) + others.takeWhile { it != current.target } +
+                listOfNotNull(current.target.takeIf { it != source })
+            val candidates = ordered.mapNotNull { TranslationDirection.of(source, it) }
+            candidates.firstOrNull { translation.isInstalled(it) } ?: candidates.first()
+        } else {
+            TranslationDirection.forSource(source, current.target, current.source)
         }
         if (!translation.isInstalled(direction)) {
-            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)))
+            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)), CHECK_WARNING_MS) {
+                openSettings("models")
+            }
             return
         }
         leaveSegment()
-        controller.setLanguage(direction.source)
         setTranslateEnabled(true, direction)
         translation.preload(direction)
         rootView?.showStatus(
@@ -758,7 +765,25 @@ class KeyboardService : InputMethodService(),
 
     override fun onLanguageChanged(language: Language) {
         scope.launch { repository.update { it.copy(lastLanguage = language) } }
+        syncTranslateSource(showProblems = true)
         updateSuggestions()
+    }
+
+    /** Translation always starts from the keyboard language (Укр→Pol becomes Pol→Укр when writing Polish). */
+    private fun syncTranslateSource(showProblems: Boolean) {
+        val language = controller.language
+        if (!translateActive || settings.translationDirection.source == language) return
+        leaveSegment()
+        val current = settings.translationDirection
+        val direction = TranslationDirection.forSource(language, current.target, current.source)
+        setTranslateEnabled(true, direction)
+        if (translation.isInstalled(direction)) {
+            translation.preload(direction)
+        } else if (showProblems) {
+            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)), CHECK_WARNING_MS) {
+                openSettings("models")
+            }
+        }
     }
 
     override fun onModeChanged(mode: KeyboardMode) {
@@ -789,7 +814,6 @@ class KeyboardService : InputMethodService(),
         )
         root.updateToolbar(
             KeyboardRootView.ToolbarState(
-                languageCode = controller.language.code,
                 computerMode = controller.mode == KeyboardMode.COMPUTER,
                 translateActive = translateActive,
                 translateLabel = directionLabel(settings.translationDirection),

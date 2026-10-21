@@ -3,7 +3,6 @@
     <string name="app_name">Offline Computer Keyboard</string>
     <string name="ime_name">Offline Computer Keyboard</string>
 
-    <string name="toolbar_language_description">Switch input language</string>
     <string name="toolbar_voice_description">Voice input</string>
     <string name="toolbar_mode_description">Switch between computer and mobile keyboard</string>
     <string name="toolbar_settings_description">Keyboard settings</string>
@@ -33,7 +32,7 @@
     <string name="section_voice">Voice input</string>
     <string name="voice_language">Dictation language</string>
 
-    <string name="section_translation">Translate (Ukrainian ↔ Polish)</string>
+    <string name="section_translation">Translation (Ukrainian · Polish · English)</string>
 
     <string name="section_privacy">Privacy</string>
     <string name="privacy_no_network">The app has no internet permission</string>
@@ -62,7 +61,7 @@
     <string name="page_dictionary_summary_on">Learning on · %1$d words</string>
     <string name="page_dictionary_summary_off">Learning off · %1$d words</string>
     <string name="page_models">Offline models</string>
-    <string name="page_models_summary">Installed %1$d of %2$d (voice Укр/Pol/Eng, translation Укр↔Pol)</string>
+    <string name="page_models_summary">Installed %1$d of %2$d (voice and translation for Укр/Pol/Eng)</string>
     <string name="language_switch_hint">Change language: the language button above the keys, swiping the space bar, or Win+Space on the computer keyboard (you can add your own combination below).</string>
     <string name="shortcuts_intro">Shortcuts work on the computer keyboard. Tap the modifiers (Ctrl, Alt, Shift, Win) and then the key. A combination of modifiers only (for example Alt+Shift) runs when no other key follows within half a second.</string>
     <string name="shortcuts_list">Your shortcuts</string>
@@ -106,7 +105,7 @@
     <string name="models_speech">Voice input</string>
     <string name="models_speech_hint">Needed for the Voice button. Without the model of a language you cannot dictate in it.</string>
     <string name="models_translation">Translation</string>
-    <string name="models_translation_hint">Needed for the translate button. Each direction is a separate file; without it that direction does not work.</string>
+    <string name="models_translation_hint">Needed for the translate button. Each direction is a separate file; without it that direction does not work. The accurate models translate noticeably better but are three times bigger and slower — good for phones with 6 GB of memory or more.</string>
     <string name="mic_permission">Microphone access</string>
     <string name="mic_permission_grant">Allow microphone</string>
     <string name="mic_permission_granted">Microphone allowed. Tap 🎤 again.</string>
@@ -125,8 +124,8 @@
     <string name="translating">Translating %1$s…</string>
     <string name="translation_discarded">Text changed — not replaced</string>
     <string name="translation_failed">Translation error: %1$s</string>
-    <string name="translation_how">The row above the keys: Aa Text · ⇄ Translate (tap again to swap the direction) · 📋⇄ translate the selected text or paste the clipboard translated · 🎤 Voice. While translating you see your own text in the field and the translation preview above the keys; the translation replaces your text once — automatically after . ! ?, Enter or a pause, or in manual mode only with Enter. Tap the ✓ message to restore the original.</string>
-    <string name="translation_direction">Direction</string>
+    <string name="translation_how">Above the keys: Aa Text · translate (tap again to pick the other language) · translate the selection or clipboard · Voice. You translate from the keyboard language: switch the keyboard to Polish to translate from Polish. While you type, the field shows your text and the strip above the keys shows the translation; it replaces your text once — automatically after . ! ?, Enter or a pause, in manual mode only after Enter. Tapping ✓ restores the original. Everyday phrases (\"How are you?\") use a built-in phrasebook.</string>
+    <string name="translation_direction">Translate into</string>
     <string name="translation_check_warning">⚠ Check: %1$s · tap for original</string>
     <string name="translation_restored">Original restored</string>
     <string name="translation_restore_impossible">Text changed — restore it by hand</string>
@@ -212,4 +211,7 @@
     <string name="bluetooth_open_keyboard">Tap here to open the keyboard</string>
     <string name="bluetooth_section_notes">Good to know</string>
     <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for (for example ы in Ukrainian) are not sent. Suggestions, translation and voice work only on the phone.</string>
+    <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
+    <string name="models_accurate_tag">accurate</string>
+    <string name="models_download_accurate">More accurate model (about %1$d MB, slower)</string>
 </resources>

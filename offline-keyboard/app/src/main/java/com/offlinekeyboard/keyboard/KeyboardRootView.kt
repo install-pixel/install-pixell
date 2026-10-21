@@ -13,7 +13,7 @@ import com.offlinekeyboard.R
 /**
  * Two fixed rows above the keys, so nothing shifts while typing:
  *
- * 1. language · message / live text / word suggestions · computer↔mobile · settings (close while recording)
+ * 1. message / live text / word suggestions · computer↔mobile · settings (close while recording)
  * 2. input mode: [Aa Text] [translate Укр→Pol] [clipboard: translate selection/clipboard] [mic Voice]
  *
  * Every element has a fixed size; only texts and colours change.
@@ -22,7 +22,6 @@ import com.offlinekeyboard.R
 class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     interface ToolbarListener {
-        fun onToolbarLanguage()
         fun onModeText()
         /** Turns translation on, or swaps the direction when it is already on. */
         fun onModeTranslate()
@@ -39,7 +38,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     data class ToolbarState(
-        val languageCode: String,
         val computerMode: Boolean,
         val translateActive: Boolean,
         val translateLabel: String,
@@ -58,8 +56,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private var theme = keyboardView.theme
 
-    private val languageButton = button(R.string.toolbar_language_description) { toolbarListener?.onToolbarLanguage() }
-        .apply { bold = true; textSizeSp = 15f }
     private val status = TextView(context).apply {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
         maxLines = 1
@@ -100,7 +96,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(languageButton, LayoutParams(dp(56), LayoutParams.MATCH_PARENT))
             addView(status, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(bluetoothButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
@@ -126,12 +121,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keyboardView.theme = value
         setBackgroundColor(value.background)
         suggestionViews.forEach { it.setTextColor(value.text) }
-        for (b in listOf(languageButton, modeButton, settingsButton, bluetoothButton)) {
+        for (b in listOf(modeButton, settingsButton, bluetoothButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
         }
-        // In the dark the accent would only show on the active buttons; the language name carries it too.
-        if (value.dark) languageButton.foreground = value.accent
         lastState?.let { updateToolbar(it) }
         refreshCentre()
     }
@@ -139,7 +132,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     fun updateToolbar(state: ToolbarState) {
         lastState = state
         recording = state.recording
-        languageButton.text = state.languageCode
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
         bluetoothButton.visibility = if (state.bluetooth == BluetoothButton.HIDDEN) View.GONE else View.VISIBLE
         val sending = state.bluetooth == BluetoothButton.SENDING

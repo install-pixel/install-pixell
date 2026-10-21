@@ -96,14 +96,14 @@ class KeyboardUiTest {
     }
 
     @Test
-    fun languageButtonShowsOwnNames() {
+    fun languageKeyCyclesAllLanguages() {
         useMode(KeyboardMode.MOBILE)
-        useLanguage(Language.PL)
-        assertEquals("Pol", toolbarButton(R.string.toolbar_language_description).text)
-        useLanguage(Language.EN)
-        assertEquals("Eng", toolbarButton(R.string.toolbar_language_description).text)
-        useLanguage(Language.UK)
-        assertEquals("Укр", toolbarButton(R.string.toolbar_language_description).text)
+        for (language in listOf(Language.PL, Language.EN, Language.UK)) {
+            useLanguage(language)
+            assertEquals(language, service().languageForTest)
+        }
+        // The language is shown once, on the keys; the strip above is free for text.
+        assertNull(findView { v -> v is TextView && v.isShown && v.text.toString() == "Укр" && v !is ToolbarButton })
     }
 
     @Test
@@ -244,10 +244,16 @@ class KeyboardUiTest {
         assertEquals(mode, service().modeForTest)
     }
 
+    /** Mobile: the language key; computer: Win+Space (the computer layout has no language key). */
     private fun useLanguage(language: Language) {
         repeat(Language.entries.size) {
             if (service().languageForTest == language) return
-            tapView(toolbarButton(R.string.toolbar_language_description))
+            if (service().modeForTest == KeyboardMode.MOBILE) {
+                tapSpecial(SpecialKey.LANGUAGE)
+            } else {
+                tapSpecial(SpecialKey.META)
+                tapSpecial(SpecialKey.SPACE)
+            }
         }
         assertEquals(language, service().languageForTest)
     }

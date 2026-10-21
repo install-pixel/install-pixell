@@ -1,7 +1,8 @@
 name: Offline Keyboard Models
 
 # Builds the offline model packs the keyboard imports from a local file:
-#  - translation UK→PL and PL→UK (OPUS-MT exported to int8 ONNX), checked against Hugging Face
+#  - translation between Ukrainian, Polish and English in all six directions (OPUS-MT exported to int8
+#    ONNX), plus larger "accurate" tc-big models where they exist; all checked against Hugging Face
 #  - speech recognition models (Vosk) for UK, PL, EN, re-published unchanged for convenience
 # The phone never downloads anything: these zips are copied to the phone and imported in Settings.
 
@@ -21,16 +22,75 @@ jobs:
   export-translation:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - model: Helsinki-NLP/opus-mt-uk-pl
             direction: UK_TO_PL
             phrases: uk.txt
+            token: ''
+            tier: standard
             slug: uk-pl
           - model: Helsinki-NLP/opus-mt-pl-uk
             direction: PL_TO_UK
             phrases: pl.txt
+            token: ''
+            tier: standard
             slug: pl-uk
+          - model: Helsinki-NLP/opus-mt-uk-en
+            direction: UK_TO_EN
+            phrases: uk.txt
+            token: ''
+            tier: standard
+            slug: uk-en
+          - model: Helsinki-NLP/opus-mt-en-uk
+            direction: EN_TO_UK
+            phrases: en.txt
+            token: ''
+            tier: standard
+            slug: en-uk
+          - model: Helsinki-NLP/opus-mt-pl-en
+            direction: PL_TO_EN
+            phrases: pl.txt
+            token: ''
+            tier: standard
+            slug: pl-en
+          - model: Helsinki-NLP/opus-mt-en-zlw
+            direction: EN_TO_PL
+            phrases: en.txt
+            token: '>>pol<<'
+            tier: standard
+            slug: en-pl
+          - model: Helsinki-NLP/opus-mt-tc-big-zle-zlw
+            direction: UK_TO_PL
+            phrases: uk.txt
+            token: '>>pol<<'
+            tier: accurate
+            slug: uk-pl-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-zlw-zle
+            direction: PL_TO_UK
+            phrases: pl.txt
+            token: '>>ukr<<'
+            tier: accurate
+            slug: pl-uk-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-zle-en
+            direction: UK_TO_EN
+            phrases: uk.txt
+            token: ''
+            tier: accurate
+            slug: uk-en-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-en-zle
+            direction: EN_TO_UK
+            phrases: en.txt
+            token: '>>ukr<<'
+            tier: accurate
+            slug: en-uk-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-zlw-en
+            direction: PL_TO_EN
+            phrases: pl.txt
+            token: ''
+            tier: accurate
+            slug: pl-en-accurate
     defaults:
       run:
         working-directory: offline-keyboard/tools/mt
@@ -47,7 +107,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Export, quantize and build reference
-        run: python export_opus_mt.py --model ${{ matrix.model }} --direction ${{ matrix.direction }} --phrases phrases/${{ matrix.phrases }} --out build
+        run: >-
+          python export_opus_mt.py --model ${{ matrix.model }} --direction ${{ matrix.direction }}
+          --target-token "${{ matrix.token }}" --tier ${{ matrix.tier }}
+          --phrases phrases/${{ matrix.phrases }} --out build
 
       - uses: actions/upload-artifact@v4
         with:

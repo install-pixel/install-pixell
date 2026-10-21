@@ -3,7 +3,6 @@
     <string name="app_name">Offline Computer Keyboard</string>
     <string name="ime_name">Offline Computer Keyboard</string>
 
-    <string name="toolbar_language_description">Zmień język wprowadzania</string>
     <string name="toolbar_voice_description">Wprowadzanie głosowe</string>
     <string name="toolbar_mode_description">Przełącz klawiaturę komputerową i mobilną</string>
     <string name="toolbar_settings_description">Ustawienia klawiatury</string>
@@ -33,7 +32,7 @@
     <string name="section_voice">Wprowadzanie głosowe</string>
     <string name="voice_language">Język dyktowania</string>
 
-    <string name="section_translation">Tłumaczenie (ukraiński ↔ polski)</string>
+    <string name="section_translation">Tłumaczenie (ukraiński · polski · angielski)</string>
 
     <string name="section_privacy">Prywatność</string>
     <string name="privacy_no_network">Aplikacja nie ma uprawnienia do internetu</string>
@@ -62,7 +61,7 @@
     <string name="page_dictionary_summary_on">Nauka włączona · słów: %1$d</string>
     <string name="page_dictionary_summary_off">Nauka wyłączona · słów: %1$d</string>
     <string name="page_models">Modele offline</string>
-    <string name="page_models_summary">Zainstalowano %1$d z %2$d (głos Укр/Pol/Eng, tłumaczenie Укр↔Pol)</string>
+    <string name="page_models_summary">Zainstalowano %1$d z %2$d (głos i tłumaczenie dla Укр/Pol/Eng)</string>
     <string name="language_switch_hint">Zmiana języka: przycisk języka nad klawiszami, przesunięcie spacji lub Win+Space na klawiaturze komputerowej (własny skrót można dodać niżej).</string>
     <string name="shortcuts_intro">Skróty działają na klawiaturze komputerowej. Stuknij modyfikatory (Ctrl, Alt, Shift, Win), a potem klawisz. Skrót z samych modyfikatorów (np. Alt+Shift) działa, gdy przez pół sekundy nie zostanie naciśnięty inny klawisz.</string>
     <string name="shortcuts_list">Twoje skróty</string>
@@ -106,7 +105,7 @@
     <string name="models_speech">Pisanie głosem</string>
     <string name="models_speech_hint">Potrzebny do przycisku «Głos». Bez modelu danego języka nie podyktujesz w nim.</string>
     <string name="models_translation">Tłumaczenie</string>
-    <string name="models_translation_hint">Potrzebny do przycisku tłumaczenia. Każdy kierunek to osobny plik; bez niego ten kierunek nie działa.</string>
+    <string name="models_translation_hint">Potrzebny do przycisku tłumaczenia. Każdy kierunek to osobny plik; bez niego ten kierunek nie działa. Dokładne modele tłumaczą wyraźnie lepiej, ale są trzy razy większe i wolniejsze — dla telefonów z 6 GB pamięci i więcej.</string>
     <string name="mic_permission">Dostęp do mikrofonu</string>
     <string name="mic_permission_grant">Zezwól na mikrofon</string>
     <string name="mic_permission_granted">Mikrofon dozwolony. Stuknij 🎤 ponownie.</string>
@@ -125,8 +124,8 @@
     <string name="translating">Tłumaczę %1$s…</string>
     <string name="translation_discarded">Tekst się zmienił — nie zastąpiono</string>
     <string name="translation_failed">Błąd tłumaczenia: %1$s</string>
-    <string name="translation_how">Rząd nad klawiszami: Aa Tekst · ⇄ Tłumaczenie (kolejne stuknięcie zmienia kierunek) · 📋⇄ przetłumacz zaznaczenie lub wklej schowek z tłumaczeniem · 🎤 Głos. Podczas tłumaczenia w polu widzisz swój tekst, a nad klawiszami podgląd tłumaczenia; tłumaczenie zastępuje Twój tekst raz: automatycznie po . ! ?, Enter lub przerwie, w trybie ręcznym tylko po Enter. Stuknięcie komunikatu ✓ przywraca oryginał.</string>
-    <string name="translation_direction">Kierunek</string>
+    <string name="translation_how">Nad klawiszami: Aa Tekst · tłumaczenie (kolejne stuknięcie — inny język) · tłumaczenie zaznaczenia lub schowka · Głos. Tłumaczy się z języka klawiatury: aby tłumaczyć z polskiego, przełącz klawiaturę na polski. Podczas pisania w polu jest Twój tekst, a nad klawiszami tłumaczenie; zastępuje ono tekst raz: automatycznie po . ! ?, Enter lub przerwie, w trybie ręcznym tylko po Enter. Stuknięcie ✓ przywraca oryginał. Codzienne zwroty („Jak się masz?”) pochodzą z wbudowanych rozmówek.</string>
+    <string name="translation_direction">Tłumacz na</string>
     <string name="translation_check_warning">⚠ Sprawdź: %1$s · stuknij — oryginał</string>
     <string name="translation_restored">Przywrócono oryginał</string>
     <string name="translation_restore_impossible">Tekst się zmienił — przywróć ręcznie</string>
@@ -212,4 +211,7 @@
     <string name="bluetooth_open_keyboard">Stuknij, aby otworzyć klawiaturę</string>
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
     <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma (np. ы po ukraińsku), nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
+    <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
+    <string name="models_accurate_tag">dokładny</string>
+    <string name="models_download_accurate">Dokładniejszy model (około %1$d MB, wolniejszy)</string>
 </resources>

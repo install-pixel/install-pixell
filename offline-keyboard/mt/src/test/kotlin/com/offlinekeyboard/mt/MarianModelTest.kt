@@ -78,7 +78,7 @@ class MarianModelTest {
                     rows += "| ${source.md()} | ${ours.md()} | ${lost.joinToString()} |"
                 }
                 val n = greedyCases.size
-                val summary = "${pkg.direction}: greedy = HF $greedyExact/$n (${greedyMs} ms/phrase); " +
+                val summary = "${pkg.direction} (${pkg.modelName}): greedy = HF $greedyExact/$n (${greedyMs} ms/phrase); " +
                     "beam4 = HF $beamExact/$n (${beamMs} ms/phrase); keyboard output: numbers/codes changed $valuesLost/$n, " +
                     "avg ${keyboardMs / n} ms"
                 println(summary)

@@ -39,8 +39,7 @@ jobs:
         run: |
           mkdir -p out
           cp dl/offline-keyboard-debug-apk/app-debug.apk out/OfflineKeyboard.apk
-          cp dl/offline-keyboard-mt-uk-pl/*.zip out/
-          cp dl/offline-keyboard-mt-pl-uk/*.zip out/
+          cp dl/offline-keyboard-mt-*/offline-keyboard-mt-*.zip out/
           for m in vosk-model-small-uk-v3-small vosk-model-small-pl-0.22 vosk-model-small-en-us-0.15; do
             cp "dl/$m/$m.zip" out/
           done
@@ -58,7 +57,7 @@ jobs:
             **Як встановити**
             1. Завантажте `OfflineKeyboard.apk` і встановіть (стару версію спочатку видаліть).
             2. Голос: завантажте потрібні `vosk-model-small-…zip` (українська `uk`, польська `pl`, англійська `en-us`).
-            3. Переклад: `offline-keyboard-mt-uk-pl.zip` (українська → польська) і `offline-keyboard-mt-pl-uk.zip` (польська → українська).
+            3. Переклад: `offline-keyboard-mt-ЗВІДКИ-КУДИ.zip` (uk — українська, pl — польська, en — англійська), наприклад `offline-keyboard-mt-uk-pl.zip`. Файли з `-accurate` — точніші, але більші й повільніші моделі.
             4. У застосунку: Налаштування → «Офлайн-моделі» → «Імпортувати .zip» і виберіть файл. Розпаковувати zip не треба.
 
             Застосунок працює без інтернету; файли моделей потрібні лише один раз.

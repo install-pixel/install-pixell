@@ -4,6 +4,12 @@ Runs on a computer with internet (or in GitHub Actions); the phone only imports 
 
     python export_opus_mt.py --model Helsinki-NLP/opus-mt-uk-pl --direction UK_TO_PL \
         --phrases phrases/uk.txt --out build
+    # multilingual models need the target language token, e.g. English → Polish:
+    python export_opus_mt.py --model Helsinki-NLP/opus-mt-en-zlw --direction EN_TO_PL \
+        --target-token ">>pol<<" --phrases phrases/en.txt --out build
+    # larger, more accurate "tc-big" models are built as a second tier:
+    python export_opus_mt.py --model Helsinki-NLP/opus-mt-tc-big-zle-zlw --direction UK_TO_PL \
+        --target-token ">>pol<<" --tier accurate --phrases phrases/uk.txt --out build
 
 Package contents (see mt/src/main/kotlin/.../MarianTranslator.kt):
     model.properties, source.spm, target.spm, vocab.txt,
@@ -32,12 +38,16 @@ def read_phrases(path: Path) -> list[str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--direction", required=True, choices=["UK_TO_PL", "PL_TO_UK"])
+    ap.add_argument("--direction", required=True,
+                    choices=["UK_TO_PL", "PL_TO_UK", "UK_TO_EN", "EN_TO_UK", "PL_TO_EN", "EN_TO_PL"])
+    ap.add_argument("--target-token", default="", help="language token of multilingual models, e.g. >>pol<<")
+    ap.add_argument("--tier", default="standard", choices=["standard", "accurate"])
     ap.add_argument("--phrases", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
 
-    slug = args.direction.lower().replace("_to_", "-")
+    slug = args.direction.lower().replace("_to_", "-") + ("-accurate" if args.tier == "accurate" else "")
+    prefix = args.target_token.strip()
     work = args.out / slug
     fp32, pkg = work / "fp32", work / "pkg"
     shutil.rmtree(work, ignore_errors=True)
@@ -58,6 +68,8 @@ def main() -> None:
             print(f"  (skip {name}: {e})")
 
     vocab = tok.get_vocab()
+    if prefix:
+        assert prefix in vocab, f"{prefix} is not a token of {args.model}"
     by_id = sorted(vocab.items(), key=lambda kv: kv[1])
     assert [i for _, i in by_id] == list(range(len(by_id))), "vocabulary ids are not contiguous"
     assert all("\n" not in t for t, _ in by_id)
@@ -76,20 +88,29 @@ def main() -> None:
         "unk_token_id": tok.unk_token_id,
         "max_length": cfg.max_length or 512,
         "quantization": "dynamic-int8",
+        "tier": args.tier,
     }
+    if prefix:
+        props["source_prefix"] = prefix
     (pkg / "model.properties").write_text("".join(f"{k}={v}\n" for k, v in props.items()), encoding="utf-8")
 
     phrases = read_phrases(args.phrases)
+
+    def model_input(text: str) -> str:
+        # Hugging Face expects the language token at the start of the text; the Kotlin tokenizer adds it
+        # from model.properties, so the check files keep the plain phrase.
+        return f"{prefix} {text}" if prefix else text
+
     with open(pkg / "tokenizer_check.tsv", "w", encoding="utf-8") as f:
         for p in phrases:
-            f.write(p + "\t" + " ".join(map(str, tok(p).input_ids)) + "\n")
+            f.write(p + "\t" + " ".join(map(str, tok(model_input(p)).input_ids)) + "\n")
 
     print("Reference translations with the quantized ONNX model (greedy) ...", flush=True)
     ort = ORTModelForSeq2SeqLM.from_pretrained(pkg, use_cache=True, use_merged=False)
     start = time.time()
     with open(pkg / "reference.tsv", "w", encoding="utf-8") as f, open(pkg / "reference_beam.tsv", "w", encoding="utf-8") as fb:
         for p in phrases:
-            inputs = tok(p, return_tensors="pt")
+            inputs = tok(model_input(p), return_tensors="pt")
             out = ort.generate(**inputs, num_beams=1, do_sample=False, max_new_tokens=256)
             f.write(p + "\t" + tok.decode(out[0], skip_special_tokens=True) + "\n")
             out = ort.generate(**inputs, num_beams=4, do_sample=False, max_new_tokens=256, length_penalty=1.0)

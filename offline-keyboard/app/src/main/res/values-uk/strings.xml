@@ -3,7 +3,6 @@
     <string name="app_name">Offline Computer Keyboard</string>
     <string name="ime_name">Offline Computer Keyboard</string>
 
-    <string name="toolbar_language_description">Змінити мову введення</string>
     <string name="toolbar_voice_description">Голосове введення</string>
     <string name="toolbar_mode_description">Перемкнути комп\'ютерну та мобільну клавіатуру</string>
     <string name="toolbar_settings_description">Налаштування клавіатури</string>
@@ -33,7 +32,7 @@
     <string name="section_voice">Голосове введення</string>
     <string name="voice_language">Мова диктування</string>
 
-    <string name="section_translation">Переклад (українська ↔ польська)</string>
+    <string name="section_translation">Переклад (українська · польська · англійська)</string>
 
     <string name="section_privacy">Приватність</string>
     <string name="privacy_no_network">Застосунок не має дозволу на інтернет</string>
@@ -62,7 +61,7 @@
     <string name="page_dictionary_summary_on">Навчання ввімкнено · слів: %1$d</string>
     <string name="page_dictionary_summary_off">Навчання вимкнено · слів: %1$d</string>
     <string name="page_models">Офлайн-моделі</string>
-    <string name="page_models_summary">Встановлено %1$d з %2$d (голос Укр/Pol/Eng, переклад Укр↔Pol)</string>
+    <string name="page_models_summary">Встановлено %1$d з %2$d (голос і переклад для Укр/Pol/Eng)</string>
     <string name="language_switch_hint">Зміна мови: кнопка мови над клавішами, свайп по пробілу або Win+Space на комп\'ютерній клавіатурі (свою комбінацію можна додати нижче).</string>
     <string name="shortcuts_intro">Комбінації працюють на комп\'ютерній клавіатурі. Натисніть модифікатори (Ctrl, Alt, Shift, Win), а потім клавішу. Комбінація лише з модифікаторів (наприклад, Alt+Shift) спрацьовує, якщо протягом пів секунди не натиснуто іншої клавіші.</string>
     <string name="shortcuts_list">Ваші комбінації</string>
@@ -106,7 +105,7 @@
     <string name="models_speech">Голосове введення</string>
     <string name="models_speech_hint">Потрібна для кнопки «Голос». Без моделі мови диктувати нею не вийде.</string>
     <string name="models_translation">Переклад</string>
-    <string name="models_translation_hint">Потрібна для кнопки перекладу. Кожен напрямок — окремий файл; без нього цей напрямок не працює.</string>
+    <string name="models_translation_hint">Потрібна для кнопки перекладу. Кожен напрямок — окремий файл; без нього цей напрямок не працює. Точні моделі перекладають помітно краще, але втричі більші й повільніші — для телефонів з 6 ГБ пам\'яті й більше.</string>
     <string name="mic_permission">Доступ до мікрофона</string>
     <string name="mic_permission_grant">Дозволити мікрофон</string>
     <string name="mic_permission_granted">Мікрофон дозволено. Натисніть 🎤 ще раз.</string>
@@ -125,8 +124,8 @@
     <string name="translating">Перекладаю %1$s…</string>
     <string name="translation_discarded">Текст змінився — не замінено</string>
     <string name="translation_failed">Помилка перекладу: %1$s</string>
-    <string name="translation_how">Рядок над клавішами: Aa Текст · ⇄ Переклад (ще дотик змінює напрямок) · 📋⇄ перекласти виділене або вставити буфер з перекладом · 🎤 Голос. Під час перекладу в полі видно ваш текст, а над клавішами — попередній переклад; переклад замінює ваш текст один раз: автоматично після . ! ?, Enter або паузи, у ручному режимі — лише після Enter. Дотик до повідомлення ✓ повертає оригінал.</string>
-    <string name="translation_direction">Напрямок</string>
+    <string name="translation_how">Над клавішами: Aa Текст · переклад (ще дотик — інша мова) · переклад виділеного або буфера · Голос. Перекладається з мови клавіатури: щоб перекладати з польської, перемкніть клавіатуру на польську. Поки ви пишете, у полі ваш текст, а над клавішами — переклад; він замінює ваш текст один раз: автоматично після . ! ?, Enter або паузи, у ручному режимі — лише після Enter. Дотик до ✓ повертає оригінал. Звичайні фрази («Як справи?») беруться з вбудованого розмовника.</string>
+    <string name="translation_direction">Перекладати на</string>
     <string name="translation_check_warning">⚠ Перевірте: %1$s · дотик — оригінал</string>
     <string name="translation_restored">Оригінал повернуто</string>
     <string name="translation_restore_impossible">Текст змінився — поверніть вручну</string>
@@ -212,4 +211,7 @@
     <string name="bluetooth_open_keyboard">Торкніться, щоб відкрити клавіатуру</string>
     <string name="bluetooth_section_notes">Варто знати</string>
     <string name="bluetooth_notes">Клавіатура надсилає клавіші, як справжня: на комп\'ютері має бути та сама мова, що й на телефоні (Укр/Pol/Eng). Win+Space перемикає обидві. Комп\'ютерна розкладка дає Ctrl, Alt, Win, F1–F12 і стрілки. Символи, яких немає в розкладці комп\'ютера (наприклад, ы в українській), не надсилаються. Підказки, переклад і голос працюють лише на телефоні.</string>
+    <string name="translation_direction_hint">З мови клавіатури на цю мову. Кнопка перекладу над клавішами перемикає між двома іншими мовами.</string>
+    <string name="models_accurate_tag">точна</string>
+    <string name="models_download_accurate">Точніша модель (близько %1$d МБ, повільніша)</string>
 </resources>

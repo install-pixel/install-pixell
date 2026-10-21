@@ -43,10 +43,16 @@ private val SPEECH_FILES = mapOf(
     Language.PL to ("vosk-model-small-pl-0.22.zip" to 53),
     Language.EN to ("vosk-model-small-en-us-0.15.zip" to 41),
 )
-private val TRANSLATION_FILES = mapOf(
-    TranslationDirection.UK_TO_PL to ("offline-keyboard-mt-uk-pl.zip" to 153),
-    TranslationDirection.PL_TO_UK to ("offline-keyboard-mt-pl-uk.zip" to 155),
-)
+private val TRANSLATION_FILES: Map<TranslationDirection, Pair<String, Int>> =
+    TranslationDirection.entries.associateWith { "offline-keyboard-mt-${it.slug}.zip" to STANDARD_MT_MB }
+
+/** Larger "tc-big" models: clearly better, about three times bigger and slower. English → Polish has none. */
+private val ACCURATE_FILES: Map<TranslationDirection, Pair<String, Int>> =
+    (TranslationDirection.entries - TranslationDirection.EN_TO_PL)
+        .associateWith { "offline-keyboard-mt-${it.slug}-accurate.zip" to ACCURATE_MT_MB }
+
+private const val STANDARD_MT_MB = 155
+private const val ACCURATE_MT_MB = 450
 
 private val ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*")
 
@@ -146,13 +152,20 @@ internal fun ModelsPage(onBack: () -> Unit) {
                 HorizontalDivider()
                 val model = remember(refresh, direction) { store.translationModel(direction) }
                 val file = TRANSLATION_FILES.getValue(direction)
+                val accurate = ACCURATE_FILES[direction]
+                val accurateLabel = stringResource(R.string.models_accurate_tag)
                 ModelRow(
                     title = "${languageName(direction.source)} → ${languageName(direction.target)}",
-                    status = model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" }
-                        ?: stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second),
+                    status = model?.let {
+                        val tag = if ("tc-big" in it.name || "accurate" in it.name) " · $accurateLabel" else ""
+                        "${it.name}$tag · ${formatMb(it.sizeBytes)}"
+                    } ?: (stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second)),
                     installed = model != null,
                     enabled = busy == null,
                     onDownload = { Links.open(context, Links.modelFile(file.first)) },
+                    accurate = accurate?.let { (name, mb) ->
+                        stringResource(R.string.models_download_accurate, mb) to { Links.open(context, Links.modelFile(name)) }
+                    },
                     onImport = { translationPicker.launch(ZIP_TYPES) },
                     onDelete = {
                         store.deleteTranslation(direction)
@@ -182,6 +195,8 @@ private fun ModelRow(
     onDownload: () -> Unit,
     onImport: () -> Unit,
     onDelete: () -> Unit,
+    /** Label and action of the optional larger, more accurate download. */
+    accurate: Pair<String, () -> Unit>? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         StatusLine(title, installed)
@@ -195,5 +210,6 @@ private fun ModelRow(
                 Button(enabled = enabled, onClick = onImport) { Text(stringResource(R.string.models_import)) }
             }
         }
+        accurate?.let { (label, action) -> TextButton(onClick = action) { Text(label) } }
     }
 }

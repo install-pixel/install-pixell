@@ -5,6 +5,7 @@ import ai.onnxruntime.OnnxValue
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import com.offlinekeyboard.core.speech.EngineAvailability
+import com.offlinekeyboard.core.translation.Phrasebook
 import com.offlinekeyboard.core.translation.TranslationCheck
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.core.translation.TranslationEngine
@@ -360,6 +361,7 @@ class MarianTranslationEngine(private val pkg: MarianPackage, threads: Int = 2) 
 
     @Synchronized
     fun translateSentence(sentence: String): String {
+        Phrasebook.lookup(sentence, pkg.direction)?.let { return it }
         // The models were trained on whole sentences; an unfinished phrase without a final mark makes them
         // invent text. Translate it as a sentence and drop the added full stop again.
         val needsStop = sentence.last() !in SENTENCE_MARKS

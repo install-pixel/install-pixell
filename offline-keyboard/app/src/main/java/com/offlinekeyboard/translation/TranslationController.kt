@@ -84,6 +84,9 @@ class TranslationController(private val models: ModelStore) {
 
     private fun engineFor(direction: TranslationDirection): MarianTranslationEngine {
         engines[direction]?.let { return it }
+        // One model in memory at a time: the larger "accurate" models need a few hundred MB each.
+        engines.values.forEach { runCatching { it.close() } }
+        engines.clear()
         val dir = models.translationModel(direction)?.dir ?: error("No translation model for $direction")
         val threads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
         return MarianTranslationEngine(MarianPackage(dir), threads).also { engines[direction] = it }

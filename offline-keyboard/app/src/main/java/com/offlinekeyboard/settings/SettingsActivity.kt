@@ -3,7 +3,10 @@ package com.offlinekeyboard.settings
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.database.ContentObserver
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
@@ -33,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,7 +82,12 @@ class SettingsActivity : ComponentActivity() {
             }
             MaterialTheme(colorScheme = settingsColors(dark, current?.accent ?: Accent.SKY)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    SettingsApp(repository, startPage = if (intent.getStringExtra(EXTRA_PAGE) == "bluetooth") Page.BLUETOOTH else Page.MAIN)
+                    val startPage = when (intent.getStringExtra(EXTRA_PAGE)) {
+                        "bluetooth" -> Page.BLUETOOTH
+                        "models" -> Page.MODELS
+                        else -> Page.MAIN
+                    }
+                    SettingsApp(repository, startPage)
                 }
             }
         }
@@ -89,9 +98,11 @@ internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH }
 
 internal typealias UpdateSettings = ((KeyboardSettings) -> KeyboardSettings) -> Unit
 
+/** Read straight from the system setting: the InputMethodManager list can lag behind a change. */
 private fun isKeyboardEnabled(context: Context): Boolean {
-    val imm = context.getSystemService(InputMethodManager::class.java) ?: return false
-    return imm.enabledInputMethodList.any { it.packageName == context.packageName }
+    val ours = ComponentName(context, KeyboardService::class.java)
+    val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_INPUT_METHODS).orEmpty()
+    return enabled.split(':').any { entry -> ComponentName.unflattenFromString(entry.substringBefore(';')) == ours }
 }
 
 private fun isKeyboardSelected(context: Context): Boolean {
@@ -155,6 +166,21 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
         selected = isKeyboardSelected(context)
         onPauseOrDispose { }
     }
+    // The keyboard picker is a dialog over this screen (no pause/resume), and Android may apply the
+    // choice a moment later: watch the system settings so the steps update at once.
+    DisposableEffect(Unit) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                enabled = isKeyboardEnabled(context)
+                selected = isKeyboardSelected(context)
+            }
+        }
+        val resolver = context.contentResolver
+        for (name in listOf(Settings.Secure.DEFAULT_INPUT_METHOD, Settings.Secure.ENABLED_INPUT_METHODS)) {
+            resolver.registerContentObserver(Settings.Secure.getUriFor(name), false, observer)
+        }
+        onDispose { resolver.unregisterContentObserver(observer) }
+    }
 
     PageScaffold(stringResource(R.string.app_name), onBack = null) {
         Section(stringResource(R.string.section_setup)) {
@@ -201,7 +227,8 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 Language.entries.count { models.speechModel(it) != null } +
                     TranslationDirection.entries.count { models.translationModel(it) != null }
             }
-            NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, 5)) {
+            val total = Language.entries.size + TranslationDirection.entries.size
+            NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, total)) {
                 onOpen(Page.MODELS)
             }
             HorizontalDivider()
@@ -310,12 +337,16 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 update { it.copy(translationAccurate = v) }
             }
             Text(stringResource(R.string.translation_direction), style = MaterialTheme.typography.titleSmall)
-            for (direction in TranslationDirection.entries) {
-                val label = "${languageName(direction.source)} → ${languageName(direction.target)}"
-                RadioRow(label, s.translationDirection == direction) {
-                    update { it.copy(translationDirection = direction) }
+            for (target in Language.entries) {
+                RadioRow(languageName(target), s.translationDirection.target == target) {
+                    update {
+                        val current = it.translationDirection
+                        val source = if (current.source != target) current.source else current.target
+                        it.copy(translationDirection = TranslationDirection.of(source, target)!!)
+                    }
                 }
             }
+            Text(stringResource(R.string.translation_direction_hint), style = MaterialTheme.typography.bodySmall)
         }
 
         Section(stringResource(R.string.section_privacy)) {
