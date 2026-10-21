@@ -174,6 +174,21 @@ class KeyboardUiTest {
         assertEquals("а", text(activity.plain))
     }
 
+    @Test
+    fun settingsPagesOpen() {
+        scenario.close()
+        ActivityScenario.launch(com.offlinekeyboard.settings.SettingsActivity::class.java).use {
+            Thread.sleep(1500)
+            screenshot("settings-1")
+            for (page in 2..5) {
+                shell("input swipe 160 560 160 140 400")
+                Thread.sleep(600)
+                screenshot("settings-$page")
+            }
+        }
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private val Key.special: SpecialKey? get() = (action as? KeyAction.Special)?.key
