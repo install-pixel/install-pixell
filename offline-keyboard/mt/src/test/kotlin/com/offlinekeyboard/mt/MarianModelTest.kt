@@ -60,6 +60,8 @@ class MarianModelTest {
                     val same = ours == reference
                     if (same) exact++
                     rows += "| ${source.md()} | ${ours.md()} | ${if (same) "=" else reference.md()} | $ms |"
+                    // Printed so the translations can be reviewed straight from the CI log.
+                    println("${pkg.direction} ${if (same) "=" else "≠"} $source  →  $ours" + if (same) "" else "   [HF: $reference]")
                 }
                 val totalMs = (System.nanoTime() - start) / 1_000_000
                 val rate = exact * 100 / cases.size
