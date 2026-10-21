@@ -13,9 +13,11 @@
 Додатково код Android-служби, `KeyboardView`, `InputConnectionAdapter` і `OfflinePolicy` скомпільовано
 проти фреймворку Android 15 (`org.robolectric:android-all`).
 
-**Ще не виконано в середовищі розробки** (немає доступу до Google Maven та Android SDK):
-`:app:assembleDebug`, `:app:lintDebug`, компіляція `SettingsActivity` (Compose) і `SettingsRepository`
-(DataStore). Ці кроки виконує CI-workflow; їх результат треба підтвердити перед випуском APK.
+**CI (GitHub Actions, JDK 21):** `:core:test`, `:app:testDebugUnitTest`, `:app:lintDebug`,
+`:app:assembleDebug` і перевірка відсутності мережевих дозволів в APK — ✅ (запуск 2 на коміті `6a06cf0`,
+2026-10-21). Debug-APK (~9 МБ) доступний як artifact `offline-keyboard-debug-apk`.
+
+**Ще не виконано:** перевірка на реальному пристрої (чекліст нижче).
 
 ## Ручний чекліст на пристрої
 
