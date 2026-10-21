@@ -118,6 +118,17 @@ class KeyboardUiTest {
     }
 
     @Test
+    fun stripAboveTheKeysRepeatsTheText() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        tapText("а")
+        tapText("б")
+        tapSpecial(SpecialKey.SPACE)
+        waitForView { v -> v is TextView && v.isShown && v.text.toString() == "аб" }
+        screenshot("echo")
+    }
+
+    @Test
     fun passwordFieldShowsNoSuggestions() {
         focus(activity.password)
         useMode(KeyboardMode.MOBILE)
@@ -125,6 +136,8 @@ class KeyboardUiTest {
         "дяк".forEach { tapText(it.toString()) }
         Thread.sleep(300)
         assertNull(findView { v -> v is TextView && v.isShown && v.text.toString() == "дякую" })
+        // Passwords are never repeated above the keys either.
+        assertNull(findView { v -> v is TextView && v.isShown && v.text.toString().contains("дяк") })
     }
 
     @Test
