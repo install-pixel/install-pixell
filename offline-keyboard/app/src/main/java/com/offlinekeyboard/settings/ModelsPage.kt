@@ -51,8 +51,8 @@ private val ACCURATE_FILES: Map<TranslationDirection, Pair<String, Int>> =
     (TranslationDirection.entries - TranslationDirection.EN_TO_PL)
         .associateWith { "offline-keyboard-mt-${it.slug}-accurate.zip" to ACCURATE_MT_MB }
 
-private const val STANDARD_MT_MB = 155
-private const val ACCURATE_MT_MB = 450
+private const val STANDARD_MT_MB = 150
+private const val ACCURATE_MT_MB = 440
 
 private val ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*")
 
