@@ -199,7 +199,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val showSuggestions = centreText == null && suggestions.isNotEmpty()
         val isEcho = centreText == null && !showSuggestions
         status.text = if (isEcho) echo ?: "" else centreText ?: ""
-        status.setTextColor(if (isEcho) theme.hint else theme.text)
+        status.setTextColor(theme.text)
         status.visibility = if (showSuggestions) View.GONE else View.VISIBLE
         suggestionsRow.visibility = if (showSuggestions) View.VISIBLE else View.GONE
         suggestionViews.forEachIndexed { i, v ->
