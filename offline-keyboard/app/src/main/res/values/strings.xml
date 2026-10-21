@@ -119,7 +119,7 @@
     <string name="mic_permission_grant">Allow microphone</string>
     <string name="mic_permission_granted">Microphone allowed. Tap 🎤 again.</string>
     <string name="mic_permission_settings">Allow the microphone in the app settings to use voice input.</string>
-    <string name="toolbar_translate_description">Translate (long press: swap direction)</string>
+    <string name="toolbar_translate_description">Translate (tap again: swap direction)</string>
     <string name="toolbar_voice_cancel_description">Cancel voice input</string>
     <string name="voice_loading">Loading %1$s voice model…</string>
     <string name="voice_listening">● %1$s — speak; ⏹ to finish, ✕ to cancel</string>
@@ -127,15 +127,23 @@
     <string name="voice_language_follow">Same as the keyboard language</string>
     <string name="voice_commands">Spoken punctuation</string>
     <string name="voice_commands_hint">Say “кома”, “крапка”, “знак питання”, “новий рядок” (Polish: “przecinek”, “kropka”, “znak zapytania”, “nowa linia”; English: “comma”, “period”, “question mark”, “new line”).</string>
-    <string name="translate_on">Translate on: %1$s. Type and press ⇄ (Enter).</string>
+    <string name="translate_on">Translate on: %1$s. Type and press ⇄ (Enter). Tap ⇄ again to swap.</string>
     <string name="translate_not_here">Translation is not available in this field.</string>
     <string name="translation_model_missing">No offline model for %1$s. Import it in Settings → Offline models.</string>
     <string name="translating">Translating %1$s…</string>
     <string name="translation_discarded">The text changed during translation; nothing was replaced.</string>
     <string name="translation_failed">Translation failed: %1$s</string>
-    <string name="translation_how">Tap ⇄ above the keys. Type (or dictate) in the source language: the text stays underlined. Enter (⇄) replaces it with the translation. Moving the cursor keeps the typed text unchanged. Long-press ⇄ to swap the direction.</string>
+    <string name="translation_how">The row above the keys switches the input mode: Aa Text, ⇄ Translate, 🎤 Voice. Tap ⇄ once to turn translation on and again to swap the direction. In automatic mode the field shows the translation while you type (the original is shown above the keys); a sentence is finished with . ! ? or Enter. In manual mode the typed text stays underlined and Enter replaces it with the translation.</string>
     <string name="translation_direction">Direction</string>
     <string name="translation_check_warning">⚠ Check the translation: %1$s missing or changed. Tap to restore the original.</string>
     <string name="translation_restored">Original text restored.</string>
     <string name="translation_restore_impossible">The text changed; restore it manually.</string>
+    <string name="mode_text">Aa Text</string>
+    <string name="mode_text_description">Plain typing, no translation</string>
+    <string name="mode_voice">🎤 Voice</string>
+    <string name="mode_voice_stop">⏹ Stop</string>
+    <string name="translate_on_auto">Translate %1$s: type — the translation goes into the field. Tap ⇄ again to swap.</string>
+    <string name="translation_mode">How to translate</string>
+    <string name="translation_mode_auto">Automatically while typing (no confirmation)</string>
+    <string name="translation_mode_manual">After pressing Enter (⇄) for each fragment</string>
 </resources>

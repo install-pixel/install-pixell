@@ -36,6 +36,8 @@ data class KeyboardSettings(
     val showSuggestions: Boolean = true,
     val translateEnabled: Boolean = false,
     val translationDirection: TranslationDirection = TranslationDirection.UK_TO_PL,
+    /** True: the field shows the translation while typing. False: Enter translates the typed segment. */
+    val translationAuto: Boolean = true,
 ) {
     val startMode: KeyboardMode get() = if (rememberLastMode) lastMode ?: defaultMode else defaultMode
 
@@ -79,6 +81,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.SHOW_SUGGESTIONS] = updated.showSuggestions
             prefs[Keys.TRANSLATE_ENABLED] = updated.translateEnabled
             prefs[Keys.TRANSLATION_DIRECTION] = updated.translationDirection.name
+            prefs[Keys.TRANSLATION_AUTO] = updated.translationAuto
         }
     }
 
@@ -112,6 +115,7 @@ class SettingsRepository(context: Context) {
             translateEnabled = this[Keys.TRANSLATE_ENABLED] ?: defaults.translateEnabled,
             translationDirection = enumOrNull<TranslationDirection>(this[Keys.TRANSLATION_DIRECTION])
                 ?: defaults.translationDirection,
+            translationAuto = this[Keys.TRANSLATION_AUTO] ?: defaults.translationAuto,
         )
     }
 
@@ -136,5 +140,6 @@ class SettingsRepository(context: Context) {
         val SHOW_SUGGESTIONS = booleanPreferencesKey("show_suggestions")
         val TRANSLATE_ENABLED = booleanPreferencesKey("translate_enabled")
         val TRANSLATION_DIRECTION = stringPreferencesKey("translation_direction")
+        val TRANSLATION_AUTO = booleanPreferencesKey("translation_auto")
     }
 }

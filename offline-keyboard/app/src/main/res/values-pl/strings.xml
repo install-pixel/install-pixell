@@ -119,7 +119,7 @@
     <string name="mic_permission_grant">Zezwól na mikrofon</string>
     <string name="mic_permission_granted">Mikrofon dozwolony. Stuknij 🎤 ponownie.</string>
     <string name="mic_permission_settings">Zezwól na mikrofon w ustawieniach aplikacji, aby dyktować.</string>
-    <string name="toolbar_translate_description">Tłumaczenie (przytrzymaj: zmień kierunek)</string>
+    <string name="toolbar_translate_description">Tłumaczenie (stuknij ponownie: zmień kierunek)</string>
     <string name="toolbar_voice_cancel_description">Anuluj dyktowanie</string>
     <string name="voice_loading">Ładowanie modelu głosu %1$s…</string>
     <string name="voice_listening">● %1$s — mów; ⏹ zakończ, ✕ anuluj</string>
@@ -127,15 +127,23 @@
     <string name="voice_language_follow">Jak język klawiatury</string>
     <string name="voice_commands">Interpunkcja głosowa</string>
     <string name="voice_commands_hint">Mów „przecinek”, „kropka”, „znak zapytania”, „nowa linia” (po ukraińsku: „кома”, „крапка”, „знак питання”, „новий рядок”; po angielsku: „comma”, „period”, „question mark”, „new line”).</string>
-    <string name="translate_on">Tłumaczenie włączone: %1$s. Pisz i naciśnij ⇄ (Enter).</string>
+    <string name="translate_on">Tłumaczenie włączone: %1$s. Pisz i naciśnij ⇄ (Enter). Kolejne stuknięcie ⇄ zmienia kierunek.</string>
     <string name="translate_not_here">Tłumaczenie niedostępne w tym polu.</string>
     <string name="translation_model_missing">Brak modelu offline dla %1$s. Zaimportuj go w Ustawienia → Modele offline.</string>
     <string name="translating">Tłumaczenie %1$s…</string>
     <string name="translation_discarded">Tekst zmienił się podczas tłumaczenia; nic nie zastąpiono.</string>
     <string name="translation_failed">Tłumaczenie nie powiodło się: %1$s</string>
-    <string name="translation_how">Stuknij ⇄ nad klawiszami. Pisz (lub dyktuj) w języku źródłowym: tekst jest podkreślony. Enter (⇄) zastępuje go tłumaczeniem. Przesunięcie kursora zostawia wpisany tekst bez zmian. Przytrzymaj ⇄, aby zmienić kierunek.</string>
+    <string name="translation_how">Rząd nad klawiszami przełącza tryb: Aa Tekst, ⇄ Tłumaczenie, 🎤 Głos. Jedno stuknięcie ⇄ włącza tłumaczenie, kolejne zmienia kierunek. W trybie automatycznym w polu od razu pojawia się tłumaczenie (oryginał widać nad klawiszami); zdanie kończy . ! ? lub Enter. W trybie ręcznym wpisany tekst jest podkreślony, a Enter zastępuje go tłumaczeniem.</string>
     <string name="translation_direction">Kierunek</string>
     <string name="translation_check_warning">⚠ Sprawdź tłumaczenie: brak lub zmiana %1$s. Stuknij, aby przywrócić oryginał.</string>
     <string name="translation_restored">Przywrócono oryginalny tekst.</string>
     <string name="translation_restore_impossible">Tekst już się zmienił; przywróć go ręcznie.</string>
+    <string name="mode_text">Aa Tekst</string>
+    <string name="mode_text_description">Zwykłe pisanie bez tłumaczenia</string>
+    <string name="mode_voice">🎤 Głos</string>
+    <string name="mode_voice_stop">⏹ Stop</string>
+    <string name="translate_on_auto">Tłumaczenie %1$s: pisz — do pola trafia tłumaczenie. Kolejne stuknięcie ⇄ zmienia kierunek.</string>
+    <string name="translation_mode">Jak tłumaczyć</string>
+    <string name="translation_mode_auto">Automatycznie podczas pisania (bez potwierdzania)</string>
+    <string name="translation_mode_manual">Po naciśnięciu Enter (⇄) dla każdego fragmentu</string>
 </resources>

@@ -260,6 +260,13 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
 
         Section(stringResource(R.string.section_translation)) {
             Text(stringResource(R.string.translation_how), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.translation_mode), style = MaterialTheme.typography.titleSmall)
+            RadioRow(stringResource(R.string.translation_mode_auto), s.translationAuto) {
+                update { it.copy(translationAuto = true) }
+            }
+            RadioRow(stringResource(R.string.translation_mode_manual), !s.translationAuto) {
+                update { it.copy(translationAuto = false) }
+            }
             Text(stringResource(R.string.translation_direction), style = MaterialTheme.typography.titleSmall)
             for (direction in TranslationDirection.entries) {
                 val label = "${languageName(direction.source)} → ${languageName(direction.target)}"

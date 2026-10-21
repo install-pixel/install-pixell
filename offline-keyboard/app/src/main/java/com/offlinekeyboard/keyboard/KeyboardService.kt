@@ -94,6 +94,7 @@ class KeyboardService : InputMethodService(),
         controller = KeyboardController(settings.startMode, settings.lastLanguage, settings.enabledLanguages)
         controller.shortcuts = settings.shortcuts
         controller.listener = this
+        composer.auto = settings.translationAuto
         scope.launch {
             repository.settings.collect { applySettings(it) }
         }
@@ -131,7 +132,8 @@ class KeyboardService : InputMethodService(),
         controller.enabledLanguages = new.enabledLanguages
         controller.shortcuts = new.shortcuts
         if (!new.rememberLastMode && old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
-        if (!new.translateEnabled && old.translateEnabled) composer.commitSource()
+        composer.auto = new.translationAuto
+        if (!new.translateEnabled && old.translateEnabled) leaveSegment()
         updateSuggestions()
         render()
     }
@@ -168,7 +170,7 @@ class KeyboardService : InputMethodService(),
     override fun onFinishInputView(finishingInput: Boolean) {
         // Recording never continues with the keyboard hidden; unconfirmed dictation text is dropped.
         speech.cancel()
-        composer.commitSource()
+        leaveSegment()
         rootView?.keyboardView?.cancelAllPointers()
         handler.removeCallbacks(firePendingShortcut)
         dictionary.saveNow()
@@ -176,7 +178,7 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onFinishInput() {
-        composer.commitSource()
+        leaveSegment()
         super.onFinishInput()
     }
 
@@ -187,9 +189,8 @@ class KeyboardService : InputMethodService(),
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         val cursorLeftComposing = candidatesStart < 0 || newSelStart != candidatesEnd || newSelEnd != candidatesEnd
         if (!composer.isEmpty && cursorLeftComposing) {
-            // The user moved the cursor away from the segment being translated: keep it as typed.
-            composer.commitSource()
-            rootView?.showLive(null)
+            // The user moved the cursor away from the segment being translated.
+            leaveSegment()
         }
         if (partialShown && candidatesStart < 0) partialShown = false
         updateAutoShift()
@@ -241,6 +242,50 @@ class KeyboardService : InputMethodService(),
         }
         render()
     }
+
+    private val autoTranslate = Runnable { requestLive(commit = false) }
+
+    /** Auto mode: the source being typed is shown above the keys; its translation follows after a short pause. */
+    private fun scheduleLive() {
+        handler.removeCallbacks(autoTranslate)
+        val source = composer.text.trim()
+        rootView?.showLive(if (source.isEmpty()) null else "${settings.translationDirection.source.code}: $source")
+        if (!composer.isEmpty) handler.postDelayed(autoTranslate, AUTO_TRANSLATE_DELAY_MS)
+    }
+
+    /** Auto mode: translate the current segment into the field; [commit] ends the segment afterwards. */
+    private fun requestLive(commit: Boolean) {
+        handler.removeCallbacks(autoTranslate)
+        val source = composer.text
+        if (source.isBlank()) {
+            if (commit) leaveSegment()
+            return
+        }
+        val generation = composer.generation
+        translation.translate(source, settings.translationDirection) { result ->
+            when (result) {
+                is TranslationResult.Success ->
+                    if (composer.showLive(generation, result.text) && commit) {
+                        val inserted = composer.commitShown()
+                        rootView?.showLive(null)
+                        if (inserted != null) warnIfValuesChanged(source, inserted)
+                    }
+                is TranslationResult.Failure -> rootView?.showStatus(getString(R.string.translation_failed, result.reason))
+            }
+            render()
+        }
+    }
+
+    /** Ends the translate segment (keeps an up-to-date auto translation, otherwise the typed source). */
+    private fun leaveSegment() {
+        handler.removeCallbacks(autoTranslate)
+        val source = composer.text
+        val inserted = composer.leave()
+        if (inserted != null) warnIfValuesChanged(source, inserted)
+        rootView?.showLive(null)
+    }
+
+    private fun endsSentence(text: String) = text.isNotEmpty() && text.last() in ".!?…"
 
     /**
      * Numbers, times, codes and abbreviations must survive translation. If some are missing, warn and let
@@ -300,28 +345,35 @@ class KeyboardService : InputMethodService(),
         for (command in commands) {
             when (command) {
                 EditorCommand.StartVoice -> onToolbarVoice()
-                EditorCommand.ToggleTranslate -> onToolbarTranslate()
+                EditorCommand.ToggleTranslate -> if (settings.translateEnabled) onModeText() else onModeTranslate()
                 EditorCommand.HideKeyboard -> requestHideSelf(0)
                 EditorCommand.OpenSettings -> onToolbarSettings()
                 is EditorCommand.CommitText ->
                     if (translateActive) {
                         composer.append(command.text)
+                        if (composer.auto) {
+                            if (endsSentence(command.text)) requestLive(commit = true) else scheduleLive()
+                        }
                     } else {
                         learnBeforeSeparator(command.text)
                         editor.execute(command)
                     }
                 EditorCommand.DeleteBackward ->
-                    if (!(translateActive && composer.backspace())) editor.execute(command)
+                    if (translateActive && composer.backspace()) {
+                        if (composer.auto) scheduleLive()
+                    } else {
+                        editor.execute(command)
+                    }
                 is EditorCommand.Enter ->
                     if (translateActive && !composer.isEmpty && !command.forceNewline) {
-                        startTranslation()
+                        if (composer.auto) requestLive(commit = true) else startTranslation()
                     } else {
-                        composer.commitSource()
+                        leaveSegment()
                         learnBeforeSeparator("\n")
                         editor.execute(command)
                     }
                 else -> {
-                    composer.commitSource()
+                    leaveSegment()
                     if (command is EditorCommand.Tab) learnBeforeSeparator("\t")
                     editor.execute(command)
                 }
@@ -387,53 +439,47 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
-    override fun onToolbarTranslate() {
-        if (settings.translateEnabled) {
-            composer.commitSource()
-            setTranslateEnabled(false, settings.translationDirection)
-            rootView?.showLive(null)
-            render()
-            return
-        }
-        if (!translateOffered) {
-            rootView?.showStatus(getString(R.string.translate_not_here))
-            return
-        }
-        val direction = TranslationDirection.suggestedFor(controller.language) ?: settings.translationDirection
-        if (!translation.isInstalled(direction)) {
-            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)))
-            return
-        }
-        controller.setLanguage(direction.source)
-        setTranslateEnabled(true, direction)
-        translation.preload(direction)
-        rootView?.showStatus(getString(R.string.translate_on, directionLabel(direction)))
+    /** "Aa Text" chip: plain typing (turns translation off). */
+    override fun onModeText() {
+        if (!settings.translateEnabled) return
+        leaveSegment()
+        setTranslateEnabled(false, settings.translationDirection)
         updateSuggestions()
         render()
     }
 
-    /** Long press on the translate button swaps the direction. */
-    override fun onToolbarTranslateLongPress() {
-        val next = if (settings.translationDirection == TranslationDirection.UK_TO_PL) {
-            TranslationDirection.PL_TO_UK
-        } else {
-            TranslationDirection.UK_TO_PL
-        }
-        if (!translation.isInstalled(next)) {
-            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(next)))
+    /** "⇄" chip: turns translation on; when already on, swaps the direction. */
+    override fun onModeTranslate() {
+        if (!translateOffered) {
+            rootView?.showStatus(getString(R.string.translate_not_here))
             return
         }
-        composer.commitSource()
-        setTranslateEnabled(settings.translateEnabled, next)
-        if (settings.translateEnabled) controller.setLanguage(next.source)
-        translation.preload(next)
-        rootView?.showStatus(getString(R.string.translate_on, directionLabel(next)))
+        val direction = when {
+            settings.translateEnabled -> if (settings.translationDirection == TranslationDirection.UK_TO_PL) {
+                TranslationDirection.PL_TO_UK
+            } else {
+                TranslationDirection.UK_TO_PL
+            }
+            else -> TranslationDirection.suggestedFor(controller.language) ?: settings.translationDirection
+        }
+        if (!translation.isInstalled(direction)) {
+            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)))
+            return
+        }
+        leaveSegment()
+        controller.setLanguage(direction.source)
+        setTranslateEnabled(true, direction)
+        translation.preload(direction)
+        rootView?.showStatus(
+            getString(if (settings.translationAuto) R.string.translate_on_auto else R.string.translate_on, directionLabel(direction)),
+        )
+        updateSuggestions()
         render()
     }
 
     override fun onToolbarVoice() {
         val language = if (translateActive) settings.translationDirection.source else settings.voiceLanguage ?: controller.language
-        composer.commitSource()
+        leaveSegment()
         speech.toggle(currentField, language, settings.voiceCommands)
         render()
     }
@@ -469,7 +515,7 @@ class KeyboardService : InputMethodService(),
         if (translateActive) {
             rootView?.showLive(null)
             composer.append(text)
-            startTranslation()
+            if (composer.auto) requestLive(commit = true) else startTranslation()
         } else {
             currentInputConnection?.commitText(text, 1)
             partialShown = false
@@ -546,10 +592,11 @@ class KeyboardService : InputMethodService(),
             KeyboardRootView.ToolbarState(
                 languageCode = controller.language.code,
                 modeGlyph = if (controller.mode == KeyboardMode.COMPUTER) "📱" else "⌨",
+                translateActive = translateActive,
+                translateLabel = directionLabel(settings.translationDirection),
+                translateOffered = translateOffered,
                 voiceOffered = speech.isOffered(currentField),
                 recording = speech.state != SpeechController.State.IDLE,
-                translateLabel = if (translateActive) directionLabel(settings.translationDirection) else null,
-                translateOffered = translateOffered,
             ),
         )
     }
@@ -586,5 +633,6 @@ class KeyboardService : InputMethodService(),
         const val MOBILE_KEY_DP = 52f
         const val WORD_CONTEXT = 64
         const val CHECK_WARNING_MS = 8000L
+        const val AUTO_TRANSLATE_DELAY_MS = 400L
     }
 }
