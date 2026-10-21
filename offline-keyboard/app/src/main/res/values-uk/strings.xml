@@ -88,7 +88,7 @@
     <string name="dictionary_learn">Запам\'ятовувати слова, які я набираю</string>
     <string name="dictionary_learn_hint">Типово вимкнено. Окремі слова зберігаються лише на цьому телефоні з лічильником використання — ніколи не цілі повідомлення. У полях паролів, приватних (incognito), e-mail і адрес нічого не запам\'ятовується.</string>
     <string name="dictionary_suggestions">Показувати підказки слів</string>
-    <string name="dictionary_suggestions_hint">Підказки беруться з вашого словника й з\'являються над клавішами. Дотик вставляє слово, довге натискання видаляє його.</string>
+    <string name="dictionary_suggestions_hint">Підказки беруться з ≈350 частих слів кожної мови та з ваших слів (вони показуються першими). Дотик вставляє слово, довге натискання видаляє ваше слово.</string>
     <string name="dictionary_words">Слова</string>
     <string name="dictionary_add_word">Нове слово</string>
     <string name="dictionary_add_invalid">Лише літери, апостроф і дефіс; 2–40 символів.</string>

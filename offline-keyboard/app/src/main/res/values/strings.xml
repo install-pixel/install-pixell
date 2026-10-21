@@ -88,7 +88,7 @@
     <string name="dictionary_learn">Learn words I type</string>
     <string name="dictionary_learn_hint">Off by default. Single words are stored on this phone only, with a use count — never whole messages. Nothing is learned in password, private (incognito), e-mail and address fields.</string>
     <string name="dictionary_suggestions">Show word suggestions</string>
-    <string name="dictionary_suggestions_hint">Suggestions come from your dictionary and appear above the keys. Tap to insert, long-press to remove the word.</string>
+    <string name="dictionary_suggestions_hint">Suggestions come from about 350 common words per language plus your own words (shown first). Tap inserts a word; long press removes one of your words.</string>
     <string name="dictionary_words">Words</string>
     <string name="dictionary_add_word">New word</string>
     <string name="dictionary_add_invalid">Only letters, apostrophe and hyphen; 2–40 characters.</string>

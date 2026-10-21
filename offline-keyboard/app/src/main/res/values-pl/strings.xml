@@ -88,7 +88,7 @@
     <string name="dictionary_learn">Zapamiętuj wpisywane słowa</string>
     <string name="dictionary_learn_hint">Domyślnie wyłączone. Pojedyncze słowa są przechowywane tylko na tym telefonie z licznikiem użyć — nigdy całe wiadomości. W polach haseł, prywatnych (incognito), e-mail i adresów nic nie jest zapamiętywane.</string>
     <string name="dictionary_suggestions">Pokazuj podpowiedzi słów</string>
-    <string name="dictionary_suggestions_hint">Podpowiedzi pochodzą z Twojego słownika i pojawiają się nad klawiszami. Stuknij, aby wstawić, przytrzymaj, aby usunąć słowo.</string>
+    <string name="dictionary_suggestions_hint">Podpowiedzi pochodzą z około 350 częstych słów każdego języka i z Twoich słów (pokazywanych jako pierwsze). Stuknięcie wstawia słowo, długie naciśnięcie usuwa Twoje słowo.</string>
     <string name="dictionary_words">Słowa</string>
     <string name="dictionary_add_word">Nowe słowo</string>
     <string name="dictionary_add_invalid">Tylko litery, apostrof i łącznik; 2–40 znaków.</string>
