@@ -60,6 +60,11 @@ import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
 
+    companion object {
+        /** Opens a page directly, e.g. "bluetooth" from the keyboard. */
+        const val EXTRA_PAGE = "page"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -73,14 +78,14 @@ class SettingsActivity : ComponentActivity() {
             }
             MaterialTheme(colorScheme = settingsColors(dark, current?.accent ?: Accent.SKY)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    SettingsApp(repository)
+                    SettingsApp(repository, startPage = if (intent.getStringExtra(EXTRA_PAGE) == "bluetooth") Page.BLUETOOTH else Page.MAIN)
                 }
             }
         }
     }
 }
 
-internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS }
+internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH }
 
 internal typealias UpdateSettings = ((KeyboardSettings) -> KeyboardSettings) -> Unit
 
@@ -95,10 +100,10 @@ private fun isKeyboardSelected(context: Context): Boolean {
 }
 
 @Composable
-private fun SettingsApp(repository: SettingsRepository) {
+private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
     val scope = rememberCoroutineScope()
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = null)
-    var page by rememberSaveable { mutableStateOf(Page.MAIN) }
+    var page by rememberSaveable { mutableStateOf(startPage) }
     val update: UpdateSettings = { transform -> scope.launch { repository.update(transform) } }
 
     BackHandler(enabled = page != Page.MAIN) { page = Page.MAIN }
@@ -109,6 +114,7 @@ private fun SettingsApp(repository: SettingsRepository) {
         Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = { page = Page.MAIN })
         Page.DICTIONARY -> DictionaryPage(s, update, onBack = { page = Page.MAIN })
         Page.MODELS -> ModelsPage(onBack = { page = Page.MAIN })
+        Page.BLUETOOTH -> BluetoothPage(s, update, onBack = { page = Page.MAIN })
     }
 }
 
@@ -198,6 +204,11 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, 5)) {
                 onOpen(Page.MODELS)
             }
+            HorizontalDivider()
+            NavRow(
+                stringResource(R.string.page_bluetooth),
+                stringResource(if (s.bluetoothKeyboard) R.string.page_bluetooth_on else R.string.page_bluetooth_off),
+            ) { onOpen(Page.BLUETOOTH) }
         }
 
         Section(stringResource(R.string.section_appearance)) {

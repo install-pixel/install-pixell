@@ -10,6 +10,20 @@
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
 
+    <!-- Bluetooth keyboard mode (off by default): a direct radio link to the user's own computer, not the
+         internet. Android 12+ asks for these when the user turns the mode on. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false" />
+
     <!-- Voice input only; requested when the user first taps the microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 

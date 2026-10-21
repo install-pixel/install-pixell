@@ -31,6 +31,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onToolbarVoice()
         fun onToolbarVoiceCancel()
         fun onToolbarMode()
+        /** Bluetooth button: start or stop sending keys to the connected computer. */
+        fun onToolbarBluetooth()
         fun onToolbarSettings()
         fun onSuggestionPicked(word: String)
         fun onSuggestionLongPress(word: String)
@@ -44,7 +46,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val translateOffered: Boolean,
         val voiceOffered: Boolean,
         val recording: Boolean,
+        val bluetooth: BluetoothButton = BluetoothButton.HIDDEN,
     )
+
+    /** HIDDEN: the Bluetooth keyboard is off in settings; IDLE: on, typing goes to the phone; SENDING: to the computer. */
+    enum class BluetoothButton { HIDDEN, IDLE, SENDING }
 
     var toolbarListener: ToolbarListener? = null
 
@@ -68,6 +74,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         suggestionViews.forEach { addView(it, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)) }
     }
     private val modeButton = button(R.string.toolbar_mode_description) { toolbarListener?.onToolbarMode() }
+    private val bluetoothButton = button(R.string.toolbar_bluetooth_description) { toolbarListener?.onToolbarBluetooth() }
+        .apply { icon = Icon.BLUETOOTH }
     private val settingsButton = button(R.string.toolbar_settings_description) {
         if (recording) toolbarListener?.onToolbarVoiceCancel() else toolbarListener?.onToolbarSettings()
     }
@@ -83,6 +91,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var statusAction: (() -> Unit)? = null
     private var liveText: CharSequence? = null
     private var suggestions: List<String> = emptyList()
+    private var echo: CharSequence? = null
     private val clearMessage = Runnable { message = null; statusAction = null; refreshCentre() }
 
     init {
@@ -94,6 +103,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             addView(languageButton, LayoutParams(dp(56), LayoutParams.MATCH_PARENT))
             addView(status, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            addView(bluetoothButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(modeButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(settingsButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
         }
@@ -115,13 +125,15 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         theme = value
         keyboardView.theme = value
         setBackgroundColor(value.background)
-        status.setTextColor(value.text)
         suggestionViews.forEach { it.setTextColor(value.text) }
-        for (b in listOf(languageButton, modeButton, settingsButton)) {
+        for (b in listOf(languageButton, modeButton, settingsButton, bluetoothButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
         }
+        // In the dark the accent would only show on the active buttons; the language name carries it too.
+        if (value.dark) languageButton.foreground = value.accent
         lastState?.let { updateToolbar(it) }
+        refreshCentre()
     }
 
     fun updateToolbar(state: ToolbarState) {
@@ -129,6 +141,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         recording = state.recording
         languageButton.text = state.languageCode
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
+        bluetoothButton.visibility = if (state.bluetooth == BluetoothButton.HIDDEN) View.GONE else View.VISIBLE
+        val sending = state.bluetooth == BluetoothButton.SENDING
+        bluetoothButton.fill = if (sending) theme.accent else 0
+        bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
         settingsButton.icon = if (state.recording) Icon.CLOSE else Icon.GEAR
         settingsButton.contentDescription = context.getString(
             if (state.recording) R.string.toolbar_voice_cancel_description else R.string.toolbar_settings_description,
@@ -162,6 +178,16 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         refreshCentre()
     }
 
+    /**
+     * The end of the text the user is writing (or what was sent over Bluetooth), shown when there is
+     * nothing else to show, so the strip always says where the text is.
+     */
+    fun showEcho(text: CharSequence?) {
+        if (text?.toString() == echo?.toString()) return
+        echo = text
+        refreshCentre()
+    }
+
     fun showSuggestions(words: List<String>) {
         if (words == suggestions) return
         suggestions = words
@@ -171,7 +197,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun refreshCentre() {
         val centreText = message ?: liveText
         val showSuggestions = centreText == null && suggestions.isNotEmpty()
-        status.text = centreText ?: ""
+        val isEcho = centreText == null && !showSuggestions
+        status.text = if (isEcho) echo ?: "" else centreText ?: ""
+        status.setTextColor(if (isEcho) theme.hint else theme.text)
         status.visibility = if (showSuggestions) View.GONE else View.VISIBLE
         suggestionsRow.visibility = if (showSuggestions) View.VISIBLE else View.GONE
         suggestionViews.forEachIndexed { i, v ->

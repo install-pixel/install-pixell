@@ -11,6 +11,10 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import com.offlinekeyboard.R
+import com.offlinekeyboard.bluetooth.Bluetooth
+import com.offlinekeyboard.bluetooth.bluetoothKeyboardSupported
+import com.offlinekeyboard.core.HidKeys
+import com.offlinekeyboard.core.KeyLabels
 import com.offlinekeyboard.core.KeyboardController
 import com.offlinekeyboard.core.LabelContext
 import com.offlinekeyboard.core.LatchState
@@ -19,6 +23,7 @@ import com.offlinekeyboard.core.dictionary.WordRules
 import com.offlinekeyboard.core.input.EditorCommand
 import com.offlinekeyboard.core.input.EnterLabel
 import com.offlinekeyboard.core.input.FieldInfo
+import com.offlinekeyboard.core.input.KeyMods
 import com.offlinekeyboard.core.layout.Key
 import com.offlinekeyboard.core.layout.KeyAction
 import com.offlinekeyboard.core.layout.KeyboardMode
@@ -83,6 +88,12 @@ class KeyboardService : InputMethodService(),
     /** Dictation text currently shown as composing text in the field (normal, non-translate mode). */
     private var partialShown = false
 
+    /** Bluetooth keyboard mode: keys go to the connected computer instead of the phone's field. */
+    private var bluetoothSending = false
+
+    /** The end of what was typed on the computer, shown above the keys (the phone field stays empty). */
+    private val sentText = StringBuilder()
+
     private val firePendingShortcut = Runnable {
         execute(controller.firePendingShortcut())
         render()
@@ -106,6 +117,13 @@ class KeyboardService : InputMethodService(),
         translation.accurate = settings.translationAccurate
         scope.launch {
             repository.settings.collect { applySettings(it) }
+        }
+        if (settings.bluetoothKeyboard) Bluetooth.start(this)
+        scope.launch {
+            Bluetooth.status.collect {
+                updateSuggestions()
+                render()
+            }
         }
         scope.launch {
             // A model was imported or deleted in Settings: drop cached ones so the new files are used.
@@ -152,6 +170,9 @@ class KeyboardService : InputMethodService(),
         controller.shortcuts = new.shortcuts
         if (!new.rememberLastMode && old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
         translation.accurate = new.translationAccurate
+        if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
+            if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
+        }
         if (old.themeMode != new.themeMode || old.accent != new.accent) rootView?.applyTheme(currentTheme())
         if (!new.translateEnabled && old.translateEnabled) leaveSegment()
         updateSuggestions()
@@ -251,7 +272,7 @@ class KeyboardService : InputMethodService(),
             rootView?.showLive(null)
             return
         }
-        rootView?.showLive("→ ${settings.translationDirection.target.code}: …")
+        rootView?.showLive("${settings.translationDirection.target.code}: …")
         handler.postDelayed(previewRunnable, PREVIEW_DELAY_MS)
         if (settings.translationAuto && settings.translationPauseMs > 0) {
             handler.postDelayed(pauseRunnable, settings.translationPauseMs.toLong())
@@ -265,7 +286,7 @@ class KeyboardService : InputMethodService(),
         val direction = settings.translationDirection
         translation.preview(source, direction) { result ->
             if (generation != composer.generation || composer.pending) return@preview
-            if (result is TranslationResult.Success) rootView?.showLive("→ ${direction.target.code}: ${result.text.trim()}")
+            if (result is TranslationResult.Success) rootView?.showLive("${direction.target.code}: ${result.text.trim()}")
         }
     }
 
@@ -282,7 +303,7 @@ class KeyboardService : InputMethodService(),
                     val inserted = composer.applyTranslation(generation, result.text)
                     if (inserted != null) {
                         rootView?.showLive(null)
-                        showTranslated(text, inserted)
+                        showTranslated(text, inserted, direction.target)
                     } else if (!settings.translationAuto) {
                         rootView?.showStatus(getString(R.string.translation_discarded))
                     }
@@ -314,10 +335,10 @@ class KeyboardService : InputMethodService(),
      * abbreviations changed. Tapping either puts the original text back (if the translation is still
      * right before the cursor).
      */
-    private fun showTranslated(source: String, inserted: String) {
+    private fun showTranslated(source: String, inserted: String, target: Language) {
         val missing = TranslationCheck.missing(source, inserted)
         val message = if (missing.isEmpty()) {
-            getString(R.string.translation_done_undo)
+            getString(R.string.translation_done_undo, target.code, inserted.trim())
         } else {
             getString(R.string.translation_check_warning, missing.joinToString(", ") { "«$it»" })
         }
@@ -371,7 +392,7 @@ class KeyboardService : InputMethodService(),
                 else -> {
                     val text = (result as TranslationResult.Success).text
                     conn.commitText(text, 1)
-                    showTranslated(source, text)
+                    showTranslated(source, text, direction.target)
                 }
             }
         }
@@ -399,6 +420,7 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ keys
 
     override fun onKey(key: Key) {
+        if (sendToComputer(key, null)) return
         handler.removeCallbacks(firePendingShortcut)
         execute(controller.onKey(key))
         if (controller.pendingModifierShortcut != null) {
@@ -408,6 +430,7 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onAlternative(text: String) {
+        if (sendToComputer(null, text)) return
         execute(controller.onAlternative(text))
         render()
     }
@@ -479,17 +502,31 @@ class KeyboardService : InputMethodService(),
 
     private fun updateSuggestions() {
         val root = rootView ?: return
+        val ic = currentInputConnection
+        if (bluetoothSending && bluetoothConnected) {
+            root.showSuggestions(emptyList())
+            root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: ${sentText.toString().takeLast(ECHO_MAX)}")
+            return
+        }
+        val before = ic?.getTextBeforeCursor(WORD_CONTEXT, 0) ?: ""
+        // Passwords are never repeated on screen.
+        root.showEcho(if (currentField.isSensitive) null else echoOf(before))
         val show = settings.showSuggestions && currentField.allowsLearning && !translateActive &&
             speech.state == SpeechController.State.IDLE
-        val ic = currentInputConnection
         if (!show || ic == null || !ic.getSelectedText(0).isNullOrEmpty()) {
             root.showSuggestions(emptyList())
             return
         }
-        val before = ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: ""
         val after = ic.getTextAfterCursor(1, 0) ?: ""
         val prefix = if (WordRules.continuesWord(after)) "" else WordRules.trailingWord(before)
         root.showSuggestions(if (prefix.isEmpty()) emptyList() else dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
+    }
+
+    /** Last line before the cursor, shortened from the start. */
+    private fun echoOf(before: CharSequence): String? {
+        val line = before.toString().substringAfterLast('\n').trim()
+        if (line.isEmpty()) return null
+        return if (line.length > ECHO_MAX) "…" + line.takeLast(ECHO_MAX) else line
     }
 
     override fun onSuggestionPicked(word: String) {
@@ -510,6 +547,81 @@ class KeyboardService : InputMethodService(),
             rootView?.showStatus(getString(R.string.dictionary_word_removed, word))
             updateSuggestions()
         }
+    }
+
+    // ------------------------------------------------------------------ Bluetooth keyboard
+
+    private val bluetoothConnected: Boolean get() = Bluetooth.isConnected
+
+    /**
+     * In Bluetooth mode, sends [key] (or the long-press option [alternative]) to the computer and returns
+     * true. Keys that only change this keyboard (Shift, Ctrl, layers, language ...) still work locally.
+     */
+    private fun sendToComputer(key: Key?, alternative: String?): Boolean {
+        if (!bluetoothSending) return false
+        val special = (key?.action as? KeyAction.Special)?.key
+        if (special != null && special in LOCAL_KEYS) return false
+        val mods = controller.modifiers
+        val language = controller.language
+        val shift = mods.isActive(ModifierKey.SHIFT)
+        val textAction = key?.action as? KeyAction.Text
+        val output = alternative?.let {
+            if (it.length == 1 && it[0].isLetter() && shift != mods.capsLock) it.uppercase(language.locale) else it
+        } ?: textAction?.let { KeyLabels.output(it, shift, mods.capsLock, language) }
+        val isLetter = output != null && output.length == 1 && output[0].isLetter()
+        val keyMods = KeyMods(
+            // Caps Lock lives on the phone only, so letters carry their own Shift.
+            shift = if (isLetter) shift != mods.capsLock else shift,
+            ctrl = mods.isActive(ModifierKey.CTRL),
+            alt = mods.isActive(ModifierKey.ALT),
+            meta = mods.isActive(ModifierKey.META),
+        )
+        val stroke = when {
+            key != null -> HidKeys.forKey(key, output, keyMods, language)
+            output != null -> HidKeys.forText(output, language)
+            else -> null
+        }
+        // Let the phone keyboard update itself (one-shot Shift used up, Win+Space switches the labels too),
+        // but nothing is typed into the phone's field.
+        handler.removeCallbacks(firePendingShortcut)
+        if (key != null) controller.onKey(key) else controller.onAlternative(alternative.orEmpty())
+        when {
+            stroke == null -> rootView?.showStatus(getString(R.string.bluetooth_cannot_send, output ?: "?"))
+            !Bluetooth.send(stroke) -> rootView?.showStatus(getString(R.string.bluetooth_not_connected))
+            else -> rememberSent(special, output, keyMods)
+        }
+        updateSuggestions()
+        render()
+        return true
+    }
+
+    private fun rememberSent(special: SpecialKey?, output: String?, mods: KeyMods) {
+        if (mods.ctrl || mods.alt || mods.meta) return
+        when (special) {
+            SpecialKey.BACKSPACE -> if (sentText.isNotEmpty()) sentText.setLength(sentText.length - 1)
+            SpecialKey.SPACE -> sentText.append(' ')
+            SpecialKey.ENTER -> sentText.setLength(0)
+            null -> output?.let(sentText::append)
+            else -> Unit
+        }
+        if (sentText.length > SENT_TEXT_MAX) sentText.delete(0, sentText.length - SENT_TEXT_MAX)
+    }
+
+    override fun onToolbarBluetooth() {
+        if (bluetoothSending) {
+            bluetoothSending = false
+            rootView?.showStatus(getString(R.string.bluetooth_typing_here))
+        } else if (!bluetoothConnected) {
+            Bluetooth.start(this)
+            rootView?.showStatus(getString(R.string.bluetooth_not_connected), CHECK_WARNING_MS) { openSettings("bluetooth") }
+        } else {
+            bluetoothSending = true
+            sentText.setLength(0)
+            leaveSegment()
+            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+        }
+        updateSuggestions()
+        render()
     }
 
     // ------------------------------------------------------------------ toolbar
@@ -576,7 +688,13 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onToolbarSettings() {
-        startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        openSettings(null)
+    }
+
+    private fun openSettings(page: String?) {
+        val intent = Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (page != null) intent.putExtra(SettingsActivity.EXTRA_PAGE, page)
+        startActivity(intent)
     }
 
     // ------------------------------------------------------------------ voice host
@@ -678,6 +796,11 @@ class KeyboardService : InputMethodService(),
                 translateOffered = translateOffered,
                 voiceOffered = speech.isOffered(currentField),
                 recording = speech.state != SpeechController.State.IDLE,
+                bluetooth = when {
+                    !bluetoothKeyboardSupported || !settings.bluetoothKeyboard -> KeyboardRootView.BluetoothButton.HIDDEN
+                    bluetoothSending && bluetoothConnected -> KeyboardRootView.BluetoothButton.SENDING
+                    else -> KeyboardRootView.BluetoothButton.IDLE
+                },
             ),
         )
     }
@@ -731,5 +854,15 @@ class KeyboardService : InputMethodService(),
         private const val CHECK_WARNING_MS = 8000L
         private const val PREVIEW_DELAY_MS = 350L
         private const val DONE_MESSAGE_MS = 4000L
+        private const val SENT_TEXT_MAX = 60
+        private const val ECHO_MAX = 48
+
+        /** Keys that change only this keyboard, also in Bluetooth mode. */
+        private val LOCAL_KEYS = setOf(
+            SpecialKey.SHIFT, SpecialKey.CAPS_LOCK, SpecialKey.CTRL, SpecialKey.ALT, SpecialKey.META,
+            SpecialKey.LANGUAGE, SpecialKey.MODE, SpecialKey.LAYER_LETTERS, SpecialKey.LAYER_SYMBOLS,
+            SpecialKey.LAYER_SYMBOLS_MORE, SpecialKey.LAYER_FUNCTION, SpecialKey.VOICE, SpecialKey.SETTINGS,
+            SpecialKey.HIDE,
+        )
     }
 }

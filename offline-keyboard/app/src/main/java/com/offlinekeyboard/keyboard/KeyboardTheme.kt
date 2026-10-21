@@ -42,17 +42,18 @@ data class KeyboardTheme(
         fun create(dark: Boolean, accent: Accent): KeyboardTheme {
             val a = accent.color
             return if (dark) {
+                // Dark greys swallow pastel easily, so the accent is mixed in more strongly than in light.
                 KeyboardTheme(
                     dark = true,
-                    background = blend(0xFF1C1D21.toInt(), a, 0.06f),
-                    key = blend(0xFF3A3C42.toInt(), a, 0.04f),
-                    function = blend(0xFF2A2C31.toInt(), a, 0.10f),
-                    pressed = blend(0xFF55585F.toInt(), a, 0.20f),
+                    background = blend(0xFF1C1D21.toInt(), a, 0.16f),
+                    key = blend(0xFF35373D.toInt(), a, 0.12f),
+                    function = blend(0xFF2A2C31.toInt(), a, 0.32f),
+                    pressed = blend(0xFF55585F.toInt(), a, 0.45f),
                     accent = a,
                     text = 0xFFEDEEF0.toInt(),
                     onAccent = 0xFF1E2128.toInt(),
-                    hint = 0xFF9EA3AB.toInt(),
-                    popup = 0xFF4A4D54.toInt(),
+                    hint = blend(0xFF9EA3AB.toInt(), a, 0.6f),
+                    popup = blend(0xFF4A4D54.toInt(), a, 0.2f),
                 )
             } else {
                 KeyboardTheme(

@@ -47,6 +47,8 @@ data class KeyboardSettings(
     val translationAccurate: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accent: Accent = Accent.SKY,
+    /** The phone also works as a Bluetooth keyboard for a computer (off by default). */
+    val bluetoothKeyboard: Boolean = false,
 ) {
     val startMode: KeyboardMode get() = if (rememberLastMode) lastMode ?: defaultMode else defaultMode
 
@@ -95,6 +97,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.TRANSLATION_ACCURATE] = updated.translationAccurate
             prefs[Keys.THEME_MODE] = updated.themeMode.name
             prefs[Keys.ACCENT] = updated.accent.name
+            prefs[Keys.BLUETOOTH_KEYBOARD] = updated.bluetoothKeyboard
         }
     }
 
@@ -134,6 +137,7 @@ class SettingsRepository(context: Context) {
             translationAccurate = this[Keys.TRANSLATION_ACCURATE] ?: defaults.translationAccurate,
             themeMode = enumOrNull<ThemeMode>(this[Keys.THEME_MODE]) ?: defaults.themeMode,
             accent = enumOrNull<Accent>(this[Keys.ACCENT]) ?: defaults.accent,
+            bluetoothKeyboard = this[Keys.BLUETOOTH_KEYBOARD] ?: defaults.bluetoothKeyboard,
         )
     }
 
@@ -163,5 +167,6 @@ class SettingsRepository(context: Context) {
         val TRANSLATION_ACCURATE = booleanPreferencesKey("translation_accurate")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val ACCENT = stringPreferencesKey("accent")
+        val BLUETOOTH_KEYBOARD = booleanPreferencesKey("bluetooth_keyboard")
     }
 }
