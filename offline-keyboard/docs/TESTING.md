@@ -78,3 +78,23 @@
 ## Відомі обмеження
 
 Див. [KEY_SUPPORT.md](KEY_SUPPORT.md) і розділ 8 [технічного звіту](STAGE0_TECHNICAL_REPORT.md).
+
+## Автоматичні UI-тести на емуляторі (CI, job `ui-tests`)
+
+`app/src/androidTest/.../KeyboardUiTest.kt` вмикає й вибирає клавіатуру через `ime enable/set`,
+відкриває тестову активність (лише debug, `app/src/debug`) і натискає клавіші справжніми дотиками
+(`UiAutomation.injectInputEvent`) у місцях, де їх намальовано:
+
+| Тест | Що перевіряє |
+|---|---|
+| `typesAndDeletesUkrainianText` | набір «привіт», Backspace |
+| `shiftCapitalisesOneLetter` | одноразовий Shift |
+| `longPressGivesUkrainianAndRussianLetters` | довге натискання: е → є, и → ы |
+| `languageButtonShowsOwnNames` | «Укр» / «Pol» / «Eng» |
+| `suggestionsWorkFromTheFirstStart` | базовий словник: «дяк» → «дякую » |
+| `passwordFieldShowsNoSuggestions` | без підказок у паролях |
+| `enterStartsANewLineInMultiLineFields` | Enter у багаторядковому полі |
+| `computerKeyboardHasNoLanguageOrModeKeyAndWinSpaceSwitches` | ПК-розкладка, Win+Space, Ctrl+A + Backspace |
+| `everyThemeRenders` | 10 тем (світла/темна × 5 кольорів) |
+
+Скриншоти кожного стану — в artifact `offline-keyboard-ui-tests`.
