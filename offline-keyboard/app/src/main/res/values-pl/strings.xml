@@ -36,7 +36,7 @@
 
     <string name="section_privacy">Prywatność</string>
     <string name="privacy_no_network">Aplikacja nie ma uprawnienia do internetu</string>
-    <string name="privacy_text">Bez serwera, konta i analityki. Wpisany tekst i dźwięk nie są zapisywane ani logowane. Twój słownik (jeśli włączysz naukę), ustawienia i modele pozostają na urządzeniu i są wyłączone z kopii zapasowej w chmurze.</string>
+    <string name="privacy_text">Bez serwera, konta i analityki. Wpisany tekst i dźwięk nie są zapisywane ani logowane. Twój słownik (jeśli włączysz naukę), słownik tłumaczenia, ustawienia i modele pozostają na urządzeniu i są wyłączone z kopii zapasowej w chmurze. Bluetooth jest używany tylko w trybie klawiatury dla komputera, jeśli go włączysz.</string>
 
     <string name="section_about">O aplikacji</string>
     <string name="about_version">Wersja %1$s</string>
@@ -62,7 +62,7 @@
     <string name="page_dictionary_summary_off">Nauka wyłączona · słów: %1$d</string>
     <string name="page_models">Modele offline</string>
     <string name="page_models_summary">Zainstalowano %1$d z %2$d (głos i tłumaczenie dla Укр/Pol/Eng)</string>
-    <string name="language_switch_hint">Zmiana języka: przycisk języka nad klawiszami, przesunięcie spacji lub Win+Space na klawiaturze komputerowej (własny skrót można dodać niżej).</string>
+    <string name="language_switch_hint">Zmiana języka: klawisz języka (klawiatura mobilna), przesunięcie spacji lub Win+Space na komputerowej. Bieżący język jest napisany na spacji.</string>
     <string name="shortcuts_intro">Skróty działają na klawiaturze komputerowej. Stuknij modyfikatory (Ctrl, Alt, Shift, Win), a potem klawisz. Skrót z samych modyfikatorów (np. Alt+Shift) działa, gdy przez pół sekundy nie zostanie naciśnięty inny klawisz.</string>
     <string name="shortcuts_list">Twoje skróty</string>
     <string name="shortcuts_empty">Brak skrótów.</string>
@@ -108,9 +108,9 @@
     <string name="models_translation_hint">Potrzebny do przycisku tłumaczenia. Każdy kierunek to osobny plik; bez niego ten kierunek nie działa. Dokładne modele tłumaczą wyraźnie lepiej, ale są trzy razy większe i wolniejsze — dla telefonów z 6 GB pamięci i więcej.</string>
     <string name="mic_permission">Dostęp do mikrofonu</string>
     <string name="mic_permission_grant">Zezwól na mikrofon</string>
-    <string name="mic_permission_granted">Mikrofon dozwolony. Stuknij 🎤 ponownie.</string>
+    <string name="mic_permission_granted">Mikrofon dozwolony. Stuknij «Głos» jeszcze raz.</string>
     <string name="mic_permission_settings">Zezwól na mikrofon w ustawieniach aplikacji, aby dyktować.</string>
-    <string name="toolbar_translate_description">Tłumaczenie (stuknij ponownie: zmień kierunek)</string>
+    <string name="toolbar_translate_description">Tłumaczenie (kolejne stuknięcie — inny język)</string>
     <string name="toolbar_voice_cancel_description">Anuluj dyktowanie</string>
     <string name="voice_loading">Przygotowuję głos (%1$s)…</string>
     <string name="voice_listening">● Słucham (%1$s)</string>
@@ -136,7 +136,7 @@
     <string name="translate_on_auto">Tłumaczenie %1$s: po prostu pisz</string>
     <string name="translation_mode">Jak tłumaczyć</string>
     <string name="translation_mode_auto">Automatycznie (bez potwierdzania)</string>
-    <string name="translation_mode_manual">Po naciśnięciu Enter (⇄) dla każdego fragmentu</string>
+    <string name="translation_mode_manual">Dopiero po Enter</string>
     <string name="action_translate_clipboard">Przetłumacz zaznaczenie / wklej z tłumaczeniem</string>
     <string name="clipboard_chip_description">Przetłumacz zaznaczony tekst lub wklej schowek z tłumaczeniem</string>
     <string name="clipboard_empty">Nic nie zaznaczono, schowek pusty</string>

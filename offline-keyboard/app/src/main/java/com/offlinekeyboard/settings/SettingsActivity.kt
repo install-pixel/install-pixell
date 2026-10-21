@@ -233,6 +233,11 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 onOpen(Page.MODELS)
             }
             HorizontalDivider()
+            val glossarySize = remember { com.offlinekeyboard.translation.GlossaryStore.get(context).glossary.size }
+            NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) {
+                onOpen(Page.GLOSSARY)
+            }
+            HorizontalDivider()
             NavRow(
                 stringResource(R.string.page_bluetooth),
                 stringResource(if (s.bluetoothKeyboard) R.string.page_bluetooth_on else R.string.page_bluetooth_off),
@@ -348,11 +353,6 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 }
             }
             Text(stringResource(R.string.translation_direction_hint), style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider()
-            val glossarySize = remember { com.offlinekeyboard.translation.GlossaryStore.get(context).glossary.size }
-            NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) {
-                onOpen(Page.GLOSSARY)
-            }
         }
 
         Section(stringResource(R.string.section_privacy)) {
