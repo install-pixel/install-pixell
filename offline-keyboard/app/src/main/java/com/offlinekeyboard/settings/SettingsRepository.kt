@@ -9,8 +9,10 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.offlinekeyboard.core.Shortcut
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
+import com.offlinekeyboard.core.translation.TranslationDirection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -25,7 +27,15 @@ data class KeyboardSettings(
     val autoCapitalize: Boolean = true,
     val spaceSwipeSwitchesLanguage: Boolean = true,
     val hapticFeedback: Boolean = true,
-    val voiceLanguage: Language = Language.UK,
+    /** Null: dictate in the current keyboard language. */
+    val voiceLanguage: Language? = null,
+    val voiceCommands: Boolean = true,
+    val shortcuts: List<Shortcut> = Shortcut.defaults,
+    /** Off by default: no input history is collected unless the user turns it on. */
+    val learnWords: Boolean = false,
+    val showSuggestions: Boolean = true,
+    val translateEnabled: Boolean = false,
+    val translationDirection: TranslationDirection = TranslationDirection.UK_TO_PL,
 ) {
     val startMode: KeyboardMode get() = if (rememberLastMode) lastMode ?: defaultMode else defaultMode
 
@@ -61,7 +71,14 @@ class SettingsRepository(context: Context) {
             prefs[Keys.AUTO_CAPITALIZE] = updated.autoCapitalize
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.HAPTIC] = updated.hapticFeedback
-            prefs[Keys.VOICE_LANGUAGE] = updated.voiceLanguage.name
+            val voice = updated.voiceLanguage
+            if (voice != null) prefs[Keys.VOICE_LANGUAGE] = voice.name else prefs.remove(Keys.VOICE_LANGUAGE)
+            prefs[Keys.VOICE_COMMANDS] = updated.voiceCommands
+            prefs[Keys.SHORTCUTS] = Shortcut.encode(updated.shortcuts)
+            prefs[Keys.LEARN_WORDS] = updated.learnWords
+            prefs[Keys.SHOW_SUGGESTIONS] = updated.showSuggestions
+            prefs[Keys.TRANSLATE_ENABLED] = updated.translateEnabled
+            prefs[Keys.TRANSLATION_DIRECTION] = updated.translationDirection.name
         }
     }
 
@@ -87,7 +104,14 @@ class SettingsRepository(context: Context) {
             autoCapitalize = this[Keys.AUTO_CAPITALIZE] ?: defaults.autoCapitalize,
             spaceSwipeSwitchesLanguage = this[Keys.SPACE_SWIPE] ?: defaults.spaceSwipeSwitchesLanguage,
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
-            voiceLanguage = enumOrNull<Language>(this[Keys.VOICE_LANGUAGE]) ?: defaults.voiceLanguage,
+            voiceLanguage = enumOrNull<Language>(this[Keys.VOICE_LANGUAGE]),
+            voiceCommands = this[Keys.VOICE_COMMANDS] ?: defaults.voiceCommands,
+            shortcuts = this[Keys.SHORTCUTS]?.let { Shortcut.decode(it) } ?: defaults.shortcuts,
+            learnWords = this[Keys.LEARN_WORDS] ?: defaults.learnWords,
+            showSuggestions = this[Keys.SHOW_SUGGESTIONS] ?: defaults.showSuggestions,
+            translateEnabled = this[Keys.TRANSLATE_ENABLED] ?: defaults.translateEnabled,
+            translationDirection = enumOrNull<TranslationDirection>(this[Keys.TRANSLATION_DIRECTION])
+                ?: defaults.translationDirection,
         )
     }
 
@@ -106,5 +130,11 @@ class SettingsRepository(context: Context) {
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
         val VOICE_LANGUAGE = stringPreferencesKey("voice_language")
+        val VOICE_COMMANDS = booleanPreferencesKey("voice_commands")
+        val SHORTCUTS = stringPreferencesKey("shortcuts")
+        val LEARN_WORDS = booleanPreferencesKey("learn_words")
+        val SHOW_SUGGESTIONS = booleanPreferencesKey("show_suggestions")
+        val TRANSLATE_ENABLED = booleanPreferencesKey("translate_enabled")
+        val TRANSLATION_DIRECTION = stringPreferencesKey("translation_direction")
     }
 }

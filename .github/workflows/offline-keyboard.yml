@@ -39,7 +39,7 @@ jobs:
       - name: Unit tests, lint and debug APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+          ./gradlew --no-daemon :core:test :mt:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 
       # Offline is a hard requirement: fail the build if any network permission reaches the APK.
       - name: Check APK has no network permissions

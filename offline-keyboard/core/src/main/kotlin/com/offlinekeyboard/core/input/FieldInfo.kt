@@ -120,4 +120,4 @@ sealed interface EnterResolution {
 
 enum class TabResolution { InsertTab, KeyEvent }
 
-enum class EnterLabel { NEWLINE, GO, SEARCH, SEND, NEXT, PREVIOUS, DONE }
+enum class EnterLabel { NEWLINE, GO, SEARCH, SEND, NEXT, PREVIOUS, DONE, TRANSLATE }

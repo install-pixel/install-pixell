@@ -97,5 +97,6 @@ object KeyLabels {
         EnterLabel.NEXT -> "Next"
         EnterLabel.PREVIOUS -> "Prev"
         EnterLabel.DONE -> "✓"
+        EnterLabel.TRANSLATE -> "⇄"
     }
 }

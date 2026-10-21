@@ -12,8 +12,13 @@ android {
         applicationId = "com.offlinekeyboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+
+        // Native code of Vosk and ONNX Runtime: phones (64/32-bit ARM) and the x86_64 emulator.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -45,6 +50,13 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":mt"))
+
+    // Offline speech recognition (Apache 2.0) and the JNA runtime it uses.
+    implementation("com.alphacephei:vosk-android:0.3.75@aar")
+    implementation("net.java.dev.jna:jna:5.18.1@aar")
+    // Offline translation runtime (MIT); same ai.onnxruntime API the :mt module compiles against.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.9.3")
