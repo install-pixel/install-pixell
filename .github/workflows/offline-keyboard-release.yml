@@ -19,6 +19,8 @@ permissions:
 jobs:
   apk:
     uses: ./.github/workflows/offline-keyboard.yml
+    permissions:
+      contents: write
 
   models:
     uses: ./.github/workflows/offline-keyboard-models.yml
