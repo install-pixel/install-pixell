@@ -17,7 +17,7 @@ on:
 
 # A newer push replaces a run still in progress for the same branch.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: keyboard-models-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
