@@ -96,10 +96,10 @@ internal fun SetupStep(title: String, done: Boolean, action: String, onClick: ()
     }
 }
 
-/** Five round colour swatches, each a 48 dp touch target. */
+/** Five round colour swatches, each a 44 dp touch target (they fit a 320 dp wide screen). */
 @Composable
 internal fun AccentPicker(selected: Accent, onSelect: (Accent) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (accent in Accent.entries) {
             val name = stringResource(
                 when (accent) {
@@ -112,7 +112,7 @@ internal fun AccentPicker(selected: Accent, onSelect: (Accent) -> Unit) {
             )
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(Color(accent.color))
                     .border(

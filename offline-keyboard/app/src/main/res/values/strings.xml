@@ -57,12 +57,12 @@
     <string name="search">Search</string>
     <string name="section_features">Features</string>
     <string name="page_shortcuts">Shortcuts</string>
-    <string name="page_shortcuts_summary">%1$d shortcuts · computer mode</string>
+    <string name="page_shortcuts_summary">Shortcuts: %1$d · computer keyboard</string>
     <string name="page_dictionary">My dictionary</string>
     <string name="page_dictionary_summary_on">Learning on · %1$d words</string>
     <string name="page_dictionary_summary_off">Learning off · %1$d words</string>
     <string name="page_models">Offline models</string>
-    <string name="page_models_summary">Installed %1$d of %2$d (voice UK/PL/EN, translation UK↔PL)</string>
+    <string name="page_models_summary">Installed %1$d of %2$d (voice Укр/Pol/Eng, translation Укр↔Pol)</string>
     <string name="language_switch_hint">Change language: the language button above the keys, swiping the space bar, or Win+Space on the computer keyboard (you can add your own combination below).</string>
     <string name="shortcuts_intro">Shortcuts work on the computer keyboard. Tap the modifiers (Ctrl, Alt, Shift, Win) and then the key. A combination of modifiers only (for example Alt+Shift) runs when no other key follows within half a second.</string>
     <string name="shortcuts_list">Your shortcuts</string>
