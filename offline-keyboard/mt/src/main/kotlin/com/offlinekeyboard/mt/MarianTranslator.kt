@@ -9,6 +9,7 @@ import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.core.translation.TranslationEngine
 import com.offlinekeyboard.core.translation.TranslationResult
 import java.io.File
+import java.nio.FloatBuffer
 import java.nio.LongBuffer
 import java.util.Properties
 
@@ -148,6 +149,154 @@ class MarianOnnxModel(pkg: MarianPackage, threads: Int = 2) : AutoCloseable {
         }
     }
 
+    /**
+     * Beam search like Hugging Face `generate(num_beams=B)` (length_penalty 1.0): keeps the B best partial
+     * translations, so one unlucky word choice does not derail the sentence. Beams run as one batch; the
+     * decoder's key/value cache is reordered after each step. Needs decoder_with_past_model.onnx.
+     */
+    fun generateBeam(inputIds: LongArray, maxNewTokens: Int, beams: Int, lengthPenalty: Double = 1.0): LongArray {
+        val withPast = decoderWithPast
+        if (beams <= 1 || withPast == null) return generate(inputIds, maxNewTokens)
+        val n = inputIds.size
+        val toClose = ArrayList<AutoCloseable>()
+        var owned: List<OnnxTensor> = emptyList() // reordered decoder cache of the current step
+        try {
+            val idsTensor = tensor(inputIds, longArrayOf(1, n.toLong())).also(toClose::add)
+            val mask1 = tensor(LongArray(n) { 1L }, longArrayOf(1, n.toLong())).also(toClose::add)
+            val encoderResult = encoder.run(mapOf("input_ids" to idsTensor, "attention_mask" to mask1)).also(toClose::add)
+            val hidden1 = encoderResult.get("last_hidden_state").orElseGet { encoderResult.get(0) } as OnnxTensor
+            val hShape = hidden1.info.shape
+            val one = FloatArray((hShape[1] * hShape[2]).toInt()).also { hidden1.floatBuffer.get(it) }
+            val hiddenB = FloatArray(one.size * beams).also { arr -> repeat(beams) { b -> one.copyInto(arr, b * one.size) } }
+            val hiddenTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(hiddenB), longArrayOf(beams.toLong(), hShape[1], hShape[2]))
+                .also(toClose::add)
+            val maskB = tensor(LongArray(beams * n) { 1L }, longArrayOf(beams.toLong(), n.toLong())).also(toClose::add)
+
+            var seqs = List(beams) { LongArray(0) }
+            var scores = DoubleArray(beams) { if (it == 0) 0.0 else Double.NEGATIVE_INFINITY }
+            val finished = ArrayList<Pair<LongArray, Double>>()
+            val presents = HashMap<String, OnnxTensor>()
+            var firstResult: OrtSession.Result? = null
+
+            for (step in 0 until maxNewTokens) {
+                val session = if (step == 0) decoder else withPast
+                val lastTokens = LongArray(beams) { b -> if (step == 0) decoderStartId else seqs[b].last() }
+                val result = tensor(lastTokens, longArrayOf(beams.toLong(), 1)).use { ids ->
+                    val inputs = HashMap<String, OnnxTensor>()
+                    for (name in session.inputNames) {
+                        when {
+                            name == "input_ids" -> inputs[name] = ids
+                            name == "encoder_attention_mask" || name == "attention_mask" -> inputs[name] = maskB
+                            name == "encoder_hidden_states" -> inputs[name] = hiddenTensor
+                            name.startsWith("past_key_values.") ->
+                                inputs[name] = presents[name.removePrefix("past_key_values.")] ?: error("Missing cache tensor for $name")
+                            else -> error("Unexpected decoder input $name")
+                        }
+                    }
+                    session.run(inputs)
+                }
+                if (firstResult == null) {
+                    firstResult = result
+                    toClose += result
+                }
+
+                // Candidate (beam, token, score) — keep the 2B best over all beams.
+                val logits = result.get("logits").get() as OnnxTensor
+                val vocab = logits.info.shape[2].toInt()
+                val buf = logits.floatBuffer
+                val candBeam = IntArray(2 * beams)
+                val candToken = IntArray(2 * beams)
+                val candScore = DoubleArray(2 * beams) { Double.NEGATIVE_INFINITY }
+                for (b in 0 until beams) {
+                    if (scores[b] == Double.NEGATIVE_INFINITY) continue
+                    val off = b * vocab
+                    var max = Float.NEGATIVE_INFINITY
+                    for (v in 0 until vocab) if (v != padId) max = maxOf(max, buf.get(off + v))
+                    var sum = 0.0
+                    for (v in 0 until vocab) if (v != padId) sum += Math.exp((buf.get(off + v) - max).toDouble())
+                    val logZ = max + Math.log(sum)
+                    for (v in 0 until vocab) {
+                        if (v == padId) continue
+                        val sc = scores[b] + (buf.get(off + v) - logZ)
+                        if (sc <= candScore[candScore.size - 1]) continue
+                        var i = candScore.size - 1
+                        while (i > 0 && candScore[i - 1] < sc) {
+                            candScore[i] = candScore[i - 1]; candBeam[i] = candBeam[i - 1]; candToken[i] = candToken[i - 1]
+                            i--
+                        }
+                        candScore[i] = sc; candBeam[i] = b; candToken[i] = v
+                    }
+                }
+
+                val newSeqs = ArrayList<LongArray>(beams)
+                val newScores = ArrayList<Double>(beams)
+                val sourceBeam = ArrayList<Int>(beams)
+                for (rank in candScore.indices) {
+                    if (candScore[rank] == Double.NEGATIVE_INFINITY) break
+                    val b = candBeam[rank]
+                    val tok = candToken[rank]
+                    if (tok == eosId) {
+                        // Like Hugging Face: an end-of-sentence only counts if it is among the B best.
+                        if (rank < beams) finished += seqs[b] to candScore[rank] / Math.pow(seqs[b].size + 1.0, lengthPenalty)
+                    } else {
+                        newSeqs += seqs[b] + tok.toLong()
+                        newScores += candScore[rank]
+                        sourceBeam += b
+                    }
+                    if (newSeqs.size == beams) break
+                }
+
+                // Reorder the decoder cache to follow the surviving beams (encoder cache is the same for all).
+                val reordered = ArrayList<OnnxTensor>()
+                for ((name, value) in result) {
+                    if (!name.startsWith("present.")) continue
+                    val key = name.removePrefix("present.")
+                    if (".encoder." in key && step > 0) continue
+                    val t = value as OnnxTensor
+                    if (".encoder." in key) {
+                        presents[key] = t // from the first result, kept open
+                        continue
+                    }
+                    val shape = t.info.shape
+                    val block = (shape[1] * shape[2] * shape[3]).toInt()
+                    val src = FloatArray(block * beams).also { t.floatBuffer.get(it) }
+                    val dst = FloatArray(block * beams)
+                    for (i in 0 until beams) {
+                        val from = sourceBeam.getOrElse(i) { sourceBeam.firstOrNull() ?: 0 }
+                        src.copyInto(dst, i * block, from * block, from * block + block)
+                    }
+                    val nt = OnnxTensor.createTensor(env, FloatBuffer.wrap(dst), shape)
+                    reordered += nt
+                    presents[key] = nt
+                }
+                owned.forEach { it.close() }
+                owned = reordered
+                if (result !== firstResult) result.close()
+
+                if (newSeqs.isEmpty()) break
+                while (newSeqs.size < beams) { newSeqs += newSeqs.last(); newScores += Double.NEGATIVE_INFINITY; sourceBeam += 0 }
+                seqs = newSeqs
+                scores = newScores.toDoubleArray()
+
+                // Done when B hypotheses are finished and no live beam can still beat the best of them.
+                if (finished.size >= beams) {
+                    val bestFinished = finished.maxOf { it.second }
+                    val bestAlive = scores.max() / Math.pow(seqs[0].size.toDouble(), lengthPenalty)
+                    if (bestAlive <= bestFinished) break
+                }
+            }
+            if (finished.isEmpty()) {
+                for (b in 0 until beams) {
+                    if (scores[b] > Double.NEGATIVE_INFINITY) finished += seqs[b] to scores[b] / Math.pow(seqs[b].size.toDouble(), lengthPenalty)
+                }
+            }
+            return finished.maxByOrNull { it.second }?.first ?: LongArray(0)
+        } finally {
+            owned.forEach { runCatching { it.close() } }
+            toClose.asReversed().forEach { runCatching { it.close() } }
+        }
+    }
+
     private fun argmaxLast(logits: OnnxTensor): Int {
         val shape = logits.info.shape // [1, t, vocab]
         val vocab = shape[2].toInt()
@@ -179,6 +328,10 @@ class MarianTranslationEngine(private val pkg: MarianPackage, threads: Int = 2) 
     private val tokenizer = MarianTokenizer(pkg)
     private val model = MarianOnnxModel(pkg, threads)
 
+    /** 1 = greedy (fast, for live previews); 4 = beam search (more faithful, for the text that is inserted). */
+    @Volatile
+    var beams: Int = DEFAULT_BEAMS
+
     override fun availability(direction: TranslationDirection) =
         if (direction == pkg.direction) EngineAvailability.READY else EngineAvailability.MODEL_MISSING
 
@@ -194,11 +347,55 @@ class MarianTranslationEngine(private val pkg: MarianPackage, threads: Int = 2) 
         }
     }
 
+    fun translate(text: String, direction: TranslationDirection, beams: Int): TranslationResult = synchronized(this) {
+        val previous = this.beams
+        this.beams = beams
+        try {
+            translate(text, direction)
+        } finally {
+            this.beams = previous
+        }
+    }
+
     @Synchronized
     fun translateSentence(sentence: String): String {
-        val ids = tokenizer.encode(sentence)
+        // The models were trained on whole sentences; an unfinished phrase without a final mark makes them
+        // invent text. Translate it as a sentence and drop the added full stop again.
+        val needsStop = sentence.last() !in SENTENCE_MARKS
+        val input = if (needsStop) "$sentence." else sentence
+        val ids = tokenizer.encode(input)
+        val limit = minOf(model.maxLength, ids.size * 2 + 10)
+        val tokens = if (beams > 1) model.generateBeam(ids, limit, beams) else model.generate(ids, limit)
+        var out = cleanUp(tokenizer.decode(tokens), sentence)
+        if (needsStop && out.endsWith('.') && !out.endsWith("..")) out = out.dropLast(1)
+        return out
+    }
+
+    fun translateSentence(sentence: String, beams: Int): String = synchronized(this) {
+        val previous = this.beams
+        this.beams = beams
+        try { translateSentence(sentence) } finally { this.beams = previous }
+    }
+
+    /** Plain decoding without the keyboard's adjustments; used to compare with Hugging Face in CI. */
+    @Synchronized
+    fun translateRaw(text: String, beams: Int): String {
+        val ids = tokenizer.encode(text)
         val limit = minOf(model.maxLength, ids.size * 3 + 16)
-        return tokenizer.decode(model.generate(ids, limit))
+        return tokenizer.decode(if (beams > 1) model.generateBeam(ids, limit, beams) else model.generate(ids, limit))
+    }
+
+    /** Removes artefacts the models add from subtitle-style training data (leading "- ", "/"). */
+    private fun cleanUp(translation: String, source: String): String {
+        var t = translation.trim()
+        if (!source.trimStart().startsWith("-")) t = t.removePrefix("- ").removePrefix("– ")
+        if ("/" !in source) t = t.replace("/", "")
+        return t.trim()
+    }
+
+    companion object {
+        const val DEFAULT_BEAMS = 4
+        private const val SENTENCE_MARKS = ".!?…:;"
     }
 
     fun encodeForTest(text: String): LongArray = tokenizer.encode(text)

@@ -14,7 +14,8 @@ object LayoutProvider {
         language: Language,
         layer: Layer,
         mobileCursorRow: Boolean = false,
-    ): KeyboardLayout = when (mode) {
+    ): KeyboardLayout = withoutDuplicateAlternatives(
+        when (mode) {
         KeyboardMode.COMPUTER -> when (layer) {
             Layer.FUNCTION -> computerFunction()
             Layer.SYMBOLS, Layer.SYMBOLS_MORE -> computerSymbols()
@@ -28,6 +29,20 @@ object LayoutProvider {
             }
             if (mobileCursorRow) withCursorRow(base) else base
         }
+        },
+    )
+
+    /**
+     * A long-press option that is already a key of the same layout would show the same character twice
+     * (e.g. "є" as a key and as a hint on "е"), so it is dropped.
+     */
+    private fun withoutDuplicateAlternatives(layout: KeyboardLayout): KeyboardLayout {
+        val onKeys = layout.allKeys().mapNotNull { (it.action as? KeyAction.Text)?.text }.toSet()
+        return KeyboardLayout(
+            layout.rows.map { row ->
+                row.map { key -> if (key.alternatives.any { it in onKeys }) key.copy(alternatives = key.alternatives - onKeys) else key }
+            },
+        )
     }
 
     // ---------------------------------------------------------------- computer mode
@@ -219,7 +234,7 @@ object LayoutProvider {
     )
 
     private val ukrainianAlternatives = mapOf(
-        "г" to listOf("ґ"), "і" to listOf("ї"), "х" to listOf("ї"), "е" to listOf("є"), "ь" to listOf("'", "ʼ"),
+        "г" to listOf("ґ"), "і" to listOf("ї"), "е" to listOf("є"), "ь" to listOf("ʼ"),
     )
 
     private val englishAlternatives = mapOf(

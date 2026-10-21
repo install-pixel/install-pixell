@@ -1,5 +1,6 @@
 package com.offlinekeyboard.mt
 
+import com.offlinekeyboard.core.translation.TranslationCheck
 import com.offlinekeyboard.core.translation.TranslationResult
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -8,7 +9,7 @@ import java.io.File
 
 /**
  * Runs the Kotlin translator on real exported model packages (directory from MT_MODELS_DIR, set by CI) and
- * compares it with the Hugging Face tokenizer and the reference translations made by tools/mt/export_opus_mt.py.
+ * compares it with the Hugging Face tokenizer and reference translations made by tools/mt/export_opus_mt.py.
  * Writes a review report (all phrases, both directions, timings) to MT_REPORT_DIR.
  */
 class MarianModelTest {
@@ -39,48 +40,54 @@ class MarianModelTest {
         }
     }
 
+    /** Same decoding algorithm as Hugging Face must give (nearly) the same output. */
+    private fun matchRate(engine: MarianTranslationEngine, cases: List<Pair<String, String>>, beams: Int): Pair<Int, Long> {
+        var exact = 0
+        val t0 = System.nanoTime()
+        for ((source, reference) in cases) {
+            val ours = engine.translateRaw(source, beams)
+            if (ours == reference) exact++ else println("  ≠ beams=$beams  $source  →  $ours   [HF: $reference]")
+        }
+        return exact to (System.nanoTime() - t0) / 1_000_000 / cases.size
+    }
+
     @Test
     fun translationsMatchReference() {
         val report = StringBuilder("# Offline translation check\n\n")
         for (pkg in packages()) {
-            val cases = tsv(File(pkg.dir, "reference.tsv"))
+            val greedyCases = tsv(File(pkg.dir, "reference.tsv"))
+            val beamFile = File(pkg.dir, "reference_beam.tsv")
             MarianTranslationEngine(pkg, threads = 2).use { engine ->
-                engine.translateSentence(cases.first().first) // warm-up
-                var exact = 0
+                engine.translateRaw(greedyCases.first().first, 1) // warm-up
+
+                val (greedyExact, greedyMs) = matchRate(engine, greedyCases, 1)
+                val (beamExact, beamMs) = if (beamFile.isFile) matchRate(engine, tsv(beamFile), 4) else (-1 to 0L)
+
+                // What the keyboard inserts: beam search + sentence handling + artefact clean-up.
                 var valuesLost = 0
                 val rows = ArrayList<String>()
-                val start = System.nanoTime()
-                var slowestMs = 0L
-                for ((source, reference) in cases) {
+                var keyboardMs = 0L
+                for ((source, _) in greedyCases) {
                     val t0 = System.nanoTime()
-                    val result = engine.translate(source, pkg.direction)
-                    val ms = (System.nanoTime() - t0) / 1_000_000
-                    slowestMs = maxOf(slowestMs, ms)
+                    val result = engine.translate(source, pkg.direction, MarianTranslationEngine.DEFAULT_BEAMS)
+                    keyboardMs += (System.nanoTime() - t0) / 1_000_000
                     val ours = (result as? TranslationResult.Success)?.text ?: "ERROR: $result"
-                    // The reference is sentence-by-sentence only when the phrase is one sentence.
-                    val same = ours == reference
-                    if (same) exact++
-                    val lost = com.offlinekeyboard.core.translation.TranslationCheck.missing(source, ours)
-                    if (lost.isNotEmpty()) {
-                        valuesLost++
-                        println("${pkg.direction} ⚠ numbers/codes changed: $lost in: $source → $ours")
-                    }
-                    rows += "| ${source.md()} | ${ours.md()} | ${if (same) "=" else reference.md()} | $ms |"
-                    // Printed so the translations can be reviewed straight from the CI log.
-                    println("${pkg.direction} ${if (same) "=" else "≠"} $source  →  $ours" + if (same) "" else "   [HF: $reference]")
+                    val lost = TranslationCheck.missing(source, ours)
+                    if (lost.isNotEmpty()) valuesLost++
+                    println("${pkg.direction} ${if (lost.isEmpty()) "=" else "⚠$lost"} $source  →  $ours")
+                    rows += "| ${source.md()} | ${ours.md()} | ${lost.joinToString()} |"
                 }
-                val totalMs = (System.nanoTime() - start) / 1_000_000
-                val rate = exact * 100 / cases.size
-                report.append("## ${pkg.direction} — ${pkg.modelName} (license: ${pkg.license})\n\n")
-                    .append("Exact match with Hugging Face greedy reference: $exact/${cases.size} ($rate%). ")
-                    .append("Numbers/codes changed (keyboard warns): $valuesLost. ")
-                    .append("Total ${totalMs} ms, average ${totalMs / cases.size} ms, slowest $slowestMs ms (CI CPU, 2 threads).\n\n")
-                    .append("| Source | Translation (keyboard) | Reference if different | ms |\n|---|---|---|---|\n")
+                val n = greedyCases.size
+                val summary = "${pkg.direction}: greedy = HF $greedyExact/$n (${greedyMs} ms/phrase); " +
+                    "beam4 = HF $beamExact/$n (${beamMs} ms/phrase); keyboard output: numbers/codes changed $valuesLost/$n, " +
+                    "avg ${keyboardMs / n} ms"
+                println(summary)
+                report.append("## ${pkg.direction} — ${pkg.modelName} (license: ${pkg.license})\n\n$summary\n\n")
+                    .append("| Source | Keyboard translation (beam 4) | Values changed |\n|---|---|---|\n")
                 rows.forEach { report.append(it).append('\n') }
                 report.append('\n')
-                println("${pkg.direction}: exact $exact/${cases.size}, numbers/codes changed $valuesLost, avg ${totalMs / cases.size} ms")
-                // Multi-sentence phrases are split by the keyboard and may legitimately differ; most must match.
-                assertTrue("${pkg.direction}: only $rate% match the reference", rate >= 85)
+                assertTrue("${pkg.direction}: greedy decoding differs from Hugging Face too often", greedyExact * 100 / n >= 85)
+                if (beamExact >= 0) assertTrue("${pkg.direction}: beam search differs from Hugging Face too often", beamExact * 100 / n >= 70)
             }
         }
         reportDir?.let {

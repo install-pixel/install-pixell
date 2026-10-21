@@ -112,3 +112,38 @@ class LayoutProviderTest {
         assertEquals('z', ya.physical)
     }
 }
+
+class LayoutDuplicatesTest {
+    @org.junit.Test
+    fun `no character appears both as a key and as a long-press option`() {
+        for (mode in com.offlinekeyboard.core.layout.KeyboardMode.entries)
+            for (language in com.offlinekeyboard.core.layout.Language.entries)
+                for (layer in com.offlinekeyboard.core.layout.Layer.entries) {
+                    val keys = com.offlinekeyboard.core.layout.LayoutProvider.layout(mode, language, layer).allKeys()
+                    val onKeys = keys.mapNotNull { (it.action as? com.offlinekeyboard.core.layout.KeyAction.Text)?.text }.toSet()
+                    val dup = keys.flatMap { it.alternatives }.filter { it in onKeys }
+                    org.junit.Assert.assertTrue("$mode $language $layer duplicates $dup", dup.isEmpty())
+                }
+    }
+
+    @org.junit.Test
+    fun `each ukrainian special letter is reachable exactly once in mobile mode`() {
+        val keys = com.offlinekeyboard.core.layout.LayoutProvider.layout(
+            com.offlinekeyboard.core.layout.KeyboardMode.MOBILE, com.offlinekeyboard.core.layout.Language.UK,
+            com.offlinekeyboard.core.layout.Layer.LETTERS,
+        ).allKeys()
+        for (c in listOf("ї", "є", "ґ")) {
+            val count = keys.count { (it.action as? com.offlinekeyboard.core.layout.KeyAction.Text)?.text == c } +
+                keys.count { c in it.alternatives }
+            org.junit.Assert.assertEquals(c, 1, count)
+        }
+    }
+
+    @org.junit.Test
+    fun `direction is detected from the script`() {
+        org.junit.Assert.assertEquals(com.offlinekeyboard.core.translation.TranslationDirection.UK_TO_PL, com.offlinekeyboard.core.translation.TranslationDirection.detect("Привіт, як справи?"))
+        org.junit.Assert.assertEquals(com.offlinekeyboard.core.translation.TranslationDirection.PL_TO_UK, com.offlinekeyboard.core.translation.TranslationDirection.detect("Cześć, co słychać?"))
+        org.junit.Assert.assertEquals(com.offlinekeyboard.core.translation.TranslationDirection.UK_TO_PL, com.offlinekeyboard.core.translation.TranslationDirection.detect("Код ABC-123 у системі WMS"))
+        org.junit.Assert.assertEquals(null, com.offlinekeyboard.core.translation.TranslationDirection.detect("12:30 — 45821"))
+    }
+}

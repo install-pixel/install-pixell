@@ -87,10 +87,13 @@ def main() -> None:
     print("Reference translations with the quantized ONNX model (greedy) ...", flush=True)
     ort = ORTModelForSeq2SeqLM.from_pretrained(pkg, use_cache=True, use_merged=False)
     start = time.time()
-    with open(pkg / "reference.tsv", "w", encoding="utf-8") as f:
+    with open(pkg / "reference.tsv", "w", encoding="utf-8") as f, open(pkg / "reference_beam.tsv", "w", encoding="utf-8") as fb:
         for p in phrases:
-            out = ort.generate(**tok(p, return_tensors="pt"), num_beams=1, do_sample=False, max_new_tokens=256)
+            inputs = tok(p, return_tensors="pt")
+            out = ort.generate(**inputs, num_beams=1, do_sample=False, max_new_tokens=256)
             f.write(p + "\t" + tok.decode(out[0], skip_special_tokens=True) + "\n")
+            out = ort.generate(**inputs, num_beams=4, do_sample=False, max_new_tokens=256, length_penalty=1.0)
+            fb.write(p + "\t" + tok.decode(out[0], skip_special_tokens=True) + "\n")
     print(f"  {len(phrases)} phrases in {time.time() - start:.1f}s")
 
     zip_path = args.out / f"offline-keyboard-mt-{slug}.zip"

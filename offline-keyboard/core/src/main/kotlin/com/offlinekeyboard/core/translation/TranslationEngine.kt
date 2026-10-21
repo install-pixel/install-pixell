@@ -15,6 +15,21 @@ enum class TranslationDirection(val source: Language, val target: Language) {
             Language.PL -> PL_TO_UK
             Language.EN -> null
         }
+
+        /** Direction for pasted or selected text: Cyrillic → UK→PL, Latin → PL→UK; null without letters. */
+        fun detect(text: String): TranslationDirection? {
+            var cyrillic = 0
+            var latin = 0
+            for (c in text) {
+                if (!c.isLetter()) continue
+                if (Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CYRILLIC) cyrillic++ else latin++
+            }
+            return when {
+                cyrillic == 0 && latin == 0 -> null
+                cyrillic >= latin -> UK_TO_PL
+                else -> PL_TO_UK
+            }
+        }
     }
 }
 
