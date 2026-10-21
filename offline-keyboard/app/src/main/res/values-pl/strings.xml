@@ -135,4 +135,7 @@
     <string name="translation_failed">Tłumaczenie nie powiodło się: %1$s</string>
     <string name="translation_how">Stuknij ⇄ nad klawiszami. Pisz (lub dyktuj) w języku źródłowym: tekst jest podkreślony. Enter (⇄) zastępuje go tłumaczeniem. Przesunięcie kursora zostawia wpisany tekst bez zmian. Przytrzymaj ⇄, aby zmienić kierunek.</string>
     <string name="translation_direction">Kierunek</string>
+    <string name="translation_check_warning">⚠ Sprawdź tłumaczenie: brak lub zmiana %1$s. Stuknij, aby przywrócić oryginał.</string>
+    <string name="translation_restored">Przywrócono oryginalny tekst.</string>
+    <string name="translation_restore_impossible">Tekst już się zmienił; przywróć go ręcznie.</string>
 </resources>

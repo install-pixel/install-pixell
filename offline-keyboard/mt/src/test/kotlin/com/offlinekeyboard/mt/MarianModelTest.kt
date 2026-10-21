@@ -47,6 +47,7 @@ class MarianModelTest {
             MarianTranslationEngine(pkg, threads = 2).use { engine ->
                 engine.translateSentence(cases.first().first) // warm-up
                 var exact = 0
+                var valuesLost = 0
                 val rows = ArrayList<String>()
                 val start = System.nanoTime()
                 var slowestMs = 0L
@@ -59,6 +60,11 @@ class MarianModelTest {
                     // The reference is sentence-by-sentence only when the phrase is one sentence.
                     val same = ours == reference
                     if (same) exact++
+                    val lost = com.offlinekeyboard.core.translation.TranslationCheck.missing(source, ours)
+                    if (lost.isNotEmpty()) {
+                        valuesLost++
+                        println("${pkg.direction} ⚠ numbers/codes changed: $lost in: $source → $ours")
+                    }
                     rows += "| ${source.md()} | ${ours.md()} | ${if (same) "=" else reference.md()} | $ms |"
                     // Printed so the translations can be reviewed straight from the CI log.
                     println("${pkg.direction} ${if (same) "=" else "≠"} $source  →  $ours" + if (same) "" else "   [HF: $reference]")
@@ -67,11 +73,12 @@ class MarianModelTest {
                 val rate = exact * 100 / cases.size
                 report.append("## ${pkg.direction} — ${pkg.modelName} (license: ${pkg.license})\n\n")
                     .append("Exact match with Hugging Face greedy reference: $exact/${cases.size} ($rate%). ")
+                    .append("Numbers/codes changed (keyboard warns): $valuesLost. ")
                     .append("Total ${totalMs} ms, average ${totalMs / cases.size} ms, slowest $slowestMs ms (CI CPU, 2 threads).\n\n")
                     .append("| Source | Translation (keyboard) | Reference if different | ms |\n|---|---|---|---|\n")
                 rows.forEach { report.append(it).append('\n') }
                 report.append('\n')
-                println("${pkg.direction}: exact $exact/${cases.size}, avg ${totalMs / cases.size} ms")
+                println("${pkg.direction}: exact $exact/${cases.size}, numbers/codes changed $valuesLost, avg ${totalMs / cases.size} ms")
                 // Multi-sentence phrases are split by the keyboard and may legitimately differ; most must match.
                 assertTrue("${pkg.direction}: only $rate% match the reference", rate >= 85)
             }

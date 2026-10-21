@@ -46,10 +46,13 @@ class TranslationComposer(private val connection: () -> InputConnection?) {
         return buffer.toString() to generation
     }
 
-    /** Replaces the composing source with [translation]. Returns false if the segment changed meanwhile. */
-    fun applyTranslation(forGeneration: Int, translation: String): Boolean {
-        if (forGeneration != generation || !pending) return false
-        val ic = connection() ?: return false
+    /**
+     * Replaces the composing source with [translation]. Returns the inserted text, or null if the segment
+     * changed meanwhile (then nothing is touched).
+     */
+    fun applyTranslation(forGeneration: Int, translation: String): String? {
+        if (forGeneration != generation || !pending) return null
+        val ic = connection() ?: return null
         // Keep the user's leading/trailing spaces around the translated words.
         val source = buffer.toString()
         val result = source.takeWhile { it.isWhitespace() } + translation.trim() + source.takeLastWhile { it.isWhitespace() }
@@ -58,7 +61,7 @@ class TranslationComposer(private val connection: () -> InputConnection?) {
         ic.finishComposingText()
         ic.endBatchEdit()
         reset()
-        return true
+        return result
     }
 
     /** Translation failed: keep the source as composing text so the user can edit or commit it. */

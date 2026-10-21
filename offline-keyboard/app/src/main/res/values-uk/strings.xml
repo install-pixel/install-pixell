@@ -135,4 +135,7 @@
     <string name="translation_failed">Не вдалося перекласти: %1$s</string>
     <string name="translation_how">Натисніть ⇄ над клавішами. Набирайте (або диктуйте) мовою оригіналу: текст підкреслений. Enter (⇄) замінює його перекладом. Переміщення курсора залишає набраний текст без змін. Довге натискання ⇄ змінює напрямок.</string>
     <string name="translation_direction">Напрямок</string>
+    <string name="translation_check_warning">⚠ Перевірте переклад: %1$s відсутнє або змінене. Торкніться, щоб повернути оригінал.</string>
+    <string name="translation_restored">Оригінальний текст повернуто.</string>
+    <string name="translation_restore_impossible">Текст уже змінився; поверніть його вручну.</string>
 </resources>

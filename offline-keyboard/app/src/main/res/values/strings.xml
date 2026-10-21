@@ -135,4 +135,7 @@
     <string name="translation_failed">Translation failed: %1$s</string>
     <string name="translation_how">Tap ⇄ above the keys. Type (or dictate) in the source language: the text stays underlined. Enter (⇄) replaces it with the translation. Moving the cursor keeps the typed text unchanged. Long-press ⇄ to swap the direction.</string>
     <string name="translation_direction">Direction</string>
+    <string name="translation_check_warning">⚠ Check the translation: %1$s missing or changed. Tap to restore the original.</string>
+    <string name="translation_restored">Original text restored.</string>
+    <string name="translation_restore_impossible">The text changed; restore it manually.</string>
 </resources>

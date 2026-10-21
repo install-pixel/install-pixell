@@ -46,7 +46,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private val activeColor = context.getColor(R.color.kb_key_active)
 
     private val languageButton = toolbarButton(R.string.toolbar_language_description) { toolbarListener?.onToolbarLanguage() }
+    private var statusAction: (() -> Unit)? = null
     private val status = TextView(context).apply {
+        setOnClickListener { statusAction?.let { action -> statusAction = null; action() } }
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         setTextColor(textColor)
         maxLines = 2
@@ -74,7 +76,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var message: CharSequence? = null
     private var liveText: CharSequence? = null
     private var suggestions: List<String> = emptyList()
-    private val clearMessage = Runnable { message = null; refreshCentre() }
+    private val clearMessage = Runnable { message = null; statusAction = null; refreshCentre() }
 
     init {
         orientation = VERTICAL
@@ -112,12 +114,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         refreshCentre()
     }
 
-    /** Short, non-blocking message (e.g. why a feature is unavailable). */
-    fun showStatus(text: CharSequence) {
+    /** Short, non-blocking message (e.g. why a feature is unavailable). [onTap] makes it tappable. */
+    fun showStatus(text: CharSequence, durationMs: Long = STATUS_MILLIS, onTap: (() -> Unit)? = null) {
         removeCallbacks(clearMessage)
         message = text
+        statusAction = onTap
         refreshCentre()
-        postDelayed(clearMessage, STATUS_MILLIS)
+        postDelayed(clearMessage, durationMs)
     }
 
     /** Text shown while dictating or while a translation segment is being typed; null to clear. */

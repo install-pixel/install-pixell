@@ -23,6 +23,7 @@ import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.layout.Layer
 import com.offlinekeyboard.core.layout.SpecialKey
+import com.offlinekeyboard.core.translation.TranslationCheck
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.core.translation.TranslationResult
 import com.offlinekeyboard.dictionary.UserDictionaryStore
@@ -223,8 +224,14 @@ class KeyboardService : InputMethodService(),
         translation.translate(text, direction) { result ->
             rootView?.showLive(null)
             when (result) {
-                is TranslationResult.Success ->
-                    if (!composer.applyTranslation(generation, result.text)) rootView?.showStatus(getString(R.string.translation_discarded))
+                is TranslationResult.Success -> {
+                    val inserted = composer.applyTranslation(generation, result.text)
+                    if (inserted == null) {
+                        rootView?.showStatus(getString(R.string.translation_discarded))
+                    } else {
+                        warnIfValuesChanged(text, inserted)
+                    }
+                }
                 is TranslationResult.Failure -> {
                     composer.translationFailed(generation)
                     rootView?.showStatus(getString(R.string.translation_failed, result.reason))
@@ -233,6 +240,29 @@ class KeyboardService : InputMethodService(),
             render()
         }
         render()
+    }
+
+    /**
+     * Numbers, times, codes and abbreviations must survive translation. If some are missing, warn and let
+     * the user tap the warning to put the original text back.
+     */
+    private fun warnIfValuesChanged(source: String, inserted: String) {
+        val missing = TranslationCheck.missing(source, inserted)
+        if (missing.isEmpty()) return
+        val list = missing.joinToString(", ") { "«$it»" }
+        rootView?.showStatus(getString(R.string.translation_check_warning, list), CHECK_WARNING_MS) {
+            val ic = currentInputConnection ?: return@showStatus
+            val before = ic.getTextBeforeCursor(inserted.length, 0)?.toString()
+            if (before == inserted) {
+                ic.beginBatchEdit()
+                ic.deleteSurroundingText(inserted.length, 0)
+                ic.commitText(source, 1)
+                ic.endBatchEdit()
+                rootView?.showStatus(getString(R.string.translation_restored))
+            } else {
+                rootView?.showStatus(getString(R.string.translation_restore_impossible))
+            }
+        }
     }
 
     private fun setTranslateEnabled(enabled: Boolean, direction: TranslationDirection) {
@@ -555,5 +585,6 @@ class KeyboardService : InputMethodService(),
         const val COMPUTER_KEY_DP = 40f
         const val MOBILE_KEY_DP = 52f
         const val WORD_CONTEXT = 64
+        const val CHECK_WARNING_MS = 8000L
     }
 }
