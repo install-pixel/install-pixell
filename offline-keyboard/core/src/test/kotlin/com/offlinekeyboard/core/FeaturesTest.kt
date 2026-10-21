@@ -35,28 +35,56 @@ class FeaturesTest {
     // ------------------------------------------------------------ shortcuts
 
     @Test
-    fun `alt shift switches language in either order`() {
+    fun `modifier only shortcuts wait for the pause`() {
         val c = controller()
+        c.shortcuts = listOf(Shortcut(alt = true, shift = true, action = ShortcutAction.SWITCH_LANGUAGE))
         c.press(SpecialKey.ALT)
         assertEquals(emptyList<EditorCommand>(), c.press(SpecialKey.SHIFT))
         assertEquals(Language.UK, c.language) // waits for "release"
         assertEquals(emptyList<EditorCommand>(), c.firePendingShortcut())
         assertEquals(Language.PL, c.language)
         assertFalse(c.modifiers.isActive(ModifierKey.ALT))
-        c.press(SpecialKey.SHIFT)
-        c.press(SpecialKey.ALT)
-        c.firePendingShortcut()
-        assertEquals(Language.EN, c.language)
     }
 
     @Test
     fun `a key after alt shift cancels the language switch`() {
         val c = controller(language = Language.PL)
+        c.shortcuts = listOf(Shortcut(alt = true, shift = true, action = ShortcutAction.SWITCH_LANGUAGE))
         c.press(SpecialKey.ALT)
         c.press(SpecialKey.SHIFT)
         assertEquals(listOf(EditorCommand.CommitText("Ż")), c.type("z"))
         assertEquals(emptyList<EditorCommand>(), c.firePendingShortcut())
         assertEquals(Language.PL, c.language)
+    }
+
+    @Test
+    fun `only win space is a default`() {
+        assertEquals(1, Shortcut.defaults.size)
+        val c = controller()
+        c.press(SpecialKey.ALT)
+        c.press(SpecialKey.SHIFT)
+        c.firePendingShortcut()
+        assertEquals(Language.UK, c.language)
+    }
+
+    @Test
+    fun `terminals receive ctrl letters as keys`() {
+        val c = controller(language = Language.EN)
+        c.rawKeyField = true
+        c.press(SpecialKey.CTRL)
+        assertEquals(listOf(EditorCommand.SendKey("X", com.offlinekeyboard.core.input.KeyMods(ctrl = true))), c.type("x"))
+        c.rawKeyField = false
+        c.press(SpecialKey.CTRL)
+        assertEquals(listOf(EditorCommand.Edit(EditAction.CUT)), c.type("x"))
+    }
+
+    @Test
+    fun `russian letters on long press`() {
+        val keys = com.offlinekeyboard.core.layout.LayoutProvider.layout(KeyboardMode.MOBILE, Language.UK, com.offlinekeyboard.core.layout.Layer.LETTERS).allKeys()
+        fun alts(t: String) = keys.first { (it.action as? KeyAction.Text)?.text == t }.alternatives
+        assertTrue("ы" in alts("и"))
+        assertTrue("э" in alts("е") && "ё" in alts("е"))
+        assertTrue("ъ" in alts("ь"))
     }
 
     @Test

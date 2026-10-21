@@ -32,8 +32,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +51,9 @@ import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.dictionary.UserDictionaryStore
+import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.KeyboardService
+import com.offlinekeyboard.keyboard.ThemeMode
 import com.offlinekeyboard.models.ModelStore
 import com.offlinekeyboard.privacy.OfflinePolicy
 import kotlinx.coroutines.launch
@@ -65,8 +65,13 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
         val repository = SettingsRepository(this)
         setContent {
-            val colors = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
-            MaterialTheme(colorScheme = colors) {
+            val current by repository.settings.collectAsStateWithLifecycle(initialValue = null)
+            val dark = when (current?.themeMode ?: ThemeMode.SYSTEM) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            MaterialTheme(colorScheme = settingsColors(dark, current?.accent ?: Accent.SKY)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SettingsApp(repository)
                 }
@@ -147,17 +152,16 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
 
     PageScaffold(stringResource(R.string.app_name), onBack = null) {
         Section(stringResource(R.string.section_setup)) {
-            StatusLine(stringResource(R.string.setup_enabled), enabled)
-            StatusLine(stringResource(R.string.setup_selected), selected)
-            Text(stringResource(R.string.setup_instructions), style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                    context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-                }) { Text(stringResource(R.string.setup_open_settings)) }
-                OutlinedButton(onClick = {
-                    context.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
-                }) { Text(stringResource(R.string.setup_choose_keyboard)) }
+            SetupStep(stringResource(R.string.setup_step_enable), enabled, stringResource(R.string.setup_enable_button)) {
+                context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
             }
+            SetupStep(stringResource(R.string.setup_step_select), selected, stringResource(R.string.setup_select_button)) {
+                context.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+            }
+            Text(
+                stringResource(if (enabled && selected) R.string.setup_ready else R.string.setup_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         Section(stringResource(R.string.section_try)) {
@@ -194,6 +198,19 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, 5)) {
                 onOpen(Page.MODELS)
             }
+        }
+
+        Section(stringResource(R.string.section_appearance)) {
+            Text(stringResource(R.string.theme_title), style = MaterialTheme.typography.titleSmall)
+            for ((mode, label) in listOf(
+                ThemeMode.SYSTEM to R.string.theme_system,
+                ThemeMode.LIGHT to R.string.theme_light,
+                ThemeMode.DARK to R.string.theme_dark,
+            )) {
+                RadioRow(stringResource(label), s.themeMode == mode) { update { it.copy(themeMode = mode) } }
+            }
+            Text(stringResource(R.string.accent_title), style = MaterialTheme.typography.titleSmall)
+            AccentPicker(s.accent) { a -> update { it.copy(accent = a) } }
         }
 
         Section(stringResource(R.string.section_keyboard)) {

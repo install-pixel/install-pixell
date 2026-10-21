@@ -1,0 +1,22 @@
+# Vim / Neovim in a terminal. The Win combinations type a command; use them in normal mode (after Esc).
+title = Vim
+about = Win+W saves, Win+Q quits, Win+X saves and quits. Press Esc first.
+about.uk = Win+W — зберегти, Win+Q — вийти, Win+X — зберегти й вийти. Спочатку натисніть Esc.
+about.pl = Win+W — zapisz, Win+Q — wyjdź, Win+X — zapisz i wyjdź. Najpierw naciśnij Esc.
+
+tip = Esc — normal mode, i — insert mode
+tip = u / Ctrl+R — undo / redo
+tip = dd / yy / p — cut line / copy line / paste
+tip = /text, n — search, next match
+tip.uk = Esc — звичайний режим, i — режим вставки
+tip.uk = u / Ctrl+R — скасувати / повторити
+tip.uk = dd / yy / p — вирізати рядок / копіювати рядок / вставити
+tip.uk = /текст, n — пошук, наступний збіг
+tip.pl = Esc — tryb normalny, i — tryb wstawiania
+tip.pl = u / Ctrl+R — cofnij / ponów
+tip.pl = dd / yy / p — wytnij wiersz / kopiuj wiersz / wklej
+tip.pl = /tekst, n — szukaj, następne trafienie
+
+Win+W = text ":w\n"
+Win+Q = text ":q\n"
+Win+X = text ":wq\n"

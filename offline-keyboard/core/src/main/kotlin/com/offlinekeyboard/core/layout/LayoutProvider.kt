@@ -143,10 +143,14 @@ object LayoutProvider {
         )
     }
 
+    /**
+     * Like a PC: no language or mode key. The language changes with Win+Space (or the user's shortcut);
+     * computer/mobile is switched from the toolbar.
+     */
     private fun computerBottomRow() = listOf(
-        mod(CTRL, 1.25f), mod(LAYER_FUNCTION, 1.25f), mod(META), mod(ALT), fn(LANGUAGE),
-        Key(KeyAction.Special(SPACE), width = 5f, style = KeyStyle.SPACE),
-        mod(LAYER_SYMBOLS), fn(MODE), arrow(LEFT), arrow(DOWN), arrow(RIGHT),
+        mod(CTRL, 1.25f), mod(LAYER_FUNCTION, 1.25f), mod(META), mod(ALT),
+        Key(KeyAction.Special(SPACE), width = 7f, style = KeyStyle.SPACE),
+        mod(LAYER_SYMBOLS), arrow(LEFT), arrow(DOWN), arrow(RIGHT),
     )
 
     // ---------------------------------------------------------------- mobile mode
@@ -234,7 +238,9 @@ object LayoutProvider {
     )
 
     private val ukrainianAlternatives = mapOf(
-        "г" to listOf("ґ"), "і" to listOf("ї"), "е" to listOf("є"), "ь" to listOf("ʼ"),
+        // Ukrainian extras plus the Russian letters missing from the Ukrainian alphabet (ы, э, ё, ъ).
+        "г" to listOf("ґ"), "і" to listOf("ї"), "е" to listOf("є", "э", "ё"), "и" to listOf("ы"),
+        "ь" to listOf("ʼ", "ъ"),
     )
 
     private val englishAlternatives = mapOf(

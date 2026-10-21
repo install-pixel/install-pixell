@@ -90,6 +90,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         repository = SettingsRepository(this)
         models = ModelStore(this)
         speechEngine = VoskSpeechEngine(models)
@@ -116,6 +117,7 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         speech.cancel()
         speechEngine.release()
         translation.release()
@@ -150,6 +152,7 @@ class KeyboardService : InputMethodService(),
         controller.shortcuts = new.shortcuts
         if (!new.rememberLastMode && old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
         translation.accurate = new.translationAccurate
+        if (old.themeMode != new.themeMode || old.accent != new.accent) rootView?.applyTheme(currentTheme())
         if (!new.translateEnabled && old.translateEnabled) leaveSegment()
         updateSuggestions()
         render()
@@ -159,10 +162,13 @@ class KeyboardService : InputMethodService(),
         val root = KeyboardRootView(this)
         root.keyboardView.listener = this
         root.toolbarListener = this
+        root.applyTheme(currentTheme())
         rootView = root
         render()
         return root
     }
+
+    private fun currentTheme() = KeyboardTheme.resolve(this, settings.themeMode, settings.accent)
 
     // Never take over the screen with the extract-text window: typing must happen in the app's own field.
     override fun onEvaluateFullscreenMode(): Boolean = false
@@ -173,6 +179,7 @@ class KeyboardService : InputMethodService(),
         partialShown = false
         currentField = FieldInfo(attribute?.inputType ?: 0, attribute?.imeOptions ?: 0)
         editor.field = currentField
+        controller.rawKeyField = currentField.isRawKeyField
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -482,7 +489,7 @@ class KeyboardService : InputMethodService(),
         val before = ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: ""
         val after = ic.getTextAfterCursor(1, 0) ?: ""
         val prefix = if (WordRules.continuesWord(after)) "" else WordRules.trailingWord(before)
-        root.showSuggestions(if (prefix.isEmpty()) emptyList() else dictionary.dictionary.suggestions(controller.language, prefix))
+        root.showSuggestions(if (prefix.isEmpty()) emptyList() else dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
     }
 
     override fun onSuggestionPicked(word: String) {
@@ -578,7 +585,7 @@ class KeyboardService : InputMethodService(),
 
     override fun showPartial(text: String) {
         if (translateActive) {
-            rootView?.showLive("🎤 $text")
+            rootView?.showLive("● $text")
         } else {
             currentInputConnection?.setComposingText(text, 1)
             partialShown = true
@@ -665,7 +672,7 @@ class KeyboardService : InputMethodService(),
         root.updateToolbar(
             KeyboardRootView.ToolbarState(
                 languageCode = controller.language.code,
-                modeGlyph = if (controller.mode == KeyboardMode.COMPUTER) "📱" else "⌨",
+                computerMode = controller.mode == KeyboardMode.COMPUTER,
                 translateActive = translateActive,
                 translateLabel = directionLabel(settings.translationDirection),
                 translateOffered = translateOffered,
@@ -701,13 +708,28 @@ class KeyboardService : InputMethodService(),
         }
     }
 
-    private companion object {
-        const val STARTUP_SETTINGS_TIMEOUT_MS = 500L
-        const val COMPUTER_KEY_DP = 40f
-        const val MOBILE_KEY_DP = 52f
-        const val WORD_CONTEXT = 64
-        const val CHECK_WARNING_MS = 8000L
-        const val PREVIEW_DELAY_MS = 350L
-        const val DONE_MESSAGE_MS = 4000L
+    // ------------------------------------------------------------------ hooks for the emulator UI tests
+
+    internal val inputRootForTest: KeyboardRootView? get() = rootView
+    internal val modeForTest: KeyboardMode get() = controller.mode
+    internal val languageForTest: Language get() = controller.language
+
+    internal fun applyThemeForTest(theme: KeyboardTheme) {
+        rootView?.applyTheme(theme)
+    }
+
+    companion object {
+        /** The running keyboard, for instrumentation tests only. */
+        @Volatile
+        internal var instance: KeyboardService? = null
+            private set
+
+        private const val STARTUP_SETTINGS_TIMEOUT_MS = 500L
+        private const val COMPUTER_KEY_DP = 40f
+        private const val MOBILE_KEY_DP = 52f
+        private const val WORD_CONTEXT = 64
+        private const val CHECK_WARNING_MS = 8000L
+        private const val PREVIEW_DELAY_MS = 350L
+        private const val DONE_MESSAGE_MS = 4000L
     }
 }

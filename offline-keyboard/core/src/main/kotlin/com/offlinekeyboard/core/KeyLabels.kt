@@ -83,7 +83,7 @@ object KeyLabels {
         SpecialKey.SELECT_ALL -> "Sel. all"
         SpecialKey.UNDO -> "Undo"
         SpecialKey.REDO -> "Redo"
-        SpecialKey.LANGUAGE -> if (ctx.mode == KeyboardMode.COMPUTER) "🌐${ctx.language.code}" else ctx.language.code
+        SpecialKey.LANGUAGE -> ctx.language.code
         SpecialKey.MODE -> if (ctx.mode == KeyboardMode.COMPUTER) "📱" else "⌨"
         SpecialKey.LAYER_LETTERS -> if (ctx.language == Language.UK) "АБВ" else "ABC"
         SpecialKey.LAYER_SYMBOLS -> if (ctx.mode == KeyboardMode.COMPUTER) "Sym" else "?123"

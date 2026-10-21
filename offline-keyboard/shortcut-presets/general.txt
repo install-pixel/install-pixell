@@ -1,0 +1,34 @@
+# Everyday combinations. Works in any app on the computer keyboard.
+title = General
+title.uk = Загальні
+title.pl = Ogólne
+about = Built-in editing combinations, plus quick access to voice and translation.
+about.uk = Вбудовані комбінації для редагування, а також швидкий голос і переклад.
+about.pl = Wbudowane skróty edycji oraz szybki dostęp do głosu i tłumaczenia.
+
+tip = Ctrl+C / Ctrl+X / Ctrl+V — copy / cut / paste
+tip = Ctrl+Z / Ctrl+Y — undo / redo
+tip = Ctrl+A — select all
+tip = Ctrl+← / Ctrl+→ — jump by word
+tip = Shift+arrows — select text
+tip = Ctrl+Backspace — delete the previous word
+tip = Win+Space — change language
+tip.uk = Ctrl+C / Ctrl+X / Ctrl+V — копіювати / вирізати / вставити
+tip.uk = Ctrl+Z / Ctrl+Y — скасувати / повторити
+tip.uk = Ctrl+A — виділити все
+tip.uk = Ctrl+← / Ctrl+→ — перейти на слово
+tip.uk = Shift+стрілки — виділити текст
+tip.uk = Ctrl+Backspace — видалити попереднє слово
+tip.uk = Win+Space — змінити мову
+tip.pl = Ctrl+C / Ctrl+X / Ctrl+V — kopiuj / wytnij / wklej
+tip.pl = Ctrl+Z / Ctrl+Y — cofnij / ponów
+tip.pl = Ctrl+A — zaznacz wszystko
+tip.pl = Ctrl+← / Ctrl+→ — skok o słowo
+tip.pl = Shift+strzałki — zaznaczanie tekstu
+tip.pl = Ctrl+Backspace — usuń poprzednie słowo
+tip.pl = Win+Space — zmiana języka
+
+Win+V = voice
+Win+T = translate
+Win+C = translate-clipboard
+Win+M = mode

@@ -1,0 +1,24 @@
+# GNU nano in a terminal (Termux and similar). Tap Ctrl, then the letter.
+title = Nano
+about = Nano understands Ctrl and Alt combinations directly; the keyboard sends them as real keys in terminals.
+about.uk = Nano сам розуміє Ctrl і Alt — у терміналі клавіатура надсилає їх як справжні клавіші.
+about.pl = Nano sam rozumie Ctrl i Alt — w terminalu klawiatura wysyła je jako prawdziwe klawisze.
+
+tip = Ctrl+O, Enter — save
+tip = Ctrl+X — exit
+tip = Ctrl+W — search, Alt+W — next match
+tip = Ctrl+K / Ctrl+U — cut line / paste
+tip = Alt+U / Alt+E — undo / redo
+tip = Ctrl+_ — go to line
+tip.uk = Ctrl+O, Enter — зберегти
+tip.uk = Ctrl+X — вийти
+tip.uk = Ctrl+W — пошук, Alt+W — наступний збіг
+tip.uk = Ctrl+K / Ctrl+U — вирізати рядок / вставити
+tip.uk = Alt+U / Alt+E — скасувати / повторити
+tip.uk = Ctrl+_ — перейти на рядок
+tip.pl = Ctrl+O, Enter — zapisz
+tip.pl = Ctrl+X — wyjdź
+tip.pl = Ctrl+W — szukaj, Alt+W — następne trafienie
+tip.pl = Ctrl+K / Ctrl+U — wytnij wiersz / wklej
+tip.pl = Alt+U / Alt+E — cofnij / ponów
+tip.pl = Ctrl+_ — idź do wiersza

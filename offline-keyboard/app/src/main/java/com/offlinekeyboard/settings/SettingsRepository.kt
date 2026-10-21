@@ -14,6 +14,8 @@ import com.offlinekeyboard.core.Shortcut
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
+import com.offlinekeyboard.keyboard.Accent
+import com.offlinekeyboard.keyboard.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -43,6 +45,8 @@ data class KeyboardSettings(
     val translationPauseMs: Int = 2000,
     /** Beam search for the inserted translation (more faithful, a little slower). */
     val translationAccurate: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val accent: Accent = Accent.SKY,
 ) {
     val startMode: KeyboardMode get() = if (rememberLastMode) lastMode ?: defaultMode else defaultMode
 
@@ -89,6 +93,8 @@ class SettingsRepository(context: Context) {
             prefs[Keys.TRANSLATION_AUTO] = updated.translationAuto
             prefs[Keys.TRANSLATION_PAUSE] = updated.translationPauseMs
             prefs[Keys.TRANSLATION_ACCURATE] = updated.translationAccurate
+            prefs[Keys.THEME_MODE] = updated.themeMode.name
+            prefs[Keys.ACCENT] = updated.accent.name
         }
     }
 
@@ -116,7 +122,8 @@ class SettingsRepository(context: Context) {
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
             voiceLanguage = enumOrNull<Language>(this[Keys.VOICE_LANGUAGE]),
             voiceCommands = this[Keys.VOICE_COMMANDS] ?: defaults.voiceCommands,
-            shortcuts = this[Keys.SHORTCUTS]?.let { Shortcut.decode(it) } ?: defaults.shortcuts,
+            shortcuts = this[Keys.SHORTCUTS]?.let { Shortcut.decode(it) }
+                ?.let { if (it == Shortcut.previousDefaults) Shortcut.defaults else it } ?: defaults.shortcuts,
             learnWords = this[Keys.LEARN_WORDS] ?: defaults.learnWords,
             showSuggestions = this[Keys.SHOW_SUGGESTIONS] ?: defaults.showSuggestions,
             translateEnabled = this[Keys.TRANSLATE_ENABLED] ?: defaults.translateEnabled,
@@ -125,6 +132,8 @@ class SettingsRepository(context: Context) {
             translationAuto = this[Keys.TRANSLATION_AUTO] ?: defaults.translationAuto,
             translationPauseMs = this[Keys.TRANSLATION_PAUSE] ?: defaults.translationPauseMs,
             translationAccurate = this[Keys.TRANSLATION_ACCURATE] ?: defaults.translationAccurate,
+            themeMode = enumOrNull<ThemeMode>(this[Keys.THEME_MODE]) ?: defaults.themeMode,
+            accent = enumOrNull<Accent>(this[Keys.ACCENT]) ?: defaults.accent,
         )
     }
 
@@ -152,5 +161,7 @@ class SettingsRepository(context: Context) {
         val TRANSLATION_AUTO = booleanPreferencesKey("translation_auto")
         val TRANSLATION_PAUSE = intPreferencesKey("translation_pause_ms")
         val TRANSLATION_ACCURATE = booleanPreferencesKey("translation_accurate")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val ACCENT = stringPreferencesKey("accent")
     }
 }

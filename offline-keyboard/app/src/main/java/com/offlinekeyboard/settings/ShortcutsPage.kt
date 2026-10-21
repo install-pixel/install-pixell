@@ -1,5 +1,9 @@
 package com.offlinekeyboard.settings
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -31,6 +37,7 @@ import com.offlinekeyboard.R
 import com.offlinekeyboard.core.Shortcut
 import com.offlinekeyboard.core.ShortcutAction
 import com.offlinekeyboard.core.ShortcutKeys
+import com.offlinekeyboard.core.ShortcutPreset
 
 @Composable
 internal fun actionName(action: ShortcutAction): String = stringResource(
@@ -48,6 +55,35 @@ internal fun actionName(action: ShortcutAction): String = stringResource(
 @Composable
 internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
     var editing by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val language = context.resources.configuration.locales[0].language
+    val presets = remember(language) { bundledPresets(context, language) }
+    var presetMessage by remember { mutableStateOf<String?>(null) }
+
+    fun addPreset(preset: ShortcutPreset) {
+        val fresh = preset.shortcuts.filter { p ->
+            s.shortcuts.none { it.ctrl == p.ctrl && it.alt == p.alt && it.shift == p.shift && it.meta == p.meta && it.key == p.key }
+        }
+        if (fresh.isNotEmpty()) update { it.copy(shortcuts = it.shortcuts + fresh) }
+        presetMessage = if (fresh.isEmpty()) {
+            context.getString(R.string.presets_nothing_new)
+        } else {
+            context.getString(R.string.presets_added, fresh.size)
+        }
+    }
+
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            val text = context.contentResolver.openInputStream(uri)?.use { input ->
+                input.readBytes().takeIf { it.size <= MAX_PRESET_BYTES }?.toString(Charsets.UTF_8)
+            } ?: throw IllegalArgumentException("> 64 KB")
+            addPreset(ShortcutPreset.parse(text, language))
+        } catch (e: Exception) {
+            presetMessage = context.getString(R.string.presets_import_failed, e.message ?: e.javaClass.simpleName)
+        }
+    }
 
     PageScaffold(stringResource(R.string.page_shortcuts), onBack) {
         Text(stringResource(R.string.shortcuts_intro), style = MaterialTheme.typography.bodyMedium)
@@ -77,6 +113,24 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                 }
             }
         }
+
+        Section(stringResource(R.string.presets_title)) {
+            Text(stringResource(R.string.presets_intro), style = MaterialTheme.typography.bodySmall)
+            presetMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+            presets.forEachIndexed { index, preset ->
+                if (index > 0) HorizontalDivider()
+                PresetRow(preset, onAdd = { addPreset(preset) })
+            }
+            HorizontalDivider()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
+                    Text(stringResource(R.string.presets_import))
+                }
+                OutlinedButton(onClick = { Links.open(context, Links.SHORTCUT_PRESETS) }) {
+                    Text(stringResource(R.string.presets_more))
+                }
+            }
+        }
     }
 
     if (editing) {
@@ -88,6 +142,44 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                 editing = false
             },
         )
+    }
+}
+
+private const val MAX_PRESET_BYTES = 64 * 1024
+
+/** Presets bundled from the repository's `shortcut-presets` folder; "general" first. */
+private fun bundledPresets(context: Context, language: String): List<ShortcutPreset> =
+    (context.assets.list("") ?: emptyArray())
+        .filter { it.endsWith(".txt") }
+        .sortedBy { if (it == "general.txt") "" else it }
+        .mapNotNull { name ->
+            runCatching {
+                ShortcutPreset.parse(context.assets.open(name).bufferedReader().use { it.readText() }, language)
+            }.getOrNull()
+        }
+
+@Composable
+private fun PresetRow(preset: ShortcutPreset, onAdd: () -> Unit) {
+    var open by rememberSaveable(preset.title) { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(preset.title, style = MaterialTheme.typography.titleSmall)
+        Text(preset.about, style = MaterialTheme.typography.bodySmall)
+        if (open) {
+            for (tip in preset.tips) Text("• $tip", style = MaterialTheme.typography.bodyMedium)
+            for (sc in preset.shortcuts) {
+                val action = actionName(sc.action)
+                val detail = if (sc.action == ShortcutAction.INSERT_TEXT) "«${sc.text.replace("\n", "↵")}»" else action
+                Text("• ${sc.describe()} — $detail", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { open = !open }) {
+                Text(stringResource(if (open) R.string.presets_hide_tips else R.string.presets_show_tips))
+            }
+            if (preset.shortcuts.isNotEmpty()) {
+                Button(onClick = onAdd) { Text(stringResource(R.string.presets_add, preset.shortcuts.size)) }
+            }
+        }
     }
 }
 

@@ -60,3 +60,16 @@ jobs:
             4. У застосунку: Налаштування → «Офлайн-моделі» → «Імпортувати .zip» і виберіть файл. Розпаковувати zip не треба.
 
             Застосунок працює без інтернету; файли моделей потрібні лише один раз.
+
+      # Fixed address for the app's "Download" buttons: …/releases/download/keyboard-models/<file>.zip
+      - name: Update the permanent model release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-models
+          name: Offline Keyboard — моделі
+          target_commitish: ${{ github.sha }}
+          make_latest: false
+          files: out/*.zip
+          body: |
+            Офлайн-моделі для клавіатури. Кнопки «Завантажити» в застосунку ведуть сюди.
+            Після завантаження: Налаштування → «Офлайн-моделі» → «Імпортувати» й виберіть файл (розпаковувати не треба).

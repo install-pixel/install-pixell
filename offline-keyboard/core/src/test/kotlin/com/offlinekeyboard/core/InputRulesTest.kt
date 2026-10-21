@@ -113,7 +113,7 @@ class InputRulesTest {
     fun `labels`() {
         val ctx = LabelContext(shift = false, capsLock = false, language = Language.UK, mode = KeyboardMode.MOBILE)
         assertEquals("Українська", KeyLabels.label(Key(KeyAction.Special(SpecialKey.SPACE)), ctx))
-        assertEquals("UK", KeyLabels.label(Key(KeyAction.Special(SpecialKey.LANGUAGE)), ctx))
+        assertEquals("Укр", KeyLabels.label(Key(KeyAction.Special(SpecialKey.LANGUAGE)), ctx))
         assertEquals("!", KeyLabels.hint(Key(KeyAction.Text("1", "!")), ctx))
         assertEquals("Ї", KeyLabels.label(Key(KeyAction.Text("ї")), ctx.copy(shift = true)))
     }

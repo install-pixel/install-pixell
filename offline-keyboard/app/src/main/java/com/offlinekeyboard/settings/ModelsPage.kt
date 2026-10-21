@@ -37,6 +37,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** File published in the `keyboard-models` release, and its rounded size in MB. */
+private val SPEECH_FILES = mapOf(
+    Language.UK to ("vosk-model-small-uk-v3-small.zip" to 144),
+    Language.PL to ("vosk-model-small-pl-0.22.zip" to 53),
+    Language.EN to ("vosk-model-small-en-us-0.15.zip" to 41),
+)
+private val TRANSLATION_FILES = mapOf(
+    TranslationDirection.UK_TO_PL to ("offline-keyboard-mt-uk-pl.zip" to 153),
+    TranslationDirection.PL_TO_UK to ("offline-keyboard-mt-pl-uk.zip" to 155),
+)
+
 private val ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*")
 
 @Composable
@@ -87,6 +98,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
 
     PageScaffold(stringResource(R.string.page_models), onBack) {
         Text(stringResource(R.string.models_intro), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.models_how), style = MaterialTheme.typography.bodyMedium)
 
         busy?.let {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -107,11 +119,14 @@ internal fun ModelsPage(onBack: () -> Unit) {
             for (language in Language.entries) {
                 HorizontalDivider()
                 val model = remember(refresh, language) { store.speechModel(language) }
+                val file = SPEECH_FILES.getValue(language)
                 ModelRow(
                     title = languageName(language),
-                    status = model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" } ?: stringResource(R.string.models_not_installed),
+                    status = model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" }
+                        ?: stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second),
                     installed = model != null,
                     enabled = busy == null,
+                    onDownload = { Links.open(context, Links.modelFile(file.first)) },
                     onImport = {
                         speechTarget = language
                         speechPicker.launch(ZIP_TYPES)
@@ -130,11 +145,14 @@ internal fun ModelsPage(onBack: () -> Unit) {
             for (direction in TranslationDirection.entries) {
                 HorizontalDivider()
                 val model = remember(refresh, direction) { store.translationModel(direction) }
+                val file = TRANSLATION_FILES.getValue(direction)
                 ModelRow(
                     title = "${languageName(direction.source)} → ${languageName(direction.target)}",
-                    status = model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" } ?: stringResource(R.string.models_not_installed),
+                    status = model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" }
+                        ?: stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second),
                     installed = model != null,
                     enabled = busy == null,
+                    onDownload = { Links.open(context, Links.modelFile(file.first)) },
                     onImport = { translationPicker.launch(ZIP_TYPES) },
                     onDelete = {
                         store.deleteTranslation(direction)
@@ -145,8 +163,12 @@ internal fun ModelsPage(onBack: () -> Unit) {
             }
         }
 
-        Section(stringResource(R.string.models_where)) {
-            Text(stringResource(R.string.models_where_text), style = MaterialTheme.typography.bodyMedium)
+        Section(stringResource(R.string.models_custom)) {
+            Text(stringResource(R.string.models_custom_text), style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { Links.open(context, Links.MODELS_GUIDE) }) { Text(stringResource(R.string.models_open_guide)) }
+                OutlinedButton(onClick = { Links.open(context, Links.MODELS_RELEASE) }) { Text(stringResource(R.string.models_open_release)) }
+            }
         }
     }
 }
@@ -157,17 +179,21 @@ private fun ModelRow(
     status: String,
     installed: Boolean,
     enabled: Boolean,
+    onDownload: () -> Unit,
     onImport: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         StatusLine(title, installed)
         Text(status, style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(enabled = enabled, onClick = onImport) {
-                Text(stringResource(if (installed) R.string.models_replace else R.string.models_import))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (installed) {
+                OutlinedButton(enabled = enabled, onClick = onImport) { Text(stringResource(R.string.models_import)) }
+                TextButton(enabled = enabled, onClick = onDelete) { Text(stringResource(R.string.delete)) }
+            } else {
+                Button(onClick = onDownload) { Text(stringResource(R.string.models_download)) }
+                Button(enabled = enabled, onClick = onImport) { Text(stringResource(R.string.models_import)) }
             }
-            if (installed) TextButton(enabled = enabled, onClick = onDelete) { Text(stringResource(R.string.delete)) }
         }
     }
 }

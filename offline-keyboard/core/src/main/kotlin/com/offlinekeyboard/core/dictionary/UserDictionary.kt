@@ -62,6 +62,19 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
             .toList()
     }
 
+    /**
+     * Suggestions for the toolbar: the user's own words first, then common words from [BaseDictionary],
+     * without duplicates.
+     */
+    fun suggestionsWithBase(language: Language, prefix: String, limit: Int = 3): List<String> {
+        val own = suggestions(language, prefix, limit)
+        if (own.size >= limit) return own
+        val seen = own.mapTo(HashSet()) { it.lowercase(language.locale) }
+        val base = BaseDictionary.suggestions(language, prefix, limit + own.size)
+            .filter { seen.add(it.lowercase(language.locale)) }
+        return own + base.take(limit - own.size)
+    }
+
     private fun evict(map: HashMap<String, Entry>) {
         val toRemove = map.size - maxWordsPerLanguage
         map.entries.sortedWith(compareBy<Map.Entry<String, Entry>> { it.value.count }.thenBy { it.value.lastUsed })

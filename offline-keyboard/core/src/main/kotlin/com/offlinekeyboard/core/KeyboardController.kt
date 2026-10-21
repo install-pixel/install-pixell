@@ -41,6 +41,12 @@ class KeyboardController(
     var layer: Layer = Layer.LETTERS
         private set
 
+    /**
+     * The focused field takes raw key events only (terminals such as Termux): Ctrl+C, Ctrl+X ... are sent
+     * to the app as keys (nano, vim, shells need them) instead of becoming copy/cut.
+     */
+    var rawKeyField = false
+
     /** User shortcuts (computer mode). Checked before the built-in Ctrl/Alt behaviour. */
     var shortcuts: List<Shortcut> = Shortcut.defaults
 
@@ -138,7 +144,7 @@ class KeyboardController(
                     return listOf(EditorCommand.CommitText(text))
                 }
             }
-            if (mods.ctrl && !mods.alt && !mods.meta) {
+            if (mods.ctrl && !mods.alt && !mods.meta && !rawKeyField) {
                 val edit = when (lower) {
                     'a' -> EditAction.SELECT_ALL
                     'c' -> EditAction.COPY

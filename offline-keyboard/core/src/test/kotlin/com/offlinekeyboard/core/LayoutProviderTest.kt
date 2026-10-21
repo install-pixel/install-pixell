@@ -40,7 +40,8 @@ class LayoutProviderTest {
                 val s = specials(mode, language, layer)
                 assertTrue("$mode $language $layer backspace", SpecialKey.BACKSPACE in s)
                 assertTrue("$mode $language $layer enter", SpecialKey.ENTER in s)
-                assertTrue("$mode $language $layer language", SpecialKey.LANGUAGE in s)
+                if (mode == KeyboardMode.MOBILE) assertTrue("$mode $language $layer language", SpecialKey.LANGUAGE in s)
+                else assertTrue("PC layouts have no language key", SpecialKey.LANGUAGE !in s && SpecialKey.MODE !in s)
             }
         }
     }
@@ -81,7 +82,7 @@ class LayoutProviderTest {
             SpecialKey.DOWN, SpecialKey.HOME, SpecialKey.END, SpecialKey.PAGE_UP, SpecialKey.PAGE_DOWN,
             SpecialKey.INSERT, SpecialKey.CTRL, SpecialKey.ALT, SpecialKey.META,
             SpecialKey.F1, SpecialKey.F12, SpecialKey.CUT, SpecialKey.COPY, SpecialKey.PASTE, SpecialKey.SELECT_ALL,
-            SpecialKey.MODE, SpecialKey.LAYER_FUNCTION, SpecialKey.LAYER_SYMBOLS,
+            SpecialKey.LAYER_FUNCTION, SpecialKey.LAYER_SYMBOLS,
         )
         for (k in required) assertTrue("missing $k", k in all)
     }

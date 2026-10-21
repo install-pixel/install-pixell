@@ -2,10 +2,11 @@ package com.offlinekeyboard.core.layout
 
 import java.util.Locale
 
+/** [code] is the short name shown on the keyboard, written in the language itself. */
 enum class Language(val code: String, val locale: Locale) {
-    UK("UK", Locale.forLanguageTag("uk-UA")),
-    PL("PL", Locale.forLanguageTag("pl-PL")),
-    EN("EN", Locale.forLanguageTag("en-US")),
+    UK("Укр", Locale.forLanguageTag("uk-UA")),
+    PL("Pol", Locale.forLanguageTag("pl-PL")),
+    EN("Eng", Locale.forLanguageTag("en-US")),
 }
 
 enum class KeyboardMode { COMPUTER, MOBILE }

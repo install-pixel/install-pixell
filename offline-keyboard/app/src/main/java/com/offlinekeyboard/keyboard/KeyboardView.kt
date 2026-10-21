@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Handler
@@ -12,13 +13,14 @@ import android.util.SparseArray
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import com.offlinekeyboard.R
 import com.offlinekeyboard.core.KeyLabels
 import com.offlinekeyboard.core.LabelContext
 import com.offlinekeyboard.core.layout.Key
 import com.offlinekeyboard.core.layout.KeyAction
 import com.offlinekeyboard.core.layout.KeyStyle
 import com.offlinekeyboard.core.layout.KeyboardLayout
+import com.offlinekeyboard.core.input.EnterLabel
+import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.SpecialKey
 import kotlin.math.abs
 
@@ -65,19 +67,16 @@ class KeyboardView(context: Context) : View(context) {
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.RIGHT }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val colorBackground = context.getColor(R.color.kb_background)
-    private val colorKey = context.getColor(R.color.kb_key)
-    private val colorFunction = context.getColor(R.color.kb_key_function)
-    private val colorAction = context.getColor(R.color.kb_key_action)
-    private val colorPressed = context.getColor(R.color.kb_key_pressed)
-    private val colorActive = context.getColor(R.color.kb_key_active)
-    private val colorText = context.getColor(R.color.kb_text)
-    private val colorTextOnAction = context.getColor(R.color.kb_text_on_action)
-    private val colorHint = context.getColor(R.color.kb_hint)
-    private val colorPopup = context.getColor(R.color.kb_popup)
+    var theme: KeyboardTheme = KeyboardTheme.create(dark = false, accent = Accent.SKY)
+        set(value) {
+            if (field == value) return
+            field = value
+            setBackgroundColor(value.background)
+            invalidate()
+        }
 
     init {
-        setBackgroundColor(colorBackground)
+        setBackgroundColor(theme.background)
         isHapticFeedbackEnabled = true
     }
 
@@ -94,6 +93,14 @@ class KeyboardView(context: Context) : View(context) {
         }
         if (heightChanged) requestLayout()
         invalidate()
+    }
+
+    /** Test hook: screen position of the centre of the first key matching [match], or null. */
+    internal fun keyCenterOnScreen(match: (Key) -> Boolean): PointF? {
+        val rect = keyRects.firstOrNull { match(it.first) }?.second ?: return null
+        val location = IntArray(2)
+        getLocationOnScreen(location)
+        return PointF(location[0] + rect.centerX(), location[1] + rect.centerY())
     }
 
     /** Stops repeats and popups, e.g. when the keyboard is hidden mid-press. */
@@ -143,25 +150,33 @@ class KeyboardView(context: Context) : View(context) {
             if (key.style == KeyStyle.SPACER) continue
             val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
             val state = highlight(key)
+            val t = theme
             keyPaint.color = when {
-                key in pressedKeys -> colorPressed
-                state != KeyHighlight.NONE -> colorActive
-                key.style == KeyStyle.ACTION -> colorAction
-                key.style == KeyStyle.FUNCTION || key.style == KeyStyle.MODIFIER -> colorFunction
-                else -> colorKey
+                key in pressedKeys -> t.pressed
+                state != KeyHighlight.NONE -> t.accent
+                key.style == KeyStyle.ACTION -> t.accent
+                key.style == KeyStyle.FUNCTION || key.style == KeyStyle.MODIFIER -> t.function
+                else -> t.key
             }
             canvas.drawRoundRect(inner, corner, corner, keyPaint)
 
-            val onColor = key.style == KeyStyle.ACTION || state != KeyHighlight.NONE
-            drawLabel(canvas, inner, KeyLabels.label(key, ctx), if (onColor) colorTextOnAction else colorText, key)
+            val onAccent = key.style == KeyStyle.ACTION || state != KeyHighlight.NONE
+            val color = if (onAccent && key !in pressedKeys) t.onAccent else t.text
+            val icon = iconFor(key, ctx, state)
+            if (icon != null) {
+                val size = minOf(inner.height() * 0.48f, inner.width() * 0.62f, dp(26f))
+                Icons.draw(canvas, icon, inner.centerX(), inner.centerY(), size, color)
+            } else {
+                drawLabel(canvas, inner, KeyLabels.label(key, ctx), color, key)
+            }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
-                hintPaint.color = colorHint
+                hintPaint.color = t.hint
                 hintPaint.textSize = inner.height() * 0.24f
                 canvas.drawText(hint, inner.right - inner.width() * 0.1f, inner.top + hintPaint.textSize * 1.05f, hintPaint)
             }
-            if (state == KeyHighlight.LOCKED) {
-                dotPaint.color = colorTextOnAction
+            if (state == KeyHighlight.LOCKED && icon != Icon.CAPS) {
+                dotPaint.color = color
                 canvas.drawCircle(inner.centerX(), inner.bottom - dp(5f), dp(2.5f), dotPaint)
             }
         }
@@ -185,15 +200,45 @@ class KeyboardView(context: Context) : View(context) {
         canvas.drawText(label, rect.centerX(), y, textPaint)
     }
 
+    /** Keys with a fixed meaning get a drawn icon; letters, names and text actions keep their label. */
+    private fun iconFor(key: Key, ctx: LabelContext, state: KeyHighlight): Icon? {
+        if (key.label != null) return null
+        return when ((key.action as? KeyAction.Special)?.key ?: return null) {
+            SpecialKey.SHIFT -> when (state) {
+                KeyHighlight.LOCKED -> Icon.CAPS
+                KeyHighlight.ACTIVE -> Icon.SHIFT_ON
+                KeyHighlight.NONE -> Icon.SHIFT
+            }
+            SpecialKey.BACKSPACE -> Icon.BACKSPACE
+            SpecialKey.ENTER -> when (ctx.enterLabel) {
+                EnterLabel.NEWLINE -> Icon.ENTER
+                EnterLabel.SEARCH -> Icon.SEARCH
+                EnterLabel.SEND, EnterLabel.GO -> Icon.SEND
+                EnterLabel.DONE -> Icon.DONE
+                EnterLabel.TRANSLATE -> Icon.TRANSLATE
+                EnterLabel.NEXT, EnterLabel.PREVIOUS -> null
+            }
+            SpecialKey.LEFT -> Icon.LEFT
+            SpecialKey.RIGHT -> Icon.RIGHT
+            SpecialKey.UP -> Icon.UP
+            SpecialKey.DOWN -> Icon.DOWN
+            SpecialKey.VOICE -> Icon.MIC
+            SpecialKey.SETTINGS -> Icon.GEAR
+            SpecialKey.HIDE -> Icon.HIDE
+            SpecialKey.MODE -> if (ctx.mode == KeyboardMode.COMPUTER) Icon.PHONE else Icon.KEYBOARD
+            else -> null
+        }
+    }
+
     private fun drawPopup(canvas: Canvas, p: Popup) {
-        keyPaint.color = colorPopup
+        keyPaint.color = theme.popup
         canvas.drawRoundRect(p.bounds, corner, corner, keyPaint)
         p.cells.forEachIndexed { i, cell ->
             if (i == p.selected) {
-                keyPaint.color = colorActive
+                keyPaint.color = theme.accent
                 canvas.drawRoundRect(cell, corner, corner, keyPaint)
             }
-            drawLabel(canvas, cell, p.options[i], if (i == p.selected) colorTextOnAction else colorText, p.key)
+            drawLabel(canvas, cell, p.options[i], if (i == p.selected) theme.onAccent else theme.text, p.key)
         }
     }
 

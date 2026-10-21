@@ -51,7 +51,13 @@ data class Shortcut(
         get() = ctrl && !alt && !meta && key in setOf("A", "C", "X", "V", "Z", "Y")
 
     companion object {
+        /** Like Windows: Win+Space changes the input language. */
         val defaults: List<Shortcut> = listOf(
+            Shortcut(meta = true, key = "SPACE", action = ShortcutAction.SWITCH_LANGUAGE),
+        )
+
+        /** Defaults of earlier versions; stored lists equal to them are upgraded to [defaults]. */
+        val previousDefaults: List<Shortcut> = listOf(
             Shortcut(alt = true, shift = true, action = ShortcutAction.SWITCH_LANGUAGE),
             Shortcut(meta = true, key = "SPACE", action = ShortcutAction.SWITCH_LANGUAGE),
         )

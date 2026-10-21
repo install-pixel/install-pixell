@@ -5,6 +5,9 @@ plugins {
 }
 
 android {
+    // Shortcut presets ship inside the APK from the same folder that is published on GitHub.
+    sourceSets["main"].assets.srcDir("../shortcut-presets")
+
     namespace = "com.offlinekeyboard"
     compileSdk = 35
 
@@ -12,13 +15,17 @@ android {
         applicationId = "com.offlinekeyboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
 
         // Native code of Vosk and ONNX Runtime for phones only (64- and 32-bit ARM).
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // The emulator UI tests run on x86_64 (-PemulatorAbi=x86_64); phones never get this build.
+            (project.findProperty("emulatorAbi") as String?)?.let { abiFilters += it }
         }
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -76,4 +83,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     testImplementation("junit:junit:4.13.2")
+
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
