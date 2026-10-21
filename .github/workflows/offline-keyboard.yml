@@ -1,6 +1,7 @@
 name: Offline Keyboard
 
 on:
+  workflow_call:
   push:
     paths:
       - 'offline-keyboard/**'

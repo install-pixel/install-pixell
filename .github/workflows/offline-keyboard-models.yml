@@ -6,6 +6,7 @@ name: Offline Keyboard Models
 # The phone never downloads anything: these zips are copied to the phone and imported in Settings.
 
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     paths:
