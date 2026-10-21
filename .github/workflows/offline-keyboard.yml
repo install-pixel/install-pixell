@@ -25,11 +25,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      # JDK 21: its java.text.BreakIterator handles extended grapheme clusters (ZWJ emoji) like Android's ICU,
+      # so the :core grapheme tests match device behaviour. JDK 17 splits such emoji.
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4

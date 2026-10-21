@@ -19,7 +19,7 @@
 
 ## Збірка
 
-Потрібні JDK 17+ та Android SDK (platform 35).
+Потрібні JDK 21 (тести графем у `:core` вимагають JDK 20+) та Android SDK (platform 35).
 
 ```bash
 cd offline-keyboard
