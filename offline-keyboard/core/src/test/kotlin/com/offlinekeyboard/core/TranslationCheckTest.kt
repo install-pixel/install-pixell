@@ -34,4 +34,29 @@ class TranslationCheckTest {
         assertEquals(emptyList<String>(), TranslationCheck.protectedTokens("Sektor B. Jutro"))
         assertEquals(listOf("45821", "2026"), TranslationCheck.protectedTokens("Zamówienie 45821, rok 2026."))
     }
+
+    @Test
+    fun `distorted values are repaired`() {
+        fun fix(src: String, tr: String) = TranslationCheck.repair(src, tr)
+        assertEquals("Зміна Б починається о 22:00.", fix("Zmiana B zaczyna się o 22:00.", "Зміна Б починається о 10:00."))
+        assertEquals("Код ABC-123 не знайдено.", fix("Nie znaleziono kodu towaru ABC-123.", "Код АБС-123 не знайдено."))
+        assertEquals("Виплата прийде на рахунок IBAN.", fix("Wypłata przyjdzie na konto IBAN.", "Виплата прийде на рахунок ІБАН."))
+        assertEquals("Для угоди потрібен номер PESEL.", fix("Do umowy potrzebny jest numer PESEL.", "Для угоди потрібен номер ESEL."))
+        assertEquals("Номер SSCC на етиці.", fix("Numer SSCC jest na etykiecie.", "Номер SSC на етиці."))
+    }
+
+    @Test
+    fun `ambiguous or correct translations are left alone`() {
+        val ok = "Зустріч о 14:30."
+        assertEquals(ok, TranslationCheck.repair("Spotkanie o 14:30.", ok))
+        // Word instead of a digit: nothing to pair with, so the warning stays.
+        val words = "Потрібні 40 коробок за шість штук."
+        assertEquals(words, TranslationCheck.repair("Potrzeba 40 kartonów po 6 sztuk.", words))
+        // GPS turned into an unrelated word: not repaired.
+        val gps = "Перевірте веб-сайт вантажівки."
+        assertEquals(gps, TranslationCheck.repair("Sprawdź lokalizator GPS ciężarówki.", gps))
+        // Ordinary words are never replaced by codes.
+        val plain = "Привіт, як справи?"
+        assertEquals(plain, TranslationCheck.repair("Cześć, co słychać?", plain))
+    }
 }

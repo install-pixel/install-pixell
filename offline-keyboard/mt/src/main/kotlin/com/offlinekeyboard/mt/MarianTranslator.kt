@@ -5,6 +5,7 @@ import ai.onnxruntime.OnnxValue
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import com.offlinekeyboard.core.speech.EngineAvailability
+import com.offlinekeyboard.core.translation.TranslationCheck
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.core.translation.TranslationEngine
 import com.offlinekeyboard.core.translation.TranslationResult
@@ -368,7 +369,7 @@ class MarianTranslationEngine(private val pkg: MarianPackage, threads: Int = 2) 
         val tokens = if (beams > 1) model.generateBeam(ids, limit, beams) else model.generate(ids, limit)
         var out = cleanUp(tokenizer.decode(tokens), sentence)
         if (needsStop && out.endsWith('.') && !out.endsWith("..")) out = out.dropLast(1)
-        return out
+        return TranslationCheck.repair(sentence, out)
     }
 
     fun translateSentence(sentence: String, beams: Int): String = synchronized(this) {
