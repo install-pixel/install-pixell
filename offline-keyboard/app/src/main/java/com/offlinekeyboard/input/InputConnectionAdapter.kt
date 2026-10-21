@@ -45,7 +45,8 @@ class InputConnectionAdapter(private val service: InputMethodService) {
             is EditorCommand.Enter -> enter(ic, command.forceNewline)
             is EditorCommand.Tab -> tab(ic, command.reverse)
             // Handled by the service, not the field.
-            EditorCommand.StartVoice, EditorCommand.HideKeyboard, EditorCommand.OpenSettings -> Unit
+            EditorCommand.StartVoice, EditorCommand.ToggleTranslate, EditorCommand.HideKeyboard,
+            EditorCommand.OpenSettings -> Unit
         }
     }
 

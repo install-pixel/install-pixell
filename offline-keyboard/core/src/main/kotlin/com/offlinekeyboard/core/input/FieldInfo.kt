@@ -30,6 +30,18 @@ data class FieldInfo(val inputType: Int, val imeOptions: Int) {
     /** Voice input and (later) translation are never offered here. */
     val isSensitive: Boolean get() = isPassword || isIncognito
 
+    /**
+     * Whether typed words may go into the user dictionary and get suggestions: ordinary text only,
+     * never passwords, incognito, addresses or fields that ask for no suggestions.
+     */
+    val allowsLearning: Boolean
+        get() = inputClass == TYPE_CLASS_TEXT && !isSensitive &&
+            inputType and TYPE_TEXT_FLAG_NO_SUGGESTIONS == 0 &&
+            variation != TYPE_TEXT_VARIATION_URI &&
+            variation != TYPE_TEXT_VARIATION_EMAIL_ADDRESS &&
+            variation != TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS &&
+            variation != TYPE_TEXT_VARIATION_FILTER
+
     val isNumeric: Boolean get() = inputClass == TYPE_CLASS_NUMBER || inputClass == TYPE_CLASS_PHONE
 
     val imeAction: Int get() = imeOptions and IME_MASK_ACTION
@@ -76,6 +88,11 @@ data class FieldInfo(val inputType: Int, val imeOptions: Int) {
         const val TYPE_TEXT_FLAG_CAP_SENTENCES = 0x00004000
         const val TYPE_TEXT_FLAG_MULTI_LINE = 0x00020000
         const val TYPE_TEXT_FLAG_IME_MULTI_LINE = 0x00040000
+        const val TYPE_TEXT_FLAG_NO_SUGGESTIONS = 0x00080000
+        const val TYPE_TEXT_VARIATION_URI = 0x00000010
+        const val TYPE_TEXT_VARIATION_EMAIL_ADDRESS = 0x00000020
+        const val TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS = 0x000000d0
+        const val TYPE_TEXT_VARIATION_FILTER = 0x000000b0
         const val TYPE_TEXT_VARIATION_PASSWORD = 0x00000080
         const val TYPE_TEXT_VARIATION_VISIBLE_PASSWORD = 0x00000090
         const val TYPE_TEXT_VARIATION_WEB_PASSWORD = 0x000000e0

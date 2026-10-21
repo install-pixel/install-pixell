@@ -37,6 +37,7 @@ sealed interface EditorCommand {
     data class Tab(val reverse: Boolean) : EditorCommand
 
     data object StartVoice : EditorCommand
+    data object ToggleTranslate : EditorCommand
     data object HideKeyboard : EditorCommand
     data object OpenSettings : EditorCommand
 }

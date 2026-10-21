@@ -38,6 +38,7 @@ rootProject.name = "OfflineComputerKeyboard"
 
 // Pure Kotlin logic (layouts, modifiers, editing rules). Builds and tests without the Android SDK.
 include(":core")
+include(":mt")
 
 // The Android app needs the Android SDK. Skip it where no SDK is configured so `:core:test` still runs.
 val hasAndroidSdk = System.getenv("ANDROID_HOME") != null ||

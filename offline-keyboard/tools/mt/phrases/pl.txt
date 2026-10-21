@@ -1,0 +1,108 @@
+# Wiadomości codzienne
+Cześć, co słychać?
+Jestem już w domu.
+Będę za dziesięć minut.
+Co kupić w sklepie?
+Kup proszę chleb i mleko.
+Dziękuję za pomoc!
+Przepraszam, spóźnię się.
+Zadzwoń do mnie, kiedy będziesz mógł.
+Dzisiaj jest bardzo zimno.
+Jadłeś już?
+Dobranoc, do jutra.
+Kocham cię.
+Gdzie teraz jesteś?
+Muszę iść do lekarza.
+Dzieci są już w szkole.
+Czy mogę przyjść wieczorem?
+Nie zapomnij kluczy.
+Dzisiaj mam wolne.
+Latem pojedziemy nad morze.
+Wszystko w porządku, nie martw się.
+# Wiadomości służbowe
+Jestem na zmianie do szóstej wieczorem.
+Jutro zaczynam o siódmej rano.
+Czy można zamienić zmianę w sobotę?
+Kierownik prosi, żeby przyjść do biura.
+Proszę potwierdzić otrzymanie dokumentów.
+Raport będzie gotowy do końca dnia.
+Potrzebuję urlopu od poniedziałku.
+Dzisiaj jestem chory i nie przyjdę do pracy.
+Spotkanie zostało przeniesione na czwartek.
+Proszę przesłać fakturę mailem.
+Kto dzisiaj odpowiada za magazyn?
+Trzeba zaktualizować grafik pracy.
+Skończyłem swoją część pracy.
+Skaner nie działa, potrzebna pomoc.
+Proszę jeszcze raz sprawdzić zamówienie.
+# Towary, kontenery, operacje
+Paletę trzeba przenieść do magazynu numer dwa.
+Kontener przyjedzie jutro rano.
+Rozładunek zacznie się o dziewiątej.
+Na półce brakuje trzech kartonów.
+Zamówienie jest już spakowane i gotowe do wysyłki.
+Towar został uszkodzony podczas transportu.
+Proszę sprawdzić stany magazynowe.
+Ciężarówka czeka na rampie.
+Etykiety zostały wydrukowane nieprawidłowo.
+Trzeba zrobić inwentaryzację w sektorze B.
+Kompletacja zamówienia zajmie dwie godziny.
+Ilość nie zgadza się z dokumentem dostawy.
+Postaw palety przy bramie numer cztery.
+Wysyłka została przeniesiona na przyszły tydzień.
+Wózek paletowy się zepsuł.
+# Liczby, daty, godziny
+Spotkanie o 14:30.
+Zamówienie numer 45821 jest gotowe.
+Cena wynosi 250 złotych.
+Dostawa 15 marca 2026 roku.
+Mamy 12 palet i 3 kontenery.
+Pracuję od 8:00 do 16:00.
+Temperatura w magazynie wynosi 18 stopni.
+Waga ładunku to 1200 kilogramów.
+Termin ważności do 30.06.2026.
+Potrzeba 40 kartonów po 6 sztuk.
+# Terminy specjalne i skróty
+Wyślij PDF z fakturą.
+Sprawdź status w systemie WMS.
+Nie znaleziono kodu towaru ABC-123.
+Numer SSCC jest na etykiecie.
+Do umowy potrzebny jest numer PESEL.
+Wypłata przyjdzie na konto IBAN.
+Zaktualizuj dane w Excelu.
+Zadzwoń do HR w sprawie urlopu.
+Zmiana B zaczyna się o 22:00.
+Sprawdź lokalizator GPS ciężarówki.
+# Długie zdania
+Jeśli kontener przyjedzie później niż o dwunastej, rozładunek trzeba będzie przełożyć na jutro rano.
+Dostaliśmy reklamację od klienta, dlatego trzeba sprawdzić wszystkie zamówienia wysłane w zeszłym tygodniu.
+Kiedy skończysz kompletację, daj mi znać, żebym mógł zamówić transport i przygotować dokumenty.
+Z powodu remontu drogi ciężarówki będą przyjeżdżać z drugiej strony magazynu przez najbliższe dwa tygodnie.
+Chciałbym się dowiedzieć, czy mogę dostać zaświadczenie o zatrudnieniu do wniosku o kartę pobytu.
+Po inwentaryzacji okazało się, że część towaru leżała w niewłaściwych miejscach, więc trzeba zaktualizować system.
+# Przeczenia, pytania, polecenia
+Nie mogę dzisiaj przyjść.
+To nie jest mój kontener.
+Nikt nie odbiera telefonu.
+Dlaczego zamówienie jeszcze nie zostało wysłane?
+Kiedy będzie następna dostawa?
+Ile palet zostało?
+Kto podpisał ten dokument?
+Czy są wolne miejsca w magazynie?
+Nie otwieraj tego kartonu.
+Zamknij bramę po rozładunku.
+Przynieś proszę skaner.
+Sprawdź dokumenty przed wysyłką.
+Nie stawiajcie niczego w przejściu.
+Natychmiast zgłoś kierownikowi uszkodzenie.
+Możesz mi pomóc?
+Nigdy nie widziałem takiego towaru.
+Czy można zapłacić kartą?
+Wyjaśnij proszę jeszcze raz.
+Nie zapominaj nosić kamizelki odblaskowej.
+Gdzie leżą nowe etykiety?
+Ile kosztuje bilet do Kijowa?
+Nie mów nikomu o tym.
+Otwórz okno, tu jest bardzo duszno.
+Czy sklep jest otwarty w niedzielę?
+Podaj mi numer zamówienia.

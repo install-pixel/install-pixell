@@ -11,10 +11,21 @@ enum class EngineAvailability {
     NOT_IMPLEMENTED,
 }
 
+/** Callbacks arrive on the main thread. */
 interface SpeechListener {
+    /** Model loaded and the microphone is recording. */
+    fun onReady() {}
+
+    /** Current, not yet final words of the phrase being spoken. */
     fun onPartialResult(text: String)
-    fun onFinalResult(text: String)
+
+    /** A finished phrase (after a pause, or when the session is stopped). */
+    fun onSegmentResult(text: String)
+
     fun onError(message: String)
+
+    /** The session is over (stopped, cancelled or failed); no more callbacks follow. */
+    fun onEnd() {}
 }
 
 interface SpeechSession {

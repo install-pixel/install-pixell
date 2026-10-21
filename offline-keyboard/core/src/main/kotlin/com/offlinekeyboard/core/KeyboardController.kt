@@ -41,6 +41,9 @@ class KeyboardController(
     var layer: Layer = Layer.LETTERS
         private set
 
+    /** User shortcuts (computer mode). Checked before the built-in Ctrl/Alt behaviour. */
+    var shortcuts: List<Shortcut> = Shortcut.defaults
+
     var enabledLanguages: List<Language> = sanitize(enabledLanguages)
         set(value) {
             field = sanitize(value)
@@ -98,7 +101,12 @@ class KeyboardController(
         return listOf(EditorCommand.CommitText(out))
     }
 
-    fun onKey(key: Key): List<EditorCommand> = when (val action = key.action) {
+    fun onKey(key: Key): List<EditorCommand> {
+        pendingModifierShortcut = null
+        return handleKey(key)
+    }
+
+    private fun handleKey(key: Key): List<EditorCommand> = when (val action = key.action) {
         is KeyAction.Text -> afterKey(onText(action, key.physical))
         is KeyAction.Special -> onSpecial(action.key)
         KeyAction.Spacer -> emptyList()
@@ -120,6 +128,9 @@ class KeyboardController(
         val mods = currentMods()
         if (physical != null && modifiers.anyShortcutModifier) {
             val lower = physical.lowercaseChar()
+            if (lower in 'a'..'z' || lower in '0'..'9') {
+                findShortcut(mods, lower.uppercaseChar().toString())?.let { return runShortcut(it) }
+            }
             // Polish programmer layout: Alt + letter = diacritic.
             if (language == Language.PL && mods.alt && !mods.ctrl && !mods.meta) {
                 LayoutProvider.polishAltGr[lower]?.let { letter ->
@@ -146,14 +157,68 @@ class KeyboardController(
         return listOf(EditorCommand.CommitText(text))
     }
 
+    private fun findShortcut(mods: KeyMods, keyId: String?): Shortcut? =
+        if (mode == KeyboardMode.COMPUTER) shortcuts.firstOrNull { it.isValid && it.matches(mods, keyId) } else null
+
+    private fun runShortcut(shortcut: Shortcut): List<EditorCommand> {
+        modifiers.releaseAll()
+        return when (shortcut.action) {
+            ShortcutAction.SWITCH_LANGUAGE -> { nextLanguage(); emptyList() }
+            ShortcutAction.SWITCH_MODE -> {
+                setMode(if (mode == KeyboardMode.COMPUTER) KeyboardMode.MOBILE else KeyboardMode.COMPUTER)
+                emptyList()
+            }
+            ShortcutAction.VOICE_INPUT -> listOf(EditorCommand.StartVoice)
+            ShortcutAction.TOGGLE_TRANSLATE -> listOf(EditorCommand.ToggleTranslate)
+            ShortcutAction.HIDE_KEYBOARD -> listOf(EditorCommand.HideKeyboard)
+            ShortcutAction.INSERT_TEXT -> listOf(EditorCommand.CommitText(shortcut.text))
+        }
+    }
+
+    /**
+     * A completed modifier-only combination (e.g. Alt+Shift) waits like on Windows, where the switch happens
+     * when the keys are released without another key: if the next key comes first (Alt+Shift+Z = Ż in Polish,
+     * Ctrl+Shift+← selects a word), it is a normal combination and the shortcut is dropped.
+     */
+    var pendingModifierShortcut: Shortcut? = null
+        private set
+
+    /** Called by the service after [PENDING_SHORTCUT_DELAY_MS] without another key press. */
+    fun firePendingShortcut(): List<EditorCommand> {
+        val shortcut = pendingModifierShortcut ?: return emptyList()
+        pendingModifierShortcut = null
+        return runShortcut(shortcut)
+    }
+
+    private fun tapModifier(key: ModifierKey, now: Long): List<EditorCommand> {
+        modifiers.tap(key, now)
+        pendingModifierShortcut = if (modifiers.isActive(key)) findShortcut(currentMods(), null) else null
+        return emptyList()
+    }
+
+    /** Key shortcuts on special keys (Space, Enter, Tab, F1–F12). */
+    private fun specialShortcut(key: SpecialKey, mods: KeyMods): Shortcut? {
+        if (!(mods.ctrl || mods.alt || mods.meta)) return null
+        val id = when (key) {
+            SpecialKey.SPACE -> "SPACE"
+            SpecialKey.ENTER -> "ENTER"
+            SpecialKey.TAB -> "TAB"
+            SpecialKey.F1, SpecialKey.F2, SpecialKey.F3, SpecialKey.F4, SpecialKey.F5, SpecialKey.F6,
+            SpecialKey.F7, SpecialKey.F8, SpecialKey.F9, SpecialKey.F10, SpecialKey.F11, SpecialKey.F12 -> key.name
+            else -> return null
+        }
+        return findShortcut(mods, id)
+    }
+
     private fun onSpecial(key: SpecialKey): List<EditorCommand> {
         val now = clock()
         val mods = currentMods()
+        specialShortcut(key, mods)?.let { return runShortcut(it) }
         return when (key) {
-            SpecialKey.SHIFT -> { modifiers.tap(ModifierKey.SHIFT, now); emptyList() }
-            SpecialKey.CTRL -> { modifiers.tap(ModifierKey.CTRL, now); emptyList() }
-            SpecialKey.ALT -> { modifiers.tap(ModifierKey.ALT, now); emptyList() }
-            SpecialKey.META -> { modifiers.tap(ModifierKey.META, now); emptyList() }
+            SpecialKey.SHIFT -> tapModifier(ModifierKey.SHIFT, now)
+            SpecialKey.CTRL -> tapModifier(ModifierKey.CTRL, now)
+            SpecialKey.ALT -> tapModifier(ModifierKey.ALT, now)
+            SpecialKey.META -> tapModifier(ModifierKey.META, now)
             SpecialKey.CAPS_LOCK -> { modifiers.toggleCapsLock(); emptyList() }
 
             SpecialKey.BACKSPACE -> afterKey(listOf(if (mods.ctrl) EditorCommand.DeleteWordBackward else EditorCommand.DeleteBackward))
@@ -240,8 +305,10 @@ class KeyboardController(
         Direction.PAGE_DOWN -> "PAGE_DOWN"
     }
 
-    private companion object {
-        fun sanitize(languages: List<Language>): List<Language> {
+    companion object {
+        const val PENDING_SHORTCUT_DELAY_MS = 500L
+
+        private fun sanitize(languages: List<Language>): List<Language> {
             val ordered = Language.entries.filter { it in languages }
             return ordered.ifEmpty { Language.entries }
         }
