@@ -98,10 +98,8 @@
     <string name="dictionary_word_removed">Видалено зі словника: %1$s</string>
     <string name="models_intro">Моделі — це файли, з якими клавіатура розпізнає голос і перекладає просто на телефоні, без інтернету. Звичайний набір працює й без них. Завантажте лише потрібні — один раз.</string>
     <string name="models_importing">Імпорт %1$s… це може тривати хвилину.</string>
-    <string name="models_import_done">Встановлено</string>
     <string name="models_import_failed">Не вдалося імпортувати</string>
     <string name="models_not_installed">Не встановлено</string>
-    <string name="models_import">Імпортувати</string>
     <string name="models_speech">Голосове введення</string>
     <string name="models_speech_hint">Потрібна для кнопки «Голос». Без моделі мови диктувати нею не вийде.</string>
     <string name="models_translation">Переклад</string>
@@ -164,7 +162,7 @@
     <string name="accent_peach">Персиковий</string>
     <string name="accent_rose">Пудровий</string>
     <string name="no_browser">Не знайдено браузер, щоб відкрити посилання.</string>
-    <string name="models_how">Як: 1) «Завантажити» — браузер збереже файл. 2) «Імпортувати» — виберіть його в «Завантаженнях». Розпаковувати не треба.</string>
+    <string name="models_how">Як: 1) «Завантажити» біля потрібної моделі — браузер збереже файл. 2) Коли завантажиться, торкніться в браузері «Відкрити» й виберіть Offline Keyboard — модель встановиться сама. Або натисніть «Встановити завантажені файли» й виберіть один чи кілька файлів — клавіатура сама розпізнає кожен.</string>
     <string name="models_download">Завантажити</string>
     <string name="models_size">близько %1$d МБ</string>
     <string name="models_custom">Інші моделі (для досвідчених)</string>
@@ -222,4 +220,9 @@
     <string name="glossary_field">Словник</string>
     <string name="glossary_saved">Збережено · записів: %1$d</string>
     <string name="glossary_add_example">Додати складський приклад</string>
+    <string name="models_install_downloaded">Встановити завантажені файли</string>
+    <string name="models_install_title">Встановлення моделі клавіатури</string>
+    <string name="models_install_running">Встановлюю… великі моделі — до хвилини.</string>
+    <string name="models_installed_voice">Голос · %1$s</string>
+    <string name="models_installed_translation">Переклад · %1$s → %2$s</string>
 </resources>

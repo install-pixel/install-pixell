@@ -98,10 +98,8 @@
     <string name="dictionary_word_removed">Removed from dictionary: %1$s</string>
     <string name="models_intro">Models are files that let the keyboard recognise speech and translate right on the phone, without internet. Normal typing works fully without them. Download only what you need — once.</string>
     <string name="models_importing">Importing %1$s… this can take a minute.</string>
-    <string name="models_import_done">Installed</string>
     <string name="models_import_failed">Import failed</string>
     <string name="models_not_installed">Not installed</string>
-    <string name="models_import">Import</string>
     <string name="models_speech">Voice input</string>
     <string name="models_speech_hint">Needed for the Voice button. Without the model of a language you cannot dictate in it.</string>
     <string name="models_translation">Translation</string>
@@ -164,7 +162,7 @@
     <string name="accent_peach">Peach</string>
     <string name="accent_rose">Rose</string>
     <string name="no_browser">No browser found to open the link.</string>
-    <string name="models_how">How: 1) «Download» — the browser saves the file. 2) «Import» — pick it in Downloads. No need to unzip.</string>
+    <string name="models_how">How: 1) «Download» next to a model — the browser saves the file. 2) When it is done, tap «Open» in the browser and choose Offline Keyboard: the model installs by itself. Or tap «Install downloaded files» below and pick one or several files — the keyboard recognises each one.</string>
     <string name="models_download">Download</string>
     <string name="models_size">about %1$d MB</string>
     <string name="models_custom">Other models (advanced)</string>
@@ -222,4 +220,9 @@
     <string name="glossary_field">Glossary</string>
     <string name="glossary_saved">Saved · entries: %1$d</string>
     <string name="glossary_add_example">Add warehouse example</string>
+    <string name="models_install_downloaded">Install downloaded files</string>
+    <string name="models_install_title">Install keyboard model</string>
+    <string name="models_install_running">Installing… large models take a minute.</string>
+    <string name="models_installed_voice">Voice · %1$s</string>
+    <string name="models_installed_translation">Translation · %1$s → %2$s</string>
 </resources>

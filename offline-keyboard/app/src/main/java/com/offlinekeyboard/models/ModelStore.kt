@@ -13,6 +13,9 @@ import java.util.zip.ZipInputStream
 
 data class InstalledModel(val name: String, val sizeBytes: Long, val dir: File)
 
+/** What [ModelStore.importAny] installed: a voice model for [language] or a translation for [direction]. */
+data class ImportedModel(val model: InstalledModel, val language: Language? = null, val direction: TranslationDirection? = null)
+
 /**
  * Offline models imported from local zip files (Storage Access Framework). Nothing is downloaded:
  * the user copies the zip to the phone and picks it in Settings. Models are kept in no-backup storage.
@@ -49,6 +52,39 @@ class ModelStore(private val context: Context) {
             return direction to install(modelDir, translationDir(direction), displayName(uri))
         } finally {
             staging.deleteRecursively()
+        }
+    }
+
+    /**
+     * Blocking; run off the main thread. Installs any of the keyboard's model zips and works out by
+     * itself what it is: a translation package names its direction, a Vosk folder its language
+     * (vosk-model-small-uk-…, -pl-…, -en-…). The user never has to match file names to slots.
+     */
+    fun importAny(uri: Uri): ImportedModel {
+        val staging = unzipToStaging(uri)
+        try {
+            val name = displayName(uri)
+            findDir(staging) { MarianPackage.isValid(it) }?.let { dir ->
+                val direction = MarianPackage(dir).direction
+                return ImportedModel(install(dir, translationDir(direction), name), direction = direction)
+            }
+            val voskDir = findDir(staging, ::isVoskModel)
+                ?: throw IOException("Not a keyboard model (neither a translation package nor a Vosk speech model)")
+            val language = speechLanguage(voskDir.name) ?: speechLanguage(name)
+                ?: throw IOException("Cannot tell the language of this speech model from its name: $name")
+            return ImportedModel(install(voskDir, speechDir(language), name), language = language)
+        } finally {
+            staging.deleteRecursively()
+        }
+    }
+
+    private fun speechLanguage(name: String): Language? {
+        val n = name.lowercase()
+        return when {
+            Regex("(^|[-_])(uk|ua|ukr)([-_.]|$)").containsMatchIn(n) -> Language.UK
+            Regex("(^|[-_])(pl|pol)([-_.]|$)").containsMatchIn(n) -> Language.PL
+            Regex("(^|[-_])(en|eng|en-us)([-_.]|$)").containsMatchIn(n) -> Language.EN
+            else -> null
         }
     }
 

@@ -98,10 +98,8 @@
     <string name="dictionary_word_removed">Usunięto ze słownika: %1$s</string>
     <string name="models_intro">Modele to pliki, dzięki którym klawiatura rozpoznaje mowę i tłumaczy na telefonie, bez internetu. Zwykłe pisanie działa bez nich. Pobierz tylko potrzebne — raz.</string>
     <string name="models_importing">Importowanie %1$s… może to potrwać minutę.</string>
-    <string name="models_import_done">Zainstalowano</string>
     <string name="models_import_failed">Import nie powiódł się</string>
     <string name="models_not_installed">Nie zainstalowano</string>
-    <string name="models_import">Importuj</string>
     <string name="models_speech">Pisanie głosem</string>
     <string name="models_speech_hint">Potrzebny do przycisku «Głos». Bez modelu danego języka nie podyktujesz w nim.</string>
     <string name="models_translation">Tłumaczenie</string>
@@ -164,7 +162,7 @@
     <string name="accent_peach">Brzoskwiniowy</string>
     <string name="accent_rose">Pudrowy róż</string>
     <string name="no_browser">Nie znaleziono przeglądarki, aby otworzyć link.</string>
-    <string name="models_how">Jak: 1) «Pobierz» — przeglądarka zapisze plik. 2) «Importuj» — wybierz go w Pobranych. Nie trzeba rozpakowywać.</string>
+    <string name="models_how">Jak: 1) «Pobierz» przy modelu — przeglądarka zapisze plik. 2) Po pobraniu stuknij w przeglądarce «Otwórz» i wybierz Offline Keyboard — model zainstaluje się sam. Albo stuknij «Zainstaluj pobrane pliki» i wybierz jeden lub kilka plików — klawiatura sama rozpozna każdy.</string>
     <string name="models_download">Pobierz</string>
     <string name="models_size">około %1$d MB</string>
     <string name="models_custom">Inne modele (zaawansowane)</string>
@@ -222,4 +220,9 @@
     <string name="glossary_field">Słownik</string>
     <string name="glossary_saved">Zapisano · wpisów: %1$d</string>
     <string name="glossary_add_example">Dodaj przykład magazynowy</string>
+    <string name="models_install_downloaded">Zainstaluj pobrane pliki</string>
+    <string name="models_install_title">Instalacja modelu klawiatury</string>
+    <string name="models_install_running">Instaluję… duże modele — do minuty.</string>
+    <string name="models_installed_voice">Głos · %1$s</string>
+    <string name="models_installed_translation">Tłumaczenie · %1$s → %2$s</string>
 </resources>

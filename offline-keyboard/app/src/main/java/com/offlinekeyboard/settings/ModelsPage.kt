@@ -64,7 +64,6 @@ internal fun ModelsPage(onBack: () -> Unit) {
     var refresh by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    var speechTarget by remember { mutableStateOf(Language.UK) }
     var micGranted by remember { mutableStateOf(false) }
 
     LifecycleResumeEffect(Unit) {
@@ -72,7 +71,6 @@ internal fun ModelsPage(onBack: () -> Unit) {
         onPauseOrDispose { }
     }
 
-    val importDone = stringResource(R.string.models_import_done)
     val importFailed = stringResource(R.string.models_import_failed)
 
     fun runImport(label: String, block: () -> String) {
@@ -81,7 +79,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
         scope.launch {
             message = try {
                 val name = withContext(Dispatchers.IO) { block() }
-                "$importDone: $name"
+                name
             } catch (e: Exception) {
                 "$importFailed: ${e.message ?: e.javaClass.simpleName}"
             }
@@ -91,20 +89,25 @@ internal fun ModelsPage(onBack: () -> Unit) {
         }
     }
 
-    val speechPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            val lang = speechTarget
-            runImport(lang.code) { store.importSpeech(uri, lang).name }
+    // Any number of downloaded zips at once; each one is recognised and put in its place.
+    val filesPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            runImport("${uris.size}") {
+                uris.joinToString("; ") { uri ->
+                    runCatching { describe(context, store.importAny(uri)) }
+                        .getOrElse { e -> "$importFailed: ${e.message ?: e.javaClass.simpleName}" }
+                }
+            }
         }
-    }
-    val translationPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) runImport("MT") { store.importTranslation(uri).let { (d, m) -> "${d.source.code}→${d.target.code} ${m.name}" } }
     }
     val micRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { micGranted = it }
 
     PageScaffold(stringResource(R.string.page_models), onBack) {
         Text(stringResource(R.string.models_intro), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.models_how), style = MaterialTheme.typography.bodyMedium)
+        Button(enabled = busy == null, onClick = { filesPicker.launch(ZIP_TYPES) }) {
+            Text(stringResource(R.string.models_install_downloaded))
+        }
 
         busy?.let {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -133,10 +136,6 @@ internal fun ModelsPage(onBack: () -> Unit) {
                     installed = model != null,
                     enabled = busy == null,
                     onDownload = { Links.open(context, Links.modelFile(file.first)) },
-                    onImport = {
-                        speechTarget = language
-                        speechPicker.launch(ZIP_TYPES)
-                    },
                     onDelete = {
                         store.deleteSpeech(language)
                         refresh++
@@ -166,7 +165,6 @@ internal fun ModelsPage(onBack: () -> Unit) {
                     accurate = accurate?.let { (name, mb) ->
                         stringResource(R.string.models_download_accurate, mb) to { Links.open(context, Links.modelFile(name)) }
                     },
-                    onImport = { translationPicker.launch(ZIP_TYPES) },
                     onDelete = {
                         store.deleteTranslation(direction)
                         refresh++
@@ -193,7 +191,6 @@ private fun ModelRow(
     installed: Boolean,
     enabled: Boolean,
     onDownload: () -> Unit,
-    onImport: () -> Unit,
     onDelete: () -> Unit,
     /** Label and action of the optional larger, more accurate download. */
     accurate: Pair<String, () -> Unit>? = null,
@@ -203,13 +200,26 @@ private fun ModelRow(
         Text(status, style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (installed) {
-                OutlinedButton(enabled = enabled, onClick = onImport) { Text(stringResource(R.string.models_import)) }
                 TextButton(enabled = enabled, onClick = onDelete) { Text(stringResource(R.string.delete)) }
             } else {
                 Button(onClick = onDownload) { Text(stringResource(R.string.models_download)) }
-                Button(enabled = enabled, onClick = onImport) { Text(stringResource(R.string.models_import)) }
             }
         }
         accurate?.let { (label, action) -> TextButton(onClick = action) { Text(label) } }
     }
+}
+
+/** "Voice · Українська" or "Translation · Українська → Polski", for messages after installing. */
+internal fun describe(context: android.content.Context, imported: com.offlinekeyboard.models.ImportedModel): String {
+    fun name(language: Language) = context.getString(
+        when (language) {
+            Language.UK -> R.string.language_uk
+            Language.PL -> R.string.language_pl
+            Language.EN -> R.string.language_en
+        },
+    )
+    val what = imported.language?.let { context.getString(R.string.models_installed_voice, name(it)) }
+        ?: imported.direction?.let { context.getString(R.string.models_installed_translation, name(it.source), name(it.target)) }
+        ?: imported.model.name
+    return "✓ $what"
 }
