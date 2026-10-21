@@ -38,6 +38,9 @@ sealed interface EditorCommand {
 
     data object StartVoice : EditorCommand
     data object ToggleTranslate : EditorCommand
+
+    /** Translate the selected text in place, or insert the clipboard translated. */
+    data object TranslateSelectionOrClipboard : EditorCommand
     data object HideKeyboard : EditorCommand
     data object OpenSettings : EditorCommand
 }

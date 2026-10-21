@@ -133,7 +133,7 @@
     <string name="translating">Переклад %1$s…</string>
     <string name="translation_discarded">Текст змінився під час перекладу; нічого не замінено.</string>
     <string name="translation_failed">Не вдалося перекласти: %1$s</string>
-    <string name="translation_how">Рядок над клавішами перемикає режим: Aa Текст, ⇄ Переклад, 🎤 Голос. Один дотик на ⇄ вмикає переклад, наступний змінює напрямок. В автоматичному режимі в полі одразу з\'являється переклад (оригінал видно над клавішами); речення завершується на . ! ? або Enter. У ручному режимі набраний текст підкреслений, а Enter замінює його перекладом.</string>
+    <string name="translation_how">Рядок над клавішами: Aa Текст · ⇄ Переклад (ще дотик змінює напрямок) · 📋⇄ перекласти виділене або вставити буфер з перекладом · 🎤 Голос. Під час перекладу в полі видно ваш текст, а над клавішами — попередній переклад; переклад замінює ваш текст один раз: автоматично після . ! ?, Enter або паузи, у ручному режимі — лише після Enter. Дотик до повідомлення ✓ повертає оригінал.</string>
     <string name="translation_direction">Напрямок</string>
     <string name="translation_check_warning">⚠ Перевірте переклад: %1$s відсутнє або змінене. Торкніться, щоб повернути оригінал.</string>
     <string name="translation_restored">Оригінальний текст повернуто.</string>
@@ -142,8 +142,17 @@
     <string name="mode_text_description">Звичайний набір без перекладу</string>
     <string name="mode_voice">🎤 Голос</string>
     <string name="mode_voice_stop">⏹ Стоп</string>
-    <string name="translate_on_auto">Переклад %1$s: набирайте — у поле йде переклад. Ще дотик на ⇄ змінює напрямок.</string>
+    <string name="translate_on_auto">Переклад %1$s: пишіть як звичайно — переклад видно над клавішами, у поле він вставляється після . ! ?, Enter або паузи.</string>
     <string name="translation_mode">Як перекладати</string>
-    <string name="translation_mode_auto">Автоматично під час набору (без підтвердження)</string>
+    <string name="translation_mode_auto">Автоматично (без підтвердження)</string>
     <string name="translation_mode_manual">Після натискання Enter (⇄) для кожного фрагмента</string>
+    <string name="action_translate_clipboard">Перекласти виділене / вставити з перекладом</string>
+    <string name="clipboard_chip">📋 ⇄</string>
+    <string name="clipboard_chip_description">Перекласти виділений текст або вставити буфер обміну з перекладом</string>
+    <string name="clipboard_empty">Нічого не виділено, і буфер обміну порожній.</string>
+    <string name="translation_done_undo">✓ Перекладено. Торкніться, щоб повернути оригінал.</string>
+    <string name="translation_pause">Вставляти переклад після паузи в наборі</string>
+    <string name="translation_pause_seconds">через %1$s с</string>
+    <string name="translation_pause_off">Ні, лише після . ! ? або Enter</string>
+    <string name="translation_accurate">Точніший переклад (пошук кількох варіантів, трохи повільніше)</string>
 </resources>

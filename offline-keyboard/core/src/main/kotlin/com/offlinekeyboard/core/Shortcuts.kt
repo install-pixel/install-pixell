@@ -3,7 +3,9 @@ package com.offlinekeyboard.core
 import java.net.URLDecoder
 import java.net.URLEncoder
 
-enum class ShortcutAction { SWITCH_LANGUAGE, SWITCH_MODE, VOICE_INPUT, TOGGLE_TRANSLATE, HIDE_KEYBOARD, INSERT_TEXT }
+enum class ShortcutAction {
+    SWITCH_LANGUAGE, SWITCH_MODE, VOICE_INPUT, TOGGLE_TRANSLATE, TRANSLATE_SELECTION_OR_CLIPBOARD, HIDE_KEYBOARD, INSERT_TEXT,
+}
 
 /**
  * A user-defined key combination (computer mode). [key] is null for modifier-only combinations such as

@@ -4,12 +4,10 @@ import android.view.inputmethod.InputConnection
 import com.offlinekeyboard.core.input.TextBoundaries
 
 /**
- * Translate mode. Only the segment typed in this mode is ever replaced (the field's composing text);
- * other text in the field is never touched.
- *
- * - Manual: the source stays in the field (underlined); Enter swaps it for the translation.
- * - Auto: the field shows the live translation of what is typed; the source is shown above the keys.
- *   The segment is committed at the end of a sentence, on Enter or when the cursor leaves.
+ * Translate mode. What the user types stays in the field as composing text (underlined), so they always
+ * see and can correct their own words; a live preview of the translation is shown above the keys. When
+ * the segment is finished (end of sentence, Enter, a pause in automatic mode) its translation replaces
+ * exactly this segment once. Other text in the field is never touched.
  *
  * Every change bumps [generation]; a translation that arrives for an older generation is ignored.
  */
@@ -18,21 +16,14 @@ class TranslationComposer(
     /** Absolute cursor position in the field, or -1 if unknown. Read when a segment starts. */
     private val cursorPosition: () -> Int = { -1 },
 ) {
-
-    var auto = true
-
     private val buffer = StringBuilder()
 
     var generation = 0
         private set
 
-    /** Manual mode: waiting for a translation of [generation]. */
+    /** Waiting for the final translation of [generation]. */
     var pending = false
         private set
-
-    // Auto mode: what the field currently shows as composing text, and for which generation.
-    private var shown: String? = null
-    private var shownGeneration = -1
 
     // Where the segment starts in the field and where our own edits put the cursor. Many apps (messengers,
     // browsers) do not report the composing region, so cursor updates are matched against these positions
@@ -43,13 +34,19 @@ class TranslationComposer(
     val text: String get() = buffer.toString()
     val isEmpty: Boolean get() = buffer.isEmpty()
 
-    /** Auto mode: the field already shows the translation of the current text. */
-    val isUpToDate: Boolean get() = shown != null && shownGeneration == generation
-
     fun append(text: String) {
-        if (buffer.isEmpty() && shown == null) segmentStart = cursorPosition()
+        if (buffer.isEmpty()) segmentStart = cursorPosition()
         buffer.append(text)
         changed()
+    }
+
+    /** Removes one character of the source; false when there is nothing to remove. */
+    fun backspace(): Boolean {
+        if (buffer.isEmpty()) return false
+        val n = TextBoundaries.previousGraphemeLength(buffer)
+        buffer.setLength(buffer.length - n)
+        changed()
+        return true
     }
 
     /**
@@ -63,26 +60,7 @@ class TranslationComposer(
         return selEnd in recentEnds
     }
 
-    private fun setComposing(ic: InputConnection, text: CharSequence) {
-        ic.setComposingText(text, 1)
-        if (segmentStart >= 0) {
-            recentEnds.addLast(segmentStart + text.length)
-            while (recentEnds.size > RECENT_ENDS) recentEnds.removeFirst()
-        }
-    }
-
-    /** Removes one character of the source; false when there is nothing to remove. */
-    fun backspace(): Boolean {
-        if (buffer.isEmpty()) return false
-        val n = TextBoundaries.previousGraphemeLength(buffer)
-        buffer.setLength(buffer.length - n)
-        changed()
-        return true
-    }
-
-    // ---------------------------------------------------------------- manual mode
-
-    /** Starts a translation; returns the text and the generation to pass to [applyTranslation]. */
+    /** Starts the final translation; returns the text and the generation to pass to [applyTranslation]. */
     fun beginTranslation(): Pair<String, Int>? {
         if (buffer.isBlank()) return null
         pending = true
@@ -110,45 +88,11 @@ class TranslationComposer(
         if (forGeneration == generation) pending = false
     }
 
-    // ---------------------------------------------------------------- auto mode
-
-    /** Shows [translation] of [forGeneration] in the field. False if the text changed meanwhile. */
-    fun showLive(forGeneration: Int, translation: String): Boolean {
-        if (forGeneration != generation || buffer.isEmpty()) return false
-        val ic = connection() ?: return false
-        val result = keepSpaces(buffer.toString(), translation)
-        setComposing(ic, result)
-        shown = result
-        shownGeneration = forGeneration
-        return true
-    }
-
-    /** Commits the up-to-date live translation. Returns it, or null if it is not up to date. */
-    fun commitShown(): String? {
-        if (!isUpToDate) return null
-        val result = shown
+    /** The user moved on (cursor moved, other key, mode switched): the typed source stays as it is. */
+    fun leave() {
+        if (buffer.isEmpty() && !pending) return
         connection()?.finishComposingText()
         reset()
-        return result
-    }
-
-    // ---------------------------------------------------------------- leaving the segment
-
-    /**
-     * The user moved on (cursor moved, other key, mode switched). Auto mode keeps an up-to-date translation;
-     * otherwise the typed source is committed unchanged, so nothing is lost and nothing wrong is inserted.
-     * Returns the committed translation, if that is what stayed.
-     */
-    fun leave(): String? {
-        if (buffer.isEmpty() && !pending) return null
-        if (auto && isUpToDate) return commitShown()
-        val ic = connection()
-        if (ic != null) {
-            if (auto && shown != null) setComposing(ic, buffer)
-            ic.finishComposingText()
-        }
-        reset()
-        return null
     }
 
     /** The field changed under us (another field got focus): forget the segment without touching it. */
@@ -156,27 +100,24 @@ class TranslationComposer(
         reset()
     }
 
+    private fun setComposing(ic: InputConnection, text: CharSequence) {
+        ic.setComposingText(text, 1)
+        if (segmentStart >= 0) {
+            recentEnds.addLast(segmentStart + text.length)
+            while (recentEnds.size > RECENT_ENDS) recentEnds.removeFirst()
+        }
+    }
+
     private fun changed() {
         generation++
         pending = false
-        val ic = connection() ?: return
-        when {
-            buffer.isEmpty() -> {
-                setComposing(ic, "")
-                shown = null
-            }
-            // Auto mode: keep showing the last translation until the new one arrives (no flicker);
-            // before the first translation, show what is typed.
-            !auto || shown == null -> setComposing(ic, buffer)
-        }
+        connection()?.let { setComposing(it, buffer) }
     }
 
     private fun reset() {
         buffer.setLength(0)
         generation++
         pending = false
-        shown = null
-        shownGeneration = -1
         segmentStart = -1
         recentEnds.clear()
     }

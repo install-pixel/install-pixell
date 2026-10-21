@@ -170,6 +170,7 @@ class KeyboardController(
             }
             ShortcutAction.VOICE_INPUT -> listOf(EditorCommand.StartVoice)
             ShortcutAction.TOGGLE_TRANSLATE -> listOf(EditorCommand.ToggleTranslate)
+            ShortcutAction.TRANSLATE_SELECTION_OR_CLIPBOARD -> listOf(EditorCommand.TranslateSelectionOrClipboard)
             ShortcutAction.HIDE_KEYBOARD -> listOf(EditorCommand.HideKeyboard)
             ShortcutAction.INSERT_TEXT -> listOf(EditorCommand.CommitText(shortcut.text))
         }

@@ -1,5 +1,6 @@
 package com.offlinekeyboard.keyboard
 
+import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
@@ -101,7 +102,7 @@ class KeyboardService : InputMethodService(),
         controller = KeyboardController(settings.startMode, settings.lastLanguage, settings.enabledLanguages)
         controller.shortcuts = settings.shortcuts
         controller.listener = this
-        composer.auto = settings.translationAuto
+        translation.accurate = settings.translationAccurate
         scope.launch {
             repository.settings.collect { applySettings(it) }
         }
@@ -148,7 +149,7 @@ class KeyboardService : InputMethodService(),
         controller.enabledLanguages = new.enabledLanguages
         controller.shortcuts = new.shortcuts
         if (!new.rememberLastMode && old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
-        composer.auto = new.translationAuto
+        translation.accurate = new.translationAccurate
         if (!new.translateEnabled && old.translateEnabled) leaveSegment()
         updateSuggestions()
         render()
@@ -232,23 +233,57 @@ class KeyboardService : InputMethodService(),
 
     private fun directionLabel(direction: TranslationDirection) = "${direction.source.code}→${direction.target.code}"
 
+    private val previewRunnable = Runnable { requestPreview() }
+    private val pauseRunnable = Runnable { if (settings.translationAuto && !composer.isEmpty && !composer.pending) startTranslation() }
+
+    /** After each change of the segment: preview soon, and (automatic mode) insert after a pause. */
+    private fun segmentChanged() {
+        handler.removeCallbacks(previewRunnable)
+        handler.removeCallbacks(pauseRunnable)
+        if (composer.isEmpty) {
+            rootView?.showLive(null)
+            return
+        }
+        rootView?.showLive("→ ${settings.translationDirection.target.code}: …")
+        handler.postDelayed(previewRunnable, PREVIEW_DELAY_MS)
+        if (settings.translationAuto && settings.translationPauseMs > 0) {
+            handler.postDelayed(pauseRunnable, settings.translationPauseMs.toLong())
+        }
+    }
+
+    private fun requestPreview() {
+        val source = composer.text
+        if (source.isBlank()) return
+        val generation = composer.generation
+        val direction = settings.translationDirection
+        translation.preview(source, direction) { result ->
+            if (generation != composer.generation || composer.pending) return@preview
+            if (result is TranslationResult.Success) rootView?.showLive("→ ${direction.target.code}: ${result.text.trim()}")
+        }
+    }
+
+    /** Final translation of the segment; it replaces exactly the typed segment once. */
     private fun startTranslation() {
+        handler.removeCallbacks(previewRunnable)
+        handler.removeCallbacks(pauseRunnable)
         val (text, generation) = composer.beginTranslation() ?: return
         val direction = settings.translationDirection
         rootView?.showLive(getString(R.string.translating, directionLabel(direction)))
         translation.translate(text, direction) { result ->
-            rootView?.showLive(null)
             when (result) {
                 is TranslationResult.Success -> {
                     val inserted = composer.applyTranslation(generation, result.text)
-                    if (inserted == null) {
+                    if (inserted != null) {
+                        rootView?.showLive(null)
+                        showTranslated(text, inserted)
+                    } else if (!settings.translationAuto) {
                         rootView?.showStatus(getString(R.string.translation_discarded))
-                    } else {
-                        warnIfValuesChanged(text, inserted)
                     }
+                    // Automatic mode: the user kept typing; the next pause or sentence end translates again.
                 }
                 is TranslationResult.Failure -> {
                     composer.translationFailed(generation)
+                    rootView?.showLive(null)
                     rootView?.showStatus(getString(R.string.translation_failed, result.reason))
                 }
             }
@@ -257,59 +292,29 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
-    private val autoTranslate = Runnable { requestLive(commit = false) }
-
-    /** Auto mode: the source being typed is shown above the keys; its translation follows after a short pause. */
-    private fun scheduleLive() {
-        handler.removeCallbacks(autoTranslate)
-        val source = composer.text.trim()
-        rootView?.showLive(if (source.isEmpty()) null else "${settings.translationDirection.source.code}: $source")
-        if (!composer.isEmpty) handler.postDelayed(autoTranslate, AUTO_TRANSLATE_DELAY_MS)
-    }
-
-    /** Auto mode: translate the current segment into the field; [commit] ends the segment afterwards. */
-    private fun requestLive(commit: Boolean) {
-        handler.removeCallbacks(autoTranslate)
-        val source = composer.text
-        if (source.isBlank()) {
-            if (commit) leaveSegment()
-            return
-        }
-        val generation = composer.generation
-        translation.translate(source, settings.translationDirection) { result ->
-            when (result) {
-                is TranslationResult.Success ->
-                    if (composer.showLive(generation, result.text) && commit) {
-                        val inserted = composer.commitShown()
-                        rootView?.showLive(null)
-                        if (inserted != null) warnIfValuesChanged(source, inserted)
-                    }
-                is TranslationResult.Failure -> rootView?.showStatus(getString(R.string.translation_failed, result.reason))
-            }
-            render()
-        }
-    }
-
-    /** Ends the translate segment (keeps an up-to-date auto translation, otherwise the typed source). */
+    /** Ends the translate segment; the typed source stays as it is. */
     private fun leaveSegment() {
-        handler.removeCallbacks(autoTranslate)
-        val source = composer.text
-        val inserted = composer.leave()
-        if (inserted != null) warnIfValuesChanged(source, inserted)
+        handler.removeCallbacks(previewRunnable)
+        handler.removeCallbacks(pauseRunnable)
+        composer.leave()
         rootView?.showLive(null)
     }
 
     private fun endsSentence(text: String) = text.isNotEmpty() && text.last() in ".!?…"
 
     /**
-     * Numbers, times, codes and abbreviations must survive translation. If some are missing, warn and let
-     * the user tap the warning to put the original text back.
+     * After a translation was inserted: a short confirmation, or a warning if numbers, times, codes or
+     * abbreviations changed. Tapping either puts the original text back (if the translation is still
+     * right before the cursor).
      */
-    private fun warnIfValuesChanged(source: String, inserted: String) {
+    private fun showTranslated(source: String, inserted: String) {
         val missing = TranslationCheck.missing(source, inserted)
-        if (missing.isEmpty()) return
-        val list = missing.joinToString(", ") { "«$it»" }
-        rootView?.showStatus(getString(R.string.translation_check_warning, list), CHECK_WARNING_MS) {
+        val message = if (missing.isEmpty()) {
+            getString(R.string.translation_done_undo)
+        } else {
+            getString(R.string.translation_check_warning, missing.joinToString(", ") { "«$it»" })
+        }
+        rootView?.showStatus(message, if (missing.isEmpty()) DONE_MESSAGE_MS else CHECK_WARNING_MS) {
             val ic = currentInputConnection ?: return@showStatus
             val before = ic.getTextBeforeCursor(inserted.length, 0)?.toString()
             if (before == inserted) {
@@ -325,9 +330,54 @@ class KeyboardService : InputMethodService(),
     }
 
     /**
-     * Absolute cursor position from the field's own text, or -1. The last reported position is not used:
-     * cursor reports lag behind fast typing, and a wrong start would end the segment by mistake.
+     * 📋⇄ button: translates the selected text in place; without a selection, inserts the clipboard
+     * translated. The direction is detected from the text (Cyrillic → Polish, Latin → Ukrainian).
      */
+    override fun onTranslateClipboard() {
+        val ic = currentInputConnection ?: return
+        if (!translateOffered) {
+            rootView?.showStatus(getString(R.string.translate_not_here))
+            return
+        }
+        leaveSegment()
+        val selected = ic.getSelectedText(0)?.toString()?.takeIf { it.isNotBlank() }
+        val source = selected ?: clipboardText()
+        if (source.isNullOrBlank()) {
+            rootView?.showStatus(getString(R.string.clipboard_empty))
+            return
+        }
+        val direction = TranslationDirection.detect(source) ?: settings.translationDirection
+        if (!translation.isInstalled(direction)) {
+            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)))
+            return
+        }
+        rootView?.showLive(getString(R.string.translating, directionLabel(direction)))
+        translation.translate(source, direction) { result ->
+            rootView?.showLive(null)
+            val conn = currentInputConnection
+            when {
+                result is TranslationResult.Failure ->
+                    rootView?.showStatus(getString(R.string.translation_failed, result.reason))
+                conn == null -> Unit
+                selected != null && conn.getSelectedText(0)?.toString() != selected ->
+                    rootView?.showStatus(getString(R.string.translation_discarded))
+                else -> {
+                    val text = (result as TranslationResult.Success).text
+                    conn.commitText(text, 1)
+                    showTranslated(source, text)
+                }
+            }
+        }
+    }
+
+    private fun clipboardText(): String? {
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return null
+        val clip = clipboard.primaryClip ?: return null
+        if (clip.itemCount == 0) return null
+        return clip.getItemAt(0).coerceToText(this)?.toString()
+    }
+
+    /** Absolute cursor position from the field's own text, or -1 (then typing is never interrupted). */
     private fun cursorPosition(): Int {
         val extracted = currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0) ?: return -1
         return if (extracted.selectionEnd >= 0) extracted.startOffset + extracted.selectionEnd else -1
@@ -370,27 +420,26 @@ class KeyboardService : InputMethodService(),
             when (command) {
                 EditorCommand.StartVoice -> onToolbarVoice()
                 EditorCommand.ToggleTranslate -> if (settings.translateEnabled) onModeText() else onModeTranslate()
+                EditorCommand.TranslateSelectionOrClipboard -> onTranslateClipboard()
                 EditorCommand.HideKeyboard -> requestHideSelf(0)
                 EditorCommand.OpenSettings -> onToolbarSettings()
                 is EditorCommand.CommitText ->
                     if (translateActive) {
                         composer.append(command.text)
-                        if (composer.auto) {
-                            if (endsSentence(command.text)) requestLive(commit = true) else scheduleLive()
-                        }
+                        if (settings.translationAuto && endsSentence(command.text)) startTranslation() else segmentChanged()
                     } else {
                         learnBeforeSeparator(command.text)
                         editor.execute(command)
                     }
                 EditorCommand.DeleteBackward ->
                     if (translateActive && composer.backspace()) {
-                        if (composer.auto) scheduleLive()
+                        segmentChanged()
                     } else {
                         editor.execute(command)
                     }
                 is EditorCommand.Enter ->
                     if (translateActive && !composer.isEmpty && !command.forceNewline) {
-                        if (composer.auto) requestLive(commit = true) else startTranslation()
+                        startTranslation()
                     } else {
                         leaveSegment()
                         learnBeforeSeparator("\n")
@@ -496,6 +545,7 @@ class KeyboardService : InputMethodService(),
         translation.preload(direction)
         rootView?.showStatus(
             getString(if (settings.translationAuto) R.string.translate_on_auto else R.string.translate_on, directionLabel(direction)),
+            DONE_MESSAGE_MS,
         )
         updateSuggestions()
         render()
@@ -539,7 +589,7 @@ class KeyboardService : InputMethodService(),
         if (translateActive) {
             rootView?.showLive(null)
             composer.append(text)
-            if (composer.auto) requestLive(commit = true) else startTranslation()
+            startTranslation()
         } else {
             currentInputConnection?.commitText(text, 1)
             partialShown = false
@@ -657,6 +707,7 @@ class KeyboardService : InputMethodService(),
         const val MOBILE_KEY_DP = 52f
         const val WORD_CONTEXT = 64
         const val CHECK_WARNING_MS = 8000L
-        const val AUTO_TRANSLATE_DELAY_MS = 400L
+        const val PREVIEW_DELAY_MS = 350L
+        const val DONE_MESSAGE_MS = 4000L
     }
 }

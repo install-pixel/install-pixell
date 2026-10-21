@@ -39,6 +39,7 @@ internal fun actionName(action: ShortcutAction): String = stringResource(
         ShortcutAction.SWITCH_MODE -> R.string.action_switch_mode
         ShortcutAction.VOICE_INPUT -> R.string.action_voice
         ShortcutAction.TOGGLE_TRANSLATE -> R.string.action_translate
+        ShortcutAction.TRANSLATE_SELECTION_OR_CLIPBOARD -> R.string.action_translate_clipboard
         ShortcutAction.HIDE_KEYBOARD -> R.string.action_hide
         ShortcutAction.INSERT_TEXT -> R.string.action_insert_text
     },

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -38,6 +39,10 @@ data class KeyboardSettings(
     val translationDirection: TranslationDirection = TranslationDirection.UK_TO_PL,
     /** True: the field shows the translation while typing. False: Enter translates the typed segment. */
     val translationAuto: Boolean = true,
+    /** Automatic mode: insert the translation after this pause in typing; 0 = only at . ! ? and Enter. */
+    val translationPauseMs: Int = 2000,
+    /** Beam search for the inserted translation (more faithful, a little slower). */
+    val translationAccurate: Boolean = true,
 ) {
     val startMode: KeyboardMode get() = if (rememberLastMode) lastMode ?: defaultMode else defaultMode
 
@@ -82,6 +87,8 @@ class SettingsRepository(context: Context) {
             prefs[Keys.TRANSLATE_ENABLED] = updated.translateEnabled
             prefs[Keys.TRANSLATION_DIRECTION] = updated.translationDirection.name
             prefs[Keys.TRANSLATION_AUTO] = updated.translationAuto
+            prefs[Keys.TRANSLATION_PAUSE] = updated.translationPauseMs
+            prefs[Keys.TRANSLATION_ACCURATE] = updated.translationAccurate
         }
     }
 
@@ -116,6 +123,8 @@ class SettingsRepository(context: Context) {
             translationDirection = enumOrNull<TranslationDirection>(this[Keys.TRANSLATION_DIRECTION])
                 ?: defaults.translationDirection,
             translationAuto = this[Keys.TRANSLATION_AUTO] ?: defaults.translationAuto,
+            translationPauseMs = this[Keys.TRANSLATION_PAUSE] ?: defaults.translationPauseMs,
+            translationAccurate = this[Keys.TRANSLATION_ACCURATE] ?: defaults.translationAccurate,
         )
     }
 
@@ -141,5 +150,7 @@ class SettingsRepository(context: Context) {
         val TRANSLATE_ENABLED = booleanPreferencesKey("translate_enabled")
         val TRANSLATION_DIRECTION = stringPreferencesKey("translation_direction")
         val TRANSLATION_AUTO = booleanPreferencesKey("translation_auto")
+        val TRANSLATION_PAUSE = intPreferencesKey("translation_pause_ms")
+        val TRANSLATION_ACCURATE = booleanPreferencesKey("translation_accurate")
     }
 }

@@ -133,7 +133,7 @@
     <string name="translating">Tłumaczenie %1$s…</string>
     <string name="translation_discarded">Tekst zmienił się podczas tłumaczenia; nic nie zastąpiono.</string>
     <string name="translation_failed">Tłumaczenie nie powiodło się: %1$s</string>
-    <string name="translation_how">Rząd nad klawiszami przełącza tryb: Aa Tekst, ⇄ Tłumaczenie, 🎤 Głos. Jedno stuknięcie ⇄ włącza tłumaczenie, kolejne zmienia kierunek. W trybie automatycznym w polu od razu pojawia się tłumaczenie (oryginał widać nad klawiszami); zdanie kończy . ! ? lub Enter. W trybie ręcznym wpisany tekst jest podkreślony, a Enter zastępuje go tłumaczeniem.</string>
+    <string name="translation_how">Rząd nad klawiszami: Aa Tekst · ⇄ Tłumaczenie (kolejne stuknięcie zmienia kierunek) · 📋⇄ przetłumacz zaznaczenie lub wklej schowek z tłumaczeniem · 🎤 Głos. Podczas tłumaczenia w polu widzisz swój tekst, a nad klawiszami podgląd tłumaczenia; tłumaczenie zastępuje Twój tekst raz: automatycznie po . ! ?, Enter lub przerwie, w trybie ręcznym tylko po Enter. Stuknięcie komunikatu ✓ przywraca oryginał.</string>
     <string name="translation_direction">Kierunek</string>
     <string name="translation_check_warning">⚠ Sprawdź tłumaczenie: brak lub zmiana %1$s. Stuknij, aby przywrócić oryginał.</string>
     <string name="translation_restored">Przywrócono oryginalny tekst.</string>
@@ -142,8 +142,17 @@
     <string name="mode_text_description">Zwykłe pisanie bez tłumaczenia</string>
     <string name="mode_voice">🎤 Głos</string>
     <string name="mode_voice_stop">⏹ Stop</string>
-    <string name="translate_on_auto">Tłumaczenie %1$s: pisz — do pola trafia tłumaczenie. Kolejne stuknięcie ⇄ zmienia kierunek.</string>
+    <string name="translate_on_auto">Tłumaczenie %1$s: pisz normalnie — tłumaczenie widać nad klawiszami, do pola trafia po . ! ?, Enter lub przerwie.</string>
     <string name="translation_mode">Jak tłumaczyć</string>
-    <string name="translation_mode_auto">Automatycznie podczas pisania (bez potwierdzania)</string>
+    <string name="translation_mode_auto">Automatycznie (bez potwierdzania)</string>
     <string name="translation_mode_manual">Po naciśnięciu Enter (⇄) dla każdego fragmentu</string>
+    <string name="action_translate_clipboard">Przetłumacz zaznaczenie / wklej z tłumaczeniem</string>
+    <string name="clipboard_chip">📋 ⇄</string>
+    <string name="clipboard_chip_description">Przetłumacz zaznaczony tekst lub wklej schowek z tłumaczeniem</string>
+    <string name="clipboard_empty">Nic nie zaznaczono, a schowek jest pusty.</string>
+    <string name="translation_done_undo">✓ Przetłumaczono. Stuknij, aby przywrócić oryginał.</string>
+    <string name="translation_pause">Wstawiaj tłumaczenie po przerwie w pisaniu</string>
+    <string name="translation_pause_seconds">po %1$s s</string>
+    <string name="translation_pause_off">Nie, tylko po . ! ? lub Enter</string>
+    <string name="translation_accurate">Dokładniejsze tłumaczenie (kilka wariantów, nieco wolniej)</string>
 </resources>

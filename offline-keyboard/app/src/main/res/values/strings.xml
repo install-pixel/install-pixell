@@ -133,7 +133,7 @@
     <string name="translating">Translating %1$s…</string>
     <string name="translation_discarded">The text changed during translation; nothing was replaced.</string>
     <string name="translation_failed">Translation failed: %1$s</string>
-    <string name="translation_how">The row above the keys switches the input mode: Aa Text, ⇄ Translate, 🎤 Voice. Tap ⇄ once to turn translation on and again to swap the direction. In automatic mode the field shows the translation while you type (the original is shown above the keys); a sentence is finished with . ! ? or Enter. In manual mode the typed text stays underlined and Enter replaces it with the translation.</string>
+    <string name="translation_how">The row above the keys: Aa Text · ⇄ Translate (tap again to swap the direction) · 📋⇄ translate the selected text or paste the clipboard translated · 🎤 Voice. While translating you see your own text in the field and the translation preview above the keys; the translation replaces your text once — automatically after . ! ?, Enter or a pause, or in manual mode only with Enter. Tap the ✓ message to restore the original.</string>
     <string name="translation_direction">Direction</string>
     <string name="translation_check_warning">⚠ Check the translation: %1$s missing or changed. Tap to restore the original.</string>
     <string name="translation_restored">Original text restored.</string>
@@ -142,8 +142,17 @@
     <string name="mode_text_description">Plain typing, no translation</string>
     <string name="mode_voice">🎤 Voice</string>
     <string name="mode_voice_stop">⏹ Stop</string>
-    <string name="translate_on_auto">Translate %1$s: type — the translation goes into the field. Tap ⇄ again to swap.</string>
+    <string name="translate_on_auto">Translate %1$s: type normally — the translation is shown above the keys and inserted after . ! ?, Enter or a pause.</string>
     <string name="translation_mode">How to translate</string>
-    <string name="translation_mode_auto">Automatically while typing (no confirmation)</string>
+    <string name="translation_mode_auto">Automatically (no confirmation)</string>
     <string name="translation_mode_manual">After pressing Enter (⇄) for each fragment</string>
+    <string name="action_translate_clipboard">Translate selection / paste translated</string>
+    <string name="clipboard_chip">📋 ⇄</string>
+    <string name="clipboard_chip_description">Translate the selected text, or paste the clipboard translated</string>
+    <string name="clipboard_empty">Nothing selected and the clipboard is empty.</string>
+    <string name="translation_done_undo">✓ Translated. Tap to restore the original.</string>
+    <string name="translation_pause">Insert the translation after a pause in typing</string>
+    <string name="translation_pause_seconds">after %1$s s</string>
+    <string name="translation_pause_off">No, only after . ! ? or Enter</string>
+    <string name="translation_accurate">More accurate translation (beam search, a little slower)</string>
 </resources>

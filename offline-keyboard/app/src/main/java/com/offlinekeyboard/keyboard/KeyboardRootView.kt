@@ -15,7 +15,7 @@ import com.offlinekeyboard.R
  * Two fixed rows above the keys, so nothing shifts while typing:
  *
  * 1. language · message / live text / word suggestions · computer↔mobile · settings (✕ while recording)
- * 2. input mode: [Aa Text] [⇄ Translate UK→PL] [🎤 Voice]
+ * 2. input mode: [Aa Text] [⇄ Translate UK→PL] [📋⇄ selection/clipboard] [🎤 Voice]
  *
  * Every element has a fixed size; only texts and colours change.
  */
@@ -27,6 +27,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onModeText()
         /** Turns translation on, or swaps the direction when it is already on. */
         fun onModeTranslate()
+        /** Translate the selection in place, or paste the clipboard translated. */
+        fun onTranslateClipboard()
         fun onToolbarVoice()
         fun onToolbarVoiceCancel()
         fun onToolbarMode()
@@ -76,6 +78,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private val textChip = chip(R.string.mode_text_description) { toolbarListener?.onModeText() }
     private val translateChip = chip(R.string.toolbar_translate_description) { toolbarListener?.onModeTranslate() }
+    private val clipboardChip = chip(R.string.clipboard_chip_description) { toolbarListener?.onTranslateClipboard() }
     private val voiceChip = chip(R.string.toolbar_voice_description) { toolbarListener?.onToolbarVoice() }
 
     private var recording = false
@@ -101,8 +104,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val modeRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             setPadding(dp(4), dp(2), dp(4), dp(2))
-            for (c in listOf(textChip, translateChip, voiceChip)) {
-                addView(c, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
+            for ((c, weight) in listOf(textChip to 1f, translateChip to 1.2f, clipboardChip to 0.8f, voiceChip to 1f)) {
+                addView(c, LayoutParams(0, LayoutParams.MATCH_PARENT, weight).apply { setMargins(dp(3), 0, dp(3), 0) })
             }
         }
         addView(infoRow, LayoutParams(LayoutParams.MATCH_PARENT, dp(36)))
@@ -124,6 +127,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         styleChip(textChip, active = !state.translateActive, enabled = true)
         translateChip.text = "⇄ ${state.translateLabel}"
         styleChip(translateChip, active = state.translateActive, enabled = state.translateOffered)
+        clipboardChip.text = context.getString(R.string.clipboard_chip)
+        styleChip(clipboardChip, active = false, enabled = state.translateOffered)
         voiceChip.text = context.getString(if (state.recording) R.string.mode_voice_stop else R.string.mode_voice)
         styleChip(voiceChip, active = state.recording, enabled = state.voiceOffered)
         refreshCentre()

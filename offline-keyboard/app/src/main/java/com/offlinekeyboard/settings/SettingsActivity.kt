@@ -267,6 +267,20 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             RadioRow(stringResource(R.string.translation_mode_manual), !s.translationAuto) {
                 update { it.copy(translationAuto = false) }
             }
+            if (s.translationAuto) {
+                Text(stringResource(R.string.translation_pause), style = MaterialTheme.typography.titleSmall)
+                for ((ms, label) in listOf(
+                    1500 to stringResource(R.string.translation_pause_seconds, "1,5"),
+                    2000 to stringResource(R.string.translation_pause_seconds, "2"),
+                    3000 to stringResource(R.string.translation_pause_seconds, "3"),
+                    0 to stringResource(R.string.translation_pause_off),
+                )) {
+                    RadioRow(label, s.translationPauseMs == ms) { update { it.copy(translationPauseMs = ms) } }
+                }
+            }
+            SwitchRow(stringResource(R.string.translation_accurate), s.translationAccurate) { v ->
+                update { it.copy(translationAccurate = v) }
+            }
             Text(stringResource(R.string.translation_direction), style = MaterialTheme.typography.titleSmall)
             for (direction in TranslationDirection.entries) {
                 val label = "${languageName(direction.source)} → ${languageName(direction.target)}"
