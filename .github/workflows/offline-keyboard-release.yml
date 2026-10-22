@@ -62,6 +62,20 @@ jobs:
 
             Застосунок працює без інтернету; файли моделей потрібні лише один раз.
 
+      # Permanent link to the newest APK: …/releases/download/keyboard-latest/OfflineKeyboard.apk
+      - name: Update the latest-APK release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-latest
+          name: Offline Keyboard — найновіша версія
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: out/OfflineKeyboard.apk
+          body: |
+            Найновіша збірка клавіатури (збірка ${{ github.run_number }}). Посилання завжди веде на останню версію:
+            https://github.com/${{ github.repository }}/releases/download/keyboard-latest/OfflineKeyboard.apk
+            Моделі: https://github.com/${{ github.repository }}/releases/tag/keyboard-models
+
       # Fixed address for the app's "Download" buttons: …/releases/download/keyboard-models/<file>.zip
       - name: Update the permanent model release
         uses: softprops/action-gh-release@v2

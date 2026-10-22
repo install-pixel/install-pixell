@@ -225,4 +225,6 @@
     <string name="models_install_running">Instaluję… duże modele — do minuty.</string>
     <string name="models_installed_voice">Głos · %1$s</string>
     <string name="models_installed_translation">Tłumaczenie · %1$s → %2$s</string>
+    <string name="about_last_crash">Ostatni błąd</string>
+    <string name="about_copy_crash">Kopiuj treść błędu</string>
 </resources>

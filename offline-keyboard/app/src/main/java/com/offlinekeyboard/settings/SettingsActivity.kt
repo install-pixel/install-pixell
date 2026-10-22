@@ -363,6 +363,15 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
 
         Section(stringResource(R.string.section_about)) {
             Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME))
+            val crash = remember { com.offlinekeyboard.KeyboardApp.crashFile(context).takeIf { it.isFile }?.readText() }
+            if (crash != null) {
+                Text(stringResource(R.string.about_last_crash), style = MaterialTheme.typography.titleSmall)
+                Text(crash.lineSequence().take(6).joinToString("\n"), style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick = {
+                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
+                }) { Text(stringResource(R.string.about_copy_crash)) }
+            }
             OutlinedButton(onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
         }
     }

@@ -17,8 +17,8 @@ android {
         applicationId = "com.offlinekeyboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
 
         // Native code of Vosk and ONNX Runtime for phones only (64- and 32-bit ARM).
         ndk {
@@ -30,8 +30,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // One fixed key for every build, so a new APK installs over the previous one (CI runners would
+    // otherwise sign each build with a fresh random debug key, and Android refuses such updates).
+    // The key only identifies this sideloaded app; it is not a Play Store key.
+    signingConfigs {
+        create("shared") {
+            storeFile = file("signing/offline-keyboard.jks")
+            storePassword = "offlinekeyboard"
+            keyAlias = "offlinekeyboard"
+            keyPassword = "offlinekeyboard"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
+            signingConfig = signingConfigs.getByName("shared")
             isMinifyEnabled = false
             isShrinkResources = false
         }
