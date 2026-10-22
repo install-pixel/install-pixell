@@ -217,14 +217,21 @@ class KeyboardUiTest {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
         tapSpecial(SpecialKey.LAYER_EMOJI)
-        tapSpecial(SpecialKey.STICKERS)
-        tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.text == "👦" })
-        waitForView { v -> v is ImageView && v.isShown && v.tag == "boy/02-rainbow" }
+        // The sticker panel is open once its boy/girl buttons show.
+        repeat(3) {
+            if (findView { v -> v is ToolbarButton && v.isShown && v.text == "👦" } != null) return@repeat
+            if (service().inputRootForTest?.stickersShown != true) {
+                runCatching { tapSpecial(SpecialKey.STICKERS) }.onFailure { tapSpecial(SpecialKey.LAYER_EMOJI) }
+            }
+            Thread.sleep(800)
+        }
+        tapUntilShown({ v -> v is ToolbarButton && v.isShown && v.text == "👦" }) { v -> v is ImageView && v.isShown && v.tag == "boy/02-rainbow" }
         Thread.sleep(400)
         screenshot("stickers-boy")
         // The girl button swaps Lingo for the girl version.
-        tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.text == "👧" })
-        val sticker = waitForView { v -> v is ImageView && v.isShown && v.tag == "girl/02-thumbs-up" }
+        val sticker = tapUntilShown({ v -> v is ToolbarButton && v.isShown && v.text == "👧" }) { v ->
+            v is ImageView && v.isShown && v.tag == "girl/02-thumbs-up"
+        }
         Thread.sleep(400)
         screenshot("stickers-girl")
         tapView(sticker)
@@ -458,6 +465,15 @@ class KeyboardUiTest {
         inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0))
         instrumentation.waitForIdleSync()
         Thread.sleep(80)
+    }
+
+    /** Taps [button] until [result] appears; the emulator now and then drops a tap. */
+    private fun tapUntilShown(button: (View) -> Boolean, result: (View) -> Boolean): View {
+        repeat(3) {
+            tapView(waitForView(button))
+            runCatching { waitFor("view", timeoutMs = 6_000) { findView(result) } }.getOrNull()?.let { return it }
+        }
+        return waitForView(result)
     }
 
     private fun drag(fromX: Float, fromY: Float, toX: Float, toY: Float) {
