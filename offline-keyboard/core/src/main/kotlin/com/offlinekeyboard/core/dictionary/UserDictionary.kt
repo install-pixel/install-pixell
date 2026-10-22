@@ -34,6 +34,9 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
         return true
     }
 
+    fun contains(language: Language, word: String): Boolean =
+        byLanguage[language]?.containsKey(word.lowercase(language.locale)) == true
+
     fun remove(language: Language, word: String): Boolean {
         val removed = byLanguage[language]?.remove(word.lowercase(language.locale)) != null
         if (removed) version++

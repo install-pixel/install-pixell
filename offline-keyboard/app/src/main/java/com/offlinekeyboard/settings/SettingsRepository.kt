@@ -35,6 +35,12 @@ data class KeyboardSettings(
     val keyPreview: Boolean = true,
     /** Two quick spaces after a word put ". " (mobile mode), as on most phone keyboards. */
     val doubleSpacePeriod: Boolean = true,
+    /** One row above the keys; the input modes open from a button (and show while translating). */
+    val compactToolbar: Boolean = true,
+    /** Dragging Backspace to the left deletes whole words. */
+    val backspaceSwipe: Boolean = true,
+    /** Fixes one-key slips into known words when a word ends; Backspace right after undoes it. */
+    val autoCorrect: Boolean = true,
     val hapticFeedback: Boolean = true,
     /** How strongly keys vibrate when [hapticFeedback] is on. */
     val vibration: VibrationStrength = VibrationStrength.MEDIUM,
@@ -97,6 +103,9 @@ class SettingsRepository(context: Context) {
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.KEY_PREVIEW] = updated.keyPreview
             prefs[Keys.DOUBLE_SPACE_PERIOD] = updated.doubleSpacePeriod
+            prefs[Keys.COMPACT_TOOLBAR] = updated.compactToolbar
+            prefs[Keys.BACKSPACE_SWIPE] = updated.backspaceSwipe
+            prefs[Keys.AUTO_CORRECT] = updated.autoCorrect
             prefs[Keys.HAPTIC] = updated.hapticFeedback
             prefs[Keys.VIBRATION] = updated.vibration.name
             prefs[Keys.STICKER_CHARACTER] = updated.stickerCharacter.name
@@ -141,6 +150,9 @@ class SettingsRepository(context: Context) {
             spaceSwipeSwitchesLanguage = this[Keys.SPACE_SWIPE] ?: defaults.spaceSwipeSwitchesLanguage,
             keyPreview = this[Keys.KEY_PREVIEW] ?: defaults.keyPreview,
             doubleSpacePeriod = this[Keys.DOUBLE_SPACE_PERIOD] ?: defaults.doubleSpacePeriod,
+            compactToolbar = this[Keys.COMPACT_TOOLBAR] ?: defaults.compactToolbar,
+            backspaceSwipe = this[Keys.BACKSPACE_SWIPE] ?: defaults.backspaceSwipe,
+            autoCorrect = this[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
             vibration = enumOrNull<VibrationStrength>(this[Keys.VIBRATION]) ?: defaults.vibration,
             stickerCharacter = enumOrNull<StickerCharacter>(this[Keys.STICKER_CHARACTER]) ?: defaults.stickerCharacter,
@@ -178,6 +190,9 @@ class SettingsRepository(context: Context) {
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val KEY_PREVIEW = booleanPreferencesKey("key_preview")
         val DOUBLE_SPACE_PERIOD = booleanPreferencesKey("double_space_period")
+        val COMPACT_TOOLBAR = booleanPreferencesKey("compact_toolbar")
+        val BACKSPACE_SWIPE = booleanPreferencesKey("backspace_swipe")
+        val AUTO_CORRECT = booleanPreferencesKey("auto_correct")
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
         val VIBRATION = stringPreferencesKey("vibration_strength")
         val STICKER_CHARACTER = stringPreferencesKey("sticker_character")

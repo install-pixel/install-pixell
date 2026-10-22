@@ -261,4 +261,11 @@
     <string name="sticker_favorite_removed">Прибрано з улюблених</string>
     <string name="key_preview">Показувати натиснуту літеру над пальцем</string>
     <string name="double_space_period">Подвійний пробіл ставить крапку</string>
+    <string name="compact_toolbar">Компактна панель: один ряд, режими під кнопкою ▦</string>
+    <string name="auto_correct">Виправляти одруківки (⌫ одразу після повертає ваше слово)</string>
+    <string name="backspace_swipe">Свайп по ⌫ вліво видаляє слова</string>
+    <string name="toolbar_modes_description">Режими введення</string>
+    <string name="autocorrect_done">%1$s → %2$s · ⌫ — повернути</string>
+    <string name="autocorrect_undone">Залишено «%1$s», більше не виправлятиму</string>
+    <string name="backspace_swipe_preview">Видалити: «%1$s»</string>
 </resources>

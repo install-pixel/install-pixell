@@ -170,6 +170,35 @@ class KeyboardUiTest {
     }
 
     @Test
+    fun typoIsCorrectedAndBackspaceBringsItBack() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        "пртвіт".forEach { tapText(it.toString()) }
+        tapSpecial(SpecialKey.SPACE)
+        assertEquals("привіт ", text(activity.plain))
+        tapSpecial(SpecialKey.BACKSPACE)
+        assertEquals("пртвіт", text(activity.plain))
+        // Undone once, the word is left alone from then on.
+        tapSpecial(SpecialKey.SPACE)
+        assertEquals("пртвіт ", text(activity.plain))
+    }
+
+    @Test
+    fun draggingBackspaceLeftDeletesWords() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        instrumentation.runOnMainSync {
+            activity.plain.setText("раз два три")
+            activity.plain.setSelection(activity.plain.length())
+        }
+        val start = keyCenter { it.special == SpecialKey.BACKSPACE }!!
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        // Past the start (28 dp) and one more step (30 dp): two words.
+        drag(start.x, start.y, start.x - 72 * density, start.y)
+        assertEquals("раз ", text(activity.plain))
+    }
+
+    @Test
     fun periodLongPressGivesTheApostrophe() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
@@ -423,6 +452,21 @@ class KeyboardUiTest {
         inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0))
         instrumentation.waitForIdleSync()
         Thread.sleep(80)
+    }
+
+    private fun drag(fromX: Float, fromY: Float, toX: Float, toY: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        inject(MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, fromX, fromY, 0))
+        val steps = 12
+        for (i in 1..steps) {
+            Thread.sleep(15)
+            val x = fromX + (toX - fromX) * i / steps
+            val y = fromY + (toY - fromY) * i / steps
+            inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_MOVE, x, y, 0))
+        }
+        inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, toX, toY, 0))
+        instrumentation.waitForIdleSync()
+        Thread.sleep(150)
     }
 
     private fun inject(event: MotionEvent) {

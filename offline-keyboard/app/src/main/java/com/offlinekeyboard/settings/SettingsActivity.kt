@@ -388,6 +388,15 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
                 update { it.copy(spaceSwipeSwitchesLanguage = v) }
             }
+            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
+                update { it.copy(compactToolbar = v) }
+            }
+            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v ->
+                update { it.copy(autoCorrect = v) }
+            }
+            SwitchRow(stringResource(R.string.backspace_swipe), s.backspaceSwipe) { v ->
+                update { it.copy(backspaceSwipe = v) }
+            }
             SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
                 update { it.copy(keyPreview = v) }
             }
