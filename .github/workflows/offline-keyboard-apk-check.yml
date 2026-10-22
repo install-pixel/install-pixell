@@ -4,6 +4,9 @@ name: Offline Keyboard APK check
 # signature, zip alignment and what the package manager reads from the manifest.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/offline-keyboard-apk-check.yml'
 
 permissions:
   contents: read
