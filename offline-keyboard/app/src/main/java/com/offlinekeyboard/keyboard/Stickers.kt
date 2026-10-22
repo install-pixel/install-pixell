@@ -19,9 +19,10 @@ import java.io.File
 enum class StickerCharacter(val folder: String) { BOY("boy"), GIRL("girl") }
 
 /**
- * The stickers: the keyboard's own animated ones (drawn by `tools/stickers/make_stickers.py`, shipped in
+ * The stickers: the keyboard's own animated ones (Lingo as a boy or a girl, animated from the sheets in
+ * `tools/stickers/source` by `tools/stickers/animate_sheets.py`, shipped in
  * `assets/stickers/` as animated WebP and GIF) and the user's own pictures, copied into the app's
- * storage. A sticker is named "folder/name": "girl/01-hi", "common/12-heart" or "custom/<file>".
+ * storage. A sticker is named "folder/name": "girl/05-heart" or "custom/<file>".
  *
  * A sticker is sent the way Android keyboards send images: the app the user types in says which image
  * types it accepts, and the keyboard hands it a read-only file link. Apps that accept no images get

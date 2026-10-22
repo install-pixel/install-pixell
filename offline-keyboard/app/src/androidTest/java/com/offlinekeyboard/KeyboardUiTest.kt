@@ -219,18 +219,18 @@ class KeyboardUiTest {
         tapSpecial(SpecialKey.LAYER_EMOJI)
         tapSpecial(SpecialKey.STICKERS)
         tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.text == "👦" })
-        waitForView { v -> v is ImageView && v.isShown && v.tag == "boy/02-love" }
+        waitForView { v -> v is ImageView && v.isShown && v.tag == "boy/02-rainbow" }
         Thread.sleep(400)
         screenshot("stickers-boy")
         // The girl button swaps Lingo for the girl version.
         tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.text == "👧" })
-        val sticker = waitForView { v -> v is ImageView && v.isShown && v.tag == "girl/02-love" }
+        val sticker = waitForView { v -> v is ImageView && v.isShown && v.tag == "girl/02-thumbs-up" }
         Thread.sleep(400)
         screenshot("stickers-girl")
         tapView(sticker)
         val received = waitFor("sticker") { activity.receivedSticker }
         // GIF, the animated format chat apps play.
-        assertTrue(received, received.startsWith("image/gif ") && received.contains("girl-02-love.gif"))
+        assertTrue(received, received.startsWith("image/gif ") && received.contains("girl-02-thumbs-up.gif"))
         assertTrue(received, received.split(' ')[1].toInt() > 1000)
         // ABC goes back to the letters.
         tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.contentDescription == "АБВ" || v is ToolbarButton && v.isShown && v.contentDescription == "ABC" })
