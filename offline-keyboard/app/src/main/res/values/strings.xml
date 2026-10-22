@@ -63,7 +63,7 @@
     <string name="page_models">Offline models</string>
     <string name="page_models_summary">Installed %1$d of %2$d (voice and translation for Укр/Pol/Eng)</string>
     <string name="language_switch_hint">Change language: the language key (mobile keyboard), swiping the space bar, or Win+Space on the computer keyboard. The current language is written on the space bar.</string>
-    <string name="shortcuts_intro">Shortcuts work on the computer keyboard. Tap the modifiers (Ctrl, Alt, Shift, Win) and then the key. A combination of modifiers only (for example Alt+Shift) runs when no other key follows within half a second.</string>
+    <string name="shortcuts_intro">Shortcuts work only in the keyboard\'s computer mode (the keyboard button on the top bar), which has Ctrl, Alt, Shift and Win keys. Tap a modifier, then the key: for example Win, then Space switches the language. Ctrl+C, Ctrl+V and other shortcuts of the app itself (Excel, Vim…) work where that app supports them. A combination of modifiers only (for example Alt+Shift) runs when no other key follows within half a second.</string>
     <string name="shortcuts_list">Your shortcuts</string>
     <string name="shortcuts_empty">No shortcuts.</string>
     <string name="shortcuts_restore_defaults">Restore defaults</string>
@@ -170,7 +170,7 @@
     <string name="models_open_guide">Guide on GitHub</string>
     <string name="models_open_release">All files</string>
     <string name="presets_title">Ready-made sets</string>
-    <string name="presets_intro">Tips for popular apps. Some sets also add combinations to your list.</string>
+    <string name="presets_intro">Cheat sheets for popular apps: \"Show tips\" opens a list of the app\'s own shortcuts, for reference only. The \"Add\" button also puts ready-made shortcuts that type text (Excel formulas, Vim commands) into your list; they work in computer mode.</string>
     <string name="presets_add">Add %1$d combinations</string>
     <string name="presets_added">Added: %1$d</string>
     <string name="presets_nothing_new">Already in your list</string>

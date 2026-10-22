@@ -63,7 +63,7 @@
     <string name="page_models">Modele offline</string>
     <string name="page_models_summary">Zainstalowano %1$d z %2$d (głos i tłumaczenie dla Укр/Pol/Eng)</string>
     <string name="language_switch_hint">Zmiana języka: klawisz języka (klawiatura mobilna), przesunięcie spacji lub Win+Space na komputerowej. Bieżący język jest napisany na spacji.</string>
-    <string name="shortcuts_intro">Skróty działają na klawiaturze komputerowej. Stuknij modyfikatory (Ctrl, Alt, Shift, Win), a potem klawisz. Skrót z samych modyfikatorów (np. Alt+Shift) działa, gdy przez pół sekundy nie zostanie naciśnięty inny klawisz.</string>
+    <string name="shortcuts_intro">Skróty działają tylko w trybie komputerowym klawiatury (przycisk z klawiaturą na pasku u góry), gdzie są klawisze Ctrl, Alt, Shift i Win. Stuknij modyfikator, a potem klawisz: np. Win, potem spacja zmienia język. Ctrl+C, Ctrl+V i inne skróty samej aplikacji (Excel, Vim…) działają tam, gdzie aplikacja je obsługuje. Skrót z samych modyfikatorów (np. Alt+Shift) działa, gdy przez pół sekundy nie zostanie naciśnięty inny klawisz.</string>
     <string name="shortcuts_list">Twoje skróty</string>
     <string name="shortcuts_empty">Brak skrótów.</string>
     <string name="shortcuts_restore_defaults">Przywróć domyślne</string>
@@ -170,7 +170,7 @@
     <string name="models_open_guide">Opis na GitHubie</string>
     <string name="models_open_release">Wszystkie pliki</string>
     <string name="presets_title">Gotowe zestawy</string>
-    <string name="presets_intro">Podpowiedzi dla popularnych programów. Niektóre zestawy dodają też skróty do Twojej listy.</string>
+    <string name="presets_intro">Ściągi dla popularnych programów: „Pokaż podpowiedzi” otwiera listę ich własnych skrótów — to tylko pomoc. Przycisk „Dodaj” dokłada też do Twojej listy gotowe skróty, które wpisują tekst (formuły Excela, polecenia Vima) — działają w trybie komputerowym.</string>
     <string name="presets_add">Dodaj skróty: %1$d</string>
     <string name="presets_added">Dodano: %1$d</string>
     <string name="presets_nothing_new">Już są na liście</string>

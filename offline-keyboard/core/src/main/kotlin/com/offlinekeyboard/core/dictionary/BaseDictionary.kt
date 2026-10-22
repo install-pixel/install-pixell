@@ -13,9 +13,21 @@ object BaseDictionary {
     private val cache = EnumMap<Language, List<String>>(Language::class.java)
     private val keys = EnumMap<Language, List<String>>(Language::class.java)
 
+    private val known = EnumMap<Language, Set<String>>(Language::class.java)
+
     fun words(language: Language): List<String> = synchronized(cache) {
-        cache.getOrPut(language) { load(language) }
+        cache.getOrPut(language) { load(language, "") }
     }
+
+    /**
+     * Whether [word] (lower case) is a correct word: one of [words] or one of the less common words in
+     * `<lang>_known.txt` (about 15-25 thousand forms), which are never suggested but never "corrected".
+     */
+    fun isKnown(language: Language, word: String): Boolean = synchronized(known) {
+        known.getOrPut(language) {
+            (words(language) + load(language, "_known")).mapTo(HashSet()) { it.lowercase(language.locale) }
+        }
+    }.let { word in it || word.replace('ʼ', '\'').replace('’', '\'') in it }
 
     /** [words] in lower case with one apostrophe, computed once (suggestions run on every key). */
     private fun keys(language: Language): List<String> = synchronized(keys) {
@@ -38,8 +50,8 @@ object BaseDictionary {
     private fun matchKey(word: String, language: Language) =
         word.lowercase(language.locale).replace('ʼ', '\'').replace('’', '\'')
 
-    private fun load(language: Language): List<String> {
-        val name = "/dictionary/${language.name.lowercase()}.txt"
+    private fun load(language: Language, suffix: String): List<String> {
+        val name = "/dictionary/${language.name.lowercase()}$suffix.txt"
         val text = BaseDictionary::class.java.getResourceAsStream(name)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
             ?: return emptyList()
         return text.lineSequence()

@@ -768,7 +768,7 @@ class KeyboardService : InputMethodService(),
     /** Before a space or punctuation is typed: fixes a one-key slip in the word that just ended. */
     private fun autoCorrectBefore(separator: String) {
         lastCorrection = null
-        if (!settings.autoCorrect || controller.mode != KeyboardMode.MOBILE || !currentField.allowsLearning) return
+        if (!settings.autoCorrect || controller.mode != KeyboardMode.MOBILE || !currentField.allowsCorrection) return
         if (controller.modifiers.anyShortcutModifier) return
         val first = separator.firstOrNull() ?: return
         if (!(first.isWhitespace() || first in ".,!?;:…")) return
@@ -779,14 +779,15 @@ class KeyboardService : InputMethodService(),
         val language = controller.language
         val user = dictionary.dictionary
         val base = BaseDictionary.words(language)
-        val baseKeys = baseKeys.getOrPut(language) { base.mapTo(HashSet()) { it.lowercase(language.locale) } }
-        // A word typed only once may itself be a typo: it counts as the user's own word from the second time.
+        // The user's dictionary learns typos too (every word followed by a space), so it never protects a
+        // word from correction: a word of the user's own stays once a correction of it is undone.
         val fixed = AutoCorrect.correction(
             language,
             word,
-            known = { it in baseKeys || user.count(language, it) >= OWN_WORD_MIN_COUNT },
-            candidates = user.entries(language).asSequence().filter { it.count >= OWN_WORD_MIN_COUNT }.map { it.word } +
-                base.asSequence(),
+            known = { BaseDictionary.isKnown(language, it) },
+            // Common words first: a typo the user repeated would otherwise "correct" the right word into it.
+            candidates = base.asSequence() +
+                user.entries(language).asSequence().filter { it.count >= OWN_WORD_MIN_COUNT }.map { it.word },
             rejected = rejectedWords(),
         ) ?: return
         ic.beginBatchEdit()
@@ -796,8 +797,6 @@ class KeyboardService : InputMethodService(),
         lastCorrection = Triple(word, fixed, separator)
         rootView?.showStatus(getString(R.string.autocorrect_done, word, fixed), CORRECTION_MESSAGE_MS)
     }
-
-    private val baseKeys = HashMap<Language, Set<String>>()
 
     /** Backspace right after a correction puts the typed word back (and remembers it). */
     private fun undoCorrection(key: Key): Boolean {
@@ -812,9 +811,11 @@ class KeyboardService : InputMethodService(),
         ic.deleteSurroundingText(before.length, 0)
         ic.commitText(typed, 1)
         ic.endBatchEdit()
-        correctionPrefs().edit()
-            .putStringSet(REJECTED_KEY, rejectedWords() + typed.lowercase(controller.language.locale))
-            .apply()
+        if (!currentField.isIncognito) {
+            correctionPrefs().edit()
+                .putStringSet(REJECTED_KEY, rejectedWords() + typed.lowercase(controller.language.locale))
+                .apply()
+        }
         rootView?.keyboardView?.feedback()
         rootView?.showStatus(getString(R.string.autocorrect_undone, typed))
         updateAutoShift()
@@ -1150,7 +1151,7 @@ class KeyboardService : InputMethodService(),
         private const val UNDO_SLACK = 8
         private const val DOUBLE_SPACE_MS = 1100L
         private const val CORRECTION_PREFS = "autocorrect"
-        private const val OWN_WORD_MIN_COUNT = 2
+        private const val OWN_WORD_MIN_COUNT = 3
         private const val REJECTED_KEY = "rejected"
         private const val CORRECTION_MESSAGE_MS = 2500L
         private const val BACKSPACE_SWIPE_CONTEXT = 1000

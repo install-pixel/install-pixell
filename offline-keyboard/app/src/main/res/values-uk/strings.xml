@@ -63,7 +63,7 @@
     <string name="page_models">Офлайн-моделі</string>
     <string name="page_models_summary">Встановлено %1$d з %2$d (голос і переклад для Укр/Pol/Eng)</string>
     <string name="language_switch_hint">Зміна мови: клавіша мови (мобільна клавіатура), свайп по пробілу або Win+Space на комп\'ютерній. Поточна мова написана на пробілі.</string>
-    <string name="shortcuts_intro">Комбінації працюють на комп\'ютерній клавіатурі. Натисніть модифікатори (Ctrl, Alt, Shift, Win), а потім клавішу. Комбінація лише з модифікаторів (наприклад, Alt+Shift) спрацьовує, якщо протягом пів секунди не натиснуто іншої клавіші.</string>
+    <string name="shortcuts_intro">Комбінації працюють лише в комп\'ютерному режимі клавіатури (кнопка з клавіатурою на панелі зверху), де є клавіші Ctrl, Alt, Shift і Win. Стукніть модифікатор, а потім клавішу: наприклад, Win, потім пробіл перемикає мову. Ctrl+C, Ctrl+V та інші комбінації самого додатка (Excel, Vim…) працюють там, де додаток їх підтримує. Комбінація лише з модифікаторів (наприклад, Alt+Shift) спрацьовує, якщо протягом пів секунди не натиснуто іншої клавіші.</string>
     <string name="shortcuts_list">Ваші комбінації</string>
     <string name="shortcuts_empty">Немає комбінацій.</string>
     <string name="shortcuts_restore_defaults">Відновити типові</string>
@@ -170,7 +170,7 @@
     <string name="models_open_guide">Опис на GitHub</string>
     <string name="models_open_release">Усі файли</string>
     <string name="presets_title">Готові набори</string>
-    <string name="presets_intro">Підказки для популярних програм. Деякі набори також додають комбінації до вашого списку.</string>
+    <string name="presets_intro">Шпаргалки для популярних програм: «Показати підказки» відкриває список їхніх власних комбінацій — це просто довідка. Кнопка «Додати» ще й кладе в ваш список готові комбінації, що друкують текст (формули Excel, команди Vim), — вони працюють у комп\'ютерному режимі.</string>
     <string name="presets_add">Додати комбінації: %1$d</string>
     <string name="presets_added">Додано: %1$d</string>
     <string name="presets_nothing_new">Уже є у вашому списку</string>

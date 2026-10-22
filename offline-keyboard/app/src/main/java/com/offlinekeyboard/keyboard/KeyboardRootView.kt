@@ -113,6 +113,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             refreshModesRow()
         }
     private var modesExpanded = false
+    /** Folded by hand while translating or dictating (the row opens by itself for those). */
+    private var foldedWhileBusy = false
     private var lastState: ToolbarState? = null
     private var message: CharSequence? = null
     private var statusAction: (() -> Unit)? = null
@@ -200,17 +202,21 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         refreshModesRow()
     }
 
+    private fun busy() = lastState?.let { it.translateActive || it.recording } ?: false
+
     private fun toggleModes() {
-        modesExpanded = !modesExpanded
+        if (busy()) foldedWhileBusy = !foldedWhileBusy else modesExpanded = !modesExpanded
         refreshModesRow()
     }
 
     private fun refreshModesRow() {
-        val state = lastState
-        val busy = state != null && (state.translateActive || state.recording)
+        val busy = busy()
+        if (!busy) foldedWhileBusy = false
+        val open = if (busy) !foldedWhileBusy else modesExpanded
         modesButton.visibility = if (compact) View.VISIBLE else View.GONE
-        modesButton.fill = if (compact && (modesExpanded || busy)) theme.function else 0
-        modeRow.visibility = if (!compact || modesExpanded || busy) View.VISIBLE else View.GONE
+        // Lit while translating or dictating even when folded, so the mode is not forgotten.
+        modesButton.fill = if (compact && (open || busy)) theme.function else 0
+        modeRow.visibility = if (!compact || open) View.VISIBLE else View.GONE
     }
 
     /** Swaps the keys for the sticker panel (same height, so nothing jumps) or back. */
