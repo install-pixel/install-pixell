@@ -188,7 +188,8 @@ class KeyboardUiTest {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
         instrumentation.runOnMainSync {
-            activity.plain.setText("раз два три")
+            // Ends with a space, so the strip shows the text rather than word suggestions.
+            activity.plain.setText("раз два три ")
             activity.plain.setSelection(activity.plain.length())
         }
         // The keyboard reads the field through the app: wait until it sees the new text.
