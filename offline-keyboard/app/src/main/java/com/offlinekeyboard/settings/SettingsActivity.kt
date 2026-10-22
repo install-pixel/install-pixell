@@ -147,17 +147,19 @@ internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSS
 
 internal typealias UpdateSettings = ((KeyboardSettings) -> KeyboardSettings) -> Unit
 
-/** Read straight from the system setting: the InputMethodManager list can lag behind a change. */
-private fun isKeyboardEnabled(context: Context): Boolean {
-    val ours = ComponentName(context, KeyboardService::class.java)
-    val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_INPUT_METHODS).orEmpty()
-    return enabled.split(':').any { entry -> ComponentName.unflattenFromString(entry.substringBefore(';')) == ours }
-}
+/**
+ * Asks the input method service. (Reading Settings.Secure.ENABLED_INPUT_METHODS directly throws a
+ * SecurityException for apps targeting Android 14+.)
+ */
+private fun isKeyboardEnabled(context: Context): Boolean = runCatching {
+    val imm = context.getSystemService(InputMethodManager::class.java) ?: return false
+    imm.enabledInputMethodList.any { it.packageName == context.packageName }
+}.getOrDefault(false)
 
-private fun isKeyboardSelected(context: Context): Boolean {
+private fun isKeyboardSelected(context: Context): Boolean = runCatching {
     val current = Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: return false
-    return ComponentName.unflattenFromString(current) == ComponentName(context, KeyboardService::class.java)
-}
+    ComponentName.unflattenFromString(current) == ComponentName(context, KeyboardService::class.java)
+}.getOrDefault(false)
 
 @Composable
 private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
@@ -226,9 +228,8 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             }
         }
         val resolver = context.contentResolver
-        for (name in listOf(Settings.Secure.DEFAULT_INPUT_METHOD, Settings.Secure.ENABLED_INPUT_METHODS)) {
-            resolver.registerContentObserver(Settings.Secure.getUriFor(name), false, observer)
-        }
+        // Only the default keyboard can be watched by every app; "enabled" is re-checked with it and on resume.
+        runCatching { resolver.registerContentObserver(Settings.Secure.getUriFor(Settings.Secure.DEFAULT_INPUT_METHOD), false, observer) }
         onDispose { resolver.unregisterContentObserver(observer) }
     }
 
