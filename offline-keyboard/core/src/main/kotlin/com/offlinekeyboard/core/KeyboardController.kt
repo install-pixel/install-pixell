@@ -65,8 +65,15 @@ class KeyboardController(
         if (this.language !in this.enabledLanguages) this.language = this.enabledLanguages.first()
     }
 
+    /** Emoji panel pages; the app adds the user's most used and own emoji in front of the built-in ones. */
+    var emojiPages: List<EmojiSet.Page> = EmojiSet.pages
+        set(value) {
+            field = value.ifEmpty { EmojiSet.pages }
+            emojiPage = emojiPage.coerceIn(0, field.size - 1)
+        }
+
     fun layout(mobileCursorRow: Boolean): KeyboardLayout =
-        LayoutProvider.layout(mode, language, layer, mobileCursorRow, emojiPage)
+        LayoutProvider.layout(mode, language, layer, mobileCursorRow, emojiPage, emojiPages)
 
     /** A new text field got focus. Number and phone fields open on digits in mobile mode. */
     fun onStartField(numeric: Boolean) {
@@ -282,9 +289,13 @@ class KeyboardController(
             SpecialKey.LAYER_SYMBOLS -> { toggleLayer(Layer.SYMBOLS); emptyList() }
             SpecialKey.LAYER_SYMBOLS_MORE -> { toggleLayer(Layer.SYMBOLS_MORE); emptyList() }
             SpecialKey.LAYER_FUNCTION -> { toggleLayer(Layer.FUNCTION); emptyList() }
-            SpecialKey.LAYER_EMOJI -> { layer = if (layer == Layer.EMOJI) Layer.LETTERS else Layer.EMOJI; emptyList() }
-            SpecialKey.EMOJI_PREVIOUS -> { emojiPage = (emojiPage - 1).mod(EmojiSet.pages.size); emptyList() }
-            SpecialKey.EMOJI_NEXT -> { emojiPage = (emojiPage + 1).mod(EmojiSet.pages.size); emptyList() }
+            SpecialKey.LAYER_EMOJI -> {
+                // The panel opens on its first page: the most used emoji when there are any.
+                if (layer == Layer.EMOJI) layer = Layer.LETTERS else { layer = Layer.EMOJI; emojiPage = 0 }
+                emptyList()
+            }
+            SpecialKey.EMOJI_PREVIOUS -> { emojiPage = (emojiPage - 1).mod(emojiPages.size); emptyList() }
+            SpecialKey.EMOJI_NEXT -> { emojiPage = (emojiPage + 1).mod(emojiPages.size); emptyList() }
 
             SpecialKey.VOICE -> listOf(EditorCommand.StartVoice)
             SpecialKey.SETTINGS -> listOf(EditorCommand.OpenSettings)

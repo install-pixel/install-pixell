@@ -36,6 +36,8 @@ data class KeyboardSettings(
     val vibration: VibrationStrength = VibrationStrength.MEDIUM,
     /** Lingo in the stickers: a boy or a girl. */
     val stickerCharacter: StickerCharacter = StickerCharacter.BOY,
+    /** The user's own emoji and text smileys for the emoji panel, separated by spaces. */
+    val ownEmoji: String = "",
     /** Null: dictate in the current keyboard language. */
     val voiceLanguage: Language? = null,
     val voiceCommands: Boolean = true,
@@ -92,6 +94,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.HAPTIC] = updated.hapticFeedback
             prefs[Keys.VIBRATION] = updated.vibration.name
             prefs[Keys.STICKER_CHARACTER] = updated.stickerCharacter.name
+            prefs[Keys.OWN_EMOJI] = updated.ownEmoji
             val voice = updated.voiceLanguage
             if (voice != null) prefs[Keys.VOICE_LANGUAGE] = voice.name else prefs.remove(Keys.VOICE_LANGUAGE)
             prefs[Keys.VOICE_COMMANDS] = updated.voiceCommands
@@ -133,6 +136,7 @@ class SettingsRepository(context: Context) {
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
             vibration = enumOrNull<VibrationStrength>(this[Keys.VIBRATION]) ?: defaults.vibration,
             stickerCharacter = enumOrNull<StickerCharacter>(this[Keys.STICKER_CHARACTER]) ?: defaults.stickerCharacter,
+            ownEmoji = this[Keys.OWN_EMOJI] ?: defaults.ownEmoji,
             voiceLanguage = enumOrNull<Language>(this[Keys.VOICE_LANGUAGE]),
             voiceCommands = this[Keys.VOICE_COMMANDS] ?: defaults.voiceCommands,
             shortcuts = this[Keys.SHORTCUTS]?.let { Shortcut.decode(it) }
@@ -167,6 +171,7 @@ class SettingsRepository(context: Context) {
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
         val VIBRATION = stringPreferencesKey("vibration_strength")
         val STICKER_CHARACTER = stringPreferencesKey("sticker_character")
+        val OWN_EMOJI = stringPreferencesKey("own_emoji")
         val VOICE_LANGUAGE = stringPreferencesKey("voice_language")
         val VOICE_COMMANDS = booleanPreferencesKey("voice_commands")
         val SHORTCUTS = stringPreferencesKey("shortcuts")

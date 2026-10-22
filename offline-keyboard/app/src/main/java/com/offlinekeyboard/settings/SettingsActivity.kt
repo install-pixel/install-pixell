@@ -59,7 +59,6 @@ import com.offlinekeyboard.dictionary.UserDictionaryStore
 import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.KeyboardService
 import com.offlinekeyboard.keyboard.ThemeMode
-import com.offlinekeyboard.keyboard.StickerCharacter
 import com.offlinekeyboard.keyboard.VibrationStrength
 import com.offlinekeyboard.models.ModelStore
 import com.offlinekeyboard.privacy.OfflinePolicy
@@ -98,6 +97,7 @@ class SettingsActivity : ComponentActivity() {
                     val startPage = when (intent.getStringExtra(EXTRA_PAGE)) {
                         "bluetooth" -> Page.BLUETOOTH
                         "models" -> Page.MODELS
+                        "stickers" -> Page.STICKERS
                         else -> Page.MAIN
                     }
                     SettingsApp(repository, startPage)
@@ -173,7 +173,7 @@ private fun previewVibration(context: Context, strength: VibrationStrength) {
     }
 }
 
-internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSSARY }
+internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSSARY, STICKERS }
 
 internal typealias UpdateSettings = ((KeyboardSettings) -> KeyboardSettings) -> Unit
 
@@ -208,6 +208,7 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
         Page.MODELS -> ModelsPage(onBack = { page = Page.MAIN })
         Page.BLUETOOTH -> BluetoothPage(s, update, onBack = { page = Page.MAIN })
         Page.GLOSSARY -> GlossaryPage(onBack = { page = Page.MAIN })
+        Page.STICKERS -> StickersPage(s, update, onBack = { page = Page.MAIN })
     }
 }
 
@@ -321,6 +322,10 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 onOpen(Page.GLOSSARY)
             }
             HorizontalDivider()
+            NavRow(stringResource(R.string.page_stickers), stringResource(R.string.page_stickers_summary)) {
+                onOpen(Page.STICKERS)
+            }
+            HorizontalDivider()
             NavRow(
                 stringResource(R.string.page_bluetooth),
                 stringResource(if (s.bluetoothKeyboard) R.string.page_bluetooth_on else R.string.page_bluetooth_off),
@@ -397,13 +402,6 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                         previewVibration(context, strength)
                     }
                 }
-            }
-            Text(stringResource(R.string.sticker_character), style = MaterialTheme.typography.titleSmall)
-            RadioRow(stringResource(R.string.sticker_boy_description), s.stickerCharacter == StickerCharacter.BOY) {
-                update { it.copy(stickerCharacter = StickerCharacter.BOY) }
-            }
-            RadioRow(stringResource(R.string.sticker_girl_description), s.stickerCharacter == StickerCharacter.GIRL) {
-                update { it.copy(stickerCharacter = StickerCharacter.GIRL) }
             }
         }
 

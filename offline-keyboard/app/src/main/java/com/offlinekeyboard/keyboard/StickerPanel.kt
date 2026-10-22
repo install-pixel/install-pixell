@@ -11,6 +11,7 @@ import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -19,8 +20,9 @@ import android.widget.TextView
 import com.offlinekeyboard.R
 
 /**
- * Shown in place of the keys: the keyboard's own animated stickers in a grid, with buttons back to the
- * emoji and to the letters. Animations run only while the panel is visible.
+ * Shown in place of the keys: favourites and the most used stickers first, then the user's own and the
+ * keyboard's animated ones, and a "+" tile to add pictures. A long press marks a favourite (★).
+ * Animations run only while the panel is visible.
  */
 @SuppressLint("ViewConstructor")
 class StickerPanel(context: Context) : LinearLayout(context) {
@@ -29,6 +31,8 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         fun onStickerPicked(name: String)
         fun onStickersClosed(backToEmoji: Boolean)
         fun onStickerCharacterPicked(character: StickerCharacter)
+        fun onStickerLongPressed(name: String)
+        fun onAddStickers()
     }
 
     var listener: Listener? = null
@@ -38,18 +42,12 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         set(value) {
             if (field == value) return
             field = value
-            play(false)
-            grid.removeAllViews()
-            cells.clear()
-            loaded = false
             updateCharacterButtons()
-            if (isShown) {
-                load()
-                play(true)
-            }
+            reload()
         }
     private val cells = ArrayList<ImageView>()
     private var loaded = false
+    private var loadedVersion = -1
 
     private val grid = GridLayout(context).apply {
         columnCount = COLUMNS
@@ -130,6 +128,8 @@ class StickerPanel(context: Context) : LinearLayout(context) {
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (visibility == View.VISIBLE && isShown) {
+            // Own stickers added in settings, or a new favourite, since the grid was built.
+            if (loadedVersion != Stickers.version.value) clear()
             load()
             play(true)
         } else {
@@ -142,28 +142,86 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         play(false)
     }
 
+    /** Rebuilds the grid (new order, favourites, own stickers). */
+    fun reload() {
+        clear()
+        if (isShown) {
+            load()
+            play(true)
+        }
+    }
+
+    private fun clear() {
+        play(false)
+        grid.removeAllViews()
+        cells.clear()
+        loaded = false
+    }
+
     /** Builds the grid the first time the panel is opened (the keyboard opens faster without it). */
     private fun load() {
         if (loaded) return
         loaded = true
+        loadedVersion = Stickers.version.value
         val size = (resources.displayMetrics.widthPixels - dp(8)) / COLUMNS
-        for (name in Stickers.names(context, character)) {
-            val cell = ImageView(context).apply {
+        val favorites = Stickers.favorites(context)
+        for (name in Stickers.ordered(context, character)) {
+            val image = ImageView(context).apply {
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setPadding(dp(6), dp(6), dp(6), dp(6))
                 contentDescription = name.substringAfterLast('/').substringAfter('-')
                 tag = name
                 setImageDrawable(preview(name))
                 setOnClickListener { listener?.onStickerPicked(name) }
+                setOnLongClickListener { listener?.onStickerLongPressed(name); true }
                 selectableBackground()
             }
-            cells += cell
+            cells += image
+            val cell = FrameLayout(context).apply {
+                addView(image, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                if (name in favorites) {
+                    addView(
+                        TextView(context).apply {
+                            text = "★"
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                            setTextColor(theme?.accent ?: 0xFFFFC107.toInt())
+                        },
+                        FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END)
+                            .apply { setMargins(0, dp(2), dp(4), 0) },
+                    )
+                }
+            }
             grid.addView(cell, GridLayout.LayoutParams().apply { width = size; height = size })
         }
+        val add = TextView(context).apply {
+            text = "+"
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 34f)
+            setTextColor(theme?.hint ?: 0xFF888888.toInt())
+            contentDescription = context.getString(R.string.stickers_add)
+            setOnClickListener { listener?.onAddStickers() }
+            selectableBackground()
+        }
+        grid.addView(add, GridLayout.LayoutParams().apply { width = size; height = size })
     }
 
     private fun preview(name: String): Drawable? = runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        if (Stickers.isCustom(name)) {
+            val file = Stickers.customFile(context, name)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ImageDecoder.decodeDrawable(ImageDecoder.createSource(file)) { decoder, info, _ ->
+                    // Big photos are shrunk for the grid.
+                    val max = maxOf(info.size.width, info.size.height)
+                    if (max > PREVIEW_PX) decoder.setTargetSampleSize(max / PREVIEW_PX)
+                }
+            } else {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(file.path, bounds)
+                val max = maxOf(bounds.outWidth, bounds.outHeight)
+                val options = BitmapFactory.Options().apply { inSampleSize = (max / PREVIEW_PX).coerceAtLeast(1) }
+                BitmapDrawable(resources, BitmapFactory.decodeFile(file.path, options))
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             ImageDecoder.decodeDrawable(ImageDecoder.createSource(context.assets, Stickers.previewPath(name)))
         } else {
             // Older Android reads only the first frame of a GIF.
@@ -189,5 +247,6 @@ class StickerPanel(context: Context) : LinearLayout(context) {
 
     private companion object {
         const val COLUMNS = 4
+        const val PREVIEW_PX = 256
     }
 }

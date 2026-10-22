@@ -141,6 +141,21 @@ class KeyboardUiTest {
         tapSpecial(SpecialKey.LAYER_LETTERS)
         tapText("а")
         assertEquals(com.offlinekeyboard.core.layout.EmojiSet.pages[0].items[0] + "а", text(activity.plain))
+        // Opened again, the panel starts on the most used page.
+        tapSpecial(SpecialKey.LAYER_EMOJI)
+        screenshot("emoji-frequent")
+        assertTrue(keyCenter { it.special == SpecialKey.EMOJI_NEXT && it.label?.startsWith("🕘") == true } != null)
+        tapSpecial(SpecialKey.LAYER_LETTERS)
+    }
+
+    @Test
+    fun periodLongPressGivesTheApostrophe() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        tapText("п")
+        longPressText(".")
+        tapText("я")
+        assertEquals("п'я", text(activity.plain))
     }
 
     @Test

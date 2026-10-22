@@ -245,4 +245,18 @@
     <string name="sticker_girl">👧</string>
     <string name="sticker_boy_description">Chłopiec</string>
     <string name="sticker_girl_description">Dziewczynka</string>
+    <string name="page_stickers">Emoji i naklejki</string>
+    <string name="page_stickers_summary">Własne emoji i obrazki, ulubione, chłopiec czy dziewczynka</string>
+    <string name="own_emoji_title">Moje emoji</string>
+    <string name="own_emoji_hint">Emoji lub tekstowe buźki oddzielone spacjami, np. 🦄 🐙 ¯\\_(ツ)_/¯. Dostaną własną stronę ★ w panelu emoji.</string>
+    <string name="own_emoji_field">Moje emoji</string>
+    <string name="own_emoji_saved">Zapisano: %d</string>
+    <string name="emoji_frequent_hint">Strona 🕘 pokazuje najczęściej używane emoji; wypełnia się sama.</string>
+    <string name="own_stickers_title">Moje naklejki</string>
+    <string name="own_stickers_hint">Dodaj obrazki GIF, WebP, PNG lub JPEG z telefonu (do 8 MB). W panelu naklejek długie naciśnięcie dodaje naklejkę do ulubionych ★; ulubione i najczęstsze są na początku.</string>
+    <string name="own_stickers_none">Nie ma jeszcze własnych naklejek.</string>
+    <string name="stickers_add">Dodaj obrazki</string>
+    <string name="stickers_added">Dodano %1$d z %2$d</string>
+    <string name="sticker_favorite_added">Dodano do ulubionych ★</string>
+    <string name="sticker_favorite_removed">Usunięto z ulubionych</string>
 </resources>

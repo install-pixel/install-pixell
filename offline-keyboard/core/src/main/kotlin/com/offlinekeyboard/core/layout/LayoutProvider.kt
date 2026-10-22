@@ -15,6 +15,7 @@ object LayoutProvider {
         layer: Layer,
         mobileCursorRow: Boolean = false,
         emojiPage: Int = 0,
+        emojiPages: List<EmojiSet.Page> = EmojiSet.pages,
     ): KeyboardLayout = withoutDuplicateAlternatives(
         when (mode) {
         KeyboardMode.COMPUTER -> when (layer) {
@@ -27,7 +28,7 @@ object LayoutProvider {
                 Layer.SYMBOLS, Layer.FUNCTION -> mobileSymbols(language)
                 Layer.SYMBOLS_MORE -> mobileSymbolsMore(language)
                 Layer.LETTERS -> mobileLetters(language)
-                Layer.EMOJI -> mobileEmoji(language, emojiPage)
+                Layer.EMOJI -> mobileEmoji(language, emojiPage, emojiPages)
             }
             if (mobileCursorRow && layer != Layer.EMOJI) withCursorRow(base) else base
         }
@@ -213,8 +214,7 @@ object LayoutProvider {
     }
 
     /** The emoji panel: 32 emoji (or 20 text smileys) per page, page arrows and back to letters. */
-    private fun mobileEmoji(language: Language, page: Int): KeyboardLayout {
-        val pages = EmojiSet.pages
+    private fun mobileEmoji(language: Language, page: Int, pages: List<EmojiSet.Page>): KeyboardLayout {
         val current = pages[page.mod(pages.size)]
         val width = 8f / current.columns
         val rows = current.items.chunked(current.columns).map { row ->
@@ -237,14 +237,11 @@ object LayoutProvider {
     }
 
     private fun mobileBottomRow(language: Language, layerKey: SpecialKey): List<Key> {
-        val apostrophe = if (language == Language.UK) {
-            listOf(Key(KeyAction.Text("'"), alternatives = punctuationAlternatives("'")))
-        } else {
-            emptyList()
-        }
-        return listOf(mod(layerKey, 1.5f), fn(LANGUAGE), fn(LAYER_EMOJI)) + apostrophe + listOf(
+        // The apostrophe lives on a long press of "." (and ʼ on ь), so the space bar stays wide.
+        val spaceWidth = if (language == Language.UK) 4f else 3f
+        return listOf(mod(layerKey, 1.5f), fn(LANGUAGE), fn(LAYER_EMOJI)) + listOf(
             Key(KeyAction.Text(","), alternatives = punctuationAlternatives(",")),
-            Key(KeyAction.Special(SPACE), width = 3f, style = KeyStyle.SPACE),
+            Key(KeyAction.Special(SPACE), width = spaceWidth, style = KeyStyle.SPACE),
             Key(KeyAction.Text("."), alternatives = punctuationAlternatives(".")),
             action(ENTER, 1.5f),
         )
@@ -284,7 +281,7 @@ object LayoutProvider {
     }
 
     private fun punctuationAlternatives(text: String): List<String> = when (text) {
-        "." -> listOf("…", "?", "!", ":", ";")
+        "." -> listOf("'", "…", "?", "!", ":", ";")
         "," -> listOf(";", ":", "-")
         "-" -> listOf("–", "—", "_")
         "'" -> listOf("ʼ", "’", "‘", "\"")

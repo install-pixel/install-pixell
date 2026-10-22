@@ -245,4 +245,18 @@
     <string name="sticker_girl">👧</string>
     <string name="sticker_boy_description">Хлопчик</string>
     <string name="sticker_girl_description">Дівчинка</string>
+    <string name="page_stickers">Емодзі та стікери</string>
+    <string name="page_stickers_summary">Свої емодзі й картинки, улюблені, хлопчик чи дівчинка</string>
+    <string name="own_emoji_title">Мої емодзі</string>
+    <string name="own_emoji_hint">Емодзі або текстові смайлики через пробіл, напр. 🦄 🐙 ¯\\_(ツ)_/¯. Вони матимуть свою сторінку ★ у панелі емодзі.</string>
+    <string name="own_emoji_field">Мої емодзі</string>
+    <string name="own_emoji_saved">Збережено: %d</string>
+    <string name="emoji_frequent_hint">Сторінка 🕘 показує емодзі, які ви вживаєте найчастіше; вона заповнюється сама.</string>
+    <string name="own_stickers_title">Мої стікери</string>
+    <string name="own_stickers_hint">Додайте картинки GIF, WebP, PNG або JPEG з телефону (до 8 МБ). У панелі стікерів довге натискання додає стікер в улюблені ★; улюблені й найчастіші йдуть першими.</string>
+    <string name="own_stickers_none">Своїх стікерів ще немає.</string>
+    <string name="stickers_add">Додати картинки</string>
+    <string name="stickers_added">Додано %1$d з %2$d</string>
+    <string name="sticker_favorite_added">Додано в улюблені ★</string>
+    <string name="sticker_favorite_removed">Прибрано з улюблених</string>
 </resources>

@@ -24,6 +24,8 @@ import com.offlinekeyboard.core.input.EditorCommand
 import com.offlinekeyboard.core.input.EnterLabel
 import com.offlinekeyboard.core.input.FieldInfo
 import com.offlinekeyboard.core.input.KeyMods
+import com.offlinekeyboard.core.layout.EmojiSet
+import com.offlinekeyboard.core.layout.EmojiUsage
 import com.offlinekeyboard.core.layout.Key
 import com.offlinekeyboard.core.layout.KeyAction
 import com.offlinekeyboard.core.layout.KeyboardMode
@@ -116,6 +118,8 @@ class KeyboardService : InputMethodService(),
         controller = KeyboardController(settings.startMode, settings.lastLanguage, settings.enabledLanguages)
         controller.shortcuts = settings.shortcuts
         controller.listener = this
+        emojiUsage = EmojiUsage.decode(emojiPrefs().getString(EMOJI_USAGE_KEY, null))
+        refreshEmojiPages()
         translation.accurate = settings.translationAccurate
         scope.launch {
             repository.settings.collect { applySettings(it) }
@@ -170,6 +174,7 @@ class KeyboardService : InputMethodService(),
         settings = new
         controller.enabledLanguages = new.enabledLanguages
         controller.shortcuts = new.shortcuts
+        if (old.ownEmoji != new.ownEmoji) refreshEmojiPages()
         if (!new.rememberLastMode && old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
         translation.accurate = new.translationAccurate
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
@@ -448,6 +453,9 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ keys
 
     override fun onKey(key: Key) {
+        if (controller.layer == Layer.EMOJI) (key.action as? KeyAction.Text)?.let { recordEmoji(it.text) }
+        // The most used page is rebuilt when the panel opens, never under the finger.
+        if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
         if (sendToComputer(key, null)) return
         handler.removeCallbacks(firePendingShortcut)
         execute(controller.onKey(key))
@@ -739,6 +747,21 @@ class KeyboardService : InputMethodService(),
         openSettings(null)
     }
 
+    // ------------------------------------------------------------------ emoji
+
+    private var emojiUsage = EmojiUsage()
+
+    private fun emojiPrefs() = getSharedPreferences(EMOJI_PREFS, MODE_PRIVATE)
+
+    private fun recordEmoji(text: String) {
+        emojiUsage.record(text)
+        emojiPrefs().edit().putString(EMOJI_USAGE_KEY, emojiUsage.encode()).apply()
+    }
+
+    private fun refreshEmojiPages() {
+        controller.emojiPages = EmojiSet.pagesWith(emojiUsage.top(EmojiSet.PAGE_SIZE), EmojiSet.parseOwn(settings.ownEmoji))
+    }
+
     // ------------------------------------------------------------------ stickers
 
     private fun showStickers() {
@@ -759,6 +782,17 @@ class KeyboardService : InputMethodService(),
             Stickers.send(this, currentInputConnection, currentInputEditorInfo, name, getString(R.string.sticker_description))
         }.getOrDefault(false)
         if (!sent) rootView?.showStatus(getString(R.string.stickers_not_supported), CHECK_WARNING_MS)
+    }
+
+    override fun onStickerLongPressed(name: String) {
+        val favorite = Stickers.toggleFavorite(this, name)
+        rootView?.showStatus(getString(if (favorite) R.string.sticker_favorite_added else R.string.sticker_favorite_removed))
+        rootView?.stickerPanel?.reload()
+    }
+
+    override fun onAddStickers() {
+        rootView?.showStickers(false)
+        openSettings("stickers")
     }
 
     override fun onStickerCharacterPicked(character: StickerCharacter) {
@@ -960,6 +994,8 @@ class KeyboardService : InputMethodService(),
         private const val SENT_TEXT_MAX = 2000
         private const val ECHO_CONTEXT = 2000
         private const val UNDO_SLACK = 8
+        private const val EMOJI_PREFS = "emoji"
+        private const val EMOJI_USAGE_KEY = "usage"
 
         /** Keys that change only this keyboard, also in Bluetooth mode. */
         private val LOCAL_KEYS = setOf(

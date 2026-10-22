@@ -245,4 +245,18 @@
     <string name="sticker_girl">👧</string>
     <string name="sticker_boy_description">Boy</string>
     <string name="sticker_girl_description">Girl</string>
+    <string name="page_stickers">Emoji and stickers</string>
+    <string name="page_stickers_summary">Your own emoji and pictures, favourites, boy or girl</string>
+    <string name="own_emoji_title">My emoji</string>
+    <string name="own_emoji_hint">Emoji or text smileys separated by spaces, e.g. 🦄 🐙 ¯\\_(ツ)_/¯. They get their own ★ page in the emoji panel.</string>
+    <string name="own_emoji_field">My emoji</string>
+    <string name="own_emoji_saved">Saved: %d</string>
+    <string name="emoji_frequent_hint">The 🕘 page shows the emoji you use most; it fills up by itself.</string>
+    <string name="own_stickers_title">My stickers</string>
+    <string name="own_stickers_hint">Add GIF, WebP, PNG or JPEG pictures from the phone (up to 8 MB). In the sticker panel, a long press adds a sticker to favourites ★; favourites and the most used come first.</string>
+    <string name="own_stickers_none">No own stickers yet.</string>
+    <string name="stickers_add">Add pictures</string>
+    <string name="stickers_added">Added %1$d of %2$d</string>
+    <string name="sticker_favorite_added">Added to favourites ★</string>
+    <string name="sticker_favorite_removed">Removed from favourites</string>
 </resources>
