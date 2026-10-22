@@ -24,6 +24,9 @@
         android:name="android.hardware.bluetooth"
         android:required="false" />
 
+    <!-- Key vibration with a chosen strength. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Voice input only; requested when the user first taps the microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 

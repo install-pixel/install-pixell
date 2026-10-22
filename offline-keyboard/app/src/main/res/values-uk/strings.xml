@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Offline Computer Keyboard</string>
-    <string name="ime_name">Offline Computer Keyboard</string>
+    <string name="app_name">OfflingoPC</string>
+    <string name="ime_name">OfflingoPC</string>
 
     <string name="toolbar_voice_description">Голосове введення</string>
     <string name="toolbar_mode_description">Перемкнути комп\'ютерну та мобільну клавіатуру</string>
@@ -162,7 +162,7 @@
     <string name="accent_peach">Персиковий</string>
     <string name="accent_rose">Пудровий</string>
     <string name="no_browser">Не знайдено браузер, щоб відкрити посилання.</string>
-    <string name="models_how">Як: 1) «Завантажити» біля потрібної моделі — браузер збереже файл. 2) Коли завантажиться, торкніться в браузері «Відкрити» й виберіть Offline Keyboard — модель встановиться сама. Або натисніть «Встановити завантажені файли» й виберіть один чи кілька файлів — клавіатура сама розпізнає кожен.</string>
+    <string name="models_how">Як: 1) «Завантажити» біля потрібної моделі — браузер збереже файл. 2) Коли завантажиться, торкніться в браузері «Відкрити» й виберіть OfflingoPC — модель встановиться сама. Або натисніть «Встановити завантажені файли» й виберіть один чи кілька файлів — клавіатура сама розпізнає кожен.</string>
     <string name="models_download">Завантажити</string>
     <string name="models_size">близько %1$d МБ</string>
     <string name="models_custom">Інші моделі (для досвідчених)</string>
@@ -230,4 +230,8 @@
     <string name="crash_screen_title">Минулого разу застосунок закрився з помилкою. Скопіюйте текст і надішліть розробнику.</string>
     <string name="crash_continue">Продовжити</string>
     <string name="crash_copied">Скопійовано</string>
+    <string name="vibration_light">Легка</string>
+    <string name="vibration_medium">Середня</string>
+    <string name="vibration_strong">Сильна</string>
+    <string name="toolbar_undo_translation_description">Повернути оригінал</string>
 </resources>

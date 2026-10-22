@@ -6,6 +6,7 @@ import com.offlinekeyboard.core.input.EditorCommand
 import com.offlinekeyboard.core.input.KeyMods
 import com.offlinekeyboard.core.layout.Key
 import com.offlinekeyboard.core.layout.KeyAction
+import com.offlinekeyboard.core.layout.EmojiSet
 import com.offlinekeyboard.core.layout.KeyboardLayout
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
@@ -41,6 +42,10 @@ class KeyboardController(
     var layer: Layer = Layer.LETTERS
         private set
 
+    /** Page of the emoji panel; kept when the panel is closed, like most keyboards do. */
+    var emojiPage: Int = 0
+        private set
+
     /**
      * The focused field takes raw key events only (terminals such as Termux): Ctrl+C, Ctrl+X ... are sent
      * to the app as keys (nano, vim, shells need them) instead of becoming copy/cut.
@@ -61,7 +66,7 @@ class KeyboardController(
     }
 
     fun layout(mobileCursorRow: Boolean): KeyboardLayout =
-        LayoutProvider.layout(mode, language, layer, mobileCursorRow)
+        LayoutProvider.layout(mode, language, layer, mobileCursorRow, emojiPage)
 
     /** A new text field got focus. Number and phone fields open on digits in mobile mode. */
     fun onStartField(numeric: Boolean) {
@@ -277,6 +282,9 @@ class KeyboardController(
             SpecialKey.LAYER_SYMBOLS -> { toggleLayer(Layer.SYMBOLS); emptyList() }
             SpecialKey.LAYER_SYMBOLS_MORE -> { toggleLayer(Layer.SYMBOLS_MORE); emptyList() }
             SpecialKey.LAYER_FUNCTION -> { toggleLayer(Layer.FUNCTION); emptyList() }
+            SpecialKey.LAYER_EMOJI -> { layer = if (layer == Layer.EMOJI) Layer.LETTERS else Layer.EMOJI; emptyList() }
+            SpecialKey.EMOJI_PREVIOUS -> { emojiPage = (emojiPage - 1).mod(EmojiSet.pages.size); emptyList() }
+            SpecialKey.EMOJI_NEXT -> { emojiPage = (emojiPage + 1).mod(EmojiSet.pages.size); emptyList() }
 
             SpecialKey.VOICE -> listOf(EditorCommand.StartVoice)
             SpecialKey.SETTINGS -> listOf(EditorCommand.OpenSettings)

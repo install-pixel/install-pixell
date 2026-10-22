@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
@@ -62,11 +63,14 @@ internal fun ModelsPage(onBack: () -> Unit) {
     val store = remember { ModelStore(context) }
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableIntStateOf(0) }
+    // Models installed elsewhere (opened from the browser, another screen) show up at once.
+    val modelsVersion by ModelEvents.version.collectAsStateWithLifecycle()
     var busy by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var micGranted by remember { mutableStateOf(false) }
 
     LifecycleResumeEffect(Unit) {
+        refresh++
         micGranted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         onPauseOrDispose { }
     }
@@ -127,7 +131,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
             Text(stringResource(R.string.models_speech_hint), style = MaterialTheme.typography.bodySmall)
             for (language in Language.entries) {
                 HorizontalDivider()
-                val model = remember(refresh, language) { store.speechModel(language) }
+                val model = remember(refresh, modelsVersion, language) { store.speechModel(language) }
                 val file = SPEECH_FILES.getValue(language)
                 ModelRow(
                     title = languageName(language),
@@ -149,7 +153,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
             Text(stringResource(R.string.models_translation_hint), style = MaterialTheme.typography.bodySmall)
             for (direction in TranslationDirection.entries) {
                 HorizontalDivider()
-                val model = remember(refresh, direction) { store.translationModel(direction) }
+                val model = remember(refresh, modelsVersion, direction) { store.translationModel(direction) }
                 val file = TRANSLATION_FILES.getValue(direction)
                 val accurate = ACCURATE_FILES[direction]
                 val accurateLabel = stringResource(R.string.models_accurate_tag)

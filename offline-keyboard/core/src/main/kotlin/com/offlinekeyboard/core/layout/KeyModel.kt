@@ -11,8 +11,8 @@ enum class Language(val code: String, val locale: Locale) {
 
 enum class KeyboardMode { COMPUTER, MOBILE }
 
-/** A page of keys inside one mode. FUNCTION exists only in computer mode, SYMBOLS_MORE only in mobile mode. */
-enum class Layer { LETTERS, SYMBOLS, SYMBOLS_MORE, FUNCTION }
+/** A page of keys inside one mode. FUNCTION exists only in computer mode, SYMBOLS_MORE and EMOJI only in mobile mode. */
+enum class Layer { LETTERS, SYMBOLS, SYMBOLS_MORE, FUNCTION, EMOJI }
 
 enum class SpecialKey {
     SHIFT, CAPS_LOCK, CTRL, ALT, META,
@@ -21,6 +21,7 @@ enum class SpecialKey {
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
     CUT, COPY, PASTE, SELECT_ALL, UNDO, REDO,
     LANGUAGE, MODE, LAYER_LETTERS, LAYER_SYMBOLS, LAYER_SYMBOLS_MORE, LAYER_FUNCTION,
+    LAYER_EMOJI, EMOJI_PREVIOUS, EMOJI_NEXT,
     VOICE, SETTINGS, HIDE,
 }
 

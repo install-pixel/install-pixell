@@ -338,25 +338,45 @@ class KeyboardService : InputMethodService(),
      * right before the cursor).
      */
     private fun showTranslated(source: String, inserted: String, target: Language) {
+        lastTranslation = source to inserted
         val missing = TranslationCheck.missing(source, inserted)
         val message = if (missing.isEmpty()) {
             getString(R.string.translation_done_undo, target.code, inserted.trim())
         } else {
             getString(R.string.translation_check_warning, missing.joinToString(", ") { "«$it»" })
         }
-        rootView?.showStatus(message, if (missing.isEmpty()) DONE_MESSAGE_MS else CHECK_WARNING_MS) {
-            val ic = currentInputConnection ?: return@showStatus
-            val before = ic.getTextBeforeCursor(inserted.length, 0)?.toString()
-            if (before == inserted) {
-                ic.beginBatchEdit()
-                ic.deleteSurroundingText(inserted.length, 0)
-                ic.commitText(source, 1)
-                ic.endBatchEdit()
-                rootView?.showStatus(getString(R.string.translation_restored))
-            } else {
-                rootView?.showStatus(getString(R.string.translation_restore_impossible))
-            }
+        rootView?.showStatus(message, if (missing.isEmpty()) DONE_MESSAGE_MS else CHECK_WARNING_MS) { onUndoTranslation() }
+        updateSuggestions()
+    }
+
+    /** The last inserted translation and its source, while it can still be put back. */
+    private var lastTranslation: Pair<String, String>? = null
+
+    /** True while the last translation is still right before the cursor (spaces after it allowed). */
+    private fun undoAvailable(before: CharSequence): Boolean {
+        val inserted = lastTranslation?.second?.trimEnd() ?: return false
+        return inserted.isNotEmpty() && before.toString().trimEnd().endsWith(inserted)
+    }
+
+    override fun onUndoTranslation() {
+        val (source, inserted) = lastTranslation ?: return
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(inserted.length + UNDO_SLACK, 0)?.toString().orEmpty()
+        val trimmed = before.trimEnd()
+        if (!trimmed.endsWith(inserted.trimEnd())) {
+            lastTranslation = null
+            rootView?.showStatus(getString(R.string.translation_restore_impossible))
+            updateSuggestions()
+            return
         }
+        val trailing = before.length - trimmed.length
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(inserted.trimEnd().length + trailing, 0)
+        ic.commitText(source + before.substring(trimmed.length), 1)
+        ic.endBatchEdit()
+        lastTranslation = null
+        rootView?.showStatus(getString(R.string.translation_restored))
+        updateSuggestions()
     }
 
     /**
@@ -510,12 +530,15 @@ class KeyboardService : InputMethodService(),
         val ic = currentInputConnection
         if (bluetoothSending && bluetoothConnected) {
             root.showSuggestions(emptyList())
-            root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: ${sentText.toString().takeLast(ECHO_MAX)}")
+            root.showUndo(false)
+            root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: $sentText")
             return
         }
-        val before = ic?.getTextBeforeCursor(WORD_CONTEXT, 0) ?: ""
-        // Passwords are never repeated on screen.
+        val before = ic?.getTextBeforeCursor(ECHO_CONTEXT, 0) ?: ""
+        // The whole message so far (passwords are never repeated on screen).
         root.showEcho(if (currentField.isSensitive) null else echoOf(before))
+        if (lastTranslation != null && !undoAvailable(before)) lastTranslation = null
+        root.showUndo(lastTranslation != null)
         val show = settings.showSuggestions && currentField.allowsLearning && !translateActive &&
             speech.state == SpeechController.State.IDLE
         if (!show || ic == null || !ic.getSelectedText(0).isNullOrEmpty()) {
@@ -523,15 +546,14 @@ class KeyboardService : InputMethodService(),
             return
         }
         val after = ic.getTextAfterCursor(1, 0) ?: ""
-        val prefix = if (WordRules.continuesWord(after)) "" else WordRules.trailingWord(before)
+        val prefix = if (WordRules.continuesWord(after)) "" else WordRules.trailingWord(before.takeLast(WORD_CONTEXT))
         root.showSuggestions(if (prefix.isEmpty()) emptyList() else dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
     }
 
-    /** Last line before the cursor, shortened from the start. */
+    /** The message before the cursor on one line (line breaks shown as ⏎). */
     private fun echoOf(before: CharSequence): String? {
-        val line = before.toString().substringAfterLast('\n').trim()
-        if (line.isEmpty()) return null
-        return if (line.length > ECHO_MAX) "…" + line.takeLast(ECHO_MAX) else line
+        val text = before.toString().trim().replace(Regex("\\s*\\n\\s*"), " ⏎ ")
+        return text.ifEmpty { null }
     }
 
     override fun onSuggestionPicked(word: String) {
@@ -820,6 +842,7 @@ class KeyboardService : InputMethodService(),
         )
         val baseHeight = if (controller.mode == KeyboardMode.COMPUTER) COMPUTER_KEY_DP else MOBILE_KEY_DP
         root.keyboardView.hapticFeedback = settings.hapticFeedback
+        root.keyboardView.vibration = settings.vibration
         root.keyboardView.spaceSwipeEnabled = settings.spaceSwipeSwitchesLanguage
         root.keyboardView.bind(
             layout = controller.layout(settings.mobileCursorRow),
@@ -893,14 +916,16 @@ class KeyboardService : InputMethodService(),
         private const val CHECK_WARNING_MS = 8000L
         private const val PREVIEW_DELAY_MS = 350L
         private const val DONE_MESSAGE_MS = 4000L
-        private const val SENT_TEXT_MAX = 60
-        private const val ECHO_MAX = 48
+        private const val SENT_TEXT_MAX = 2000
+        private const val ECHO_CONTEXT = 2000
+        private const val UNDO_SLACK = 8
 
         /** Keys that change only this keyboard, also in Bluetooth mode. */
         private val LOCAL_KEYS = setOf(
             SpecialKey.SHIFT, SpecialKey.CAPS_LOCK, SpecialKey.CTRL, SpecialKey.ALT, SpecialKey.META,
             SpecialKey.LANGUAGE, SpecialKey.MODE, SpecialKey.LAYER_LETTERS, SpecialKey.LAYER_SYMBOLS,
-            SpecialKey.LAYER_SYMBOLS_MORE, SpecialKey.LAYER_FUNCTION, SpecialKey.VOICE, SpecialKey.SETTINGS,
+            SpecialKey.LAYER_SYMBOLS_MORE, SpecialKey.LAYER_FUNCTION, SpecialKey.LAYER_EMOJI,
+            SpecialKey.EMOJI_PREVIOUS, SpecialKey.EMOJI_NEXT, SpecialKey.VOICE, SpecialKey.SETTINGS,
             SpecialKey.HIDE,
         )
     }

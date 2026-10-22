@@ -7,8 +7,12 @@ import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.SparseArray
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -45,6 +49,16 @@ class KeyboardView(context: Context) : View(context) {
 
     var listener: Listener? = null
     var hapticFeedback = true
+    var vibration = VibrationStrength.MEDIUM
+
+    private val vibrator: Vibrator? = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Vibrator::class.java)
+        }
+    }.getOrNull()
     var spaceSwipeEnabled = true
     var longPressMillis = 350L
 
@@ -226,6 +240,9 @@ class KeyboardView(context: Context) : View(context) {
             SpecialKey.SETTINGS -> Icon.GEAR
             SpecialKey.HIDE -> Icon.HIDE
             SpecialKey.MODE -> if (ctx.mode == KeyboardMode.COMPUTER) Icon.PHONE else Icon.KEYBOARD
+            SpecialKey.LAYER_EMOJI -> Icon.EMOJI
+            SpecialKey.EMOJI_PREVIOUS -> Icon.LEFT
+            SpecialKey.EMOJI_NEXT -> Icon.RIGHT
             else -> null
         }
     }
@@ -382,7 +399,29 @@ class KeyboardView(context: Context) : View(context) {
     private fun isLanguageKey(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.LANGUAGE
 
     private fun feedback() {
-        if (hapticFeedback) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (!hapticFeedback) return
+        val v = vibrator
+        if (v == null || !v.hasVibrator()) {
+            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            return
+        }
+        val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            VibrationEffect.createPredefined(
+                when (vibration) {
+                    VibrationStrength.LIGHT -> VibrationEffect.EFFECT_TICK
+                    VibrationStrength.MEDIUM -> VibrationEffect.EFFECT_CLICK
+                    VibrationStrength.STRONG -> VibrationEffect.EFFECT_HEAVY_CLICK
+                },
+            )
+        } else {
+            val (ms, amplitude) = when (vibration) {
+                VibrationStrength.LIGHT -> 8L to 60
+                VibrationStrength.MEDIUM -> 15L to 140
+                VibrationStrength.STRONG -> 28L to 255
+            }
+            VibrationEffect.createOneShot(ms, if (v.hasAmplitudeControl()) amplitude else VibrationEffect.DEFAULT_AMPLITUDE)
+        }
+        runCatching { v.vibrate(effect) }
     }
 
     override fun onDetachedFromWindow() {

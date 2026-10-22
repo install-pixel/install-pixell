@@ -16,6 +16,7 @@ import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.ThemeMode
+import com.offlinekeyboard.keyboard.VibrationStrength
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -30,6 +31,8 @@ data class KeyboardSettings(
     val autoCapitalize: Boolean = true,
     val spaceSwipeSwitchesLanguage: Boolean = true,
     val hapticFeedback: Boolean = true,
+    /** How strongly keys vibrate when [hapticFeedback] is on. */
+    val vibration: VibrationStrength = VibrationStrength.MEDIUM,
     /** Null: dictate in the current keyboard language. */
     val voiceLanguage: Language? = null,
     val voiceCommands: Boolean = true,
@@ -84,6 +87,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.AUTO_CAPITALIZE] = updated.autoCapitalize
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.HAPTIC] = updated.hapticFeedback
+            prefs[Keys.VIBRATION] = updated.vibration.name
             val voice = updated.voiceLanguage
             if (voice != null) prefs[Keys.VOICE_LANGUAGE] = voice.name else prefs.remove(Keys.VOICE_LANGUAGE)
             prefs[Keys.VOICE_COMMANDS] = updated.voiceCommands
@@ -123,6 +127,7 @@ class SettingsRepository(context: Context) {
             autoCapitalize = this[Keys.AUTO_CAPITALIZE] ?: defaults.autoCapitalize,
             spaceSwipeSwitchesLanguage = this[Keys.SPACE_SWIPE] ?: defaults.spaceSwipeSwitchesLanguage,
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
+            vibration = enumOrNull<VibrationStrength>(this[Keys.VIBRATION]) ?: defaults.vibration,
             voiceLanguage = enumOrNull<Language>(this[Keys.VOICE_LANGUAGE]),
             voiceCommands = this[Keys.VOICE_COMMANDS] ?: defaults.voiceCommands,
             shortcuts = this[Keys.SHORTCUTS]?.let { Shortcut.decode(it) }
@@ -155,6 +160,7 @@ class SettingsRepository(context: Context) {
         val AUTO_CAPITALIZE = booleanPreferencesKey("auto_capitalize")
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
+        val VIBRATION = stringPreferencesKey("vibration_strength")
         val VOICE_LANGUAGE = stringPreferencesKey("voice_language")
         val VOICE_COMMANDS = booleanPreferencesKey("voice_commands")
         val SHORTCUTS = stringPreferencesKey("shortcuts")

@@ -14,20 +14,22 @@ object LayoutProvider {
         language: Language,
         layer: Layer,
         mobileCursorRow: Boolean = false,
+        emojiPage: Int = 0,
     ): KeyboardLayout = withoutDuplicateAlternatives(
         when (mode) {
         KeyboardMode.COMPUTER -> when (layer) {
             Layer.FUNCTION -> computerFunction()
             Layer.SYMBOLS, Layer.SYMBOLS_MORE -> computerSymbols()
-            Layer.LETTERS -> computerLetters(language)
+            Layer.LETTERS, Layer.EMOJI -> computerLetters(language)
         }
         KeyboardMode.MOBILE -> {
             val base = when (layer) {
                 Layer.SYMBOLS, Layer.FUNCTION -> mobileSymbols(language)
                 Layer.SYMBOLS_MORE -> mobileSymbolsMore(language)
                 Layer.LETTERS -> mobileLetters(language)
+                Layer.EMOJI -> mobileEmoji(language, emojiPage)
             }
-            if (mobileCursorRow) withCursorRow(base) else base
+            if (mobileCursorRow && layer != Layer.EMOJI) withCursorRow(base) else base
         }
         },
     )
@@ -210,15 +212,38 @@ object LayoutProvider {
         )
     }
 
+    /** The emoji panel: 32 emoji (or 20 text smileys) per page, page arrows and back to letters. */
+    private fun mobileEmoji(language: Language, page: Int): KeyboardLayout {
+        val pages = EmojiSet.pages
+        val current = pages[page.mod(pages.size)]
+        val width = 8f / current.columns
+        val rows = current.items.chunked(current.columns).map { row ->
+            row.map { Key(KeyAction.Text(it), width = width) }
+        }
+        val letters = Key(
+            KeyAction.Special(LAYER_LETTERS), width = 1.5f, style = KeyStyle.MODIFIER,
+            label = if (language == Language.UK) "АБВ" else "ABC",
+        )
+        val bottom = listOf(
+            letters,
+            fn(EMOJI_PREVIOUS),
+            Key(KeyAction.Special(EMOJI_NEXT), width = 2f, style = KeyStyle.FUNCTION, label = "${current.title}  ${page.mod(pages.size) + 1}/${pages.size}"),
+            fn(EMOJI_NEXT),
+            Key(KeyAction.Special(SPACE), style = KeyStyle.SPACE, label = "␣"),
+            fn(BACKSPACE, 1.5f, repeatable = true),
+        )
+        return KeyboardLayout(rows + listOf(bottom))
+    }
+
     private fun mobileBottomRow(language: Language, layerKey: SpecialKey): List<Key> {
         val apostrophe = if (language == Language.UK) {
             listOf(Key(KeyAction.Text("'"), alternatives = punctuationAlternatives("'")))
         } else {
             emptyList()
         }
-        return listOf(mod(layerKey, 1.5f), fn(LANGUAGE)) + apostrophe + listOf(
+        return listOf(mod(layerKey, 1.5f), fn(LANGUAGE), fn(LAYER_EMOJI)) + apostrophe + listOf(
             Key(KeyAction.Text(","), alternatives = punctuationAlternatives(",")),
-            Key(KeyAction.Special(SPACE), width = 4f, style = KeyStyle.SPACE),
+            Key(KeyAction.Special(SPACE), width = 3f, style = KeyStyle.SPACE),
             Key(KeyAction.Text("."), alternatives = punctuationAlternatives(".")),
             action(ENTER, 1.5f),
         )

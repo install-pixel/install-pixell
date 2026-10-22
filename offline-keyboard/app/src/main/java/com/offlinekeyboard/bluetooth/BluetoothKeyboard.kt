@@ -199,9 +199,9 @@ object BluetoothKeyboard {
 
     private const val KEY_LAST = "last_host"
     private const val REPORT_ID = 1
-    private const val NAME = "Offline Keyboard"
+    private const val NAME = "OfflingoPC"
     private const val DESCRIPTION = "Phone keyboard"
-    private const val PROVIDER = "Offline Keyboard"
+    private const val PROVIDER = "OfflingoPC"
 
     /** Standard keyboard: 8 modifier bits, a reserved byte, 5 LEDs, 6 keys; report id 1. */
     private val DESCRIPTOR = intArrayOf(

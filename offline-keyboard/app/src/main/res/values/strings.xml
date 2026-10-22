@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Offline Computer Keyboard</string>
-    <string name="ime_name">Offline Computer Keyboard</string>
+    <string name="app_name">OfflingoPC</string>
+    <string name="ime_name">OfflingoPC</string>
 
     <string name="toolbar_voice_description">Voice input</string>
     <string name="toolbar_mode_description">Switch between computer and mobile keyboard</string>
@@ -162,7 +162,7 @@
     <string name="accent_peach">Peach</string>
     <string name="accent_rose">Rose</string>
     <string name="no_browser">No browser found to open the link.</string>
-    <string name="models_how">How: 1) «Download» next to a model — the browser saves the file. 2) When it is done, tap «Open» in the browser and choose Offline Keyboard: the model installs by itself. Or tap «Install downloaded files» below and pick one or several files — the keyboard recognises each one.</string>
+    <string name="models_how">How: 1) «Download» next to a model — the browser saves the file. 2) When it is done, tap «Open» in the browser and choose OfflingoPC: the model installs by itself. Or tap «Install downloaded files» below and pick one or several files — the keyboard recognises each one.</string>
     <string name="models_download">Download</string>
     <string name="models_size">about %1$d MB</string>
     <string name="models_custom">Other models (advanced)</string>
@@ -230,4 +230,8 @@
     <string name="crash_screen_title">Last time the app closed with an error. Please copy the text and send it to the developer.</string>
     <string name="crash_continue">Continue</string>
     <string name="crash_copied">Copied</string>
+    <string name="vibration_light">Light</string>
+    <string name="vibration_medium">Medium</string>
+    <string name="vibration_strong">Strong</string>
+    <string name="toolbar_undo_translation_description">Restore the original text</string>
 </resources>

@@ -6,6 +6,9 @@ import android.graphics.Color
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** Key vibration: light tick, normal click, or a firm click (for thick cases and gloves). */
+enum class VibrationStrength { LIGHT, MEDIUM, STRONG }
+
 /** Soft pastel accents. Text on an accent is always dark, so every accent stays readable. */
 enum class Accent(val color: Int) {
     SKY(0xFF8DB4E2.toInt()),

@@ -129,6 +129,34 @@ class KeyboardUiTest {
     }
 
     @Test
+    fun emojiPanelTypesEmoji() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        tapSpecial(SpecialKey.LAYER_EMOJI)
+        screenshot("emoji")
+        tapText(com.offlinekeyboard.core.layout.EmojiSet.pages[0].items[0])
+        tapSpecial(SpecialKey.EMOJI_NEXT)
+        screenshot("emoji-page2")
+        tapSpecial(SpecialKey.LAYER_LETTERS)
+        tapText("а")
+        assertEquals(com.offlinekeyboard.core.layout.EmojiSet.pages[0].items[0] + "а", text(activity.plain))
+    }
+
+    @Test
+    fun longTextScrollsInTheStrip() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        instrumentation.runOnMainSync {
+            activity.plain.setText("це дуже довге повідомлення, яке не поміщається в рядок над клавішами ")
+            activity.plain.setSelection(activity.plain.length())
+        }
+        tapText("а")
+        Thread.sleep(500)
+        screenshot("long-echo")
+        assertTrue(findView { v -> v is TextView && v.text.toString().startsWith("це дуже довге") } != null)
+    }
+
+    @Test
     fun passwordFieldShowsNoSuggestions() {
         focus(activity.password)
         useMode(KeyboardMode.MOBILE)

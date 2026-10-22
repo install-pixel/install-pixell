@@ -2,10 +2,11 @@ package com.offlinekeyboard.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.offlinekeyboard.R
@@ -32,6 +33,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onToolbarMode()
         /** Bluetooth button: start or stop sending keys to the connected computer. */
         fun onToolbarBluetooth()
+        /** Puts the original text back in place of the last translation. */
+        fun onUndoTranslation()
         fun onToolbarSettings()
         fun onSuggestionPicked(word: String)
         fun onSuggestionLongPress(word: String)
@@ -56,14 +59,23 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private var theme = keyboardView.theme
 
+    /** The whole text on one line; the strip shows the end and can be swiped back to the beginning. */
     private val status = TextView(context).apply {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-        maxLines = 1
-        ellipsize = TextUtils.TruncateAt.START
+        isSingleLine = true
+        setHorizontallyScrolling(true)
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(8), 0, dp(8), 0)
         setOnClickListener { statusAction?.let { action -> statusAction = null; action() } }
     }
+    private val statusScroll = HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+        isFillViewport = true
+        overScrollMode = View.OVER_SCROLL_NEVER
+        addView(status, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.MATCH_PARENT))
+    }
+    private val undoButton = button(R.string.toolbar_undo_translation_description) { toolbarListener?.onUndoTranslation() }
+        .apply { icon = Icon.UNDO; visibility = View.GONE }
     private val suggestionViews = List(SUGGESTIONS) { suggestionView() }
     private val suggestionsRow = LinearLayout(context).apply {
         orientation = HORIZONTAL
@@ -96,8 +108,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(status, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            addView(undoButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(bluetoothButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(modeButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(settingsButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
@@ -121,7 +134,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keyboardView.theme = value
         setBackgroundColor(value.background)
         suggestionViews.forEach { it.setTextColor(value.text) }
-        for (b in listOf(modeButton, settingsButton, bluetoothButton)) {
+        for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
         }
@@ -180,6 +193,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         refreshCentre()
     }
 
+    /** Shows the "restore original" button while the last translation can still be undone. */
+    fun showUndo(visible: Boolean) {
+        undoButton.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
     fun showSuggestions(words: List<String>) {
         if (words == suggestions) return
         suggestions = words
@@ -190,9 +208,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val centreText = message ?: liveText
         val showSuggestions = centreText == null && suggestions.isNotEmpty()
         val isEcho = centreText == null && !showSuggestions
-        status.text = if (isEcho) echo ?: "" else centreText ?: ""
+        val text = if (isEcho) echo ?: "" else centreText ?: ""
+        if (text.toString() != status.text.toString()) {
+            status.text = text
+            // Newest text in view; earlier parts are a swipe away.
+            statusScroll.post { statusScroll.fullScroll(View.FOCUS_RIGHT) }
+        }
         status.setTextColor(theme.text)
-        status.visibility = if (showSuggestions) View.GONE else View.VISIBLE
+        statusScroll.visibility = if (showSuggestions) View.GONE else View.VISIBLE
         suggestionsRow.visibility = if (showSuggestions) View.VISIBLE else View.GONE
         suggestionViews.forEachIndexed { i, v ->
             val word = suggestions.getOrNull(i)

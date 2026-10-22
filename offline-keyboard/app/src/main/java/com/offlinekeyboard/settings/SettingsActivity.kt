@@ -38,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,6 +59,7 @@ import com.offlinekeyboard.dictionary.UserDictionaryStore
 import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.KeyboardService
 import com.offlinekeyboard.keyboard.ThemeMode
+import com.offlinekeyboard.keyboard.VibrationStrength
 import com.offlinekeyboard.models.ModelStore
 import com.offlinekeyboard.privacy.OfflinePolicy
 import kotlinx.coroutines.launch
@@ -125,7 +127,7 @@ private fun ComponentActivity.showCrashReport(report: String, onContinue: () -> 
         text = getString(R.string.about_copy_crash)
         setOnClickListener {
             getSystemService(android.content.ClipboardManager::class.java)
-                ?.setPrimaryClip(android.content.ClipData.newPlainText("Offline Keyboard error", report))
+                ?.setPrimaryClip(android.content.ClipData.newPlainText("OfflingoPC error", report))
             android.widget.Toast.makeText(this@showCrashReport, R.string.crash_copied, android.widget.Toast.LENGTH_SHORT).show()
         }
     })
@@ -141,6 +143,33 @@ private fun ComponentActivity.showCrashReport(report: String, onContinue: () -> 
         })
     }, android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
     setContentView(layout)
+}
+
+/** Lets the user feel the chosen strength right away. */
+private fun previewVibration(context: Context, strength: VibrationStrength) {
+    val vibrator = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            context.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(android.os.Vibrator::class.java)
+        }
+    }.getOrNull() ?: return
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        val effect = when (strength) {
+            VibrationStrength.LIGHT -> android.os.VibrationEffect.EFFECT_TICK
+            VibrationStrength.MEDIUM -> android.os.VibrationEffect.EFFECT_CLICK
+            VibrationStrength.STRONG -> android.os.VibrationEffect.EFFECT_HEAVY_CLICK
+        }
+        runCatching { vibrator.vibrate(android.os.VibrationEffect.createPredefined(effect)) }
+    } else {
+        val ms = when (strength) {
+            VibrationStrength.LIGHT -> 8L
+            VibrationStrength.MEDIUM -> 15L
+            VibrationStrength.STRONG -> 28L
+        }
+        runCatching { vibrator.vibrate(android.os.VibrationEffect.createOneShot(ms, android.os.VibrationEffect.DEFAULT_AMPLITUDE)) }
+    }
 }
 
 internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSSARY }
@@ -213,7 +242,9 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
     val dictionary = remember { UserDictionaryStore.get(context) }
     val dictionaryVersion by dictionary.changes.collectAsStateWithLifecycle()
 
+    var resumeCount by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) {
+        resumeCount++
         enabled = isKeyboardEnabled(context)
         selected = isKeyboardSelected(context)
         onPauseOrDispose { }
@@ -274,7 +305,8 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 ),
             ) { onOpen(Page.DICTIONARY) }
             HorizontalDivider()
-            val installed = remember(models) {
+            val modelsVersion by com.offlinekeyboard.models.ModelEvents.version.collectAsStateWithLifecycle()
+            val installed = remember(models, modelsVersion, resumeCount) {
                 Language.entries.count { models.speechModel(it) != null } +
                     TranslationDirection.entries.count { models.translationModel(it) != null }
             }
@@ -352,6 +384,18 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             }
             SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v ->
                 update { it.copy(hapticFeedback = v) }
+            }
+            if (s.hapticFeedback) {
+                for ((strength, label) in listOf(
+                    VibrationStrength.LIGHT to R.string.vibration_light,
+                    VibrationStrength.MEDIUM to R.string.vibration_medium,
+                    VibrationStrength.STRONG to R.string.vibration_strong,
+                )) {
+                    RadioRow(stringResource(label), s.vibration == strength) {
+                        update { it.copy(vibration = strength) }
+                        previewVibration(context, strength)
+                    }
+                }
             }
         }
 

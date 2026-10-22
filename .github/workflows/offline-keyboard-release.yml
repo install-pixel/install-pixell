@@ -49,7 +49,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-build-${{ github.run_number }}
-          name: Offline Keyboard (збірка ${{ github.run_number }})
+          name: OfflingoPC (збірка ${{ github.run_number }})
           target_commitish: ${{ github.sha }}
           prerelease: true
           files: out/*
@@ -58,7 +58,7 @@ jobs:
             1. Завантажте `OfflineKeyboard.apk` і встановіть (стару версію спочатку видаліть).
             2. Голос: завантажте потрібні `vosk-model-small-…zip` (українська `uk`, польська `pl`, англійська `en-us`).
             3. Переклад: `offline-keyboard-mt-ЗВІДКИ-КУДИ.zip` (uk — українська, pl — польська, en — англійська), наприклад `offline-keyboard-mt-uk-pl.zip`. Файли з `-accurate` — точніші, але більші й повільніші моделі.
-            4. Після завантаження торкніться «Відкрити» й виберіть Offline Keyboard — модель встановиться сама. Або: Налаштування → «Офлайн-моделі» → «Встановити завантажені файли» (можна кілька одразу). Розпаковувати zip не треба.
+            4. Після завантаження торкніться «Відкрити» й виберіть OfflingoPC — модель встановиться сама. Або: Налаштування → «Офлайн-моделі» → «Встановити завантажені файли» (можна кілька одразу). Розпаковувати zip не треба.
 
             Застосунок працює без інтернету; файли моделей потрібні лише один раз.
 
@@ -67,7 +67,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-latest
-          name: Offline Keyboard — найновіша версія
+          name: OfflingoPC — найновіша версія
           target_commitish: ${{ github.sha }}
           make_latest: true
           files: out/OfflineKeyboard.apk
@@ -81,7 +81,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-models
-          name: Offline Keyboard — моделі
+          name: OfflingoPC — моделі
           target_commitish: ${{ github.sha }}
           make_latest: false
           files: out/*.zip
