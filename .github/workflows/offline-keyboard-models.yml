@@ -1,0 +1,199 @@
+name: Offline Keyboard Models
+
+# Builds the offline model packs the keyboard imports from a local file:
+#  - translation between Ukrainian, Polish and English in all six directions (OPUS-MT exported to int8
+#    ONNX), plus larger "accurate" tc-big models where they exist; all checked against Hugging Face
+#  - speech recognition models (Vosk) for UK, PL, EN, re-published unchanged for convenience
+# The phone never downloads anything: these zips are copied to the phone and imported in Settings.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'offline-keyboard/tools/mt/**'
+      - 'offline-keyboard/mt/**'
+      - '.github/workflows/offline-keyboard-models.yml'
+
+# A newer push replaces a run still in progress for the same branch.
+concurrency:
+  group: keyboard-models-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  export-translation:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - model: Helsinki-NLP/opus-mt-uk-pl
+            direction: UK_TO_PL
+            phrases: uk.txt
+            token: ''
+            tier: standard
+            slug: uk-pl
+          - model: Helsinki-NLP/opus-mt-pl-uk
+            direction: PL_TO_UK
+            phrases: pl.txt
+            token: ''
+            tier: standard
+            slug: pl-uk
+          - model: Helsinki-NLP/opus-mt-uk-en
+            direction: UK_TO_EN
+            phrases: uk.txt
+            token: ''
+            tier: standard
+            slug: uk-en
+          - model: Helsinki-NLP/opus-mt-en-uk
+            direction: EN_TO_UK
+            phrases: en.txt
+            token: ''
+            tier: standard
+            slug: en-uk
+          - model: Helsinki-NLP/opus-mt-pl-en
+            direction: PL_TO_EN
+            phrases: pl.txt
+            token: ''
+            tier: standard
+            slug: pl-en
+          - model: Helsinki-NLP/opus-mt-en-zlw
+            direction: EN_TO_PL
+            phrases: en.txt
+            token: '>>pol<<'
+            tier: standard
+            slug: en-pl
+          - model: Helsinki-NLP/opus-mt-tc-big-zle-zlw
+            direction: UK_TO_PL
+            phrases: uk.txt
+            token: '>>pol<<'
+            tier: accurate
+            slug: uk-pl-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-zlw-zle
+            direction: PL_TO_UK
+            phrases: pl.txt
+            token: '>>ukr<<'
+            tier: accurate
+            slug: pl-uk-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-zle-en
+            direction: UK_TO_EN
+            phrases: uk.txt
+            token: ''
+            tier: accurate
+            slug: uk-en-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-en-zle
+            direction: EN_TO_UK
+            phrases: en.txt
+            token: '>>ukr<<'
+            tier: accurate
+            slug: en-uk-accurate
+          - model: Helsinki-NLP/opus-mt-tc-big-zlw-en
+            direction: PL_TO_EN
+            phrases: pl.txt
+            token: ''
+            tier: accurate
+            slug: pl-en-accurate
+    defaults:
+      run:
+        working-directory: offline-keyboard/tools/mt
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install export tools
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.5.1
+          pip install -r requirements.txt
+
+      - name: Export, quantize and build reference
+        run: >-
+          python export_opus_mt.py --model ${{ matrix.model }} --direction ${{ matrix.direction }}
+          --target-token "${{ matrix.token }}" --tier ${{ matrix.tier }}
+          --phrases phrases/${{ matrix.phrases }} --out build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-keyboard-mt-${{ matrix.slug }}
+          path: offline-keyboard/tools/mt/build/offline-keyboard-mt-${{ matrix.slug }}.zip
+          compression-level: 0
+
+  verify-translation:
+    needs: export-translation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: offline-keyboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: offline-keyboard-mt-*
+          path: offline-keyboard/build/mt-zips
+          merge-multiple: true
+
+      - name: Unpack packages
+        run: |
+          for z in build/mt-zips/*.zip; do
+            d="build/mt-models/$(basename "$z" .zip)"
+            mkdir -p "$d" && unzip -q "$z" -d "$d"
+          done
+          ls -la build/mt-models/*
+
+      - name: Kotlin translator vs Hugging Face (tokenizer and translations)
+        env:
+          MT_MODELS_DIR: ${{ github.workspace }}/offline-keyboard/build/mt-models
+          MT_REPORT_DIR: ${{ github.workspace }}/offline-keyboard/build/mt-report
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :mt:test
+
+      - name: Report summary
+        if: always()
+        run: |
+          if [ -f build/mt-report/translation-report.md ]; then
+            head -c 60000 build/mt-report/translation-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-keyboard-mt-report
+          path: |
+            offline-keyboard/build/mt-report/
+            offline-keyboard/mt/build/reports/
+
+  speech-models:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - vosk-model-small-uk-v3-small
+          - vosk-model-small-pl-0.22
+          - vosk-model-small-en-us-0.15
+    steps:
+      - name: Download ${{ matrix.model }}
+        run: |
+          curl -fL --retry 3 -o "${{ matrix.model }}.zip" "https://alphacephei.com/vosk/models/${{ matrix.model }}.zip"
+          unzip -l "${{ matrix.model }}.zip" | tail -n 3
+          sha256sum "${{ matrix.model }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.model }}
+          path: ${{ matrix.model }}.zip
+          compression-level: 0

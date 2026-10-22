@@ -1,0 +1,90 @@
+name: Offline Keyboard Release
+
+# Publishes a GitHub release page with direct download links: the APK and all offline model packs.
+# Runs when this file changes on the keyboard branch, on a keyboard-v* tag, or manually.
+
+on:
+  push:
+    branches:
+      - claude/offline-keyboard-android-w9kw2a
+    paths:
+      - '.github/workflows/offline-keyboard-release.yml'
+    tags:
+      - 'keyboard-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    uses: ./.github/workflows/offline-keyboard.yml
+    permissions:
+      contents: write
+
+  models:
+    uses: ./.github/workflows/offline-keyboard-models.yml
+
+  publish:
+    needs: [apk, models]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+
+      - name: Collect files
+        run: |
+          mkdir -p out
+          cp dl/offline-keyboard-debug-apk/app-debug.apk out/OfflineKeyboard.apk
+          cp dl/offline-keyboard-mt-*/offline-keyboard-mt-*.zip out/
+          for m in vosk-model-small-uk-v3-small vosk-model-small-pl-0.22 vosk-model-small-en-us-0.15; do
+            cp "dl/$m/$m.zip" out/
+          done
+          ls -la out
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-build-${{ github.run_number }}
+          name: Offlingo (збірка ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          files: out/*
+          body: |
+            **Як встановити**
+            1. Завантажте `OfflineKeyboard.apk` і встановіть (стару версію спочатку видаліть).
+            2. Голос: завантажте потрібні `vosk-model-small-…zip` (українська `uk`, польська `pl`, англійська `en-us`).
+            3. Переклад: `offline-keyboard-mt-ЗВІДКИ-КУДИ.zip` (uk — українська, pl — польська, en — англійська), наприклад `offline-keyboard-mt-uk-pl.zip`. Файли з `-accurate` — точніші, але більші й повільніші моделі.
+            4. Після завантаження торкніться «Відкрити» й виберіть Offlingo — модель встановиться сама. Або: Налаштування → «Офлайн-моделі» → «Встановити завантажені файли» (можна кілька одразу). Розпаковувати zip не треба.
+
+            Застосунок працює без інтернету; файли моделей потрібні лише один раз.
+
+      # Permanent link to the newest APK: …/releases/download/keyboard-latest/OfflineKeyboard.apk
+      - name: Update the latest-APK release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-latest
+          name: Offlingo — найновіша версія
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: out/OfflineKeyboard.apk
+          body: |
+            Найновіша збірка клавіатури (збірка ${{ github.run_number }}). Посилання завжди веде на останню версію:
+            https://github.com/${{ github.repository }}/releases/download/keyboard-latest/OfflineKeyboard.apk
+            Моделі: https://github.com/${{ github.repository }}/releases/tag/keyboard-models
+
+      # Fixed address for the app's "Download" buttons: …/releases/download/keyboard-models/<file>.zip
+      - name: Update the permanent model release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-models
+          name: Offlingo — моделі
+          target_commitish: ${{ github.sha }}
+          make_latest: false
+          files: out/*.zip
+          body: |
+            Офлайн-моделі для клавіатури. Кнопки «Завантажити» в застосунку ведуть сюди.
+            Після завантаження: Налаштування → «Офлайн-моделі» → «Імпортувати» й виберіть файл (розпаковувати не треба).

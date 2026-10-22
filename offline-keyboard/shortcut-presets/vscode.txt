@@ -1,0 +1,24 @@
+# VS Code in a browser (vscode.dev, code-server) or editors with the same keys (Acode, Spck).
+title = VS Code
+about = All of these are sent to the editor as real key combinations; nothing needs to be added.
+about.uk = Усе це надсилається редактору як справжні комбінації клавіш; додавати нічого не треба.
+about.pl = Wszystko to trafia do edytora jako prawdziwe skróty; nic nie trzeba dodawać.
+
+tip = Ctrl+P — open file, Ctrl+Shift+P — commands
+tip = Ctrl+S — save, Ctrl+F / Ctrl+H — find / replace
+tip = Ctrl+/ — comment line
+tip = Ctrl+D — select next match
+tip = Alt+↑ / Alt+↓ — move line
+tip = Ctrl+G — go to line
+tip.uk = Ctrl+P — відкрити файл, Ctrl+Shift+P — команди
+tip.uk = Ctrl+S — зберегти, Ctrl+F / Ctrl+H — знайти / замінити
+tip.uk = Ctrl+/ — закоментувати рядок
+tip.uk = Ctrl+D — виділити наступний збіг
+tip.uk = Alt+↑ / Alt+↓ — перемістити рядок
+tip.uk = Ctrl+G — перейти на рядок
+tip.pl = Ctrl+P — otwórz plik, Ctrl+Shift+P — polecenia
+tip.pl = Ctrl+S — zapisz, Ctrl+F / Ctrl+H — znajdź / zamień
+tip.pl = Ctrl+/ — zakomentuj wiersz
+tip.pl = Ctrl+D — zaznacz następne wystąpienie
+tip.pl = Alt+↑ / Alt+↓ — przenieś wiersz
+tip.pl = Ctrl+G — idź do wiersza

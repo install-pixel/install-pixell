@@ -1,0 +1,116 @@
+# Microsoft Excel (on a computer over Bluetooth, or Excel / Google Sheets on the phone).
+# The Win combinations type the start of a formula; function names are the English ones.
+title = Excel
+about = 18 formulas on Win+letter (SUM, IF, VLOOKUP, XLOOKUP, COUNTIF …) and 30 Excel shortcuts. Formula names are English: in a Polish or Ukrainian Excel use its own names.
+about.uk = 18 формул на Win+літера (SUM, IF, VLOOKUP, XLOOKUP, COUNTIF …) і 30 комбінацій Excel. Назви функцій англійські: в Excel польською чи українською використовуйте його назви.
+about.pl = 18 formuł pod Win+litera (SUM, IF, VLOOKUP, XLOOKUP, COUNTIF …) i 30 skrótów Excela. Nazwy funkcji są angielskie: w polskim Excelu używaj jego nazw (SUMA, JEŻELI …).
+
+tip = F2 — edit cell; Esc — cancel
+tip = Enter / Shift+Enter — down / up; Tab / Shift+Tab — right / left
+tip = Ctrl+arrow — jump to the edge of the data
+tip = Ctrl+Shift+arrow — select to the edge of the data
+tip = Shift+Space / Ctrl+Space — select row / column
+tip = Ctrl+A — select the table or the whole sheet
+tip = Ctrl+Home / Ctrl+End — first / last used cell
+tip = Ctrl+PgUp / Ctrl+PgDn — previous / next sheet
+tip = Ctrl+C / Ctrl+X / Ctrl+V — copy / cut / paste
+tip = Ctrl+Z / Ctrl+Y — undo / redo
+tip = Ctrl+S — save; F12 — save as
+tip = Ctrl+D / Ctrl+R — fill down / right
+tip = Ctrl+; / Ctrl+Shift+; — today's date / current time
+tip = Alt+= — AutoSum
+tip = F4 — fixed reference ($A$1) while editing
+tip = Alt+Enter — new line inside a cell
+tip = Ctrl+1 — format cells
+tip = Ctrl+B / Ctrl+I / Ctrl+U — bold / italic / underline
+tip = Ctrl+Shift+L — filter on / off
+tip = Ctrl+T — make a table
+tip = Ctrl+F / Ctrl+H — find / replace
+tip = Ctrl+K — insert link
+tip = Ctrl+Shift++ / Ctrl+- — insert / delete cells
+tip = Ctrl+9 / Ctrl+0 — hide row / column
+tip = Ctrl+Shift+$ / Ctrl+Shift+% — currency / percent
+tip = F9 — recalculate
+tip = Shift+F3 — insert function
+tip = Ctrl+` — show formulas
+tip = Ctrl+N — new workbook; Ctrl+W — close
+tip = Ctrl+P — print
+tip.uk = F2 — редагувати клітинку; Esc — скасувати
+tip.uk = Enter / Shift+Enter — вниз / вгору; Tab / Shift+Tab — праворуч / ліворуч
+tip.uk = Ctrl+стрілка — до краю даних
+tip.uk = Ctrl+Shift+стрілка — виділити до краю даних
+tip.uk = Shift+Space / Ctrl+Space — виділити рядок / стовпець
+tip.uk = Ctrl+A — виділити таблицю або весь аркуш
+tip.uk = Ctrl+Home / Ctrl+End — перша / остання заповнена клітинка
+tip.uk = Ctrl+PgUp / Ctrl+PgDn — попередній / наступний аркуш
+tip.uk = Ctrl+C / Ctrl+X / Ctrl+V — копіювати / вирізати / вставити
+tip.uk = Ctrl+Z / Ctrl+Y — скасувати / повторити
+tip.uk = Ctrl+S — зберегти; F12 — зберегти як
+tip.uk = Ctrl+D / Ctrl+R — заповнити вниз / праворуч
+tip.uk = Ctrl+; / Ctrl+Shift+; — сьогоднішня дата / поточний час
+tip.uk = Alt+= — автосума
+tip.uk = F4 — закріпити посилання ($A$1) під час редагування
+tip.uk = Alt+Enter — новий рядок у клітинці
+tip.uk = Ctrl+1 — формат клітинок
+tip.uk = Ctrl+B / Ctrl+I / Ctrl+U — жирний / курсив / підкреслення
+tip.uk = Ctrl+Shift+L — фільтр увімк. / вимк.
+tip.uk = Ctrl+T — створити таблицю
+tip.uk = Ctrl+F / Ctrl+H — знайти / замінити
+tip.uk = Ctrl+K — вставити посилання
+tip.uk = Ctrl+Shift++ / Ctrl+- — вставити / видалити клітинки
+tip.uk = Ctrl+9 / Ctrl+0 — сховати рядок / стовпець
+tip.uk = Ctrl+Shift+$ / Ctrl+Shift+% — грошовий / відсотковий формат
+tip.uk = F9 — перерахувати
+tip.uk = Shift+F3 — вставити функцію
+tip.uk = Ctrl+` — показати формули
+tip.uk = Ctrl+N — нова книга; Ctrl+W — закрити
+tip.uk = Ctrl+P — друк
+tip.pl = F2 — edytuj komórkę; Esc — anuluj
+tip.pl = Enter / Shift+Enter — w dół / w górę; Tab / Shift+Tab — w prawo / w lewo
+tip.pl = Ctrl+strzałka — do krawędzi danych
+tip.pl = Ctrl+Shift+strzałka — zaznacz do krawędzi danych
+tip.pl = Shift+Spacja / Ctrl+Spacja — zaznacz wiersz / kolumnę
+tip.pl = Ctrl+A — zaznacz tabelę lub cały arkusz
+tip.pl = Ctrl+Home / Ctrl+End — pierwsza / ostatnia używana komórka
+tip.pl = Ctrl+PgUp / Ctrl+PgDn — poprzedni / następny arkusz
+tip.pl = Ctrl+C / Ctrl+X / Ctrl+V — kopiuj / wytnij / wklej
+tip.pl = Ctrl+Z / Ctrl+Y — cofnij / ponów
+tip.pl = Ctrl+S — zapisz; F12 — zapisz jako
+tip.pl = Ctrl+D / Ctrl+R — wypełnij w dół / w prawo
+tip.pl = Ctrl+; / Ctrl+Shift+; — dzisiejsza data / bieżąca godzina
+tip.pl = Alt+= — Autosumowanie
+tip.pl = F4 — odwołanie bezwzględne ($A$1) przy edycji
+tip.pl = Alt+Enter — nowy wiersz w komórce
+tip.pl = Ctrl+1 — formatuj komórki
+tip.pl = Ctrl+B / Ctrl+I / Ctrl+U — pogrubienie / kursywa / podkreślenie
+tip.pl = Ctrl+Shift+L — filtr wł. / wył.
+tip.pl = Ctrl+T — utwórz tabelę
+tip.pl = Ctrl+F / Ctrl+H — znajdź / zamień
+tip.pl = Ctrl+K — wstaw link
+tip.pl = Ctrl+Shift++ / Ctrl+- — wstaw / usuń komórki
+tip.pl = Ctrl+9 / Ctrl+0 — ukryj wiersz / kolumnę
+tip.pl = Ctrl+Shift+$ / Ctrl+Shift+% — walutowy / procentowy
+tip.pl = F9 — przelicz
+tip.pl = Shift+F3 — wstaw funkcję
+tip.pl = Ctrl+` — pokaż formuły
+tip.pl = Ctrl+N — nowy skoroszyt; Ctrl+W — zamknij
+tip.pl = Ctrl+P — drukuj
+
+Win+S = text "=SUM("
+Win+A = text "=AVERAGE("
+Win+N = text "=COUNT("
+Win+O = text "=COUNTIF("
+Win+U = text "=SUMIF("
+Win+I = text "=IF("
+Win+F = text "=IFERROR("
+Win+E = text "=IFS("
+Win+L = text "=VLOOKUP("
+Win+X = text "=XLOOKUP("
+Win+G = text "=MAX("
+Win+K = text "=MIN("
+Win+R = text "=ROUND("
+Win+J = text "=CONCAT("
+Win+P = text "=TEXT("
+Win+D = text "=TODAY()"
+Win+W = text "=NOW()"
+Win+Q = text "=UNIQUE("
