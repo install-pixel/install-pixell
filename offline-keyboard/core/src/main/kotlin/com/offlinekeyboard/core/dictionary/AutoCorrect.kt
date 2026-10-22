@@ -6,11 +6,11 @@ import com.offlinekeyboard.core.layout.Language
  * Careful offline autocorrect: when a finished word is unknown and a known word is one slip away, the
  * known word replaces it. Known words are the base dictionary plus the user's own words.
  *
- * "One slip" means a neighbouring key pressed instead of the right one, or two letters swapped. Missing
- * or extra letters are never "fixed", and neither are word endings (the last two letters in Ukrainian
- * and Polish, the last one in English): there they usually change the word form ("мама"/"мами",
- * "dom"/"domy"), which is not a mistake. Short words, words with capitals inside, digits, and words the
- * user has rejected (undone) are left alone.
+ * "One slip" means a neighbouring key pressed instead of the right one, two letters swapped, or one
+ * letter missing or doubled. Word endings are never touched (the last two letters in Ukrainian and
+ * Polish, the last one in English): there a different letter usually means a different word form
+ * ("мама"/"мами", "dom"/"domy"), not a mistake. Short words, words with capitals inside, digits, and
+ * words the user has rejected (undone) are left alone.
  */
 object AutoCorrect {
 
@@ -62,9 +62,15 @@ object AutoCorrect {
         return WordRules.applyCase(match, typed, language)
     }
 
-    /** Same length, and either one letter replaced by a neighbouring key or two adjacent letters swapped. */
+    /**
+     * One letter replaced by a neighbouring key, two adjacent letters swapped, or one letter missing or
+     * extra; never within the last [ending] letters of [word].
+     */
     internal fun oneSlip(typed: String, word: String, near: Map<Char, Set<Char>>, ending: Int): Boolean {
-        if (typed.length != word.length || typed == word) return false
+        if (typed == word) return false
+        if (typed.length == word.length + 1) return oneLetterApart(longer = typed, shorter = word, word.length, ending)
+        if (typed.length + 1 == word.length) return oneLetterApart(longer = word, shorter = typed, word.length, ending)
+        if (typed.length != word.length) return false
         val diff = typed.indices.filter { typed[it] != word[it] }
         if (diff.any { it >= typed.length - ending }) return false
         return when (diff.size) {
@@ -78,5 +84,14 @@ object AutoCorrect {
             }
             else -> false
         }
+    }
+
+    /** [longer] is [shorter] with one letter added, and not within the ending of the correct word. */
+    private fun oneLetterApart(longer: String, shorter: String, correctLength: Int, ending: Int): Boolean {
+        var i = longer.indices.firstOrNull { it >= shorter.length || longer[it] != shorter[it] } ?: return false
+        if (longer.removeRange(i, i + 1) != shorter) return false
+        // A doubled or missing double letter counts at its first copy ("приивіт", "прівіт").
+        while (i > 0 && longer[i - 1] == longer[i]) i--
+        return i < correctLength - ending
     }
 }
