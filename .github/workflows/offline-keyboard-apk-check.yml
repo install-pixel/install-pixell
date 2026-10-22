@@ -1,0 +1,29 @@
+name: Offline Keyboard APK check
+
+# Checks the APK people actually download (the keyboard-latest release) with the Android tools:
+# signature, zip alignment and what the package manager reads from the manifest.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the published APK
+        run: |
+          curl -sSL -o latest.apk https://github.com/install-pixel/install-pixell/releases/download/keyboard-latest/OfflineKeyboard.apk
+          curl -sSL -o build18.apk https://github.com/install-pixel/install-pixell/releases/download/keyboard-build-18/OfflineKeyboard.apk
+          ls -la *.apk
+      - name: Verify with apksigner, zipalign and aapt2
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          echo "build-tools: $BT"
+          for f in latest.apk build18.apk; do
+            echo "===== $f"
+            "$BT/apksigner" verify --verbose --print-certs "$f" || echo "APKSIGNER FAILED for $f"
+            "$BT/zipalign" -c -P 16 -v 4 "$f" | tail -3 || echo "ZIPALIGN FAILED for $f"
+            "$BT/aapt2" dump badging "$f" | head -20 || echo "AAPT2 FAILED for $f"
+          done
