@@ -59,6 +59,7 @@ import com.offlinekeyboard.dictionary.UserDictionaryStore
 import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.KeyboardService
 import com.offlinekeyboard.keyboard.ThemeMode
+import com.offlinekeyboard.keyboard.StickerCharacter
 import com.offlinekeyboard.keyboard.VibrationStrength
 import com.offlinekeyboard.models.ModelStore
 import com.offlinekeyboard.privacy.OfflinePolicy
@@ -396,6 +397,13 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                         previewVibration(context, strength)
                     }
                 }
+            }
+            Text(stringResource(R.string.sticker_character), style = MaterialTheme.typography.titleSmall)
+            RadioRow(stringResource(R.string.sticker_boy_description), s.stickerCharacter == StickerCharacter.BOY) {
+                update { it.copy(stickerCharacter = StickerCharacter.BOY) }
+            }
+            RadioRow(stringResource(R.string.sticker_girl_description), s.stickerCharacter == StickerCharacter.GIRL) {
+                update { it.copy(stickerCharacter = StickerCharacter.GIRL) }
             }
         }
 

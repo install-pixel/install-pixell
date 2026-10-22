@@ -3,7 +3,8 @@ animated WebP (with soft edges) and GIF (for apps that only take GIF) into the a
 
     python3 tools/stickers/make_stickers.py [output-dir [sticker ...]]
 
-The hero is "Lingo", a round pastel blob. Every sticker is 256×256, drawn at 4× and scaled down for smooth
+The hero is "Lingo", a round pastel blob, drawn as a boy (hair with a quiff) and as a girl (lashes, buns and
+a bow): character stickers go to boy/ and girl/, the rest to common/. Every sticker is 256×256, drawn at 4× and scaled down for smooth
 edges, with a white sticker outline so it reads on light and dark chats.
 """
 import math
@@ -13,12 +14,15 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 SIZE = 256
-SS = 4  # supersampling
+SS = 3  # supersampling
 C = SIZE * SS
 FRAMES = 20
 DURATION = 70  # ms per frame
 
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[2] / "app/src/main/assets/stickers"
+ROOT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[2] / "app/src/main/assets/stickers"
+OUT = ROOT
+# Who Lingo is in the character stickers: "boy" or "girl" (the user picks one in the keyboard).
+WHO = "boy"
 
 INK = (52, 48, 64, 255)
 WHITE = (255, 255, 255, 255)
@@ -97,20 +101,59 @@ def sparkle(d, cx, cy, r, color=YELLOW):
     polygon(d, star_pts(cx, cy, r, 0, 0.3), color)
 
 
-def blob(d, cx, cy, r, color, squash=1.0):
-    """Lingo: a round body with a white sticker edge and a soft darker rim."""
+BOY_HAIR = (92, 66, 52, 255)
+GIRL_HAIR = (150, 86, 62, 255)
+BOW = (240, 110, 150, 255)
+
+
+def fringe(d, cx, cy, rx, ry, color):
+    """Hair over the top of the head with a scalloped edge above the eyes."""
+    top = [(cx + (rx + 2) * math.cos(math.radians(a)), cy + (ry + 2) * math.sin(math.radians(a))) for a in range(200, 341, 5)]
+    edge_y = cy - ry * 0.5
+    half = rx * math.sqrt(1 - 0.5 ** 2)
+    bottom = []
+    for k in range(25):
+        x = cx + half - 2 * half * k / 24
+        bottom.append((x, edge_y + 9 * abs(math.sin(k * math.pi / 6))))
+    polygon(d, top + bottom, color)
+
+
+def blob(d, cx, cy, r, color, squash=1.0, character=True):
+    """Lingo: a round body with a white sticker edge and a soft darker rim, plus boy or girl hair."""
     rx, ry = r * (2 - squash), r * squash
+    girl = character and WHO == "girl"
+    if girl:
+        # Buns behind the head.
+        for sx in (-1, 1):
+            bx, by, br = cx + sx * rx * 0.8, cy - ry * 0.72, rx * 0.3
+            ellipse(d, bx, by, br + 8, br + 8, WHITE)
+            ellipse(d, bx, by, br, br, GIRL_HAIR)
     ellipse(d, cx, cy, rx + 9, ry + 9, WHITE)
     shade = tuple(max(0, int(c * 0.86)) for c in color[:3]) + (255,)
     ellipse(d, cx, cy, rx, ry, shade)
     ellipse(d, cx - rx * 0.06, cy - ry * 0.06, rx * 0.93, ry * 0.93, color)
     ellipse(d, cx - rx * 0.42, cy - ry * 0.5, rx * 0.16, ry * 0.1, (255, 255, 255, 150))
+    if character and WHO == "boy":
+        quiff = [(cx - 16, cy - ry + 4), (cx - 2, cy - ry - 22), (cx + 10, cy - ry - 14), (cx + 18, cy - ry + 4)]
+        polygon(d, quiff, BOY_HAIR, WHITE, 6)
+        fringe(d, cx, cy, rx, ry, BOY_HAIR)
+    elif girl:
+        fringe(d, cx, cy, rx, ry, GIRL_HAIR)
+        bx, by = cx + rx * 0.5, cy - ry * 0.86
+        for sx in (-1, 1):
+            polygon(d, [(bx, by), (bx + sx * 26, by - 15), (bx + sx * 26, by + 15)], BOW, WHITE, 5)
+        ellipse(d, bx, by, 8, 8, BOW, WHITE, 2)
     return rx, ry
 
 
-def eyes(d, cx, cy, gap=26, kind="open", size=1.0):
+def eyes(d, cx, cy, gap=26, kind="open", size=1.0, character=True):
     for sx in (-1, 1):
         x = cx + sx * gap
+        if character and WHO == "girl" and kind in ("open", "wide", "closed", "happy"):
+            # Two lashes at the outer corner.
+            lx, ly = x + sx * (9 if kind != "wide" else 12) * size, cy - (6 if kind in ("open", "wide") else 2) * size
+            line(d, [(lx, ly), (lx + sx * 8, ly - 6)], INK, 3)
+            line(d, [(lx - sx * 3, ly - 5), (lx + sx * 2, ly - 12)], INK, 3)
         if kind == "open":
             ellipse(d, x, cy, 9 * size, 12 * size, INK)
             ellipse(d, x + 3 * size, cy - 4 * size, 3.5 * size, 3.5 * size, WHITE)
@@ -133,6 +176,7 @@ def cheeks(d, cx, cy, gap=44, alpha=150):
 
 def finish(frames, name):
     OUT.mkdir(parents=True, exist_ok=True)
+    print(f"{OUT.name}/", end="")
     small = [f.resize((SIZE, SIZE), Image.LANCZOS) for f in frames]
     small[0].save(
         OUT / f"{name}.webp", save_all=True, append_images=small[1:], duration=DURATION, loop=0,
@@ -349,7 +393,7 @@ def coffee():
         arc(d, 182, 165, 26, 26, -80, 80, WHITE, 18)
         arc(d, 182, 165, 26, 26, -80, 80, PEACH, 10)
         ellipse(d, 120, 128, 48, 9, (120, 80, 60, 255))
-        eyes(d, 120, 165, gap=18, kind="closed")
+        eyes(d, 120, 165, gap=18, kind="closed", character=False)
         arc(d, 120, 182, 10, 7, 20, 160, INK, 4)
         for k in range(3):
             x = 92 + k * 28
@@ -409,7 +453,7 @@ def star():
         scale = 1 + 0.06 * math.sin(phase(i) * 2)
         polygon(d, star_pts(128, 132, 100 * scale + 10, rot, 0.47), WHITE)
         polygon(d, star_pts(128, 132, 100 * scale, rot, 0.45), YELLOW)
-        eyes(d, 128, 128, gap=20, kind="happy")
+        eyes(d, 128, 128, gap=20, kind="happy", character=False)
         arc(d, 128, 145, 10, 7, 20, 160, INK, 4)
         for k in range(4):
             a = phase(i) + k * math.pi / 2
@@ -460,8 +504,8 @@ def cat():
         for sx in (-1, 1):
             polygon(d, [(128 + sx * 40, 92), (128 + sx * 82, 52), (128 + sx * 78, 118)], WHITE)
             polygon(d, [(128 + sx * 44, 98), (128 + sx * 76, 64), (128 + sx * 72, 114)], (200, 200, 205, 255))
-        blob(d, 128, 150, 84, (215, 215, 222, 255))
-        eyes(d, 128, 140, gap=30, kind="closed" if blink else "open")
+        blob(d, 128, 150, 84, (215, 215, 222, 255), character=False)
+        eyes(d, 128, 140, gap=30, kind="closed" if blink else "open", character=False)
         polygon(d, [(120, 160), (136, 160), (128, 168)], PINK)
         arc(d, 120, 168, 8, 6, 0, 150, INK, 4)
         arc(d, 136, 168, 8, 6, 30, 180, INK, 4)
@@ -490,8 +534,18 @@ def wow():
     finish(out, "18-wow")
 
 
+CHARACTER = (hi, love, laugh, sad, ok, thanks, sleep, party, think, angry, wow)
+COMMON = (coffee, big_heart, fire, star, yes, no, cat)
+
 if __name__ == "__main__":
     only = set(sys.argv[2:])  # optional: names of the functions to redraw, e.g. "fire yes"
-    for make in (hi, love, laugh, sad, ok, thanks, sleep, party, think, angry, coffee, big_heart, fire, star, yes, no, cat, wow):
+    for who in ("boy", "girl"):
+        WHO = who
+        OUT = ROOT / who
+        for make in CHARACTER:
+            if not only or make.__name__ in only:
+                make()
+    OUT = ROOT / "common"
+    for make in COMMON:
         if not only or make.__name__ in only:
             make()

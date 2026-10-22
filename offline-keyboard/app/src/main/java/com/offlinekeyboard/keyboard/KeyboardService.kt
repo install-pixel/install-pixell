@@ -761,6 +761,12 @@ class KeyboardService : InputMethodService(),
         if (!sent) rootView?.showStatus(getString(R.string.stickers_not_supported), CHECK_WARNING_MS)
     }
 
+    override fun onStickerCharacterPicked(character: StickerCharacter) {
+        settings = settings.copy(stickerCharacter = character)
+        rootView?.stickerPanel?.character = character
+        scope.launch { repository.update { it.copy(stickerCharacter = character) } }
+    }
+
     override fun onStickersClosed(backToEmoji: Boolean) {
         rootView?.showStickers(false)
         if (!backToEmoji) {
@@ -877,6 +883,7 @@ class KeyboardService : InputMethodService(),
         val baseHeight = if (controller.mode == KeyboardMode.COMPUTER) COMPUTER_KEY_DP else MOBILE_KEY_DP
         root.keyboardView.hapticFeedback = settings.hapticFeedback
         root.keyboardView.vibration = settings.vibration
+        root.stickerPanel.character = settings.stickerCharacter
         root.keyboardView.spaceSwipeEnabled = settings.spaceSwipeSwitchesLanguage
         root.keyboardView.bind(
             layout = controller.layout(settings.mobileCursorRow),

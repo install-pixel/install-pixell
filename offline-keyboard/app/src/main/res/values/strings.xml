@@ -240,4 +240,9 @@
     <string name="stickers_not_supported">This app does not accept stickers from keyboards</string>
     <string name="stickers_not_over_bluetooth">Stickers cannot be sent to a computer</string>
     <string name="sticker_description">Sticker</string>
+    <string name="sticker_character">Sticker character</string>
+    <string name="sticker_boy">👦</string>
+    <string name="sticker_girl">👧</string>
+    <string name="sticker_boy_description">Boy</string>
+    <string name="sticker_girl_description">Girl</string>
 </resources>

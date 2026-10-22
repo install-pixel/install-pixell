@@ -240,4 +240,9 @@
     <string name="stickers_not_supported">Ta aplikacja nie przyjmuje naklejek z klawiatury</string>
     <string name="stickers_not_over_bluetooth">Naklejek nie można wysłać do komputera</string>
     <string name="sticker_description">Naklejka</string>
+    <string name="sticker_character">Postać naklejek</string>
+    <string name="sticker_boy">👦</string>
+    <string name="sticker_girl">👧</string>
+    <string name="sticker_boy_description">Chłopiec</string>
+    <string name="sticker_girl_description">Dziewczynka</string>
 </resources>

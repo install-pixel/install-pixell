@@ -16,6 +16,7 @@ import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.ThemeMode
+import com.offlinekeyboard.keyboard.StickerCharacter
 import com.offlinekeyboard.keyboard.VibrationStrength
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -33,6 +34,8 @@ data class KeyboardSettings(
     val hapticFeedback: Boolean = true,
     /** How strongly keys vibrate when [hapticFeedback] is on. */
     val vibration: VibrationStrength = VibrationStrength.MEDIUM,
+    /** Lingo in the stickers: a boy or a girl. */
+    val stickerCharacter: StickerCharacter = StickerCharacter.BOY,
     /** Null: dictate in the current keyboard language. */
     val voiceLanguage: Language? = null,
     val voiceCommands: Boolean = true,
@@ -88,6 +91,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.HAPTIC] = updated.hapticFeedback
             prefs[Keys.VIBRATION] = updated.vibration.name
+            prefs[Keys.STICKER_CHARACTER] = updated.stickerCharacter.name
             val voice = updated.voiceLanguage
             if (voice != null) prefs[Keys.VOICE_LANGUAGE] = voice.name else prefs.remove(Keys.VOICE_LANGUAGE)
             prefs[Keys.VOICE_COMMANDS] = updated.voiceCommands
@@ -128,6 +132,7 @@ class SettingsRepository(context: Context) {
             spaceSwipeSwitchesLanguage = this[Keys.SPACE_SWIPE] ?: defaults.spaceSwipeSwitchesLanguage,
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
             vibration = enumOrNull<VibrationStrength>(this[Keys.VIBRATION]) ?: defaults.vibration,
+            stickerCharacter = enumOrNull<StickerCharacter>(this[Keys.STICKER_CHARACTER]) ?: defaults.stickerCharacter,
             voiceLanguage = enumOrNull<Language>(this[Keys.VOICE_LANGUAGE]),
             voiceCommands = this[Keys.VOICE_COMMANDS] ?: defaults.voiceCommands,
             shortcuts = this[Keys.SHORTCUTS]?.let { Shortcut.decode(it) }
@@ -161,6 +166,7 @@ class SettingsRepository(context: Context) {
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
         val VIBRATION = stringPreferencesKey("vibration_strength")
+        val STICKER_CHARACTER = stringPreferencesKey("sticker_character")
         val VOICE_LANGUAGE = stringPreferencesKey("voice_language")
         val VOICE_COMMANDS = booleanPreferencesKey("voice_commands")
         val SHORTCUTS = stringPreferencesKey("shortcuts")

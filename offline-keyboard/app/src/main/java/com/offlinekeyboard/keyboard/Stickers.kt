@@ -19,13 +19,18 @@ import java.io.File
  * types it accepts, and the keyboard hands it a read-only file link. Apps that accept no images get
  * nothing (the keyboard says so instead).
  */
+/** Who Lingo is in the character stickers; the other stickers (heart, fire, ...) are shared. */
+enum class StickerCharacter(val folder: String) { BOY("boy"), GIRL("girl") }
+
 object Stickers {
 
     private const val DIR = "stickers"
 
-    /** Sticker names in panel order, e.g. "01-hi". */
-    fun names(context: Context): List<String> =
-        context.assets.list(DIR).orEmpty().filter { it.endsWith(".webp") }.map { it.removeSuffix(".webp") }.sorted()
+    /** Stickers for [character] in panel order, as "folder/name", e.g. "girl/01-hi" or "common/12-heart". */
+    fun names(context: Context, character: StickerCharacter): List<String> =
+        listOf(character.folder, "common").flatMap { folder ->
+            context.assets.list("$DIR/$folder").orEmpty().filter { it.endsWith(".webp") }.map { "$folder/${it.removeSuffix(".webp")}" }
+        }.sortedBy { it.substringAfter('/') }
 
     fun previewPath(name: String) = "$DIR/$name.webp"
 
@@ -51,7 +56,7 @@ object Stickers {
         connection ?: return false
         val mime = mimeFor(editorInfo) ?: return false
         val extension = if (mime == "image/gif") "gif" else "webp"
-        val file = File(File(context.cacheDir, DIR).apply { mkdirs() }, "$name.$extension")
+        val file = File(File(context.cacheDir, DIR).apply { mkdirs() }, "${name.replace('/', '-')}.$extension")
         // Copied every time, so an updated keyboard never sends an old drawing.
         context.assets.open("$DIR/$name.$extension").use { input -> file.outputStream().use { input.copyTo(it) } }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.stickers", file)

@@ -240,4 +240,9 @@
     <string name="stickers_not_supported">Цей застосунок не приймає стікери з клавіатури</string>
     <string name="stickers_not_over_bluetooth">Стікери не можна надіслати на комп’ютер</string>
     <string name="sticker_description">Стікер</string>
+    <string name="sticker_character">Персонаж стікерів</string>
+    <string name="sticker_boy">👦</string>
+    <string name="sticker_girl">👧</string>
+    <string name="sticker_boy_description">Хлопчик</string>
+    <string name="sticker_girl_description">Дівчинка</string>
 </resources>

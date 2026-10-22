@@ -28,11 +28,26 @@ class StickerPanel(context: Context) : LinearLayout(context) {
     interface Listener {
         fun onStickerPicked(name: String)
         fun onStickersClosed(backToEmoji: Boolean)
+        fun onStickerCharacterPicked(character: StickerCharacter)
     }
 
     var listener: Listener? = null
 
-    private val names = Stickers.names(context)
+    /** Boy or girl; changing it redraws the grid. */
+    var character: StickerCharacter = StickerCharacter.BOY
+        set(value) {
+            if (field == value) return
+            field = value
+            play(false)
+            grid.removeAllViews()
+            cells.clear()
+            loaded = false
+            updateCharacterButtons()
+            if (isShown) {
+                load()
+                play(true)
+            }
+        }
     private val cells = ArrayList<ImageView>()
     private var loaded = false
 
@@ -44,6 +59,8 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         text = context.getString(R.string.stickers_title)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
         gravity = Gravity.CENTER
+        maxLines = 1
+        ellipsize = android.text.TextUtils.TruncateAt.END
     }
     private val lettersButton = ToolbarButton(context).apply {
         text = context.getString(R.string.stickers_letters)
@@ -55,6 +72,18 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         contentDescription = context.getString(R.string.stickers_back_to_emoji)
         setOnClickListener { listener?.onStickersClosed(backToEmoji = true) }
     }
+
+    private val boyButton = ToolbarButton(context).apply {
+        text = context.getString(R.string.sticker_boy)
+        contentDescription = context.getString(R.string.sticker_boy_description)
+        setOnClickListener { listener?.onStickerCharacterPicked(StickerCharacter.BOY) }
+    }
+    private val girlButton = ToolbarButton(context).apply {
+        text = context.getString(R.string.sticker_girl)
+        contentDescription = context.getString(R.string.sticker_girl_description)
+        setOnClickListener { listener?.onStickerCharacterPicked(StickerCharacter.GIRL) }
+    }
+    private var theme: KeyboardTheme? = null
 
     init {
         orientation = VERTICAL
@@ -68,18 +97,33 @@ class StickerPanel(context: Context) : LinearLayout(context) {
             addView(lettersButton, LayoutParams(dp(72), LayoutParams.MATCH_PARENT).apply { setMargins(dp(3), 0, dp(3), 0) })
             addView(emojiButton, LayoutParams(dp(56), LayoutParams.MATCH_PARENT).apply { setMargins(dp(3), 0, dp(3), 0) })
             addView(title, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            for (b in listOf(boyButton, girlButton)) {
+                addView(b, LayoutParams(dp(52), LayoutParams.MATCH_PARENT).apply { setMargins(dp(3), 0, dp(3), 0) })
+            }
         }
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
         addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, dp(48)))
     }
 
     fun applyTheme(theme: KeyboardTheme) {
+        this.theme = theme
         setBackgroundColor(theme.background)
         title.setTextColor(theme.hint)
         for (b in listOf(lettersButton, emojiButton)) {
             b.fill = theme.function
             b.pressedFill = theme.pressed
             b.foreground = theme.text
+        }
+        updateCharacterButtons()
+    }
+
+    private fun updateCharacterButtons() {
+        val t = theme ?: return
+        for ((b, c) in listOf(boyButton to StickerCharacter.BOY, girlButton to StickerCharacter.GIRL)) {
+            val active = c == character
+            b.fill = if (active) t.accent else t.function
+            b.pressedFill = t.pressed
+            b.foreground = if (active) t.onAccent else t.text
         }
     }
 
@@ -103,11 +147,11 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         if (loaded) return
         loaded = true
         val size = (resources.displayMetrics.widthPixels - dp(8)) / COLUMNS
-        for (name in names) {
+        for (name in Stickers.names(context, character)) {
             val cell = ImageView(context).apply {
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setPadding(dp(6), dp(6), dp(6), dp(6))
-                contentDescription = name.substringAfter('-')
+                contentDescription = name.substringAfterLast('/').substringAfter('-')
                 tag = name
                 setImageDrawable(preview(name))
                 setOnClickListener { listener?.onStickerPicked(name) }
