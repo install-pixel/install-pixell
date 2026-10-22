@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OfflingoPC</string>
-    <string name="ime_name">OfflingoPC</string>
+    <string name="app_name">Offlingo</string>
+    <string name="ime_name">Offlingo</string>
 
     <string name="toolbar_voice_description">Wprowadzanie głosowe</string>
     <string name="toolbar_mode_description">Przełącz klawiaturę komputerową i mobilną</string>
@@ -162,7 +162,7 @@
     <string name="accent_peach">Brzoskwiniowy</string>
     <string name="accent_rose">Pudrowy róż</string>
     <string name="no_browser">Nie znaleziono przeglądarki, aby otworzyć link.</string>
-    <string name="models_how">Jak: 1) «Pobierz» przy modelu — przeglądarka zapisze plik. 2) Po pobraniu stuknij w przeglądarce «Otwórz» i wybierz OfflingoPC — model zainstaluje się sam. Albo stuknij «Zainstaluj pobrane pliki» i wybierz jeden lub kilka plików — klawiatura sama rozpozna każdy.</string>
+    <string name="models_how">Jak: 1) «Pobierz» przy modelu — przeglądarka zapisze plik. 2) Po pobraniu stuknij w przeglądarce «Otwórz» i wybierz Offlingo — model zainstaluje się sam. Albo stuknij «Zainstaluj pobrane pliki» i wybierz jeden lub kilka plików — klawiatura sama rozpozna każdy.</string>
     <string name="models_download">Pobierz</string>
     <string name="models_size">około %1$d MB</string>
     <string name="models_custom">Inne modele (zaawansowane)</string>
@@ -234,4 +234,10 @@
     <string name="vibration_medium">Średnia</string>
     <string name="vibration_strong">Mocna</string>
     <string name="toolbar_undo_translation_description">Przywróć oryginał</string>
+    <string name="stickers_title">Naklejki Offlingo</string>
+    <string name="stickers_letters">ABC</string>
+    <string name="stickers_back_to_emoji">Wróć do emoji</string>
+    <string name="stickers_not_supported">Ta aplikacja nie przyjmuje naklejek z klawiatury</string>
+    <string name="stickers_not_over_bluetooth">Naklejek nie można wysłać do komputera</string>
+    <string name="sticker_description">Naklejka</string>
 </resources>

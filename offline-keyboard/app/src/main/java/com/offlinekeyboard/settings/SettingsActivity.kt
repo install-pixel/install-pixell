@@ -127,7 +127,7 @@ private fun ComponentActivity.showCrashReport(report: String, onContinue: () -> 
         text = getString(R.string.about_copy_crash)
         setOnClickListener {
             getSystemService(android.content.ClipboardManager::class.java)
-                ?.setPrimaryClip(android.content.ClipData.newPlainText("OfflingoPC error", report))
+                ?.setPrimaryClip(android.content.ClipData.newPlainText("Offlingo error", report))
             android.widget.Toast.makeText(this@showCrashReport, R.string.crash_copied, android.widget.Toast.LENGTH_SHORT).show()
         }
     })

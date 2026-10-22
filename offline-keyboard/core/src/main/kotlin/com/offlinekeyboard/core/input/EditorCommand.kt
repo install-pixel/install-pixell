@@ -43,4 +43,7 @@ sealed interface EditorCommand {
     data object TranslateSelectionOrClipboard : EditorCommand
     data object HideKeyboard : EditorCommand
     data object OpenSettings : EditorCommand
+
+    /** Opens the keyboard's own animated stickers (the app shows them in place of the keys). */
+    data object OpenStickers : EditorCommand
 }

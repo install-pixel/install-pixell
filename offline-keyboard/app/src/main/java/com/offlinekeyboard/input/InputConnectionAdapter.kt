@@ -47,7 +47,7 @@ class InputConnectionAdapter(private val service: InputMethodService) {
             // Handled by the service, not the field.
             EditorCommand.StartVoice, EditorCommand.ToggleTranslate, EditorCommand.TranslateSelectionOrClipboard,
             EditorCommand.HideKeyboard,
-            EditorCommand.OpenSettings -> Unit
+            EditorCommand.OpenSettings, EditorCommand.OpenStickers -> Unit
         }
     }
 

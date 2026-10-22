@@ -288,6 +288,7 @@ class KeyboardController(
 
             SpecialKey.VOICE -> listOf(EditorCommand.StartVoice)
             SpecialKey.SETTINGS -> listOf(EditorCommand.OpenSettings)
+            SpecialKey.STICKERS -> listOf(EditorCommand.OpenStickers)
             SpecialKey.HIDE -> listOf(EditorCommand.HideKeyboard)
         }
     }

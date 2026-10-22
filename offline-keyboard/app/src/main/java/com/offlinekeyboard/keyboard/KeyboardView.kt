@@ -243,6 +243,7 @@ class KeyboardView(context: Context) : View(context) {
             SpecialKey.LAYER_EMOJI -> Icon.EMOJI
             SpecialKey.EMOJI_PREVIOUS -> Icon.LEFT
             SpecialKey.EMOJI_NEXT -> Icon.RIGHT
+            SpecialKey.STICKERS -> Icon.STICKER
             else -> null
         }
     }
@@ -398,7 +399,8 @@ class KeyboardView(context: Context) : View(context) {
     private fun isSpace(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.SPACE
     private fun isLanguageKey(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.LANGUAGE
 
-    private fun feedback() {
+    /** Vibration for a tap, as set in settings; also used by the sticker panel. */
+    fun feedback() {
         if (!hapticFeedback) return
         val v = vibrator
         if (v == null || !v.hasVibrator()) {

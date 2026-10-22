@@ -17,14 +17,14 @@ class KeyboardApp : Application() {
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             runCatching {
                 val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
-                val report = "OfflingoPC ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}), " +
+                val report = "Offlingo ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}), " +
                     "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT}), " +
                     "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\nthread ${thread.name}\n$trace"
                 crashFile(this).writeText(report)
                 // Also on the clipboard, so the user can paste it into a message right away.
                 runCatching {
                     getSystemService(android.content.ClipboardManager::class.java)
-                        ?.setPrimaryClip(android.content.ClipData.newPlainText("OfflingoPC error", report.take(MAX_CLIP)))
+                        ?.setPrimaryClip(android.content.ClipData.newPlainText("Offlingo error", report.take(MAX_CLIP)))
                 }
             }
             previous?.uncaughtException(thread, error)

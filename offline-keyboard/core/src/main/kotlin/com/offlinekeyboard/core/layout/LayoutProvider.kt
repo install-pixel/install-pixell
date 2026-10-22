@@ -221,16 +221,17 @@ object LayoutProvider {
             row.map { Key(KeyAction.Text(it), width = width) }
         }
         val letters = Key(
-            KeyAction.Special(LAYER_LETTERS), width = 1.5f, style = KeyStyle.MODIFIER,
+            KeyAction.Special(LAYER_LETTERS), width = 1.25f, style = KeyStyle.MODIFIER,
             label = if (language == Language.UK) "АБВ" else "ABC",
         )
         val bottom = listOf(
             letters,
             fn(EMOJI_PREVIOUS),
-            Key(KeyAction.Special(EMOJI_NEXT), width = 2f, style = KeyStyle.FUNCTION, label = "${current.title}  ${page.mod(pages.size) + 1}/${pages.size}"),
+            Key(KeyAction.Special(EMOJI_NEXT), width = 1.5f, style = KeyStyle.FUNCTION, label = "${current.title} ${page.mod(pages.size) + 1}/${pages.size}"),
             fn(EMOJI_NEXT),
+            fn(STICKERS),
             Key(KeyAction.Special(SPACE), style = KeyStyle.SPACE, label = "␣"),
-            fn(BACKSPACE, 1.5f, repeatable = true),
+            fn(BACKSPACE, 1.25f, repeatable = true),
         )
         return KeyboardLayout(rows + listOf(bottom))
     }

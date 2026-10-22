@@ -57,6 +57,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     val keyboardView = KeyboardView(context)
 
+    /** The keyboard's own stickers, shown in place of the keys. */
+    val stickerPanel = StickerPanel(context).apply { visibility = View.GONE }
+
+    val stickersShown: Boolean get() = stickerPanel.visibility == View.VISIBLE
+
     private var theme = keyboardView.theme
 
     /** The whole text on one line; the strip shows the end and can be swiped back to the beginning. */
@@ -125,6 +130,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         addView(infoRow, LayoutParams(LayoutParams.MATCH_PARENT, dp(44)))
         addView(modeRow, LayoutParams(LayoutParams.MATCH_PARENT, dp(44)))
         addView(keyboardView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
         refreshCentre()
     }
@@ -132,6 +138,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     fun applyTheme(value: KeyboardTheme) {
         theme = value
         keyboardView.theme = value
+        stickerPanel.applyTheme(value)
         setBackgroundColor(value.background)
         suggestionViews.forEach { it.setTextColor(value.text) }
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton)) {
@@ -166,6 +173,19 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         voiceChip.text = context.getString(if (state.recording) R.string.mode_voice_stop else R.string.mode_voice)
         styleChip(voiceChip, active = state.recording, enabled = state.voiceOffered)
         refreshCentre()
+    }
+
+    /** Swaps the keys for the sticker panel (same height, so nothing jumps) or back. */
+    fun showStickers(show: Boolean) {
+        if (show == stickersShown) return
+        if (show) {
+            stickerPanel.layoutParams = stickerPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(220)) }
+            keyboardView.visibility = View.GONE
+            stickerPanel.visibility = View.VISIBLE
+        } else {
+            stickerPanel.visibility = View.GONE
+            keyboardView.visibility = View.VISIBLE
+        }
     }
 
     /** Short, non-blocking message. [onTap] makes it tappable (e.g. "restore original"). */

@@ -14,7 +14,7 @@ import kotlin.math.sin
 enum class Icon {
     SHIFT, SHIFT_ON, CAPS, BACKSPACE, ENTER, SEARCH, SEND, DONE, TRANSLATE,
     MIC, STOP, CLIPBOARD, GEAR, KEYBOARD, PHONE, CLOSE, HIDE,
-    LEFT, RIGHT, UP, DOWN, BLUETOOTH, EMOJI, UNDO,
+    LEFT, RIGHT, UP, DOWN, BLUETOOTH, EMOJI, UNDO, STICKER,
 }
 
 object Icons {
@@ -136,6 +136,16 @@ object Icons {
                 p.line(9f, 9.5f, 9f, 10.5f)
                 p.line(15f, 9.5f, 15f, 10.5f)
                 p.moveTo(8f, 14f); p.quadTo(12f, 18f, 16f, 14f)
+            }
+            Icon.STICKER -> {
+                // A sticker with a peeled corner and a smile.
+                p.moveTo(14.5f, 20.5f); p.lineTo(6f, 20.5f); p.quadTo(3.5f, 20.5f, 3.5f, 18f); p.lineTo(3.5f, 6f)
+                p.quadTo(3.5f, 3.5f, 6f, 3.5f); p.lineTo(18f, 3.5f); p.quadTo(20.5f, 3.5f, 20.5f, 6f); p.lineTo(20.5f, 14.5f)
+                p.close()
+                p.moveTo(20.5f, 14.5f); p.lineTo(14.5f, 14.5f); p.lineTo(14.5f, 20.5f)
+                p.line(9f, 9f, 9f, 10f)
+                p.line(15f, 9f, 15f, 10f)
+                p.moveTo(8.5f, 13.5f); p.quadTo(10.5f, 15.5f, 12.5f, 15.5f)
             }
             Icon.UNDO -> {
                 p.moveTo(9f, 5f); p.lineTo(4.5f, 9.5f); p.lineTo(9f, 14f)

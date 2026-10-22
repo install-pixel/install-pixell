@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -143,6 +144,26 @@ class KeyboardUiTest {
     }
 
     @Test
+    fun stickersAreSentToAppsThatTakeImages() {
+        focus(activity.chat)
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        tapSpecial(SpecialKey.LAYER_EMOJI)
+        tapSpecial(SpecialKey.STICKERS)
+        val sticker = waitForView { v -> v is ImageView && v.isShown && v.tag == "02-love" }
+        Thread.sleep(400)
+        screenshot("stickers")
+        tapView(sticker)
+        val received = waitFor("sticker") { activity.receivedSticker }
+        assertTrue(received, received.startsWith("image/webp ") && received.contains("02-love.webp"))
+        assertTrue(received, received.split(' ')[1].toInt() > 1000)
+        // ABC goes back to the letters.
+        tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.contentDescription == "АБВ" || v is ToolbarButton && v.isShown && v.contentDescription == "ABC" })
+        tapText("а")
+        assertEquals("а", text(activity.chat))
+    }
+
+    @Test
     fun longTextScrollsInTheStrip() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
@@ -150,10 +171,12 @@ class KeyboardUiTest {
             activity.plain.setText("це дуже довге повідомлення, яке не поміщається в рядок над клавішами ")
             activity.plain.setSelection(activity.plain.length())
         }
+        // While a word is being typed the strip shows suggestions; after a space it shows the message.
         tapText("а")
-        Thread.sleep(500)
+        tapSpecial(SpecialKey.SPACE)
+        waitForView { v -> v is TextView && v.isShown && v.text.toString().startsWith("це дуже довге") }
+        Thread.sleep(300)
         screenshot("long-echo")
-        assertTrue(findView { v -> v is TextView && v.text.toString().startsWith("це дуже довге") } != null)
     }
 
     @Test

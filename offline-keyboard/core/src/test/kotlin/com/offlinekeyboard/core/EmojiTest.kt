@@ -24,6 +24,17 @@ class EmojiTest {
     }
 
     @Test
+    fun `emoji panel has a stickers key and its bottom row is as wide as the emoji rows`() {
+        val layout = LayoutProvider.layout(KeyboardMode.MOBILE, Language.UK, Layer.EMOJI)
+        assertTrue(layout.allKeys().any(special(SpecialKey.STICKERS)))
+        assertEquals(8f, layout.rows.last().sumOf { it.width.toDouble() }.toFloat(), 0.01f)
+        val c = KeyboardController(KeyboardMode.MOBILE, Language.UK, Language.entries)
+        c.onKey(c.layout(false).allKeys().first(special(SpecialKey.LAYER_EMOJI)))
+        val commands = c.onKey(c.layout(false).allKeys().first(special(SpecialKey.STICKERS)))
+        assertEquals(listOf(com.offlinekeyboard.core.input.EditorCommand.OpenStickers), commands)
+    }
+
+    @Test
     fun `pages fit the panel and have no duplicates`() {
         val all = EmojiSet.pages.flatMap { it.items }
         assertEquals(all.size, all.toSet().size)

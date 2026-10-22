@@ -62,6 +62,7 @@ class KeyboardService : InputMethodService(),
     KeyboardView.Listener,
     KeyboardRootView.ToolbarListener,
     KeyboardController.Listener,
+    StickerPanel.Listener,
     SpeechController.Host {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -184,6 +185,7 @@ class KeyboardService : InputMethodService(),
         val root = KeyboardRootView(this)
         root.keyboardView.listener = this
         root.toolbarListener = this
+        root.stickerPanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
         render()
@@ -219,6 +221,7 @@ class KeyboardService : InputMethodService(),
         speech.cancel()
         leaveSegment()
         rootView?.keyboardView?.cancelAllPointers()
+        rootView?.showStickers(false)
         handler.removeCallbacks(firePendingShortcut)
         dictionary.saveNow()
         super.onFinishInputView(finishingInput)
@@ -478,6 +481,7 @@ class KeyboardService : InputMethodService(),
                 EditorCommand.TranslateSelectionOrClipboard -> onTranslateClipboard()
                 EditorCommand.HideKeyboard -> requestHideSelf(0)
                 EditorCommand.OpenSettings -> onToolbarSettings()
+                EditorCommand.OpenStickers -> showStickers()
                 is EditorCommand.CommitText ->
                     if (translateActive) {
                         composer.append(command.text)
@@ -735,6 +739,36 @@ class KeyboardService : InputMethodService(),
         openSettings(null)
     }
 
+    // ------------------------------------------------------------------ stickers
+
+    private fun showStickers() {
+        if (bluetoothSending) {
+            rootView?.showStatus(getString(R.string.stickers_not_over_bluetooth))
+            return
+        }
+        if (Stickers.mimeFor(currentInputEditorInfo) == null) {
+            // Still opened, so the stickers can be seen; picking one explains why nothing is sent.
+            rootView?.showStatus(getString(R.string.stickers_not_supported), CHECK_WARNING_MS)
+        }
+        rootView?.showStickers(true)
+    }
+
+    override fun onStickerPicked(name: String) {
+        rootView?.keyboardView?.feedback()
+        val sent = runCatching {
+            Stickers.send(this, currentInputConnection, currentInputEditorInfo, name, getString(R.string.sticker_description))
+        }.getOrDefault(false)
+        if (!sent) rootView?.showStatus(getString(R.string.stickers_not_supported), CHECK_WARNING_MS)
+    }
+
+    override fun onStickersClosed(backToEmoji: Boolean) {
+        rootView?.showStickers(false)
+        if (!backToEmoji) {
+            controller.onKey(Key(KeyAction.Special(SpecialKey.LAYER_LETTERS)))
+            render()
+        }
+    }
+
     private fun openSettings(page: String?) {
         val intent = Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (page != null) intent.putExtra(SettingsActivity.EXTRA_PAGE, page)
@@ -925,7 +959,7 @@ class KeyboardService : InputMethodService(),
             SpecialKey.SHIFT, SpecialKey.CAPS_LOCK, SpecialKey.CTRL, SpecialKey.ALT, SpecialKey.META,
             SpecialKey.LANGUAGE, SpecialKey.MODE, SpecialKey.LAYER_LETTERS, SpecialKey.LAYER_SYMBOLS,
             SpecialKey.LAYER_SYMBOLS_MORE, SpecialKey.LAYER_FUNCTION, SpecialKey.LAYER_EMOJI,
-            SpecialKey.EMOJI_PREVIOUS, SpecialKey.EMOJI_NEXT, SpecialKey.VOICE, SpecialKey.SETTINGS,
+            SpecialKey.EMOJI_PREVIOUS, SpecialKey.EMOJI_NEXT, SpecialKey.STICKERS, SpecialKey.VOICE, SpecialKey.SETTINGS,
             SpecialKey.HIDE,
         )
     }

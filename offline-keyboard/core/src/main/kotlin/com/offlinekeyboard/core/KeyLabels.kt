@@ -92,6 +92,7 @@ object KeyLabels {
         SpecialKey.LAYER_EMOJI -> "☺"
         SpecialKey.EMOJI_PREVIOUS -> "‹"
         SpecialKey.EMOJI_NEXT -> "›"
+        SpecialKey.STICKERS -> "Stick"
         SpecialKey.VOICE -> "🎤"
         SpecialKey.SETTINGS -> "⚙"
         SpecialKey.HIDE -> "▾"

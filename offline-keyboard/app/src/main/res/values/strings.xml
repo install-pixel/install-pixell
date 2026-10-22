@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OfflingoPC</string>
-    <string name="ime_name">OfflingoPC</string>
+    <string name="app_name">Offlingo</string>
+    <string name="ime_name">Offlingo</string>
 
     <string name="toolbar_voice_description">Voice input</string>
     <string name="toolbar_mode_description">Switch between computer and mobile keyboard</string>
@@ -162,7 +162,7 @@
     <string name="accent_peach">Peach</string>
     <string name="accent_rose">Rose</string>
     <string name="no_browser">No browser found to open the link.</string>
-    <string name="models_how">How: 1) «Download» next to a model — the browser saves the file. 2) When it is done, tap «Open» in the browser and choose OfflingoPC: the model installs by itself. Or tap «Install downloaded files» below and pick one or several files — the keyboard recognises each one.</string>
+    <string name="models_how">How: 1) «Download» next to a model — the browser saves the file. 2) When it is done, tap «Open» in the browser and choose Offlingo: the model installs by itself. Or tap «Install downloaded files» below and pick one or several files — the keyboard recognises each one.</string>
     <string name="models_download">Download</string>
     <string name="models_size">about %1$d MB</string>
     <string name="models_custom">Other models (advanced)</string>
@@ -234,4 +234,10 @@
     <string name="vibration_medium">Medium</string>
     <string name="vibration_strong">Strong</string>
     <string name="toolbar_undo_translation_description">Restore the original text</string>
+    <string name="stickers_title">Offlingo stickers</string>
+    <string name="stickers_letters">ABC</string>
+    <string name="stickers_back_to_emoji">Back to emoji</string>
+    <string name="stickers_not_supported">This app does not accept stickers from keyboards</string>
+    <string name="stickers_not_over_bluetooth">Stickers cannot be sent to a computer</string>
+    <string name="sticker_description">Sticker</string>
 </resources>
