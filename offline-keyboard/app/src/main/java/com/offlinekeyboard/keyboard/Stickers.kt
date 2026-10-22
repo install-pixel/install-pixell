@@ -145,8 +145,8 @@ object Stickers {
 
     // ------------------------------------------------------------------ sending
 
-    private fun accepted(editorInfo: EditorInfo?): Array<String> =
-        editorInfo?.let { EditorInfoCompat.getContentMimeTypes(it) }.orEmpty()
+    private fun accepted(editorInfo: EditorInfo?): List<String> =
+        editorInfo?.let { EditorInfoCompat.getContentMimeTypes(it) }.orEmpty().filterNotNull()
 
     /** The image type to send for the built-in stickers, or null when the app takes no stickers. */
     fun mimeFor(editorInfo: EditorInfo?): String? {
