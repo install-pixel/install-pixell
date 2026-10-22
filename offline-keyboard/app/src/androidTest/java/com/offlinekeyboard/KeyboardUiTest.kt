@@ -48,8 +48,18 @@ class KeyboardUiTest {
     fun setUp() {
         val ime = "${instrumentation.targetContext.packageName}/.keyboard.KeyboardService"
         shell("settings put secure show_ime_with_hard_keyboard 1")
-        shell("ime enable $ime")
-        shell("ime set $ime")
+        // Right after the emulator boots, Android can take a while to accept the keyboard: ask until it is
+        // the current one, so the first test does not run before it.
+        val deadline = SystemClock.uptimeMillis() + 60_000
+        while (true) {
+            shell("ime enable $ime")
+            shell("ime set $ime")
+            // Android stores the id in full ("pkg/pkg.keyboard.KeyboardService") or short ("pkg/.keyboard...").
+            val current = shellOutput("settings get secure default_input_method").trim()
+            val full = ime.replace("/.", "/${instrumentation.targetContext.packageName}.")
+            if (current == ime || current == full || SystemClock.uptimeMillis() > deadline) break
+            Thread.sleep(1_000)
+        }
         shell("mkdir -p $SCREENS")
         scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
         val ref = AtomicReference<KeyboardTestActivity>()
@@ -451,10 +461,13 @@ class KeyboardUiTest {
     }
 
     private fun shell(command: String) {
-        automation.executeShellCommand(command).use { fd ->
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes() }
-        }
+        shellOutput(command)
     }
+
+    private fun shellOutput(command: String): String =
+        automation.executeShellCommand(command).let { fd ->
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes().toString(Charsets.UTF_8) }
+        }
 
     private companion object {
         const val SCREENS = "/data/local/tmp/screens"
