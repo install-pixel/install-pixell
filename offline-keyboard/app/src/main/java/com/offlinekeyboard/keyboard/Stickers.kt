@@ -151,12 +151,9 @@ object Stickers {
     /** The image type to send for the built-in stickers, or null when the app takes no stickers. */
     fun mimeFor(editorInfo: EditorInfo?): String? {
         val accepted = accepted(editorInfo)
-        fun explicit(type: String) = accepted.any { it.equals(type, ignoreCase = true) }
         fun matches(type: String) = accepted.any { ClipDescription.compareMimeTypes(type, it) }
+        // GIF first: chat apps play it (Telegram shows an animated WebP from a keyboard as a still picture).
         return when {
-            explicit("image/webp") -> "image/webp"
-            explicit("image/gif") -> "image/gif"
-            // "image/*": GIF is the type every chat app animates.
             matches("image/gif") -> "image/gif"
             matches("image/webp") -> "image/webp"
             else -> null

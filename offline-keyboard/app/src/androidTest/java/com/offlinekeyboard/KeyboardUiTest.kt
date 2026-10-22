@@ -229,7 +229,8 @@ class KeyboardUiTest {
         screenshot("stickers-girl")
         tapView(sticker)
         val received = waitFor("sticker") { activity.receivedSticker }
-        assertTrue(received, received.startsWith("image/webp ") && received.contains("girl-02-love.webp"))
+        // GIF, the animated format chat apps play.
+        assertTrue(received, received.startsWith("image/gif ") && received.contains("girl-02-love.gif"))
         assertTrue(received, received.split(' ')[1].toInt() > 1000)
         // ABC goes back to the letters.
         tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.contentDescription == "АБВ" || v is ToolbarButton && v.isShown && v.contentDescription == "ABC" })
