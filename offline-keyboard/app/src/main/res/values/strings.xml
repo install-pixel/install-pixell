@@ -227,4 +227,7 @@
     <string name="models_installed_translation">Translation · %1$s → %2$s</string>
     <string name="about_last_crash">Last error</string>
     <string name="about_copy_crash">Copy error text</string>
+    <string name="crash_screen_title">Last time the app closed with an error. Please copy the text and send it to the developer.</string>
+    <string name="crash_continue">Continue</string>
+    <string name="crash_copied">Copied</string>
 </resources>

@@ -227,4 +227,7 @@
     <string name="models_installed_translation">Переклад · %1$s → %2$s</string>
     <string name="about_last_crash">Остання помилка</string>
     <string name="about_copy_crash">Скопіювати текст помилки</string>
+    <string name="crash_screen_title">Минулого разу застосунок закрився з помилкою. Скопіюйте текст і надішліть розробнику.</string>
+    <string name="crash_continue">Продовжити</string>
+    <string name="crash_copied">Скопійовано</string>
 </resources>

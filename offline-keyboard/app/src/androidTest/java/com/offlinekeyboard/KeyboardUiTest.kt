@@ -190,15 +190,28 @@ class KeyboardUiTest {
     @Test
     fun settingsPagesOpen() {
         scenario.close()
-        ActivityScenario.launch(com.offlinekeyboard.settings.SettingsActivity::class.java).use {
-            Thread.sleep(1500)
-            screenshot("settings-1")
-            for (page in 2..5) {
-                shell("input swipe 160 560 160 140 400")
-                Thread.sleep(600)
-                screenshot("settings-$page")
+        // Phones run the app in Ukrainian: open the settings in every interface language (Android 13+).
+        val pkg = instrumentation.targetContext.packageName
+        val locales = if (android.os.Build.VERSION.SDK_INT >= 33) listOf("uk-UA", "pl-PL", "en-US") else listOf("")
+        for (locale in locales) {
+            if (locale.isNotEmpty()) shell("cmd locale set-app-locales $pkg --locales $locale")
+            ActivityScenario.launch(com.offlinekeyboard.settings.SettingsActivity::class.java).use { settings ->
+                Thread.sleep(1500)
+                assertEquals(
+                    "settings closed in locale $locale",
+                    androidx.lifecycle.Lifecycle.State.RESUMED,
+                    settings.state,
+                )
+                val tag = locale.ifEmpty { "default" }
+                screenshot("settings-$tag-1")
+                for (page in 2..5) {
+                    shell("input swipe 160 560 160 140 400")
+                    Thread.sleep(600)
+                    screenshot("settings-$tag-$page")
+                }
             }
         }
+        if (android.os.Build.VERSION.SDK_INT >= 33) shell("cmd locale set-app-locales $pkg --locales en-US")
         scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
     }
 

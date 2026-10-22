@@ -73,6 +73,16 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val repository = SettingsRepository(this)
+        // After a crash, show the error first (plain views, nothing that could fail again) so it can be
+        // copied and sent; "Continue" opens the normal settings.
+        val crashFile = com.offlinekeyboard.KeyboardApp.crashFile(this)
+        if (savedInstanceState == null && crashFile.isFile && crashFile.lastModified() > lastShownCrash()) {
+            showCrashReport(crashFile.readText()) {
+                rememberShownCrash(crashFile.lastModified())
+                recreate()
+            }
+            return
+        }
         setContent {
             val current by repository.settings.collectAsStateWithLifecycle(initialValue = null)
             val dark = when (current?.themeMode ?: ThemeMode.SYSTEM) {
@@ -92,6 +102,45 @@ class SettingsActivity : ComponentActivity() {
             }
         }
     }
+}
+
+private fun ComponentActivity.lastShownCrash(): Long =
+    getSharedPreferences("crash", android.content.Context.MODE_PRIVATE).getLong("shown", 0L)
+
+private fun ComponentActivity.rememberShownCrash(time: Long) {
+    getSharedPreferences("crash", android.content.Context.MODE_PRIVATE).edit().putLong("shown", time).apply()
+}
+
+private fun ComponentActivity.showCrashReport(report: String, onContinue: () -> Unit) {
+    val pad = (16 * resources.displayMetrics.density).toInt()
+    val layout = android.widget.LinearLayout(this).apply {
+        orientation = android.widget.LinearLayout.VERTICAL
+        setPadding(pad, pad * 3, pad, pad)
+    }
+    layout.addView(android.widget.TextView(this).apply {
+        text = getString(R.string.crash_screen_title)
+        textSize = 20f
+    })
+    layout.addView(android.widget.Button(this).apply {
+        text = getString(R.string.about_copy_crash)
+        setOnClickListener {
+            getSystemService(android.content.ClipboardManager::class.java)
+                ?.setPrimaryClip(android.content.ClipData.newPlainText("Offline Keyboard error", report))
+            android.widget.Toast.makeText(this@showCrashReport, R.string.crash_copied, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    })
+    layout.addView(android.widget.Button(this).apply {
+        text = getString(R.string.crash_continue)
+        setOnClickListener { onContinue() }
+    })
+    layout.addView(android.widget.ScrollView(this).apply {
+        addView(android.widget.TextView(this@showCrashReport).apply {
+            text = report
+            textSize = 12f
+            setTextIsSelectable(true)
+        })
+    }, android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+    setContentView(layout)
 }
 
 internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSSARY }
