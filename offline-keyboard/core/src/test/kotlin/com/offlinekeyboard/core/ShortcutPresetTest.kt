@@ -92,11 +92,15 @@ class ShortcutPresetTest {
 class BaseDictionaryTest {
 
     @Test
-    fun `every language ships 300 to 400 words`() {
+    fun `every language ships about ten thousand checked words without Russian or rude ones`() {
         for (language in com.offlinekeyboard.core.layout.Language.entries) {
-            val size = com.offlinekeyboard.core.dictionary.BaseDictionary.words(language).size
-            assertTrue("$language: $size", size in 300..400)
+            val words = com.offlinekeyboard.core.dictionary.BaseDictionary.words(language)
+            assertTrue("$language: ${words.size}", words.size in 9_000..11_000)
         }
+        val uk = com.offlinekeyboard.core.dictionary.BaseDictionary.words(com.offlinekeyboard.core.layout.Language.UK).toSet()
+        for (russian in listOf("что", "это", "спасибо", "хорошо", "сейчас")) assertTrue(russian, russian !in uk)
+        val en = com.offlinekeyboard.core.dictionary.BaseDictionary.words(com.offlinekeyboard.core.layout.Language.EN).toSet()
+        assertTrue("fuck" !in en)
     }
 
     @Test

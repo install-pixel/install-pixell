@@ -46,6 +46,18 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
         return removed
     }
 
+    /** Forgets words typed only once that were not used again for [FORGET_ONCE_TYPED_MS]. */
+    fun forgetStale(now: Long): Int {
+        var removed = 0
+        for (map in byLanguage.values) {
+            val before = map.size
+            map.values.removeAll { it.count <= 1 && now - it.lastUsed > FORGET_ONCE_TYPED_MS }
+            removed += before - map.size
+        }
+        if (removed > 0) version++
+        return removed
+    }
+
     fun clear() {
         byLanguage.clear()
         version++
@@ -99,7 +111,11 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
     }
 
     companion object {
-        const val DEFAULT_MAX_WORDS = 20_000
+        /** Per language; the least used, oldest words make room for new ones. */
+        const val DEFAULT_MAX_WORDS = 5_000
+
+        /** A word typed only once and not again for this long is forgotten. */
+        const val FORGET_ONCE_TYPED_MS = 60L * 24 * 60 * 60 * 1000
 
         fun parse(text: String, maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS): UserDictionary {
             val dict = UserDictionary(maxWordsPerLanguage)
@@ -119,7 +135,8 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
 }
 
 object WordRules {
-    private const val MIN_LENGTH = 2
+    /** Words of one to three letters are not learned: the base dictionary has the real ones. */
+    private const val MIN_LENGTH = 4
     private const val MAX_LENGTH = 40
     private val apostrophes = setOf('\'', 'ʼ', '’')
 
