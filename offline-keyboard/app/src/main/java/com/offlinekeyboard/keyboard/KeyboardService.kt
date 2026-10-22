@@ -754,7 +754,7 @@ class KeyboardService : InputMethodService(),
     private var lastSpaceAt = 0L
 
     /**
-     * A second quick space right after "word " turns into ". " (then the next letter is a capital), like
+     * A second space within about a second after "word " turns into ". " (then the next letter is a capital), like
      * on most phone keyboards. Only in mobile mode, in normal text, never in passwords or terminals.
      */
     private fun doubleSpacePeriod(key: Key): Boolean {
@@ -1040,7 +1040,7 @@ class KeyboardService : InputMethodService(),
         private const val SENT_TEXT_MAX = 2000
         private const val ECHO_CONTEXT = 2000
         private const val UNDO_SLACK = 8
-        private const val DOUBLE_SPACE_MS = 450L
+        private const val DOUBLE_SPACE_MS = 1100L
         private const val EMOJI_PREFS = "emoji"
         private const val EMOJI_USAGE_KEY = "usage"
 
