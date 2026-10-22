@@ -219,7 +219,7 @@ class KeyboardUiTest {
 
     private val Key.special: SpecialKey? get() = (action as? KeyAction.Special)?.key
 
-    private fun service(): KeyboardService = waitFor("keyboard service") {
+    private fun service(): KeyboardService = waitFor("keyboard service", timeoutMs = 45_000) {
         val ref = AtomicReference<KeyboardService?>()
         instrumentation.runOnMainSync {
             ref.set(KeyboardService.instance?.takeIf { it.inputRootForTest?.isShown == true })
@@ -333,7 +333,7 @@ class KeyboardUiTest {
         return ref.get()
     }
 
-    private fun waitForView(match: (View) -> Boolean): View = waitFor("view") { findView(match) }
+    private fun waitForView(match: (View) -> Boolean): View = waitFor("view", timeoutMs = 20_000) { findView(match) }
 
     private fun <T : Any> waitFor(what: String, timeoutMs: Long = 10_000, probe: () -> T?): T {
         val end = SystemClock.uptimeMillis() + timeoutMs

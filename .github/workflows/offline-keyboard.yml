@@ -123,7 +123,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: offline-keyboard
-          script: ./gradlew --no-daemon -PemulatorAbi=x86_64 :app:connectedDebugAndroidTest; status=$?; mkdir -p build/pulled build/screens; adb pull /data/local/tmp/screens build/pulled || true; for f in $(find build/pulled -name '*.png'); do mv "$f" "build/screens/api${{ matrix.api }}-$(basename "$f")"; done; adb logcat -d -b crash > build/screens/api${{ matrix.api }}-crash-log.txt || true; adb logcat -d | grep -E -A 60 "FATAL EXCEPTION|AndroidRuntime" > build/screens/api${{ matrix.api }}-fatal-log.txt || true; exit $status
+          script: ./gradlew --no-daemon -PemulatorAbi=x86_64 :app:connectedDebugAndroidTest; status=$?; mkdir -p build/pulled build/screens; adb pull /data/local/tmp/screens build/pulled || true; for f in $(find build/pulled -name '*.png'); do mv "$f" "build/screens/api${{ matrix.api }}-$(basename "$f")"; done; adb logcat -d -b crash > build/screens/api${{ matrix.api }}-crash-log.txt || true; adb logcat -d | grep -E -A 60 "FATAL EXCEPTION|AndroidRuntime" > build/screens/api${{ matrix.api }}-fatal-log.txt || true; find build/screens -size 0 -delete; exit $status
 
       - name: Upload screenshots and reports
         if: always()
