@@ -227,13 +227,31 @@ class KeyboardUiTest {
         ref.get()
     }
 
+    /** Focuses [field] and shows the keyboard; asks again if Android ignores the first request. */
     private fun focus(field: EditText) {
-        instrumentation.runOnMainSync {
-            field.requestFocus()
-            field.context.getSystemService(InputMethodManager::class.java).showSoftInput(field, 0)
+        repeat(6) {
+            instrumentation.runOnMainSync {
+                field.requestFocus()
+                field.context.getSystemService(InputMethodManager::class.java).showSoftInput(field, 0)
+            }
+            val shown = runCatching { waitFor("keyboard service", timeoutMs = 8_000) { visibleService() } }.isSuccess
+            if (shown) {
+                clear(field)
+                return
+            }
+            // A tap on the field is what a person would do.
+            tapView(field)
         }
         service()
         clear(field)
+    }
+
+    private fun visibleService(): KeyboardService? {
+        val ref = AtomicReference<KeyboardService?>()
+        instrumentation.runOnMainSync {
+            ref.set(KeyboardService.instance?.takeIf { it.inputRootForTest?.isShown == true })
+        }
+        return ref.get()
     }
 
     private fun clear(field: EditText) {
