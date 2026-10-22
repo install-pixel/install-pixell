@@ -42,6 +42,18 @@ data class FieldInfo(val inputType: Int, val imeOptions: Int) {
             variation != TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS &&
             variation != TYPE_TEXT_VARIATION_FILTER
 
+    /**
+     * Whether autocorrect may run: any ordinary text field, also incognito ones and those that ask for no
+     * suggestions (many chat apps set that flag only to hide other keyboards' suggestion bars); never
+     * passwords, addresses or search filters.
+     */
+    val allowsCorrection: Boolean
+        get() = inputClass == TYPE_CLASS_TEXT && !isPassword &&
+            variation != TYPE_TEXT_VARIATION_URI &&
+            variation != TYPE_TEXT_VARIATION_EMAIL_ADDRESS &&
+            variation != TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS &&
+            variation != TYPE_TEXT_VARIATION_FILTER
+
     val isNumeric: Boolean get() = inputClass == TYPE_CLASS_NUMBER || inputClass == TYPE_CLASS_PHONE
 
     val imeAction: Int get() = imeOptions and IME_MASK_ACTION
