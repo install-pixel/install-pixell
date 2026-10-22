@@ -4,6 +4,11 @@ keyboard's sticker panel, with soft edges).
 
     pip install numpy scipy pillow
     python3 tools/stickers/animate_sheets.py [output-dir]
+    python3 tools/stickers/animate_sheets.py --telegram [output-dir]   # also needs ffmpeg with libvpx-vp9
+
+Telegram turns a GIF from a keyboard into a video, which has no transparency (a white square). With
+--telegram the same stickers are written as Telegram video stickers instead (512 px WebM VP9 with alpha,
+under 3 seconds and 256 KB, no sound), to upload once with the @Stickers bot as the user's own pack.
 
 The boy sheet has real transparency. The girl sheet has a grey-and-white checkerboard painted into the
 picture; it is removed here (flood fill from the edges, plus enclosed checkerboard areas).
@@ -17,9 +22,11 @@ from PIL import Image, ImageDraw, ImageFilter
 from scipy import ndimage as ndi
 
 HERE = Path(__file__).resolve().parent
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE.parents[1] / "app/src/main/assets/stickers"
+TELEGRAM = "--telegram" in sys.argv
+ARGS = [a for a in sys.argv[1:] if a != "--telegram"]
+OUT = Path(ARGS[0]) if ARGS else HERE.parents[1] / ("stickers-telegram" if TELEGRAM else "app/src/main/assets/stickers")
 
-SIZE = 256  # output square
+SIZE = 512 if TELEGRAM else 256  # output square
 FRAMES = 14
 DURATION = 70  # ms per frame
 GIF_MATTE = (245, 245, 245)  # colour the soft edges are blended with in GIF (GIF has no partial transparency)
@@ -236,6 +243,24 @@ def write(folder, name, frames):
           f"{(folder / f'{name}.gif').stat().st_size // 1024} KB gif")
 
 
+def write_telegram(folder, name, frames):
+    """Telegram video sticker: the loop played three times (just under 3 s), VP9 with alpha."""
+    import subprocess
+    import tempfile
+    folder.mkdir(parents=True, exist_ok=True)
+    out = folder / f"{folder.name}-{name}.webm"
+    with tempfile.TemporaryDirectory() as tmp:
+        for i, f in enumerate(frames * 3):
+            f.save(Path(tmp) / f"{i:03d}.png")
+        for bitrate in ("400k", "300k", "200k", "150k"):
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", f"1000/{DURATION}", "-i", f"{tmp}/%03d.png",
+                            "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", bitrate, "-an", "-auto-alt-ref", "0",
+                            str(out)], check=True)
+            if out.stat().st_size <= 250 * 1024:
+                break
+    print(f"{out.name}: {out.stat().st_size // 1024} KB")
+
+
 def build(sheet_file, specs, folder):
     sheet = Image.open(sheet_file)
     sheet = sheet.convert("RGBA") if sheet.mode == "RGBA" else remove_checkerboard(sheet)
@@ -247,7 +272,7 @@ def build(sheet_file, specs, folder):
             for o in overlays:
                 frame.alpha_composite(overlay(o[0], o[1], o[2], t))
             frames.append(frame)
-        write(folder, name, frames)
+        (write_telegram if TELEGRAM else write)(folder, name, frames)
 
 
 if __name__ == "__main__":

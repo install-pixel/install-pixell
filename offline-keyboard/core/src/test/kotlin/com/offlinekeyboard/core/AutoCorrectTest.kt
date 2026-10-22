@@ -23,6 +23,10 @@ class AutoCorrectTest {
         assertEquals("привіт", fix(Language.UK, "приивіт", listOf("привіт")))
         assertEquals("tomorrow", fix(Language.EN, "tomorow", listOf("tomorrow")))
         assertEquals("dziękuję", fix(Language.PL, "dzękuję", listOf("dziękuję")))
+        // Up to the last letter but one.
+        assertEquals("привіт", fix(Language.UK, "привт", listOf("привіт")))
+        assertEquals("дякую", fix(Language.UK, "дякцю", listOf("дякую")))
+        assertEquals("dobrze", fix(Language.PL, "dobrae", listOf("dobrze")))
     }
 
     @Test
@@ -30,9 +34,9 @@ class AutoCorrectTest {
         // Endings change the form in Ukrainian and Polish.
         assertNull(fix(Language.UK, "мами", listOf("мама")))
         assertNull(fix(Language.PL, "domy", listOf("domu")))
-        // A missing or extra letter in the ending is a different form, not a slip.
-        assertNull(fix(Language.UK, "привт", listOf("привіт")))
+        // A missing or extra last letter is a different form, not a slip.
         assertNull(fix(Language.UK, "книг", listOf("книга")))
+        assertNull(fix(Language.UK, "книгаи", listOf("книга")))
         assertNull(fix(Language.PL, "domów", listOf("domu")))
         // "q" and "m" are far apart.
         assertNull(fix(Language.EN, "mhanks", listOf("thanks")))

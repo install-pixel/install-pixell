@@ -779,12 +779,11 @@ class KeyboardService : InputMethodService(),
         val language = controller.language
         val user = dictionary.dictionary
         val base = BaseDictionary.words(language)
-        val baseKeys = baseKeys.getOrPut(language) { base.mapTo(HashSet()) { it.lowercase(language.locale) } }
         // A word typed only once may itself be a typo: it counts as the user's own word from the second time.
         val fixed = AutoCorrect.correction(
             language,
             word,
-            known = { it in baseKeys || user.count(language, it) >= OWN_WORD_MIN_COUNT },
+            known = { BaseDictionary.isKnown(language, it) || user.count(language, it) >= OWN_WORD_MIN_COUNT },
             candidates = user.entries(language).asSequence().filter { it.count >= OWN_WORD_MIN_COUNT }.map { it.word } +
                 base.asSequence(),
             rejected = rejectedWords(),
@@ -796,8 +795,6 @@ class KeyboardService : InputMethodService(),
         lastCorrection = Triple(word, fixed, separator)
         rootView?.showStatus(getString(R.string.autocorrect_done, word, fixed), CORRECTION_MESSAGE_MS)
     }
-
-    private val baseKeys = HashMap<Language, Set<String>>()
 
     /** Backspace right after a correction puts the typed word back (and remembers it). */
     private fun undoCorrection(key: Key): Boolean {

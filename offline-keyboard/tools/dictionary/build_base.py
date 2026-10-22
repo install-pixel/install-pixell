@@ -13,6 +13,10 @@ words of the language that pass three filters:
   subtitles, names and typos;
 * alphabet and a short list of rude word stems.
 
+It also writes <lang>_known.txt: every word of the 50k frequency list that passes the spelling and
+alphabet checks (rude words included). Autocorrect leaves those alone even though they are too rare to
+be suggested, so a correct but less common word form is never "fixed" into a frequent one.
+
 The work dir keeps the downloads, so a second run is offline.
 """
 import re
@@ -61,15 +65,13 @@ def build(lang):
     curated = [l.strip() for l in curated_file.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#")]
     seen = {w.lower() for w in curated}
     words = list(curated)
+    known = []
     for line in freq.read_text(encoding="utf-8").splitlines():
-        if len(words) >= TOTAL:
-            break
         word = line.split(" ")[0].strip().lower()
-        if len(word) < 2 or word in seen or not pattern.fullmatch(word):
+        if len(word) < 2 or not pattern.fullmatch(word) or not speller.lookup(word):
             continue
-        if any(stem in word for stem in RUDE[lang]):
-            continue
-        if not speller.lookup(word):
+        known.append(word)
+        if len(words) >= TOTAL or word in seen or any(stem in word for stem in RUDE[lang]):
             continue
         seen.add(word)
         words.append(word)
@@ -82,7 +84,10 @@ def build(lang):
         "# dictionary. This list is licensed CC BY-SA 4.0.",
     ]
     out.write_text("\n".join(notice + header[:1] + words) + "\n", encoding="utf-8")
-    print(f"{lang}: {len(words)} words ({len(curated)} hand-picked)")
+    known = [w for w in dict.fromkeys(known) if w not in seen]
+    known_out = out.parent / f"{lang}_known.txt"
+    known_out.write_text("\n".join(notice[:2] + ["# Valid words outside the base list, for autocorrect only. CC BY-SA 4.0."] + known) + "\n", encoding="utf-8")
+    print(f"{lang}: {len(words)} words ({len(curated)} hand-picked), {len(known)} more known")
 
 
 if __name__ == "__main__":
