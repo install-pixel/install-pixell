@@ -363,6 +363,8 @@ class KeyboardUiTest {
             val shown = runCatching { waitFor("keyboard service", timeoutMs = 8_000) { visibleService() } }.isSuccess
             if (shown) {
                 clear(field)
+                // Android 14 slides the keyboard in; a touch during the slide can be lost.
+                Thread.sleep(600)
                 return
             }
             // A tap on the field is what a person would do.
