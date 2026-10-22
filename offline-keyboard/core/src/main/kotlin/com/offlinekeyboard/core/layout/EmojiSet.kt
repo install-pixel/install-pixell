@@ -16,8 +16,13 @@ object EmojiSet {
      */
     fun pagesWith(frequent: List<String>, own: List<String>): List<Page> {
         val extra = ArrayList<Page>()
-        if (frequent.isNotEmpty()) extra += Page(FREQUENT_TITLE, frequent.take(PAGE_SIZE), columnsFor(frequent))
-        own.distinct().chunked(PAGE_SIZE).forEach { extra += Page(OWN_TITLE, it, columnsFor(it)) }
+        if (frequent.isNotEmpty()) {
+            val columns = columnsFor(frequent.take(PAGE_SIZE))
+            extra += Page(FREQUENT_TITLE, frequent.take(columns * ROWS), columns)
+        }
+        val mine = own.distinct()
+        val ownColumns = columnsFor(mine)
+        mine.chunked(ownColumns * ROWS).forEach { extra += Page(OWN_TITLE, it, ownColumns) }
         return extra + pages
     }
 
@@ -29,6 +34,9 @@ object EmojiSet {
         if (items.all { item -> item.none { it.code < 0x2000 } }) 8 else 4
 
     const val PAGE_SIZE = 32
+
+    /** Rows of emoji on every page (the keyboard keeps one height). */
+    const val ROWS = 4
     const val FREQUENT_TITLE = "🕘"
     const val OWN_TITLE = "★"
 
@@ -90,7 +98,7 @@ object EmojiSet {
                 "(ಥ﹏ಥ)", "(•̀ᴗ•́)و", "( ˘ ³˘)♥", "(ᵔᴥᵔ)",
                 "(¬‿¬)", "(⌐■_■)", "┬─┬ノ( º _ ºノ)", "ヽ(•‿•)ノ",
             ),
-            columns = 4,
+            columns = 5,
         ),
     )
 }

@@ -259,4 +259,6 @@
     <string name="stickers_added">Added %1$d of %2$d</string>
     <string name="sticker_favorite_added">Added to favourites ★</string>
     <string name="sticker_favorite_removed">Removed from favourites</string>
+    <string name="key_preview">Show the pressed letter above the finger</string>
+    <string name="double_space_period">Double space puts a period</string>
 </resources>

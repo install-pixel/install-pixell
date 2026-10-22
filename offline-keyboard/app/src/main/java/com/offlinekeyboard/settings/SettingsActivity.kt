@@ -388,6 +388,12 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
                 update { it.copy(spaceSwipeSwitchesLanguage = v) }
             }
+            SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
+                update { it.copy(keyPreview = v) }
+            }
+            SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
+                update { it.copy(doubleSpacePeriod = v) }
+            }
             SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v ->
                 update { it.copy(hapticFeedback = v) }
             }

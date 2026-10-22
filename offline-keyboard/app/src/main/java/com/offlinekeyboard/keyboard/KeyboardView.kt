@@ -60,6 +60,9 @@ class KeyboardView(context: Context) : View(context) {
         }
     }.getOrNull()
     var spaceSwipeEnabled = true
+
+    /** Shows the pressed letter enlarged above the finger (drawn over the toolbar for the top row). */
+    var keyPreview = true
     var longPressMillis = 350L
 
     private var layout = KeyboardLayout(emptyList())
@@ -194,7 +197,31 @@ class KeyboardView(context: Context) : View(context) {
                 canvas.drawCircle(inner.centerX(), inner.bottom - dp(5f), dp(2.5f), dotPaint)
             }
         }
-        popup?.let { drawPopup(canvas, it) }
+        popup?.let { drawPopup(canvas, it) } ?: drawPreviews(canvas, ctx)
+    }
+
+    private fun drawPreviews(canvas: Canvas, ctx: LabelContext) {
+        if (!keyPreview) return
+        for (i in 0 until pointers.size()) {
+            val state = pointers.valueAt(i)
+            val key = state.key ?: continue
+            if (key.action !is KeyAction.Text || state.repeating) continue
+            val label = KeyLabels.label(key, ctx)
+            if (label.isEmpty() || label.length > 4) continue
+            val anchor = keyRects.firstOrNull { it.first === key }?.second ?: continue
+            val w = maxOf(anchor.width() * 1.5f, dp(44f))
+            val h = keyHeightPx * 1.2f
+            val left = (anchor.centerX() - w / 2).coerceIn(0f, maxOf(0f, width - w))
+            val bottom = anchor.top + keyGap
+            val bubble = RectF(left, bottom - h, left + w, bottom)
+            keyPaint.color = theme.popup
+            canvas.drawRoundRect(bubble, corner * 1.5f, corner * 1.5f, keyPaint)
+            textPaint.color = theme.text
+            textPaint.typeface = Typeface.DEFAULT
+            textPaint.textSize = h * 0.5f
+            val y = bubble.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
+            canvas.drawText(label, bubble.centerX(), y, textPaint)
+        }
     }
 
     private fun drawLabel(canvas: Canvas, rect: RectF, label: String, color: Int, key: Key) {

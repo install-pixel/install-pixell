@@ -31,6 +31,7 @@ import com.offlinekeyboard.core.layout.KeyAction
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.layout.Layer
+import com.offlinekeyboard.core.layout.LayoutProvider
 import com.offlinekeyboard.core.layout.SpecialKey
 import com.offlinekeyboard.core.translation.TranslationCheck
 import com.offlinekeyboard.core.translation.TranslationDirection
@@ -457,6 +458,7 @@ class KeyboardService : InputMethodService(),
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
         if (sendToComputer(key, null)) return
+        if (doubleSpacePeriod(key)) return
         handler.removeCallbacks(firePendingShortcut)
         execute(controller.onKey(key))
         if (controller.pendingModifierShortcut != null) {
@@ -747,6 +749,40 @@ class KeyboardService : InputMethodService(),
         openSettings(null)
     }
 
+    // ------------------------------------------------------------------ double space
+
+    private var lastSpaceAt = 0L
+
+    /**
+     * A second quick space right after "word " turns into ". " (then the next letter is a capital), like
+     * on most phone keyboards. Only in mobile mode, in normal text, never in passwords or terminals.
+     */
+    private fun doubleSpacePeriod(key: Key): Boolean {
+        val isSpace = (key.action as? KeyAction.Special)?.key == SpecialKey.SPACE
+        if (!isSpace) {
+            lastSpaceAt = 0L
+            return false
+        }
+        val now = android.os.SystemClock.uptimeMillis()
+        val quick = now - lastSpaceAt <= DOUBLE_SPACE_MS
+        lastSpaceAt = now
+        if (!quick || !settings.doubleSpacePeriod || controller.mode != KeyboardMode.MOBILE || translateActive) return false
+        if (currentField.isSensitive || currentField.isRawKeyField || controller.modifiers.anyShortcutModifier) return false
+        val ic = currentInputConnection ?: return false
+        val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return false
+        if (before.length < 2 || before[1] != ' ' || !before[0].isLetterOrDigit()) return false
+        lastSpaceAt = 0L
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(1, 0)
+        ic.commitText(". ", 1)
+        ic.endBatchEdit()
+        rootView?.keyboardView?.feedback()
+        updateAutoShift()
+        updateSuggestions()
+        render()
+        return true
+    }
+
     // ------------------------------------------------------------------ emoji
 
     private var emojiUsage = EmojiUsage()
@@ -919,10 +955,20 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.vibration = settings.vibration
         root.stickerPanel.character = settings.stickerCharacter
         root.keyboardView.spaceSwipeEnabled = settings.spaceSwipeSwitchesLanguage
+        root.keyboardView.keyPreview = settings.keyPreview
+        val layout = controller.layout(settings.mobileCursorRow)
+        // The emoji panel (and the sticker panel, which takes its size) is exactly as tall as the
+        // letters: its keys share the same height instead of the keyboard growing or shrinking.
+        val rowScale = if (controller.layer == Layer.EMOJI && layout.rows.isNotEmpty()) {
+            LayoutProvider.layout(controller.mode, controller.language, Layer.LETTERS, settings.mobileCursorRow).rows.size /
+                layout.rows.size.toFloat()
+        } else {
+            1f
+        }
         root.keyboardView.bind(
-            layout = controller.layout(settings.mobileCursorRow),
+            layout = layout,
             labels = labels,
-            keyHeightDp = baseHeight * settings.keyHeightScale,
+            keyHeightDp = baseHeight * settings.keyHeightScale * rowScale,
             highlight = ::highlightFor,
         )
         root.updateToolbar(
@@ -994,6 +1040,7 @@ class KeyboardService : InputMethodService(),
         private const val SENT_TEXT_MAX = 2000
         private const val ECHO_CONTEXT = 2000
         private const val UNDO_SLACK = 8
+        private const val DOUBLE_SPACE_MS = 450L
         private const val EMOJI_PREFS = "emoji"
         private const val EMOJI_USAGE_KEY = "usage"
 

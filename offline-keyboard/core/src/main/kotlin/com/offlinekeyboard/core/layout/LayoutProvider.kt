@@ -218,8 +218,12 @@ object LayoutProvider {
         val current = pages[page.mod(pages.size)]
         val width = 8f / current.columns
         val rows = current.items.chunked(current.columns).map { row ->
-            row.map { Key(KeyAction.Text(it), width = width) }
-        }
+            // A short last row keeps the grid: its emoji stay in their columns.
+            row.map { Key(KeyAction.Text(it), width = width) } +
+                if (row.size < current.columns) listOf(spacer(width * (current.columns - row.size))) else emptyList()
+        }.toMutableList()
+        // Every page has the same rows, so a page with one emoji is not a smaller keyboard.
+        while (rows.size < EmojiSet.ROWS) rows += listOf(spacer(8f))
         val letters = Key(
             KeyAction.Special(LAYER_LETTERS), width = 1.25f, style = KeyStyle.MODIFIER,
             label = if (language == Language.UK) "АБВ" else "ABC",

@@ -109,6 +109,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
+        // The key preview of the top row is drawn over the toolbar above it.
+        clipChildren = false
+        clipToPadding = false
 
         val infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL

@@ -149,6 +149,17 @@ class KeyboardUiTest {
     }
 
     @Test
+    fun doubleSpacePutsAPeriod() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        tapText("т")
+        tapText("а")
+        tapSpecial(SpecialKey.SPACE)
+        tapSpecial(SpecialKey.SPACE)
+        assertEquals("та. ", text(activity.plain))
+    }
+
+    @Test
     fun periodLongPressGivesTheApostrophe() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)

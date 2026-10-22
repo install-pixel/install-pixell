@@ -57,6 +57,16 @@ class EmojiUsageTest {
     }
 
     @Test
+    fun `every emoji page is as tall, even with a single emoji`() {
+        val pages = EmojiSet.pagesWith(listOf("👍"), EmojiSet.parseOwn(":) :( 🦄"))
+        for (i in pages.indices) {
+            val layout = LayoutProvider.layout(KeyboardMode.MOBILE, Language.UK, Layer.EMOJI, emojiPage = i, emojiPages = pages)
+            assertEquals(pages[i].title, EmojiSet.ROWS + 1, layout.rows.size)
+            for (row in layout.rows) assertEquals(pages[i].title, 8.0, row.sumOf { it.width.toDouble() }, 0.01)
+        }
+    }
+
+    @Test
     fun `apostrophe is on a long press of the period and the space bar is wide`() {
         for (language in Language.entries) {
             val layout = LayoutProvider.layout(KeyboardMode.MOBILE, language, Layer.LETTERS)
