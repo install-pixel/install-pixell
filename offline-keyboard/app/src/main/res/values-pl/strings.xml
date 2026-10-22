@@ -261,4 +261,11 @@
     <string name="sticker_favorite_removed">Usunięto z ulubionych</string>
     <string name="key_preview">Pokazuj naciśniętą literę nad palcem</string>
     <string name="double_space_period">Podwójna spacja wstawia kropkę</string>
+    <string name="compact_toolbar">Kompaktny pasek: jeden rząd, tryby pod przyciskiem ▦</string>
+    <string name="auto_correct">Poprawiaj literówki (⌫ zaraz potem przywraca twoje słowo)</string>
+    <string name="backspace_swipe">Przeciągnij ⌫ w lewo, aby usuwać słowa</string>
+    <string name="toolbar_modes_description">Tryby wprowadzania</string>
+    <string name="autocorrect_done">%1$s → %2$s · ⌫ — cofnij</string>
+    <string name="autocorrect_undone">Zostawiono «%1$s», nie będzie już poprawiane</string>
+    <string name="backspace_swipe_preview">Usuń: «%1$s»</string>
 </resources>

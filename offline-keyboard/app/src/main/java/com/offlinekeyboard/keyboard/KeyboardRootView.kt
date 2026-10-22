@@ -93,12 +93,26 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         if (recording) toolbarListener?.onToolbarVoiceCancel() else toolbarListener?.onToolbarSettings()
     }
 
+    /** Compact toolbar: shows or hides the row of input modes. */
+    private val modesButton = button(R.string.toolbar_modes_description) { toggleModes() }
+        .apply { icon = Icon.MODES; visibility = View.GONE }
+
     private val textChip = button(R.string.mode_text_description) { toolbarListener?.onModeText() }
     private val translateChip = button(R.string.toolbar_translate_description) { toolbarListener?.onModeTranslate() }
     private val clipboardChip = button(R.string.clipboard_chip_description) { toolbarListener?.onTranslateClipboard() }
     private val voiceChip = button(R.string.toolbar_voice_description) { toolbarListener?.onToolbarVoice() }
 
     private var recording = false
+    private lateinit var modeRow: LinearLayout
+
+    /** One row above the keys: the input modes appear on demand (and while translating or dictating). */
+    var compact = false
+        set(value) {
+            if (field == value) return
+            field = value
+            refreshModesRow()
+        }
+    private var modesExpanded = false
     private var lastState: ToolbarState? = null
     private var message: CharSequence? = null
     private var statusAction: (() -> Unit)? = null
@@ -116,6 +130,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            addView(modesButton, LayoutParams(dp(44), LayoutParams.MATCH_PARENT))
             addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(undoButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
@@ -123,7 +138,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             addView(modeButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(settingsButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
         }
-        val modeRow = LinearLayout(context).apply {
+        modeRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             setPadding(dp(3), dp(2), dp(3), dp(3))
             for ((c, weight) in listOf(textChip to 1f, translateChip to 1.35f, clipboardChip to 0.65f, voiceChip to 1f)) {
@@ -144,7 +159,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         stickerPanel.applyTheme(value)
         setBackgroundColor(value.background)
         suggestionViews.forEach { it.setTextColor(value.text) }
-        for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton)) {
+        for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
         }
@@ -175,7 +190,27 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         voiceChip.icon = if (state.recording) Icon.STOP else Icon.MIC
         voiceChip.text = context.getString(if (state.recording) R.string.mode_voice_stop else R.string.mode_voice)
         styleChip(voiceChip, active = state.recording, enabled = state.voiceOffered)
+        refreshModesRow()
         refreshCentre()
+    }
+
+    /** Folds the modes row away again (the keyboard was hidden). */
+    fun collapseModes() {
+        modesExpanded = false
+        refreshModesRow()
+    }
+
+    private fun toggleModes() {
+        modesExpanded = !modesExpanded
+        refreshModesRow()
+    }
+
+    private fun refreshModesRow() {
+        val state = lastState
+        val busy = state != null && (state.translateActive || state.recording)
+        modesButton.visibility = if (compact) View.VISIBLE else View.GONE
+        modesButton.fill = if (compact && (modesExpanded || busy)) theme.function else 0
+        modeRow.visibility = if (!compact || modesExpanded || busy) View.VISIBLE else View.GONE
     }
 
     /** Swaps the keys for the sticker panel (same height, so nothing jumps) or back. */
@@ -198,6 +233,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         statusAction = onTap
         refreshCentre()
         postDelayed(clearMessage, durationMs)
+    }
+
+    fun clearStatus() {
+        removeCallbacks(clearMessage)
+        clearMessage.run()
     }
 
     /** Text shown while dictating or translating (source text in auto mode); null to clear. */

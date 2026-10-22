@@ -48,8 +48,18 @@ class KeyboardUiTest {
     fun setUp() {
         val ime = "${instrumentation.targetContext.packageName}/.keyboard.KeyboardService"
         shell("settings put secure show_ime_with_hard_keyboard 1")
-        shell("ime enable $ime")
-        shell("ime set $ime")
+        // Right after the emulator boots, Android can take a while to accept the keyboard: ask until it is
+        // the current one, so the first test does not run before it.
+        val deadline = SystemClock.uptimeMillis() + 60_000
+        while (true) {
+            shell("ime enable $ime")
+            shell("ime set $ime")
+            // Android stores the id in full ("pkg/pkg.keyboard.KeyboardService") or short ("pkg/.keyboard...").
+            val current = shellOutput("settings get secure default_input_method").trim()
+            val full = ime.replace("/.", "/${instrumentation.targetContext.packageName}.")
+            if (current == ime || current == full || SystemClock.uptimeMillis() > deadline) break
+            Thread.sleep(1_000)
+        }
         shell("mkdir -p $SCREENS")
         scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
         val ref = AtomicReference<KeyboardTestActivity>()
@@ -157,6 +167,35 @@ class KeyboardUiTest {
         tapSpecial(SpecialKey.SPACE)
         tapSpecial(SpecialKey.SPACE)
         assertEquals("та. ", text(activity.plain))
+    }
+
+    @Test
+    fun typoIsCorrectedAndBackspaceBringsItBack() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        "пртвіт".forEach { tapText(it.toString()) }
+        tapSpecial(SpecialKey.SPACE)
+        assertEquals("привіт ", text(activity.plain))
+        tapSpecial(SpecialKey.BACKSPACE)
+        assertEquals("пртвіт", text(activity.plain))
+        // Undone once, the word is left alone from then on.
+        tapSpecial(SpecialKey.SPACE)
+        assertEquals("пртвіт ", text(activity.plain))
+    }
+
+    @Test
+    fun draggingBackspaceLeftDeletesWords() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        instrumentation.runOnMainSync {
+            activity.plain.setText("раз два три")
+            activity.plain.setSelection(activity.plain.length())
+        }
+        val start = keyCenter { it.special == SpecialKey.BACKSPACE }!!
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        // Past the start (28 dp) and one more step (30 dp): two words.
+        drag(start.x, start.y, start.x - 72 * density, start.y)
+        assertEquals("раз ", text(activity.plain))
     }
 
     @Test
@@ -415,6 +454,21 @@ class KeyboardUiTest {
         Thread.sleep(80)
     }
 
+    private fun drag(fromX: Float, fromY: Float, toX: Float, toY: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        inject(MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, fromX, fromY, 0))
+        val steps = 12
+        for (i in 1..steps) {
+            Thread.sleep(15)
+            val x = fromX + (toX - fromX) * i / steps
+            val y = fromY + (toY - fromY) * i / steps
+            inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_MOVE, x, y, 0))
+        }
+        inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, toX, toY, 0))
+        instrumentation.waitForIdleSync()
+        Thread.sleep(150)
+    }
+
     private fun inject(event: MotionEvent) {
         event.source = InputDevice.SOURCE_TOUCHSCREEN
         assertTrue("touch was not injected", automation.injectInputEvent(event, true))
@@ -451,10 +505,13 @@ class KeyboardUiTest {
     }
 
     private fun shell(command: String) {
-        automation.executeShellCommand(command).use { fd ->
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes() }
-        }
+        shellOutput(command)
     }
+
+    private fun shellOutput(command: String): String =
+        automation.executeShellCommand(command).let { fd ->
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes().toString(Charsets.UTF_8) }
+        }
 
     private companion object {
         const val SCREENS = "/data/local/tmp/screens"

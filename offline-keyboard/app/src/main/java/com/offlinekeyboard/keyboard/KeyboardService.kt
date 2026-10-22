@@ -19,6 +19,8 @@ import com.offlinekeyboard.core.KeyboardController
 import com.offlinekeyboard.core.LabelContext
 import com.offlinekeyboard.core.LatchState
 import com.offlinekeyboard.core.ModifierKey
+import com.offlinekeyboard.core.dictionary.AutoCorrect
+import com.offlinekeyboard.core.dictionary.BaseDictionary
 import com.offlinekeyboard.core.dictionary.WordRules
 import com.offlinekeyboard.core.input.EditorCommand
 import com.offlinekeyboard.core.input.EnterLabel
@@ -228,6 +230,8 @@ class KeyboardService : InputMethodService(),
         leaveSegment()
         rootView?.keyboardView?.cancelAllPointers()
         rootView?.showStickers(false)
+        rootView?.collapseModes()
+        lastCorrection = null
         handler.removeCallbacks(firePendingShortcut)
         dictionary.saveNow()
         super.onFinishInputView(finishingInput)
@@ -458,6 +462,7 @@ class KeyboardService : InputMethodService(),
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
         if (sendToComputer(key, null)) return
+        if (undoCorrection(key)) return
         if (doubleSpacePeriod(key)) return
         handler.removeCallbacks(firePendingShortcut)
         execute(controller.onKey(key))
@@ -497,6 +502,7 @@ class KeyboardService : InputMethodService(),
                         composer.append(command.text)
                         if (settings.translationAuto && endsSentence(command.text)) startTranslation() else segmentChanged()
                     } else {
+                        autoCorrectBefore(command.text)
                         learnBeforeSeparator(command.text)
                         editor.execute(command)
                     }
@@ -749,12 +755,110 @@ class KeyboardService : InputMethodService(),
         openSettings(null)
     }
 
+    // ------------------------------------------------------------------ autocorrect
+
+    /** The last correction (typed word, its fix, the separator after it), while Backspace can undo it. */
+    private var lastCorrection: Triple<String, String, String>? = null
+
+    private fun correctionPrefs() = getSharedPreferences(CORRECTION_PREFS, MODE_PRIVATE)
+
+    /** Words the user undid; they are never corrected again. */
+    private fun rejectedWords(): Set<String> = correctionPrefs().getStringSet(REJECTED_KEY, emptySet()).orEmpty()
+
+    /** Before a space or punctuation is typed: fixes a one-key slip in the word that just ended. */
+    private fun autoCorrectBefore(separator: String) {
+        lastCorrection = null
+        if (!settings.autoCorrect || controller.mode != KeyboardMode.MOBILE || !currentField.allowsLearning) return
+        if (controller.modifiers.anyShortcutModifier) return
+        val first = separator.firstOrNull() ?: return
+        if (!(first.isWhitespace() || first in ".,!?;:…")) return
+        val ic = currentInputConnection ?: return
+        if (!ic.getSelectedText(0).isNullOrEmpty() || WordRules.continuesWord(ic.getTextAfterCursor(1, 0) ?: "")) return
+        val word = WordRules.trailingWord(ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: return)
+        if (word.isEmpty()) return
+        val language = controller.language
+        val user = dictionary.dictionary
+        val base = BaseDictionary.words(language)
+        val baseKeys = baseKeys.getOrPut(language) { base.mapTo(HashSet()) { it.lowercase(language.locale) } }
+        val fixed = AutoCorrect.correction(
+            language,
+            word,
+            known = { it in baseKeys || user.contains(language, it) },
+            candidates = user.entries(language).asSequence().map { it.word } + base.asSequence(),
+            rejected = rejectedWords(),
+        ) ?: return
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(word.length, 0)
+        ic.commitText(fixed, 1)
+        ic.endBatchEdit()
+        lastCorrection = Triple(word, fixed, separator)
+        rootView?.showStatus(getString(R.string.autocorrect_done, word, fixed), CORRECTION_MESSAGE_MS)
+    }
+
+    private val baseKeys = HashMap<Language, Set<String>>()
+
+    /** Backspace right after a correction puts the typed word back (and remembers it). */
+    private fun undoCorrection(key: Key): Boolean {
+        val correction = lastCorrection ?: return false
+        lastCorrection = null
+        if ((key.action as? KeyAction.Special)?.key != SpecialKey.BACKSPACE) return false
+        val (typed, fixed, separator) = correction
+        val ic = currentInputConnection ?: return false
+        val before = ic.getTextBeforeCursor(fixed.length + separator.length, 0)?.toString() ?: return false
+        if (before != fixed + separator) return false
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(before.length, 0)
+        ic.commitText(typed, 1)
+        ic.endBatchEdit()
+        correctionPrefs().edit()
+            .putStringSet(REJECTED_KEY, rejectedWords() + typed.lowercase(controller.language.locale))
+            .apply()
+        rootView?.keyboardView?.feedback()
+        rootView?.showStatus(getString(R.string.autocorrect_undone, typed))
+        updateAutoShift()
+        updateSuggestions()
+        render()
+        return true
+    }
+
+    // ------------------------------------------------------------------ backspace swipe
+
+    override fun onBackspaceSwipe(words: Int, done: Boolean) {
+        val ic = currentInputConnection ?: return
+        val usable = !currentField.isRawKeyField && !translateActive && !(bluetoothSending && bluetoothConnected)
+        if (!usable) return
+        val before = ic.getTextBeforeCursor(BACKSPACE_SWIPE_CONTEXT, 0)?.toString().orEmpty()
+        val start = wordsStart(before, words)
+        val chunk = before.substring(start)
+        if (!done) {
+            if (chunk.isNotEmpty()) rootView?.showStatus(getString(R.string.backspace_swipe_preview, chunk.trim()), CORRECTION_MESSAGE_MS)
+            return
+        }
+        if (chunk.isEmpty()) return
+        lastCorrection = null
+        ic.deleteSurroundingText(chunk.length, 0)
+        rootView?.clearStatus()
+        updateAutoShift()
+        updateSuggestions()
+        render()
+    }
+
+    /** Where the last [words] words (with the spaces after them) start in [text]. */
+    private fun wordsStart(text: String, words: Int): Int {
+        var i = text.length
+        repeat(words) {
+            while (i > 0 && text[i - 1].isWhitespace()) i--
+            while (i > 0 && !text[i - 1].isWhitespace()) i--
+        }
+        return i
+    }
+
     // ------------------------------------------------------------------ double space
 
     private var lastSpaceAt = 0L
 
     /**
-     * A second quick space right after "word " turns into ". " (then the next letter is a capital), like
+     * A second space within about a second after "word " turns into ". " (then the next letter is a capital), like
      * on most phone keyboards. Only in mobile mode, in normal text, never in passwords or terminals.
      */
     private fun doubleSpacePeriod(key: Key): Boolean {
@@ -956,6 +1060,8 @@ class KeyboardService : InputMethodService(),
         root.stickerPanel.character = settings.stickerCharacter
         root.keyboardView.spaceSwipeEnabled = settings.spaceSwipeSwitchesLanguage
         root.keyboardView.keyPreview = settings.keyPreview
+        root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
+        root.compact = settings.compactToolbar
         val layout = controller.layout(settings.mobileCursorRow)
         // The emoji panel (and the sticker panel, which takes its size) is exactly as tall as the
         // letters: its keys share the same height instead of the keyboard growing or shrinking.
@@ -1040,7 +1146,11 @@ class KeyboardService : InputMethodService(),
         private const val SENT_TEXT_MAX = 2000
         private const val ECHO_CONTEXT = 2000
         private const val UNDO_SLACK = 8
-        private const val DOUBLE_SPACE_MS = 450L
+        private const val DOUBLE_SPACE_MS = 1100L
+        private const val CORRECTION_PREFS = "autocorrect"
+        private const val REJECTED_KEY = "rejected"
+        private const val CORRECTION_MESSAGE_MS = 2500L
+        private const val BACKSPACE_SWIPE_CONTEXT = 1000
         private const val EMOJI_PREFS = "emoji"
         private const val EMOJI_USAGE_KEY = "usage"
 

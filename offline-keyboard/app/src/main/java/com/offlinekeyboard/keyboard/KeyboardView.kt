@@ -42,6 +42,8 @@ class KeyboardView(context: Context) : View(context) {
         fun onKey(key: Key)
         fun onAlternative(text: String)
         fun onSpaceSwipe(step: Int)
+        /** Backspace dragged to the left: [words] words before the cursor; [done] when the finger lifts. */
+        fun onBackspaceSwipe(words: Int, done: Boolean)
         fun onLanguageKeyLongPress()
     }
 
@@ -60,6 +62,9 @@ class KeyboardView(context: Context) : View(context) {
         }
     }.getOrNull()
     var spaceSwipeEnabled = true
+
+    /** Dragging Backspace to the left deletes whole words. */
+    var backspaceSwipeEnabled = true
 
     /** Shows the pressed letter enlarged above the finger (drawn over the toolbar for the top row). */
     var keyPreview = true
@@ -293,6 +298,8 @@ class KeyboardView(context: Context) : View(context) {
         var longPressFired = false
         var repeating = false
         var swipeConsumed = false
+        /** Words chosen by dragging Backspace to the left; -1 while it is an ordinary press. */
+        var swipeWords = -1
         var longPress: Runnable? = null
         var repeat: Runnable? = null
 
@@ -389,6 +396,23 @@ class KeyboardView(context: Context) : View(context) {
             listener?.onSpaceSwipe(if (x > state.downX) 1 else -1)
             invalidate()
         }
+        if (isBackspace(key) && backspaceSwipeEnabled) {
+            val dx = state.downX - x
+            if (state.swipeWords < 0 && dx > dp(BACKSPACE_SWIPE_START_DP)) {
+                // Turns into a word swipe: the key repeat stops.
+                state.swipeConsumed = true
+                state.cancelCallbacks()
+                state.swipeWords = 0
+            }
+            if (state.swipeWords >= 0) {
+                val words = if (dx < dp(BACKSPACE_SWIPE_START_DP)) 0 else 1 + ((dx - dp(BACKSPACE_SWIPE_START_DP)) / dp(BACKSPACE_SWIPE_STEP_DP)).toInt()
+                if (words != state.swipeWords) {
+                    state.swipeWords = words
+                    feedback()
+                    listener?.onBackspaceSwipe(words, done = false)
+                }
+            }
+        }
     }
 
     private fun onPointerUp(id: Int, x: Float, y: Float) {
@@ -401,7 +425,9 @@ class KeyboardView(context: Context) : View(context) {
             listener?.onAlternative(p.options[p.selected])
         } else {
             val key = state.key
-            if (key != null && !state.repeating && !state.longPressFired && !state.swipeConsumed) {
+            if (state.swipeWords >= 0) {
+                listener?.onBackspaceSwipe(state.swipeWords, done = true)
+            } else if (key != null && !state.repeating && !state.longPressFired && !state.swipeConsumed) {
                 listener?.onKey(key)
             }
         }
@@ -424,6 +450,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private fun isSpace(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.SPACE
+    private fun isBackspace(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.BACKSPACE
     private fun isLanguageKey(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.LANGUAGE
 
     /** Vibration for a tap, as set in settings; also used by the sticker panel. */
@@ -464,5 +491,7 @@ class KeyboardView(context: Context) : View(context) {
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
         const val SPACE_SWIPE_DP = 60f
+        const val BACKSPACE_SWIPE_START_DP = 28f
+        const val BACKSPACE_SWIPE_STEP_DP = 30f
     }
 }

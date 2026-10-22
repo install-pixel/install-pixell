@@ -261,4 +261,11 @@
     <string name="sticker_favorite_removed">Removed from favourites</string>
     <string name="key_preview">Show the pressed letter above the finger</string>
     <string name="double_space_period">Double space puts a period</string>
+    <string name="compact_toolbar">Compact toolbar: one row, modes under the ▦ button</string>
+    <string name="auto_correct">Fix typos (Backspace right after brings your word back)</string>
+    <string name="backspace_swipe">Drag Backspace to the left to delete words</string>
+    <string name="toolbar_modes_description">Input modes</string>
+    <string name="autocorrect_done">%1$s → %2$s · ⌫ to undo</string>
+    <string name="autocorrect_undone">Kept «%1$s»; it will not be corrected again</string>
+    <string name="backspace_swipe_preview">Delete: «%1$s»</string>
 </resources>
