@@ -133,13 +133,14 @@ class StickerPanel(context: Context) : LinearLayout(context) {
             load()
             play(true)
         } else {
-            play(false)
+            // Hidden: the animations and their frames are released, not just paused.
+            clear()
         }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        play(false)
+        clear()
     }
 
     /** Rebuilds the grid (new order, favourites, own stickers). */
@@ -153,6 +154,7 @@ class StickerPanel(context: Context) : LinearLayout(context) {
 
     private fun clear() {
         play(false)
+        for (cell in cells) cell.setImageDrawable(null)
         grid.removeAllViews()
         cells.clear()
         loaded = false
