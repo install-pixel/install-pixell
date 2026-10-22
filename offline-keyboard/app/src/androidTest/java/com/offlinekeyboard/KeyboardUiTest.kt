@@ -191,6 +191,8 @@ class KeyboardUiTest {
             activity.plain.setText("раз два три")
             activity.plain.setSelection(activity.plain.length())
         }
+        // The keyboard reads the field through the app: wait until it sees the new text.
+        waitForView { v -> v is TextView && v.isShown && v.text.toString() == "раз два три" }
         val start = keyCenter { it.special == SpecialKey.BACKSPACE }!!
         val density = instrumentation.targetContext.resources.displayMetrics.density
         // Past the start (28 dp) and one more step (30 dp): two words.
