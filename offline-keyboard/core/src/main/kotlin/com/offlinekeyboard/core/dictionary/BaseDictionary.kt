@@ -4,26 +4,34 @@ import com.offlinekeyboard.core.layout.Language
 import java.util.EnumMap
 
 /**
- * A few hundred common words per language shipped with the app (`resources/dictionary/<lang>.txt`,
- * most frequent first), so suggestions work before the user's own dictionary has learned anything.
- * Read-only; the user's words always rank above these.
+ * About ten thousand common words per language shipped with the app (`resources/dictionary/<lang>.txt`,
+ * most frequent first; built by `tools/dictionary/build_base.py`), so suggestions and autocorrect work
+ * before the user's own dictionary has learned anything. Read-only; the user's words rank above these.
  */
 object BaseDictionary {
 
     private val cache = EnumMap<Language, List<String>>(Language::class.java)
+    private val keys = EnumMap<Language, List<String>>(Language::class.java)
 
     fun words(language: Language): List<String> = synchronized(cache) {
         cache.getOrPut(language) { load(language) }
+    }
+
+    /** [words] in lower case with one apostrophe, computed once (suggestions run on every key). */
+    private fun keys(language: Language): List<String> = synchronized(keys) {
+        keys.getOrPut(language) { words(language).map { matchKey(it, language) } }
     }
 
     /** Up to [limit] words starting with [prefix] (case-insensitive, any apostrophe), in frequency order. */
     fun suggestions(language: Language, prefix: String, limit: Int = 3): List<String> {
         if (prefix.isEmpty()) return emptyList()
         val key = matchKey(prefix, language)
-        return words(language).asSequence()
-            .filter { word -> matchKey(word, language).let { it.startsWith(key) && it != key } }
+        val words = words(language)
+        return keys(language).asSequence()
+            .withIndex()
+            .filter { (_, k) -> k.startsWith(key) && k != key }
             .take(limit)
-            .map { WordRules.applyCase(it, prefix, language) }
+            .map { WordRules.applyCase(words[it.index], prefix, language) }
             .toList()
     }
 

@@ -18,6 +18,11 @@ class AutoCorrectTest {
         assertEquals("dzień", fix(Language.PL, "dizeń", listOf("dzień")))
         assertEquals("thanks", fix(Language.EN, "tganks", listOf("thanks")))
         assertEquals("HELLO", fix(Language.EN, "HWLLO", listOf("hello")))
+        // One letter missing or doubled inside the word.
+        assertEquals("привіт", fix(Language.UK, "првіт", listOf("привіт")))
+        assertEquals("привіт", fix(Language.UK, "приивіт", listOf("привіт")))
+        assertEquals("tomorrow", fix(Language.EN, "tomorow", listOf("tomorrow")))
+        assertEquals("dziękuję", fix(Language.PL, "dzękuję", listOf("dziękuję")))
     }
 
     @Test
@@ -25,8 +30,10 @@ class AutoCorrectTest {
         // Endings change the form in Ukrainian and Polish.
         assertNull(fix(Language.UK, "мами", listOf("мама")))
         assertNull(fix(Language.PL, "domy", listOf("domu")))
-        // Missing or extra letters are not slips.
+        // A missing or extra letter in the ending is a different form, not a slip.
         assertNull(fix(Language.UK, "привт", listOf("привіт")))
+        assertNull(fix(Language.UK, "книг", listOf("книга")))
+        assertNull(fix(Language.PL, "domów", listOf("domu")))
         // "q" and "m" are far apart.
         assertNull(fix(Language.EN, "mhanks", listOf("thanks")))
         assertNull(fix(Language.EN, "thw", listOf("the")))

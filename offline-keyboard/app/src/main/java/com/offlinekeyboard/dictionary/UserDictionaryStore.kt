@@ -23,7 +23,7 @@ class UserDictionaryStore private constructor(context: Context) {
 
     val dictionary: UserDictionary = runCatching {
         if (file.isFile) UserDictionary.parse(file.readText(Charsets.UTF_8)) else UserDictionary()
-    }.getOrElse { UserDictionary() }
+    }.getOrElse { UserDictionary() }.also { it.forgetStale(System.currentTimeMillis()) }
 
     private val _changes = MutableStateFlow(0L)
 

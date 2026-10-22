@@ -19,9 +19,10 @@ import java.io.File
 enum class StickerCharacter(val folder: String) { BOY("boy"), GIRL("girl") }
 
 /**
- * The stickers: the keyboard's own animated ones (drawn by `tools/stickers/make_stickers.py`, shipped in
+ * The stickers: the keyboard's own animated ones (Lingo as a boy or a girl, animated from the sheets in
+ * `tools/stickers/source` by `tools/stickers/animate_sheets.py`, shipped in
  * `assets/stickers/` as animated WebP and GIF) and the user's own pictures, copied into the app's
- * storage. A sticker is named "folder/name": "girl/01-hi", "common/12-heart" or "custom/<file>".
+ * storage. A sticker is named "folder/name": "girl/05-heart" or "custom/<file>".
  *
  * A sticker is sent the way Android keyboards send images: the app the user types in says which image
  * types it accepts, and the keyboard hands it a read-only file link. Apps that accept no images get
@@ -151,12 +152,9 @@ object Stickers {
     /** The image type to send for the built-in stickers, or null when the app takes no stickers. */
     fun mimeFor(editorInfo: EditorInfo?): String? {
         val accepted = accepted(editorInfo)
-        fun explicit(type: String) = accepted.any { it.equals(type, ignoreCase = true) }
         fun matches(type: String) = accepted.any { ClipDescription.compareMimeTypes(type, it) }
+        // GIF first: chat apps play it (Telegram shows an animated WebP from a keyboard as a still picture).
         return when {
-            explicit("image/webp") -> "image/webp"
-            explicit("image/gif") -> "image/gif"
-            // "image/*": GIF is the type every chat app animates.
             matches("image/gif") -> "image/gif"
             matches("image/webp") -> "image/webp"
             else -> null

@@ -151,7 +151,7 @@ class FeaturesTest {
         val d = UserDictionary()
         repeat(3) { d.learn(Language.PL, "Warszawa", now++) }
         d.learn(Language.PL, "warsztat", now++)
-        d.learn(Language.PL, "wa", now++)
+        assertFalse(d.learn(Language.PL, "wa", now++)) // too short to learn
         assertEquals(listOf("warszawa", "warsztat"), d.suggestions(Language.PL, "wa"))
         assertEquals(listOf("Warszawa", "Warsztat"), d.suggestions(Language.PL, "Wa"))
         assertEquals(listOf("WARSZAWA", "WARSZTAT"), d.suggestions(Language.PL, "WA"))
@@ -184,6 +184,17 @@ class FeaturesTest {
         assertEquals(d.entries(Language.UK), copy.entries(Language.UK))
         assertTrue(copy.remove(Language.UK, "Палета"))
         assertEquals(1, copy.size(Language.UK))
+    }
+
+    @Test
+    fun `short words are not learned and once-typed words are forgotten after a while`() {
+        val d = UserDictionary()
+        assertFalse(d.learn(Language.UK, "так", 0))
+        assertTrue(d.learn(Language.UK, "палета", 0))
+        d.learn(Language.UK, "накладна", 0); d.learn(Language.UK, "накладна", 1)
+        assertEquals(0, d.forgetStale(UserDictionary.FORGET_ONCE_TYPED_MS))
+        assertEquals(1, d.forgetStale(UserDictionary.FORGET_ONCE_TYPED_MS + 1))
+        assertEquals(listOf("накладна"), d.entries(Language.UK).map { it.word })
     }
 
     @Test

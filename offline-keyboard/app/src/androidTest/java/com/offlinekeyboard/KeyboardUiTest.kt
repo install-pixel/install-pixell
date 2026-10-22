@@ -188,9 +188,12 @@ class KeyboardUiTest {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
         instrumentation.runOnMainSync {
-            activity.plain.setText("раз два три")
+            // Ends with a space, so the strip shows the text rather than word suggestions.
+            activity.plain.setText("раз два три ")
             activity.plain.setSelection(activity.plain.length())
         }
+        // The keyboard reads the field through the app: wait until it sees the new text.
+        waitForView { v -> v is TextView && v !is EditText && v.isShown && v.text.toString() == "раз два три" }
         val start = keyCenter { it.special == SpecialKey.BACKSPACE }!!
         val density = instrumentation.targetContext.resources.displayMetrics.density
         // Past the start (28 dp) and one more step (30 dp): two words.
@@ -214,19 +217,27 @@ class KeyboardUiTest {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
         tapSpecial(SpecialKey.LAYER_EMOJI)
-        tapSpecial(SpecialKey.STICKERS)
-        tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.text == "👦" })
-        waitForView { v -> v is ImageView && v.isShown && v.tag == "boy/02-love" }
+        // The sticker panel is open once its boy/girl buttons show.
+        repeat(3) {
+            if (findView { v -> v is ToolbarButton && v.isShown && v.text == "👦" } != null) return@repeat
+            if (service().inputRootForTest?.stickersShown != true) {
+                runCatching { tapSpecial(SpecialKey.STICKERS) }.onFailure { tapSpecial(SpecialKey.LAYER_EMOJI) }
+            }
+            Thread.sleep(800)
+        }
+        tapUntilShown({ v -> v is ToolbarButton && v.isShown && v.text == "👦" }) { v -> v is ImageView && v.isShown && v.tag == "boy/02-rainbow" }
         Thread.sleep(400)
         screenshot("stickers-boy")
         // The girl button swaps Lingo for the girl version.
-        tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.text == "👧" })
-        val sticker = waitForView { v -> v is ImageView && v.isShown && v.tag == "girl/02-love" }
+        val sticker = tapUntilShown({ v -> v is ToolbarButton && v.isShown && v.text == "👧" }) { v ->
+            v is ImageView && v.isShown && v.tag == "girl/02-thumbs-up"
+        }
         Thread.sleep(400)
         screenshot("stickers-girl")
         tapView(sticker)
         val received = waitFor("sticker") { activity.receivedSticker }
-        assertTrue(received, received.startsWith("image/webp ") && received.contains("girl-02-love.webp"))
+        // GIF, the animated format chat apps play.
+        assertTrue(received, received.startsWith("image/gif ") && received.contains("girl-02-thumbs-up.gif"))
         assertTrue(received, received.split(' ')[1].toInt() > 1000)
         // ABC goes back to the letters.
         tapView(waitForView { v -> v is ToolbarButton && v.isShown && v.contentDescription == "АБВ" || v is ToolbarButton && v.isShown && v.contentDescription == "ABC" })
@@ -359,6 +370,8 @@ class KeyboardUiTest {
             val shown = runCatching { waitFor("keyboard service", timeoutMs = 8_000) { visibleService() } }.isSuccess
             if (shown) {
                 clear(field)
+                // Android 14 slides the keyboard in; a touch during the slide can be lost.
+                Thread.sleep(600)
                 return
             }
             // A tap on the field is what a person would do.
@@ -452,6 +465,15 @@ class KeyboardUiTest {
         inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0))
         instrumentation.waitForIdleSync()
         Thread.sleep(80)
+    }
+
+    /** Taps [button] until [result] appears; the emulator now and then drops a tap. */
+    private fun tapUntilShown(button: (View) -> Boolean, result: (View) -> Boolean): View {
+        repeat(3) {
+            tapView(waitForView(button))
+            runCatching { waitFor("view", timeoutMs = 6_000) { findView(result) } }.getOrNull()?.let { return it }
+        }
+        return waitForView(result)
     }
 
     private fun drag(fromX: Float, fromY: Float, toX: Float, toY: Float) {
