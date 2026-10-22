@@ -182,7 +182,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     fun showStickers(show: Boolean) {
         if (show == stickersShown) return
         if (show) {
-            stickerPanel.layoutParams = stickerPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(220)) }
+            stickerPanel.layoutParams = stickerPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(120)) }
             keyboardView.visibility = View.GONE
             stickerPanel.visibility = View.VISIBLE
         } else {
