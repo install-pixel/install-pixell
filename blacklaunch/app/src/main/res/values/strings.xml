@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BlackLaunch</string>
+    <string name="launch_failed">Програму не вдалося відкрити: можливо, її видалено</string>
 </resources>

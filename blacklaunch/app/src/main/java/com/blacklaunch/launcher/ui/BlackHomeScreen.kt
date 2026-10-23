@@ -6,8 +6,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 
 private val SwipeUpThreshold = 48.dp
@@ -29,6 +31,8 @@ fun BlackHomeScreen(
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onCloseSearch: () -> Unit,
+    onLaunch: (AppInfo) -> Unit,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
 ) {
     // На головному екрані Back нічого не робить; у пошуку — закриває його.
     BackHandler {
@@ -37,7 +41,7 @@ fun BlackHomeScreen(
 
     when (state) {
         LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch)
-        is LauncherUiState.SearchOpen -> SearchOpen(state.query, onQueryChange, onClearQuery)
+        is LauncherUiState.SearchOpen -> SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor)
     }
 }
 
@@ -70,9 +74,11 @@ private fun HomeIdle(onOpenSearch: () -> Unit) {
 
 @Composable
 private fun SearchOpen(
-    query: String,
+    state: LauncherUiState.SearchOpen,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
+    onLaunch: (AppInfo) -> Unit,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
 ) {
     Column(
         modifier = Modifier
@@ -83,8 +89,13 @@ private fun SearchOpen(
             .imePadding()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        // Результати пошуку з'являться тут на Етапі 3–4; порожній запит нічого не показує.
-        Spacer(Modifier.weight(1f))
-        SearchField(query = query, onQueryChange = onQueryChange, onClear = onClearQuery)
+        SearchResults(
+            query = state.query,
+            results = state.results,
+            iconFor = iconFor,
+            onLaunch = onLaunch,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
+        SearchField(query = state.query, onQueryChange = onQueryChange, onClear = onClearQuery)
     }
 }
