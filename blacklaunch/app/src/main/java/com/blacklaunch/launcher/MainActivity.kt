@@ -29,7 +29,7 @@ import com.blacklaunch.launcher.system.WallpaperController
 import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.ui.AliasDialog
 import com.blacklaunch.launcher.ui.BlackHomeScreen
-import com.blacklaunch.launcher.ui.SettingsSheet
+import com.blacklaunch.launcher.ui.SettingsScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
 import com.blacklaunch.launcher.viewmodel.UiMessage
@@ -123,8 +123,8 @@ class MainActivity : ComponentActivity() {
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
-                    settingsSheet = { dismiss ->
-                        SettingsSheet(
+                    settingsScreen = { dismiss ->
+                        SettingsScreen(
                             appearance = appearance,
                             onChange = ::changeAppearance,
                             onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },

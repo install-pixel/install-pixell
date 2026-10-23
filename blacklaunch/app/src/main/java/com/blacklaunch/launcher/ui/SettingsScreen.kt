@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,11 +10,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -24,9 +27,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -53,9 +56,9 @@ import com.blacklaunch.launcher.voice.VoiceLanguages
 
 private val CardShape = RoundedCornerShape(20.dp)
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Налаштування на весь екран: довгий список гортається без конфлікту зі згортанням шторки. */
 @Composable
-fun SettingsSheet(
+fun SettingsScreen(
     appearance: Appearance,
     onChange: ((Appearance) -> Appearance) -> Unit,
     onSetBlackWallpaperNow: () -> Unit,
@@ -72,26 +75,41 @@ fun SettingsSheet(
     onDismiss: () -> Unit,
 ) {
     LaunchedEffect(Unit) { onCheckOffline() }
+    BackHandler(onBack = onDismiss)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0C0C0C),
-        scrimColor = Color(0xB3000000),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Oled.Black)
+            .statusBarsPadding(),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                    tint = Oled.TextPrimary,
+                )
+            }
             Text(
                 stringResource(R.string.settings_title),
                 color = Oled.TextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Medium,
             )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
 
             Card {
                 SwitchRow(
@@ -147,7 +165,7 @@ fun SettingsSheet(
                 ActionOption(R.string.system_theme, Icons.Filled.Settings, onOpenSystemTheme)
                 Note(stringResource(R.string.system_theme_note))
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }

@@ -6,6 +6,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
@@ -41,8 +47,8 @@ fun BlackHomeScreen(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
-    /** Панель налаштувань (довге натискання на чорному екрані). */
-    settingsSheet: @Composable (onDismiss: () -> Unit) -> Unit,
+    /** Налаштування на весь екран (довге натискання на чорному екрані). */
+    settingsScreen: @Composable (onDismiss: () -> Unit) -> Unit,
     /** Власні назви програми (довге натискання на результат). */
     aliasDialog: @Composable (app: AppInfo, onDismiss: () -> Unit) -> Unit,
 ) {
@@ -54,13 +60,29 @@ fun BlackHomeScreen(
         if (state is LauncherUiState.SearchOpen) onCloseSearch()
     }
 
-    when (state) {
-        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showSettings = true })
-        is LauncherUiState.SearchOpen ->
-            SearchOpen(state, onQueryChange, onClearQuery, onLaunch, { aliasApp = it }, iconFor, voiceState, onMicClick)
+    if (showSettings) {
+        settingsScreen { showSettings = false }
+        return
     }
 
-    if (showSettings) settingsSheet { showSettings = false }
+    when (state) {
+        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showSettings = true })
+        is LauncherUiState.SearchOpen -> SearchOpen(
+            state = state,
+            onQueryChange = onQueryChange,
+            onClearQuery = onClearQuery,
+            onLaunch = onLaunch,
+            onLongPress = { aliasApp = it },
+            iconFor = iconFor,
+            voiceState = voiceState,
+            onMicClick = onMicClick,
+            // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом.
+            onKeyboardHidden = {
+                if (aliasApp == null && voiceState == VoiceState.Idle) onCloseSearch()
+            },
+        )
+    }
+
     aliasApp?.let { app -> aliasDialog(app) { aliasApp = null } }
 }
 
@@ -91,6 +113,7 @@ private fun HomeIdle(onOpenSearch: () -> Unit, onLongPress: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SearchOpen(
     state: LauncherUiState.SearchOpen,
@@ -101,7 +124,20 @@ private fun SearchOpen(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
+    onKeyboardHidden: () -> Unit,
 ) {
+    val imeVisible = WindowInsets.isImeVisible
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var keyboardWasShown by remember { mutableStateOf(false) }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) {
+            keyboardWasShown = true
+        } else if (keyboardWasShown && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            keyboardWasShown = false
+            onKeyboardHidden()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

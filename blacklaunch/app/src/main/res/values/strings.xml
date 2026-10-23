@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name" translatable="false">BlackLaunch</string>
 
+    <string name="back">Back</string>
+
     <!-- Search -->
     <string name="search_hint">Search apps</string>
     <string name="listening">Listening…</string>
