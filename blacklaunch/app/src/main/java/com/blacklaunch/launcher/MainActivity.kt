@@ -30,8 +30,11 @@ import com.blacklaunch.launcher.ui.BlackHomeScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
 import com.blacklaunch.launcher.viewmodel.UiMessage
+import com.blacklaunch.launcher.voice.OfflineStatus
+import com.blacklaunch.launcher.voice.VoiceLanguages
 import com.blacklaunch.launcher.voice.VoiceSearchManager
 import com.blacklaunch.launcher.voice.VoiceState
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +56,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var voice: VoiceSearchManager
     private val wallpaper by lazy { WallpaperController(applicationContext) }
+    private val offlineStatus = MutableStateFlow<Map<String, OfflineStatus>>(emptyMap())
 
     // Дозвіл на мікрофон запитується лише при першому натисканні кнопки.
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -75,7 +79,7 @@ class MainActivity : ComponentActivity() {
         voice = VoiceSearchManager(
             context = this,
             onResult = viewModel::onVoiceResult,
-            onError = { error -> Toast.makeText(this, error.message, Toast.LENGTH_SHORT).show() },
+            onMessage = ::toast,
         )
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -86,6 +90,7 @@ class MainActivity : ComponentActivity() {
             val state by viewModel.state.collectAsStateWithLifecycle()
             val voiceState by voice.state.collectAsStateWithLifecycle()
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
+            val offline by offlineStatus.collectAsStateWithLifecycle()
             BlackLaunchTheme {
                 BlackHomeScreen(
                     state = state,
@@ -99,6 +104,12 @@ class MainActivity : ComponentActivity() {
                     onAppearanceChange = ::changeAppearance,
                     onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
                     onOpenSystemTheme = ::openSystemTheme,
+                    offlineStatus = offline,
+                    onCheckOffline = ::checkOffline,
+                    onDownloadOffline = { language ->
+                        voice.downloadOffline(language)
+                        toast(R.string.download_started)
+                    },
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
                 )
@@ -116,9 +127,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun checkOffline() {
+        offlineStatus.value = emptyMap()
+        voice.checkOffline(VoiceLanguages.relevant()) { offlineStatus.value = it }
+    }
+
     private fun launchSystemRecognizer() {
         try {
-            systemRecognizer.launch(VoiceSearchManager.recognizerIntent())
+            systemRecognizer.launch(VoiceSearchManager.recognizerIntent(this))
         } catch (e: ActivityNotFoundException) {
             toast(R.string.voice_unavailable)
         }
@@ -202,7 +218,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        voice.cancel()
+        voice.destroy()
         super.onDestroy()
     }
 }

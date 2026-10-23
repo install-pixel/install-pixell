@@ -43,4 +43,16 @@ class VoiceCommandParserTest {
     @Test fun blankIsNothing() = assertNull(parse("   "))
 
     @Test fun appNounAloneStaysQuery() = assertEquals(VoiceCommand.Open("додаток"), parse("відкрий додаток"))
+
+    @Test fun polishOpenVerb() {
+        assertEquals(VoiceCommand.Open("telegram"), parse("Otwórz Telegram"))
+        assertEquals(VoiceCommand.Open("kalkulator"), parse("uruchom aplikację kalkulator proszę"))
+    }
+
+    @Test fun polishOpenLast() {
+        assertEquals(VoiceCommand.OpenLast, parse("otwórz ostatnią aplikację"))
+        assertEquals(VoiceCommand.OpenLast, parse("poprzednia"))
+    }
+
+    @Test fun polishProfile() = assertEquals(VoiceCommand.SwitchProfile("praca"), parse("tryb praca"))
 }

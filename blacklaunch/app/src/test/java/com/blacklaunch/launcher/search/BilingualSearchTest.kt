@@ -66,4 +66,14 @@ class BilingualSearchTest {
 
     @Test fun aliasesForUnknownPackageAreEmpty() =
         assertEquals(emptyList<String>(), AppAliases().aliasesFor(app("Something", "x.y.z")))
+
+    @Test fun polishSystemAppName() =
+        assertEquals(camera, search("aparat").first())
+
+    @Test fun polishQueryWithoutDiacritics() {
+        val settings = app("Ustawienia", "com.android.settings")
+        assertEquals(settings, engine.index(listOf(settings)).search("ustaw").first())
+        val gallery = app("Zdjęcia", "pl.test.gallery")
+        assertEquals(gallery, engine.index(listOf(gallery)).search("zdjecia").first())
+    }
 }

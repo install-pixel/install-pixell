@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,11 +71,13 @@ fun SearchField(
             singleLine = true,
             readOnly = listening,
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp),
-            placeholder = { Text(if (listening) "Слухаю…" else "Пошук програм", color = Oled.TextSecondary) },
+            placeholder = {
+                Text(stringResource(if (listening) R.string.listening else R.string.search_hint), color = Oled.TextSecondary)
+            },
             trailingIcon = {
                 if (query.isNotEmpty() && !listening) {
                     IconButton(onClick = onClear) {
-                        Icon(Icons.Filled.Close, contentDescription = "Очистити", tint = Oled.TextSecondary)
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
                     }
                 }
             },
@@ -107,7 +110,7 @@ private fun MicButton(listening: Boolean, onClick: () -> Unit) {
         IconButton(onClick = onClick, modifier = Modifier.padding(4.dp)) {
             Icon(
                 painter = painterResource(R.drawable.ic_mic),
-                contentDescription = if (listening) "Зупинити голосове введення" else "Голосовий пошук",
+                contentDescription = stringResource(if (listening) R.string.voice_stop else R.string.voice_search),
                 tint = if (listening) Color.White else Oled.Accent,
             )
         }

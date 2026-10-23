@@ -1,0 +1,54 @@
+<resources>
+    <!-- Пошук -->
+    <string name="search_hint">Пошук програм</string>
+    <string name="listening">Слухаю…</string>
+    <string name="clear">Очистити</string>
+    <string name="voice_search">Голосовий пошук</string>
+    <string name="voice_stop">Зупинити голосове введення</string>
+    <string name="nothing_found">Нічого не знайдено</string>
+    <string name="launch_failed">Програму не вдалося відкрити: можливо, її видалено</string>
+
+    <!-- Голос -->
+    <string name="voice_prompt">Скажіть назву програми</string>
+    <string name="mic_denied">Без доступу до мікрофона голосовий пошук недоступний. Його можна ввімкнути в налаштуваннях програми</string>
+    <string name="voice_unavailable">На телефоні немає служби розпізнавання мовлення</string>
+    <string name="voice_error_no_match">Не вдалося розпізнати. Спробуйте ще раз</string>
+    <string name="voice_error_network">Розпізнавання потребує інтернету або завантаженого мовного пакета</string>
+    <string name="voice_error_permission">Немає доступу до мікрофона</string>
+    <string name="voice_error_language">Ця мова недоступна для розпізнавання на цьому телефоні</string>
+    <string name="voice_error_busy">Розпізнавання зайняте. Спробуйте за мить</string>
+    <string name="voice_error_other">Помилка голосового введення</string>
+    <string name="voice_fallback_english">Українська без інтернету недоступна — слухаю англійською</string>
+    <string name="no_history">Ще немає запущених програм</string>
+    <string name="profiles_not_ready">Профілі зʼявляться в наступних версіях</string>
+
+    <!-- Налаштування -->
+    <string name="settings_title">Налаштування</string>
+    <string name="auto_wallpaper_title">Чорні шпалери автоматично</string>
+    <string name="auto_wallpaper_subtitle">Якщо шпалери зміняться, BlackLaunch знову зробить їх чорними. Попередні шпалери не зберігаються.</string>
+    <string name="target_home_lock">Головний + блокування</string>
+    <string name="target_home">Тільки головний</string>
+    <string name="wallpaper_now">Зробити чорними зараз</string>
+    <string name="wallpaper_set">Шпалери тепер чорні</string>
+    <string name="wallpaper_failed">Не вдалося змінити шпалери на цьому телефоні</string>
+    <string name="wallpaper_auto_disabled">Не вдалося повернути чорні шпалери, автоматичний режим вимкнено</string>
+    <string name="mono_icons_title">Сірі значки</string>
+    <string name="mono_icons_subtitle">Одноколірні значки на обʼємному тлі в результатах пошуку</string>
+    <string name="system_theme">Темна тема системи</string>
+    <string name="system_theme_note">Колір шторки та інших програм задає система. Увімкніть темний режим (якщо є рівні — найтемніший). На Android 12+ палітра шторки береться з кольору шпалер, тож чорні шпалери роблять її нейтральнішою.</string>
+
+    <!-- Голос -->
+    <string name="voice_section">Голос без інтернету</string>
+    <string name="voice_section_note">Для розпізнавання без інтернету потрібен завантажений мовний пакет. Без нього голосовий пошук працює лише онлайн.</string>
+    <string name="lang_uk">Українська</string>
+    <string name="lang_pl">Польська</string>
+    <string name="lang_en">Англійська</string>
+    <string name="offline_installed">встановлено</string>
+    <string name="offline_downloading">завантажується…</string>
+    <string name="offline_downloadable">можна завантажити</string>
+    <string name="offline_unsupported">недоступно на цьому телефоні</string>
+    <string name="offline_unknown">невідомо (потрібен Android 13+)</string>
+    <string name="offline_checking">перевіряю…</string>
+    <string name="download">Завантажити</string>
+    <string name="download_started">Завантаження запитано. Система покаже прогрес</string>
+</resources>

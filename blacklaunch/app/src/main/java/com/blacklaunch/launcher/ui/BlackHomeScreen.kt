@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
+import com.blacklaunch.launcher.voice.OfflineStatus
 import com.blacklaunch.launcher.voice.VoiceState
 
 private val SwipeUpThreshold = 48.dp
@@ -43,10 +44,13 @@ fun BlackHomeScreen(
     onAppearanceChange: ((Appearance) -> Appearance) -> Unit,
     onSetBlackWallpaperNow: () -> Unit,
     onOpenSystemTheme: () -> Unit,
+    offlineStatus: Map<String, OfflineStatus>,
+    onCheckOffline: () -> Unit,
+    onDownloadOffline: (String) -> Unit,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
 ) {
-    var showAppearance by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
 
     // На головному екрані Back нічого не робить; у пошуку — закриває його.
     BackHandler {
@@ -54,18 +58,21 @@ fun BlackHomeScreen(
     }
 
     when (state) {
-        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showAppearance = true })
+        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showSettings = true })
         is LauncherUiState.SearchOpen ->
             SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor, voiceState, onMicClick)
     }
 
-    if (showAppearance) {
-        AppearanceSheet(
+    if (showSettings) {
+        SettingsSheet(
             appearance = appearance,
             onChange = onAppearanceChange,
             onSetBlackWallpaperNow = onSetBlackWallpaperNow,
             onOpenSystemTheme = onOpenSystemTheme,
-            onDismiss = { showAppearance = false },
+            offlineStatus = offlineStatus,
+            onCheckOffline = onCheckOffline,
+            onDownloadOffline = onDownloadOffline,
+            onDismiss = { showSettings = false },
         )
     }
 }

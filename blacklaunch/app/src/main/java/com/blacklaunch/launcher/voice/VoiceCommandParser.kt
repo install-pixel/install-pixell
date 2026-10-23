@@ -13,19 +13,23 @@ sealed interface VoiceCommand {
     data class SwitchProfile(val name: String) : VoiceCommand
 }
 
-/** Простий локальний розбір голосових команд українською та англійською, без ШІ. */
+/** Простий локальний розбір голосових команд українською, польською та англійською, без ШІ. */
 object VoiceCommandParser {
-    private val politeness = listOf("будь ласка", "будьласка", "please", "пожалуйста")
+    private val politeness = listOf("будь ласка", "будьласка", "please", "пожалуйста", "prosze")
     private val openVerbs = listOf(
         "відкрий", "відкрийте", "відкрити", "запусти", "запустіть", "запустити", "увімкни", "покажи",
         "open", "launch", "start", "run",
+        "otworz", "otworzyc", "uruchom", "wlacz", "pokaz",
     )
-    private val appNouns = listOf("додаток", "програму", "програма", "застосунок", "application", "app")
+    private val appNouns = listOf(
+        "додаток", "програму", "програма", "застосунок", "application", "app", "aplikacje", "aplikacja", "apke",
+    )
     private val lastWords = setOf(
         "останній", "останню", "останнє", "останнього", "попередній", "попередню", "попереднє",
         "last", "previous", "recent",
+        "ostatnia", "ostatnio", "ostatni", "ostatnie", "poprzednia", "poprzedni", "poprzednie",
     )
-    private val profileWords = listOf("режим", "профіль", "mode", "profile")
+    private val profileWords = listOf("режим", "профіль", "mode", "profile", "tryb", "profil")
 
     fun parse(text: String): VoiceCommand? {
         var words = SearchNormalizer.words(removePoliteness(SearchNormalizer.normalize(text)))

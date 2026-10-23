@@ -20,9 +20,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.ui.theme.Oled
 
@@ -40,7 +42,7 @@ fun SearchResults(
     }
     if (results.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.BottomStart) {
-            Text("Нічого не знайдено", color = Oled.TextSecondary, modifier = Modifier.padding(16.dp))
+            Text(stringResource(R.string.nothing_found), color = Oled.TextSecondary, modifier = Modifier.padding(16.dp))
         }
         return
     }

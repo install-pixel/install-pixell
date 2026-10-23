@@ -1,11 +1,56 @@
 <resources>
-    <string name="app_name">BlackLaunch</string>
-    <string name="launch_failed">Програму не вдалося відкрити: можливо, її видалено</string>
-    <string name="wallpaper_set">Шпалери тепер чорні</string>
-    <string name="wallpaper_failed">Не вдалося змінити шпалери на цьому телефоні</string>
-    <string name="mic_denied">Без доступу до мікрофона голосовий пошук недоступний. Його можна ввімкнути в налаштуваннях програми</string>
-    <string name="voice_unavailable">На телефоні немає служби розпізнавання мовлення</string>
-    <string name="no_history">Ще немає запущених програм</string>
-    <string name="profiles_not_ready">Профілі з\'являться в наступних версіях</string>
-    <string name="wallpaper_auto_disabled">Не вдалося повернути чорні шпалери, автоматичний режим вимкнено</string>
+    <string name="app_name" translatable="false">BlackLaunch</string>
+
+    <!-- Search -->
+    <string name="search_hint">Search apps</string>
+    <string name="listening">Listening…</string>
+    <string name="clear">Clear</string>
+    <string name="voice_search">Voice search</string>
+    <string name="voice_stop">Stop voice input</string>
+    <string name="nothing_found">Nothing found</string>
+    <string name="launch_failed">Could not open the app: it may have been removed</string>
+
+    <!-- Voice -->
+    <string name="voice_prompt">Say an app name</string>
+    <string name="mic_denied">Voice search needs microphone access. You can allow it in the app settings</string>
+    <string name="voice_unavailable">No speech recognition service on this phone</string>
+    <string name="voice_error_no_match">Could not recognise that. Try again</string>
+    <string name="voice_error_network">Recognition needs the internet or a downloaded language pack</string>
+    <string name="voice_error_permission">No microphone access</string>
+    <string name="voice_error_language">This language is not available for recognition on this phone</string>
+    <string name="voice_error_busy">Recognition is busy. Try again in a moment</string>
+    <string name="voice_error_other">Voice input error</string>
+    <string name="voice_fallback_english">Offline recognition for your language is unavailable — listening in English</string>
+    <string name="no_history">No apps launched yet</string>
+    <string name="profiles_not_ready">Profiles are coming in a later version</string>
+
+    <!-- Settings sheet -->
+    <string name="settings_title">Settings</string>
+    <string name="auto_wallpaper_title">Black wallpaper automatically</string>
+    <string name="auto_wallpaper_subtitle">If the wallpaper changes, BlackLaunch makes it black again. The previous wallpaper is not kept.</string>
+    <string name="target_home_lock">Home + lock screen</string>
+    <string name="target_home">Home only</string>
+    <string name="wallpaper_now">Make black now</string>
+    <string name="wallpaper_set">Wallpaper is now black</string>
+    <string name="wallpaper_failed">Could not change the wallpaper on this phone</string>
+    <string name="wallpaper_auto_disabled">Could not restore the black wallpaper, automatic mode turned off</string>
+    <string name="mono_icons_title">Grey icons</string>
+    <string name="mono_icons_subtitle">Monochrome icons on a raised background in search results</string>
+    <string name="system_theme">System dark theme</string>
+    <string name="system_theme_note">The colour of the notification shade and other apps is set by the system. Turn on dark mode (choose the darkest level if offered). On Android 12+ the shade palette follows the wallpaper colour, so a black wallpaper makes it more neutral.</string>
+
+    <!-- Voice settings -->
+    <string name="voice_section">Voice without internet</string>
+    <string name="voice_section_note">Offline recognition needs a downloaded language pack. Without it, voice search works only online.</string>
+    <string name="lang_uk">Ukrainian</string>
+    <string name="lang_pl">Polish</string>
+    <string name="lang_en">English</string>
+    <string name="offline_installed">installed</string>
+    <string name="offline_downloading">downloading…</string>
+    <string name="offline_downloadable">can be downloaded</string>
+    <string name="offline_unsupported">not available on this phone</string>
+    <string name="offline_unknown">unknown (needs Android 13+)</string>
+    <string name="offline_checking">checking…</string>
+    <string name="download">Download</string>
+    <string name="download_started">Download requested. The system will show its progress</string>
 </resources>

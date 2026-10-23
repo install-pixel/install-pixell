@@ -1,0 +1,54 @@
+<resources>
+    <!-- Wyszukiwanie -->
+    <string name="search_hint">Szukaj aplikacji</string>
+    <string name="listening">Słucham…</string>
+    <string name="clear">Wyczyść</string>
+    <string name="voice_search">Wyszukiwanie głosowe</string>
+    <string name="voice_stop">Zatrzymaj wprowadzanie głosowe</string>
+    <string name="nothing_found">Nic nie znaleziono</string>
+    <string name="launch_failed">Nie udało się otworzyć aplikacji: mogła zostać usunięta</string>
+
+    <!-- Głos -->
+    <string name="voice_prompt">Powiedz nazwę aplikacji</string>
+    <string name="mic_denied">Wyszukiwanie głosowe wymaga dostępu do mikrofonu. Możesz go włączyć w ustawieniach aplikacji</string>
+    <string name="voice_unavailable">Na telefonie brak usługi rozpoznawania mowy</string>
+    <string name="voice_error_no_match">Nie udało się rozpoznać. Spróbuj ponownie</string>
+    <string name="voice_error_network">Rozpoznawanie wymaga internetu lub pobranego pakietu językowego</string>
+    <string name="voice_error_permission">Brak dostępu do mikrofonu</string>
+    <string name="voice_error_language">Ten język nie jest dostępny do rozpoznawania na tym telefonie</string>
+    <string name="voice_error_busy">Rozpoznawanie jest zajęte. Spróbuj za chwilę</string>
+    <string name="voice_error_other">Błąd wprowadzania głosowego</string>
+    <string name="voice_fallback_english">Rozpoznawanie offline w Twoim języku jest niedostępne — słucham po angielsku</string>
+    <string name="no_history">Nie uruchomiono jeszcze żadnej aplikacji</string>
+    <string name="profiles_not_ready">Profile pojawią się w kolejnej wersji</string>
+
+    <!-- Ustawienia -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="auto_wallpaper_title">Czarna tapeta automatycznie</string>
+    <string name="auto_wallpaper_subtitle">Jeśli tapeta się zmieni, BlackLaunch znów ustawi czarną. Poprzednia tapeta nie jest zapisywana.</string>
+    <string name="target_home_lock">Ekran główny + blokady</string>
+    <string name="target_home">Tylko ekran główny</string>
+    <string name="wallpaper_now">Ustaw czarną teraz</string>
+    <string name="wallpaper_set">Tapeta jest teraz czarna</string>
+    <string name="wallpaper_failed">Nie udało się zmienić tapety na tym telefonie</string>
+    <string name="wallpaper_auto_disabled">Nie udało się przywrócić czarnej tapety, tryb automatyczny wyłączony</string>
+    <string name="mono_icons_title">Szare ikony</string>
+    <string name="mono_icons_subtitle">Jednokolorowe ikony na wypukłym tle w wynikach wyszukiwania</string>
+    <string name="system_theme">Ciemny motyw systemu</string>
+    <string name="system_theme_note">Kolor panelu powiadomień i innych aplikacji ustala system. Włącz tryb ciemny (jeśli są poziomy — najciemniejszy). W Androidzie 12+ paleta panelu wynika z koloru tapety, więc czarna tapeta czyni ją bardziej neutralną.</string>
+
+    <!-- Głos -->
+    <string name="voice_section">Głos bez internetu</string>
+    <string name="voice_section_note">Rozpoznawanie offline wymaga pobranego pakietu językowego. Bez niego wyszukiwanie głosowe działa tylko online.</string>
+    <string name="lang_uk">Ukraiński</string>
+    <string name="lang_pl">Polski</string>
+    <string name="lang_en">Angielski</string>
+    <string name="offline_installed">zainstalowany</string>
+    <string name="offline_downloading">pobieranie…</string>
+    <string name="offline_downloadable">można pobrać</string>
+    <string name="offline_unsupported">niedostępny na tym telefonie</string>
+    <string name="offline_unknown">nieznany (wymaga Androida 13+)</string>
+    <string name="offline_checking">sprawdzam…</string>
+    <string name="download">Pobierz</string>
+    <string name="download_started">Zlecono pobieranie. System pokaże postęp</string>
+</resources>

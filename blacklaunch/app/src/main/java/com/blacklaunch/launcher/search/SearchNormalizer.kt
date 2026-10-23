@@ -14,6 +14,8 @@ object SearchNormalizer {
             .filterNot { it in apostrophes }
             .replace('ё', 'е')
             .replace('ґ', 'г')
+            // «ł» не розкладається на «l» + діакритику, тому окремо.
+            .replace('ł', 'l')
         return stripLatinDiacritics(lower)
             .map { if (it.isLetterOrDigit()) it else ' ' }
             .joinToString("")

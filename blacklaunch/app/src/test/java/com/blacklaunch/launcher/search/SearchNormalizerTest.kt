@@ -32,4 +32,8 @@ class SearchNormalizerTest {
         assertEquals("", n("   "))
         assertEquals(emptyList<String>(), SearchNormalizer.words(""))
     }
+
+    @Test fun polishLetters() = assertEquals("zolc gesla", n("Żółć Gęśla"))
+
+    @Test fun polishStrokedL() = assertEquals("wlacz", n("Włącz"))
 }
