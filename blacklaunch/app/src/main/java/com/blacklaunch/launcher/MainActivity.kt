@@ -16,8 +16,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.blacklaunch.launcher.apps.AppIconCache
@@ -26,6 +28,7 @@ import com.blacklaunch.launcher.system.WallpaperTarget
 import com.blacklaunch.launcher.ui.BlackHomeScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
+import com.blacklaunch.launcher.viewmodel.UiMessage
 import com.blacklaunch.launcher.voice.VoiceSearchManager
 import com.blacklaunch.launcher.voice.VoiceState
 import kotlinx.coroutines.launch
@@ -35,7 +38,9 @@ class MainActivity : ComponentActivity() {
     private val repository by lazy { app.appRepository }
 
     private val viewModel: LauncherViewModel by viewModels {
-        viewModelFactory { initializer { LauncherViewModel(repository, app.userAliasStore.aliases) } }
+        viewModelFactory {
+            initializer { LauncherViewModel(repository, app.userAliasStore.aliases, app.launchHistory) }
+        }
     }
 
     private val iconCache by lazy {
@@ -68,6 +73,11 @@ class MainActivity : ComponentActivity() {
             onResult = viewModel::onVoiceResult,
             onError = { error -> Toast.makeText(this, error.message, Toast.LENGTH_SHORT).show() },
         )
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                for (message in viewModel.messages) toast(message.text())
+            }
+        }
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
             val voiceState by voice.state.collectAsStateWithLifecycle()
@@ -78,9 +88,7 @@ class MainActivity : ComponentActivity() {
                     onQueryChange = viewModel::updateQuery,
                     onClearQuery = viewModel::clearQuery,
                     onCloseSearch = viewModel::closeSearch,
-                    onLaunch = { app ->
-                        if (!viewModel.launch(app)) toast(R.string.launch_failed)
-                    },
+                    onLaunch = { app -> viewModel.launch(app) },
                     iconFor = iconCache::load,
                     onSetBlackWallpaper = ::setBlackWallpaper,
                     voiceState = voiceState,
@@ -113,6 +121,12 @@ class MainActivity : ComponentActivity() {
             val ok = WallpaperController(applicationContext).setBlack(target)
             toast(if (ok) R.string.wallpaper_set else R.string.wallpaper_failed)
         }
+    }
+
+    private fun UiMessage.text(): Int = when (this) {
+        UiMessage.LAUNCH_FAILED -> R.string.launch_failed
+        UiMessage.NO_HISTORY -> R.string.no_history
+        UiMessage.PROFILES_NOT_READY -> R.string.profiles_not_ready
     }
 
     private fun toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()

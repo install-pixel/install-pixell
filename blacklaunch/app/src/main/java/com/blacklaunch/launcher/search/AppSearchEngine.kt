@@ -36,10 +36,19 @@ class IndexedName(raw: String, val bonus: Int = 0) {
     val words: List<String> = SearchNormalizer.words(text)
 }
 
+data class ScoredApp(val app: AppInfo, val score: Int)
+
 class SearchIndex(private val entries: List<Entry>) {
     class Entry(val app: AppInfo, val names: List<IndexedName>)
 
-    fun search(query: String): List<AppInfo> {
+    /**
+     * [launchCounts] — скільки разів запускали програму (за ключем): серед однаково
+     * добрих збігів частіші програми йдуть вище.
+     */
+    fun search(query: String, launchCounts: Map<String, Int> = emptyMap()): List<AppInfo> =
+        searchScored(query, launchCounts).map { it.app }
+
+    fun searchScored(query: String, launchCounts: Map<String, Int> = emptyMap()): List<ScoredApp> {
         val q = SearchNormalizer.normalize(query)
         if (q.isEmpty()) return emptyList()
         val qWords = SearchNormalizer.words(q)
@@ -57,14 +66,14 @@ class SearchIndex(private val entries: List<Entry>) {
                     }
                     maxOf(direct, latin)
                 }
-                if (score > 0) entry.app to score else null
+                if (score > 0) ScoredApp(entry.app, score) else null
             }
             .sortedWith(
-                compareByDescending<Pair<AppInfo, Int>> { it.second }
-                    .thenBy { it.first.label.length }
-                    .thenBy { it.first.label.lowercase() },
+                compareByDescending<ScoredApp> { it.score }
+                    .thenByDescending { launchCounts[it.app.key] ?: 0 }
+                    .thenBy { it.app.label.length }
+                    .thenBy { it.app.label.lowercase() },
             )
-            .map { it.first }
     }
 
     private fun score(name: IndexedName, q: String, qWords: List<String>): Int {
@@ -79,11 +88,25 @@ class SearchIndex(private val entries: List<Entry>) {
         return base + name.bonus
     }
 
-    private companion object {
-        const val EXACT = 100
-        const val PREFIX = 80
-        const val WORD_PREFIX = 60
-        const val ALL_WORDS = 55
-        const val CONTAINS = 40
+    companion object {
+        private const val EXACT = 100
+        private const val PREFIX = 80
+        private const val WORD_PREFIX = 60
+        private const val ALL_WORDS = 55
+        private const val CONTAINS = 40
+
+        /** Точний збіг назви або псевдоніма. */
+        private const val CONFIDENT = EXACT + AppSearchEngine.ALIAS_BONUS
+
+        /**
+         * Програма, яку можна запустити голосом без вибору: єдиний результат
+         * або єдиний точний збіг назви чи псевдоніма.
+         */
+        fun unambiguous(results: List<ScoredApp>): AppInfo? {
+            val top = results.firstOrNull() ?: return null
+            if (results.size == 1) return top.app
+            val second = results[1]
+            return if (top.score >= CONFIDENT && second.score < CONFIDENT) top.app else null
+        }
     }
 }

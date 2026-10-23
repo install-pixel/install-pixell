@@ -1,6 +1,7 @@
 package com.blacklaunch.launcher.viewmodel
 
 import com.blacklaunch.launcher.apps.FakeAppSource
+import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -9,6 +10,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -16,12 +18,15 @@ import org.junit.Test
 class LauncherViewModelTest {
     private lateinit var source: FakeAppSource
     private lateinit var viewModel: LauncherViewModel
+    private lateinit var history: InMemoryLaunchHistory
+    private var clock = 0L
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         source = FakeAppSource("Telegram", "YouTube", "Камера")
-        viewModel = LauncherViewModel(source)
+        history = InMemoryLaunchHistory()
+        viewModel = LauncherViewModel(source, history = history, now = { ++clock })
     }
 
     @After
@@ -103,11 +108,80 @@ class LauncherViewModelTest {
         assertFalse(viewModel.launch(FakeAppSource.app("Telegram")))
     }
 
+    private fun app(label: String) = source.apps.value.first { it.label == label }
+
     @Test
-    fun voiceResultPicksFirstHypothesisWithApps() {
+    fun voiceLaunchesUnambiguousAppImmediately() {
         viewModel.onVoiceResult(listOf("ютубе", "you tube", "youtube"))
-        assertEquals("youtube", search().query)
-        assertEquals(listOf("YouTube"), search().results.map { it.label })
+        assertEquals(listOf("YouTube"), source.launched.map { it.label })
+    }
+
+    @Test
+    fun voiceOpenCommandLaunchesApp() {
+        viewModel.onVoiceResult(listOf("відкрий телеграм"))
+        assertEquals(listOf("Telegram"), source.launched.map { it.label })
+    }
+
+    @Test
+    fun ambiguousVoiceShowsList() {
+        source.apps.value = listOf(FakeAppSource.app("Google"), FakeAppSource.app("Google Maps"))
+        viewModel.onVoiceResult(listOf("відкрий goo"))
+        assertEquals(emptyList<Any>(), source.launched)
+        assertEquals("goo", search().query)
+        assertEquals(2, search().results.size)
+    }
+
+    @Test
+    fun voiceOpenLastLaunchesPreviousApp() {
+        viewModel.launch(app("Камера"))
+        viewModel.launch(app("Telegram"))
+        source.launched.clear()
+        viewModel.onVoiceResult(listOf("відкрий останній"))
+        assertEquals(listOf("Telegram"), source.launched.map { it.label })
+    }
+
+    @Test
+    fun openLastSkipsUninstalledApps() {
+        viewModel.launch(app("YouTube"))
+        viewModel.launch(app("Telegram"))
+        source.apps.value = source.apps.value.filterNot { it.label == "Telegram" }
+        assertEquals("YouTube", viewModel.lastLaunched()?.label)
+    }
+
+    @Test
+    fun openLastWithoutHistoryReportsMessage() {
+        viewModel.onVoiceResult(listOf("відкрий останній"))
+        assertEquals(UiMessage.NO_HISTORY, viewModel.messages.tryReceive().getOrNull())
+    }
+
+    @Test
+    fun profileCommandReportsNotReady() {
+        viewModel.onVoiceResult(listOf("режим робота"))
+        assertEquals(UiMessage.PROFILES_NOT_READY, viewModel.messages.tryReceive().getOrNull())
+    }
+
+    @Test
+    fun successfulLaunchIsRecorded() {
+        viewModel.launch(app("Telegram"))
+        assertEquals(listOf(app("Telegram").key), history.records.value.map { it.appKey })
+    }
+
+    @Test
+    fun failedLaunchIsNotRecordedAndReported() {
+        source.launchSucceeds = false
+        viewModel.launch(app("Telegram"))
+        assertEquals(emptyList<Any>(), history.records.value)
+        assertEquals(UiMessage.LAUNCH_FAILED, viewModel.messages.tryReceive().getOrNull())
+        assertNull(viewModel.lastLaunched())
+    }
+
+    @Test
+    fun frequentAppsRankHigherInResults() {
+        source.apps.value = listOf(FakeAppSource.app("Camera A"), FakeAppSource.app("Camera B"))
+        repeat(2) { viewModel.launch(app("Camera B")) }
+        viewModel.openSearch()
+        viewModel.updateQuery("camera")
+        assertEquals(listOf("Camera B", "Camera A"), search().results.map { it.label })
     }
 
     @Test
@@ -117,11 +191,6 @@ class LauncherViewModelTest {
         assertEquals(emptyList<Any>(), search().results)
     }
 
-    @Test
-    fun voiceResultOpensSearch() {
-        viewModel.onVoiceResult(listOf("telegram"))
-        assertEquals(listOf("Telegram"), search().results.map { it.label })
-    }
 
     @Test
     fun emptyVoiceResultChangesNothing() {

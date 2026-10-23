@@ -5,4 +5,6 @@
     <string name="wallpaper_failed">Не вдалося змінити шпалери на цьому телефоні</string>
     <string name="mic_denied">Без доступу до мікрофона голосовий пошук недоступний. Його можна ввімкнути в налаштуваннях програми</string>
     <string name="voice_unavailable">На телефоні немає служби розпізнавання мовлення</string>
+    <string name="no_history">Ще немає запущених програм</string>
+    <string name="profiles_not_ready">Профілі з\'являться в наступних версіях</string>
 </resources>
