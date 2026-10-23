@@ -26,9 +26,6 @@ object Oled {
     /** Об'ємна кругла кнопка. */
     val Knob = Brush.radialGradient(listOf(Color(0xFF3C3C3C), Color(0xFF161616)))
     val KnobListening = Brush.radialGradient(listOf(Color(0xFFEF5350), Color(0xFF6D1B1B)))
-
-    /** Підсвітка найкращого результату. */
-    val Highlight = Brush.horizontalGradient(listOf(Color(0xFF1C1C1C), Color(0xFF0A0A0A)))
 }
 
 private val OledColors = darkColorScheme(

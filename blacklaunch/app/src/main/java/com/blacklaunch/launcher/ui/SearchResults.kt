@@ -1,8 +1,6 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,8 +50,8 @@ fun SearchResults(
         reverseLayout = true,
         verticalArrangement = Arrangement.Bottom,
     ) {
-        itemsIndexed(results, key = { _, app -> app.key }) { index, app ->
-            AppRow(app, highlighted = index == 0, iconFor = iconFor, onLaunch = onLaunch)
+        items(results, key = { it.key }) { app ->
+            AppRow(app, iconFor = iconFor, onLaunch = onLaunch)
         }
     }
 }
@@ -61,7 +59,6 @@ fun SearchResults(
 @Composable
 private fun AppRow(
     app: AppInfo,
-    highlighted: Boolean,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
 ) {
@@ -72,7 +69,6 @@ private fun AppRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .then(if (highlighted) Modifier.background(Oled.Highlight).border(1.dp, Oled.Glint, shape) else Modifier)
             .clickable { onLaunch(app) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
