@@ -110,7 +110,7 @@ SpeechRecognizer, NotificationManager (політика DND), AudioManager.
 - [x] minSdk 26, targetSdk 36, версії інструментів зафіксовані.
 - [x] README, ROADMAP, CHANGELOG.
 - [x] CI: збірка APK, unit-тести, lint, публікація APK.
-- [ ] Зелена збірка в GitHub Actions.
+- [x] Зелена збірка в GitHub Actions (run #1).
 - [📱] APK встановлюється й запускається, видно чорний екран із написом «BlackLaunch 0.0.1».
 - [📱] Записати модель телефона та версію Android (розділ 10).
 
@@ -264,7 +264,7 @@ data class LauncherProfile(
 
 ## 11. Поточний статус
 
-**Етап 0** — код готовий, очікуємо зелену CI-збірку та вашу перевірку APK на телефоні.
+**Етап 0** — код готовий, CI зелений. Очікуємо вашу перевірку APK на телефоні.
 
 ## 12. Шаблон звіту етапу
 
