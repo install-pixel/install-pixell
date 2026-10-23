@@ -1,50 +1,21 @@
-name: BlackLaunch voice models
+name: BlackLaunch voice models cleanup
 
-# Перепаковує офлайн-моделі Vosk (Apache 2.0) з міткою мови і викладає їх
-# у реліз blacklaunch-models. Телефон завантажує їх браузером — у BlackLaunch немає дозволу INTERNET.
+# Одноразово: моделі тепер беруться з релізу keyboard-models (спільні з клавіатурою),
+# тому дубльований реліз blacklaunch-models видаляється. Сам файл видаляється наступним комітом.
 on:
   push:
     paths:
       - '.github/workflows/blacklaunch-models.yml'
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  models:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download and repackage models
-        run: |
-          set -euo pipefail
-          mkdir -p out work
-          package() {
-            local lang="$1" tag="$2" name="$3"
-            curl -fsSL --retry 3 -o "work/$name.zip" "https://alphacephei.com/vosk/models/$name.zip"
-            rm -rf "work/$tag" && mkdir -p "work/$tag"
-            unzip -q "work/$name.zip" -d "work/$tag"
-            local root
-            root=$(find "work/$tag" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-            mv "$root" "work/$tag/model"
-            printf '{"format":1,"language":"%s","name":"%s","source":"https://alphacephei.com/vosk/models","license":"Apache-2.0"}\n' \
-              "$lang" "$name" > "work/$tag/blacklaunch-model.json"
-            (cd "work/$tag" && zip -q -r -9 "../../out/blacklaunch-voice-$tag.zip" blacklaunch-model.json model)
-            ls -la "out/blacklaunch-voice-$tag.zip"
-          }
-          package uk-UA uk vosk-model-small-uk-v3-small
-          package pl-PL pl vosk-model-small-pl-0.22
-          package en-US en vosk-model-small-en-us-0.15
-
-      - name: Publish release
+      - name: Delete duplicate release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete blacklaunch-models --cleanup-tag --yes || true
-          gh release create blacklaunch-models out/*.zip \
-            --prerelease \
-            --target "${{ github.sha }}" \
-            --title "BlackLaunch — офлайн-моделі голосу" \
-            --notes "Моделі Vosk (Apache 2.0, https://alphacephei.com/vosk/models) для BlackLaunch: українська, польська, англійська. Завантажте файл на телефоні й відкрийте його за допомогою BlackLaunch."
+        run: gh release delete blacklaunch-models --cleanup-tag --yes || true

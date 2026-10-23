@@ -82,9 +82,15 @@ class VoiceModelStore(context: Context) {
         }.toSet()
 
     companion object {
-        private const val RELEASE = "https://github.com/install-pixel/install-pixell/releases/download/blacklaunch-models"
+        /** Ті самі моделі Vosk, що й у клавіатурі Offlingo, — одне місце для всіх проєктів. */
+        private const val RELEASE = "https://github.com/install-pixel/install-pixell/releases/download/keyboard-models"
 
-        fun downloadUrl(language: String): String =
-            "$RELEASE/blacklaunch-voice-${language.substringBefore('-')}.zip"
+        private val files = mapOf(
+            VoiceLanguages.UKRAINIAN to "vosk-model-small-uk-v3-small.zip",
+            VoiceLanguages.POLISH to "vosk-model-small-pl-0.22.zip",
+            VoiceLanguages.ENGLISH to "vosk-model-small-en-us-0.15.zip",
+        )
+
+        fun downloadUrl(language: String): String = "$RELEASE/${files.getValue(language)}"
     }
 }
