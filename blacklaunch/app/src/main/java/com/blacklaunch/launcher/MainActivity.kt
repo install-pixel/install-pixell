@@ -10,13 +10,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.blacklaunch.launcher.apps.AppIconCache
+import com.blacklaunch.launcher.system.WallpaperController
+import com.blacklaunch.launcher.system.WallpaperTarget
 import com.blacklaunch.launcher.ui.BlackHomeScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val app by lazy { application as BlackLaunchApp }
@@ -53,8 +57,17 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     iconFor = iconCache::load,
+                    onSetBlackWallpaper = ::setBlackWallpaper,
                 )
             }
+        }
+    }
+
+    private fun setBlackWallpaper(target: WallpaperTarget) {
+        lifecycleScope.launch {
+            val ok = WallpaperController(applicationContext).setBlack(target)
+            val message = if (ok) R.string.wallpaper_set else R.string.wallpaper_failed
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
         }
     }
 

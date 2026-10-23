@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -20,6 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.system.WallpaperTarget
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 
 private val SwipeUpThreshold = 48.dp
@@ -33,27 +38,40 @@ fun BlackHomeScreen(
     onCloseSearch: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
+    onSetBlackWallpaper: (WallpaperTarget) -> Unit,
 ) {
+    var showWallpaperDialog by rememberSaveable { mutableStateOf(false) }
+
     // На головному екрані Back нічого не робить; у пошуку — закриває його.
     BackHandler {
         if (state is LauncherUiState.SearchOpen) onCloseSearch()
     }
 
     when (state) {
-        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch)
+        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showWallpaperDialog = true })
         is LauncherUiState.SearchOpen -> SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor)
+    }
+
+    if (showWallpaperDialog) {
+        BlackWallpaperDialog(
+            onConfirm = { target ->
+                showWallpaperDialog = false
+                onSetBlackWallpaper(target)
+            },
+            onDismiss = { showWallpaperDialog = false },
+        )
     }
 }
 
 @Composable
-private fun HomeIdle(onOpenSearch: () -> Unit) {
+private fun HomeIdle(onOpenSearch: () -> Unit, onLongPress: () -> Unit) {
     val thresholdPx = with(LocalDensity.current) { SwipeUpThreshold.toPx() }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { onOpenSearch() })
+                detectTapGestures(onTap = { onOpenSearch() }, onLongPress = { onLongPress() })
             }
             .pointerInput(Unit) {
                 var dragged = 0f

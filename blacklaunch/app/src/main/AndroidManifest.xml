@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Звичайний дозвіл, надається автоматично; використовується лише після підтвердження. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>

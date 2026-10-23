@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">BlackLaunch</string>
     <string name="launch_failed">Програму не вдалося відкрити: можливо, її видалено</string>
+    <string name="wallpaper_set">Шпалери тепер чорні</string>
+    <string name="wallpaper_failed">Не вдалося змінити шпалери на цьому телефоні</string>
 </resources>
