@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -24,7 +25,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.blacklaunch.launcher.apps.AppIconCache
 import com.blacklaunch.launcher.system.WallpaperController
-import com.blacklaunch.launcher.system.WallpaperTarget
+import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.ui.BlackHomeScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
@@ -45,10 +46,13 @@ class MainActivity : ComponentActivity() {
 
     private val iconCache by lazy {
         val metrics = resources.displayMetrics
-        AppIconCache(repository, metrics.densityDpi, (36 * metrics.density).toInt())
+        AppIconCache(repository, metrics.densityDpi, (40 * metrics.density).toInt()) {
+            app.appearanceSettings.appearance.value.monochromeIcons
+        }
     }
 
     private lateinit var voice: VoiceSearchManager
+    private val wallpaper by lazy { WallpaperController(applicationContext) }
 
     // Дозвіл на мікрофон запитується лише при першому натисканні кнопки.
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -81,6 +85,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
             val voiceState by voice.state.collectAsStateWithLifecycle()
+            val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
             BlackLaunchTheme {
                 BlackHomeScreen(
                     state = state,
@@ -90,7 +95,10 @@ class MainActivity : ComponentActivity() {
                     onCloseSearch = viewModel::closeSearch,
                     onLaunch = { app -> viewModel.launch(app) },
                     iconFor = iconCache::load,
-                    onSetBlackWallpaper = ::setBlackWallpaper,
+                    appearance = appearance,
+                    onAppearanceChange = ::changeAppearance,
+                    onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
+                    onOpenSystemTheme = ::openSystemTheme,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
                 )
@@ -116,10 +124,50 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun setBlackWallpaper(target: WallpaperTarget) {
+    private fun changeAppearance(transform: (Appearance) -> Appearance) {
+        val before = app.appearanceSettings.appearance.value
+        app.appearanceSettings.update(transform)
+        val after = app.appearanceSettings.appearance.value
+        // Увімкнули автоматичний режим або змінили, які екрани чорнити, — застосовуємо одразу.
+        if (after.autoBlackWallpaper &&
+            (!before.autoBlackWallpaper || before.wallpaperTarget != after.wallpaperTarget)
+        ) {
+            setBlackWallpaper(quiet = false)
+        }
+    }
+
+    private fun setBlackWallpaper(quiet: Boolean) {
         lifecycleScope.launch {
-            val ok = WallpaperController(applicationContext).setBlack(target)
-            toast(if (ok) R.string.wallpaper_set else R.string.wallpaper_failed)
+            val settings = app.appearanceSettings
+            val id = wallpaper.setBlack(settings.appearance.value.wallpaperTarget)
+            when {
+                id != null -> {
+                    settings.blackWallpaperId = id
+                    if (!quiet) toast(R.string.wallpaper_set)
+                }
+                quiet -> {
+                    // Не повторюємо невдалу спробу при кожному поверненні на головний екран.
+                    settings.update { it.copy(autoBlackWallpaper = false) }
+                    toast(R.string.wallpaper_auto_disabled)
+                }
+                else -> toast(R.string.wallpaper_failed)
+            }
+        }
+    }
+
+    /** Автоматичний режим: якщо шпалери замінили, повертаємо чорні. */
+    private fun ensureBlackWallpaper() {
+        val settings = app.appearanceSettings
+        if (settings.appearance.value.autoBlackWallpaper && wallpaper.currentId() != settings.blackWallpaperId) {
+            setBlackWallpaper(quiet = true)
+        }
+    }
+
+    private fun openSystemTheme() {
+        try {
+            startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Settings.ACTION_SETTINGS))
         }
     }
 
@@ -134,6 +182,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         repository.refresh()
+        ensureBlackWallpaper()
     }
 
     // Натискання Home, коли BlackLaunch уже відкритий, повертає чистий чорний екран.

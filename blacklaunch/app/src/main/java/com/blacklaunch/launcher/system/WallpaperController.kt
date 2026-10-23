@@ -19,9 +19,13 @@ enum class WallpaperTarget { HOME, HOME_AND_LOCK }
 class WallpaperController(context: Context) {
     private val wallpaperManager = WallpaperManager.getInstance(context.applicationContext)
 
-    suspend fun setBlack(target: WallpaperTarget): Boolean = withContext(Dispatchers.IO) {
+    /** Змінюється щоразу, коли хтось встановлює нові шпалери головного екрана. */
+    fun currentId(): Int = wallpaperManager.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+
+    /** Повертає ідентифікатор нових шпалер або null, якщо змінити не вдалося. */
+    suspend fun setBlack(target: WallpaperTarget): Int? = withContext(Dispatchers.IO) {
         if (!wallpaperManager.isWallpaperSupported || !wallpaperManager.isSetWallpaperAllowed) {
-            return@withContext false
+            return@withContext null
         }
         val which = when (target) {
             WallpaperTarget.HOME -> WallpaperManager.FLAG_SYSTEM
@@ -30,13 +34,13 @@ class WallpaperController(context: Context) {
         val black = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLACK) }
         try {
             wallpaperManager.setBitmap(black, null, true, which)
-            true
+            currentId()
         } catch (e: IOException) {
             Log.w(TAG, "Cannot set wallpaper", e)
-            false
+            null
         } catch (e: SecurityException) {
             Log.w(TAG, "Cannot set wallpaper", e)
-            false
+            null
         } finally {
             black.recycle()
         }

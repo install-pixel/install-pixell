@@ -7,4 +7,5 @@
     <string name="voice_unavailable">На телефоні немає служби розпізнавання мовлення</string>
     <string name="no_history">Ще немає запущених програм</string>
     <string name="profiles_not_ready">Профілі з\'являться в наступних версіях</string>
+    <string name="wallpaper_auto_disabled">Не вдалося повернути чорні шпалери, автоматичний режим вимкнено</string>
 </resources>

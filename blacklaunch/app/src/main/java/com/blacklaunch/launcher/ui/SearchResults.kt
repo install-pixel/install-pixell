@@ -1,6 +1,8 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,18 +13,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.ui.theme.Oled
 
 @Composable
 fun SearchResults(
@@ -38,7 +42,7 @@ fun SearchResults(
     }
     if (results.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.BottomStart) {
-            Text("Нічого не знайдено", color = Color.Gray, modifier = Modifier.padding(16.dp))
+            Text("Нічого не знайдено", color = Oled.TextSecondary, modifier = Modifier.padding(16.dp))
         }
         return
     }
@@ -48,8 +52,8 @@ fun SearchResults(
         reverseLayout = true,
         verticalArrangement = Arrangement.Bottom,
     ) {
-        items(results, key = { it.key }) { app ->
-            AppRow(app, iconFor, onLaunch)
+        itemsIndexed(results, key = { _, app -> app.key }) { index, app ->
+            AppRow(app, highlighted = index == 0, iconFor = iconFor, onLaunch = onLaunch)
         }
     }
 }
@@ -57,15 +61,20 @@ fun SearchResults(
 @Composable
 private fun AppRow(
     app: AppInfo,
+    highlighted: Boolean,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
 ) {
     val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
+    val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clip(shape)
+            .then(if (highlighted) Modifier.background(Oled.Highlight).border(1.dp, Oled.Glint, shape) else Modifier)
             .clickable { onLaunch(app) }
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val current = icon
@@ -75,6 +84,6 @@ private fun AppRow(
             Spacer(Modifier.size(36.dp))
         }
         Spacer(Modifier.width(16.dp))
-        Text(app.label, color = Color.White, fontSize = 18.sp)
+        Text(app.label, color = Oled.TextPrimary, fontSize = 18.sp)
     }
 }

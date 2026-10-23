@@ -24,7 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
-import com.blacklaunch.launcher.system.WallpaperTarget
+import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 import com.blacklaunch.launcher.voice.VoiceState
 
@@ -39,11 +39,14 @@ fun BlackHomeScreen(
     onCloseSearch: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
-    onSetBlackWallpaper: (WallpaperTarget) -> Unit,
+    appearance: Appearance,
+    onAppearanceChange: ((Appearance) -> Appearance) -> Unit,
+    onSetBlackWallpaperNow: () -> Unit,
+    onOpenSystemTheme: () -> Unit,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
 ) {
-    var showWallpaperDialog by rememberSaveable { mutableStateOf(false) }
+    var showAppearance by rememberSaveable { mutableStateOf(false) }
 
     // На головному екрані Back нічого не робить; у пошуку — закриває його.
     BackHandler {
@@ -51,18 +54,18 @@ fun BlackHomeScreen(
     }
 
     when (state) {
-        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showWallpaperDialog = true })
+        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showAppearance = true })
         is LauncherUiState.SearchOpen ->
             SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor, voiceState, onMicClick)
     }
 
-    if (showWallpaperDialog) {
-        BlackWallpaperDialog(
-            onConfirm = { target ->
-                showWallpaperDialog = false
-                onSetBlackWallpaper(target)
-            },
-            onDismiss = { showWallpaperDialog = false },
+    if (showAppearance) {
+        AppearanceSheet(
+            appearance = appearance,
+            onChange = onAppearanceChange,
+            onSetBlackWallpaperNow = onSetBlackWallpaperNow,
+            onOpenSystemTheme = onOpenSystemTheme,
+            onDismiss = { showAppearance = false },
         )
     }
 }
