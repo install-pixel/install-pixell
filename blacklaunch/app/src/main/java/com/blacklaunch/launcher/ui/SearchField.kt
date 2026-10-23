@@ -20,15 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -51,15 +46,8 @@ fun SearchField(
 ) {
     val listening = voice != VoiceState.Idle
     val partialSpeech = (voice as? VoiceState.Listening)?.partial.orEmpty()
-    val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-
-    // Повторюється і після повороту екрана, тому клавіатура не зникає.
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboard?.show()
-    }
-
+    // Клавіатура не відкривається сама: лише після натискання на поле.
+    // Так зручніше для голосового пошуку (рішення від 23.10.2026).
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         TextField(
             value = if (listening) partialSpeech else query,
@@ -68,8 +56,7 @@ fun SearchField(
                 .weight(1f)
                 .clip(FieldShape)
                 .background(Oled.Surface)
-                .border(1.dp, if (listening) Oled.KnobListening else Oled.Glint, FieldShape)
-                .focusRequester(focusRequester),
+                .border(1.dp, if (listening) Oled.KnobListening else Oled.Glint, FieldShape),
             singleLine = true,
             readOnly = listening,
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp),
