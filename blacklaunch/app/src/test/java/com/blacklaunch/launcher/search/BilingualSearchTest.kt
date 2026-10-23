@@ -48,7 +48,7 @@ class BilingualSearchTest {
 
     @Test fun transliterationDoesNotMatchInsideWords() {
         // «гнал» → «gnal» є всередині «signal», але транслітерація дає лише збіги з початку.
-        val signal = app("Signal", "org.thoughtcrime.securesms")
+        val signal = app("Signal", "test.no.aliases")
         assertEquals(emptyList<AppInfo>(), engine.index(listOf(signal)).search("гнал"))
         assertEquals(listOf(signal), engine.index(listOf(signal)).search("сігнал"))
     }
