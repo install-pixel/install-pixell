@@ -3,4 +3,6 @@
     <string name="launch_failed">Програму не вдалося відкрити: можливо, її видалено</string>
     <string name="wallpaper_set">Шпалери тепер чорні</string>
     <string name="wallpaper_failed">Не вдалося змінити шпалери на цьому телефоні</string>
+    <string name="mic_denied">Без доступу до мікрофона голосовий пошук недоступний. Його можна ввімкнути в налаштуваннях програми</string>
+    <string name="voice_unavailable">На телефоні немає служби розпізнавання мовлення</string>
 </resources>

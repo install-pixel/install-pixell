@@ -4,11 +4,21 @@
     <!-- Звичайний дозвіл, надається автоматично; використовується лише після підтвердження. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!-- Голосовий пошук: запитується лише при першому натисканні мікрофона. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Служба розпізнавання мовлення та системне вікно голосового введення. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
     </queries>
 

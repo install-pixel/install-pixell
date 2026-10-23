@@ -102,4 +102,30 @@ class LauncherViewModelTest {
         source.launchSucceeds = false
         assertFalse(viewModel.launch(FakeAppSource.app("Telegram")))
     }
+
+    @Test
+    fun voiceResultPicksFirstHypothesisWithApps() {
+        viewModel.onVoiceResult(listOf("ютубе", "you tube", "youtube"))
+        assertEquals("youtube", search().query)
+        assertEquals(listOf("YouTube"), search().results.map { it.label })
+    }
+
+    @Test
+    fun voiceResultWithoutAppsShowsWhatWasHeard() {
+        viewModel.onVoiceResult(listOf("холодильник", "хол"))
+        assertEquals("холодильник", search().query)
+        assertEquals(emptyList<Any>(), search().results)
+    }
+
+    @Test
+    fun voiceResultOpensSearch() {
+        viewModel.onVoiceResult(listOf("telegram"))
+        assertEquals(listOf("Telegram"), search().results.map { it.label })
+    }
+
+    @Test
+    fun emptyVoiceResultChangesNothing() {
+        viewModel.onVoiceResult(emptyList())
+        assertEquals(LauncherUiState.HomeIdle, viewModel.state.value)
+    }
 }

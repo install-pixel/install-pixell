@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -17,13 +18,20 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
+import com.blacklaunch.launcher.R
+
+private val ListeningColor = Color(0xFFE53935)
 
 @Composable
 fun SearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
+    listening: Boolean,
+    partialSpeech: String,
+    onMicClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -36,17 +44,27 @@ fun SearchField(
     }
 
     OutlinedTextField(
-        value = query,
+        value = if (listening) partialSpeech else query,
         onValueChange = onQueryChange,
         modifier = modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
         singleLine = true,
-        placeholder = { Text("Пошук програм", color = Color.Gray) },
+        readOnly = listening,
+        placeholder = { Text(if (listening) "Слухаю…" else "Пошук програм", color = Color.Gray) },
         trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = onClear) {
-                    Icon(Icons.Filled.Close, contentDescription = "Очистити", tint = Color.Gray)
+            Row {
+                if (query.isNotEmpty() && !listening) {
+                    IconButton(onClick = onClear) {
+                        Icon(Icons.Filled.Close, contentDescription = "Очистити", tint = Color.Gray)
+                    }
+                }
+                IconButton(onClick = onMicClick) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_mic),
+                        contentDescription = if (listening) "Зупинити голосове введення" else "Голосовий пошук",
+                        tint = if (listening) ListeningColor else Color.Gray,
+                    )
                 }
             }
         },
@@ -55,7 +73,7 @@ fun SearchField(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
             cursorColor = Color.White,
-            focusedBorderColor = Color.DarkGray,
+            focusedBorderColor = if (listening) ListeningColor else Color.DarkGray,
             unfocusedBorderColor = Color.DarkGray,
             focusedContainerColor = Color.Black,
             unfocusedContainerColor = Color.Black,

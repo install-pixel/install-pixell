@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.system.WallpaperTarget
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
+import com.blacklaunch.launcher.voice.VoiceState
 
 private val SwipeUpThreshold = 48.dp
 
@@ -39,6 +40,8 @@ fun BlackHomeScreen(
     onLaunch: (AppInfo) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onSetBlackWallpaper: (WallpaperTarget) -> Unit,
+    voiceState: VoiceState,
+    onMicClick: () -> Unit,
 ) {
     var showWallpaperDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -49,7 +52,8 @@ fun BlackHomeScreen(
 
     when (state) {
         LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showWallpaperDialog = true })
-        is LauncherUiState.SearchOpen -> SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor)
+        is LauncherUiState.SearchOpen ->
+            SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor, voiceState, onMicClick)
     }
 
     if (showWallpaperDialog) {
@@ -97,6 +101,8 @@ private fun SearchOpen(
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
+    voiceState: VoiceState,
+    onMicClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -114,6 +120,13 @@ private fun SearchOpen(
             onLaunch = onLaunch,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
-        SearchField(query = state.query, onQueryChange = onQueryChange, onClear = onClearQuery)
+        SearchField(
+            query = state.query,
+            onQueryChange = onQueryChange,
+            onClear = onClearQuery,
+            listening = voiceState is VoiceState.Listening,
+            partialSpeech = (voiceState as? VoiceState.Listening)?.partial.orEmpty(),
+            onMicClick = onMicClick,
+        )
     }
 }

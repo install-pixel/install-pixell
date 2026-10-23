@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.apps.AppSource
 import com.blacklaunch.launcher.search.AppSearchEngine
+import com.blacklaunch.launcher.search.SearchIndex
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,9 +31,13 @@ class LauncherViewModel(
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
 
+    // Індекс перебудовується лише при зміні програм чи псевдонімів, не на кожну літеру.
+    private val index: StateFlow<SearchIndex> =
+        combine(appSource.apps, userAliases, engine::index)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, SearchIndex(emptyList()))
+
     val state: StateFlow<LauncherUiState> =
-        // Індекс перебудовується лише при зміні програм чи псевдонімів, не на кожну літеру.
-        combine(query, combine(appSource.apps, userAliases, engine::index)) { query, index ->
+        combine(query, index) { query, index ->
             if (query == null) {
                 LauncherUiState.HomeIdle
             } else {
@@ -52,6 +57,16 @@ class LauncherViewModel(
 
     fun closeSearch() {
         query.value = null
+    }
+
+    /**
+     * Розпізнавач повертає кілька варіантів. Беремо перший, для якого є програми,
+     * інакше найімовірніший — щоб користувач бачив, що саме почув Android.
+     */
+    fun onVoiceResult(hypotheses: List<String>) {
+        val best = hypotheses.firstOrNull { index.value.search(it).isNotEmpty() } ?: hypotheses.firstOrNull() ?: return
+        openSearch()
+        updateQuery(best)
     }
 
     fun launch(app: AppInfo): Boolean = appSource.launch(app)
