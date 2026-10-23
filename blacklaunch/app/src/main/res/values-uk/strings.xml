@@ -58,16 +58,16 @@
     <string name="preparing">Чекайте…</string>
     <string name="voice_model_broken">Не вдалося запустити офлайн-модель голосу. Спробуйте імпортувати її ще раз</string>
     <string name="models_section">Офлайн-моделі голосу</string>
-    <string name="models_note">Завантажте в браузері, потім відкрийте файл за допомогою BlackLaunch. Моделі працюють без інтернету і лише поки ви говорите.</string>
+    <string name="models_note">Уже завантажували моделі (наприклад, для клавіатури)? Виберіть файли — можна всі три одразу, мова визначиться сама. Інакше завантажте в браузері й відкрийте файл за допомогою BlackLaunch. Моделі працюють без інтернету і лише поки ви говорите.</string>
     <string name="model_installed">встановлено</string>
     <string name="model_missing">не встановлено</string>
     <string name="model_delete">Видалити</string>
-    <string name="model_import">Імпортувати файл</string>
+    <string name="model_import">Вибрати завантажені моделі</string>
     <string name="mode_off">Вимкнено (лише системне розпізнавання)</string>
     <string name="mode_when_offline">Лише коли немає інтернету</string>
     <string name="mode_always">Завжди</string>
     <string name="import_title">Встановлюю модель голосу…</string>
-    <string name="import_done">Модель голосу встановлено: %1$s</string>
+    <string name="import_done">Встановлено моделі голосу: %1$s</string>
     <string name="import_failed">Цей файл не є моделлю голосу BlackLaunch</string>
     <string name="import_ok">Готово</string>
     <string name="browser_missing">Немає браузера, щоб завантажити модель</string>
@@ -78,4 +78,10 @@
     <string name="alias_add">Додати</string>
     <string name="alias_done">Готово</string>
     <string name="alias_remove">Видалити %1$s</string>
+    <plurals name="import_skipped">
+        <item quantity="one">%1$d файл не є моделлю голосу</item>
+        <item quantity="few">%1$d файли не є моделями голосу</item>
+        <item quantity="many">%1$d файлів не є моделями голосу</item>
+        <item quantity="other">%1$d файлу не є моделями голосу</item>
+    </plurals>
 </resources>

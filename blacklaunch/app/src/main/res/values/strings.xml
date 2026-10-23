@@ -60,16 +60,16 @@
     <string name="preparing">Please wait…</string>
     <string name="voice_model_broken">Could not start the offline voice model. Try importing it again</string>
     <string name="models_section">Offline voice models</string>
-    <string name="models_note">Download in the browser, then open the file with BlackLaunch. Models work without internet and only while you are speaking.</string>
+    <string name="models_note">Already downloaded the models (for example, for the keyboard)? Choose the files — you can select all three at once; the language is detected automatically. Otherwise download them in the browser and open the file with BlackLaunch. Models work without internet and only while you are speaking.</string>
     <string name="model_installed">installed</string>
     <string name="model_missing">not installed</string>
     <string name="model_delete">Delete</string>
-    <string name="model_import">Import file</string>
+    <string name="model_import">Choose downloaded models</string>
     <string name="mode_off">Off (system recognition only)</string>
     <string name="mode_when_offline">Only when there is no internet</string>
     <string name="mode_always">Always</string>
     <string name="import_title">Installing voice model…</string>
-    <string name="import_done">Voice model installed: %1$s</string>
+    <string name="import_done">Voice models installed: %1$s</string>
     <string name="import_failed">This file is not a BlackLaunch voice model</string>
     <string name="import_ok">OK</string>
     <string name="browser_missing">No browser to download the model</string>
@@ -80,4 +80,8 @@
     <string name="alias_add">Add</string>
     <string name="alias_done">Done</string>
     <string name="alias_remove">Remove %1$s</string>
+    <plurals name="import_skipped">
+        <item quantity="one">%1$d file is not a voice model</item>
+        <item quantity="other">%1$d files are not voice models</item>
+    </plurals>
 </resources>

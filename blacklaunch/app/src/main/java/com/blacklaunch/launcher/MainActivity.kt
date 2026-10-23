@@ -68,11 +68,13 @@ class MainActivity : ComponentActivity() {
         if (granted) voice.start() else toast(R.string.mic_denied)
     }
 
-    // Ручний імпорт моделі, якщо «Відкрити за допомогою» недоступне.
-    private val modelPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            startActivity(Intent(Intent.ACTION_VIEW, uri, this, ModelImportActivity::class.java)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+    // Уже завантажені моделі (наприклад, для клавіатури): можна вибрати одразу всі три.
+    private val modelPicker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE, null, this, ModelImportActivity::class.java)
+                .putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(intent)
         }
     }
 
