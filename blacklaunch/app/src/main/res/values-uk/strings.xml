@@ -40,7 +40,7 @@
     <string name="system_theme_note">Колір шторки та інших програм задає система. Увімкніть темний режим (якщо є рівні — найтемніший). На Android 12+ палітра шторки береться з кольору шпалер, тож чорні шпалери роблять її нейтральнішою.</string>
 
     <!-- Голос -->
-    <string name="voice_section">Голос без інтернету</string>
+    <string name="voice_section">Вбудоване офлайн-розпізнавання Android</string>
     <string name="voice_section_note">Для розпізнавання без інтернету потрібен завантажений мовний пакет. Без нього голосовий пошук працює лише онлайн.</string>
     <string name="lang_uk">Українська</string>
     <string name="lang_pl">Польська</string>
@@ -53,4 +53,29 @@
     <string name="offline_checking">перевіряю…</string>
     <string name="download">Завантажити</string>
     <string name="download_started">Завантаження запитано. Система покаже прогрес</string>
+
+    <!-- Офлайн-моделі голосу -->
+    <string name="preparing">Чекайте…</string>
+    <string name="voice_model_broken">Не вдалося запустити офлайн-модель голосу. Спробуйте імпортувати її ще раз</string>
+    <string name="models_section">Офлайн-моделі голосу</string>
+    <string name="models_note">Завантажте в браузері, потім відкрийте файл за допомогою BlackLaunch. Моделі працюють без інтернету і лише поки ви говорите.</string>
+    <string name="model_installed">встановлено</string>
+    <string name="model_missing">не встановлено</string>
+    <string name="model_delete">Видалити</string>
+    <string name="model_import">Імпортувати файл</string>
+    <string name="mode_off">Вимкнено (лише системне розпізнавання)</string>
+    <string name="mode_when_offline">Лише коли немає інтернету</string>
+    <string name="mode_always">Завжди</string>
+    <string name="import_title">Встановлюю модель голосу…</string>
+    <string name="import_done">Модель голосу встановлено: %1$s</string>
+    <string name="import_failed">Цей файл не є моделлю голосу BlackLaunch</string>
+    <string name="import_ok">Готово</string>
+    <string name="browser_missing">Немає браузера, щоб завантажити модель</string>
+
+    <!-- Власні назви -->
+    <string name="alias_title">Назви для %1$s</string>
+    <string name="alias_hint">Як ви називаєте цю програму</string>
+    <string name="alias_add">Додати</string>
+    <string name="alias_done">Готово</string>
+    <string name="alias_remove">Видалити %1$s</string>
 </resources>

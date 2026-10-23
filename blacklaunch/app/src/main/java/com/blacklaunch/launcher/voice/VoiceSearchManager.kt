@@ -15,34 +15,23 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.settings.OfflineVoiceMode
+import com.blacklaunch.launcher.settings.VoiceSettings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.util.Locale
 
 sealed interface VoiceState {
     data object Idle : VoiceState
+
+    /** Розпізнавач готується (завантаження офлайн-моделі) — «Чекайте…». */
+    data object Preparing : VoiceState
     data class Listening(val partial: String = "") : VoiceState
 }
 
 enum class OfflineStatus { INSTALLED, DOWNLOADING, DOWNLOADABLE, UNSUPPORTED, UNKNOWN }
-
-/** Мови розпізнавання: мова телефону (українська чи польська), інакше англійська. */
-object VoiceLanguages {
-    const val UKRAINIAN = "uk-UA"
-    const val POLISH = "pl-PL"
-    const val ENGLISH = "en-US"
-    val ALL = listOf(UKRAINIAN, POLISH, ENGLISH)
-
-    fun forLocale(locale: Locale = Locale.getDefault()): String = when (locale.language) {
-        "uk" -> UKRAINIAN
-        "pl" -> POLISH
-        else -> ENGLISH
-    }
-
-    /** Мови, для яких має сенс показувати офлайн-статус: мова телефону та англійська. */
-    fun relevant(locale: Locale = Locale.getDefault()): List<String> = listOf(forLocale(locale), ENGLISH).distinct()
-}
 
 /**
  * Голосове введення через системний SpeechRecognizer. Слухає тільки після натискання
@@ -53,9 +42,16 @@ object VoiceLanguages {
  */
 class VoiceSearchManager(
     private val context: Context,
+    private val scope: CoroutineScope,
+    private val models: VoiceModelStore,
+    private val settings: VoiceSettings,
     private val onResult: (List<String>) -> Unit,
     private val onMessage: (Int) -> Unit,
 ) {
+    private val vosk by lazy { VoskEngine(models) }
+
+    /** Номер сесії: результат підготовки моделі ігнорується, якщо її вже скасували. */
+    private var session = 0
     /**
      * Спроба розпізнавання. [onDevice] — вбудований офлайн-розпізнавач Android (API 31+):
      * саме для нього завантажуються мовні пакети, основний розпізнавач Google працює через мережу.
@@ -71,15 +67,34 @@ class VoiceSearchManager(
     private var current: Attempt? = null
     private var language: String = VoiceLanguages.forLocale()
 
-    fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context) || onDeviceAvailable()
+    fun isAvailable(): Boolean =
+        SpeechRecognizer.isRecognitionAvailable(context) || onDeviceAvailable() || models.installed.value.isNotEmpty()
+
+    val isActive: Boolean get() = _state.value != VoiceState.Idle
 
     private fun onDeviceAvailable(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
     fun start(language: String = VoiceLanguages.forLocale()) {
         this.language = language
-        if (!hasInternet() && onDeviceAvailable()) {
+        session++
+        val online = hasInternet()
+        val voskLanguage = voskLanguage()
+        val useVosk = when (settings.mode.value) {
+            OfflineVoiceMode.OFF -> false
+            OfflineVoiceMode.WHEN_OFFLINE -> !online
+            OfflineVoiceMode.ALWAYS -> true
+        }
+        if (useVosk && voskLanguage != null) {
+            startVosk(voskLanguage)
+            return
+        }
+        if (!online && onDeviceAvailable()) {
             startOffline()
+            return
+        }
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            if (voskLanguage != null) startVosk(voskLanguage) else onMessage(R.string.voice_unavailable)
             return
         }
         attempts = buildList {
@@ -90,12 +105,55 @@ class VoiceSearchManager(
         nextAttempt()
     }
 
+    /** Встановлена власна модель: мова телефону, потім англійська, потім будь-яка. */
+    private fun voskLanguage(): String? {
+        val installed = models.installed.value
+        return (listOf(language, VoiceLanguages.ENGLISH) + VoiceLanguages.ALL).firstOrNull { it in installed }
+    }
+
+    private fun startVosk(voskLanguage: String) {
+        release()
+        attempts = emptyList()
+        current = null
+        val mySession = session
+        _state.value = VoiceState.Preparing
+        if (voskLanguage != language) onMessage(fallbackMessage(voskLanguage))
+        scope.launch {
+            val ready = vosk.prepare(voskLanguage)
+            if (mySession != session || _state.value != VoiceState.Preparing) return@launch
+            val started = ready && vosk.listen(
+                onPartial = { text -> if (mySession == session) _state.value = VoiceState.Listening(text) },
+                onResult = { texts ->
+                    if (mySession != session) return@listen
+                    _state.value = VoiceState.Idle
+                    if (texts.isEmpty()) onMessage(R.string.voice_error_no_match) else onResult(texts)
+                },
+                onError = {
+                    if (mySession != session) return@listen
+                    _state.value = VoiceState.Idle
+                    onMessage(R.string.voice_error_other)
+                },
+            )
+            if (started) {
+                _state.value = VoiceState.Listening()
+            } else {
+                _state.value = VoiceState.Idle
+                onMessage(R.string.voice_model_broken)
+            }
+        }
+    }
+
+    /** Системі бракує пам'яті — звільняємо офлайн-модель (завантажиться знову при потребі). */
+    fun trimMemory() {
+        if (!isActive) vosk.releaseModel()
+    }
+
     /** Без мережі: вбудований розпізнавач із завантаженою мовою (мова телефону, потім англійська). */
     private fun startOffline() {
-        _state.value = VoiceState.Listening()
+        _state.value = VoiceState.Preparing
         val preferred = (listOf(language, VoiceLanguages.ENGLISH) + VoiceLanguages.ALL).distinct()
         checkOffline(preferred) { status ->
-            if (_state.value !is VoiceState.Listening) return@checkOffline // скасовано, поки перевіряли
+            if (_state.value != VoiceState.Preparing) return@checkOffline // скасовано, поки перевіряли
             val installed = preferred.filter { status[it] == OfflineStatus.INSTALLED }
             // До Android 13 статус невідомий — просто пробуємо по черзі.
             val candidates = installed.ifEmpty {
@@ -130,7 +188,7 @@ class VoiceSearchManager(
         recognizer = speech
         current = attempt
         speech.setRecognitionListener(listener)
-        _state.value = VoiceState.Listening()
+        _state.value = VoiceState.Preparing
         speech.startListening(recognizerIntent(context, attempt.language, attempt.detectLanguage))
     }
 
@@ -140,9 +198,12 @@ class VoiceSearchManager(
 
     fun stop() {
         recognizer?.stopListening()
+        vosk.stop()
     }
 
     fun cancel() {
+        session++
+        vosk.cancel()
         attempts = emptyList()
         current = null
         recognizer?.cancel()
@@ -151,6 +212,7 @@ class VoiceSearchManager(
 
     fun destroy() {
         cancel()
+        vosk.releaseModel()
         downloadRecognizer?.destroy()
         downloadRecognizer = null
     }
@@ -216,7 +278,9 @@ class VoiceSearchManager(
     }
 
     private val listener = object : RecognitionListener {
-        override fun onReadyForSpeech(params: Bundle?) = Unit
+        override fun onReadyForSpeech(params: Bundle?) {
+            if (_state.value == VoiceState.Preparing) _state.value = VoiceState.Listening()
+        }
         override fun onBeginningOfSpeech() = Unit
         override fun onRmsChanged(rmsdB: Float) = Unit
         override fun onBufferReceived(buffer: ByteArray?) = Unit
@@ -237,11 +301,13 @@ class VoiceSearchManager(
 
         override fun onError(error: Int) {
             val failed = current
-            // Мережа зникла посеред розмови — переходимо на вбудований офлайн-розпізнавач.
-            if (isNetworkError(error) && failed != null && !failed.onDevice && onDeviceAvailable()) {
-                attempts = emptyList()
-                startOffline()
-                return
+            // Мережа зникла посеред розмови — власна модель або вбудований офлайн-розпізнавач.
+            if (isNetworkError(error) && failed != null && !failed.onDevice) {
+                val voskLanguage = voskLanguage().takeIf { settings.mode.value != OfflineVoiceMode.OFF }
+                when {
+                    voskLanguage != null -> { startVosk(voskLanguage); return }
+                    onDeviceAvailable() -> { attempts = emptyList(); startOffline(); return }
+                }
             }
             val next = attempts.firstOrNull()
             if ((isLanguageError(error) || failed?.onDevice == true && error == SpeechRecognizer.ERROR_CLIENT) && next != null) {

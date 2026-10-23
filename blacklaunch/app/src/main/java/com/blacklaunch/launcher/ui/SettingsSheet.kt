@@ -38,8 +38,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.settings.Appearance
+import com.blacklaunch.launcher.settings.OfflineVoiceMode
 import com.blacklaunch.launcher.system.WallpaperTarget
 import com.blacklaunch.launcher.ui.theme.Oled
+import com.blacklaunch.launcher.voice.ModelImportActivity
 import com.blacklaunch.launcher.voice.OfflineStatus
 import com.blacklaunch.launcher.voice.VoiceLanguages
 
@@ -55,6 +57,12 @@ fun SettingsSheet(
     offlineStatus: Map<String, OfflineStatus>,
     onCheckOffline: () -> Unit,
     onDownloadOffline: (String) -> Unit,
+    installedModels: Set<String>,
+    voiceMode: OfflineVoiceMode,
+    onVoiceModeChange: (OfflineVoiceMode) -> Unit,
+    onDownloadModel: (String) -> Unit,
+    onDeleteModel: (String) -> Unit,
+    onImportModel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     LaunchedEffect(Unit) { onCheckOffline() }
@@ -107,6 +115,20 @@ fun SettingsSheet(
             }
 
             Card {
+                Text(stringResource(R.string.models_section), color = Oled.TextPrimary, fontSize = 17.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OfflineVoiceMode.entries.forEach { mode ->
+                        TargetOption(mode.label(), voiceMode == mode) { onVoiceModeChange(mode) }
+                    }
+                }
+                VoiceLanguages.ALL.forEach { language ->
+                    ModelRow(language, language in installedModels, onDownloadModel, onDeleteModel)
+                }
+                ActionRow(stringResource(R.string.model_import), onImportModel)
+                Note(stringResource(R.string.models_note))
+            }
+
+            Card {
                 Text(stringResource(R.string.voice_section), color = Oled.TextPrimary, fontSize = 17.sp)
                 VoiceLanguages.relevant().forEach { language ->
                     OfflineRow(language, offlineStatus[language], onDownloadOffline)
@@ -121,6 +143,53 @@ fun SettingsSheet(
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+@StringRes
+private fun OfflineVoiceMode.label(): Int = when (this) {
+    OfflineVoiceMode.OFF -> R.string.mode_off
+    OfflineVoiceMode.WHEN_OFFLINE -> R.string.mode_when_offline
+    OfflineVoiceMode.ALWAYS -> R.string.mode_always
+}
+
+@Composable
+private fun ModelRow(
+    language: String,
+    installed: Boolean,
+    onDownload: (String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(ModelImportActivity.languageName(language)), color = Oled.TextPrimary, fontSize = 16.sp)
+            Text(
+                stringResource(if (installed) R.string.model_installed else R.string.model_missing),
+                color = Oled.TextSecondary,
+                fontSize = 13.sp,
+            )
+        }
+        if (installed) {
+            SmallButton(stringResource(R.string.model_delete)) { onDelete(language) }
+        } else {
+            SmallButton(stringResource(R.string.download)) { onDownload(language) }
+        }
+    }
+}
+
+@Composable
+private fun SmallButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Text(
+        text = text,
+        color = Oled.Accent,
+        fontSize = 15.sp,
+        modifier = Modifier
+            .clip(shape)
+            .background(Oled.Knob)
+            .border(1.dp, Oled.Glint, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    )
 }
 
 @Composable
@@ -148,17 +217,7 @@ private fun OfflineRow(language: String, status: OfflineStatus?, onDownload: (St
             Text(statusText, color = Oled.TextSecondary, fontSize = 13.sp)
         }
         if (status == OfflineStatus.DOWNLOADABLE) {
-            Text(
-                text = stringResource(R.string.download),
-                color = Oled.Accent,
-                fontSize = 15.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Oled.Knob)
-                    .border(1.dp, Oled.Glint, RoundedCornerShape(12.dp))
-                    .clickable { onDownload(language) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
+            SmallButton(stringResource(R.string.download)) { onDownload(language) }
         }
     }
 }

@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.speech.RecognizerIntent
@@ -26,11 +27,15 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.blacklaunch.launcher.apps.AppIconCache
 import com.blacklaunch.launcher.system.WallpaperController
 import com.blacklaunch.launcher.settings.Appearance
+import com.blacklaunch.launcher.ui.AliasDialog
 import com.blacklaunch.launcher.ui.BlackHomeScreen
+import com.blacklaunch.launcher.ui.SettingsSheet
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
 import com.blacklaunch.launcher.viewmodel.UiMessage
+import com.blacklaunch.launcher.voice.ModelImportActivity
 import com.blacklaunch.launcher.voice.OfflineStatus
+import com.blacklaunch.launcher.voice.VoiceModelStore
 import com.blacklaunch.launcher.voice.VoiceLanguages
 import com.blacklaunch.launcher.voice.VoiceSearchManager
 import com.blacklaunch.launcher.voice.VoiceState
@@ -63,6 +68,14 @@ class MainActivity : ComponentActivity() {
         if (granted) voice.start() else toast(R.string.mic_denied)
     }
 
+    // Ручний імпорт моделі, якщо «Відкрити за допомогою» недоступне.
+    private val modelPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            startActivity(Intent(Intent.ACTION_VIEW, uri, this, ModelImportActivity::class.java)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        }
+    }
+
     // Системне вікно розпізнавання — якщо вбудованого сервісу немає.
     private val systemRecognizer = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val texts = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS).orEmpty()
@@ -78,6 +91,9 @@ class MainActivity : ComponentActivity() {
         )
         voice = VoiceSearchManager(
             context = this,
+            scope = lifecycleScope,
+            models = app.voiceModelStore,
+            settings = app.voiceSettings,
             onResult = viewModel::onVoiceResult,
             onMessage = ::toast,
         )
@@ -91,6 +107,9 @@ class MainActivity : ComponentActivity() {
             val voiceState by voice.state.collectAsStateWithLifecycle()
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
             val offline by offlineStatus.collectAsStateWithLifecycle()
+            val installedModels by app.voiceModelStore.installed.collectAsStateWithLifecycle()
+            val voiceMode by app.voiceSettings.mode.collectAsStateWithLifecycle()
+            val userAliases by app.userAliasStore.aliases.collectAsStateWithLifecycle()
             BlackLaunchTheme {
                 BlackHomeScreen(
                     state = state,
@@ -100,18 +119,38 @@ class MainActivity : ComponentActivity() {
                     onCloseSearch = viewModel::closeSearch,
                     onLaunch = { app -> viewModel.launch(app) },
                     iconFor = iconCache::load,
-                    appearance = appearance,
-                    onAppearanceChange = ::changeAppearance,
-                    onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
-                    onOpenSystemTheme = ::openSystemTheme,
-                    offlineStatus = offline,
-                    onCheckOffline = ::checkOffline,
-                    onDownloadOffline = { language ->
-                        voice.downloadOffline(language)
-                        toast(R.string.download_started)
-                    },
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
+                    settingsSheet = { dismiss ->
+                        SettingsSheet(
+                            appearance = appearance,
+                            onChange = ::changeAppearance,
+                            onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
+                            onOpenSystemTheme = ::openSystemTheme,
+                            offlineStatus = offline,
+                            onCheckOffline = ::checkOffline,
+                            onDownloadOffline = { language ->
+                                voice.downloadOffline(language)
+                                toast(R.string.download_started)
+                            },
+                            installedModels = installedModels,
+                            voiceMode = voiceMode,
+                            onVoiceModeChange = app.voiceSettings::setMode,
+                            onDownloadModel = ::downloadModel,
+                            onDeleteModel = app.voiceModelStore::delete,
+                            onImportModel = { modelPicker.launch(arrayOf("application/zip", "application/octet-stream")) },
+                            onDismiss = dismiss,
+                        )
+                    },
+                    aliasDialog = { target, dismiss ->
+                        AliasDialog(
+                            app = target,
+                            aliases = userAliases[target.packageName].orEmpty(),
+                            onAdd = { app.userAliasStore.add(target.packageName, it) },
+                            onRemove = { app.userAliasStore.remove(target.packageName, it) },
+                            onDismiss = dismiss,
+                        )
+                    },
                 )
             }
         }
@@ -120,11 +159,26 @@ class MainActivity : ComponentActivity() {
     private fun onMicClick() {
         when {
             voice.state.value is VoiceState.Listening -> voice.stop()
+            voice.state.value == VoiceState.Preparing -> voice.cancel()
             !voice.isAvailable() -> launchSystemRecognizer()
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED -> voice.start()
             else -> micPermission.launch(Manifest.permission.RECORD_AUDIO)
         }
+    }
+
+    /** Завантаження — браузером: у BlackLaunch немає дозволу INTERNET. */
+    private fun downloadModel(language: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(VoiceModelStore.downloadUrl(language))))
+        } catch (e: ActivityNotFoundException) {
+            toast(R.string.browser_missing)
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_BACKGROUND) voice.trimMemory()
     }
 
     private fun checkOffline() {

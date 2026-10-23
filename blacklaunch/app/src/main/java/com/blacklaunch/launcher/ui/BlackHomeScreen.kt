@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -24,9 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
-import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
-import com.blacklaunch.launcher.voice.OfflineStatus
 import com.blacklaunch.launcher.voice.VoiceState
 
 private val SwipeUpThreshold = 48.dp
@@ -40,17 +39,15 @@ fun BlackHomeScreen(
     onCloseSearch: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
-    appearance: Appearance,
-    onAppearanceChange: ((Appearance) -> Appearance) -> Unit,
-    onSetBlackWallpaperNow: () -> Unit,
-    onOpenSystemTheme: () -> Unit,
-    offlineStatus: Map<String, OfflineStatus>,
-    onCheckOffline: () -> Unit,
-    onDownloadOffline: (String) -> Unit,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
+    /** Панель налаштувань (довге натискання на чорному екрані). */
+    settingsSheet: @Composable (onDismiss: () -> Unit) -> Unit,
+    /** Власні назви програми (довге натискання на результат). */
+    aliasDialog: @Composable (app: AppInfo, onDismiss: () -> Unit) -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var aliasApp by remember { mutableStateOf<AppInfo?>(null) }
 
     // На головному екрані Back нічого не робить; у пошуку — закриває його.
     BackHandler {
@@ -60,21 +57,11 @@ fun BlackHomeScreen(
     when (state) {
         LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showSettings = true })
         is LauncherUiState.SearchOpen ->
-            SearchOpen(state, onQueryChange, onClearQuery, onLaunch, iconFor, voiceState, onMicClick)
+            SearchOpen(state, onQueryChange, onClearQuery, onLaunch, { aliasApp = it }, iconFor, voiceState, onMicClick)
     }
 
-    if (showSettings) {
-        SettingsSheet(
-            appearance = appearance,
-            onChange = onAppearanceChange,
-            onSetBlackWallpaperNow = onSetBlackWallpaperNow,
-            onOpenSystemTheme = onOpenSystemTheme,
-            offlineStatus = offlineStatus,
-            onCheckOffline = onCheckOffline,
-            onDownloadOffline = onDownloadOffline,
-            onDismiss = { showSettings = false },
-        )
-    }
+    if (showSettings) settingsSheet { showSettings = false }
+    aliasApp?.let { app -> aliasDialog(app) { aliasApp = null } }
 }
 
 @Composable
@@ -110,6 +97,7 @@ private fun SearchOpen(
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
+    onLongPress: (AppInfo) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -128,14 +116,14 @@ private fun SearchOpen(
             results = state.results,
             iconFor = iconFor,
             onLaunch = onLaunch,
+            onLongPress = onLongPress,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(
             query = state.query,
             onQueryChange = onQueryChange,
             onClear = onClearQuery,
-            listening = voiceState is VoiceState.Listening,
-            partialSpeech = (voiceState as? VoiceState.Listening)?.partial.orEmpty(),
+            voice = voiceState,
             onMicClick = onMicClick,
         )
     }

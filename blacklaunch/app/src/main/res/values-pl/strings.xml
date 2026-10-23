@@ -40,7 +40,7 @@
     <string name="system_theme_note">Kolor panelu powiadomień i innych aplikacji ustala system. Włącz tryb ciemny (jeśli są poziomy — najciemniejszy). W Androidzie 12+ paleta panelu wynika z koloru tapety, więc czarna tapeta czyni ją bardziej neutralną.</string>
 
     <!-- Głos -->
-    <string name="voice_section">Głos bez internetu</string>
+    <string name="voice_section">Wbudowane rozpoznawanie offline Androida</string>
     <string name="voice_section_note">Rozpoznawanie offline wymaga pobranego pakietu językowego. Bez niego wyszukiwanie głosowe działa tylko online.</string>
     <string name="lang_uk">Ukraiński</string>
     <string name="lang_pl">Polski</string>
@@ -53,4 +53,29 @@
     <string name="offline_checking">sprawdzam…</string>
     <string name="download">Pobierz</string>
     <string name="download_started">Zlecono pobieranie. System pokaże postęp</string>
+
+    <!-- Modele głosowe offline -->
+    <string name="preparing">Proszę czekać…</string>
+    <string name="voice_model_broken">Nie udało się uruchomić modelu głosowego offline. Spróbuj zaimportować go ponownie</string>
+    <string name="models_section">Modele głosowe offline</string>
+    <string name="models_note">Pobierz w przeglądarce, a potem otwórz plik za pomocą BlackLaunch. Modele działają bez internetu i tylko wtedy, gdy mówisz.</string>
+    <string name="model_installed">zainstalowany</string>
+    <string name="model_missing">niezainstalowany</string>
+    <string name="model_delete">Usuń</string>
+    <string name="model_import">Importuj plik</string>
+    <string name="mode_off">Wyłączone (tylko rozpoznawanie systemowe)</string>
+    <string name="mode_when_offline">Tylko bez internetu</string>
+    <string name="mode_always">Zawsze</string>
+    <string name="import_title">Instaluję model głosowy…</string>
+    <string name="import_done">Zainstalowano model głosowy: %1$s</string>
+    <string name="import_failed">Ten plik nie jest modelem głosowym BlackLaunch</string>
+    <string name="import_ok">Gotowe</string>
+    <string name="browser_missing">Brak przeglądarki do pobrania modelu</string>
+
+    <!-- Własne nazwy -->
+    <string name="alias_title">Nazwy dla %1$s</string>
+    <string name="alias_hint">Jak nazywasz tę aplikację</string>
+    <string name="alias_add">Dodaj</string>
+    <string name="alias_done">Gotowe</string>
+    <string name="alias_remove">Usuń %1$s</string>
 </resources>

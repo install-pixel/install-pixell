@@ -51,6 +51,30 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Імпорт офлайн-моделі голосу: «Відкрити за допомогою BlackLaunch» для zip-файлу. -->
+        <activity
+            android:name=".voice.ModelImportActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/models_section"
+            android:theme="@style/Theme.BlackLaunch">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

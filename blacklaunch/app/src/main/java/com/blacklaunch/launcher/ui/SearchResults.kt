@@ -1,7 +1,8 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,7 @@ fun SearchResults(
     results: List<AppInfo>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
+    onLongPress: (AppInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
@@ -53,16 +55,18 @@ fun SearchResults(
         verticalArrangement = Arrangement.Bottom,
     ) {
         items(results, key = { it.key }) { app ->
-            AppRow(app, iconFor = iconFor, onLaunch = onLaunch)
+            AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AppRow(
     app: AppInfo,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
+    onLongPress: (AppInfo) -> Unit,
 ) {
     val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
     val shape = RoundedCornerShape(18.dp)
@@ -71,7 +75,7 @@ private fun AppRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .clickable { onLaunch(app) }
+            .combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onLongPress(app) })
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

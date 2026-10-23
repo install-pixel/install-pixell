@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.ui.theme.Oled
+import com.blacklaunch.launcher.voice.VoiceState
 
 private val FieldShape = RoundedCornerShape(28.dp)
 
@@ -44,11 +45,12 @@ fun SearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
-    listening: Boolean,
-    partialSpeech: String,
+    voice: VoiceState,
     onMicClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listening = voice != VoiceState.Idle
+    val partialSpeech = (voice as? VoiceState.Listening)?.partial.orEmpty()
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
@@ -72,7 +74,12 @@ fun SearchField(
             readOnly = listening,
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp),
             placeholder = {
-                Text(stringResource(if (listening) R.string.listening else R.string.search_hint), color = Oled.TextSecondary)
+                val hint = when (voice) {
+                    VoiceState.Idle -> R.string.search_hint
+                    VoiceState.Preparing -> R.string.preparing
+                    is VoiceState.Listening -> R.string.listening
+                }
+                Text(stringResource(hint), color = Oled.TextSecondary)
             },
             trailingIcon = {
                 if (query.isNotEmpty() && !listening) {

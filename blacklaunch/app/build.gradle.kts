@@ -12,8 +12,13 @@ android {
         applicationId = "com.blacklaunch.launcher"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.6.5"
+        versionCode = 13
+        versionName = "0.7.0"
+
+        // Офлайн-голос (Vosk) має нативні бібліотеки; лишаємо лише ARM — це всі реальні телефони.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {
@@ -56,6 +61,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
+
+    // Офлайн-розпізнавання мовлення. @aar — без настільної версії JNA.
+    implementation("com.alphacephei:vosk-android:${libs.versions.vosk.get()}@aar")
+    implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
