@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,12 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -29,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,11 +86,11 @@ fun SettingsSheet(
                     checked = appearance.autoBlackWallpaper,
                     onCheckedChange = { on -> onChange { it.copy(autoBlackWallpaper = on) } },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TargetChip(R.string.target_home_lock, appearance.wallpaperTarget == WallpaperTarget.HOME_AND_LOCK) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TargetOption(R.string.target_home_lock, appearance.wallpaperTarget == WallpaperTarget.HOME_AND_LOCK) {
                         onChange { it.copy(wallpaperTarget = WallpaperTarget.HOME_AND_LOCK) }
                     }
-                    TargetChip(R.string.target_home, appearance.wallpaperTarget == WallpaperTarget.HOME) {
+                    TargetOption(R.string.target_home, appearance.wallpaperTarget == WallpaperTarget.HOME) {
                         onChange { it.copy(wallpaperTarget = WallpaperTarget.HOME) }
                     }
                 }
@@ -198,18 +202,36 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onCheck
     }
 }
 
+/** Варіант вибору: однакові рядки один під одним, вибраний — світліший і з точкою. */
 @Composable
-private fun TargetChip(@StringRes label: Int, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(stringResource(label)) },
-        colors = FilterChipDefaults.filterChipColors(
-            labelColor = Oled.TextSecondary,
-            selectedLabelColor = Oled.TextPrimary,
-            selectedContainerColor = Color(0xFF2E2E2E),
-        ),
-    )
+private fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (selected) Oled.Knob else Oled.Surface)
+            .border(1.dp, Oled.Glint, shape)
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(18.dp)
+                .clip(CircleShape)
+                .border(2.dp, if (selected) Oled.TextPrimary else Oled.TextSecondary, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (selected) Box(Modifier.size(8.dp).clip(CircleShape).background(Oled.TextPrimary))
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            stringResource(label),
+            color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
+            fontSize = 16.sp,
+        )
+    }
 }
 
 @Composable

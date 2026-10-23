@@ -19,6 +19,8 @@
     <string name="voice_error_busy">Розпізнавання зайняте. Спробуйте за мить</string>
     <string name="voice_error_other">Помилка голосового введення</string>
     <string name="voice_fallback_english">Українська без інтернету недоступна — слухаю англійською</string>
+    <string name="voice_offline_no_pack">Немає інтернету й немає офлайн-пакета мови. Завантажте його в налаштуваннях BlackLaunch (довге натискання на головному екрані)</string>
+    <string name="voice_fallback_other">Ваша мова без інтернету недоступна — слухаю іншою завантаженою мовою</string>
     <string name="no_history">Ще немає запущених програм</string>
     <string name="profiles_not_ready">Профілі зʼявляться в наступних версіях</string>
 

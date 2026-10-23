@@ -7,6 +7,9 @@
     <!-- Голосовий пошук: запитується лише при першому натисканні мікрофона. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Лише перевірка, чи є мережа, щоб без неї одразу взяти офлайн-розпізнавач. Дозволу INTERNET немає. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>

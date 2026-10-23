@@ -17,11 +17,11 @@ object Oled {
     val Accent = Color(0xFFBDBDBD)
     val Listening = Color(0xFFE53935)
 
-    /** Поверхня: світліша вгорі, темніша внизу. */
-    val Surface = Brush.verticalGradient(listOf(Color(0xFF242424), Color(0xFF111111)))
+    /** Поверхня: світліша вгорі, темніша внизу, але помітно світліша за чорне тло. */
+    val Surface = Brush.verticalGradient(listOf(Color(0xFF242424), Color(0xFF161616)))
 
-    /** Грань-відблиск: яскравіша зверху, майже зникає знизу. */
-    val Glint = Brush.verticalGradient(listOf(Color(0x40FFFFFF), Color(0x0AFFFFFF)))
+    /** Грань-відблиск: яскрава зверху, тьмяніша з боків, контур знизу лишається видимим. */
+    val Glint = Brush.verticalGradient(listOf(Color(0x4DFFFFFF), Color(0x1AFFFFFF), Color(0x2EFFFFFF)))
 
     /** Об'ємна кругла кнопка. */
     val Knob = Brush.radialGradient(listOf(Color(0xFF3C3C3C), Color(0xFF161616)))

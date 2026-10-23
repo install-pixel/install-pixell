@@ -19,6 +19,8 @@
     <string name="voice_error_busy">Rozpoznawanie jest zajęte. Spróbuj za chwilę</string>
     <string name="voice_error_other">Błąd wprowadzania głosowego</string>
     <string name="voice_fallback_english">Rozpoznawanie offline w Twoim języku jest niedostępne — słucham po angielsku</string>
+    <string name="voice_offline_no_pack">Brak internetu i pakietu językowego offline. Pobierz go w ustawieniach BlackLaunch (długie naciśnięcie na ekranie głównym)</string>
+    <string name="voice_fallback_other">Rozpoznawanie offline w Twoim języku jest niedostępne — słucham w innym pobranym języku</string>
     <string name="no_history">Nie uruchomiono jeszcze żadnej aplikacji</string>
     <string name="profiles_not_ready">Profile pojawią się w kolejnej wersji</string>
 

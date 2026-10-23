@@ -21,6 +21,8 @@
     <string name="voice_error_busy">Recognition is busy. Try again in a moment</string>
     <string name="voice_error_other">Voice input error</string>
     <string name="voice_fallback_english">Offline recognition for your language is unavailable — listening in English</string>
+    <string name="voice_offline_no_pack">No internet and no offline language pack. Download one in BlackLaunch settings (long press on the home screen)</string>
+    <string name="voice_fallback_other">Offline recognition for your language is unavailable — listening in another downloaded language</string>
     <string name="no_history">No apps launched yet</string>
     <string name="profiles_not_ready">Profiles are coming in a later version</string>
 

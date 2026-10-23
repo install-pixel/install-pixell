@@ -2,6 +2,8 @@ package com.blacklaunch.launcher.voice
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
@@ -46,15 +48,19 @@ object VoiceLanguages {
  * Голосове введення через системний SpeechRecognizer. Слухає тільки після натискання
  * мікрофона і звільняє розпізнавач одразу після результату, помилки чи скасування.
  *
- * Якщо мова недоступна (найчастіше — офлайн без мовного пакета), пробуємо ще раз
- * без автовизначення мови, а потім англійською.
+ * Онлайн: основний розпізнавач; якщо мова недоступна — ще раз без автовизначення,
+ * потім англійською. Без мережі — вбудований офлайн-розпізнавач із завантаженою мовою.
  */
 class VoiceSearchManager(
     private val context: Context,
     private val onResult: (List<String>) -> Unit,
     private val onMessage: (Int) -> Unit,
 ) {
-    private data class Attempt(val language: String, val detectLanguage: Boolean)
+    /**
+     * Спроба розпізнавання. [onDevice] — вбудований офлайн-розпізнавач Android (API 31+):
+     * саме для нього завантажуються мовні пакети, основний розпізнавач Google працює через мережу.
+     */
+    private data class Attempt(val language: String, val detectLanguage: Boolean, val onDevice: Boolean = false)
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Idle)
     val state: StateFlow<VoiceState> = _state.asStateFlow()
@@ -62,10 +68,20 @@ class VoiceSearchManager(
     private var recognizer: SpeechRecognizer? = null
     private var downloadRecognizer: SpeechRecognizer? = null
     private var attempts: List<Attempt> = emptyList()
+    private var current: Attempt? = null
+    private var language: String = VoiceLanguages.forLocale()
 
-    fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
+    fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context) || onDeviceAvailable()
+
+    private fun onDeviceAvailable(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
     fun start(language: String = VoiceLanguages.forLocale()) {
+        this.language = language
+        if (!hasInternet() && onDeviceAvailable()) {
+            startOffline()
+            return
+        }
         attempts = buildList {
             add(Attempt(language, detectLanguage = true))
             add(Attempt(language, detectLanguage = false))
@@ -74,16 +90,53 @@ class VoiceSearchManager(
         nextAttempt()
     }
 
+    /** Без мережі: вбудований розпізнавач із завантаженою мовою (мова телефону, потім англійська). */
+    private fun startOffline() {
+        _state.value = VoiceState.Listening()
+        val preferred = (listOf(language, VoiceLanguages.ENGLISH) + VoiceLanguages.ALL).distinct()
+        checkOffline(preferred) { status ->
+            if (_state.value !is VoiceState.Listening) return@checkOffline // скасовано, поки перевіряли
+            val installed = preferred.filter { status[it] == OfflineStatus.INSTALLED }
+            // До Android 13 статус невідомий — просто пробуємо по черзі.
+            val candidates = installed.ifEmpty {
+                preferred.filter { status[it] == OfflineStatus.UNKNOWN }
+            }
+            if (candidates.isEmpty()) {
+                release()
+                onMessage(R.string.voice_offline_no_pack)
+                return@checkOffline
+            }
+            if (candidates.first() != language) onMessage(fallbackMessage(candidates.first()))
+            attempts = candidates.map { Attempt(it, detectLanguage = false, onDevice = true) }
+            nextAttempt()
+        }
+    }
+
+    private fun hasInternet(): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
     private fun nextAttempt() {
         val attempt = attempts.firstOrNull() ?: return
         attempts = attempts.drop(1)
         release()
-        val speech = SpeechRecognizer.createSpeechRecognizer(context)
+        val speech = if (attempt.onDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+        } else {
+            SpeechRecognizer.createSpeechRecognizer(context)
+        }
         recognizer = speech
+        current = attempt
         speech.setRecognitionListener(listener)
         _state.value = VoiceState.Listening()
         speech.startListening(recognizerIntent(context, attempt.language, attempt.detectLanguage))
     }
+
+    @StringRes
+    private fun fallbackMessage(to: String): Int =
+        if (to == VoiceLanguages.ENGLISH) R.string.voice_fallback_english else R.string.voice_fallback_other
 
     fun stop() {
         recognizer?.stopListening()
@@ -91,6 +144,7 @@ class VoiceSearchManager(
 
     fun cancel() {
         attempts = emptyList()
+        current = null
         recognizer?.cancel()
         release()
     }
@@ -182,9 +236,16 @@ class VoiceSearchManager(
         }
 
         override fun onError(error: Int) {
+            val failed = current
+            // Мережа зникла посеред розмови — переходимо на вбудований офлайн-розпізнавач.
+            if (isNetworkError(error) && failed != null && !failed.onDevice && onDeviceAvailable()) {
+                attempts = emptyList()
+                startOffline()
+                return
+            }
             val next = attempts.firstOrNull()
-            if (isLanguageError(error) && next != null) {
-                if (next.language == VoiceLanguages.ENGLISH) onMessage(R.string.voice_fallback_english)
+            if ((isLanguageError(error) || failed?.onDevice == true && error == SpeechRecognizer.ERROR_CLIENT) && next != null) {
+                if (next.language != failed?.language) onMessage(fallbackMessage(next.language))
                 nextAttempt()
                 return
             }
@@ -204,6 +265,10 @@ class VoiceSearchManager(
 
         private fun isLanguageError(code: Int) =
             code == ERROR_LANGUAGE_NOT_SUPPORTED || code == ERROR_LANGUAGE_UNAVAILABLE
+
+        private fun isNetworkError(code: Int) =
+            code == SpeechRecognizer.ERROR_NETWORK || code == SpeechRecognizer.ERROR_NETWORK_TIMEOUT ||
+                code == SpeechRecognizer.ERROR_SERVER
 
         @StringRes
         fun errorMessage(code: Int): Int = when (code) {
