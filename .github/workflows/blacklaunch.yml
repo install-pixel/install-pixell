@@ -34,24 +34,38 @@ jobs:
       - name: Build, unit tests, lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
 
+      # Версія та коміт у назві файлу, щоб на телефоні не сплутати зі старим APK.
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk BlackLaunch-debug.apk
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          APK="BlackLaunch-v${VERSION}-${GITHUB_SHA::7}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          echo "APK=$APK" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
           name: blacklaunch-debug-apk
           path: |
-            blacklaunch/BlackLaunch-debug.apk
+            blacklaunch/${{ env.APK }}
             blacklaunch/app/build/reports/lint-results-debug.html
+
+      # Старий тестовий реліз видаляється разом із тегом, щоб у ньому лежав лише один, свіжий APK.
+      - name: Remove previous test release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete blacklaunch-latest --cleanup-tag --yes || true
 
       # Постійне посилання для завантаження APK прямо на телефон.
       - name: Publish rolling test release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: blacklaunch-latest
-          name: BlackLaunch (тестова збірка)
+          target_commitish: ${{ github.sha }}
+          name: BlackLaunch v${{ env.VERSION }} (тестова збірка)
           prerelease: true
           body: |
             Остання тестова збірка BlackLaunch з гілки ${{ github.ref_name }}.
+            Версія: ${{ env.VERSION }}
             Коміт: ${{ github.sha }}
-          files: blacklaunch/BlackLaunch-debug.apk
+          files: blacklaunch/${{ env.APK }}
