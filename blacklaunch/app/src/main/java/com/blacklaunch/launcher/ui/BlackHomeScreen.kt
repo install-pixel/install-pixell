@@ -2,19 +2,89 @@ package com.blacklaunch.launcher.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import com.blacklaunch.launcher.viewmodel.LauncherUiState
+
+private val SwipeUpThreshold = 48.dp
 
 @Composable
-fun BlackHomeScreen() {
-    // Лаунчер — нижній екран системи: Back на ньому нічого не робить.
-    BackHandler {}
+fun BlackHomeScreen(
+    state: LauncherUiState,
+    onOpenSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+    onCloseSearch: () -> Unit,
+) {
+    // На головному екрані Back нічого не робить; у пошуку — закриває його.
+    BackHandler {
+        if (state is LauncherUiState.SearchOpen) onCloseSearch()
+    }
+
+    when (state) {
+        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch)
+        is LauncherUiState.SearchOpen -> SearchOpen(state.query, onQueryChange, onClearQuery)
+    }
+}
+
+@Composable
+private fun HomeIdle(onOpenSearch: () -> Unit) {
+    val thresholdPx = with(LocalDensity.current) { SwipeUpThreshold.toPx() }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onOpenSearch() })
+            }
+            .pointerInput(Unit) {
+                var dragged = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { dragged = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        dragged += dragAmount
+                        if (dragged < -thresholdPx) {
+                            change.consume()
+                            dragged = 0f
+                            onOpenSearch()
+                        }
+                    },
+                )
+            },
     )
+}
+
+@Composable
+private fun SearchOpen(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        // Результати пошуку з'являться тут на Етапі 3–4; порожній запит нічого не показує.
+        Spacer(Modifier.weight(1f))
+        SearchField(query = query, onQueryChange = onQueryChange, onClear = onClearQuery)
+    }
 }
