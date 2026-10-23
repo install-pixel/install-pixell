@@ -5,11 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.apps.AppSource
 import com.blacklaunch.launcher.search.AppSearchEngine
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
@@ -23,14 +24,15 @@ sealed interface LauncherUiState {
 
 class LauncherViewModel(
     private val appSource: AppSource,
+    userAliases: Flow<Map<String, Set<String>>> = flowOf(emptyMap()),
     engine: AppSearchEngine = AppSearchEngine(),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
 
     val state: StateFlow<LauncherUiState> =
-        // Індекс перебудовується лише при зміні списку програм, не на кожну літеру.
-        combine(query, appSource.apps.map(engine::index)) { query, index ->
+        // Індекс перебудовується лише при зміні програм чи псевдонімів, не на кожну літеру.
+        combine(query, combine(appSource.apps, userAliases, engine::index)) { query, index ->
             if (query == null) {
                 LauncherUiState.HomeIdle
             } else {

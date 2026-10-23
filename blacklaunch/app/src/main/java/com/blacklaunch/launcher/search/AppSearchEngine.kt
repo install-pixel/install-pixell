@@ -4,12 +4,31 @@ import com.blacklaunch.launcher.apps.AppInfo
 
 /**
  * Локальний пошук програм: без мережі, без автозапуску.
- * Порядок: точний збіг > початок назви > початок слова > частковий збіг.
+ * Порядок: точний збіг > початок назви > початок слова > частковий збіг;
+ * назва програми > псевдонім > транслітерація.
  */
-class AppSearchEngine {
+class AppSearchEngine(private val aliases: AppAliases = AppAliases()) {
 
-    fun index(apps: List<AppInfo>): SearchIndex =
-        SearchIndex(apps.map { app -> SearchIndex.Entry(app, listOf(IndexedName(app.label))) })
+    fun index(apps: List<AppInfo>, userAliases: Map<String, Set<String>> = emptyMap()): SearchIndex =
+        SearchIndex(
+            apps.map { app ->
+                val label = IndexedName(app.label)
+                val names = buildList {
+                    add(label)
+                    aliases.aliasesFor(app, userAliases).forEach { add(IndexedName(it, ALIAS_BONUS)) }
+                    if (Transliteration.hasCyrillic(label.text)) {
+                        add(IndexedName(Transliteration.toLatin(label.text), TRANSLIT_BONUS))
+                    }
+                }
+                SearchIndex.Entry(app, names)
+            },
+        )
+
+    companion object {
+        const val ALIAS_BONUS = -5
+        /** Транслітерація дає лише точні збіги та збіги за початком, без часткових. */
+        const val TRANSLIT_BONUS = -50
+    }
 }
 
 class IndexedName(raw: String, val bonus: Int = 0) {
@@ -24,9 +43,20 @@ class SearchIndex(private val entries: List<Entry>) {
         val q = SearchNormalizer.normalize(query)
         if (q.isEmpty()) return emptyList()
         val qWords = SearchNormalizer.words(q)
+        // Кириличний запит до латинської назви: «телеграм» → «telegram».
+        val qLatin = if (Transliteration.hasCyrillic(q)) Transliteration.toLatin(q) else null
+        val qLatinWords = qLatin?.let(SearchNormalizer::words)
         return entries
             .mapNotNull { entry ->
-                val score = entry.names.maxOf { score(it, q, qWords) }
+                val score = entry.names.maxOf { name ->
+                    val direct = score(name, q, qWords)
+                    val latin = if (qLatin != null && qLatinWords != null) {
+                        score(name, qLatin, qLatinWords) + AppSearchEngine.TRANSLIT_BONUS
+                    } else {
+                        0
+                    }
+                    maxOf(direct, latin)
+                }
                 if (score > 0) entry.app to score else null
             }
             .sortedWith(

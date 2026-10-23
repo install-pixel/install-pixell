@@ -1,0 +1,83 @@
+package com.blacklaunch.launcher.search
+
+import com.blacklaunch.launcher.apps.AppInfo
+
+/**
+ * Альтернативні назви програм. Три джерела:
+ * - за пакетом (бренди: «ютуб» → YouTube);
+ * - групи синонімів за назвою (системні програми різних виробників: «Камера» = «Camera»);
+ * - власні псевдоніми користувача (за пакетом).
+ */
+class AppAliases(
+    private val byPackage: Map<String, List<String>> = BuiltInAliases.byPackage,
+    groups: List<List<String>> = BuiltInAliases.groups,
+) {
+    private val groupByName: Map<String, List<String>> = buildMap {
+        groups.forEach { group -> group.forEach { put(SearchNormalizer.normalize(it), group) } }
+    }
+
+    fun aliasesFor(app: AppInfo, user: Map<String, Set<String>> = emptyMap()): List<String> =
+        buildList {
+            byPackage[app.packageName]?.let(::addAll)
+            groupByName[SearchNormalizer.normalize(app.label)]?.let(::addAll)
+            user[app.packageName]?.let(::addAll)
+        }.distinct()
+}
+
+object BuiltInAliases {
+    val byPackage: Map<String, List<String>> = mapOf(
+        "com.google.android.youtube" to listOf("ютуб", "ютюб", "ютубчик"),
+        "com.google.android.apps.youtube.music" to listOf("ютуб музика", "youtube music"),
+        "org.telegram.messenger" to listOf("телеграм", "телега", "тг", "tg"),
+        "com.viber.voip" to listOf("вайбер", "вібер"),
+        "com.whatsapp" to listOf("вотсап", "ватсап", "вацап"),
+        "com.instagram.android" to listOf("інстаграм", "інста", "insta"),
+        "com.facebook.katana" to listOf("фейсбук", "фб", "fb"),
+        "com.facebook.orca" to listOf("месенджер"),
+        "com.zhiliaoapp.musically" to listOf("тікток", "тiкток"),
+        "com.android.chrome" to listOf("хром", "браузер", "browser"),
+        "com.google.android.gm" to listOf("джимейл", "гмейл", "пошта", "mail"),
+        "com.google.android.apps.maps" to listOf("гугл карти", "карти", "мапи", "maps"),
+        "com.android.vending" to listOf("плей маркет", "плей стор", "play market", "маркет"),
+        "com.google.android.googlequicksearchbox" to listOf("гугл", "google"),
+        "com.google.android.apps.translate" to listOf("перекладач", "translator"),
+        "com.google.android.apps.photos" to listOf("гугл фото", "фото"),
+        "com.google.android.calendar" to listOf("календар"),
+        "com.google.android.keep" to listOf("кіп", "нотатки"),
+        "com.google.android.apps.docs" to listOf("гугл диск", "диск", "drive"),
+        "com.spotify.music" to listOf("спотіфай", "спотифай"),
+        "com.netflix.mediaclient" to listOf("нетфлікс"),
+        "com.ftband.mono" to listOf("монобанк", "моно", "mono"),
+        "ua.privatbank.ap24" to listOf("приват", "приват24", "privat", "privat24"),
+        "ua.gov.diia.app" to listOf("дія", "diia", "diya"),
+        "ee.mtakso.client" to listOf("болт", "таксі", "taxi"),
+        "com.ubercab" to listOf("убер", "юбер", "таксі", "taxi"),
+        "ua.com.rozetka.shop" to listOf("розетка"),
+        "ua.slando" to listOf("олх", "olx"),
+        "com.discord" to listOf("дискорд"),
+        "com.twitter.android" to listOf("твітер", "твіттер", "x"),
+        "com.microsoft.teams" to listOf("тімс", "teams"),
+        "us.zoom.videomeetings" to listOf("зум"),
+    )
+
+    val groups: List<List<String>> = listOf(
+        listOf("Камера", "Camera"),
+        listOf("Галерея", "Gallery", "Фото", "Photos"),
+        listOf("Налаштування", "Settings", "Настройки"),
+        listOf("Телефон", "Phone", "Дзвінки", "Dialer"),
+        listOf("Повідомлення", "Messages", "SMS", "СМС"),
+        listOf("Контакти", "Contacts"),
+        listOf("Годинник", "Clock", "Будильник", "Alarm"),
+        listOf("Калькулятор", "Calculator"),
+        listOf("Календар", "Calendar"),
+        listOf("Нотатки", "Notes"),
+        listOf("Файли", "Files", "Файловий менеджер", "File Manager", "Мої файли", "My Files"),
+        listOf("Погода", "Weather"),
+        listOf("Музика", "Music"),
+        listOf("Диктофон", "Recorder", "Voice Recorder"),
+        listOf("Компас", "Compass"),
+        listOf("Пошта", "Email", "Mail"),
+        listOf("Браузер", "Browser", "Інтернет", "Internet"),
+        listOf("Карти", "Maps", "Мапи"),
+    )
+}

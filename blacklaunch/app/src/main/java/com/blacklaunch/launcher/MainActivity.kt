@@ -19,10 +19,11 @@ import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
 
 class MainActivity : ComponentActivity() {
-    private val repository by lazy { (application as BlackLaunchApp).appRepository }
+    private val app by lazy { application as BlackLaunchApp }
+    private val repository by lazy { app.appRepository }
 
     private val viewModel: LauncherViewModel by viewModels {
-        viewModelFactory { initializer { LauncherViewModel(repository) } }
+        viewModelFactory { initializer { LauncherViewModel(repository, app.userAliasStore.aliases) } }
     }
 
     private val iconCache by lazy {
