@@ -32,7 +32,7 @@
     <string name="auto_wallpaper_subtitle">If the wallpaper changes, BlackLaunch makes it black again. The previous wallpaper is not kept.</string>
     <string name="target_home_lock">Home + lock screen</string>
     <string name="target_home">Home only</string>
-    <string name="wallpaper_now">Make black now</string>
+    <string name="wallpaper_now">Apply black wallpaper now</string>
     <string name="wallpaper_set">Wallpaper is now black</string>
     <string name="wallpaper_failed">Could not change the wallpaper on this phone</string>
     <string name="wallpaper_auto_disabled">Could not restore the black wallpaper, automatic mode turned off</string>
@@ -80,8 +80,9 @@
     <string name="alias_add">Add</string>
     <string name="alias_done">Done</string>
     <string name="alias_remove">Remove %1$s</string>
-    <plurals name="import_skipped">
-        <item quantity="one">%1$d file is not a voice model</item>
-        <item quantity="other">%1$d files are not voice models</item>
-    </plurals>
+    <string name="import_error_read">BlackLaunch did not get access to this file. Use “Share → BlackLaunch” or choose the file below</string>
+    <string name="import_error_language">Could not tell the language of this model (Ukrainian, Polish or English expected)</string>
+    <string name="import_error_space">Not enough free space to install the model</string>
+    <string name="import_error_other">Could not install the model. Try again</string>
+    <string name="import_choose_file">Choose file</string>
 </resources>

@@ -34,6 +34,8 @@ class AppSearchEngine(private val aliases: AppAliases = AppAliases()) {
 class IndexedName(raw: String, val bonus: Int = 0) {
     val text: String = SearchNormalizer.normalize(raw)
     val words: List<String> = SearchNormalizer.words(text)
+    val skeleton: String = Phonetic.skeleton(text)
+    val wordSkeletons: List<String> = words.map(Phonetic::skeleton)
 }
 
 data class ScoredApp(val app: AppInfo, val score: Int)
@@ -55,6 +57,7 @@ class SearchIndex(private val entries: List<Entry>) {
         // Кириличний запит до латинської назви: «телеграм» → «telegram».
         val qLatin = if (Transliteration.hasCyrillic(q)) Transliteration.toLatin(q) else null
         val qLatinWords = qLatin?.let(SearchNormalizer::words)
+        val qSkeleton = Phonetic.skeleton(q)
         return entries
             .mapNotNull { entry ->
                 val score = entry.names.maxOf { name ->
@@ -64,7 +67,7 @@ class SearchIndex(private val entries: List<Entry>) {
                     } else {
                         0
                     }
-                    maxOf(direct, latin)
+                    maxOf(direct, latin, fuzzy(name, qSkeleton))
                 }
                 if (score > 0) ScoredApp(entry.app, score) else null
             }
@@ -88,7 +91,22 @@ class SearchIndex(private val entries: List<Entry>) {
         return base + name.bonus
     }
 
+    /**
+     * Найнижчий рівень: схоже звучання («спотіфай» ≈ Spotify). Лише для запитів від 4 літер
+     * і схожості від 75 %, щоб не давати випадкових збігів.
+     */
+    private fun fuzzy(name: IndexedName, qSkeleton: String): Int {
+        if (qSkeleton.length < FUZZY_MIN_LENGTH || name.skeleton.isEmpty()) return 0
+        val best = (name.wordSkeletons + name.skeleton).maxOf { Phonetic.similarity(it, qSkeleton) }
+        if (best < FUZZY_THRESHOLD) return 0
+        return FUZZY + ((best - FUZZY_THRESHOLD) * FUZZY_RANGE / (1 - FUZZY_THRESHOLD)).toInt()
+    }
+
     companion object {
+        private const val FUZZY = 15
+        private const val FUZZY_RANGE = 10
+        private const val FUZZY_MIN_LENGTH = 4
+        private const val FUZZY_THRESHOLD = 0.75
         private const val EXACT = 100
         private const val PREFIX = 80
         private const val WORD_PREFIX = 60

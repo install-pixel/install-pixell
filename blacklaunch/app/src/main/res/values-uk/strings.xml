@@ -30,7 +30,7 @@
     <string name="auto_wallpaper_subtitle">Якщо шпалери зміняться, BlackLaunch знову зробить їх чорними. Попередні шпалери не зберігаються.</string>
     <string name="target_home_lock">Головний + блокування</string>
     <string name="target_home">Тільки головний</string>
-    <string name="wallpaper_now">Зробити чорними зараз</string>
+    <string name="wallpaper_now">Застосувати чорні шпалери зараз</string>
     <string name="wallpaper_set">Шпалери тепер чорні</string>
     <string name="wallpaper_failed">Не вдалося змінити шпалери на цьому телефоні</string>
     <string name="wallpaper_auto_disabled">Не вдалося повернути чорні шпалери, автоматичний режим вимкнено</string>
@@ -78,10 +78,9 @@
     <string name="alias_add">Додати</string>
     <string name="alias_done">Готово</string>
     <string name="alias_remove">Видалити %1$s</string>
-    <plurals name="import_skipped">
-        <item quantity="one">%1$d файл не є моделлю голосу</item>
-        <item quantity="few">%1$d файли не є моделями голосу</item>
-        <item quantity="many">%1$d файлів не є моделями голосу</item>
-        <item quantity="other">%1$d файлу не є моделями голосу</item>
-    </plurals>
+    <string name="import_error_read">BlackLaunch не отримав доступу до цього файлу. Скористайтеся «Поділитися → BlackLaunch» або виберіть файл нижче</string>
+    <string name="import_error_language">Не вдалося визначити мову моделі (очікується українська, польська або англійська)</string>
+    <string name="import_error_space">Замало вільного місця, щоб встановити модель</string>
+    <string name="import_error_other">Не вдалося встановити модель. Спробуйте ще раз</string>
+    <string name="import_choose_file">Вибрати файл</string>
 </resources>

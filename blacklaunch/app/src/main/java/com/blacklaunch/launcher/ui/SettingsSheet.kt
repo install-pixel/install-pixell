@@ -20,7 +20,12 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -31,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -101,8 +107,9 @@ fun SettingsSheet(
                     TargetOption(R.string.target_home, appearance.wallpaperTarget == WallpaperTarget.HOME) {
                         onChange { it.copy(wallpaperTarget = WallpaperTarget.HOME) }
                     }
+                    // Разово, навіть коли автоматичний режим вимкнено.
+                    ActionOption(R.string.wallpaper_now, Icons.Filled.Refresh, onSetBlackWallpaperNow)
                 }
-                ActionRow(stringResource(R.string.wallpaper_now), onSetBlackWallpaperNow)
             }
 
             Card {
@@ -124,7 +131,7 @@ fun SettingsSheet(
                 VoiceLanguages.ALL.forEach { language ->
                     ModelRow(language, language in installedModels, onDownloadModel, onDeleteModel)
                 }
-                ActionRow(stringResource(R.string.model_import), onImportModel)
+                ActionOption(R.string.model_import, Icons.Filled.Add, onImportModel)
                 Note(stringResource(R.string.models_note))
             }
 
@@ -137,7 +144,7 @@ fun SettingsSheet(
             }
 
             Card {
-                ActionRow(stringResource(R.string.system_theme), onOpenSystemTheme)
+                ActionOption(R.string.system_theme, Icons.Filled.Settings, onOpenSystemTheme)
                 Note(stringResource(R.string.system_theme_note))
             }
             Spacer(Modifier.height(8.dp))
@@ -293,16 +300,22 @@ private fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () -
     }
 }
 
+/** Дія в тому ж вигляді, що й варіанти вибору, — щоб блок виглядав цілісно. */
 @Composable
-private fun ActionRow(title: String, onClick: () -> Unit) {
-    Text(
-        text = "$title  →",
-        color = Oled.Accent,
-        fontSize = 16.sp,
+private fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(shape)
+            .background(Oled.Surface)
+            .border(1.dp, Oled.Glint, shape)
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-    )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(stringResource(label), color = Oled.TextPrimary, fontSize = 16.sp)
+    }
 }

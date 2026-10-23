@@ -30,7 +30,7 @@
     <string name="auto_wallpaper_subtitle">Jeśli tapeta się zmieni, BlackLaunch znów ustawi czarną. Poprzednia tapeta nie jest zapisywana.</string>
     <string name="target_home_lock">Ekran główny + blokady</string>
     <string name="target_home">Tylko ekran główny</string>
-    <string name="wallpaper_now">Ustaw czarną teraz</string>
+    <string name="wallpaper_now">Ustaw czarną tapetę teraz</string>
     <string name="wallpaper_set">Tapeta jest teraz czarna</string>
     <string name="wallpaper_failed">Nie udało się zmienić tapety na tym telefonie</string>
     <string name="wallpaper_auto_disabled">Nie udało się przywrócić czarnej tapety, tryb automatyczny wyłączony</string>
@@ -78,10 +78,9 @@
     <string name="alias_add">Dodaj</string>
     <string name="alias_done">Gotowe</string>
     <string name="alias_remove">Usuń %1$s</string>
-    <plurals name="import_skipped">
-        <item quantity="one">%1$d plik nie jest modelem głosowym</item>
-        <item quantity="few">%1$d pliki nie są modelami głosowymi</item>
-        <item quantity="many">%1$d plików nie jest modelami głosowymi</item>
-        <item quantity="other">%1$d pliku nie jest modelem głosowym</item>
-    </plurals>
+    <string name="import_error_read">BlackLaunch nie otrzymał dostępu do tego pliku. Użyj „Udostępnij → BlackLaunch” albo wybierz plik poniżej</string>
+    <string name="import_error_language">Nie udało się rozpoznać języka modelu (oczekiwany ukraiński, polski lub angielski)</string>
+    <string name="import_error_space">Za mało wolnego miejsca, aby zainstalować model</string>
+    <string name="import_error_other">Nie udało się zainstalować modelu. Spróbuj ponownie</string>
+    <string name="import_choose_file">Wybierz plik</string>
 </resources>
