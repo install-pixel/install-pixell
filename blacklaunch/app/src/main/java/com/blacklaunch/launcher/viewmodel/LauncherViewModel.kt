@@ -182,18 +182,36 @@ class LauncherViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherUiState.HomeIdle)
 
     fun openSearch() {
-        query.update { it ?: "" }
+        // Пошук закрили недавно (свайпом чи переходом у програму) — повертаємо той самий запит.
+        val restored = lastQuery?.takeIf { now() - lastQueryAt <= RESTORE_QUERY_MS }.orEmpty()
+        query.update { it ?: restored }
     }
 
     fun updateQuery(text: String) {
         query.update { if (it == null) null else text }
     }
 
-    fun clearQuery() = updateQuery("")
+    fun clearQuery() {
+        lastQuery = null
+        updateQuery("")
+    }
 
     fun closeSearch() {
+        query.value?.takeIf { it.isNotBlank() }?.let {
+            lastQuery = it
+            lastQueryAt = now()
+        }
         query.value = null
     }
+
+    /** Кнопка Home чи очищення поля: наступний пошук починається з порожнього. */
+    fun forgetSearch() {
+        lastQuery = null
+        query.value = null
+    }
+
+    private var lastQuery: String? = null
+    private var lastQueryAt = 0L
 
     /** Свайп вліво/вправо: наступний чи попередній профіль по колу. */
     fun switchProfile(delta: Int) {
@@ -304,7 +322,10 @@ class LauncherViewModel(
         is VoiceCommand.Open -> index.value.search(query).isNotEmpty()
     }
 
-    private companion object {
-        const val PROFILE_MATCH = 0.75
+    companion object {
+        private const val PROFILE_MATCH = 0.75
+
+        /** Скільки часу після закриття пошуку повертається останній запит. */
+        const val RESTORE_QUERY_MS = 3 * 60 * 1000L
     }
 }

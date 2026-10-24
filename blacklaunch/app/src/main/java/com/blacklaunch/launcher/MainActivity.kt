@@ -494,7 +494,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         voice.cancel()
-        viewModel.closeSearch()
+        viewModel.forgetSearch()
     }
 
     // Після переходу в іншу програму пошук закривається; поворот екрана його не скидає.

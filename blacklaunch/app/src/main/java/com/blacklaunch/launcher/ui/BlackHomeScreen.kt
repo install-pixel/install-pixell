@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -61,6 +62,9 @@ import com.blacklaunch.launcher.voice.VoiceState
 import kotlin.math.abs
 
 private val SwipeThreshold = 48.dp
+
+/** У скільки разів довший свайп закриває пошук з краю вже прогорнутого списку. */
+private const val LONG_PULL = 3f
 
 @Composable
 fun BlackHomeScreen(
@@ -278,21 +282,36 @@ private fun SearchOpen(
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val close by rememberUpdatedState(onSwipeDown)
     // Свайп униз закриває пошук: і по вільному місцю, і коли список результатів уже догорнуто.
+    // Але не тим самим жестом, яким гортали список: дійшли до кінця — пошук лишається.
+    // Якщо список гортали, закриття з його краю потребує довшого, навмисного свайпу.
     val pullToClose = remember(thresholdPx) {
         object : NestedScrollConnection {
             var pulled = 0f
+            var scrolledThisGesture = false
+            var listWasScrolled = false
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (consumed.y != 0f) {
+                    scrolledThisGesture = true
+                    listWasScrolled = true
+                    pulled = 0f
+                } else if (available.y > 0f && !scrolledThisGesture) {
                     pulled += available.y
-                    if (pulled > thresholdPx) {
+                    val needed = if (listWasScrolled) thresholdPx * LONG_PULL else thresholdPx
+                    if (pulled > needed) {
                         pulled = 0f
                         close()
                     }
-                } else {
-                    pulled = 0f
                 }
                 return Offset.Zero
+            }
+
+            // Палець відпущено — жест закінчився.
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                scrolledThisGesture = false
+                pulled = 0f
+                return Velocity.Zero
             }
         }
     }

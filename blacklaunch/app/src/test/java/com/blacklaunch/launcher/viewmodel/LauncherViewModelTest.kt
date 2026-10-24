@@ -70,11 +70,35 @@ class LauncherViewModelTest {
     }
 
     @Test
-    fun closeSearchReturnsToIdleAndDropsQuery() {
+    fun closeSearchReturnsToIdleAndRestoresRecentQuery() {
         viewModel.openSearch()
         viewModel.updateQuery("tel")
         viewModel.closeSearch()
         assertEquals(LauncherUiState.HomeIdle, viewModel.state.value)
+        viewModel.openSearch()
+        assertEquals("tel", search().query)
+    }
+
+    @Test
+    fun oldQueryIsNotRestored() {
+        viewModel.openSearch()
+        viewModel.updateQuery("tel")
+        viewModel.closeSearch()
+        clock += LauncherViewModel.RESTORE_QUERY_MS + 1
+        viewModel.openSearch()
+        assertEquals(LauncherUiState.SearchOpen(""), viewModel.state.value)
+    }
+
+    @Test
+    fun forgetSearchAndClearDropQuery() {
+        viewModel.openSearch()
+        viewModel.updateQuery("tel")
+        viewModel.forgetSearch()
+        viewModel.openSearch()
+        assertEquals(LauncherUiState.SearchOpen(""), viewModel.state.value)
+        viewModel.updateQuery("you")
+        viewModel.clearQuery()
+        viewModel.closeSearch()
         viewModel.openSearch()
         assertEquals(LauncherUiState.SearchOpen(""), viewModel.state.value)
     }
