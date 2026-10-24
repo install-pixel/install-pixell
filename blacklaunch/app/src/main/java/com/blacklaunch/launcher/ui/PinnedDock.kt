@@ -75,7 +75,8 @@ fun PinnedDock(
             .border(1.dp, Oled.Glint, DockShape)
             .padding(horizontal = 8.dp, vertical = 10.dp),
     ) {
-        val cellWidthPx = with(LocalDensity.current) { (maxWidth / COLUMNS).toPx() }
+        val cellWidth = maxWidth / COLUMNS
+        val cellWidthPx = with(LocalDensity.current) { cellWidth.toPx() }
         val cellHeightPx = with(LocalDensity.current) { CellHeight.toPx() }
         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
             apps.chunked(COLUMNS).forEach { row ->
@@ -86,7 +87,7 @@ fun PinnedDock(
                             app = app,
                             iconFor = iconFor,
                             modifier = Modifier
-                                .width(maxWidth / COLUMNS)
+                                .width(cellWidth)
                                 .height(CellHeight)
                                 .zIndex(if (isDragged) 1f else 0f)
                                 .graphicsLayer {
