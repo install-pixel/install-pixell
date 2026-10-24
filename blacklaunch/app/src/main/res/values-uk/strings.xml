@@ -341,4 +341,8 @@
     <string name="notif_extra_add">Додати програми</string>
     <string name="icon_own">Значок Black Glass</string>
     <string name="icon_original">Оригінальний значок</string>
+    <string name="global_off">Вимкнено</string>
+    <string name="global_by_apps">За програмами профілю</string>
+    <string name="global_on">Увімкнено</string>
+    <string name="global_by_apps_note">Лише те, для чого в профілі є програма: «Телефон» → контакти з дзвінком, «Повідомлення» → кнопка «Написати» й SMS, «Календар» → події, «Налаштування» → розділи налаштувань. Калькулятор і профілі — завжди.</string>
 </resources>

@@ -18,6 +18,10 @@ import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
+import com.blacklaunch.launcher.profiles.defaultGlobalMode
+import com.blacklaunch.launcher.profiles.RolePackages
+import android.provider.Telephony
+import android.telecom.TelecomManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -116,7 +120,8 @@ class MainActivity : ComponentActivity() {
                     showRecent = { app.appearanceSettings.appearance.value.recentQueries },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
-                    globalSearchOff = app.searchScopes.globalOff,
+                    globalModes = app.searchScopes.globalModes,
+                    rolePackages = ::rolePackages,
                 )
             }
         }
@@ -435,6 +440,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Програми за замовчуванням для дзвінків, SMS, календаря й налаштувань — для режиму
+     * глобального пошуку «За програмами профілю». Читаються в момент пошуку (без фону).
+     */
+    private fun rolePackages(): RolePackages {
+        fun resolve(intent: Intent): Set<String> = runCatching {
+            packageManager.queryIntentActivities(intent, 0).mapTo(HashSet()) { it.activityInfo.packageName }
+        }.getOrDefault(emptySet())
+        val dialer = setOfNotNull(runCatching { getSystemService(TelecomManager::class.java)?.defaultDialerPackage }.getOrNull())
+        val sms = setOfNotNull(runCatching { Telephony.Sms.getDefaultSmsPackage(this) }.getOrNull())
+        return RolePackages(
+            dialer = dialer + resolve(Intent(Intent.ACTION_DIAL)),
+            // Лише SMS за замовчуванням: месенджери теж приймають «smsto:», але «Написати» відкриває SMS.
+            sms = sms,
+            calendar = resolve(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)),
+            settings = resolve(Intent(Settings.ACTION_SETTINGS)),
+        )
+    }
+
     /** Встановлені рушії синтезу мовлення (пакет → назва), щоб вибрати голос відповідей. */
     private fun ttsEngines(): List<Pair<String, String>> =
         packageManager.queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
@@ -668,7 +692,7 @@ class MainActivity : ComponentActivity() {
         val activeId by profileViewModel.activeId.collectAsStateWithLifecycle()
         val apps by profileViewModel.apps.collectAsStateWithLifecycle()
         val scopes by app.searchScopes.scopes.collectAsStateWithLifecycle()
-        val globalOff by app.searchScopes.globalOff.collectAsStateWithLifecycle()
+        val globalModes by app.searchScopes.globalModes.collectAsStateWithLifecycle()
         val notifFilter by app.searchScopes.notificationFilter.collectAsStateWithLifecycle()
         val notifExtras by app.searchScopes.notificationExtras.collectAsStateWithLifecycle()
         val notificationAccess by notificationAccessState.collectAsStateWithLifecycle()
@@ -707,8 +731,8 @@ class MainActivity : ComponentActivity() {
                     onGrantDnd = { startOrToast(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
                     searchScope = scopes[profile.id] ?: SearchScope.ALL,
                     onSearchScopeChange = { app.searchScopes.set(profile.id, it) },
-                    globalSearch = profile.id !in globalOff,
-                    onGlobalSearchChange = { app.searchScopes.setGlobal(profile.id, it) },
+                    globalMode = globalModes[profile.id] ?: defaultGlobalMode(scopes[profile.id] ?: SearchScope.ALL),
+                    onGlobalModeChange = { app.searchScopes.setGlobalMode(profile.id, it) },
                     notificationFilter = profile.id in notifFilter,
                     onNotificationFilterChange = { app.searchScopes.setNotificationFilter(profile.id, it) },
                     hasNotificationAccess = notificationAccess,

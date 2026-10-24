@@ -341,4 +341,8 @@
     <string name="notif_extra_add">Add apps</string>
     <string name="icon_own">Black Glass icon</string>
     <string name="icon_original">Original icon</string>
+    <string name="global_off">Off</string>
+    <string name="global_by_apps">By profile apps</string>
+    <string name="global_on">On</string>
+    <string name="global_by_apps_note">Only what the profile has an app for: Phone → contacts with call, Messages → message button and SMS, Calendar → events, Settings → settings. The calculator and profiles always stay.</string>
 </resources>

@@ -3,6 +3,7 @@ package com.blacklaunch.launcher.ui
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Checkbox
 import com.blacklaunch.launcher.profiles.SearchScope
+import com.blacklaunch.launcher.profiles.GlobalMode
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -195,8 +196,8 @@ fun ProfileEditScreen(
     searchScope: SearchScope = SearchScope.ALL,
     onSearchScopeChange: (SearchScope) -> Unit = {},
     /** Глобальний пошук у цьому профілі: контакти, SMS, календар, налаштування, ярлики. */
-    globalSearch: Boolean = true,
-    onGlobalSearchChange: (Boolean) -> Unit = {},
+    globalMode: GlobalMode = GlobalMode.ON,
+    onGlobalModeChange: (GlobalMode) -> Unit = {},
     /** Сповіщення лише від програм профілю (через «Доступ до сповіщень»). */
     notificationFilter: Boolean = false,
     onNotificationFilterChange: (Boolean) -> Unit = {},
@@ -284,12 +285,11 @@ fun ProfileEditScreen(
                 TargetOption(scope.label(), searchScope == scope) { onSearchScopeChange(scope) }
             }
             Note(stringResource(R.string.search_scope_note))
-            SwitchRow(
-                title = stringResource(R.string.profile_global_title),
-                subtitle = stringResource(R.string.profile_global_subtitle),
-                checked = globalSearch,
-                onCheckedChange = onGlobalSearchChange,
-            )
+            Text(stringResource(R.string.profile_global_title), color = Oled.TextPrimary, fontSize = 16.sp)
+            GlobalMode.entries.forEach { mode ->
+                TargetOption(mode.label(), globalMode == mode) { onGlobalModeChange(mode) }
+            }
+            Note(stringResource(if (globalMode == GlobalMode.BY_APPS) R.string.global_by_apps_note else R.string.profile_global_subtitle))
         }
 
         Card {
@@ -477,6 +477,13 @@ internal fun SoundMode.label(): Int = when (this) {
     SoundMode.NORMAL -> R.string.sound_normal
     SoundMode.VIBRATE -> R.string.sound_vibrate
     SoundMode.SILENT -> R.string.sound_silent
+}
+
+@StringRes
+private fun GlobalMode.label(): Int = when (this) {
+    GlobalMode.OFF -> R.string.global_off
+    GlobalMode.BY_APPS -> R.string.global_by_apps
+    GlobalMode.ON -> R.string.global_on
 }
 
 @StringRes

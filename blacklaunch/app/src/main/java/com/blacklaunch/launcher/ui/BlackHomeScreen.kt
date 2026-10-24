@@ -548,6 +548,8 @@ private fun SearchOpen(
             onRemoveRecent = onRemoveRecent,
             allApps = allApps,
             onContactAction = onContactAction,
+            canCall = state.canCall,
+            canMessage = state.canMessage,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(

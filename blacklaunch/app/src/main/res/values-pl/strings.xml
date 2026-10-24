@@ -341,4 +341,8 @@
     <string name="notif_extra_add">Dodaj aplikacje</string>
     <string name="icon_own">Ikona Black Glass</string>
     <string name="icon_original">Oryginalna ikona</string>
+    <string name="global_off">Wyłączone</string>
+    <string name="global_by_apps">Według aplikacji profilu</string>
+    <string name="global_on">Włączone</string>
+    <string name="global_by_apps_note">Tylko to, do czego profil ma aplikację: „Telefon” → kontakty z połączeniem, „Wiadomości” → przycisk „Napisz” i SMS, „Kalendarz” → wydarzenia, „Ustawienia” → ustawienia. Kalkulator i profile zawsze zostają.</string>
 </resources>

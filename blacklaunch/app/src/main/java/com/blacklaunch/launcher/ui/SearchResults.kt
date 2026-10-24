@@ -81,6 +81,9 @@ fun SearchResults(
     allApps: List<AppInfo> = emptyList(),
     /** Швидкі дії біля контакту: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit = { _, _ -> },
+    /** Які кнопки біля контакту дозволені профілем. */
+    canCall: Boolean = true,
+    canMessage: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
@@ -110,7 +113,7 @@ fun SearchResults(
         verticalArrangement = Arrangement.Bottom,
     ) {
         calculator.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction) }
+            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage) }
         }
         // Команди (як голосом) — одразу над полем пошуку.
         items(custom, key = { "custom:${it.id}" }) { command ->
@@ -123,7 +126,7 @@ fun SearchResults(
             AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
         others.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction) }
+            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage) }
             item(key = "header:${group.kind}") { GroupHeader(group.kind) }
         }
     }
@@ -337,6 +340,8 @@ private fun GlobalRow(
     result: GlobalResult,
     onClick: (GlobalResult) -> Unit,
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
+    canCall: Boolean,
+    canMessage: Boolean,
 ) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
@@ -374,11 +379,15 @@ private fun GlobalRow(
         }
         // S2: біля контакту — «Подзвонити» й «Написати» одним дотиком.
         if (result is GlobalResult.Contact) {
-            IconButton(onClick = { haptics.tap(); onContactAction(result, true) }) {
-                Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.contact_call), tint = Oled.TextPrimary)
+            if (canCall) {
+                IconButton(onClick = { haptics.tap(); onContactAction(result, true) }) {
+                    Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.contact_call), tint = Oled.TextPrimary)
+                }
             }
-            IconButton(onClick = { haptics.tap(); onContactAction(result, false) }) {
-                Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.contact_message), tint = Oled.TextPrimary)
+            if (canMessage) {
+                IconButton(onClick = { haptics.tap(); onContactAction(result, false) }) {
+                    Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.contact_message), tint = Oled.TextPrimary)
+                }
             }
         }
     }

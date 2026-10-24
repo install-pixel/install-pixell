@@ -42,6 +42,17 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Глобальний пошук «За програмами профілю»: які програми дзвонять, ведуть календар, налаштування. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CALENDAR" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.SETTINGS" />
+        </intent>
         <!-- Рушії синтезу мовлення — щоб вибрати голос відповідей. -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />

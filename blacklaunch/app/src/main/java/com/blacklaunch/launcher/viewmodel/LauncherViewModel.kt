@@ -31,6 +31,10 @@ import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.profiles.SearchScope
+import com.blacklaunch.launcher.profiles.GlobalAccess
+import com.blacklaunch.launcher.profiles.GlobalMode
+import com.blacklaunch.launcher.profiles.RolePackages
+import com.blacklaunch.launcher.profiles.defaultGlobalMode
 import com.blacklaunch.launcher.search.AppSuggestions
 import com.blacklaunch.launcher.search.InMemoryRecentQueries
 import com.blacklaunch.launcher.search.RecentQueries
@@ -76,11 +80,14 @@ sealed interface LauncherUiState {
         val suggestions: List<AppInfo> = emptyList(),
         /** Порожній пошук: останні запити (найновіший перший). */
         val recent: List<String> = emptyList(),
+        /** Кнопки біля контакту: у профілі «За програмами» — лише якщо є «Телефон» / «Повідомлення». */
+        val canCall: Boolean = true,
+        val canMessage: Boolean = true,
     ) : LauncherUiState
 }
 
 /** Пошук в активному профілі: [pinned] — його програми. */
-private data class ProfileScope(val profileId: String, val scope: SearchScope, val pinned: Set<String>, val global: Boolean) {
+private data class ProfileScope(val profileId: String, val scope: SearchScope, val pinned: Set<String>, val globalMode: GlobalMode) {
     /** Пакети програм профілю (ключ — «пакет/activity/користувач»). */
     val pinnedPackages: Set<String> get() = pinned.mapTo(HashSet()) { it.substringBefore('/') }
 }
@@ -140,8 +147,10 @@ class LauncherViewModel(
     hiddenApps: Flow<Set<String>> = flowOf(emptySet()),
     /** Що шукати в кожному профілі (усі / свої першими / лише свої). */
     searchScopes: Flow<Map<String, SearchScope>> = flowOf(emptyMap()),
-    /** Профілі з вимкненим глобальним пошуком. */
-    globalSearchOff: Flow<Set<String>> = flowOf(emptySet()),
+    /** Режим глобального пошуку в кожному профілі (без вибору — за замовчуванням від «Пошуку в профілі»). */
+    globalModes: Flow<Map<String, GlobalMode>> = flowOf(emptyMap()),
+    /** Програми за замовчуванням для дзвінків, SMS, календаря, налаштувань — для режиму «За програмами». */
+    private val rolePackages: () -> RolePackages = { RolePackages() },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -157,14 +166,19 @@ class LauncherViewModel(
     // Приховані програми не шукаються й не підказуються; на головному екрані лишаються.
     // Пошук у профілі: вибір користувача і програми активного профілю.
     private val scope: StateFlow<ProfileScope> =
-        combine(profileSource.activeProfile, searchScopes, globalSearchOff) { active, scopes, globalOff ->
+        combine(profileSource.activeProfile, searchScopes, globalModes) { active, scopes, modes ->
+            val scope = active?.let { scopes[it.id] } ?: SearchScope.ALL
             ProfileScope(
                 profileId = active?.id.orEmpty(),
-                scope = active?.let { scopes[it.id] } ?: SearchScope.ALL,
+                scope = scope,
                 pinned = active?.pinnedAppKeys.orEmpty().toSet(),
-                global = active?.id !in globalOff,
+                globalMode = active?.let { modes[it.id] } ?: defaultGlobalMode(scope),
             )
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, ProfileScope("", SearchScope.ALL, emptySet(), global = true))
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ProfileScope("", SearchScope.ALL, emptySet(), GlobalMode.ON))
+
+    /** Що дозволяє глобальний пошук в активному профілі зараз. */
+    private fun access(scope: ProfileScope = this.scope.value, all: Set<GroupKind> = GroupKind.entries.toSet()) =
+        GlobalAccess.of(scope.globalMode, all, scope.pinnedPackages, rolePackages())
 
     private val visibleApps: StateFlow<List<AppInfo>> =
         combine(appSource.apps, hiddenApps, scope) { apps, hidden, scope ->
@@ -223,8 +237,8 @@ class LauncherViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val groups: StateFlow<List<ResultGroup>> =
         combine(query.filterNotNull(), globalKinds, profiles, results, scope) { query, allKinds, profiles, apps, scope ->
-            // Глобальний пошук вимкнено в профілі — лишаються калькулятор, конвертер і профілі.
-            val kinds = if (scope.global) allKinds else allKinds intersect LOCAL_KINDS
+            // Глобальний пошук у профілі: вимкнено / за програмами профілю / усе.
+            val kinds = access(scope, allKinds).kinds
             GroupInput(query, kinds, profiles, apps, scope)
         }
             .mapLatest { (query, kinds, profiles, apps, scope) ->
@@ -248,7 +262,7 @@ class LauncherViewModel(
                     val global = globalSource.search(query, kinds, apps.take(1).map { it.packageName })
                     // «Лише програми профілю» — і ярлики лише цих програм.
                     addAll(
-                        if (scope.scope != SearchScope.PROFILE_ONLY) {
+                        if (scope.scope != SearchScope.PROFILE_ONLY && !access(scope).shortcutsOfProfileOnly) {
                             global
                         } else {
                             global.mapNotNull { group ->
@@ -277,7 +291,8 @@ class LauncherViewModel(
                     val enabled = voiceActionsEnabled()
                     val actions = VoiceActionParser.suggest(query).filter { it.kind in enabled }
                     val custom = CustomCommandMatcher.suggest(customCommands(), query)
-                    LauncherUiState.SearchOpen(query, results, groups, actions, custom)
+                    val access = access()
+                    LauncherUiState.SearchOpen(query, results, groups, actions, custom, canCall = access.canCall, canMessage = access.canMessage)
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherUiState.HomeIdle)
@@ -490,8 +505,9 @@ class LauncherViewModel(
             is VoiceCommand.Action -> {
                 // Сказане лишається в пошуку (як і набране) — після повернення воно на місці.
                 showHeard(heard)
-                // Вимкнену дію просто шукаємо як звичайний запит.
-                if (command.action.kind in voiceActionsEnabled()) runAction(command.action)
+                // Вимкнену дію просто шукаємо як звичайний запит; дзвінок і SMS у профілі «За програмами» —
+                // лише якщо «Телефон» / «Повідомлення» є в профілі.
+                if (command.action.kind in voiceActionsEnabled() && contactActionAllowed(command.action)) runAction(command.action)
             }
             is VoiceCommand.Open -> {
                 // Запит завжди потрапляє в пошук — після повернення з програми він на місці.
@@ -503,6 +519,17 @@ class LauncherViewModel(
                     SearchIndex.unambiguous(results)?.let { launch(it, command.query) }
                 }
             }
+        }
+    }
+
+    private fun contactActionAllowed(action: VoiceAction): Boolean {
+        val current = scope.value
+        if (current.globalMode != GlobalMode.BY_APPS) return true
+        val access = access(current)
+        return when (action) {
+            is VoiceAction.Call -> access.canCall
+            is VoiceAction.Sms -> access.canMessage
+            else -> true
         }
     }
 
@@ -518,8 +545,6 @@ class LauncherViewModel(
 
         /** Скільки часу після закриття пошуку повертається останній запит. */
         const val RESTORE_QUERY_MS = 60 * 1000L
-
-        private val LOCAL_KINDS = setOf(GroupKind.CALCULATOR, GroupKind.PROFILES)
 
         private val collator: java.text.Collator = java.text.Collator.getInstance()
 
