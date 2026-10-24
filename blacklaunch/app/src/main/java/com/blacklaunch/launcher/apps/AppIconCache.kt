@@ -132,6 +132,7 @@ class AppIconCache(
      * Тому малюємо у власному розмірі значка й лише потім зменшуємо.
      */
     private fun render(drawable: Drawable): Bitmap {
+        if (drawable is AdaptiveIconDrawable) return renderAdaptive(drawable)
         val w = drawable.intrinsicWidth
         val h = drawable.intrinsicHeight
         if (w <= 0 || h <= 0 || (w == sizePx && h == sizePx)) return drawable.toBitmap(sizePx, sizePx)
@@ -140,7 +141,27 @@ class AppIconCache(
         return Bitmap.createScaledBitmap(full, sizePx, sizePx, true)
     }
 
+    /**
+     * Двошаровий значок складаємо самі, за стандартом Android: шари 108dp, видима частина 72dp
+     * (по 18dp запасу з кожного боку), обрізання — заокруглений квадрат. Власне малювання OxygenOS
+     * для сторонньої програми масштабує шари неправильно — видно лише збільшений кут значка.
+     */
+    private fun renderAdaptive(icon: AdaptiveIconDrawable): Bitmap {
+        val bitmap = createBitmap(sizePx, sizePx)
+        val canvas = Canvas(bitmap)
+        val corner = sizePx * CORNER
+        canvas.clipPath(Path().apply { addRoundRect(0f, 0f, sizePx.toFloat(), sizePx.toFloat(), corner, corner, Path.Direction.CW) })
+        val extra = sizePx / 4
+        listOfNotNull(icon.background, icon.foreground).forEach { layer ->
+            layer.setBounds(-extra, -extra, sizePx + extra, sizePx + extra)
+            layer.draw(canvas)
+        }
+        return bitmap
+    }
+
     private companion object {
+        /** Заокруглення кутів складеного значка (частка розміру). */
+        const val CORNER = 0.24f
         const val MAX_ICONS = 200
         const val KNOB_LIGHT = 0xFF3A3A3A.toInt()
         const val KNOB_DARK = 0xFF141414.toInt()
