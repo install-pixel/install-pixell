@@ -124,7 +124,7 @@ class KeyboardUiTest {
     fun suggestionsWorkFromTheFirstStart() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        "дяк".forEach { tapText(it.toString()) }
+        typeWord(activity.plain, "дяк")
         val suggestion = waitForView { v -> v is TextView && v.isShown && v.text.toString() == "дякую" }
         screenshot("suggestions")
         tapView(suggestion)
@@ -315,19 +315,24 @@ class KeyboardUiTest {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         useMode(KeyboardMode.MOBILE)
         val mode = shellOutput("settings get secure navigation_mode").trim()
-        shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton")
+        // A second keyboard makes Android show its switch globe and hide button below the keys (as on the
+        // phone where they covered Enter and ?123); the test keyboard reopens to pick that up.
+        val ours = shellOutput("settings get secure default_input_method").trim()
+        val others = shellOutput("ime list -a -s").lines().map { it.trim() }
+            .filter { it.isNotEmpty() && !it.contains(instrumentation.targetContext.packageName) }
         try {
+            others.forEach { shell("ime enable $it") }
+            shell("ime set $ours")
+            relaunchTestScreen()
+            screenshot("nav-default")
+            assertKeysClearOfImeButtons()
+            shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton")
             waitFor("three-button navigation", timeoutMs = 10_000) {
                 shellOutput("settings get secure navigation_mode").trim().takeIf { it == "0" }
             }
             // The new bar is a configuration change: the test screen is recreated and the keyboard closes.
             Thread.sleep(1_500)
-            scenario.close()
-            scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
-            val ref = AtomicReference<KeyboardTestActivity>()
-            scenario.onActivity { ref.set(it) }
-            activity = ref.get()
-            focus(activity.plain)
+            relaunchTestScreen()
             screenshot("nav-three-button")
             val keyboard = service()
             val bottom = AtomicReference<Int>()
@@ -347,6 +352,7 @@ class KeyboardUiTest {
             }
             val bar = barRef.get()
             assertTrue("keys end at ${bottom.get()}, the bar starts at ${screen - bar}", bottom.get() <= screen - bar)
+            assertKeysClearOfImeButtons()
         } finally {
             val restore = when (mode) {
                 "1" -> "twobutton"
@@ -354,7 +360,43 @@ class KeyboardUiTest {
                 else -> "threebutton"
             }
             shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.$restore")
+            others.forEach { shell("ime disable $it") }
+            shell("ime set $ours")
         }
+    }
+
+    private fun relaunchTestScreen() {
+        scenario.close()
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
+        val ref = AtomicReference<KeyboardTestActivity>()
+        scenario.onActivity { ref.set(it) }
+        activity = ref.get()
+        focus(activity.plain)
+    }
+
+    /**
+     * With gesture navigation Android 13+ draws its own row inside the keyboard window (hide ∨ and the
+     * keyboard switch globe); it must sit below the keys, not on Enter and ?123.
+     */
+    private fun assertKeysClearOfImeButtons() {
+        val keyboard = service()
+        val result = AtomicReference<String?>()
+        instrumentation.runOnMainSync {
+            val root = keyboard.inputRootForTest!!
+            fun find(view: View): View? {
+                if (view.javaClass.name.endsWith("NavigationBarFrame")) return view
+                if (view is ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
+                return null
+            }
+            val frame = find(root.rootView)?.takeIf { it.isShown && it.height > 0 }
+            if (frame != null) {
+                val keys = IntArray(2).also { root.keyboardView.getLocationOnScreen(it) }
+                val buttons = IntArray(2).also { frame.getLocationOnScreen(it) }
+                val keysBottom = keys[1] + root.keyboardView.height
+                if (keysBottom > buttons[1]) result.set("keys end at $keysBottom, the keyboard buttons start at ${buttons[1]}")
+            }
+        }
+        assertNull(result.get())
     }
 
     @Test
