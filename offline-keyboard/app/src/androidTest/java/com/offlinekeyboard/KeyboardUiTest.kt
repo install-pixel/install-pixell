@@ -1,6 +1,5 @@
 package com.offlinekeyboard
 
-import android.content.res.Resources
 import android.os.Build
 import android.os.SystemClock
 import android.view.InputDevice
@@ -12,6 +11,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -334,8 +334,13 @@ class KeyboardUiTest {
             }
             val context = instrumentation.targetContext
             val screen = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds.height()
-            val id = Resources.getSystem().getIdentifier("navigation_bar_height", "dimen", "android")
-            val bar = if (id != 0) Resources.getSystem().getDimensionPixelSize(id) else 0
+            // The bar as the app sees it (some emulator images have hardware keys and show no bar at all).
+            val barRef = AtomicReference<Int>()
+            instrumentation.runOnMainSync {
+                val insets = WindowInsetsCompat.toWindowInsetsCompat(activity.window.decorView.rootWindowInsets)
+                barRef.set(insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom)
+            }
+            val bar = barRef.get()
             assertTrue("keys end at ${bottom.get()}, the bar starts at ${screen - bar}", bottom.get() <= screen - bar)
         } finally {
             val restore = when (mode) {
