@@ -176,11 +176,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         viewTreeObserver.addOnGlobalLayoutListener(layoutWatcher)
     }
 
-    override fun onDetachedFromWindow() {
-        viewTreeObserver.removeOnGlobalLayoutListener(layoutWatcher)
-        super.onDetachedFromWindow()
-    }
-
     /**
      * Room below the keys: the navigation bar, or the row of keyboard buttons Android draws inside the
      * keyboard window with gesture navigation (hide ∨ and the keyboard switch globe), whichever is taller.
@@ -380,6 +375,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     override fun onDetachedFromWindow() {
+        viewTreeObserver.removeOnGlobalLayoutListener(layoutWatcher)
         super.onDetachedFromWindow()
         removeCallbacks(clearMessage)
     }
