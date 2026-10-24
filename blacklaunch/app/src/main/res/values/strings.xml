@@ -175,4 +175,17 @@
     <string name="dock_center">Centre</string>
     <string name="dock_bottom">Bottom</string>
     <string name="dock_hint">You can also long-press an empty spot of the panel and drag it up or down. Drag an icon to change the order (needs at least two apps).</string>
+    <string name="section_home">Home screen</string>
+    <string name="section_home_hint">Profiles, apps panel</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="section_appearance_hint">Black wallpaper, grey icons, dark theme</string>
+    <string name="section_search">Search</string>
+    <string name="section_search_hint">Calculator, settings, shortcuts, contacts, calendar, SMS</string>
+    <string name="section_voice">Voice</string>
+    <string name="section_voice_hint">Offline models and recognition</string>
+    <string name="section_battery_hint">Charge protection, background apps</string>
+    <string name="section_about">About BlackLaunch</string>
+    <string name="about_note">A minimal offline launcher: no internet permission, no ads, no tracking. Everything stays on this phone.</string>
+    <string name="search_names_note">Your own names for apps: long-press an app in the search results.</string>
+    <string name="battery_profiles_note">To stop apps that are not in a profile from working in the background: Home screen → Profiles → a profile → “Restrict other apps in the background”.</string>
 </resources>

@@ -175,4 +175,17 @@
     <string name="dock_center">По центру</string>
     <string name="dock_bottom">Внизу</string>
     <string name="dock_hint">Можна й так: довге натискання на порожньому місці панелі й перетягування вгору чи вниз. Перетягування значка змінює порядок (потрібно хоча б дві програми).</string>
+    <string name="section_home">Головний екран</string>
+    <string name="section_home_hint">Профілі, панель програм</string>
+    <string name="section_appearance">Оформлення</string>
+    <string name="section_appearance_hint">Чорні шпалери, сірі значки, темна тема</string>
+    <string name="section_search">Пошук</string>
+    <string name="section_search_hint">Калькулятор, налаштування, ярлики, контакти, календар, SMS</string>
+    <string name="section_voice">Голос</string>
+    <string name="section_voice_hint">Офлайн-моделі та розпізнавання</string>
+    <string name="section_battery_hint">Захист заряду, програми у фоні</string>
+    <string name="section_about">Про BlackLaunch</string>
+    <string name="about_note">Мінімалістичний офлайн-лаунчер: без дозволу на інтернет, без реклами й стеження. Усе лишається на цьому телефоні.</string>
+    <string name="search_names_note">Власні назви програм: довге натискання на програму в результатах пошуку.</string>
+    <string name="battery_profiles_note">Щоб програми поза профілем не працювали у фоні: Головний екран → Профілі → профіль → «Обмежити інші програми у фоні».</string>
 </resources>

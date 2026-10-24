@@ -1,36 +1,25 @@
 package com.blacklaunch.launcher.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
@@ -44,9 +33,12 @@ import com.blacklaunch.launcher.voice.ModelImportActivity
 import com.blacklaunch.launcher.voice.OfflineStatus
 import com.blacklaunch.launcher.voice.VoiceLanguages
 
-/** Налаштування на весь екран: довгий список гортається без конфлікту зі згортанням шторки. */
+/** Налаштування: меню розділів і сторінка кожного розділу. */
 @Composable
 fun SettingsScreen(
+    page: SettingsNav,
+    onNavigate: (SettingsNav) -> Unit,
+    versionName: String,
     appearance: Appearance,
     onChange: ((Appearance) -> Appearance) -> Unit,
     onSetBlackWallpaperNow: () -> Unit,
@@ -60,53 +52,29 @@ fun SettingsScreen(
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
     onImportModel: () -> Unit,
-    onOpenProfiles: () -> Unit,
     onOpenBattery: () -> Unit,
     globalKinds: Set<GroupKind>,
     onGlobalKindChange: (GroupKind, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    LaunchedEffect(Unit) { onCheckOffline() }
-    BackHandler(onBack = onDismiss)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Oled.Black)
-            .statusBarsPadding(),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = Oled.TextPrimary,
-                )
-            }
-            Text(
-                stringResource(R.string.settings_title),
-                color = Oled.TextPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium,
-            )
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-
+    val toMain = { onNavigate(SettingsNav.Main) }
+    when (page) {
+        SettingsNav.HomeScreen -> SettingsPage(stringResource(R.string.section_home), toMain) {
             Card {
-                ActionOption(R.string.settings_profiles, Icons.Filled.Person, onOpenProfiles)
+                ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
             }
+            Card {
+                Text(stringResource(R.string.dock_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                DockPosition.entries.forEach { position ->
+                    TargetOption(position.label(), appearance.dockPosition == position) {
+                        onChange { it.copy(dockPosition = position) }
+                    }
+                }
+                Note(stringResource(R.string.dock_hint))
+            }
+        }
 
+        SettingsNav.Appearance -> SettingsPage(stringResource(R.string.section_appearance), toMain) {
             Card {
                 SwitchRow(
                     title = stringResource(R.string.auto_wallpaper_title),
@@ -125,17 +93,6 @@ fun SettingsScreen(
                     ActionOption(R.string.wallpaper_now, Icons.Filled.Refresh, onSetBlackWallpaperNow)
                 }
             }
-
-            Card {
-                Text(stringResource(R.string.dock_title), color = Oled.TextPrimary, fontSize = 17.sp)
-                DockPosition.entries.forEach { position ->
-                    TargetOption(position.label(), appearance.dockPosition == position) {
-                        onChange { it.copy(dockPosition = position) }
-                    }
-                }
-                Note(stringResource(R.string.dock_hint))
-            }
-
             Card {
                 SwitchRow(
                     title = stringResource(R.string.mono_icons_title),
@@ -144,7 +101,32 @@ fun SettingsScreen(
                     onCheckedChange = { on -> onChange { it.copy(monochromeIcons = on) } },
                 )
             }
+            Card {
+                ActionOption(R.string.system_theme, Icons.Filled.Settings, onOpenSystemTheme)
+                Note(stringResource(R.string.system_theme_note))
+            }
+        }
 
+        SettingsNav.Search -> SettingsPage(stringResource(R.string.section_search), toMain) {
+            Card {
+                Text(stringResource(R.string.global_section), color = Oled.TextPrimary, fontSize = 17.sp)
+                GroupKind.entries.forEach { kind ->
+                    SwitchRow(
+                        title = stringResource(kind.label()),
+                        subtitle = "",
+                        checked = kind in globalKinds,
+                        onCheckedChange = { onGlobalKindChange(kind, it) },
+                    )
+                }
+                Note(stringResource(R.string.global_note))
+            }
+            Card {
+                Note(stringResource(R.string.search_names_note))
+            }
+        }
+
+        SettingsNav.Voice -> SettingsPage(stringResource(R.string.section_voice), toMain) {
+            LaunchedEffect(Unit) { onCheckOffline() }
             Card {
                 Text(stringResource(R.string.models_section), color = Oled.TextPrimary, fontSize = 17.sp)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -158,7 +140,6 @@ fun SettingsScreen(
                 ActionOption(R.string.model_import, Icons.Filled.Add, onImportModel)
                 Note(stringResource(R.string.models_note))
             }
-
             Card {
                 Text(stringResource(R.string.voice_section), color = Oled.TextPrimary, fontSize = 17.sp)
                 VoiceLanguages.relevant().forEach { language ->
@@ -166,31 +147,40 @@ fun SettingsScreen(
                 }
                 Note(stringResource(R.string.voice_section_note))
             }
+        }
 
+        SettingsNav.Battery -> SettingsPage(stringResource(R.string.battery_section), toMain) {
             Card {
-                Text(stringResource(R.string.global_section), color = Oled.TextPrimary, fontSize = 17.sp)
-                GroupKind.entries.forEach { kind ->
-                    SwitchRow(
-                        title = stringResource(kind.label()),
-                        subtitle = "",
-                        checked = kind in globalKinds,
-                        onCheckedChange = { onGlobalKindChange(kind, it) },
-                    )
-                }
-                Note(stringResource(R.string.global_note))
-            }
-
-            Card {
-                Text(stringResource(R.string.battery_section), color = Oled.TextPrimary, fontSize = 17.sp)
                 Note(stringResource(R.string.battery_tip))
                 ActionOption(R.string.battery_open, Icons.Filled.Lock, onOpenBattery)
             }
-
             Card {
-                ActionOption(R.string.system_theme, Icons.Filled.Settings, onOpenSystemTheme)
-                Note(stringResource(R.string.system_theme_note))
+                Note(stringResource(R.string.battery_profiles_note))
             }
-            Spacer(Modifier.height(16.dp))
+        }
+
+        SettingsNav.About -> SettingsPage(stringResource(R.string.section_about), toMain) {
+            Card {
+                Text("BlackLaunch $versionName", color = Oled.TextPrimary, fontSize = 17.sp)
+                Note(stringResource(R.string.about_note))
+            }
+        }
+
+        else -> SettingsPage(stringResource(R.string.settings_title), onDismiss) {
+            Card {
+                MenuRow(Icons.Filled.Home, R.string.section_home, R.string.section_home_hint) { onNavigate(SettingsNav.HomeScreen) }
+                MenuRow(painterResource(R.drawable.ic_palette), R.string.section_appearance, R.string.section_appearance_hint) {
+                    onNavigate(SettingsNav.Appearance)
+                }
+                MenuRow(Icons.Filled.Search, R.string.section_search, R.string.section_search_hint) { onNavigate(SettingsNav.Search) }
+                MenuRow(painterResource(R.drawable.ic_mic), R.string.section_voice, R.string.section_voice_hint) {
+                    onNavigate(SettingsNav.Voice)
+                }
+                MenuRow(painterResource(R.drawable.ic_battery), R.string.battery_section, R.string.section_battery_hint) {
+                    onNavigate(SettingsNav.Battery)
+                }
+                MenuRow(Icons.Filled.Info, R.string.section_about, null) { onNavigate(SettingsNav.About) }
+            }
         }
     }
 }

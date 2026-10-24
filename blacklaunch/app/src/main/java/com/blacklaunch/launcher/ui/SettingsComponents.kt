@@ -31,6 +31,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.ui.theme.Oled
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 
 /** Спільні елементи екранів налаштувань: картки, перемикачі, варіанти вибору, дії. */
 
@@ -140,5 +142,31 @@ internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () 
         Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
         Text(stringResource(label), color = Oled.TextPrimary, fontSize = 16.sp)
+    }
+}
+
+/** Пункт меню налаштувань: значок, назва, коротке пояснення, стрілка. */
+@Composable
+internal fun MenuRow(icon: ImageVector, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) =
+    MenuRow(rememberVectorPainter(icon), title, hint, onClick)
+
+@Composable
+internal fun MenuRow(icon: Painter, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(title), color = Oled.TextPrimary, fontSize = 17.sp)
+            if (hint != null) Text(stringResource(hint), color = Oled.TextSecondary, fontSize = 13.sp)
+        }
+        Text("›", color = Oled.TextSecondary, fontSize = 22.sp)
     }
 }

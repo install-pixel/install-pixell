@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
     private val wallpaper by lazy { WallpaperController(applicationContext) }
     private val offlineStatus = MutableStateFlow<Map<String, OfflineStatus>>(emptyMap())
     private val profileBanner = MutableStateFlow<String?>(null)
+    private val versionName by lazy { packageManager.getPackageInfo(packageName, 0).versionName.orEmpty() }
 
     // Дозвіл на мікрофон запитується лише при першому натисканні кнопки.
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -189,7 +190,12 @@ class MainActivity : ComponentActivity() {
                     settingsScreen = { dismiss ->
                         var page by remember { mutableStateOf<SettingsNav>(SettingsNav.Main) }
                         when (val current = page) {
-                            SettingsNav.Main -> SettingsScreen(
+                            SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
+                            SettingsNav.Voice, SettingsNav.Battery, SettingsNav.About,
+                            -> SettingsScreen(
+                                page = current,
+                                onNavigate = { page = it },
+                                versionName = versionName,
                                 appearance = appearance,
                                 onChange = ::changeAppearance,
                                 onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
@@ -206,7 +212,6 @@ class MainActivity : ComponentActivity() {
                                 onDownloadModel = ::downloadModel,
                                 onDeleteModel = app.voiceModelStore::delete,
                                 onImportModel = { modelPicker.launch(arrayOf("application/zip", "application/octet-stream")) },
-                                onOpenProfiles = { page = SettingsNav.Profiles },
                                 onOpenBattery = { BatterySettings.openBattery(this) },
                                 globalKinds = globalKinds,
                                 onGlobalKindChange = ::setGlobalKind,
@@ -307,11 +312,10 @@ class MainActivity : ComponentActivity() {
         val activeId by profileViewModel.activeId.collectAsStateWithLifecycle()
         val apps by profileViewModel.apps.collectAsStateWithLifecycle()
         when (page) {
-            SettingsNav.Main -> Unit
             SettingsNav.Profiles -> ProfilesScreen(
                 profiles = profiles,
                 activeId = activeId,
-                onBack = { onNavigate(SettingsNav.Main) },
+                onBack = { onNavigate(SettingsNav.HomeScreen) },
                 onSetActive = profileViewModel::setActive,
                 onEdit = { onNavigate(SettingsNav.Edit(it)) },
                 onCreate = { name -> profileViewModel.create(name) { id -> onNavigate(SettingsNav.Edit(id)) } },
@@ -356,6 +360,7 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
+            else -> Unit
         }
     }
 

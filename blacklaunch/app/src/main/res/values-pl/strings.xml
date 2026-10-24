@@ -175,4 +175,17 @@
     <string name="dock_center">Na środku</string>
     <string name="dock_bottom">Na dole</string>
     <string name="dock_hint">Można też przytrzymać puste miejsce panelu i przeciągnąć go w górę lub w dół. Przeciągnięcie ikony zmienia kolejność (potrzebne co najmniej dwie aplikacje).</string>
+    <string name="section_home">Ekran główny</string>
+    <string name="section_home_hint">Profile, panel aplikacji</string>
+    <string name="section_appearance">Wygląd</string>
+    <string name="section_appearance_hint">Czarna tapeta, szare ikony, ciemny motyw</string>
+    <string name="section_search">Wyszukiwanie</string>
+    <string name="section_search_hint">Kalkulator, ustawienia, skróty, kontakty, kalendarz, SMS</string>
+    <string name="section_voice">Głos</string>
+    <string name="section_voice_hint">Modele offline i rozpoznawanie</string>
+    <string name="section_battery_hint">Ochrona ładowania, aplikacje w tle</string>
+    <string name="section_about">O BlackLaunch</string>
+    <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
+    <string name="search_names_note">Własne nazwy aplikacji: przytrzymaj aplikację w wynikach wyszukiwania.</string>
+    <string name="battery_profiles_note">Aby aplikacje spoza profilu nie działały w tle: Ekran główny → Profile → profil → „Ogranicz inne aplikacje w tle”.</string>
 </resources>
