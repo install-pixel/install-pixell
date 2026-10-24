@@ -126,9 +126,6 @@
         <item quantity="many">%1$d aplikacji</item>
         <item quantity="other">%1$d aplikacji</item>
     </plurals>
-    <string name="battery_apps_title">Ogranicz inne aplikacje w tle</string>
-    <string name="battery_apps_note">Aplikacje spoza tego profilu. Dotknij aplikacji, aby otworzyć jej ustawienia baterii, i wybierz „Ograniczona” — wtedy nie będzie działać w tle, dopóki jej nie otworzysz. Wystarczy zrobić to raz.</string>
-    <string name="battery_apps_hint">Oszczędza baterię: niepotrzebne tu aplikacje przestają działać w tle. „Zabijanie” aplikacji nie pomaga — uruchamiają się ponownie i zużywają jeszcze więcej energii.</string>
     <string name="battery_section">Bateria</string>
     <string name="battery_tip">Wskazówka dla starszej baterii: włącz ochronę ładowania (limit około 80%) w systemowych ustawieniach baterii — najbardziej spowalnia to jej zużycie.</string>
     <string name="battery_open">Ustawienia baterii</string>
@@ -182,7 +179,7 @@
     <string name="section_about">O Black Glass</string>
     <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
     <string name="search_names_note">Własne nazwy aplikacji: przytrzymaj aplikację w wynikach wyszukiwania.</string>
-    <string name="battery_profiles_note">Aby aplikacje spoza profilu nie działały w tle: Ekran główny → Profile → profil → „Ogranicz inne aplikacje w tle”.</string>
+    <string name="battery_profiles_note">Ograniczenie działania w tle („Ograniczone” w ustawieniach baterii) ustawia się dla aplikacji na cały telefon — Android nie pozwala launcherom zmieniać go dla każdego profilu. Baterię aplikacji otworzysz: długie naciśnięcie w wyszukiwaniu → „Informacje o aplikacji”.</string>
     <string name="grid_hint">Aplikacje na ekranie głównym: przytrzymaj ikonę i przeciągnij w dowolne miejsce — na górę, na środek, do rogu. Jeśli jest tam inna aplikacja, zamienią się miejscami. Każdy profil ma własny układ.</string>
     <string name="sms_help_title">Jak włączyć wyszukiwanie w SMS</string>
     <string name="sms_help_new">Android 15 i nowsze (oraz niektóre telefony z Androidem 13–14), gdy Black Glass nie jest zainstalowany ze Sklepu Play: Android blokuje dostęp do SMS, dopóki na to nie zezwolisz. 1) Raz spróbuj włączyć „SMS” powyżej. 2) Otwórz informacje o aplikacji Black Glass (przycisk poniżej). 3) Dotknij ⋮ w prawym górnym rogu → „Zezwól na ustawienia z ograniczeniami” i potwierdź PIN-em lub odciskiem palca. 4) Wróć i ponownie włącz „SMS”.</string>
@@ -329,4 +326,6 @@
     <string name="search_scope_first">Najpierw aplikacje profilu</string>
     <string name="search_scope_only">Tylko aplikacje profilu</string>
     <string name="search_scope_note">„Tylko aplikacje profilu” dotyczy też podpowiedzi, „Wszystkich aplikacji” i głosowego „otwórz”. Kontakty, ustawienia i kalkulator zostają. Ostatnie wyszukiwania są osobne dla każdego profilu.</string>
+    <string name="profile_global_title">Wyszukiwanie globalne</string>
+    <string name="profile_global_subtitle">Kontakty, SMS, kalendarz, ustawienia i skróty aplikacji w tym profilu. Kalkulator i profile zostają zawsze</string>
 </resources>

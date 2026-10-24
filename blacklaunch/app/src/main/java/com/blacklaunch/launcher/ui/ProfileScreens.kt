@@ -186,13 +186,15 @@ fun ProfileEditScreen(
     onBack: () -> Unit,
     onChange: (LauncherProfile) -> Unit,
     onAddApp: () -> Unit,
-    onBatteryApps: () -> Unit,
     onDelete: () -> Unit,
     /** Доступ «Не турбувати» (потрібен для «Без звуку» й «Не турбувати»). */
     hasDndAccess: Boolean = true,
     onGrantDnd: () -> Unit = {},
     searchScope: SearchScope = SearchScope.ALL,
     onSearchScopeChange: (SearchScope) -> Unit = {},
+    /** Глобальний пошук у цьому профілі: контакти, SMS, календар, налаштування, ярлики. */
+    globalSearch: Boolean = true,
+    onGlobalSearchChange: (Boolean) -> Unit = {},
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -246,11 +248,12 @@ fun ProfileEditScreen(
                 TargetOption(scope.label(), searchScope == scope) { onSearchScopeChange(scope) }
             }
             Note(stringResource(R.string.search_scope_note))
-        }
-
-        Card {
-            ActionOption(R.string.battery_apps_title, Icons.Filled.Lock, onBatteryApps)
-            Note(stringResource(R.string.battery_apps_hint))
+            SwitchRow(
+                title = stringResource(R.string.profile_global_title),
+                subtitle = stringResource(R.string.profile_global_subtitle),
+                checked = globalSearch,
+                onCheckedChange = onGlobalSearchChange,
+            )
         }
 
         Card {
@@ -426,39 +429,4 @@ private fun NotificationMode.label(): Int = when (this) {
     NotificationMode.SYSTEM_DEFAULT -> R.string.notif_system
     NotificationMode.DO_NOT_DISTURB -> R.string.notif_dnd
     NotificationMode.ALLOW_SELECTED -> R.string.notif_dnd
-}
-
-/**
- * Програми поза профілем: кожну можна відкрити в налаштуваннях батареї й увімкнути
- * «Обмежено», щоб вона не працювала у фоні. Один раз — і так лишається.
- */
-@Composable
-fun BatteryAppsScreen(
-    apps: List<AppInfo>,
-    profile: LauncherProfile,
-    iconFor: suspend (AppInfo) -> ImageBitmap?,
-    onBack: () -> Unit,
-    onOpenBattery: (AppInfo) -> Unit,
-) {
-    val outside = apps.filter { it.key !in profile.pinnedAppKeys }.distinctBy { it.packageName }
-    BackHandler(onBack = onBack)
-    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
-            }
-            Text(stringResource(R.string.battery_apps_title), color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
-        }
-        Text(
-            stringResource(R.string.battery_apps_note),
-            color = Oled.TextSecondary,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-            items(outside, key = { it.key }) { app ->
-                AppRow(app, iconFor = iconFor, onLaunch = onOpenBattery, onLongPress = {})
-            }
-        }
-    }
 }

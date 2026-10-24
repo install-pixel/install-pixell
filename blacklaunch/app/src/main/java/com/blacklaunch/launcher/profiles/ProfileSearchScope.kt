@@ -16,10 +16,24 @@ class PrefsSearchScopes(context: Context) {
             SearchScope.entries.firstOrNull { it.name == value }?.let { id to it }
         }.toMap(),
     )
+    private val _globalOff = MutableStateFlow(prefs.getStringSet(KEY_GLOBAL_OFF, emptySet()).orEmpty().toSet())
+
+    /** Профілі, у яких глобальний пошук вимкнено. */
+    val globalOff: StateFlow<Set<String>> = _globalOff.asStateFlow()
+
+    fun setGlobal(profileId: String, on: Boolean) {
+        _globalOff.value = if (on) _globalOff.value - profileId else _globalOff.value + profileId
+        prefs.edit().putStringSet(KEY_GLOBAL_OFF, _globalOff.value).apply()
+    }
     val scopes: StateFlow<Map<String, SearchScope>> = _scopes.asStateFlow()
 
     fun set(profileId: String, scope: SearchScope) {
         prefs.edit().putString(profileId, scope.name).apply()
         _scopes.value = _scopes.value + (profileId to scope)
+    }
+
+    private companion object {
+        // Окремий ключ: решта ключів — id профілів.
+        const val KEY_GLOBAL_OFF = "_global_off"
     }
 }

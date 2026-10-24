@@ -80,7 +80,10 @@ sealed interface LauncherUiState {
 }
 
 /** Пошук в активному профілі: [pinned] — його програми. */
-private data class ProfileScope(val profileId: String, val scope: SearchScope, val pinned: Set<String>)
+private data class ProfileScope(val profileId: String, val scope: SearchScope, val pinned: Set<String>, val global: Boolean) {
+    /** Пакети програм профілю (ключ — «пакет/activity/користувач»). */
+    val pinnedPackages: Set<String> get() = pinned.mapTo(HashSet()) { it.substringBefore('/') }
+}
 
 /** Одноразові повідомлення для користувача. */
 enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND }
@@ -100,6 +103,7 @@ private data class GroupInput(
     val kinds: Set<GroupKind>,
     val profiles: List<LauncherProfile>,
     val apps: List<AppInfo>,
+    val scope: ProfileScope,
 )
 
 /** Порожнє джерело профілів (тести, що не стосуються профілів). */
@@ -136,6 +140,8 @@ class LauncherViewModel(
     hiddenApps: Flow<Set<String>> = flowOf(emptySet()),
     /** Що шукати в кожному профілі (усі / свої першими / лише свої). */
     searchScopes: Flow<Map<String, SearchScope>> = flowOf(emptyMap()),
+    /** Профілі з вимкненим глобальним пошуком. */
+    globalSearchOff: Flow<Set<String>> = flowOf(emptySet()),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -151,9 +157,14 @@ class LauncherViewModel(
     // Приховані програми не шукаються й не підказуються; на головному екрані лишаються.
     // Пошук у профілі: вибір користувача і програми активного профілю.
     private val scope: StateFlow<ProfileScope> =
-        combine(profileSource.activeProfile, searchScopes) { active, scopes ->
-            ProfileScope(active?.id.orEmpty(), active?.let { scopes[it.id] } ?: SearchScope.ALL, active?.pinnedAppKeys.orEmpty().toSet())
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, ProfileScope("", SearchScope.ALL, emptySet()))
+        combine(profileSource.activeProfile, searchScopes, globalSearchOff) { active, scopes, globalOff ->
+            ProfileScope(
+                profileId = active?.id.orEmpty(),
+                scope = active?.let { scopes[it.id] } ?: SearchScope.ALL,
+                pinned = active?.pinnedAppKeys.orEmpty().toSet(),
+                global = active?.id !in globalOff,
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ProfileScope("", SearchScope.ALL, emptySet(), global = true))
 
     private val visibleApps: StateFlow<List<AppInfo>> =
         combine(appSource.apps, hiddenApps, scope) { apps, hidden, scope ->
@@ -211,10 +222,12 @@ class LauncherViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val groups: StateFlow<List<ResultGroup>> =
-        combine(query.filterNotNull(), globalKinds, profiles, results) { query, kinds, profiles, apps ->
-            GroupInput(query, kinds, profiles, apps)
+        combine(query.filterNotNull(), globalKinds, profiles, results, scope) { query, allKinds, profiles, apps, scope ->
+            // Глобальний пошук вимкнено в профілі — лишаються калькулятор, конвертер і профілі.
+            val kinds = if (scope.global) allKinds else allKinds intersect LOCAL_KINDS
+            GroupInput(query, kinds, profiles, apps, scope)
         }
-            .mapLatest { (query, kinds, profiles, apps) ->
+            .mapLatest { (query, kinds, profiles, apps, scope) ->
                 if (query.isBlank()) return@mapLatest emptyList()
                 buildList {
                     if (GroupKind.CALCULATOR in kinds) {
@@ -232,7 +245,20 @@ class LauncherViewModel(
                         }
                     }
                     // Ярлики лише найкращої програми — щоб не засипати список чужими чатами.
-                    addAll(globalSource.search(query, kinds, apps.take(1).map { it.packageName }))
+                    val global = globalSource.search(query, kinds, apps.take(1).map { it.packageName })
+                    // «Лише програми профілю» — і ярлики лише цих програм.
+                    addAll(
+                        if (scope.scope != SearchScope.PROFILE_ONLY) {
+                            global
+                        } else {
+                            global.mapNotNull { group ->
+                                if (group.kind != GroupKind.SHORTCUTS) return@mapNotNull group
+                                val allowed = scope.pinnedPackages
+                                group.items.filter { (it as? GlobalResult.Shortcut)?.packageName in allowed }
+                                    .takeIf { it.isNotEmpty() }?.let { group.copy(items = it) }
+                            }
+                        },
+                    )
                 }
             }
             .flowOn(computeDispatcher)
@@ -492,6 +518,8 @@ class LauncherViewModel(
 
         /** Скільки часу після закриття пошуку повертається останній запит. */
         const val RESTORE_QUERY_MS = 60 * 1000L
+
+        private val LOCAL_KINDS = setOf(GroupKind.CALCULATOR, GroupKind.PROFILES)
 
         private val collator: java.text.Collator = java.text.Collator.getInstance()
 

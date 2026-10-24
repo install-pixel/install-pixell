@@ -61,7 +61,6 @@ import com.blacklaunch.launcher.ui.AliasDialog
 import com.blacklaunch.launcher.ui.AppActionsDialog
 import com.blacklaunch.launcher.system.BatterySettings
 import com.blacklaunch.launcher.ui.AppPickerScreen
-import com.blacklaunch.launcher.ui.BatteryAppsScreen
 import com.blacklaunch.launcher.ui.ProfileEditScreen
 import com.blacklaunch.launcher.ui.ProfilesScreen
 import com.blacklaunch.launcher.ui.SettingsNav
@@ -112,6 +111,7 @@ class MainActivity : ComponentActivity() {
                     showRecent = { app.appearanceSettings.appearance.value.recentQueries },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
+                    globalSearchOff = app.searchScopes.globalOff,
                 )
             }
         }
@@ -635,6 +635,7 @@ class MainActivity : ComponentActivity() {
         val activeId by profileViewModel.activeId.collectAsStateWithLifecycle()
         val apps by profileViewModel.apps.collectAsStateWithLifecycle()
         val scopes by app.searchScopes.scopes.collectAsStateWithLifecycle()
+        val globalOff by app.searchScopes.globalOff.collectAsStateWithLifecycle()
         // Доступ «Не турбувати» перевіряємо щоразу при поверненні з налаштувань Android.
         val dndAccess by dndAccessState.collectAsStateWithLifecycle()
         when (page) {
@@ -657,22 +658,13 @@ class MainActivity : ComponentActivity() {
                     onBack = { onNavigate(SettingsNav.Profiles) },
                     onChange = profileViewModel::update,
                     onAddApp = { onNavigate(SettingsNav.PickApp(profile.id)) },
-                    onBatteryApps = { onNavigate(SettingsNav.BatteryApps(profile.id)) },
                     onDelete = { profileViewModel.delete(profile.id) { onNavigate(SettingsNav.Profiles) } },
                     hasDndAccess = dndAccess,
                     onGrantDnd = { startOrToast(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
                     searchScope = scopes[profile.id] ?: SearchScope.ALL,
                     onSearchScopeChange = { app.searchScopes.set(profile.id, it) },
-                )
-            }
-            is SettingsNav.BatteryApps -> {
-                val profile = profiles.firstOrNull { it.id == page.profileId } ?: return
-                BatteryAppsScreen(
-                    apps = apps,
-                    profile = profile,
-                    iconFor = iconCache::load,
-                    onBack = { onNavigate(SettingsNav.Edit(page.profileId)) },
-                    onOpenBattery = { BatterySettings.openForApp(this, it.packageName) },
+                    globalSearch = profile.id !in globalOff,
+                    onGlobalSearchChange = { app.searchScopes.setGlobal(profile.id, it) },
                 )
             }
             is SettingsNav.PickApp -> {

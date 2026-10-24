@@ -126,9 +126,6 @@
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>
     </plurals>
-    <string name="battery_apps_title">Restrict other apps in the background</string>
-    <string name="battery_apps_note">Apps that are not on this profile. Tap one to open its battery settings and choose “Restricted” — it will then not work in the background until you open it. You only need to do this once.</string>
-    <string name="battery_apps_hint">Saves battery: apps you do not need here stop working in the background. Killing apps does not help — they restart and use even more power.</string>
     <string name="battery_section">Battery</string>
     <string name="battery_tip">Tip for an older battery: turn on charge protection (charge limit around 80%) in the system battery settings — it slows down battery wear the most.</string>
     <string name="battery_open">Battery settings</string>
@@ -182,7 +179,7 @@
     <string name="section_about">About Black Glass</string>
     <string name="about_note">A minimal offline launcher: no internet permission, no ads, no tracking. Everything stays on this phone.</string>
     <string name="search_names_note">Your own names for apps: long-press an app in the search results.</string>
-    <string name="battery_profiles_note">To stop apps that are not in a profile from working in the background: Home screen → Profiles → a profile → “Restrict other apps in the background”.</string>
+    <string name="battery_profiles_note">Background restriction (“Restricted” in battery settings) is set per app for the whole phone — Android does not let launchers change it per profile. Open an app’s battery settings from its menu: long press in search → App info.</string>
     <string name="grid_hint">Apps on the home screen: long-press an icon and drag it to any place — top, centre, a corner. If another app is there, they swap. Each profile has its own layout.</string>
     <string name="sms_help_title">How to turn on SMS search</string>
     <string name="sms_help_new">Android 15 and newer (and some Android 13–14 phones), when Black Glass is not installed from Play: Android blocks SMS access until you allow it. 1) Try to turn on “SMS” above once. 2) Open the Black Glass app info (button below). 3) Tap ⋮ in the top right → “Allow restricted settings” and confirm with your PIN or fingerprint. 4) Come back and turn on “SMS” again.</string>
@@ -329,4 +326,6 @@
     <string name="search_scope_first">Profile apps first</string>
     <string name="search_scope_only">Only profile apps</string>
     <string name="search_scope_note">“Only profile apps” also applies to suggestions, All apps and voice “open”. Contacts, settings and the calculator stay. Recent searches are kept per profile.</string>
+    <string name="profile_global_title">Global search</string>
+    <string name="profile_global_subtitle">Contacts, messages, calendar, settings and app shortcuts in this profile. The calculator and profiles always stay</string>
 </resources>
