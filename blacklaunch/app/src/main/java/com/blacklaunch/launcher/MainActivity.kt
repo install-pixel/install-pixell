@@ -34,7 +34,9 @@ import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.profiles.PinnedEdits
 import com.blacklaunch.launcher.profiles.ProfileViewModel
 import com.blacklaunch.launcher.ui.AliasDialog
+import com.blacklaunch.launcher.system.BatterySettings
 import com.blacklaunch.launcher.ui.AppPickerScreen
+import com.blacklaunch.launcher.ui.BatteryAppsScreen
 import com.blacklaunch.launcher.ui.ProfileEditScreen
 import com.blacklaunch.launcher.ui.ProfilesScreen
 import com.blacklaunch.launcher.ui.SettingsNav
@@ -194,6 +196,7 @@ class MainActivity : ComponentActivity() {
                                 onDeleteModel = app.voiceModelStore::delete,
                                 onImportModel = { modelPicker.launch(arrayOf("application/zip", "application/octet-stream")) },
                                 onOpenProfiles = { page = SettingsNav.Profiles },
+                                onOpenBattery = { BatterySettings.openBattery(this) },
                                 onDismiss = dismiss,
                             )
                             else -> ProfileSettings(current, onNavigate = { page = it })
@@ -251,7 +254,18 @@ class MainActivity : ComponentActivity() {
                     onBack = { onNavigate(SettingsNav.Profiles) },
                     onChange = profileViewModel::update,
                     onAddApp = { onNavigate(SettingsNav.PickApp(profile.id)) },
+                    onBatteryApps = { onNavigate(SettingsNav.BatteryApps(profile.id)) },
                     onDelete = { profileViewModel.delete(profile.id) { onNavigate(SettingsNav.Profiles) } },
+                )
+            }
+            is SettingsNav.BatteryApps -> {
+                val profile = profiles.firstOrNull { it.id == page.profileId } ?: return
+                BatteryAppsScreen(
+                    apps = apps,
+                    profile = profile,
+                    iconFor = iconCache::load,
+                    onBack = { onNavigate(SettingsNav.Edit(page.profileId)) },
+                    onOpenBattery = { BatterySettings.openForApp(this, it.packageName) },
                 )
             }
             is SettingsNav.PickApp -> {

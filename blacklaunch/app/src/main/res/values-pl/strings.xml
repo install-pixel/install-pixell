@@ -126,4 +126,10 @@
         <item quantity="many">%1$d aplikacji</item>
         <item quantity="other">%1$d aplikacji</item>
     </plurals>
+    <string name="battery_apps_title">Ogranicz inne aplikacje w tle</string>
+    <string name="battery_apps_note">Aplikacje spoza tego profilu. Dotknij aplikacji, aby otworzyć jej ustawienia baterii, i wybierz „Ograniczona” — wtedy nie będzie działać w tle, dopóki jej nie otworzysz. Wystarczy zrobić to raz.</string>
+    <string name="battery_apps_hint">Oszczędza baterię: niepotrzebne tu aplikacje przestają działać w tle. „Zabijanie” aplikacji nie pomaga — uruchamiają się ponownie i zużywają jeszcze więcej energii.</string>
+    <string name="battery_section">Bateria</string>
+    <string name="battery_tip">Wskazówka dla starszej baterii: włącz ochronę ładowania (limit około 80%) w systemowych ustawieniach baterii — najbardziej spowalnia to jej zużycie.</string>
+    <string name="battery_open">Ustawienia baterii</string>
 </resources>

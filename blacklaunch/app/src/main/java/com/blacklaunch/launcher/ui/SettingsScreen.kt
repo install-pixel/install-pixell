@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -58,6 +59,7 @@ fun SettingsScreen(
     onDeleteModel: (String) -> Unit,
     onImportModel: () -> Unit,
     onOpenProfiles: () -> Unit,
+    onOpenBattery: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     LaunchedEffect(Unit) { onCheckOffline() }
@@ -149,6 +151,12 @@ fun SettingsScreen(
                     OfflineRow(language, offlineStatus[language], onDownloadOffline)
                 }
                 Note(stringResource(R.string.voice_section_note))
+            }
+
+            Card {
+                Text(stringResource(R.string.battery_section), color = Oled.TextPrimary, fontSize = 17.sp)
+                Note(stringResource(R.string.battery_tip))
+                ActionOption(R.string.battery_open, Icons.Filled.Lock, onOpenBattery)
             }
 
             Card {

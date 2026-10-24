@@ -126,4 +126,10 @@
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>
     </plurals>
+    <string name="battery_apps_title">Restrict other apps in the background</string>
+    <string name="battery_apps_note">Apps that are not on this profile. Tap one to open its battery settings and choose “Restricted” — it will then not work in the background until you open it. You only need to do this once.</string>
+    <string name="battery_apps_hint">Saves battery: apps you do not need here stop working in the background. Killing apps does not help — they restart and use even more power.</string>
+    <string name="battery_section">Battery</string>
+    <string name="battery_tip">Tip for an older battery: turn on charge protection (charge limit around 80%) in the system battery settings — it slows down battery wear the most.</string>
+    <string name="battery_open">Battery settings</string>
 </resources>
