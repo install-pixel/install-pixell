@@ -417,6 +417,8 @@ class KeyboardUiTest {
             instrumentation.waitForIdleSync()
             screenshot("theme-oled-${accent.name.lowercase()}")
         }
+        // Fourteen redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
+        focus(activity.plain)
         typeWord(activity.plain, "а")
     }
 
