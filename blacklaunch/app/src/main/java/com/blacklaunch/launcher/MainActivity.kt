@@ -38,6 +38,7 @@ import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.profiles.PinnedEdits
 import com.blacklaunch.launcher.profiles.ProfileViewModel
 import com.blacklaunch.launcher.ui.AliasDialog
+import com.blacklaunch.launcher.ui.AppActionsDialog
 import com.blacklaunch.launcher.system.BatterySettings
 import com.blacklaunch.launcher.ui.AppPickerScreen
 import com.blacklaunch.launcher.ui.BatteryAppsScreen
@@ -177,6 +178,9 @@ class MainActivity : ComponentActivity() {
                     profileBanner = banner,
                     onSwitchProfile = viewModel::switchProfile,
                     onMoveApp = viewModel::moveApp,
+                    onRemoveApp = viewModel::unpin,
+                    profileSwipe = appearance.profileSwipe,
+                    showProfileLabel = appearance.showProfileLabel,
                     onOpenSearch = viewModel::openSearch,
                     onQueryChange = viewModel::updateQuery,
                     onClearQuery = viewModel::clearQuery,
@@ -215,14 +219,27 @@ class MainActivity : ComponentActivity() {
                                 globalKinds = globalKinds,
                                 onGlobalKindChange = ::setGlobalKind,
                                 onOpenAppInfo = {
-                                    startOrToast(
-                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
-                                    )
+                                    awaitingSmsPermission = true
+                                    openAppInfo(packageName)
                                 },
                                 onDismiss = dismiss,
                             )
                             else -> ProfileSettings(current, onNavigate = { page = it })
                         }
+                    },
+                    appActions = { target, onNames, dismiss ->
+                        val pinned = viewModel.isPinned(target)
+                        AppActionsDialog(
+                            app = target,
+                            pinned = pinned,
+                            onTogglePin = { viewModel.setPinned(target, !pinned) },
+                            onNames = onNames,
+                            onAppInfo = { openAppInfo(target.packageName) },
+                            onUninstall = {
+                                startOrToast(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", target.packageName, null)))
+                            },
+                            onDismiss = dismiss,
+                        )
                     },
                     aliasDialog = { target, dismiss ->
                         AliasDialog(
@@ -266,6 +283,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun openAppInfo(pkg: String) =
+        startOrToast(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
+
+    /**
+     * Дозвіл SMS дали в системних налаштуваннях (обмежені налаштування Android 15+) —
+     * після повернення вмикаємо пошук у SMS сам, без повторного натискання.
+     */
+    private var awaitingSmsPermission = false
+
+    private fun enableSmsIfGranted() {
+        if (!awaitingSmsPermission) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+            awaitingSmsPermission = false
+            app.globalSearchSettings.set(GroupKind.SMS, true)
+        }
+    }
+
     private fun startOrToast(intent: Intent, fallback: Intent? = null) {
         try {
             startActivity(intent)
@@ -284,9 +318,8 @@ class MainActivity : ComponentActivity() {
             // Android 15+ блокує SMS-дозволи для програм не з Play, доки користувач не зніме обмеження.
             kind == GroupKind.SMS -> {
                 Toast.makeText(this, R.string.sms_restricted, Toast.LENGTH_LONG).show()
-                startOrToast(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
-                )
+                awaitingSmsPermission = true
+                openAppInfo(packageName)
             }
             else -> toast(R.string.global_permission_denied)
         }
@@ -454,6 +487,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         repository.refresh()
         ensureBlackWallpaper()
+        enableSmsIfGranted()
     }
 
     // Натискання Home, коли BlackLaunch уже відкритий, повертає чистий чорний екран.

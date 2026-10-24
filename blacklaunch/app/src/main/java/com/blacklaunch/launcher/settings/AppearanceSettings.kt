@@ -12,6 +12,10 @@ data class Appearance(
     val wallpaperTarget: WallpaperTarget = WallpaperTarget.HOME_AND_LOCK,
     /** Сірі одноколірні значки в результатах пошуку. */
     val monochromeIcons: Boolean = true,
+    /** Перемикання профілів свайпом вліво/вправо на головному екрані. */
+    val profileSwipe: Boolean = true,
+    /** Плашка з назвою профілю вгорі головного екрана. */
+    val showProfileLabel: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -31,6 +35,8 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_AUTO, next.autoBlackWallpaper)
             .putString(KEY_TARGET, next.wallpaperTarget.name)
             .putBoolean(KEY_MONO, next.monochromeIcons)
+            .putBoolean(KEY_SWIPE, next.profileSwipe)
+            .putBoolean(KEY_LABEL, next.showProfileLabel)
             .apply()
         _appearance.value = next
     }
@@ -43,6 +49,8 @@ class AppearanceSettings(context: Context) {
                 ?.let { name -> WallpaperTarget.entries.firstOrNull { it.name == name } }
                 ?: defaults.wallpaperTarget,
             monochromeIcons = prefs.getBoolean(KEY_MONO, defaults.monochromeIcons),
+            profileSwipe = prefs.getBoolean(KEY_SWIPE, defaults.profileSwipe),
+            showProfileLabel = prefs.getBoolean(KEY_LABEL, defaults.showProfileLabel),
         )
     }
 
@@ -51,6 +59,8 @@ class AppearanceSettings(context: Context) {
         private const val KEY_AUTO = "auto_black_wallpaper"
         private const val KEY_TARGET = "wallpaper_target"
         private const val KEY_MONO = "monochrome_icons"
+        private const val KEY_SWIPE = "profile_swipe"
+        private const val KEY_LABEL = "profile_label"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

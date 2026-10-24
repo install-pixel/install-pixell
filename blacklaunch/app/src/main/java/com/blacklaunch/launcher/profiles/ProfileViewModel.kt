@@ -60,18 +60,3 @@ class ProfileViewModel(
         }
     }
 }
-
-/** Зміни списку закріплених програм (чисті функції — для тестів і екрана). */
-object PinnedEdits {
-    fun add(keys: List<String>, key: String): List<String> = if (key in keys) keys else keys + key
-
-    fun remove(keys: List<String>, key: String): List<String> = keys - key
-
-    fun move(keys: List<String>, key: String, delta: Int): List<String> {
-        val from = keys.indexOf(key)
-        if (from < 0) return keys
-        val to = (from + delta).coerceIn(0, keys.lastIndex)
-        if (from == to) return keys
-        return keys.toMutableList().apply { add(to, removeAt(from)) }
-    }
-}

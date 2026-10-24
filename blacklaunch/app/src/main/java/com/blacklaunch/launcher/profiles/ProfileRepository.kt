@@ -8,6 +8,7 @@ import com.blacklaunch.launcher.data.ProfileEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import java.util.UUID
 
 /** Де зберігати id активного профілю (поза базою, щоб читати миттєво при старті). */
@@ -71,6 +72,15 @@ class ProfileRepository(
             dao.insertRules(profile.allowedNotificationPackages.distinct().map { NotificationRuleEntity(profile.id, it) })
         }
     }.logFailure("save")
+
+    override suspend fun setPinned(profileId: String, appKey: String, pinned: Boolean) {
+        val list = profiles.first()
+        val index = list.indexOfFirst { it.id == profileId }
+        if (index < 0) return
+        val profile = list[index]
+        val keys = if (pinned) PinnedEdits.add(profile.pinnedAppKeys, appKey) else PinnedEdits.remove(profile.pinnedAppKeys, appKey)
+        if (keys != profile.pinnedAppKeys) save(profile.copy(pinnedAppKeys = keys), index)
+    }
 
     /** Останній профіль видалити не можна. */
     suspend fun delete(id: String): Result<Unit> = runCatching {

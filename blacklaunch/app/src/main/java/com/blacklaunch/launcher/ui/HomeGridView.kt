@@ -2,6 +2,15 @@ package com.blacklaunch.launcher.ui
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.stringResource
+import com.blacklaunch.launcher.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
@@ -46,6 +55,7 @@ import com.blacklaunch.launcher.ui.theme.Oled
 import kotlin.math.roundToInt
 
 private val CellHeight = 104.dp
+private val RemoveZoneHeight = 64.dp
 
 /**
  * Вільна сітка головного екрана: кожна програма — окремий значок у будь-якій клітинці
@@ -59,12 +69,17 @@ fun HomeGridView(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
     onMove: (appKey: String, cell: Int) -> Unit,
+    /** Значок кинули в зону «Прибрати» вгорі — відкріпити з головного екрана. */
+    onRemove: (appKey: String) -> Unit,
     /** Де на екрані значки — щоб довге натискання на них не відкривало налаштування. */
     onIconBounds: (Map<String, Rect>) -> Unit,
+    /** Скільки верхніх рядів зайнято (назва профілю) — туди значки не ставляться. */
+    reservedTopRows: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val view = LocalView.current
     val move by rememberUpdatedState(onMove)
+    val remove by rememberUpdatedState(onRemove)
     var dragging by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     val bounds = remember { mutableMapOf<String, Rect>() }
@@ -75,7 +90,17 @@ fun HomeGridView(
         val cellWidthPx = with(density) { cellWidth.toPx() }
         val cellHeightPx = with(density) { CellHeight.toPx() }
         val heightPx = with(density) { maxHeight.toPx() }
-        val rows = (heightPx / cellHeightPx).toInt().coerceAtLeast(1)
+        val rows = ((heightPx / cellHeightPx).toInt() - reservedTopRows).coerceAtLeast(1)
+        val removeZonePx = with(density) { RemoveZoneHeight.toPx() }
+        val draggedTop = dragging?.let { key ->
+            cells[key]?.let { heightPx - (HomeGrid.rowFromBottom(it).coerceAtMost(rows - 1) + 1) * cellHeightPx + dragOffset.y }
+        }
+        val overRemoveZone = draggedTop != null && draggedTop < removeZonePx
+
+        // Зона «Прибрати» з'являється лише під час перетягування.
+        if (dragging != null) {
+            RemoveZone(highlighted = overRemoveZone, modifier = Modifier.align(Alignment.TopCenter))
+        }
 
         apps.forEach { app ->
             val cell = cells[app.key] ?: return@forEach
@@ -113,10 +138,15 @@ fun HomeGridView(
                                 dragOffset += amount
                             },
                             onDragEnd = {
-                                val target = HomeGridMath.targetCell(
-                                    x + dragOffset.x, y + dragOffset.y, cellWidthPx, cellHeightPx, heightPx, rows,
-                                )
-                                move(app.key, target)
+                                if (y + dragOffset.y < removeZonePx) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    remove(app.key)
+                                } else {
+                                    val target = HomeGridMath.targetCell(
+                                        x + dragOffset.x, y + dragOffset.y, cellWidthPx, cellHeightPx, heightPx, rows,
+                                    )
+                                    move(app.key, target)
+                                }
                                 dragging = null
                                 dragOffset = Offset.Zero
                             },
@@ -133,6 +163,24 @@ fun HomeGridView(
                 GridIcon(app, iconFor)
             }
         }
+    }
+}
+
+@Composable
+private fun RemoveZone(highlighted: Boolean, modifier: Modifier) {
+    val shape = RoundedCornerShape(24.dp)
+    Row(
+        modifier = modifier
+            .padding(top = 8.dp)
+            .clip(shape)
+            .background(if (highlighted) Oled.KnobListening else Oled.Surface)
+            .border(1.dp, Oled.Glint, shape)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextPrimary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.remove_from_home), color = Oled.TextPrimary, fontSize = 14.sp)
     }
 }
 

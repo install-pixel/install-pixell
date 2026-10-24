@@ -22,6 +22,12 @@ class ProfileHomeTest {
         val active = MutableStateFlow<String?>(null)
         override val activeProfile = combine(profiles, active) { all, id -> all.firstOrNull { it.id == id } ?: all.firstOrNull() }
         override fun setActive(id: String) { active.value = id }
+        override suspend fun setPinned(profileId: String, appKey: String, pinned: Boolean) {
+            profiles.value = profiles.value.map {
+                if (it.id != profileId) it
+                else it.copy(pinnedAppKeys = if (pinned) it.pinnedAppKeys + appKey else it.pinnedAppKeys - appKey)
+            }
+        }
     }
 
     private val apps = FakeAppSource("Sklado", "Scanner", "Telegram")
@@ -127,5 +133,15 @@ class ProfileHomeTest {
         assertEquals(0, viewModel.home.value.cells[key("Telegram")])
         viewModel.switchProfile(-1)
         assertEquals(7, viewModel.home.value.cells[key("Scanner")])
+    }
+
+    @Test fun pinAndUnpinFromHome() {
+        val telegram = apps.apps.value.first { it.label == "Telegram" }
+        assertEquals(false, viewModel.isPinned(telegram))
+        viewModel.setPinned(telegram, true)
+        assertEquals(true, viewModel.isPinned(telegram))
+        assertEquals(listOf("Scanner", "Sklado", "Telegram"), viewModel.home.value.pinned.map { it.label })
+        viewModel.setPinned(telegram, false)
+        assertEquals(listOf("Scanner", "Sklado"), viewModel.home.value.pinned.map { it.label })
     }
 }

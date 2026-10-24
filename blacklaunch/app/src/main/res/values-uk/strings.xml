@@ -183,10 +183,18 @@
     <string name="about_note">Мінімалістичний офлайн-лаунчер: без дозволу на інтернет, без реклами й стеження. Усе лишається на цьому телефоні.</string>
     <string name="search_names_note">Власні назви програм: довге натискання на програму в результатах пошуку.</string>
     <string name="battery_profiles_note">Щоб програми поза профілем не працювали у фоні: Головний екран → Профілі → профіль → «Обмежити інші програми у фоні».</string>
-    <string name="pinned_header">Закріплені</string>
     <string name="grid_hint">Програми на головному екрані: довге натискання на значок і перетягування в будь-яке місце — вгору, по центру, в кут. Якщо там інша програма, вони міняються місцями. У кожного профілю своя розкладка.</string>
     <string name="sms_help_title">Як увімкнути пошук у SMS</string>
     <string name="sms_help_new">Android 15 і новіші (а також деякі телефони з Android 13–14), якщо BlackLaunch встановлено не з Play Маркету: Android блокує доступ до SMS, доки ви його не дозволите. 1) Один раз спробуйте ввімкнути «SMS» вище. 2) Відкрийте сторінку BlackLaunch у налаштуваннях телефона (кнопка нижче). 3) Натисніть ⋮ угорі праворуч → «Дозволити обмежені налаштування» й підтвердьте PIN-кодом або відбитком. 4) Поверніться й знову ввімкніть «SMS».</string>
     <string name="sms_help_old">Android 14 і старіші: просто ввімкніть «SMS» вище й дозвольте доступ, коли телефон запитає.</string>
     <string name="sms_help_open">Відкрити сторінку BlackLaunch</string>
+    <string name="remove_from_home">Прибрати з головного екрана</string>
+    <string name="add_to_home">Додати на головний екран</string>
+    <string name="alias_menu">Мої назви для програми</string>
+    <string name="app_info">Про програму</string>
+    <string name="app_uninstall">Видалити програму</string>
+    <string name="profile_swipe_title">Перемикати профілі свайпом</string>
+    <string name="profile_swipe_subtitle">Свайп вліво чи вправо на головному екрані</string>
+    <string name="profile_label_title">Назва профілю на екрані</string>
+    <string name="profile_label_subtitle">Маленька плашка вгорі; натискання — наступний профіль. Вимкнено — повністю чорний екран</string>
 </resources>

@@ -84,6 +84,7 @@ private object NoProfiles : ProfileSource {
     override val profiles: Flow<List<LauncherProfile>> = flowOf(emptyList())
     override val activeProfile: Flow<LauncherProfile?> = flowOf(null)
     override fun setActive(id: String) = Unit
+    override suspend fun setPinned(profileId: String, appKey: String, pinned: Boolean) = Unit
 }
 
 class LauncherViewModel(
@@ -199,6 +200,21 @@ class LauncherViewModel(
         val next = profiles.value.neighbour(home.value.profileId, delta) ?: return
         if (next.id == home.value.profileId) return
         activate(next)
+    }
+
+    /** Чи закріплена програма на головному екрані активного профілю. */
+    fun isPinned(app: AppInfo): Boolean = profiles.value.firstOrNull { it.id == home.value.profileId }
+        ?.pinnedAppKeys?.contains(app.key) == true
+
+    fun setPinned(app: AppInfo, pinned: Boolean) {
+        val profileId = home.value.profileId ?: return
+        viewModelScope.launch { profileSource.setPinned(profileId, app.key, pinned) }
+    }
+
+    /** Значок кинули в зону «Прибрати» на головному екрані. */
+    fun unpin(appKey: String) {
+        val profileId = home.value.profileId ?: return
+        viewModelScope.launch { profileSource.setPinned(profileId, appKey, false) }
     }
 
     /** Програму перетягнули в іншу клітинку головного екрана (своя розкладка для кожного профілю). */

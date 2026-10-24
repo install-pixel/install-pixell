@@ -183,10 +183,18 @@
     <string name="about_note">A minimal offline launcher: no internet permission, no ads, no tracking. Everything stays on this phone.</string>
     <string name="search_names_note">Your own names for apps: long-press an app in the search results.</string>
     <string name="battery_profiles_note">To stop apps that are not in a profile from working in the background: Home screen → Profiles → a profile → “Restrict other apps in the background”.</string>
-    <string name="pinned_header">Pinned</string>
     <string name="grid_hint">Apps on the home screen: long-press an icon and drag it to any place — top, centre, a corner. If another app is there, they swap. Each profile has its own layout.</string>
     <string name="sms_help_title">How to turn on SMS search</string>
     <string name="sms_help_new">Android 15 and newer (and some Android 13–14 phones), when BlackLaunch is not installed from Play: Android blocks SMS access until you allow it. 1) Try to turn on “SMS” above once. 2) Open the BlackLaunch app info (button below). 3) Tap ⋮ in the top right → “Allow restricted settings” and confirm with your PIN or fingerprint. 4) Come back and turn on “SMS” again.</string>
     <string name="sms_help_old">Android 14 and older: just turn on “SMS” above and allow access when asked.</string>
     <string name="sms_help_open">Open BlackLaunch app info</string>
+    <string name="remove_from_home">Remove from home screen</string>
+    <string name="add_to_home">Add to home screen</string>
+    <string name="alias_menu">My names for this app</string>
+    <string name="app_info">App info</string>
+    <string name="app_uninstall">Uninstall</string>
+    <string name="profile_swipe_title">Switch profiles by swiping</string>
+    <string name="profile_swipe_subtitle">Swipe left or right on the home screen</string>
+    <string name="profile_label_title">Profile name on the home screen</string>
+    <string name="profile_label_subtitle">A small label at the top; tap it to switch. Off — a fully black screen</string>
 </resources>

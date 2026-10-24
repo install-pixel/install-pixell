@@ -54,8 +54,6 @@ fun SearchResults(
     query: String,
     results: List<AppInfo>,
     groups: List<ResultGroup>,
-    /** Поки запит порожній — показуємо закріплені програми активного профілю. */
-    pinned: List<AppInfo>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
@@ -63,12 +61,7 @@ fun SearchResults(
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
-        LazyColumn(modifier = modifier, reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
-            items(pinned, key = { it.key }) { app ->
-                AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
-            }
-            if (pinned.isNotEmpty()) item(key = "header:pinned") { PinnedHeader() }
-        }
+        Box(modifier)
         return
     }
     if (results.isEmpty() && groups.isEmpty()) {
@@ -128,16 +121,6 @@ internal fun AppRow(
         Spacer(Modifier.width(16.dp))
         Text(app.label, color = Oled.TextPrimary, fontSize = 18.sp)
     }
-}
-
-@Composable
-private fun PinnedHeader() {
-    Text(
-        text = stringResource(R.string.pinned_header),
-        color = Oled.TextSecondary,
-        fontSize = 13.sp,
-        modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 2.dp),
-    )
 }
 
 @Composable

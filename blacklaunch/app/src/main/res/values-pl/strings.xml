@@ -183,10 +183,18 @@
     <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
     <string name="search_names_note">Własne nazwy aplikacji: przytrzymaj aplikację w wynikach wyszukiwania.</string>
     <string name="battery_profiles_note">Aby aplikacje spoza profilu nie działały w tle: Ekran główny → Profile → profil → „Ogranicz inne aplikacje w tle”.</string>
-    <string name="pinned_header">Przypięte</string>
     <string name="grid_hint">Aplikacje na ekranie głównym: przytrzymaj ikonę i przeciągnij w dowolne miejsce — na górę, na środek, do rogu. Jeśli jest tam inna aplikacja, zamienią się miejscami. Każdy profil ma własny układ.</string>
     <string name="sms_help_title">Jak włączyć wyszukiwanie w SMS</string>
     <string name="sms_help_new">Android 15 i nowsze (oraz niektóre telefony z Androidem 13–14), gdy BlackLaunch nie jest zainstalowany ze Sklepu Play: Android blokuje dostęp do SMS, dopóki na to nie zezwolisz. 1) Raz spróbuj włączyć „SMS” powyżej. 2) Otwórz informacje o aplikacji BlackLaunch (przycisk poniżej). 3) Dotknij ⋮ w prawym górnym rogu → „Zezwól na ustawienia z ograniczeniami” i potwierdź PIN-em lub odciskiem palca. 4) Wróć i ponownie włącz „SMS”.</string>
     <string name="sms_help_old">Android 14 i starsze: po prostu włącz „SMS” powyżej i zezwól na dostęp, gdy telefon zapyta.</string>
     <string name="sms_help_open">Otwórz informacje o BlackLaunch</string>
+    <string name="remove_from_home">Usuń z ekranu głównego</string>
+    <string name="add_to_home">Dodaj do ekranu głównego</string>
+    <string name="alias_menu">Moje nazwy aplikacji</string>
+    <string name="app_info">Informacje o aplikacji</string>
+    <string name="app_uninstall">Odinstaluj</string>
+    <string name="profile_swipe_title">Przełączaj profile przesunięciem</string>
+    <string name="profile_swipe_subtitle">Przesuń w lewo lub w prawo na ekranie głównym</string>
+    <string name="profile_label_title">Nazwa profilu na ekranie</string>
+    <string name="profile_label_subtitle">Mała etykieta u góry; dotknięcie — następny profil. Wyłączone — całkowicie czarny ekran</string>
 </resources>

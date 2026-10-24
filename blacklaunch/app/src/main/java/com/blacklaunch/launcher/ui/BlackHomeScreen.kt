@@ -31,6 +31,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -64,6 +70,11 @@ fun BlackHomeScreen(
     profileBanner: String?,
     onSwitchProfile: (delta: Int) -> Unit,
     onMoveApp: (appKey: String, cell: Int) -> Unit,
+    onRemoveApp: (appKey: String) -> Unit,
+    /** Перемикання профілів свайпом вліво/вправо (можна вимкнути). */
+    profileSwipe: Boolean,
+    /** Назва профілю вгорі екрана (можна вимкнути — тоді екран повністю чорний). */
+    showProfileLabel: Boolean,
     onOpenSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -75,11 +86,14 @@ fun BlackHomeScreen(
     onMicClick: () -> Unit,
     /** Налаштування на весь екран (довге натискання на чорному екрані). */
     settingsScreen: @Composable (onDismiss: () -> Unit) -> Unit,
-    /** Власні назви програми (довге натискання на результат). */
+    /** Власні назви програми (з меню програми). */
     aliasDialog: @Composable (app: AppInfo, onDismiss: () -> Unit) -> Unit,
+    /** Меню програми (довге натискання на результат пошуку). */
+    appActions: @Composable (app: AppInfo, onNames: () -> Unit, onDismiss: () -> Unit) -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var aliasApp by remember { mutableStateOf<AppInfo?>(null) }
+    var menuApp by remember { mutableStateOf<AppInfo?>(null) }
 
     // На головному екрані Back нічого не робить; у пошуку — закриває його.
     BackHandler {
@@ -91,8 +105,10 @@ fun BlackHomeScreen(
         return
     }
 
-    when (state) {
-        LauncherUiState.HomeIdle -> HomeIdle(
+    val searchOpen = state is LauncherUiState.SearchOpen
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        // Під пошуком головний екран лишається на фоні — розмитий і притемнений.
+        HomeIdle(
             home = home,
             profileBanner = profileBanner,
             iconFor = iconFor,
@@ -101,31 +117,36 @@ fun BlackHomeScreen(
             onLongPress = { showSettings = true },
             onSwitchProfile = onSwitchProfile,
             onMoveApp = onMoveApp,
+            onRemoveApp = onRemoveApp,
+            profileSwipe = profileSwipe,
+            showProfileLabel = showProfileLabel,
+            modifier = if (searchOpen) Modifier.blur(18.dp).alpha(0.35f) else Modifier,
         )
-        is LauncherUiState.SearchOpen -> SearchOpen(
+        if (state is LauncherUiState.SearchOpen) SearchOpen(
             state = state,
-            pinnedApps = home.pinned,
             onQueryChange = onQueryChange,
             onClearQuery = onClearQuery,
             onLaunch = onLaunch,
-            onLongPress = { aliasApp = it },
+            onLongPress = { menuApp = it },
             onGlobal = onGlobal,
             iconFor = iconFor,
             voiceState = voiceState,
             onMicClick = onMicClick,
             // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом.
             onKeyboardHidden = {
-                if (aliasApp == null && voiceState == VoiceState.Idle) onCloseSearch()
+                if (aliasApp == null && menuApp == null && voiceState == VoiceState.Idle) onCloseSearch()
             },
             onSwipeDown = onCloseSearch,
         )
     }
 
+    menuApp?.let { app -> appActions(app, { menuApp = null; aliasApp = app }) { menuApp = null } }
     aliasApp?.let { app -> aliasDialog(app) { aliasApp = null } }
 }
 
 @Composable
 private fun HomeIdle(
+    modifier: Modifier = Modifier,
     home: HomeState,
     profileBanner: String?,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -134,14 +155,16 @@ private fun HomeIdle(
     onLongPress: () -> Unit,
     onSwitchProfile: (Int) -> Unit,
     onMoveApp: (appKey: String, cell: Int) -> Unit,
+    onRemoveApp: (appKey: String) -> Unit,
+    profileSwipe: Boolean,
+    showProfileLabel: Boolean,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val view = LocalView.current
     var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
             .pointerInput(Unit) {
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
                 // Довге натискання на значку — це перетягування, а не налаштування.
@@ -149,7 +172,7 @@ private fun HomeIdle(
                     if (iconBounds.values.none { it.contains(position) }) onLongPress()
                 })
             }
-            .pointerInput(home.profileCount) {
+            .pointerInput(home.profileCount, profileSwipe) {
                 var drag = Offset.Zero
                 var handled = false
                 detectDragGestures(
@@ -169,7 +192,7 @@ private fun HomeIdle(
                                 onOpenSearch()
                             }
                             // Свайп уліво — наступний профіль, управо — попередній.
-                            horizontal && abs(drag.x) > thresholdPx && home.profileCount > 1 -> {
+                            horizontal && profileSwipe && abs(drag.x) > thresholdPx && home.profileCount > 1 -> {
                                 handled = true
                                 change.consume()
                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -186,33 +209,53 @@ private fun HomeIdle(
             iconFor = iconFor,
             onLaunch = onLaunch,
             onMove = onMoveApp,
+            onRemove = onRemoveApp,
             onIconBounds = { iconBounds = it },
+            reservedTopRows = if (showProfileLabel) 1 else 0,
             modifier = Modifier
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 12.dp),
         )
-        AnimatedVisibility(
-            visible = profileBanner != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center),
-        ) {
-            Text(
-                text = profileBanner.orEmpty(),
-                color = Oled.TextPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Light,
+        val topModifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 16.dp)
+        if (showProfileLabel && home.profileName.isNotEmpty()) {
+            // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.
+            ProfilePill(
+                name = home.profileName,
+                highlighted = profileBanner != null,
+                onClick = if (home.profileCount > 1) ({ onSwitchProfile(1) }) else null,
+                modifier = topModifier,
             )
+        } else {
+            // Без плашки назва коротко з'являється вгорі під час перемикання.
+            AnimatedVisibility(visible = profileBanner != null, enter = fadeIn(), exit = fadeOut(), modifier = topModifier) {
+                ProfilePill(name = profileBanner.orEmpty(), highlighted = true, onClick = null)
+            }
         }
     }
+}
+
+@Composable
+private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(20.dp)
+    Text(
+        text = name,
+        color = if (highlighted) Oled.TextPrimary else Oled.TextSecondary,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = modifier
+            .clip(shape)
+            .background(Oled.Surface)
+            .border(1.dp, Oled.Glint, shape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp, vertical = 8.dp),
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SearchOpen(
     state: LauncherUiState.SearchOpen,
-    pinnedApps: List<AppInfo>,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
@@ -263,7 +306,7 @@ private fun SearchOpen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0x99000000))
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
@@ -288,7 +331,6 @@ private fun SearchOpen(
             query = state.query,
             results = state.results,
             groups = state.groups,
-            pinned = pinnedApps,
             iconFor = iconFor,
             onLaunch = onLaunch,
             onLongPress = onLongPress,

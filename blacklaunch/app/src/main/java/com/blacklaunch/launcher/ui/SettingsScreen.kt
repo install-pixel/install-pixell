@@ -64,6 +64,20 @@ fun SettingsScreen(
                 ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
             }
             Card {
+                SwitchRow(
+                    title = stringResource(R.string.profile_swipe_title),
+                    subtitle = stringResource(R.string.profile_swipe_subtitle),
+                    checked = appearance.profileSwipe,
+                    onCheckedChange = { on -> onChange { it.copy(profileSwipe = on) } },
+                )
+                SwitchRow(
+                    title = stringResource(R.string.profile_label_title),
+                    subtitle = stringResource(R.string.profile_label_subtitle),
+                    checked = appearance.showProfileLabel,
+                    onCheckedChange = { on -> onChange { it.copy(showProfileLabel = on) } },
+                )
+            }
+            Card {
                 Note(stringResource(R.string.grid_hint))
             }
         }
