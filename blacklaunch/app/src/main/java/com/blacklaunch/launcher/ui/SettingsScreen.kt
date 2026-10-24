@@ -54,6 +54,7 @@ fun SettingsScreen(
     onOpenBattery: () -> Unit,
     globalKinds: Set<GroupKind>,
     onGlobalKindChange: (GroupKind, Boolean) -> Unit,
+    onOpenAppInfo: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val toMain = { onNavigate(SettingsNav.Main) }
@@ -112,6 +113,12 @@ fun SettingsScreen(
                     )
                 }
                 Note(stringResource(R.string.global_note))
+            }
+            Card {
+                Text(stringResource(R.string.sms_help_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                Note(stringResource(R.string.sms_help_new))
+                Note(stringResource(R.string.sms_help_old))
+                ActionOption(R.string.sms_help_open, Icons.Filled.Settings, onOpenAppInfo)
             }
             Card {
                 Note(stringResource(R.string.search_names_note))

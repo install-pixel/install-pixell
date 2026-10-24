@@ -185,4 +185,8 @@
     <string name="battery_profiles_note">To stop apps that are not in a profile from working in the background: Home screen → Profiles → a profile → “Restrict other apps in the background”.</string>
     <string name="pinned_header">Pinned</string>
     <string name="grid_hint">Apps on the home screen: long-press an icon and drag it to any place — top, centre, a corner. If another app is there, they swap. Each profile has its own layout.</string>
+    <string name="sms_help_title">How to turn on SMS search</string>
+    <string name="sms_help_new">Android 15 and newer (and some Android 13–14 phones), when BlackLaunch is not installed from Play: Android blocks SMS access until you allow it. 1) Try to turn on “SMS” above once. 2) Open the BlackLaunch app info (button below). 3) Tap ⋮ in the top right → “Allow restricted settings” and confirm with your PIN or fingerprint. 4) Come back and turn on “SMS” again.</string>
+    <string name="sms_help_old">Android 14 and older: just turn on “SMS” above and allow access when asked.</string>
+    <string name="sms_help_open">Open BlackLaunch app info</string>
 </resources>

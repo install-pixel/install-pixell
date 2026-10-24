@@ -214,6 +214,11 @@ class MainActivity : ComponentActivity() {
                                 onOpenBattery = { BatterySettings.openBattery(this) },
                                 globalKinds = globalKinds,
                                 onGlobalKindChange = ::setGlobalKind,
+                                onOpenAppInfo = {
+                                    startOrToast(
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+                                    )
+                                },
                                 onDismiss = dismiss,
                             )
                             else -> ProfileSettings(current, onNavigate = { page = it })
