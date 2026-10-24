@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -32,6 +33,9 @@ fun AppActionsDialog(
     onUninstall: () -> Unit,
     /** Приховати з пошуку BlackLaunch (у системі лишається). */
     onHide: () -> Unit,
+    /** Власний значок Black Glass (літери в кружечку) замість значка програми. */
+    ownIcon: Boolean = false,
+    onToggleOwnIcon: () -> Unit = {},
     /** Ярлики програми (до 4): назва → запуск. */
     shortcuts: List<Pair<String, () -> Unit>> = emptyList(),
     onDismiss: () -> Unit,
@@ -51,6 +55,7 @@ fun AppActionsDialog(
                     ActionOption(R.string.add_to_home, Icons.Filled.Add) { onTogglePin(); onDismiss() }
                 }
                 ActionOption(R.string.alias_menu, Icons.Filled.Edit, onNames)
+                ActionOption(if (ownIcon) R.string.icon_original else R.string.icon_own, Icons.Filled.Face) { onToggleOwnIcon(); onDismiss() }
                 ActionOption(R.string.hide_from_search, Icons.Filled.Lock) { onHide(); onDismiss() }
                 ActionOption(R.string.app_info, Icons.Filled.Info) { onAppInfo(); onDismiss() }
                 ActionOption(R.string.app_uninstall, Icons.Filled.Delete) { onUninstall(); onDismiss() }

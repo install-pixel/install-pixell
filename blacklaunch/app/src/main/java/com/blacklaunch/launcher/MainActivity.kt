@@ -25,6 +25,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
@@ -123,9 +124,13 @@ class MainActivity : ComponentActivity() {
 
     private val iconCache by lazy {
         val metrics = resources.displayMetrics
-        AppIconCache(repository, metrics.densityDpi, (40 * metrics.density).toInt()) {
-            app.appearanceSettings.appearance.value.monochromeIcons
-        }
+        AppIconCache(
+            repository = repository,
+            density = metrics.densityDpi,
+            sizePx = (40 * metrics.density).toInt(),
+            monochrome = { app.appearanceSettings.appearance.value.monochromeIcons },
+            ownIcon = { it.key in app.ownIcons.keys.value },
+        )
     }
 
     private val profileViewModel: ProfileViewModel by viewModels {
@@ -236,6 +241,11 @@ class MainActivity : ComponentActivity() {
             val ttsEngine by app.voiceActionSettings.ttsEngine.collectAsStateWithLifecycle()
             val customCommands by app.customCommands.commands.collectAsStateWithLifecycle()
             val allApps by viewModel.allApps.collectAsStateWithLifecycle()
+            val ownIcons by app.ownIcons.keys.collectAsStateWithLifecycle()
+            // Новий екземпляр — значки перемальовуються (свій значок, сірий режим).
+            val iconFor: suspend (AppInfo) -> ImageBitmap? = remember(ownIcons, appearance.monochromeIcons) {
+                { target -> iconCache.load(target) }
+            }
             val glanceInfo by glance.collectAsStateWithLifecycle()
             // Увімкнули «Короткий огляд» — показуємо одразу, не чекаючи хвилини.
             LaunchedEffect(appearance.glance) {
@@ -276,7 +286,7 @@ class MainActivity : ComponentActivity() {
                     onRemoveRecent = viewModel::removeRecent,
                     allApps = if (appearance.allAppsButton) allApps else emptyList(),
                     onContactAction = ::contactAction,
-                    iconFor = iconCache::load,
+                    iconFor = iconFor,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
                     settingsScreen = { dismiss ->
@@ -348,6 +358,8 @@ class MainActivity : ComponentActivity() {
                                 startOrToast(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", target.packageName, null)))
                             },
                             onHide = { app.hiddenApps.hide(target.key) },
+                            ownIcon = target.key in ownIcons,
+                            onToggleOwnIcon = { app.ownIcons.set(target.key, target.key !in ownIcons) },
                             shortcuts = remember(target.key) {
                                 app.globalSearch.shortcutsFor(target.packageName, target.userSerial).map { shortcut ->
                                     shortcut.title to { openGlobalResult(shortcut) }

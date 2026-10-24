@@ -10,6 +10,7 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -31,13 +32,17 @@ class AppIconCache(
     private val density: Int,
     private val sizePx: Int,
     private val monochrome: () -> Boolean,
+    /** Власний значок Black Glass (літери) замість значка програми. */
+    private val ownIcon: (AppInfo) -> Boolean = { false },
 ) {
     private val cache = LruCache<String, ImageBitmap>(MAX_ICONS)
 
     suspend fun load(app: AppInfo): ImageBitmap? {
         val mono = monochrome()
-        val key = "${app.key}#$mono"
+        val own = ownIcon(app)
+        val key = "${app.key}#$mono#$own"
         cache.get(key)?.let { return it }
+        if (own) return monogram(app.label).asImageBitmap().also { cache.put(key, it) }
         return withContext(Dispatchers.IO) {
             val drawable = repository.icon(app, density) ?: return@withContext null
             val bitmap = if (mono) monochromeBitmap(drawable) else render(drawable)
@@ -113,6 +118,37 @@ class AppIconCache(
         }
         canvas.restore()
         return bitmap
+    }
+
+    /** Кружечок у стилі Black Glass з першими літерами назви. */
+    private fun monogram(label: String): Bitmap {
+        val bitmap = createBitmap(sizePx, sizePx)
+        val canvas = Canvas(bitmap)
+        drawKnob(canvas)
+        val text = Monogram.of(label)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = GLYPH
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            textSize = sizePx * if (text.length > 1) 0.36f else 0.44f
+        }
+        val y = sizePx / 2f - (paint.descent() + paint.ascent()) / 2f
+        canvas.drawText(text, sizePx / 2f, y, paint)
+        return bitmap
+    }
+
+    private fun drawKnob(canvas: Canvas) {
+        val radius = sizePx / 2f
+        val knob = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(radius * 0.8f, radius * 0.6f, radius * 1.3f, KNOB_LIGHT, KNOB_DARK, Shader.TileMode.CLAMP)
+        }
+        canvas.drawCircle(radius, radius, radius, knob)
+        val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = sizePx / 36f
+            color = RIM
+        }
+        canvas.drawCircle(radius, radius, radius - rim.strokeWidth, rim)
     }
 
     private fun desaturated(drawable: Drawable): Bitmap {

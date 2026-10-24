@@ -339,4 +339,6 @@
     <string name="notif_filter_granted">✓ Dostęp do powiadomień przyznany — filtr działa w tym profilu</string>
     <string name="notif_extra_title">Zezwól też na powiadomienia z</string>
     <string name="notif_extra_add">Dodaj aplikacje</string>
+    <string name="icon_own">Ikona Black Glass</string>
+    <string name="icon_original">Oryginalna ikona</string>
 </resources>

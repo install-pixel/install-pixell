@@ -339,4 +339,6 @@
     <string name="notif_filter_granted">✓ Доступ до сповіщень надано — фільтр працює в цьому профілі</string>
     <string name="notif_extra_title">Також дозволити сповіщення від</string>
     <string name="notif_extra_add">Додати програми</string>
+    <string name="icon_own">Значок Black Glass</string>
+    <string name="icon_original">Оригінальний значок</string>
 </resources>

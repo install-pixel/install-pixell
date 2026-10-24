@@ -339,4 +339,6 @@
     <string name="notif_filter_granted">✓ Notification access granted — the filter works in this profile</string>
     <string name="notif_extra_title">Also allow notifications from</string>
     <string name="notif_extra_add">Add apps</string>
+    <string name="icon_own">Black Glass icon</string>
+    <string name="icon_original">Original icon</string>
 </resources>

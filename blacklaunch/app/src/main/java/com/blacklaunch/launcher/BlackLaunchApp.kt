@@ -22,6 +22,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.room.withTransaction
 import com.blacklaunch.launcher.apps.AppRepository
+import com.blacklaunch.launcher.apps.OwnIcons
 import com.blacklaunch.launcher.apps.PrefsLaunchHistory
 import com.blacklaunch.launcher.commands.PrefsCustomCommandStore
 import com.blacklaunch.launcher.data.AppDatabase
@@ -58,6 +59,7 @@ class BlackLaunchApp : Application() {
     val customCommands: PrefsCustomCommandStore by lazy { PrefsCustomCommandStore(this) }
     val recentQueries: PrefsRecentQueries by lazy { PrefsRecentQueries(this) }
     val hiddenApps: PrefsHiddenApps by lazy { PrefsHiddenApps(this) }
+    val ownIcons: OwnIcons by lazy { OwnIcons(this) }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }

@@ -174,7 +174,7 @@ private fun EmptySearch(
                                 .padding(vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
+                            val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
                             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                                 icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(48.dp)) }
                             }
@@ -296,7 +296,7 @@ internal fun AppRow(
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
 ) {
-    val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
+    val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
     Row(
