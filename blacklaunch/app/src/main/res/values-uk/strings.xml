@@ -85,4 +85,9 @@
     <string name="import_error_space">Замало вільного місця, щоб встановити модель</string>
     <string name="import_error_other">Не вдалося встановити модель. Спробуйте ще раз</string>
     <string name="import_choose_file">Вибрати файл</string>
+
+    <!-- Profiles -->
+    <string name="profile_work">Робота</string>
+    <string name="profile_home">Дім</string>
+    <string name="profile_rest">Відпочинок</string>
 </resources>

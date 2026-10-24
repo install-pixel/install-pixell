@@ -207,10 +207,11 @@ SpeechRecognizer, NotificationManager (політика DND), AudioManager.
 - [ ] Очищення історії в налаштуваннях — функція є (`LaunchHistory.clear`), кнопка — Етап 11.
 
 ### Етап 7. Локальне сховище — 0.7 «Local Profile Storage»
-- [ ] Room: таблиці `profiles`, `pinned_apps` (з порядком), `notification_rules`.
-- [ ] DAO, `ProfileRepository`, експорт схеми + тести міграцій.
-- [ ] DataStore: активний профіль і дрібні налаштування.
-- [ ] Початкові профілі створюються один раз, без дублікатів.
+- [x] Room: таблиці `profiles`, `pinned_apps` (з порядком), `notification_rules`.
+- [x] DAO, `ProfileRepository` з обробкою помилок, експорт схеми (`app/schemas`). Міграцій ще немає — схема версії 1; тести міграцій з'являться з першою зміною схеми.
+- [x] Активний профіль — у SharedPreferences, як і інші прості налаштування (DataStore не додали: користі немає, ще одна бібліотека).
+- [x] Початкові профілі створюються один раз, без дублікатів (фіксовані id + перевірка в транзакції).
+- [x] Закріплені програми — за ключем `пакет/activity/користувач`, а не лише пакетом.
 Коміт: `feat: add local profile persistence`.
 
 ### Етап 8. Профілі — 0.8 «Profiles UI»

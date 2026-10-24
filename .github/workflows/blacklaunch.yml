@@ -49,6 +49,7 @@ jobs:
           path: |
             blacklaunch/${{ env.APK }}
             blacklaunch/app/build/reports/lint-results-debug.html
+            blacklaunch/app/schemas/**
 
       # Старий тестовий реліз видаляється разом із тегом, щоб у ньому лежав лише один, свіжий APK.
       - name: Remove previous test release

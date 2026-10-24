@@ -85,4 +85,9 @@
     <string name="import_error_space">Za mało wolnego miejsca, aby zainstalować model</string>
     <string name="import_error_other">Nie udało się zainstalować modelu. Spróbuj ponownie</string>
     <string name="import_choose_file">Wybierz plik</string>
+
+    <!-- Profiles -->
+    <string name="profile_work">Praca</string>
+    <string name="profile_home">Dom</string>
+    <string name="profile_rest">Odpoczynek</string>
 </resources>

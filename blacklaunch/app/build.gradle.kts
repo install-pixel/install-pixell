@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -12,8 +14,8 @@ android {
         applicationId = "com.blacklaunch.launcher"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.7.4"
+        versionCode = 18
+        versionName = "0.8.0"
 
         // Офлайн-голос (Vosk) має нативні бібліотеки; лишаємо лише ARM — це всі реальні телефони.
         ndk {
@@ -49,6 +51,15 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // android.util.Log та інші заглушки в JVM-тестах повертають значення за замовчуванням.
+        unitTests.isReturnDefaultValues = true
+    }
+}
+
+// Схема бази зберігається в репозиторії, щоб кожна зміна мала явну міграцію.
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
@@ -61,6 +72,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Офлайн-розпізнавання мовлення. @aar — без настільної версії JNA.
     implementation("com.alphacephei:vosk-android:${libs.versions.vosk.get()}@aar")

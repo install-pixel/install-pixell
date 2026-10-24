@@ -87,4 +87,9 @@
     <string name="import_error_space">Not enough free space to install the model</string>
     <string name="import_error_other">Could not install the model. Try again</string>
     <string name="import_choose_file">Choose file</string>
+
+    <!-- Profiles -->
+    <string name="profile_work">Work</string>
+    <string name="profile_home">Home</string>
+    <string name="profile_rest">Rest</string>
 </resources>
