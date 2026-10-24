@@ -3,7 +3,7 @@ package com.blacklaunch.launcher.voice
 import com.blacklaunch.launcher.search.SearchNormalizer
 
 /** Групи голосових дій — кожну можна вимкнути в налаштуваннях окремо. */
-enum class VoiceActionKind { ALARM, FLASHLIGHT, MEDIA, PANELS, NAVIGATION, CALLS, SMS, TIME }
+enum class VoiceActionKind { ALARM, FLASHLIGHT, MEDIA, PANELS, DISPLAY, NAVIGATION, CALLS, SMS, MESSENGERS, CALENDAR, TIME }
 
 enum class MediaCommand { PLAY_PAUSE, PLAY, PAUSE, NEXT, PREVIOUS }
 
@@ -55,6 +55,29 @@ sealed interface VoiceAction {
     data object Time : VoiceAction {
         override val kind get() = VoiceActionKind.TIME
     }
+
+    /** Яскравість у відсотках (0–100). */
+    data class BrightnessLevel(val percent: Int) : VoiceAction {
+        override val kind get() = VoiceActionKind.DISPLAY
+    }
+
+    /** «Яскравіше» / «темніше». */
+    data class BrightnessStep(val up: Boolean) : VoiceAction {
+        override val kind get() = VoiceActionKind.DISPLAY
+    }
+
+    /** Чат WhatsApp з контактом і готовим текстом — надсилає користувач. */
+    data class WhatsApp(val name: String, val body: String) : VoiceAction {
+        override val kind get() = VoiceActionKind.MESSENGERS
+    }
+
+    /**
+     * Нова подія в календарі — відкривається вікно календаря для підтвердження.
+     * [dayOffset] — 0 сьогодні, 1 завтра…; [hour] = null — на весь день.
+     */
+    data class CalendarEvent(val title: String, val dayOffset: Int, val hour: Int?, val minute: Int) : VoiceAction {
+        override val kind get() = VoiceActionKind.CALENDAR
+    }
 }
 
 /**
@@ -72,7 +95,10 @@ object VoiceActionParser {
             ?: timer(words)
             ?: flashlight(words)
             ?: panel(words)
+            ?: brightness(words)
             ?: navigate(original, words)
+            ?: whatsApp(original, words)
+            ?: calendar(words)
             ?: sms(original, words)
             ?: call(words)
     }
@@ -102,6 +128,8 @@ object VoiceActionParser {
             volumePhrases.flatMap { (change, phrases) -> phrases.map { it to VoiceAction.Volume(change) } } +
             panelPhrases.flatMap { (panel, phrases) -> phrases.map { it to VoiceAction.Panel(panel) } } +
             torchWords.map { it to VoiceAction.Flashlight(null) } +
+            brighterWords.map { it to VoiceAction.BrightnessStep(up = true) } +
+            darkerWords.map { it to VoiceAction.BrightnessStep(up = false) } +
             timePhrases.filter { ' ' in it }.map { it to VoiceAction.Time }
     }
 
@@ -260,6 +288,111 @@ object VoiceActionParser {
         return panelPhrases.entries.firstOrNull { core in it.value }?.let { VoiceAction.Panel(it.key) }
     }
 
+    // ---- Яскравість ----
+    private val brightnessWords = setOf("яскравість", "яскравості", "яскрависть", "brightness", "jasnosc", "jasnosci")
+    private val brighterWords = setOf("яскравіше", "світліше", "brighter", "jasniej")
+    private val darkerWords = setOf("темніше", "тьмяніше", "dimmer", "darker", "ciemniej")
+    private val moreWords = setOf("більше", "збільш", "додай", "підніми", "increase", "up", "raise", "zwieksz", "wiecej")
+    private val lessWords = setOf("менше", "зменш", "убав", "знизь", "decrease", "down", "lower", "zmniejsz", "mniej")
+    private val maxWords = setOf("максимум", "максимальна", "максимальну", "max", "maximum", "maksimum", "maksymalna")
+    private val minWords = setOf("мінімум", "мінімальна", "мінімальну", "min", "minimum", "minimalna")
+    private val halfWords = setOf("половина", "половину", "half", "polowa", "polowe")
+
+    private fun brightness(words: List<String>): VoiceAction? {
+        if (words.size <= 2 && words.any { it in brighterWords }) return VoiceAction.BrightnessStep(up = true)
+        if (words.size <= 2 && words.any { it in darkerWords }) return VoiceAction.BrightnessStep(up = false)
+        if (words.none { it in brightnessWords }) return null
+        NumberWords.numbers(words).firstOrNull()?.let { return VoiceAction.BrightnessLevel(it.coerceIn(0, 100)) }
+        return when {
+            words.any { it in maxWords } -> VoiceAction.BrightnessLevel(100)
+            words.any { it in minWords } -> VoiceAction.BrightnessLevel(0)
+            words.any { it in halfWords } -> VoiceAction.BrightnessLevel(50)
+            words.any { it in moreWords } -> VoiceAction.BrightnessStep(up = true)
+            words.any { it in lessWords } -> VoiceAction.BrightnessStep(up = false)
+            else -> null
+        }
+    }
+
+    // ---- WhatsApp ----
+    private val whatsAppWords = setOf("whatsapp", "ватсап", "вотсап", "ватсапі", "ватсапу", "вацап", "вацапі", "wotsap", "watsap")
+
+    private fun whatsApp(original: String, words: List<String>): VoiceAction? {
+        // «whats app» розпізнавач часто пише двома словами.
+        val joined = words.joinToString(" ").replace("whats app", "whatsapp").split(' ')
+        val at = joined.indexOfFirst { it in whatsAppWords }
+        if (at < 0) return null
+        val rest = joined.drop(at + 1).dropWhile { it in callPrepositions }
+        if (rest.isEmpty()) return null
+        val marker = rest.indexOfFirst { it in bodyMarkers }
+        val nameWords = if (marker > 0) rest.take(marker) else rest.take(1)
+        val bodyCount = if (marker > 0) rest.size - marker - 1 else rest.size - 1
+        val body = if (bodyCount > 0) originalTail(original, bodyCount) else ""
+        return VoiceAction.WhatsApp(nameWords.joinToString(" "), body)
+    }
+
+    // ---- Календар ----
+    private val calendarTriggers = setOf(
+        "подія", "подію", "календар", "календаря", "event", "calendar", "wydarzenie", "kalendarz", "kalendarza", "kalendarzu",
+    )
+    private val calendarVerbs = setOf(
+        "додай", "запиши", "створи", "постав", "нова", "нову", "add", "create", "new", "put", "dodaj", "zapisz", "utworz", "nowe",
+    )
+    private val calendarFiller = setOf("в", "у", "до", "на", "in", "to", "the", "a", "an", "w", "do")
+    private val dayWords = mapOf(
+        "сьогодні" to 0, "today" to 0, "dzis" to 0, "dzisiaj" to 0,
+        "завтра" to 1, "tomorrow" to 1, "jutro" to 1,
+        "післязавтра" to 2, "pojutrze" to 2,
+    )
+    private val openAppVerbs = setOf("відкрий", "запусти", "покажи", "open", "launch", "show", "otworz", "uruchom", "pokaz")
+    private val timePrepositions = setOf("о", "об", "at", "o", "на", "na", "godzinie", "годині")
+
+    private fun calendar(words: List<String>): VoiceAction? {
+        val triggerAt = words.indexOfFirst { it in calendarTriggers }
+        if (triggerAt < 0) return null
+        // «календар» / «відкрий календар» — це програма «Календар», а не нова подія.
+        if (words.size == 1 || words.first() in openAppVerbs) return null
+        var rest = words.filterIndexed { i, w -> i != triggerAt && !(i < triggerAt && (w in calendarVerbs || w in calendarFiller)) }
+        rest = rest.dropWhile { it in calendarVerbs || it in calendarFiller }
+        var day = 0
+        var dayFound = false
+        // «day after tomorrow» — три слова.
+        val phrase = rest.joinToString(" ")
+        if (phrase.contains("day after tomorrow")) {
+            day = 2
+            dayFound = true
+            rest = phrase.replace("day after tomorrow", " ").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        }
+        rest.firstOrNull { it in dayWords }?.let {
+            day = dayWords.getValue(it)
+            dayFound = true
+        }
+        rest = rest.filterNot { it in dayWords }
+        var hour: Int? = null
+        var minute = 0
+        val title = mutableListOf<String>()
+        var i = 0
+        while (i < rest.size) {
+            val word = rest[i]
+            val number = NumberWords.readNumber(rest, i)
+            if (hour == null && number != null && number.first in 0..23) {
+                hour = number.first
+                i = number.second
+                NumberWords.readNumber(rest, i)?.takeIf { it.first in 0..59 }?.let {
+                    minute = it.first
+                    i = it.second
+                }
+                if (title.lastOrNull() in timePrepositions) title.removeAt(title.lastIndex)
+                continue
+            }
+            title += word
+            i++
+        }
+        while (title.firstOrNull() in calendarFiller) title.removeAt(0)
+        if (title.isEmpty() && hour == null && !dayFound) return null
+        val text = title.joinToString(" ").replaceFirstChar { it.uppercase() }
+        return VoiceAction.CalendarEvent(text, day, hour, minute)
+    }
+
     // ---- Маршрут ----
     private val routePrefixes = listOf(
         "прокласти маршрут до", "проклади маршрут до", "маршрут до", "маршрут на", "як доїхати до", "як дійти до",
@@ -345,7 +478,7 @@ object NumberWords {
 
     /** Число, що починається з words[index], і індекс наступного слова; або null. */
     fun readNumber(words: List<String>, index: Int): Pair<Int, Int>? {
-        val word = words[index]
+        val word = words.getOrNull(index) ?: return null
         word.toIntOrNull()?.let { return it to index + 1 }
         teens[word]?.let { return it to index + 1 }
         units[word]?.let { return it to index + 1 }

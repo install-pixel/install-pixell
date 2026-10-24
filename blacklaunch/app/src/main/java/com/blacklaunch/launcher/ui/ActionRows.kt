@@ -57,16 +57,40 @@ internal fun VoiceAction.title(): String = when (this) {
     is VoiceAction.Call -> stringResource(R.string.action_row_call, name)
     is VoiceAction.Sms -> stringResource(R.string.action_row_sms, name)
     VoiceAction.Time -> stringResource(R.string.action_time)
+    is VoiceAction.BrightnessLevel -> stringResource(R.string.action_row_brightness, percent)
+    is VoiceAction.BrightnessStep -> stringResource(if (up) R.string.action_row_brighter else R.string.action_row_darker)
+    is VoiceAction.WhatsApp -> stringResource(R.string.action_row_whatsapp, name)
+    is VoiceAction.CalendarEvent -> if (title.isBlank()) {
+        stringResource(R.string.action_row_event_new)
+    } else {
+        stringResource(R.string.action_row_event, title)
+    }
 }
 
-/** Друга лінія: текст SMS. */
-internal fun VoiceAction.subtitle(): String? = (this as? VoiceAction.Sms)?.body?.takeIf { it.isNotBlank() }
+/** Друга лінія: текст повідомлення або коли подія. */
+@Composable
+internal fun VoiceAction.subtitle(): String? = when (this) {
+    is VoiceAction.Sms -> body.takeIf { it.isNotBlank() }
+    is VoiceAction.WhatsApp -> body.takeIf { it.isNotBlank() }
+    is VoiceAction.CalendarEvent -> {
+        val day = when (dayOffset) {
+            0 -> stringResource(R.string.day_today)
+            1 -> stringResource(R.string.day_tomorrow)
+            else -> stringResource(R.string.day_after_tomorrow)
+        }
+        if (hour == null) day else "$day, %d:%02d".format(hour, minute)
+    }
+    else -> null
+}
 
 internal fun VoiceAction.icon(): ImageVector = when (kind) {
     VoiceActionKind.ALARM -> Icons.Filled.Notifications
     VoiceActionKind.FLASHLIGHT -> Icons.Filled.Star
     VoiceActionKind.MEDIA -> Icons.Filled.PlayArrow
     VoiceActionKind.PANELS -> Icons.Filled.Settings
+    VoiceActionKind.DISPLAY -> Icons.Filled.Star
+    VoiceActionKind.MESSENGERS -> Icons.Filled.Send
+    VoiceActionKind.CALENDAR -> Icons.Filled.DateRange
     VoiceActionKind.NAVIGATION -> Icons.Filled.Place
     VoiceActionKind.CALLS -> Icons.Filled.Call
     VoiceActionKind.SMS -> Icons.Filled.Send

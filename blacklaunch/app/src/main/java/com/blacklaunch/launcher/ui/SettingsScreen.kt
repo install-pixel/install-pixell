@@ -63,6 +63,9 @@ fun SettingsScreen(
     onVoiceActionChange: (VoiceActionKind, Boolean) -> Unit,
     directCall: Boolean,
     onDirectCallChange: (Boolean) -> Unit,
+    speakAnswers: Boolean,
+    onSpeakAnswersChange: (Boolean) -> Unit,
+    onOpenDefaultApps: () -> Unit,
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
     onCopyCrashLog: () -> Unit,
@@ -197,6 +200,8 @@ fun SettingsScreen(
                         onCheckedChange = { onVoiceActionChange(kind, it) },
                     )
                 }
+            }
+            Card {
                 if (VoiceActionKind.CALLS in voiceActions) {
                     SwitchRow(
                         title = stringResource(R.string.direct_call_title),
@@ -205,6 +210,17 @@ fun SettingsScreen(
                         onCheckedChange = onDirectCallChange,
                     )
                 }
+                SwitchRow(
+                    title = stringResource(R.string.speak_answers_title),
+                    subtitle = stringResource(R.string.speak_answers_subtitle),
+                    checked = speakAnswers,
+                    onCheckedChange = onSpeakAnswersChange,
+                )
+            }
+            Card {
+                Text(stringResource(R.string.assistant_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                Note(stringResource(R.string.assistant_note))
+                ActionOption(R.string.assistant_open, Icons.Filled.Settings, onOpenDefaultApps)
             }
         }
 
@@ -272,9 +288,12 @@ private fun VoiceActionKind.title(): Int = when (this) {
     VoiceActionKind.FLASHLIGHT -> R.string.action_flashlight
     VoiceActionKind.MEDIA -> R.string.action_media
     VoiceActionKind.PANELS -> R.string.action_panels
+    VoiceActionKind.DISPLAY -> R.string.action_display
     VoiceActionKind.NAVIGATION -> R.string.action_navigation
     VoiceActionKind.CALLS -> R.string.action_calls
     VoiceActionKind.SMS -> R.string.action_sms
+    VoiceActionKind.MESSENGERS -> R.string.action_messengers
+    VoiceActionKind.CALENDAR -> R.string.action_calendar
     VoiceActionKind.TIME -> R.string.action_time
 }
 
@@ -284,9 +303,12 @@ private fun VoiceActionKind.example(): Int = when (this) {
     VoiceActionKind.FLASHLIGHT -> R.string.action_flashlight_example
     VoiceActionKind.MEDIA -> R.string.action_media_example
     VoiceActionKind.PANELS -> R.string.action_panels_example
+    VoiceActionKind.DISPLAY -> R.string.action_display_example
     VoiceActionKind.NAVIGATION -> R.string.action_navigation_example
     VoiceActionKind.CALLS -> R.string.action_calls_example
     VoiceActionKind.SMS -> R.string.action_sms_example
+    VoiceActionKind.MESSENGERS -> R.string.action_messengers_example
+    VoiceActionKind.CALENDAR -> R.string.action_calendar_example
     VoiceActionKind.TIME -> R.string.action_time_example
 }
 

@@ -177,6 +177,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // Запущено як «цифровий асистент» — одразу пошук і мікрофон.
+        if (savedInstanceState == null) handleAssist(intent)
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
             val home by viewModel.home.collectAsStateWithLifecycle()
@@ -191,6 +193,7 @@ class MainActivity : ComponentActivity() {
             val crashLog by app.crashLog.text.collectAsStateWithLifecycle()
             val voiceActions by app.voiceActionSettings.enabled.collectAsStateWithLifecycle()
             val directCall by app.voiceActionSettings.directCall.collectAsStateWithLifecycle()
+            val speakAnswers by app.voiceActionSettings.speakAnswers.collectAsStateWithLifecycle()
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 BlackHomeScreen(
@@ -248,6 +251,9 @@ class MainActivity : ComponentActivity() {
                                 onVoiceActionChange = app.voiceActionSettings::set,
                                 directCall = directCall,
                                 onDirectCallChange = ::setDirectCall,
+                                speakAnswers = speakAnswers,
+                                onSpeakAnswersChange = app.voiceActionSettings::setSpeakAnswers,
+                                onOpenDefaultApps = { startOrToast(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
                                 crashLog = crashLog,
                                 onCopyCrashLog = ::copyCrashLog,
                                 onClearCrashLog = app.crashLog::clear,
@@ -300,7 +306,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private val actionRunner by lazy {
-        VoiceActionRunner(this) { message -> Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
+        VoiceActionRunner(
+            context = this,
+            onMessage = { message -> Toast.makeText(this, message, Toast.LENGTH_LONG).show() },
+            speakAnswers = { app.voiceActionSettings.speakAnswers.value },
+        )
     }
 
     /** Голосовий дзвінок, що чекає кінця відліку. */
@@ -364,6 +374,7 @@ class MainActivity : ComponentActivity() {
         val name = when (action) {
             is VoiceAction.Call -> action.name
             is VoiceAction.Sms -> action.name
+            is VoiceAction.WhatsApp -> action.name
             else -> {
                 actionRunner.run(action)
                 return
@@ -381,6 +392,7 @@ class MainActivity : ComponentActivity() {
         }
         when (action) {
             is VoiceAction.Sms -> actionRunner.sms(contact, action.body)
+            is VoiceAction.WhatsApp -> actionRunner.whatsApp(contact, action.body)
             else -> {
                 val canCall = app.voiceActionSettings.directCall.value &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
@@ -637,8 +649,21 @@ class MainActivity : ComponentActivity() {
     // він повернеться свайпом угору протягом хвилини.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (handleAssist(intent)) return
         voice.cancel()
         if (!wasStopped) viewModel.forgetSearch()
+    }
+
+    /**
+     * BlackLaunch як «цифровий асистент» (довге натискання кнопки живлення / жест):
+     * відкриває пошук і одразу слухає.
+     */
+    private fun handleAssist(intent: Intent?): Boolean {
+        if (intent?.action != Intent.ACTION_ASSIST && intent?.action != Intent.ACTION_VOICE_COMMAND) return false
+        viewModel.forgetSearch()
+        viewModel.openSearch()
+        if (voice.state.value == VoiceState.Idle) onMicClick()
+        return true
     }
 
     // Перейшли в іншу програму — пошук лишається відкритим з тими самими результатами
