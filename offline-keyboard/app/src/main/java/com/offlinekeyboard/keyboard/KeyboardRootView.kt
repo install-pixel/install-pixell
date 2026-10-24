@@ -5,10 +5,13 @@ import android.content.Context
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.offlinekeyboard.R
@@ -133,9 +136,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         // Android 15 draws the keyboard window behind the navigation bar (back, home, the keyboard switch
         // globe): the keys move up by the bar's height, and the keyboard's background shows behind it.
         // Older Android places the window above the bar and reports no inset here.
-        ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            view.setPadding(bars.left, 0, bars.right, bars.bottom)
+        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+            navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            updateBottomSpace()
             insets
         }
 
@@ -163,6 +166,43 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
         refreshCentre()
+    }
+
+    private var navBars = Insets.NONE
+    private val layoutWatcher = ViewTreeObserver.OnGlobalLayoutListener { updateBottomSpace() }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        viewTreeObserver.addOnGlobalLayoutListener(layoutWatcher)
+    }
+
+    override fun onDetachedFromWindow() {
+        viewTreeObserver.removeOnGlobalLayoutListener(layoutWatcher)
+        super.onDetachedFromWindow()
+    }
+
+    /**
+     * Room below the keys: the navigation bar, or the row of keyboard buttons Android draws inside the
+     * keyboard window with gesture navigation (hide ∨ and the keyboard switch globe), whichever is taller.
+     * That row is taller than the gesture bar's inset, so the inset alone left it over the bottom keys.
+     */
+    private fun updateBottomSpace() {
+        val bottom = maxOf(navBars.bottom, imeButtonsHeight())
+        if (paddingLeft != navBars.left || paddingRight != navBars.right || paddingBottom != bottom) {
+            setPadding(navBars.left, 0, navBars.right, bottom)
+        }
+    }
+
+    /** Height of the system's button row in the keyboard window (Android 13+), 0 when there is none. */
+    private fun imeButtonsHeight(): Int {
+        fun find(view: View): View? {
+            if (view === this) return null
+            if (view.javaClass.name.endsWith("NavigationBarFrame")) return view
+            if (view is ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
+            return null
+        }
+        val frame = find(rootView) ?: return 0
+        return if (frame.visibility == View.VISIBLE) frame.height else 0
     }
 
     fun applyTheme(value: KeyboardTheme) {

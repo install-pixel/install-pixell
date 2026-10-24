@@ -315,6 +315,8 @@ class KeyboardUiTest {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         useMode(KeyboardMode.MOBILE)
         val mode = shellOutput("settings get secure navigation_mode").trim()
+        screenshot("nav-default")
+        assertKeysClearOfImeButtons()
         shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton")
         try {
             waitFor("three-button navigation", timeoutMs = 10_000) {
@@ -347,6 +349,7 @@ class KeyboardUiTest {
             }
             val bar = barRef.get()
             assertTrue("keys end at ${bottom.get()}, the bar starts at ${screen - bar}", bottom.get() <= screen - bar)
+            assertKeysClearOfImeButtons()
         } finally {
             val restore = when (mode) {
                 "1" -> "twobutton"
@@ -355,6 +358,31 @@ class KeyboardUiTest {
             }
             shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.$restore")
         }
+    }
+
+    /**
+     * With gesture navigation Android 13+ draws its own row inside the keyboard window (hide ∨ and the
+     * keyboard switch globe); it must sit below the keys, not on Enter and ?123.
+     */
+    private fun assertKeysClearOfImeButtons() {
+        val keyboard = service()
+        val result = AtomicReference<String?>()
+        instrumentation.runOnMainSync {
+            val root = keyboard.inputRootForTest!!
+            fun find(view: View): View? {
+                if (view.javaClass.name.endsWith("NavigationBarFrame")) return view
+                if (view is ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }
+                return null
+            }
+            val frame = find(root.rootView)?.takeIf { it.isShown && it.height > 0 }
+            if (frame != null) {
+                val keys = IntArray(2).also { root.keyboardView.getLocationOnScreen(it) }
+                val buttons = IntArray(2).also { frame.getLocationOnScreen(it) }
+                val keysBottom = keys[1] + root.keyboardView.height
+                if (keysBottom > buttons[1]) result.set("keys end at $keysBottom, the keyboard buttons start at ${buttons[1]}")
+            }
+        }
+        assertNull(result.get())
     }
 
     @Test
