@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -133,23 +134,13 @@ private fun EmptySearch(
 ) {
     val haptics = LocalHaptics.current
     LazyColumn(modifier = modifier, reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
-        items(recent, key = { "recent:$it" }) { text ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .combinedClickable(
-                        onClick = { haptics.tap(); onRecent(text) },
-                        onLongClick = { haptics.longPress(); onRemoveRecent(text) },
-                    )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        // Видно два останні запити; решту (до 5) — гортанням у цьому ж блоці.
+        if (recent.isNotEmpty()) item(key = "recent") {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().height(RecentRowHeight * minOf(recent.size, RECENT_VISIBLE)),
+                reverseLayout = true,
             ) {
-                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary)
-                }
-                Spacer(Modifier.width(16.dp))
-                Text(text, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                items(recent, key = { "recent:$it" }) { text -> RecentRow(text, onRecent, onRemoveRecent) }
             }
         }
         if (suggestions.isNotEmpty()) {
@@ -191,6 +182,33 @@ private fun EmptySearch(
 }
 
 private const val SUGGESTION_COLUMNS = 4
+
+private val RecentRowHeight = 56.dp
+private const val RECENT_VISIBLE = 2
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RecentRow(text: String, onRecent: (String) -> Unit, onRemoveRecent: (String) -> Unit) {
+    val haptics = LocalHaptics.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(RecentRowHeight)
+            .clip(RoundedCornerShape(18.dp))
+            .combinedClickable(
+                onClick = { haptics.tap(); onRecent(text) },
+                onLongClick = { haptics.longPress(); onRemoveRecent(text) },
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary)
+        }
+        Spacer(Modifier.width(16.dp))
+        Text(text, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
 
 /** Рядок програми: значок + назва. Спільний для результатів пошуку й закріплених програм. */
 @OptIn(ExperimentalFoundationApi::class)

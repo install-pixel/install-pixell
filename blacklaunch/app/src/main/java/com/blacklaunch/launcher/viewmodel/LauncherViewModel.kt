@@ -7,6 +7,7 @@ import com.blacklaunch.launcher.apps.AppSource
 import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import com.blacklaunch.launcher.apps.LaunchHistory
 import com.blacklaunch.launcher.global.Calculator
+import com.blacklaunch.launcher.global.UnitConverter
 import com.blacklaunch.launcher.global.DEFAULT_GLOBAL_KINDS
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GlobalSearchSource
@@ -185,6 +186,8 @@ class LauncherViewModel(
                     if (GroupKind.CALCULATOR in kinds) {
                         Calculator.evaluate(query)?.let { add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(query.trim(), it)))) }
                     }
+                    // Конвертер одиниць — завжди: «10 км в милі», «30 c в f».
+                    UnitConverter.convert(query)?.let { add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(query.trim(), it)))) }
                     if (GroupKind.PROFILES in kinds) {
                         val prepared = PreparedQuery(query)
                         val matching = profiles.filter {
@@ -207,7 +210,7 @@ class LauncherViewModel(
                 query == null -> LauncherUiState.HomeIdle
                 query.isBlank() -> LauncherUiState.SearchOpen(
                     query = query,
-                    suggestions = if (showSuggestions()) AppSuggestions.suggest(records, appSource.apps.value, now()) else emptyList(),
+                    suggestions = if (showSuggestions()) AppSuggestions.suggest(records, appSource.apps.value, now(), limit = SUGGESTIONS) else emptyList(),
                     recent = if (showRecent()) recent else emptyList(),
                 )
                 else -> {
@@ -419,5 +422,8 @@ class LauncherViewModel(
 
         /** Скільки часу після закриття пошуку повертається останній запит. */
         const val RESTORE_QUERY_MS = 60 * 1000L
+
+        /** Один ряд підказок — щоб порожній пошук не займав увесь екран (керування однією рукою). */
+        private const val SUGGESTIONS = 4
     }
 }

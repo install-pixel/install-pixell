@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
@@ -252,10 +253,8 @@ fun SettingsScreen(
                         }
                     }
                     Note(stringResource(R.string.tts_engine_note))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SmallButton(stringResource(R.string.tts_test), onTestVoice)
-                        SmallButton(stringResource(R.string.tts_settings), onOpenTtsSettings)
-                    }
+                    ActionOption(R.string.tts_test, Icons.Filled.PlayArrow, onTestVoice)
+                    ActionOption(R.string.tts_settings, Icons.Filled.Settings, onOpenTtsSettings)
                 }
             }
             Card {

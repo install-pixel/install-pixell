@@ -47,6 +47,7 @@ class VoiceActionRunner(
     private val ttsEngine: () -> String? = { null },
 ) {
     private var tts: TextToSpeech? = null
+    private val main = Handler(Looper.getMainLooper())
 
     private val camera = context.getSystemService(CameraManager::class.java)
     private val audio = context.getSystemService(AudioManager::class.java)
@@ -122,7 +123,10 @@ class VoiceActionRunner(
                 val percent = valueToPercent(current) + if (action.up) BRIGHTNESS_STEP else -BRIGHTNESS_STEP
                 percentToValue(percent.coerceIn(0, 100))
             }
-            is VoiceAction.CalendarEvent -> if (!addEvent(action)) start(calendarIntent(action))
+            // Запис у календар — не в головному потоці, щоб екран не підвисав.
+            is VoiceAction.CalendarEvent -> Thread {
+                if (!addEvent(action)) main.post { start(calendarIntent(action)) }
+            }.start()
             is VoiceAction.Call, is VoiceAction.Sms, is VoiceAction.Message -> Unit
         }
     }
@@ -277,7 +281,8 @@ class VoiceActionRunner(
             ?: return false
         val flags = DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or
             if (allDay) DateUtils.FORMAT_UTC else DateUtils.FORMAT_SHOW_TIME
-        onMessage(context.getString(R.string.event_added, title, DateUtils.formatDateTime(context, begin, flags)))
+        val text = context.getString(R.string.event_added, title, DateUtils.formatDateTime(context, begin, flags))
+        main.post { onMessage(text) }
         return inserted.lastPathSegment != null
     }
 
