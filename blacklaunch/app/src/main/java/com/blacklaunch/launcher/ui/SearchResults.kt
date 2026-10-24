@@ -53,6 +53,11 @@ import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @Composable
 fun SearchResults(
@@ -71,10 +76,11 @@ fun SearchResults(
     recent: List<String> = emptyList(),
     onRecent: (String) -> Unit = {},
     onRemoveRecent: (String) -> Unit = {},
+    allApps: List<AppInfo> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
-        EmptySearch(suggestions, recent, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, modifier)
+        EmptySearch(suggestions, recent, allApps, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, modifier)
         return
     }
     if (results.isEmpty() && groups.isEmpty() && actions.isEmpty() && custom.isEmpty()) {
@@ -125,6 +131,7 @@ fun SearchResults(
 private fun EmptySearch(
     suggestions: List<AppInfo>,
     recent: List<String>,
+    allApps: List<AppInfo>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
@@ -133,6 +140,11 @@ private fun EmptySearch(
     modifier: Modifier,
 ) {
     val haptics = LocalHaptics.current
+    var showAll by remember { mutableStateOf(false) }
+    if (showAll) {
+        AllAppsList(allApps, iconFor, onLaunch, onLongPress, onHide = { showAll = false }, modifier = modifier)
+        return
+    }
     LazyColumn(modifier = modifier, reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
         // Видно два останні запити; решту (до 5) — гортанням у цьому ж блоці.
         if (recent.isNotEmpty()) item(key = "recent") {
@@ -176,6 +188,67 @@ private fun EmptySearch(
                     fontSize = 13.sp,
                     modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 2.dp),
                 )
+            }
+        }
+        if (allApps.isNotEmpty()) item(key = "all") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable { haptics.tap(); showAll = true }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Menu, contentDescription = null, tint = Oled.TextSecondary)
+                }
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.all_apps, allApps.size), color = Oled.TextSecondary, fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+/** Усі програми за абеткою з літерами-розділювачами (P3). */
+@Composable
+private fun AllAppsList(
+    apps: List<AppInfo>,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
+    onLaunch: (AppInfo) -> Unit,
+    onLongPress: (AppInfo) -> Unit,
+    onHide: () -> Unit,
+    modifier: Modifier,
+) {
+    val haptics = LocalHaptics.current
+    val sections = remember(apps) { apps.groupBy { it.label.firstOrNull()?.uppercaseChar() ?: '#' } }
+    LazyColumn(modifier = modifier) {
+        item(key = "all:back") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable { haptics.tap(); onHide() }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextSecondary)
+                }
+                Spacer(Modifier.width(16.dp))
+                Text(stringResource(R.string.all_apps, apps.size), color = Oled.TextPrimary, fontSize = 16.sp)
+            }
+        }
+        sections.forEach { (letter, group) ->
+            item(key = "letter:$letter") {
+                Text(
+                    letter.toString(),
+                    color = Oled.TextSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 2.dp),
+                )
+            }
+            items(group, key = { "all:" + it.key }) { app ->
+                AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
             }
         }
     }

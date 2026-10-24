@@ -305,4 +305,9 @@
     <string name="recent_queries_title">Recent searches</string>
     <string name="recent_queries_subtitle">Up to 5 lines above the search field. Long press removes one</string>
     <string name="suggestions_header">Suggestions</string>
+    <string name="hide_from_search">Hide from search</string>
+    <string name="hidden_apps_title">Hidden from search</string>
+    <string name="hidden_apps_note">These apps stay on the phone and on the home screen, they just don’t appear in BlackLaunch search.</string>
+    <string name="hidden_apps_show">Show</string>
+    <string name="all_apps">All apps (%1$d)</string>
 </resources>

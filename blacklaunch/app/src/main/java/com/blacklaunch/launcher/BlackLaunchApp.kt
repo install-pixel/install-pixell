@@ -20,6 +20,7 @@ import com.blacklaunch.launcher.profiles.PrefsActiveProfileStore
 import com.blacklaunch.launcher.profiles.PrefsHomeLayoutStore
 import com.blacklaunch.launcher.profiles.ProfileRepository
 import com.blacklaunch.launcher.search.PrefsLearnedQueries
+import com.blacklaunch.launcher.search.PrefsHiddenApps
 import com.blacklaunch.launcher.search.PrefsRecentQueries
 import com.blacklaunch.launcher.search.UserAliasStore
 import com.blacklaunch.launcher.settings.AppearanceSettings
@@ -43,6 +44,7 @@ class BlackLaunchApp : Application() {
     val voiceActionSettings: VoiceActionSettings by lazy { VoiceActionSettings(this) }
     val customCommands: PrefsCustomCommandStore by lazy { PrefsCustomCommandStore(this) }
     val recentQueries: PrefsRecentQueries by lazy { PrefsRecentQueries(this) }
+    val hiddenApps: PrefsHiddenApps by lazy { PrefsHiddenApps(this) }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }

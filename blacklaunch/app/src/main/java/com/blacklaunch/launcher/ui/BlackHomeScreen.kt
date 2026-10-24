@@ -112,6 +112,8 @@ fun BlackHomeScreen(
     /** false — пошук закривається миттєво (повернулись після довгої відсутності). */
     animateSearchClose: Boolean = true,
     onQueryChange: (String) -> Unit,
+    /** Натиснули на поле пошуку (сказане голосом звільняє місце для набору). */
+    onFieldFocused: () -> Unit = {},
     onClearQuery: () -> Unit,
     onCloseSearch: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
@@ -123,6 +125,8 @@ fun BlackHomeScreen(
     /** Останній запит у порожньому пошуку: натискання — шукати знову, довге — прибрати. */
     onRecent: (String) -> Unit,
     onRemoveRecent: (String) -> Unit,
+    /** Усі програми за абеткою (список A–Z у порожньому пошуку). */
+    allApps: List<AppInfo>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -183,6 +187,7 @@ fun BlackHomeScreen(
                 state = search,
                 visible = transition.targetState == EnterExitState.Visible,
                 onQueryChange = onQueryChange,
+                onFieldFocused = onFieldFocused,
                 onClearQuery = onClearQuery,
                 onLaunch = onLaunch,
                 onLongPress = { menuApp = it },
@@ -191,6 +196,7 @@ fun BlackHomeScreen(
                 onCustom = onCustom,
                 onRecent = onRecent,
                 onRemoveRecent = onRemoveRecent,
+                allApps = allApps,
                 iconFor = iconFor,
                 voiceState = voiceState,
                 onMicClick = onMicClick,
@@ -334,6 +340,7 @@ private fun SearchOpen(
     /** false — панель уже закривається (анімація виходу). */
     visible: Boolean,
     onQueryChange: (String) -> Unit,
+    onFieldFocused: () -> Unit,
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
@@ -345,6 +352,8 @@ private fun SearchOpen(
     /** Останній запит у порожньому пошуку: натискання — шукати знову, довге — прибрати. */
     onRecent: (String) -> Unit,
     onRemoveRecent: (String) -> Unit,
+    /** Усі програми за абеткою (список A–Z у порожньому пошуку). */
+    allApps: List<AppInfo>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -484,6 +493,7 @@ private fun SearchOpen(
             recent = state.recent,
             onRecent = onRecent,
             onRemoveRecent = onRemoveRecent,
+            allApps = allApps,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(
@@ -492,7 +502,10 @@ private fun SearchOpen(
             onClear = onClearQuery,
             voice = voiceState,
             onMicClick = onMicClick,
-            onFocusChange = { fieldFocused = it },
+            onFocusChange = {
+                fieldFocused = it
+                if (it) onFieldFocused()
+            },
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.voice.VoiceActionKind
 import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.compose.ui.text.font.FontFamily
@@ -73,6 +74,9 @@ fun SettingsScreen(
     onTtsEngineChange: (String?) -> Unit,
     onTestVoice: () -> Unit,
     onOpenTtsSettings: () -> Unit,
+    /** Приховані з пошуку програми — щоб повернути. */
+    hiddenApps: List<AppInfo>,
+    onShowApp: (String) -> Unit,
     customCommands: List<CustomCommand>,
     onSaveCustomCommand: (CustomCommand) -> Unit,
     onDeleteCustomCommand: (String) -> Unit,
@@ -148,6 +152,18 @@ fun SettingsScreen(
         }
 
         SettingsNav.Search -> SettingsPage(stringResource(R.string.section_search), toMain) {
+            if (hiddenApps.isNotEmpty()) {
+                Card {
+                    Text(stringResource(R.string.hidden_apps_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                    Note(stringResource(R.string.hidden_apps_note))
+                    hiddenApps.forEach { hidden ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(hidden.label, color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                            SmallButton(stringResource(R.string.hidden_apps_show)) { onShowApp(hidden.key) }
+                        }
+                    }
+                }
+            }
             Card {
                 SwitchRow(
                     title = stringResource(R.string.suggestions_title),

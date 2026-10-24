@@ -305,4 +305,9 @@
     <string name="recent_queries_title">Останні запити</string>
     <string name="recent_queries_subtitle">До 5 рядків над полем пошуку. Довге натискання — прибрати</string>
     <string name="suggestions_header">Підказки</string>
+    <string name="hide_from_search">Приховати з пошуку</string>
+    <string name="hidden_apps_title">Приховані з пошуку</string>
+    <string name="hidden_apps_note">Ці програми лишаються на телефоні й на головному екрані, лише не з\'являються в пошуку BlackLaunch.</string>
+    <string name="hidden_apps_show">Показати</string>
+    <string name="all_apps">Усі програми (%1$d)</string>
 </resources>

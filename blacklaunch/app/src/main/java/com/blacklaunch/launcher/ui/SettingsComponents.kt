@@ -134,7 +134,11 @@ internal fun TargetOption(label: String, selected: Boolean, onClick: () -> Unit)
 
 /** Дія в тому ж вигляді, що й варіанти вибору, — щоб блок виглядав цілісно. */
 @Composable
-internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () -> Unit) {
+internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () -> Unit) =
+    ActionOption(stringResource(label), icon, onClick)
+
+@Composable
+internal fun ActionOption(label: String, icon: ImageVector, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
@@ -149,7 +153,7 @@ internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () 
     ) {
         Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
-        Text(stringResource(label), color = Oled.TextPrimary, fontSize = 16.sp)
+        Text(label, color = Oled.TextPrimary, fontSize = 16.sp)
     }
 }
 

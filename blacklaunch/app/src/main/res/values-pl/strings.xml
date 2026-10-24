@@ -305,4 +305,9 @@
     <string name="recent_queries_title">Ostatnie wyszukiwania</string>
     <string name="recent_queries_subtitle">Do 5 wierszy nad polem wyszukiwania. Długie naciśnięcie usuwa</string>
     <string name="suggestions_header">Podpowiedzi</string>
+    <string name="hide_from_search">Ukryj w wyszukiwaniu</string>
+    <string name="hidden_apps_title">Ukryte w wyszukiwaniu</string>
+    <string name="hidden_apps_note">Te aplikacje zostają na telefonie i na ekranie głównym, tylko nie pojawiają się w wyszukiwaniu BlackLaunch.</string>
+    <string name="hidden_apps_show">Pokaż</string>
+    <string name="all_apps">Wszystkie aplikacje (%1$d)</string>
 </resources>

@@ -190,6 +190,28 @@ class AndroidGlobalSearch(
         return (if (start > 0) "…" else "") + flat.substring(start, end) + (if (end < flat.length) "…" else "")
     }
 
+    /** Ярлики однієї програми — для її меню за довгим натисканням (до 4, як у Pixel). */
+    fun shortcutsFor(packageName: String, userSerial: Long): List<GlobalResult.Shortcut> {
+        if (!launcherApps.hasShortcutHostPermission()) return emptyList()
+        val user = userManager.getUserForSerialNumber(userSerial) ?: Process.myUserHandle()
+        val query = LauncherApps.ShortcutQuery()
+            .setPackage(packageName)
+            .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST)
+        return runCatching { launcherApps.getShortcuts(query, user).orEmpty() }.getOrDefault(emptyList())
+            .filter { it.isEnabled }
+            .sortedWith(compareBy({ !it.isDeclaredInManifest }, { it.rank }))
+            .take(MENU_SHORTCUTS)
+            .map { info ->
+                GlobalResult.Shortcut(
+                    packageName = info.`package`,
+                    shortcutId = info.id,
+                    userSerial = userSerial,
+                    title = info.shortLabel?.toString().orEmpty(),
+                    appLabel = appLabel(info.`package`) ?: info.`package`,
+                )
+            }
+    }
+
     /** Ярлик запускається через LauncherApps — це дозволено лише лаунчеру за замовчуванням. */
     fun startShortcut(result: GlobalResult.Shortcut): Boolean {
         val user = userManager.getUserForSerialNumber(result.userSerial) ?: Process.myUserHandle()
@@ -206,6 +228,7 @@ class AndroidGlobalSearch(
         ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, result.eventId)
 
     private companion object {
+        const val MENU_SHORTCUTS = 4
         const val TAG = "AndroidGlobalSearch"
         const val LIMIT = 5
         const val MIN_TEXT = 2

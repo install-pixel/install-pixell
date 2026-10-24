@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity() {
                     recentQueries = app.recentQueries,
                     showSuggestions = { app.appearanceSettings.appearance.value.suggestions },
                     showRecent = { app.appearanceSettings.appearance.value.recentQueries },
+                    hiddenApps = app.hiddenApps.hidden,
                 )
             }
         }
@@ -205,6 +206,9 @@ class MainActivity : ComponentActivity() {
             val speakAnswers by app.voiceActionSettings.speakAnswers.collectAsStateWithLifecycle()
             val ttsEngine by app.voiceActionSettings.ttsEngine.collectAsStateWithLifecycle()
             val customCommands by app.customCommands.commands.collectAsStateWithLifecycle()
+            val allApps by viewModel.allApps.collectAsStateWithLifecycle()
+            val hiddenKeys by app.hiddenApps.hidden.collectAsStateWithLifecycle()
+            val installedApps by repository.apps.collectAsStateWithLifecycle()
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 BlackHomeScreen(
@@ -221,7 +225,8 @@ class MainActivity : ComponentActivity() {
                         viewModel.openSearch()
                     },
                     animateSearchClose = !instantSearchClose,
-                    onQueryChange = viewModel::updateQuery,
+                    onQueryChange = viewModel::type,
+                    onFieldFocused = viewModel::onFieldFocused,
                     onClearQuery = viewModel::clearQuery,
                     onCloseSearch = viewModel::closeSearch,
                     onLaunch = { app -> viewModel.launch(app) },
@@ -230,6 +235,7 @@ class MainActivity : ComponentActivity() {
                     onCustom = viewModel::runCustom,
                     onRecent = viewModel::useRecent,
                     onRemoveRecent = viewModel::removeRecent,
+                    allApps = allApps,
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
@@ -272,6 +278,8 @@ class MainActivity : ComponentActivity() {
                                 onTtsEngineChange = app.voiceActionSettings::setTtsEngine,
                                 onTestVoice = actionRunner::speakSample,
                                 onOpenTtsSettings = { startOrToast(Intent(TTS_SETTINGS)) },
+                                hiddenApps = installedApps.filter { it.key in hiddenKeys }.sortedBy { it.label.lowercase() },
+                                onShowApp = app.hiddenApps::show,
                                 customCommands = customCommands,
                                 onSaveCustomCommand = app.customCommands::save,
                                 onDeleteCustomCommand = app.customCommands::delete,
@@ -298,6 +306,12 @@ class MainActivity : ComponentActivity() {
                             onAppInfo = { openAppInfo(target.packageName) },
                             onUninstall = {
                                 startOrToast(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", target.packageName, null)))
+                            },
+                            onHide = { app.hiddenApps.hide(target.key) },
+                            shortcuts = remember(target.key) {
+                                app.globalSearch.shortcutsFor(target.packageName, target.userSerial).map { shortcut ->
+                                    shortcut.title to { openGlobalResult(shortcut) }
+                                }
                             },
                             onDismiss = dismiss,
                         )

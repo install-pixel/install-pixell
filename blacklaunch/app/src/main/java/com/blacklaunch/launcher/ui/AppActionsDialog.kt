@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,6 +30,10 @@ fun AppActionsDialog(
     onNames: () -> Unit,
     onAppInfo: () -> Unit,
     onUninstall: () -> Unit,
+    /** Приховати з пошуку BlackLaunch (у системі лишається). */
+    onHide: () -> Unit,
+    /** Ярлики програми (до 4): назва → запуск. */
+    shortcuts: List<Pair<String, () -> Unit>> = emptyList(),
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -36,12 +42,16 @@ fun AppActionsDialog(
         title = { Text(app.label, color = Oled.TextPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                shortcuts.forEach { (title, open) ->
+                    ActionOption(title, Icons.Filled.Star) { open(); onDismiss() }
+                }
                 if (pinned) {
                     ActionOption(R.string.remove_from_home, Icons.Filled.Close) { onTogglePin(); onDismiss() }
                 } else {
                     ActionOption(R.string.add_to_home, Icons.Filled.Add) { onTogglePin(); onDismiss() }
                 }
                 ActionOption(R.string.alias_menu, Icons.Filled.Edit, onNames)
+                ActionOption(R.string.hide_from_search, Icons.Filled.Lock) { onHide(); onDismiss() }
                 ActionOption(R.string.app_info, Icons.Filled.Info) { onAppInfo(); onDismiss() }
                 ActionOption(R.string.app_uninstall, Icons.Filled.Delete) { onUninstall(); onDismiss() }
             }

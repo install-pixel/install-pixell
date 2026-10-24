@@ -167,6 +167,36 @@ class LauncherViewModelTest {
     private fun app(label: String) = source.apps.value.first { it.label == label }
 
     @Test
+    fun hiddenAppsAreNotFoundButListedNowhere() {
+        val hidden = kotlinx.coroutines.flow.MutableStateFlow(setOf(app("Telegram").key))
+        val vm = LauncherViewModel(source, history = history, now = { ++clock }, computeDispatcher = Dispatchers.Main, hiddenApps = hidden)
+        vm.openSearch()
+        vm.updateQuery("tele")
+        assertEquals(emptyList<Any>(), (vm.state.value as LauncherUiState.SearchOpen).results)
+        assertEquals(listOf("YouTube", "Камера"), vm.allApps.value.map { it.label })
+        hidden.value = emptySet()
+        vm.updateQuery("teleg")
+        assertEquals(listOf("Telegram"), (vm.state.value as LauncherUiState.SearchOpen).results.map { it.label })
+    }
+
+    @Test
+    fun typingReplacesTextHeardByVoice() {
+        viewModel.onVoiceResult(listOf("ютуб"))
+        viewModel.type("ютубт")
+        assertEquals("т", search().query)
+        // Далі — звичайний набір.
+        viewModel.type("те")
+        assertEquals("те", search().query)
+    }
+
+    @Test
+    fun focusingTheFieldClearsTextHeardByVoice() {
+        viewModel.onVoiceResult(listOf("ютуб"))
+        viewModel.onFieldFocused()
+        assertEquals("", search().query)
+    }
+
+    @Test
     fun voiceAppNameAloneShowsResultsInsteadOfLaunching() {
         viewModel.onVoiceResult(listOf("ютубе", "you tube", "youtube"))
         assertEquals(emptyList<Any>(), source.launched)

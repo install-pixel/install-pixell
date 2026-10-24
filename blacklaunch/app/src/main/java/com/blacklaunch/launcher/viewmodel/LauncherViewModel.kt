@@ -44,6 +44,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -126,6 +128,8 @@ class LauncherViewModel(
     /** Показувати підказки програм і останні запити (вимикаються в налаштуваннях). */
     private val showSuggestions: () -> Boolean = { false },
     private val showRecent: () -> Boolean = { false },
+    /** Приховані з пошуку програми (ключі). */
+    hiddenApps: Flow<Set<String>> = flowOf(emptySet()),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -138,8 +142,19 @@ class LauncherViewModel(
     val voiceActions: ReceiveChannel<VoiceAction> get() = _voiceActions
 
     // Індекс перебудовується лише при зміні програм, псевдонімів чи навчання, не на кожну літеру.
+    // Приховані програми не шукаються й не підказуються; на головному екрані лишаються.
+    private val visibleApps: StateFlow<List<AppInfo>> =
+        combine(appSource.apps, hiddenApps) { apps, hidden -> apps.filterNot { it.key in hidden } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Усі (не приховані) програми за абеткою — список A–Z у порожньому пошуку. */
+    val allApps: StateFlow<List<AppInfo>> =
+        visibleApps.map { apps -> apps.sortedWith(compareBy(collator) { it.label }) }
+            .flowOn(computeDispatcher)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val index: StateFlow<SearchIndex> =
-        combine(appSource.apps, userAliases, learnedQueries.learned, engine::index)
+        combine(visibleApps, userAliases, learnedQueries.learned, engine::index)
             .flowOn(computeDispatcher)
             .stateIn(viewModelScope, SharingStarted.Eagerly, SearchIndex(emptyList()))
 
@@ -210,7 +225,7 @@ class LauncherViewModel(
                 query == null -> LauncherUiState.HomeIdle
                 query.isBlank() -> LauncherUiState.SearchOpen(
                     query = query,
-                    suggestions = if (showSuggestions()) AppSuggestions.suggest(records, appSource.apps.value, now(), limit = SUGGESTIONS) else emptyList(),
+                    suggestions = if (showSuggestions()) AppSuggestions.suggest(records, visibleApps.value, now(), limit = SUGGESTIONS) else emptyList(),
                     recent = if (showRecent()) recent else emptyList(),
                 )
                 else -> {
@@ -234,7 +249,46 @@ class LauncherViewModel(
 
     fun clearQuery() {
         lastQuery = null
+        voiceText = null
         updateQuery("")
+    }
+
+    /**
+     * Набір у полі пошуку. Якщо в полі сказане голосом — перша набрана літера його замінює
+     * (стирати не треба): «телеграм» + «ю» → «ю».
+     */
+    fun type(text: String) {
+        val heard = voiceText
+        voiceText = null
+        voiceExpiry?.cancel()
+        if (heard == null || query.value != heard) {
+            updateQuery(text)
+            return
+        }
+        updateQuery(if (text.startsWith(heard)) text.removePrefix(heard) else if (text.length < heard.length) "" else text)
+    }
+
+    /** Поле пошуку отримало фокус — сказане голосом звільняє місце для набору. */
+    fun onFieldFocused() {
+        if (voiceText != null && query.value == voiceText) type("")
+    }
+
+    // Сказане голосом показується в полі (видно, що розпізналось), а через хвилину без дій зникає.
+    private var voiceText: String? = null
+    private var voiceExpiry: Job? = null
+
+    private fun showHeard(text: String) {
+        openSearch()
+        updateQuery(text)
+        voiceText = text
+        voiceExpiry?.cancel()
+        voiceExpiry = viewModelScope.launch {
+            delay(RESTORE_QUERY_MS)
+            if (voiceText != null && query.value == voiceText) {
+                voiceText = null
+                updateQuery("")
+            }
+        }
     }
 
     fun closeSearch() {
@@ -368,8 +422,7 @@ class LauncherViewModel(
         // Власна команда має перевагу: користувач сам задав цю фразу.
         hypotheses.firstNotNullOfOrNull { text -> CustomCommandMatcher.exact(customCommands(), text)?.let { text to it } }
             ?.let { (heard, custom) ->
-                openSearch()
-                updateQuery(heard)
+                showHeard(heard)
                 runCustom(custom)
                 return
             }
@@ -391,15 +444,13 @@ class LauncherViewModel(
             }
             is VoiceCommand.Action -> {
                 // Сказане лишається в пошуку (як і набране) — після повернення воно на місці.
-                openSearch()
-                updateQuery(heard)
+                showHeard(heard)
                 // Вимкнену дію просто шукаємо як звичайний запит.
                 if (command.action.kind in voiceActionsEnabled()) runAction(command.action)
             }
             is VoiceCommand.Open -> {
                 // Запит завжди потрапляє в пошук — після повернення з програми він на місці.
-                openSearch()
-                updateQuery(command.query)
+                showHeard(command.query)
                 // Одразу запускаємо лише на «відкрий X» і лише однозначну програму; просто назва —
                 // список, з якого користувач вибирає сам (розпізнавання буває неточним).
                 if (command.explicit) {
@@ -422,6 +473,8 @@ class LauncherViewModel(
 
         /** Скільки часу після закриття пошуку повертається останній запит. */
         const val RESTORE_QUERY_MS = 60 * 1000L
+
+        private val collator: java.text.Collator = java.text.Collator.getInstance()
 
         /** Один ряд підказок — щоб порожній пошук не займав увесь екран (керування однією рукою). */
         private const val SUGGESTIONS = 4
