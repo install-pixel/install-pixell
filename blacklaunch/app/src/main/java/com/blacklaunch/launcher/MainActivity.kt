@@ -5,6 +5,8 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.ContentUris
+import android.provider.ContactsContract
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
@@ -22,6 +24,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.voice.VoiceActionRunner
@@ -75,9 +78,15 @@ import com.blacklaunch.launcher.voice.VoiceState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.blacklaunch.launcher.system.GlanceInfo
+import com.blacklaunch.launcher.system.Glance
 
 /** Системний екран «Синтез мовлення» (рушій, голоси, завантаження офлайн). */
 private const val TTS_SETTINGS = "com.android.settings.TTS_SETTINGS"
+
+private const val GLANCE_REFRESH_MS = 60_000L
 
 class MainActivity : ComponentActivity() {
     private val app by lazy { application as BlackLaunchApp }
@@ -169,6 +178,17 @@ class MainActivity : ComponentActivity() {
                 for (action in viewModel.voiceActions) runVoiceAction(action)
             }
         }
+        // «Короткий огляд» оновлюється раз на хвилину лише поки BlackLaunch на екрані.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    if (app.appearanceSettings.appearance.value.glance) {
+                        glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
+                    }
+                    delay(GLANCE_REFRESH_MS)
+                }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 for (message in profileViewModel.messages) {
@@ -210,6 +230,11 @@ class MainActivity : ComponentActivity() {
             val ttsEngine by app.voiceActionSettings.ttsEngine.collectAsStateWithLifecycle()
             val customCommands by app.customCommands.commands.collectAsStateWithLifecycle()
             val allApps by viewModel.allApps.collectAsStateWithLifecycle()
+            val glanceInfo by glance.collectAsStateWithLifecycle()
+            // Увімкнули «Короткий огляд» — показуємо одразу, не чекаючи хвилини.
+            LaunchedEffect(appearance.glance) {
+                if (appearance.glance) glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
+            }
             val hiddenKeys by app.hiddenApps.hidden.collectAsStateWithLifecycle()
             val installedApps by repository.apps.collectAsStateWithLifecycle()
             BlackLaunchTheme {
@@ -223,6 +248,7 @@ class MainActivity : ComponentActivity() {
                     onRemoveApp = viewModel::unpin,
                     profileSwipe = appearance.profileSwipe,
                     showProfileLabel = appearance.showProfileLabel,
+                    glance = if (appearance.glance) glanceInfo else null,
                     onIdleChange = { idle ->
                         homeIdle = idle
                         applyStatusBar()
@@ -243,6 +269,7 @@ class MainActivity : ComponentActivity() {
                     onRecent = viewModel::useRecent,
                     onRemoveRecent = viewModel::removeRecent,
                     allApps = allApps,
+                    onContactAction = ::contactAction,
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
@@ -493,6 +520,28 @@ class MainActivity : ComponentActivity() {
             else -> micPermission.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
+
+    /** Швидка дія біля контакту: подзвонити (номер у «Телефоні») чи написати SMS. */
+    private fun contactAction(contact: GlobalResult.Contact, call: Boolean) {
+        val number = contactNumber(contact)
+        if (number == null) {
+            Toast.makeText(this, getString(R.string.voice_contact_not_found, contact.name), Toast.LENGTH_LONG).show()
+            return
+        }
+        val found = ContactNumber(contact.name, number)
+        if (call) actionRunner.dial(found) else actionRunner.sms(found, "")
+    }
+
+    private fun contactNumber(contact: GlobalResult.Contact): String? = runCatching {
+        val uri = ContactsContract.Contacts.lookupContact(contentResolver, Uri.parse(contact.lookupUri)) ?: return null
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+            arrayOf(ContentUris.parseId(uri).toString()),
+            "${ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY} DESC",
+        )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    }.getOrNull()
 
     /** Дія на результат глобального пошуку. */
     private fun openGlobalResult(result: GlobalResult) {
@@ -772,6 +821,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private var stoppedAt = 0L
+
+    private val glance = MutableStateFlow<GlanceInfo?>(null)
 
     /** Чорний головний екран без відкритого пошуку чи налаштувань. */
     private var homeIdle = true

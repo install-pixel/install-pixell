@@ -312,4 +312,10 @@
     <string name="all_apps">All apps (%1$d)</string>
     <string name="hide_status_title">Fully black screen</string>
     <string name="hide_status_subtitle">Hide the clock, network and battery while the home screen is idle. Swipe down from the top edge to see them</string>
+    <string name="contact_call">Call</string>
+    <string name="contact_message">Message</string>
+    <string name="glance_alarm">Alarm %1$s</string>
+    <string name="glance_battery">%1$d%%</string>
+    <string name="glance_title">At a glance</string>
+    <string name="glance_subtitle">Date, next alarm, nearest event and battery at the top of the home screen</string>
 </resources>

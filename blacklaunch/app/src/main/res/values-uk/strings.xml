@@ -312,4 +312,10 @@
     <string name="all_apps">Усі програми (%1$d)</string>
     <string name="hide_status_title">Повністю чорний екран</string>
     <string name="hide_status_subtitle">Ховати час, мережу й батарею, поки на головному екрані нічого не відкрито. Свайп униз від верхнього краю — показати</string>
+    <string name="contact_call">Подзвонити</string>
+    <string name="contact_message">Написати</string>
+    <string name="glance_alarm">Будильник %1$s</string>
+    <string name="glance_battery">%1$d%%</string>
+    <string name="glance_title">Короткий огляд</string>
+    <string name="glance_subtitle">Дата, найближчий будильник, подія й батарея вгорі головного екрана</string>
 </resources>

@@ -78,6 +78,7 @@ import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 import com.blacklaunch.launcher.voice.VoiceAction
+import com.blacklaunch.launcher.system.GlanceInfo
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.voice.VoiceState
 import kotlin.math.abs
@@ -111,6 +112,8 @@ fun BlackHomeScreen(
     /** Назва профілю вгорі екрана (можна вимкнути — тоді екран повністю чорний). */
     showProfileLabel: Boolean,
     onOpenSearch: () -> Unit,
+    /** «Короткий огляд» (дата, будильник, подія, батарея) або null — вимкнено. */
+    glance: GlanceInfo? = null,
     /** Головний екран чорний і нічого не відкрито (щоб сховати рядок стану). */
     onIdleChange: (Boolean) -> Unit = {},
     /** false — пошук закривається миттєво (повернулись після довгої відсутності). */
@@ -131,6 +134,8 @@ fun BlackHomeScreen(
     onRemoveRecent: (String) -> Unit,
     /** Усі програми за абеткою (список A–Z у порожньому пошуку). */
     allApps: List<AppInfo>,
+    /** Біля контакту в пошуку: true — подзвонити, false — написати. */
+    onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -178,6 +183,7 @@ fun BlackHomeScreen(
             onRemoveApp = onRemoveApp,
             profileSwipe = profileSwipe,
             showProfileLabel = showProfileLabel,
+            glance = glance,
             modifier = Modifier.blur(homeBlur).alpha(homeAlpha),
         )
         AnimatedVisibility(
@@ -204,6 +210,7 @@ fun BlackHomeScreen(
                 onRecent = onRecent,
                 onRemoveRecent = onRemoveRecent,
                 allApps = allApps,
+                onContactAction = onContactAction,
                 iconFor = iconFor,
                 voiceState = voiceState,
                 onMicClick = onMicClick,
@@ -235,6 +242,7 @@ private fun HomeIdle(
     onRemoveApp: (appKey: String) -> Unit,
     profileSwipe: Boolean,
     showProfileLabel: Boolean,
+    glance: GlanceInfo?,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val haptics = LocalHaptics.current
@@ -292,7 +300,7 @@ private fun HomeIdle(
             onMove = onMoveApp,
             onRemove = onRemoveApp,
             onIconBounds = { iconBounds = it },
-            reservedTop = if (showProfileLabel) ProfileLabelSpace else 0.dp,
+            reservedTop = (if (showProfileLabel) ProfileLabelSpace else 0.dp) + if (glance != null) GlanceSpace else 0.dp,
             reservedBottom = SearchFieldSpace,
             onDraggingChange = { dragging = it },
             modifier = Modifier
@@ -305,6 +313,17 @@ private fun HomeIdle(
             .align(Alignment.TopCenter)
             .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
             .padding(top = 16.dp)
+        glance?.let { info ->
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+                    .padding(start = 24.dp, end = 24.dp, top = if (showProfileLabel) ProfileLabelSpace + 20.dp else 16.dp),
+            ) {
+                Text(info.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                if (info.details.isNotEmpty()) Text(info.details, color = Oled.TextSecondary, fontSize = 13.sp)
+            }
+        }
         // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.
         if (!dragging && showProfileLabel && home.profileName.isNotEmpty()) {
             // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.
@@ -326,6 +345,7 @@ private fun HomeIdle(
 /** Місце вгорі під плашку профілю і внизу під поле пошуку — значки туди не стають. */
 private val ProfileLabelSpace = 48.dp
 private val SearchFieldSpace = 64.dp
+private val GlanceSpace = 64.dp
 
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
@@ -366,6 +386,8 @@ private fun SearchOpen(
     onRemoveRecent: (String) -> Unit,
     /** Усі програми за абеткою (список A–Z у порожньому пошуку). */
     allApps: List<AppInfo>,
+    /** Біля контакту в пошуку: true — подзвонити, false — написати. */
+    onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -506,6 +528,7 @@ private fun SearchOpen(
             onRecent = onRecent,
             onRemoveRecent = onRemoveRecent,
             allApps = allApps,
+            onContactAction = onContactAction,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(

@@ -101,6 +101,12 @@ fun SettingsScreen(
                     onCheckedChange = { on -> onChange { it.copy(profileSwipe = on) } },
                 )
                 SwitchRow(
+                    title = stringResource(R.string.glance_title),
+                    subtitle = stringResource(R.string.glance_subtitle),
+                    checked = appearance.glance,
+                    onCheckedChange = { on -> onChange { it.copy(glance = on) } },
+                )
+                SwitchRow(
                     title = stringResource(R.string.hide_status_title),
                     subtitle = stringResource(R.string.hide_status_subtitle),
                     checked = appearance.hideStatusBar,

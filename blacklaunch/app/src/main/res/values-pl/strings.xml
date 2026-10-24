@@ -312,4 +312,10 @@
     <string name="all_apps">Wszystkie aplikacje (%1$d)</string>
     <string name="hide_status_title">Całkowicie czarny ekran</string>
     <string name="hide_status_subtitle">Ukrywaj zegar, sieć i baterię, gdy na ekranie głównym nic nie jest otwarte. Przesuń w dół od górnej krawędzi, aby je zobaczyć</string>
+    <string name="contact_call">Zadzwoń</string>
+    <string name="contact_message">Napisz</string>
+    <string name="glance_alarm">Budzik %1$s</string>
+    <string name="glance_battery">%1$d%%</string>
+    <string name="glance_title">W skrócie</string>
+    <string name="glance_subtitle">Data, najbliższy budzik, wydarzenie i bateria u góry ekranu głównego</string>
 </resources>

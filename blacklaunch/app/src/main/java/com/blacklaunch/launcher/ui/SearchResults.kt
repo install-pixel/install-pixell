@@ -53,6 +53,8 @@ import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +79,8 @@ fun SearchResults(
     onRecent: (String) -> Unit = {},
     onRemoveRecent: (String) -> Unit = {},
     allApps: List<AppInfo> = emptyList(),
+    /** Швидкі дії біля контакту: true — подзвонити, false — написати. */
+    onContactAction: (GlobalResult.Contact, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
@@ -106,7 +110,7 @@ fun SearchResults(
         verticalArrangement = Arrangement.Bottom,
     ) {
         calculator.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal) }
+            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction) }
         }
         // Команди (як голосом) — одразу над полем пошуку.
         items(custom, key = { "custom:${it.id}" }) { command ->
@@ -119,7 +123,7 @@ fun SearchResults(
             AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
         others.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal) }
+            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction) }
             item(key = "header:${group.kind}") { GroupHeader(group.kind) }
         }
     }
@@ -329,7 +333,11 @@ private fun GroupHeader(kind: GroupKind) {
 }
 
 @Composable
-private fun GlobalRow(result: GlobalResult, onClick: (GlobalResult) -> Unit) {
+private fun GlobalRow(
+    result: GlobalResult,
+    onClick: (GlobalResult) -> Unit,
+    onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
+) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
     Row(
@@ -362,6 +370,15 @@ private fun GlobalRow(result: GlobalResult, onClick: (GlobalResult) -> Unit) {
             Text(result.title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             result.subtitle?.let {
                 Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        // S2: біля контакту — «Подзвонити» й «Написати» одним дотиком.
+        if (result is GlobalResult.Contact) {
+            IconButton(onClick = { haptics.tap(); onContactAction(result, true) }) {
+                Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.contact_call), tint = Oled.TextPrimary)
+            }
+            IconButton(onClick = { haptics.tap(); onContactAction(result, false) }) {
+                Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.contact_message), tint = Oled.TextPrimary)
             }
         }
     }

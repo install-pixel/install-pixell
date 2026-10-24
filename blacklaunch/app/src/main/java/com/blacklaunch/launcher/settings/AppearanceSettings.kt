@@ -24,6 +24,8 @@ data class Appearance(
     val recentQueries: Boolean = true,
     /** Ховати час, мережу й батарею, поки головний екран чорний і нічого не відкрито. */
     val hideStatusBar: Boolean = true,
+    /** «Короткий огляд»: дата, будильник, подія, батарея вгорі головного екрана. */
+    val glance: Boolean = false,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -49,6 +51,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_SUGGESTIONS, next.suggestions)
             .putBoolean(KEY_RECENT, next.recentQueries)
             .putBoolean(KEY_HIDE_STATUS, next.hideStatusBar)
+            .putBoolean(KEY_GLANCE, next.glance)
             .apply()
         _appearance.value = next
     }
@@ -67,6 +70,7 @@ class AppearanceSettings(context: Context) {
             suggestions = prefs.getBoolean(KEY_SUGGESTIONS, defaults.suggestions),
             recentQueries = prefs.getBoolean(KEY_RECENT, defaults.recentQueries),
             hideStatusBar = prefs.getBoolean(KEY_HIDE_STATUS, defaults.hideStatusBar),
+            glance = prefs.getBoolean(KEY_GLANCE, defaults.glance),
         )
     }
 
@@ -81,6 +85,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_SUGGESTIONS = "suggestions"
         private const val KEY_RECENT = "recent_queries"
         private const val KEY_HIDE_STATUS = "hide_status_bar"
+        private const val KEY_GLANCE = "glance"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }
