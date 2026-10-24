@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -109,6 +111,8 @@ fun BlackHomeScreen(
     /** Назва профілю вгорі екрана (можна вимкнути — тоді екран повністю чорний). */
     showProfileLabel: Boolean,
     onOpenSearch: () -> Unit,
+    /** Головний екран чорний і нічого не відкрито (щоб сховати рядок стану). */
+    onIdleChange: (Boolean) -> Unit = {},
     /** false — пошук закривається миттєво (повернулись після довгої відсутності). */
     animateSearchClose: Boolean = true,
     onQueryChange: (String) -> Unit,
@@ -138,6 +142,9 @@ fun BlackHomeScreen(
     appActions: @Composable (app: AppInfo, onNames: () -> Unit, onDismiss: () -> Unit) -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    // Повністю чорний екран: рядок стану ховається, поки нічого не відкрито.
+    val idle = state is LauncherUiState.HomeIdle && !showSettings
+    LaunchedEffect(idle) { onIdleChange(idle) }
     var aliasApp by remember { mutableStateOf<AppInfo?>(null) }
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
 
@@ -213,6 +220,7 @@ fun BlackHomeScreen(
     aliasApp?.let { app -> aliasDialog(app) { aliasApp = null } }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HomeIdle(
     modifier: Modifier = Modifier,
@@ -288,11 +296,15 @@ private fun HomeIdle(
             reservedBottom = SearchFieldSpace,
             onDraggingChange = { dragging = it },
             modifier = Modifier
-                .statusBarsPadding()
+                // Місце під рядок стану лишається, навіть коли він схований, — значки не стрибають.
+                .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
                 .navigationBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 12.dp),
         )
-        val topModifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 16.dp)
+        val topModifier = Modifier
+            .align(Alignment.TopCenter)
+            .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+            .padding(top = 16.dp)
         // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.
         if (!dragging && showProfileLabel && home.profileName.isNotEmpty()) {
             // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.

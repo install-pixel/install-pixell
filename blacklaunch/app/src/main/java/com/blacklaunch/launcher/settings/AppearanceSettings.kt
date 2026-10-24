@@ -22,6 +22,8 @@ data class Appearance(
     val suggestions: Boolean = true,
     /** Порожній пошук: останні запити. */
     val recentQueries: Boolean = true,
+    /** Ховати час, мережу й батарею, поки головний екран чорний і нічого не відкрито. */
+    val hideStatusBar: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -46,6 +48,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_HAPTICS, next.haptics)
             .putBoolean(KEY_SUGGESTIONS, next.suggestions)
             .putBoolean(KEY_RECENT, next.recentQueries)
+            .putBoolean(KEY_HIDE_STATUS, next.hideStatusBar)
             .apply()
         _appearance.value = next
     }
@@ -63,6 +66,7 @@ class AppearanceSettings(context: Context) {
             haptics = prefs.getBoolean(KEY_HAPTICS, defaults.haptics),
             suggestions = prefs.getBoolean(KEY_SUGGESTIONS, defaults.suggestions),
             recentQueries = prefs.getBoolean(KEY_RECENT, defaults.recentQueries),
+            hideStatusBar = prefs.getBoolean(KEY_HIDE_STATUS, defaults.hideStatusBar),
         )
     }
 
@@ -76,6 +80,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_HAPTICS = "haptics"
         private const val KEY_SUGGESTIONS = "suggestions"
         private const val KEY_RECENT = "recent_queries"
+        private const val KEY_HIDE_STATUS = "hide_status_bar"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

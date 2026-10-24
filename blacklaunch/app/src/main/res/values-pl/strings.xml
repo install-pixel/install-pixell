@@ -310,4 +310,6 @@
     <string name="hidden_apps_note">Te aplikacje zostają na telefonie i na ekranie głównym, tylko nie pojawiają się w wyszukiwaniu BlackLaunch.</string>
     <string name="hidden_apps_show">Pokaż</string>
     <string name="all_apps">Wszystkie aplikacje (%1$d)</string>
+    <string name="hide_status_title">Całkowicie czarny ekran</string>
+    <string name="hide_status_subtitle">Ukrywaj zegar, sieć i baterię, gdy na ekranie głównym nic nie jest otwarte. Przesuń w dół od górnej krawędzi, aby je zobaczyć</string>
 </resources>

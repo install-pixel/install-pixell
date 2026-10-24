@@ -36,6 +36,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -220,6 +223,10 @@ class MainActivity : ComponentActivity() {
                     onRemoveApp = viewModel::unpin,
                     profileSwipe = appearance.profileSwipe,
                     showProfileLabel = appearance.showProfileLabel,
+                    onIdleChange = { idle ->
+                        homeIdle = idle
+                        applyStatusBar()
+                    },
                     onOpenSearch = {
                         instantSearchClose = false
                         viewModel.openSearch()
@@ -765,6 +772,25 @@ class MainActivity : ComponentActivity() {
     }
 
     private var stoppedAt = 0L
+
+    /** Чорний головний екран без відкритого пошуку чи налаштувань. */
+    private var homeIdle = true
+
+    // Повністю чорний екран: час, мережа й батарея сховані (свайп від верхнього краю показує їх на мить).
+    private fun applyStatusBar() {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (homeIdle && app.appearanceSettings.appearance.value.hideStatusBar) {
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) applyStatusBar()
+    }
 
     /** BlackLaunch був прихований (інша програма) — до наступного onResume. */
     private var wasStopped = false

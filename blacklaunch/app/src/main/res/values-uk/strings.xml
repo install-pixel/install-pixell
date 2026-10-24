@@ -310,4 +310,6 @@
     <string name="hidden_apps_note">Ці програми лишаються на телефоні й на головному екрані, лише не з\'являються в пошуку BlackLaunch.</string>
     <string name="hidden_apps_show">Показати</string>
     <string name="all_apps">Усі програми (%1$d)</string>
+    <string name="hide_status_title">Повністю чорний екран</string>
+    <string name="hide_status_subtitle">Ховати час, мережу й батарею, поки на головному екрані нічого не відкрито. Свайп униз від верхнього краю — показати</string>
 </resources>

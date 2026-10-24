@@ -310,4 +310,6 @@
     <string name="hidden_apps_note">These apps stay on the phone and on the home screen, they just don’t appear in BlackLaunch search.</string>
     <string name="hidden_apps_show">Show</string>
     <string name="all_apps">All apps (%1$d)</string>
+    <string name="hide_status_title">Fully black screen</string>
+    <string name="hide_status_subtitle">Hide the clock, network and battery while the home screen is idle. Swipe down from the top edge to see them</string>
 </resources>
