@@ -40,7 +40,7 @@ class AppIconCache(
         cache.get(key)?.let { return it }
         return withContext(Dispatchers.IO) {
             val drawable = repository.icon(app, density) ?: return@withContext null
-            val bitmap = if (mono) monochromeBitmap(drawable) else drawable.toBitmap(sizePx, sizePx)
+            val bitmap = if (mono) monochromeBitmap(drawable) else render(drawable)
             bitmap.asImageBitmap().also { cache.put(key, it) }
         }
     }
@@ -116,7 +116,7 @@ class AppIconCache(
     }
 
     private fun desaturated(drawable: Drawable): Bitmap {
-        val source = drawable.toBitmap(sizePx, sizePx)
+        val source = render(drawable)
         val bitmap = createBitmap(sizePx, sizePx)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
@@ -124,6 +124,20 @@ class AppIconCache(
         }
         Canvas(bitmap).drawBitmap(source, 0f, 0f, paint)
         return bitmap
+    }
+
+    /**
+     * Значок у потрібному розмірі. Деякі «живі» значки виробників (наприклад, Калькулятор OnePlus)
+     * ігнорують задані межі й малюють себе у власному розмірі — тоді видно лише кут значка.
+     * Тому малюємо у власному розмірі значка й лише потім зменшуємо.
+     */
+    private fun render(drawable: Drawable): Bitmap {
+        val w = drawable.intrinsicWidth
+        val h = drawable.intrinsicHeight
+        if (w <= 0 || h <= 0 || (w == sizePx && h == sizePx)) return drawable.toBitmap(sizePx, sizePx)
+        val full = drawable.toBitmap(w, h)
+        // Не звільняємо `full`: для звичайних значків це може бути спільний бітмап системи.
+        return Bitmap.createScaledBitmap(full, sizePx, sizePx, true)
     }
 
     private companion object {
