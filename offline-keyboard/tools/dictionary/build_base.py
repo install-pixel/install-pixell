@@ -28,7 +28,7 @@ from spylls.hunspell import Dictionary
 
 TOTAL = 10_000
 ROOT = Path(__file__).resolve().parents[2]
-WORK = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/offlingo-dictionary")
+WORK = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/offkey-dictionary")
 
 FREQ = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/{0}/{0}_50k.txt"
 HUNSPELL = "https://raw.githubusercontent.com/LibreOffice/dictionaries/master/{}"

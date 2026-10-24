@@ -33,7 +33,11 @@ class KeyboardTestActivity : Activity() {
             hint = "chat"
             contentDescription = "chat"
         }
-        listOf(plain, multiLine, password, chat).forEach { root.addView(it) }
+        // Fresh ids per screen, so a test can tell which field (of which screen) the keyboard types into.
+        listOf(plain, multiLine, password, chat).forEach {
+            it.id = android.view.View.generateViewId()
+            root.addView(it)
+        }
         setContentView(root)
         plain.requestFocus()
     }

@@ -417,6 +417,8 @@ class KeyboardUiTest {
             instrumentation.waitForIdleSync()
             screenshot("theme-oled-${accent.name.lowercase()}")
         }
+        // Fourteen redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
+        focus(activity.plain)
         typeWord(activity.plain, "а")
     }
 
@@ -461,17 +463,59 @@ class KeyboardUiTest {
     }
 
     /** Focuses [field] and shows the keyboard; asks again if Android ignores the first request. */
+    /** Where the keys are and how often the space below them changed, for failure messages. */
+    private fun keyboardState(): String {
+        val ref = AtomicReference<String>("no keyboard")
+        instrumentation.runOnMainSync {
+            val root = KeyboardService.instance?.inputRootForTest ?: return@runOnMainSync
+            val location = IntArray(2).also { root.keyboardView.getLocationOnScreen(it) }
+            ref.set(
+                "shown=${root.keyboardView.isShown} y=${location[1]} h=${root.keyboardView.height} " +
+                    "padding=${root.paddingBottom} changes=${root.bottomSpaceChangesForTest} " +
+                    "editor=${KeyboardService.instance?.currentInputEditorInfo?.fieldId} " +
+                    "plain=${activity.plain.id} focused=${activity.plain.hasFocus()}",
+            )
+        }
+        return ref.get()
+    }
+
+    private fun waitForKeysToSettle() {
+        var last: Int? = null
+        var still = 0
+        val end = SystemClock.uptimeMillis() + 8_000
+        while (SystemClock.uptimeMillis() < end && still < 3) {
+            Thread.sleep(200)
+            val y = AtomicReference<Int?>()
+            instrumentation.runOnMainSync {
+                KeyboardService.instance?.inputRootForTest?.keyboardView?.let { view ->
+                    val location = IntArray(2)
+                    view.getLocationOnScreen(location)
+                    y.set(if (view.isShown) location[1] else null)
+                }
+            }
+            val now = y.get()
+            still = if (now != null && now == last) still + 1 else 0
+            last = now
+        }
+        Thread.sleep(200)
+    }
+
     private fun focus(field: EditText) {
         repeat(6) {
             instrumentation.runOnMainSync {
                 field.requestFocus()
                 field.context.getSystemService(InputMethodManager::class.java).showSoftInput(field, 0)
             }
-            val shown = runCatching { waitFor("keyboard service", timeoutMs = 8_000) { visibleService() } }.isSuccess
+            // Shown is not enough: on Android 15 the keyboard can come up still bound to the previous screen's
+            // field, and then everything typed goes nowhere. Wait until it is typing into this field.
+            val shown = runCatching {
+                waitFor("keyboard on this field", timeoutMs = 8_000) { visibleService()?.takeIf { typesInto(it, field) } }
+            }.isSuccess
             if (shown) {
                 clear(field)
-                // Android 14 slides the keyboard in; a touch during the slide can be lost.
-                Thread.sleep(600)
+                // Android 14 and 15 slide the keyboard in (slowly on the emulator); a touch during the
+                // slide is lost. Wait until the keys stop moving.
+                waitForKeysToSettle()
                 return
             }
             // A tap on the field is what a person would do.
@@ -479,6 +523,18 @@ class KeyboardUiTest {
         }
         service()
         clear(field)
+    }
+
+    private fun typesInto(keyboard: KeyboardService, field: EditText): Boolean {
+        val ref = AtomicReference(false)
+        instrumentation.runOnMainSync {
+            val info = keyboard.currentInputEditorInfo
+            ref.set(
+                keyboard.currentInputStarted && info != null && info.fieldId == field.id &&
+                    info.packageName == field.context.packageName && field.hasFocus(),
+            )
+        }
+        return ref.get()
     }
 
     private fun visibleService(): KeyboardService? {
@@ -556,7 +612,7 @@ class KeyboardUiTest {
                 }.isSuccess
                 if (typed) break
             }
-            assertEquals(expected, text(field))
+            assertEquals("$expected (keyboard: ${keyboardState()})", expected, text(field))
         }
     }
 
