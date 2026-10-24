@@ -33,9 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -51,7 +48,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.global.GlobalResult
-import com.blacklaunch.launcher.settings.DockPosition
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
@@ -67,9 +63,7 @@ fun BlackHomeScreen(
     /** Назва профілю, на який щойно перемкнули (показується на мить), або null. */
     profileBanner: String?,
     onSwitchProfile: (delta: Int) -> Unit,
-    onReorderPinned: (List<String>) -> Unit,
-    dockPosition: DockPosition,
-    onDockPosition: (DockPosition) -> Unit,
+    onMoveApp: (appKey: String, cell: Int) -> Unit,
     onOpenSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -106,12 +100,11 @@ fun BlackHomeScreen(
             onOpenSearch = onOpenSearch,
             onLongPress = { showSettings = true },
             onSwitchProfile = onSwitchProfile,
-            onReorderPinned = onReorderPinned,
-            dockPosition = dockPosition,
-            onDockPosition = onDockPosition,
+            onMoveApp = onMoveApp,
         )
         is LauncherUiState.SearchOpen -> SearchOpen(
             state = state,
+            pinnedApps = home.pinned,
             onQueryChange = onQueryChange,
             onClearQuery = onClearQuery,
             onLaunch = onLaunch,
@@ -140,24 +133,20 @@ private fun HomeIdle(
     onOpenSearch: () -> Unit,
     onLongPress: () -> Unit,
     onSwitchProfile: (Int) -> Unit,
-    onReorderPinned: (List<String>) -> Unit,
-    dockPosition: DockPosition,
-    onDockPosition: (DockPosition) -> Unit,
+    onMoveApp: (appKey: String, cell: Int) -> Unit,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val view = LocalView.current
-    var dockBounds by remember { mutableStateOf<Rect?>(null) }
-    var screenHeight by remember { mutableStateOf(0f) }
+    var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .onSizeChanged { screenHeight = it.height.toFloat() }
             .background(Color.Black)
             .pointerInput(Unit) {
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
-                // Довге натискання на панелі програм — це перетягування, а не налаштування.
+                // Довге натискання на значку — це перетягування, а не налаштування.
                 detectTapGestures(onLongPress = { position ->
-                    if (dockBounds?.contains(position) != true) onLongPress()
+                    if (iconBounds.values.none { it.contains(position) }) onLongPress()
                 })
             }
             .pointerInput(home.profileCount) {
@@ -191,27 +180,17 @@ private fun HomeIdle(
                 )
             },
     ) {
-        PinnedDock(
+        HomeGridView(
             apps = home.pinned,
+            cells = home.cells,
             iconFor = iconFor,
             onLaunch = onLaunch,
-            onReorder = onReorderPinned,
-            onMoved = { dy ->
-                val bounds = dockBounds ?: return@PinnedDock
-                if (screenHeight > 0f) onDockPosition(DockLayout.positionFor(bounds.center.y + dy, screenHeight))
-            },
+            onMove = onMoveApp,
+            onIconBounds = { iconBounds = it },
             modifier = Modifier
-                .align(
-                    when (dockPosition) {
-                        DockPosition.TOP -> Alignment.TopCenter
-                        DockPosition.CENTER -> Alignment.Center
-                        DockPosition.BOTTOM -> Alignment.BottomCenter
-                    },
-                )
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .onGloballyPositioned { dockBounds = it.boundsInParent() },
+                .padding(horizontal = 8.dp, vertical = 12.dp),
         )
         AnimatedVisibility(
             visible = profileBanner != null,
@@ -233,6 +212,7 @@ private fun HomeIdle(
 @Composable
 private fun SearchOpen(
     state: LauncherUiState.SearchOpen,
+    pinnedApps: List<AppInfo>,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
@@ -308,6 +288,7 @@ private fun SearchOpen(
             query = state.query,
             results = state.results,
             groups = state.groups,
+            pinned = pinnedApps,
             iconFor = iconFor,
             onLaunch = onLaunch,
             onLongPress = onLongPress,

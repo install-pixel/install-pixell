@@ -170,11 +170,6 @@
     <string name="setting_about">About phone</string>
     <string name="setting_developer">Developer options</string>
     <string name="sms_restricted">Android blocks SMS access for apps not installed from Play. In the BlackLaunch app info that opens now, tap ⋮ → “Allow restricted settings”, then turn SMS on again.</string>
-    <string name="dock_title">Apps panel</string>
-    <string name="dock_top">Top</string>
-    <string name="dock_center">Centre</string>
-    <string name="dock_bottom">Bottom</string>
-    <string name="dock_hint">You can also long-press an empty spot of the panel and drag it up or down. Drag an icon to change the order (needs at least two apps).</string>
     <string name="section_home">Home screen</string>
     <string name="section_home_hint">Profiles, apps panel</string>
     <string name="section_appearance">Appearance</string>
@@ -188,4 +183,6 @@
     <string name="about_note">A minimal offline launcher: no internet permission, no ads, no tracking. Everything stays on this phone.</string>
     <string name="search_names_note">Your own names for apps: long-press an app in the search results.</string>
     <string name="battery_profiles_note">To stop apps that are not in a profile from working in the background: Home screen → Profiles → a profile → “Restrict other apps in the background”.</string>
+    <string name="pinned_header">Pinned</string>
+    <string name="grid_hint">Apps on the home screen: long-press an icon and drag it to any place — top, centre, a corner. If another app is there, they swap. Each profile has its own layout.</string>
 </resources>

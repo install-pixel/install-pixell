@@ -10,6 +10,7 @@ import com.blacklaunch.launcher.global.GlobalSearchSettings
 import com.blacklaunch.launcher.global.SettingsTitles
 import com.blacklaunch.launcher.profiles.DefaultProfiles
 import com.blacklaunch.launcher.profiles.PrefsActiveProfileStore
+import com.blacklaunch.launcher.profiles.PrefsHomeLayoutStore
 import com.blacklaunch.launcher.profiles.ProfileRepository
 import com.blacklaunch.launcher.search.PrefsLearnedQueries
 import com.blacklaunch.launcher.search.UserAliasStore
@@ -33,6 +34,7 @@ class BlackLaunchApp : Application() {
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }
+    val homeLayoutStore: PrefsHomeLayoutStore by lazy { PrefsHomeLayoutStore(this) }
     val globalSearch: AndroidGlobalSearch by lazy {
         AndroidGlobalSearch(
             context = this,

@@ -170,11 +170,6 @@
     <string name="setting_about">Про телефон</string>
     <string name="setting_developer">Для розробників</string>
     <string name="sms_restricted">Android блокує доступ до SMS для програм не з Play Маркету. У налаштуваннях BlackLaunch, що зараз відкриються, натисніть ⋮ → «Дозволити обмежені налаштування», потім знову ввімкніть SMS.</string>
-    <string name="dock_title">Панель програм</string>
-    <string name="dock_top">Вгорі</string>
-    <string name="dock_center">По центру</string>
-    <string name="dock_bottom">Внизу</string>
-    <string name="dock_hint">Можна й так: довге натискання на порожньому місці панелі й перетягування вгору чи вниз. Перетягування значка змінює порядок (потрібно хоча б дві програми).</string>
     <string name="section_home">Головний екран</string>
     <string name="section_home_hint">Профілі, панель програм</string>
     <string name="section_appearance">Оформлення</string>
@@ -188,4 +183,6 @@
     <string name="about_note">Мінімалістичний офлайн-лаунчер: без дозволу на інтернет, без реклами й стеження. Усе лишається на цьому телефоні.</string>
     <string name="search_names_note">Власні назви програм: довге натискання на програму в результатах пошуку.</string>
     <string name="battery_profiles_note">Щоб програми поза профілем не працювали у фоні: Головний екран → Профілі → профіль → «Обмежити інші програми у фоні».</string>
+    <string name="pinned_header">Закріплені</string>
+    <string name="grid_hint">Програми на головному екрані: довге натискання на значок і перетягування в будь-яке місце — вгору, по центру, в кут. Якщо там інша програма, вони міняються місцями. У кожного профілю своя розкладка.</string>
 </resources>

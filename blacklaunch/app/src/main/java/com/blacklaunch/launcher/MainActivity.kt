@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
                     learnedQueries = app.learnedQueries,
                     globalSource = app.globalSearch,
                     globalKinds = app.globalSearchSettings.enabled,
+                    layoutStore = app.homeLayoutStore,
                 )
             }
         }
@@ -175,9 +176,7 @@ class MainActivity : ComponentActivity() {
                     home = home,
                     profileBanner = banner,
                     onSwitchProfile = viewModel::switchProfile,
-                    onReorderPinned = viewModel::reorderPinned,
-                    dockPosition = appearance.dockPosition,
-                    onDockPosition = { position -> app.appearanceSettings.update { it.copy(dockPosition = position) } },
+                    onMoveApp = viewModel::moveApp,
                     onOpenSearch = viewModel::openSearch,
                     onQueryChange = viewModel::updateQuery,
                     onClearQuery = viewModel::clearQuery,

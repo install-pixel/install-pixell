@@ -22,11 +22,6 @@ class ProfileHomeTest {
         val active = MutableStateFlow<String?>(null)
         override val activeProfile = combine(profiles, active) { all, id -> all.firstOrNull { it.id == id } ?: all.firstOrNull() }
         override fun setActive(id: String) { active.value = id }
-        override suspend fun reorderPinned(profileId: String, orderedKeys: List<String>) {
-            profiles.value = profiles.value.map {
-                if (it.id == profileId) it.copy(pinnedAppKeys = com.blacklaunch.launcher.profiles.mergePinnedOrder(it.pinnedAppKeys, orderedKeys)) else it
-            }
-        }
     }
 
     private val apps = FakeAppSource("Sklado", "Scanner", "Telegram")
@@ -117,9 +112,20 @@ class ProfileHomeTest {
         assertEquals(emptyList<Any>(), groups())
     }
 
-    @Test fun reorderKeepsUninstalledPinnedApps() {
-        viewModel.reorderPinned(listOf(key("Sklado"), key("Scanner")))
-        assertEquals(listOf("Sklado", "Scanner"), viewModel.home.value.pinned.map { it.label })
-        assertEquals("gone/Main/0", profiles.profiles.value.first().pinnedAppKeys.last())
+    @Test fun pinnedAppsGetBottomRowCellsAndCanMove() {
+        assertEquals(listOf(0, 1), viewModel.home.value.pinned.map { viewModel.home.value.cells[it.key] })
+        viewModel.moveApp(key("Scanner"), 9)
+        assertEquals(9, viewModel.home.value.cells[key("Scanner")])
+        viewModel.moveApp(key("Sklado"), 9)
+        assertEquals(9, viewModel.home.value.cells[key("Sklado")])
+        assertEquals(1, viewModel.home.value.cells[key("Scanner")])
+    }
+
+    @Test fun layoutIsSeparatePerProfile() {
+        viewModel.moveApp(key("Scanner"), 7)
+        viewModel.switchProfile(+1)
+        assertEquals(0, viewModel.home.value.cells[key("Telegram")])
+        viewModel.switchProfile(-1)
+        assertEquals(7, viewModel.home.value.cells[key("Scanner")])
     }
 }

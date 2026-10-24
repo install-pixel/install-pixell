@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.settings.Appearance
-import com.blacklaunch.launcher.settings.DockPosition
 import com.blacklaunch.launcher.settings.OfflineVoiceMode
 import com.blacklaunch.launcher.system.WallpaperTarget
 import com.blacklaunch.launcher.ui.theme.Oled
@@ -64,13 +63,7 @@ fun SettingsScreen(
                 ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
             }
             Card {
-                Text(stringResource(R.string.dock_title), color = Oled.TextPrimary, fontSize = 17.sp)
-                DockPosition.entries.forEach { position ->
-                    TargetOption(position.label(), appearance.dockPosition == position) {
-                        onChange { it.copy(dockPosition = position) }
-                    }
-                }
-                Note(stringResource(R.string.dock_hint))
+                Note(stringResource(R.string.grid_hint))
             }
         }
 
@@ -258,9 +251,3 @@ private fun GroupKind.label(): Int = when (this) {
     GroupKind.SMS -> R.string.group_sms
 }
 
-@StringRes
-private fun DockPosition.label(): Int = when (this) {
-    DockPosition.TOP -> R.string.dock_top
-    DockPosition.CENTER -> R.string.dock_center
-    DockPosition.BOTTOM -> R.string.dock_bottom
-}

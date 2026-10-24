@@ -13,6 +13,9 @@ import com.blacklaunch.launcher.global.GlobalSearchSource
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.global.NoGlobalSearch
 import com.blacklaunch.launcher.global.ResultGroup
+import com.blacklaunch.launcher.profiles.HomeGrid
+import com.blacklaunch.launcher.profiles.HomeLayoutStore
+import com.blacklaunch.launcher.profiles.InMemoryHomeLayoutStore
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
 import com.blacklaunch.launcher.profiles.neighbour
@@ -65,6 +68,8 @@ data class HomeState(
     val profileName: String = "",
     val pinned: List<AppInfo> = emptyList(),
     val profileCount: Int = 0,
+    /** Ключ програми → клітинка вільної сітки ([HomeGrid]). */
+    val cells: Map<String, Int> = emptyMap(),
 )
 
 private data class GroupInput(
@@ -79,7 +84,6 @@ private object NoProfiles : ProfileSource {
     override val profiles: Flow<List<LauncherProfile>> = flowOf(emptyList())
     override val activeProfile: Flow<LauncherProfile?> = flowOf(null)
     override fun setActive(id: String) = Unit
-    override suspend fun reorderPinned(profileId: String, orderedKeys: List<String>) = Unit
 }
 
 class LauncherViewModel(
@@ -94,6 +98,7 @@ class LauncherViewModel(
     computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val globalSource: GlobalSearchSource = NoGlobalSearch,
     globalKinds: Flow<Set<GroupKind>> = flowOf(DEFAULT_GLOBAL_KINDS),
+    private val layoutStore: HomeLayoutStore = InMemoryHomeLayoutStore(),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -116,14 +121,16 @@ class LauncherViewModel(
         profileSource.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val home: StateFlow<HomeState> =
-        combine(profileSource.activeProfile, appSource.apps, profiles) { active, apps, all ->
+        combine(profileSource.activeProfile, appSource.apps, profiles, layoutStore.layouts) { active, apps, all, layouts ->
             val installed = apps.associateBy { it.key }
+            // Видалені програми просто не показуються, налаштування профілю не змінюються.
+            val pinned = active?.pinnedAppKeys.orEmpty().mapNotNull { installed[it] }
             HomeState(
                 profileId = active?.id,
                 profileName = active?.name.orEmpty(),
-                // Видалені програми просто не показуються, налаштування профілю не змінюються.
-                pinned = active?.pinnedAppKeys.orEmpty().mapNotNull { installed[it] },
+                pinned = pinned,
                 profileCount = all.size,
+                cells = HomeGrid.assign(pinned.map { it.key }, layouts[active?.id].orEmpty()),
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeState())
 
@@ -194,9 +201,10 @@ class LauncherViewModel(
         activate(next)
     }
 
-    fun reorderPinned(orderedKeys: List<String>) {
+    /** Програму перетягнули в іншу клітинку головного екрана (своя розкладка для кожного профілю). */
+    fun moveApp(appKey: String, cell: Int) {
         val profileId = home.value.profileId ?: return
-        viewModelScope.launch { profileSource.reorderPinned(profileId, orderedKeys) }
+        layoutStore.save(profileId, HomeGrid.move(home.value.cells, appKey, cell))
     }
 
     /** Профіль, знайдений у пошуку: перемикаємо й повертаємося на головний екран. */

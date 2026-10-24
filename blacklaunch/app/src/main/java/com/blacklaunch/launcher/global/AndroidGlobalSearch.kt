@@ -7,6 +7,7 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.net.Uri
+import android.os.Build
 import android.os.Process
 import android.os.SystemClock
 import android.os.UserManager
@@ -80,9 +81,11 @@ class AndroidGlobalSearch(
         if (!launcherApps.hasShortcutHostPermission()) return emptyList()
         val now = SystemClock.elapsedRealtime()
         if (now - shortcutsLoadedAt > SHORTCUTS_TTL_MS) {
-            val flags = LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
+            var flags = LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
                 LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
                 LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
+            // Android 11+: «розмовні» ярлики — останні чати месенджерів (Telegram, WhatsApp…).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) flags = flags or LauncherApps.ShortcutQuery.FLAG_MATCH_CACHED
             shortcutsCache = userManager.userProfiles.flatMap { user ->
                 launcherApps.getShortcuts(LauncherApps.ShortcutQuery().setQueryFlags(flags), user).orEmpty()
             }.filter { it.isEnabled }

@@ -170,11 +170,6 @@
     <string name="setting_about">O telefonie</string>
     <string name="setting_developer">Opcje programisty</string>
     <string name="sms_restricted">Android blokuje dostęp do SMS dla aplikacji spoza Sklepu Play. W otwieranych teraz ustawieniach BlackLaunch dotknij ⋮ → „Zezwól na ustawienia z ograniczeniami”, a potem ponownie włącz SMS.</string>
-    <string name="dock_title">Panel aplikacji</string>
-    <string name="dock_top">Na górze</string>
-    <string name="dock_center">Na środku</string>
-    <string name="dock_bottom">Na dole</string>
-    <string name="dock_hint">Można też przytrzymać puste miejsce panelu i przeciągnąć go w górę lub w dół. Przeciągnięcie ikony zmienia kolejność (potrzebne co najmniej dwie aplikacje).</string>
     <string name="section_home">Ekran główny</string>
     <string name="section_home_hint">Profile, panel aplikacji</string>
     <string name="section_appearance">Wygląd</string>
@@ -188,4 +183,6 @@
     <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
     <string name="search_names_note">Własne nazwy aplikacji: przytrzymaj aplikację w wynikach wyszukiwania.</string>
     <string name="battery_profiles_note">Aby aplikacje spoza profilu nie działały w tle: Ekran główny → Profile → profil → „Ogranicz inne aplikacje w tle”.</string>
+    <string name="pinned_header">Przypięte</string>
+    <string name="grid_hint">Aplikacje na ekranie głównym: przytrzymaj ikonę i przeciągnij w dowolne miejsce — na górę, na środek, do rogu. Jeśli jest tam inna aplikacja, zamienią się miejscami. Każdy profil ma własny układ.</string>
 </resources>
