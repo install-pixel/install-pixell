@@ -162,8 +162,7 @@ class KeyboardUiTest {
     fun doubleSpacePutsAPeriod() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        tapText("т")
-        tapText("а")
+        typeWord(activity.plain, "та")
         tapSpecial(SpecialKey.SPACE)
         tapSpecial(SpecialKey.SPACE)
         assertEquals("та. ", text(activity.plain))
@@ -173,7 +172,7 @@ class KeyboardUiTest {
     fun typoIsCorrectedAndBackspaceBringsItBack() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        "пртвіт".forEach { tapText(it.toString()) }
+        typeWord(activity.plain, "пртвіт")
         tapSpecial(SpecialKey.SPACE)
         assertEquals("привіт ", text(activity.plain))
         tapSpecial(SpecialKey.BACKSPACE)
@@ -447,6 +446,25 @@ class KeyboardUiTest {
         touch(point.x, point.y, holdMs = 40)
     }
 
+    /**
+     * Types [word] letter by letter, checking the field after each tap: the API 34 emulator sometimes
+     * drops a tap right after a test starts, and a lost letter is tapped again.
+     */
+    private fun typeWord(field: EditText, word: String) {
+        val start = text(field)
+        for (i in word.indices) {
+            val expected = start + word.substring(0, i + 1)
+            for (attempt in 1..3) {
+                tapText(word[i].toString())
+                val typed = runCatching {
+                    waitFor("«$expected»", timeoutMs = 1_500) { text(field).takeIf { it == expected } }
+                }.isSuccess
+                if (typed) break
+            }
+            assertEquals(expected, text(field))
+        }
+    }
+
     private fun tapSpecial(key: SpecialKey) {
         val point = keyCenter { it.special == key } ?: throw AssertionError("no key $key")
         touch(point.x, point.y, holdMs = 40)
@@ -529,6 +547,8 @@ class KeyboardUiTest {
 
     private fun screenshot(name: String) {
         instrumentation.waitForIdleSync()
+        // The keyboard window may still show the previous frame (a theme switch looked unchanged).
+        Thread.sleep(300)
         shell("screencap -p $SCREENS/$name.png")
     }
 
