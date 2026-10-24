@@ -124,7 +124,7 @@ class KeyboardUiTest {
     fun suggestionsWorkFromTheFirstStart() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        "дяк".forEach { tapText(it.toString()) }
+        typeWord(activity.plain, "дяк")
         val suggestion = waitForView { v -> v is TextView && v.isShown && v.text.toString() == "дякую" }
         screenshot("suggestions")
         tapView(suggestion)
