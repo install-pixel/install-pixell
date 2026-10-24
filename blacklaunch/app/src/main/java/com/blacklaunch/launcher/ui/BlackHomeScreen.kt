@@ -3,6 +3,21 @@ package com.blacklaunch.launcher.ui
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -63,8 +78,18 @@ import kotlin.math.abs
 
 private val SwipeThreshold = 48.dp
 
-/** У скільки разів довший свайп закриває пошук з краю вже прогорнутого списку. */
-private const val LONG_PULL = 3f
+/** «Гумовий» опір: панель їде вниз удвічі повільніше за палець. */
+private const val RESISTANCE = 0.5f
+
+/** Скільки (у порогах свайпу) треба відтягнути панель, щоб пошук закрився. */
+private const val PULL = 1f
+
+/** Те саме, якщо список уже гортали, — навмисний, довший свайп. */
+private const val LONG_PULL = 2.5f
+
+/** Тривалість анімації закриття пошуку. */
+private const val CLOSE_MS = 220
+private const val OPEN_MS = 180
 
 @Composable
 fun BlackHomeScreen(
@@ -110,6 +135,11 @@ fun BlackHomeScreen(
     }
 
     val searchOpen = state is LauncherUiState.SearchOpen
+    // Під час анімації закриття показуємо останній стан пошуку, а не порожнечу.
+    var lastSearch by remember { mutableStateOf<LauncherUiState.SearchOpen?>(null) }
+    if (state is LauncherUiState.SearchOpen) lastSearch = state
+    val homeBlur by animateDpAsState(if (searchOpen) 10.dp else 0.dp, tween(CLOSE_MS), label = "homeBlur")
+    val homeAlpha by animateFloatAsState(if (searchOpen) 0.7f else 1f, tween(CLOSE_MS), label = "homeAlpha")
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // Під пошуком головний екран лишається на фоні — розмитий і притемнений.
         HomeIdle(
@@ -124,24 +154,32 @@ fun BlackHomeScreen(
             onRemoveApp = onRemoveApp,
             profileSwipe = profileSwipe,
             showProfileLabel = showProfileLabel,
-            modifier = if (searchOpen) Modifier.blur(10.dp).alpha(0.7f) else Modifier,
+            modifier = Modifier.blur(homeBlur).alpha(homeAlpha),
         )
-        if (state is LauncherUiState.SearchOpen) SearchOpen(
-            state = state,
-            onQueryChange = onQueryChange,
-            onClearQuery = onClearQuery,
-            onLaunch = onLaunch,
-            onLongPress = { menuApp = it },
-            onGlobal = onGlobal,
-            iconFor = iconFor,
-            voiceState = voiceState,
-            onMicClick = onMicClick,
-            // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом.
-            onKeyboardHidden = {
-                if (aliasApp == null && menuApp == null && voiceState == VoiceState.Idle) onCloseSearch()
-            },
-            onSwipeDown = onCloseSearch,
-        )
+        AnimatedVisibility(
+            visible = searchOpen,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
+        ) {
+            val search = lastSearch ?: return@AnimatedVisibility
+            SearchOpen(
+                state = search,
+                visible = transition.targetState == EnterExitState.Visible,
+                onQueryChange = onQueryChange,
+                onClearQuery = onClearQuery,
+                onLaunch = onLaunch,
+                onLongPress = { menuApp = it },
+                onGlobal = onGlobal,
+                iconFor = iconFor,
+                voiceState = voiceState,
+                onMicClick = onMicClick,
+                // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом.
+                onKeyboardHidden = {
+                    if (aliasApp == null && menuApp == null && voiceState == VoiceState.Idle) onCloseSearch()
+                },
+                onSwipeDown = onCloseSearch,
+            )
+        }
     }
 
     menuApp?.let { app -> appActions(app, { menuApp = null; aliasApp = app }) { menuApp = null } }
@@ -268,6 +306,8 @@ private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit
 @Composable
 private fun SearchOpen(
     state: LauncherUiState.SearchOpen,
+    /** false — панель уже закривається (анімація виходу). */
+    visible: Boolean,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
@@ -281,37 +321,64 @@ private fun SearchOpen(
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val close by rememberUpdatedState(onSwipeDown)
-    // Свайп униз закриває пошук: і по вільному місцю, і коли список результатів уже догорнуто.
-    // Але не тим самим жестом, яким гортали список: дійшли до кінця — пошук лишається.
-    // Якщо список гортали, закриття з його краю потребує довшого, навмисного свайпу.
+    val scope = rememberCoroutineScope()
+    // Наскільки панель пошуку відтягнута вниз (з «гумовим» опором) і висота панелі.
+    var pull by remember { mutableFloatStateOf(0f) }
+    var panelHeight by remember { mutableFloatStateOf(0f) }
+    var listWasScrolled by remember { mutableStateOf(false) }
+    // Пошук знову відкрили, поки панель ще від'їжджала — повертаємо її на місце.
+    LaunchedEffect(visible) { if (visible) pull = 0f }
+
+    // Відпустили палець: відтягнули достатньо — панель плавно їде вниз і пошук закривається;
+    // замало — пружно повертається на місце (видно, що це край списку).
+    fun release(canClose: Boolean) {
+        val needed = thresholdPx * if (listWasScrolled) LONG_PULL else PULL
+        scope.launch {
+            if (canClose && pull > needed) {
+                animate(pull, panelHeight.coerceAtLeast(pull), animationSpec = tween(CLOSE_MS, easing = FastOutLinearInEasing)) { v, _ -> pull = v }
+                close()
+            } else {
+                animate(pull, 0f, animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow)) { v, _ -> pull = v }
+            }
+        }
+    }
+
+    // Свайп униз закриває пошук: і по вільному місцю, і з краю списку результатів.
+    // Але не тим самим жестом, яким гортали список: дійшли до кінця — список лише пружинить.
+    // Якщо список уже гортали, закрити можна окремим, довшим свайпом.
     val pullToClose = remember(thresholdPx) {
         object : NestedScrollConnection {
-            var pulled = 0f
             var scrolledThisGesture = false
-            var listWasScrolled = false
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Палець пішов назад угору — спершу повертаємо відтягнуту панель.
+                if (source != NestedScrollSource.UserInput || pull <= 0f || available.y >= 0f) return Offset.Zero
+                val next = (pull + available.y * RESISTANCE).coerceAtLeast(0f)
+                val used = (next - pull) / RESISTANCE
+                pull = next
+                return Offset(0f, used)
+            }
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
                 if (source != NestedScrollSource.UserInput) return Offset.Zero
                 if (consumed.y != 0f) {
                     scrolledThisGesture = true
                     listWasScrolled = true
-                    pulled = 0f
-                } else if (available.y > 0f && !scrolledThisGesture) {
-                    pulled += available.y
-                    val needed = if (listWasScrolled) thresholdPx * LONG_PULL else thresholdPx
-                    if (pulled > needed) {
-                        pulled = 0f
-                        close()
-                    }
+                }
+                if (available.y > 0f) {
+                    pull += available.y * RESISTANCE
+                    return Offset(0f, available.y)
                 }
                 return Offset.Zero
             }
 
             // Палець відпущено — жест закінчився.
             override suspend fun onPreFling(available: Velocity): Velocity {
+                val canClose = !scrolledThisGesture
                 scrolledThisGesture = false
-                pulled = 0f
-                return Velocity.Zero
+                if (pull <= 0f) return Velocity.Zero
+                release(canClose)
+                return available
             }
         }
     }
@@ -333,6 +400,11 @@ private fun SearchOpen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { panelHeight = it.height.toFloat() }
+            .graphicsLayer {
+                translationY = pull
+                alpha = if (panelHeight > 0f) (1f - pull / panelHeight).coerceIn(0f, 1f) else 1f
+            }
             .background(Color(0x40000000))
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -340,17 +412,13 @@ private fun SearchOpen(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .nestedScroll(pullToClose)
             .pointerInput(thresholdPx) {
-                var dragged = 0f
                 detectVerticalDragGestures(
-                    onDragStart = { dragged = 0f },
                     onVerticalDrag = { change, amount ->
-                        dragged += amount
-                        if (dragged > thresholdPx) {
-                            change.consume()
-                            dragged = 0f
-                            close()
-                        }
+                        change.consume()
+                        pull = (pull + amount * RESISTANCE).coerceAtLeast(0f)
                     },
+                    onDragEnd = { release(canClose = true) },
+                    onDragCancel = { release(canClose = false) },
                 )
             },
     ) {
