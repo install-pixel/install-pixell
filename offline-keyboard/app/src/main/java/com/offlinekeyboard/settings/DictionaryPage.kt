@@ -4,11 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,7 +62,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                     isError = addError,
                     modifier = Modifier.weight(1f),
                 )
-                Button(onClick = {
+                InlineButton(onClick = {
                     if (store.dictionary.learn(language, newWord.trim(), System.currentTimeMillis(), weight = 5)) {
                         store.changed()
                         newWord = ""
@@ -99,7 +97,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             if (entries.size > MAX_SHOWN) {
                 Text(stringResource(R.string.dictionary_more, entries.size - MAX_SHOWN), style = MaterialTheme.typography.bodySmall)
             }
-            OutlinedButton(onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
+            ActionButton(onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
         }
     }
 

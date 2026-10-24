@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -106,9 +105,9 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                     }) { Text(stringResource(R.string.delete)) }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { editing = true }) { Text(stringResource(R.string.shortcut_add)) }
-                OutlinedButton(onClick = { update { it.copy(shortcuts = Shortcut.defaults) } }) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionButton(onClick = { editing = true }) { Text(stringResource(R.string.shortcut_add)) }
+                ActionButton(onClick = { update { it.copy(shortcuts = Shortcut.defaults) } }) {
                     Text(stringResource(R.string.shortcuts_restore_defaults))
                 }
             }
@@ -122,11 +121,11 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                 PresetRow(preset, onAdd = { addPreset(preset) })
             }
             HorizontalDivider()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
                     Text(stringResource(R.string.presets_import))
                 }
-                OutlinedButton(onClick = { Links.open(context, Links.SHORTCUT_PRESETS) }) {
+                ActionButton(onClick = { Links.open(context, Links.SHORTCUT_PRESETS) }) {
                     Text(stringResource(R.string.presets_more))
                 }
             }
@@ -172,12 +171,12 @@ private fun PresetRow(preset: ShortcutPreset, onAdd: () -> Unit) {
                 Text("• ${sc.describe()} — $detail", style = MaterialTheme.typography.bodyMedium)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { open = !open }) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton(onClick = { open = !open }) {
                 Text(stringResource(if (open) R.string.presets_hide_tips else R.string.presets_show_tips))
             }
             if (preset.shortcuts.isNotEmpty()) {
-                Button(onClick = onAdd) { Text(stringResource(R.string.presets_add, preset.shortcuts.size)) }
+                ActionButton(onClick = onAdd) { Text(stringResource(R.string.presets_add, preset.shortcuts.size)) }
             }
         }
     }

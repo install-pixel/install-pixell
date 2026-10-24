@@ -211,8 +211,6 @@
     <string name="bluetooth_section_notes">Варто знати</string>
     <string name="bluetooth_notes">Клавіатура надсилає клавіші, як справжня: на комп\'ютері має бути та сама мова, що й на телефоні (Укр/Pol/Eng). Win+Space перемикає обидві. Комп\'ютерна розкладка дає Ctrl, Alt, Win, F1–F12 і стрілки. Символи, яких немає в розкладці комп\'ютера (наприклад, ы в українській), не надсилаються. Підказки, переклад і голос працюють лише на телефоні.</string>
     <string name="translation_direction_hint">З мови клавіатури на цю мову. Кнопка перекладу над клавішами перемикає між двома іншими мовами.</string>
-    <string name="models_accurate_tag">точна</string>
-    <string name="models_download_accurate">Точніша модель (близько %1$d МБ, повільніша)</string>
     <string name="accent_grey">Сірий</string>
     <string name="page_glossary">Словник перекладу (ваші виправлення)</string>
     <string name="page_glossary_summary">Записів: %1$d · слова й фрази, які переклад має передати саме так</string>
@@ -269,4 +267,12 @@
     <string name="autocorrect_done">%1$s → %2$s · ⌫ — повернути</string>
     <string name="autocorrect_undone">Залишено «%1$s», більше не виправлятиму</string>
     <string name="backspace_swipe_preview">Видалити: «%1$s»</string>
+    <string name="models_kind_standard">звичайна модель</string>
+    <string name="models_kind_accurate">точніша модель</string>
+    <string name="models_installed_kind">Встановлено: %1$s · %2$s</string>
+    <string name="models_variant_standard">Звичайна · близько %1$d МБ</string>
+    <string name="models_variant_accurate">Точніша · близько %1$d МБ, повільніша</string>
+    <string name="models_variant_installed">✓ встановлена</string>
+    <string name="models_download_standard">Завантажити звичайну</string>
+    <string name="models_download_accurate_short">Завантажити точнішу</string>
 </resources>

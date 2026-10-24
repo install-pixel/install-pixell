@@ -211,8 +211,6 @@
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
     <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma (np. ы po ukraińsku), nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
     <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
-    <string name="models_accurate_tag">dokładny</string>
-    <string name="models_download_accurate">Dokładniejszy model (około %1$d MB, wolniejszy)</string>
     <string name="accent_grey">Szary</string>
     <string name="page_glossary">Słownik tłumaczenia (Twoje poprawki)</string>
     <string name="page_glossary_summary">Wpisów: %1$d · słowa i zwroty, które tłumaczenie ma oddać dokładnie tak</string>
@@ -269,4 +267,12 @@
     <string name="autocorrect_done">%1$s → %2$s · ⌫ — cofnij</string>
     <string name="autocorrect_undone">Zostawiono «%1$s», nie będzie już poprawiane</string>
     <string name="backspace_swipe_preview">Usuń: «%1$s»</string>
+    <string name="models_kind_standard">standardowy model</string>
+    <string name="models_kind_accurate">dokładniejszy model</string>
+    <string name="models_installed_kind">Zainstalowano: %1$s · %2$s</string>
+    <string name="models_variant_standard">Standardowy · ok. %1$d MB</string>
+    <string name="models_variant_accurate">Dokładniejszy · ok. %1$d MB, wolniejszy</string>
+    <string name="models_variant_installed">✓ zainstalowany</string>
+    <string name="models_download_standard">Pobierz standardowy</string>
+    <string name="models_download_accurate_short">Pobierz dokładniejszy</string>
 </resources>

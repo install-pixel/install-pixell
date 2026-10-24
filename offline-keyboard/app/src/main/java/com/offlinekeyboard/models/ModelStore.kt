@@ -30,6 +30,13 @@ class ModelStore(private val context: Context) {
     fun speechDir(language: Language) = File(root, "speech/${language.name}")
     fun translationDir(direction: TranslationDirection) = File(root, "translation/${direction.name}")
 
+    /**
+     * Whether an installed translation model is a larger "accurate" (tc-big) one. Read from the package
+     * itself: the file name a browser hands over can be anything ("download (1).zip").
+     */
+    fun isAccurate(model: InstalledModel): Boolean =
+        runCatching { "tc-big" in MarianPackage(model.dir).modelName }.getOrDefault(false) || "accurate" in model.name
+
     fun speechModel(language: Language): InstalledModel? = installed(speechDir(language)) { isVoskModel(it) }
 
     fun translationModel(direction: TranslationDirection): InstalledModel? =

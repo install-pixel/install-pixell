@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -61,7 +60,7 @@ internal fun StickersPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
                     .heightIn(min = 96.dp),
                 label = { Text(stringResource(R.string.own_emoji_field)) },
             )
-            Button(onClick = {
+            ActionButton(onClick = {
                 update { it.copy(ownEmoji = ownEmoji.trim()) }
                 message = context.getString(R.string.own_emoji_saved, EmojiSet.parseOwn(ownEmoji).size)
             }) { Text(stringResource(R.string.save)) }
@@ -72,7 +71,7 @@ internal fun StickersPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
 
         Section(stringResource(R.string.own_stickers_title)) {
             Text(stringResource(R.string.own_stickers_hint), style = MaterialTheme.typography.bodySmall)
-            Button(onClick = { picker.launch(arrayOf("image/gif", "image/webp", "image/png", "image/jpeg")) }) {
+            ActionButton(onClick = { picker.launch(arrayOf("image/gif", "image/webp", "image/png", "image/jpeg")) }) {
                 Text(stringResource(R.string.stickers_add))
             }
             if (custom.isEmpty()) {
