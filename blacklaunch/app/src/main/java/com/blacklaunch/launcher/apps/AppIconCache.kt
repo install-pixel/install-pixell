@@ -50,7 +50,31 @@ class AppIconCache(
         } else {
             null
         }
-        return if (glyph != null) themedIcon(glyph) else desaturated(drawable)
+        // Деякі програми віддають «одноколірний» шар-заглушку (суцільний квадрат) — тоді звичайний сірий значок.
+        return if (glyph != null && looksLikeGlyph(glyph)) themedIcon(glyph) else desaturated(drawable)
+    }
+
+    /** Справжній силует займає частину кружечка; суцільна пляма чи порожнеча — ні. */
+    private fun looksLikeGlyph(glyph: Drawable): Boolean {
+        val probe = createBitmap(PROBE, PROBE)
+        val inset = -(PROBE * 0.25f).toInt()
+        glyph.mutate().apply {
+            setBounds(inset, inset, PROBE - inset, PROBE - inset)
+            draw(Canvas(probe))
+        }
+        val radius = PROBE / 2f
+        var inside = 0
+        var filled = 0
+        for (y in 0 until PROBE) for (x in 0 until PROBE) {
+            val dx = x - radius + 0.5f
+            val dy = y - radius + 0.5f
+            if (dx * dx + dy * dy > radius * radius) continue
+            inside++
+            if ((probe.getPixel(x, y) ushr 24) > 128) filled++
+        }
+        probe.recycle()
+        val share = filled.toFloat() / inside
+        return share in MIN_GLYPH..MAX_GLYPH
     }
 
     private fun themedIcon(glyph: Drawable): Bitmap {
@@ -94,5 +118,8 @@ class AppIconCache(
         const val KNOB_DARK = 0xFF141414.toInt()
         const val RIM = 0x33FFFFFF
         const val GLYPH = 0xFFD6D6D6.toInt()
+        const val PROBE = 48
+        const val MIN_GLYPH = 0.02f
+        const val MAX_GLYPH = 0.6f
     }
 }

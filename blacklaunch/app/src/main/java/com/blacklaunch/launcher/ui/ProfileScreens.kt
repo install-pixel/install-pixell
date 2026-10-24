@@ -473,3 +473,31 @@ private fun NotificationMode.label(): Int = when (this) {
     NotificationMode.DO_NOT_DISTURB -> R.string.notif_dnd
     NotificationMode.ALLOW_SELECTED -> R.string.notif_dnd
 }
+
+/** Список усіх програм з поясненням угорі; натискання — дія з програмою (наприклад, її батарея). */
+@Composable
+fun AppListScreen(
+    title: String,
+    note: String,
+    apps: List<AppInfo>,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
+    onBack: () -> Unit,
+    onPick: (AppInfo) -> Unit,
+) {
+    val sorted = remember(apps) { apps.sortedBy { it.label.lowercase() } }
+    BackHandler(onBack = onBack)
+    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
+            }
+            Text(title, color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+        }
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+            item(key = "note") { Box(Modifier.padding(vertical = 8.dp)) { Note(note) } }
+            items(sorted, key = { it.key }) { app ->
+                AppRow(app, iconFor = iconFor, onLaunch = onPick, onLongPress = {})
+            }
+        }
+    }
+}
