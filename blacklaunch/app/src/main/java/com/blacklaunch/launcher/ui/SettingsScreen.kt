@@ -1,5 +1,13 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Share
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.voice.VoiceActionKind
 import com.blacklaunch.launcher.commands.CustomCommand
@@ -85,6 +93,9 @@ fun SettingsScreen(
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
     onCopyCrashLog: () -> Unit,
+    /** Резервна копія: зберегти у файл / відновити з файлу. */
+    onExportSettings: () -> Unit = {},
+    onImportSettings: () -> Unit = {},
     onClearCrashLog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -285,6 +296,30 @@ fun SettingsScreen(
         }
 
         SettingsNav.About -> SettingsPage(stringResource(R.string.section_about), toMain) {
+            var confirmRestore by remember { mutableStateOf(false) }
+            Card {
+                Text(stringResource(R.string.backup_title), color = Oled.TextPrimary, fontSize = 16.sp)
+                Note(stringResource(R.string.backup_note))
+                ActionOption(R.string.backup_export, Icons.Filled.Share, onExportSettings)
+                ActionOption(R.string.backup_import, Icons.Filled.Refresh) { confirmRestore = true }
+            }
+            if (confirmRestore) {
+                AlertDialog(
+                    onDismissRequest = { confirmRestore = false },
+                    containerColor = Color(0xFF141414),
+                    title = { Text(stringResource(R.string.backup_import), color = Oled.TextPrimary) },
+                    text = { Text(stringResource(R.string.backup_import_confirm), color = Oled.TextSecondary) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            confirmRestore = false
+                            onImportSettings()
+                        }) { Text(stringResource(R.string.backup_import_choose), color = Oled.TextPrimary) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmRestore = false }) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
+                    },
+                )
+            }
             Card {
                 Text(stringResource(R.string.app_name) + " $versionName", color = Oled.TextPrimary, fontSize = 17.sp)
                 Note(stringResource(R.string.about_note))

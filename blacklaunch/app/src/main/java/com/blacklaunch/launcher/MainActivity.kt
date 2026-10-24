@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
 import com.blacklaunch.launcher.ui.Haptics
+import com.blacklaunch.launcher.backup.SettingsBackup
 import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.profiles.ProfileNotificationFilter
 import com.blacklaunch.launcher.voice.VoiceActionRunner
@@ -346,6 +347,8 @@ class MainActivity : ComponentActivity() {
                                 onOpenDefaultApps = { startOrToast(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
                                 crashLog = crashLog,
                                 onCopyCrashLog = ::copyCrashLog,
+                                onExportSettings = { exportFile.launch("black-glass-$versionName.json") },
+                                onImportSettings = { importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                                 onClearCrashLog = app.crashLog::clear,
                                 onOpenAppInfo = {
                                     awaitingSmsPermission = true
@@ -622,6 +625,37 @@ class MainActivity : ComponentActivity() {
             is GlobalResult.Contact -> startOrToast(Intent(Intent.ACTION_VIEW, Uri.parse(result.lookupUri)))
             is GlobalResult.Event -> startOrToast(Intent(Intent.ACTION_VIEW, app.globalSearch.eventUri(result)))
             is GlobalResult.Sms -> startOrToast(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${result.address}")))
+        }
+    }
+
+    private val backup by lazy { SettingsBackup(app) }
+
+    // Резервна копія — через системний вибір файлу, без дозволів на пам'ять.
+    private val exportFile = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val ok = runCatching {
+                val text = backup.export(versionName)
+                withContext(Dispatchers.IO) {
+                    contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } ?: error("No stream")
+                }
+            }.isSuccess
+            toast(if (ok) R.string.backup_saved else R.string.backup_failed)
+        }
+    }
+
+    private val importFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val result = runCatching {
+                val text = withContext(Dispatchers.IO) {
+                    contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: error("No stream")
+                }
+                backup.restore(text)
+            }
+            result.onSuccess {
+                Toast.makeText(this@MainActivity, getString(R.string.backup_restored, it.profiles, it.skippedApps), Toast.LENGTH_LONG).show()
+            }.onFailure { toast(R.string.backup_failed) }
         }
     }
 

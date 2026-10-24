@@ -351,4 +351,13 @@
     <string name="display_moved_home">Короткий огляд, назва профілю й повністю чорний екран тепер налаштовуються в кожному профілі.</string>
     <string name="display_moved_search">Підказки програм, останні запити й кнопка «Усі програми» тепер налаштовуються в кожному профілі.</string>
     <string name="double_tap_hint">Подвійний дотик на порожньому місці головного екрана — наступний профіль (працює й без назви профілю та свайпу).</string>
+    <string name="backup_title">Резервна копія</string>
+    <string name="backup_note">Профілі з програмами, розкладкою, звуком, екраном і пошуком, ваші назви програм, «Мої команди», приховані програми, власні значки, оформлення й голосові дії — в одному файлі. Історія пошуку не зберігається. Програми, яких на телефоні немає, пропускаються.</string>
+    <string name="backup_export">Зберегти у файл</string>
+    <string name="backup_import">Відновити з файлу</string>
+    <string name="backup_import_confirm">Поточні налаштування Black Glass буде замінено налаштуваннями з файлу.</string>
+    <string name="backup_import_choose">Вибрати файл</string>
+    <string name="backup_saved">Налаштування збережено</string>
+    <string name="backup_failed">Не вдалося прочитати чи зберегти файл</string>
+    <string name="backup_restored">Відновлено профілів: %1$d. Пропущено програм, яких немає на телефоні: %2$d</string>
 </resources>

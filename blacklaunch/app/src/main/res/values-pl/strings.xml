@@ -351,4 +351,13 @@
     <string name="display_moved_home">„W skrócie”, nazwę profilu i całkowicie czarny ekran ustawia się teraz w każdym profilu.</string>
     <string name="display_moved_search">Podpowiedzi aplikacji, ostatnie wyszukiwania i przycisk „Wszystkie aplikacje” ustawia się teraz w każdym profilu.</string>
     <string name="double_tap_hint">Podwójne dotknięcie w pustym miejscu ekranu głównego — następny profil (działa też bez nazwy profilu i przesunięcia).</string>
+    <string name="backup_title">Kopia zapasowa</string>
+    <string name="backup_note">Profile z aplikacjami, układem, dźwiękiem, ekranem i wyszukiwaniem, Twoje nazwy aplikacji, „Moje polecenia”, ukryte aplikacje, własne ikony, wygląd i polecenia głosowe — w jednym pliku. Historia wyszukiwania nie jest zapisywana. Aplikacje, których nie ma na telefonie, są pomijane.</string>
+    <string name="backup_export">Zapisz do pliku</string>
+    <string name="backup_import">Przywróć z pliku</string>
+    <string name="backup_import_confirm">Obecne ustawienia Black Glass zostaną zastąpione ustawieniami z pliku.</string>
+    <string name="backup_import_choose">Wybierz plik</string>
+    <string name="backup_saved">Ustawienia zapisane</string>
+    <string name="backup_failed">Nie udało się odczytać ani zapisać pliku</string>
+    <string name="backup_restored">Przywrócono profili: %1$d. Pominięto aplikacje, których nie ma na telefonie: %2$d</string>
 </resources>
