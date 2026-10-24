@@ -26,6 +26,9 @@ class ToolbarButton(context: Context) : View(context) {
     var fill: Int = 0
         set(value) { if (field != value) { field = value; invalidate() } }
     var pressedFill: Int = 0
+    /** Draws the fill the OLED way ([Gloss]). */
+    var glossy = false
+        set(value) { if (field != value) { field = value; invalidate() } }
     var foreground: Int = 0
         set(value) { if (field != value) { field = value; invalidate() } }
     var textSizeSp: Float = 15f
@@ -35,6 +38,7 @@ class ToolbarButton(context: Context) : View(context) {
     private val density = resources.displayMetrics.density
     private val scaledDensity = density * resources.configuration.fontScale
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val gloss by lazy { Gloss(density) }
     private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val bounds = RectF()
     private var pressed = false
@@ -49,9 +53,13 @@ class ToolbarButton(context: Context) : View(context) {
         bounds.set(inset, inset, width - inset, height - inset)
         val background = if (pressed) pressedFill else fill
         if (background != 0) {
-            bgPaint.color = background
             val r = 12f * density
-            canvas.drawRoundRect(bounds, r, r, bgPaint)
+            if (glossy) {
+                gloss.draw(canvas, bounds, r, background)
+            } else {
+                bgPaint.color = background
+                canvas.drawRoundRect(bounds, r, r, bgPaint)
+            }
         }
 
         val iconSize = minOf(height * 0.56f, 24f * density)

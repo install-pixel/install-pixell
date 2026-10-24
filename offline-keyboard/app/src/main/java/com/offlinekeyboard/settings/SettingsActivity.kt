@@ -90,9 +90,10 @@ class SettingsActivity : ComponentActivity() {
             val dark = when (current?.themeMode ?: ThemeMode.SYSTEM) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
+                ThemeMode.DARK, ThemeMode.OLED -> true
             }
-            MaterialTheme(colorScheme = settingsColors(dark, current?.accent ?: Accent.SKY)) {
+            val oled = current?.themeMode == ThemeMode.OLED
+            MaterialTheme(colorScheme = settingsColors(dark, current?.accent ?: Accent.SKY, oled)) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val startPage = when (intent.getStringExtra(EXTRA_PAGE)) {
                         "bluetooth" -> Page.BLUETOOTH
@@ -338,6 +339,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 ThemeMode.SYSTEM to R.string.theme_system,
                 ThemeMode.LIGHT to R.string.theme_light,
                 ThemeMode.DARK to R.string.theme_dark,
+                ThemeMode.OLED to R.string.theme_oled,
             )) {
                 RadioRow(stringResource(label), s.themeMode == mode) { update { it.copy(themeMode = mode) } }
             }

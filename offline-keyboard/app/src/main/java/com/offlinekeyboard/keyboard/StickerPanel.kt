@@ -107,6 +107,7 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         this.theme = theme
         setBackgroundColor(theme.background)
         title.setTextColor(theme.hint)
+        for (b in listOf(lettersButton, emojiButton, boyButton, girlButton)) b.glossy = theme.glossy
         for (b in listOf(lettersButton, emojiButton)) {
             b.fill = theme.function
             b.pressedFill = theme.pressed

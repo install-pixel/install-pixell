@@ -4,7 +4,8 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
+/** OLED: true black with grey surfaces in soft gradients and a light rim, as in the BlackLaunch launcher. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK, OLED }
 
 /** Key vibration: light tick, normal click, or a firm click (for thick cases and gloves). */
 enum class VibrationStrength { LIGHT, MEDIUM, STRONG }
@@ -31,12 +32,15 @@ data class KeyboardTheme(
     val onAccent: Int,
     val hint: Int,
     val popup: Int,
+    /** Surfaces drawn lighter at the top with a thin light rim ([Gloss]) instead of flat. */
+    val glossy: Boolean = false,
 ) {
     companion object {
         fun resolve(context: Context, mode: ThemeMode, accent: Accent): KeyboardTheme {
+            if (mode == ThemeMode.OLED) return oled(accent)
             val dark = when (mode) {
                 ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
+                ThemeMode.DARK, ThemeMode.OLED -> true
                 ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                     Configuration.UI_MODE_NIGHT_YES
             }
@@ -74,6 +78,24 @@ data class KeyboardTheme(
                 )
             }
         }
+
+        /**
+         * Black background (OLED pixels off) and neutral grey keys; the accent only marks Enter and
+         * active keys, so it stays as calm as the launcher.
+         */
+        fun oled(accent: Accent) = KeyboardTheme(
+            dark = true,
+            background = 0xFF000000.toInt(),
+            key = 0xFF1D1D1D.toInt(),
+            function = 0xFF2B2B2B.toInt(),
+            pressed = 0xFF4A4A4A.toInt(),
+            accent = accent.color,
+            text = 0xFFE6E6E6.toInt(),
+            onAccent = 0xFF1E2128.toInt(),
+            hint = 0xFF8C8C8C.toInt(),
+            popup = 0xFF2E2E2E.toInt(),
+            glossy = true,
+        )
 
         private fun blend(base: Int, tint: Int, amount: Float): Int {
             fun mix(x: Int, y: Int) = (x + (y - x) * amount).toInt().coerceIn(0, 255)
