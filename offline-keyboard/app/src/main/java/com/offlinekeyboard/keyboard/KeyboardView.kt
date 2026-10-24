@@ -88,6 +88,7 @@ class KeyboardView(context: Context) : View(context) {
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.RIGHT }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val gloss = Gloss(resources.displayMetrics.density)
 
     var theme: KeyboardTheme = KeyboardTheme.create(dark = false, accent = Accent.SKY)
         set(value) {
@@ -173,14 +174,14 @@ class KeyboardView(context: Context) : View(context) {
             val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
             val state = highlight(key)
             val t = theme
-            keyPaint.color = when {
+            val fill = when {
                 key in pressedKeys -> t.pressed
                 state != KeyHighlight.NONE -> t.accent
                 key.style == KeyStyle.ACTION -> t.accent
                 key.style == KeyStyle.FUNCTION || key.style == KeyStyle.MODIFIER -> t.function
                 else -> t.key
             }
-            canvas.drawRoundRect(inner, corner, corner, keyPaint)
+            drawSurface(canvas, inner, corner, fill)
 
             val onAccent = key.style == KeyStyle.ACTION || state != KeyHighlight.NONE
             val color = if (onAccent && key !in pressedKeys) t.onAccent else t.text
@@ -219,13 +220,21 @@ class KeyboardView(context: Context) : View(context) {
             val left = (anchor.centerX() - w / 2).coerceIn(0f, maxOf(0f, width - w))
             val bottom = anchor.top + keyGap
             val bubble = RectF(left, bottom - h, left + w, bottom)
-            keyPaint.color = theme.popup
-            canvas.drawRoundRect(bubble, corner * 1.5f, corner * 1.5f, keyPaint)
+            drawSurface(canvas, bubble, corner * 1.5f, theme.popup)
             textPaint.color = theme.text
             textPaint.typeface = Typeface.DEFAULT
             textPaint.textSize = h * 0.5f
             val y = bubble.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
             canvas.drawText(label, bubble.centerX(), y, textPaint)
+        }
+    }
+
+    private fun drawSurface(canvas: Canvas, rect: RectF, radius: Float, color: Int) {
+        if (theme.glossy) {
+            gloss.draw(canvas, rect, radius, color)
+        } else {
+            keyPaint.color = color
+            canvas.drawRoundRect(rect, radius, radius, keyPaint)
         }
     }
 
@@ -281,8 +290,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private fun drawPopup(canvas: Canvas, p: Popup) {
-        keyPaint.color = theme.popup
-        canvas.drawRoundRect(p.bounds, corner, corner, keyPaint)
+        drawSurface(canvas, p.bounds, corner, theme.popup)
         p.cells.forEachIndexed { i, cell ->
             if (i == p.selected) {
                 keyPaint.color = theme.accent

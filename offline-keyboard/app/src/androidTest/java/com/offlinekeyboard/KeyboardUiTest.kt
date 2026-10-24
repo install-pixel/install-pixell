@@ -316,6 +316,12 @@ class KeyboardUiTest {
                 screenshot("theme-${if (dark) "dark" else "light"}-${accent.name.lowercase()}")
             }
         }
+        for (accent in listOf(Accent.GREY, Accent.SKY)) {
+            val keyboard = service()
+            instrumentation.runOnMainSync { keyboard.applyThemeForTest(KeyboardTheme.oled(accent)) }
+            instrumentation.waitForIdleSync()
+            screenshot("theme-oled-${accent.name.lowercase()}")
+        }
         tapText("а")
         assertEquals("а", text(activity.plain))
     }

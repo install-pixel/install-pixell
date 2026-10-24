@@ -161,9 +161,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         stickerPanel.applyTheme(value)
         setBackgroundColor(value.background)
         suggestionViews.forEach { it.setTextColor(value.text) }
+        for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.glossy = value.glossy
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
+            b.glossy = value.glossy
         }
         lastState?.let { updateToolbar(it) }
         refreshCentre()

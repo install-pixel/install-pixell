@@ -155,6 +155,7 @@
     <string name="theme_system">Like the phone</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="theme_oled">OLED (true black, grey gradients)</string>
     <string name="accent_title">Colour</string>
     <string name="accent_sky">Sky</string>
     <string name="accent_mint">Mint</string>

@@ -61,10 +61,22 @@ internal fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 /** Light/dark Material colours tinted with the keyboard's pastel accent; text on the accent stays dark. */
-internal fun settingsColors(dark: Boolean, accent: Accent): ColorScheme {
+internal fun settingsColors(dark: Boolean, accent: Accent, oled: Boolean = false): ColorScheme {
     val a = Color(accent.color)
     val onAccent = Color(0xFF1E2128)
-    return if (dark) {
+    return if (oled) {
+        // The OLED theme: black page, grey cards, the accent only on controls.
+        darkColorScheme(
+            primary = a, onPrimary = onAccent,
+            primaryContainer = Color(0xFF2B2B2B), onPrimaryContainer = Color(0xFFE6E6E6),
+            secondaryContainer = Color(0xFF242424),
+            background = Color.Black, surface = Color.Black,
+            surfaceVariant = Color(0xFF1D1D1D), surfaceContainer = Color(0xFF161616),
+            surfaceContainerHigh = Color(0xFF1C1C1C), surfaceContainerHighest = Color(0xFF242424),
+            onBackground = Color(0xFFE6E6E6), onSurface = Color(0xFFE6E6E6), onSurfaceVariant = Color(0xFF8C8C8C),
+            outline = Color(0xFF3A3A3A),
+        )
+    } else if (dark) {
         darkColorScheme(
             primary = a, onPrimary = onAccent,
             primaryContainer = a.copy(alpha = 0.35f).compositeOver(Color(0xFF1C1D21)), onPrimaryContainer = Color(0xFFEDEEF0),
