@@ -300,4 +300,9 @@
     <string name="custom_command_steps_note">Każde polecenie w nowej linii — tak, jak je mówisz. Wykonują się po kolei; aplikację najlepiej dać na koniec.</string>
     <string name="custom_command_save">Zapisz</string>
     <string name="custom_command_delete">Usuń polecenie</string>
+    <string name="suggestions_title">Podpowiedzi aplikacji</string>
+    <string name="suggestions_subtitle">W pustym wyszukiwaniu: aplikacje, które zwykle otwierasz o tej porze, i ostatnie. Liczone tylko na telefonie</string>
+    <string name="recent_queries_title">Ostatnie wyszukiwania</string>
+    <string name="recent_queries_subtitle">Do 5 wierszy nad polem wyszukiwania. Długie naciśnięcie usuwa</string>
+    <string name="suggestions_header">Podpowiedzi</string>
 </resources>

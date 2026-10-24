@@ -300,4 +300,9 @@
     <string name="custom_command_steps_note">Кожна команда з нового рядка — так, як ви її кажете. Виконуються по черзі; програму краще ставити останньою.</string>
     <string name="custom_command_save">Зберегти</string>
     <string name="custom_command_delete">Видалити команду</string>
+    <string name="suggestions_title">Підказки програм</string>
+    <string name="suggestions_subtitle">У порожньому пошуку: програми, які зазвичай відкриваєте в цей час, і нещодавні. Рахується лише на телефоні</string>
+    <string name="recent_queries_title">Останні запити</string>
+    <string name="recent_queries_subtitle">До 5 рядків над полем пошуку. Довге натискання — прибрати</string>
+    <string name="suggestions_header">Підказки</string>
 </resources>

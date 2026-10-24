@@ -120,6 +120,9 @@ fun BlackHomeScreen(
     onAction: (VoiceAction) -> Unit,
     /** Власна команда з результатів пошуку. */
     onCustom: (CustomCommand) -> Unit,
+    /** Останній запит у порожньому пошуку: натискання — шукати знову, довге — прибрати. */
+    onRecent: (String) -> Unit,
+    onRemoveRecent: (String) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -186,6 +189,8 @@ fun BlackHomeScreen(
                 onGlobal = onGlobal,
                 onAction = onAction,
                 onCustom = onCustom,
+                onRecent = onRecent,
+                onRemoveRecent = onRemoveRecent,
                 iconFor = iconFor,
                 voiceState = voiceState,
                 onMicClick = onMicClick,
@@ -337,6 +342,9 @@ private fun SearchOpen(
     onAction: (VoiceAction) -> Unit,
     /** Власна команда з результатів пошуку. */
     onCustom: (CustomCommand) -> Unit,
+    /** Останній запит у порожньому пошуку: натискання — шукати знову, довге — прибрати. */
+    onRecent: (String) -> Unit,
+    onRemoveRecent: (String) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -472,6 +480,10 @@ private fun SearchOpen(
             onAction = onAction,
             custom = state.custom,
             onCustom = onCustom,
+            suggestions = state.suggestions,
+            recent = state.recent,
+            onRecent = onRecent,
+            onRemoveRecent = onRemoveRecent,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(

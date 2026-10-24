@@ -51,6 +51,7 @@ import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 
 @Composable
 fun SearchResults(
@@ -65,10 +66,14 @@ fun SearchResults(
     onAction: (VoiceAction) -> Unit = {},
     custom: List<CustomCommand> = emptyList(),
     onCustom: (CustomCommand) -> Unit = {},
+    suggestions: List<AppInfo> = emptyList(),
+    recent: List<String> = emptyList(),
+    onRecent: (String) -> Unit = {},
+    onRemoveRecent: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
-        Box(modifier)
+        EmptySearch(suggestions, recent, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, modifier)
         return
     }
     if (results.isEmpty() && groups.isEmpty() && actions.isEmpty() && custom.isEmpty()) {
@@ -112,6 +117,80 @@ fun SearchResults(
         }
     }
 }
+
+/** Порожній пошук: останні запити над полем, вище — підказки програм. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EmptySearch(
+    suggestions: List<AppInfo>,
+    recent: List<String>,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
+    onLaunch: (AppInfo) -> Unit,
+    onLongPress: (AppInfo) -> Unit,
+    onRecent: (String) -> Unit,
+    onRemoveRecent: (String) -> Unit,
+    modifier: Modifier,
+) {
+    val haptics = LocalHaptics.current
+    LazyColumn(modifier = modifier, reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
+        items(recent, key = { "recent:$it" }) { text ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .combinedClickable(
+                        onClick = { haptics.tap(); onRecent(text) },
+                        onLongClick = { haptics.longPress(); onRemoveRecent(text) },
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary)
+                }
+                Spacer(Modifier.width(16.dp))
+                Text(text, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (suggestions.isNotEmpty()) {
+            items(suggestions.chunked(SUGGESTION_COLUMNS).reversed(), key = { row -> "suggest:" + row.first().key }) { row ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    row.forEach { app ->
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .combinedClickable(
+                                    onClick = { haptics.tap(); onLaunch(app) },
+                                    onLongClick = { haptics.longPress(); onLongPress(app) },
+                                )
+                                .padding(vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
+                            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(48.dp)) }
+                            }
+                            Spacer(Modifier.size(4.dp))
+                            Text(app.label, color = Oled.TextPrimary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    repeat(SUGGESTION_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            item(key = "suggest:header") {
+                Text(
+                    stringResource(R.string.suggestions_header),
+                    color = Oled.TextSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 2.dp),
+                )
+            }
+        }
+    }
+}
+
+private const val SUGGESTION_COLUMNS = 4
 
 /** Рядок програми: значок + назва. Спільний для результатів пошуку й закріплених програм. */
 @OptIn(ExperimentalFoundationApi::class)

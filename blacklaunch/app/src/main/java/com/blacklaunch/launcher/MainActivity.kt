@@ -94,6 +94,9 @@ class MainActivity : ComponentActivity() {
                     layoutStore = app.homeLayoutStore,
                     voiceActionsEnabled = { app.voiceActionSettings.enabled.value },
                     customCommands = { app.customCommands.commands.value },
+                    recentQueries = app.recentQueries,
+                    showSuggestions = { app.appearanceSettings.appearance.value.suggestions },
+                    showRecent = { app.appearanceSettings.appearance.value.recentQueries },
                 )
             }
         }
@@ -225,6 +228,8 @@ class MainActivity : ComponentActivity() {
                     onGlobal = ::openGlobalResult,
                     onAction = viewModel::runAction,
                     onCustom = viewModel::runCustom,
+                    onRecent = viewModel::useRecent,
+                    onRemoveRecent = viewModel::removeRecent,
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,

@@ -29,6 +29,9 @@ import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
 import com.blacklaunch.launcher.commands.CustomCommand
+import com.blacklaunch.launcher.search.AppSuggestions
+import com.blacklaunch.launcher.search.InMemoryRecentQueries
+import com.blacklaunch.launcher.search.RecentQueries
 import com.blacklaunch.launcher.commands.CustomCommandMatcher
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
@@ -65,6 +68,10 @@ sealed interface LauncherUiState {
         val actions: List<VoiceAction> = emptyList(),
         /** Власні команди, що збігаються з набраним. */
         val custom: List<CustomCommand> = emptyList(),
+        /** Порожній пошук: програми, які зазвичай відкриваєте в цей час, і нещодавні. */
+        val suggestions: List<AppInfo> = emptyList(),
+        /** Порожній пошук: останні запити (найновіший перший). */
+        val recent: List<String> = emptyList(),
     ) : LauncherUiState
 }
 
@@ -113,6 +120,11 @@ class LauncherViewModel(
     private val voiceActionsEnabled: () -> Set<VoiceActionKind> = { VoiceActionKind.entries.toSet() },
     /** Власні команди користувача: фраза → кроки. */
     private val customCommands: () -> List<CustomCommand> = { emptyList() },
+    /** Останні запити (порожній пошук). */
+    private val recentQueries: RecentQueries = InMemoryRecentQueries(),
+    /** Показувати підказки програм і останні запити (вимикаються в налаштуваннях). */
+    private val showSuggestions: () -> Boolean = { false },
+    private val showRecent: () -> Boolean = { false },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -190,10 +202,14 @@ class LauncherViewModel(
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val state: StateFlow<LauncherUiState> =
-        combine(query, results, groups) { query, results, groups ->
+        combine(query, results, groups, history.records, recentQueries.queries) { query, results, groups, records, recent ->
             when {
                 query == null -> LauncherUiState.HomeIdle
-                query.isBlank() -> LauncherUiState.SearchOpen(query)
+                query.isBlank() -> LauncherUiState.SearchOpen(
+                    query = query,
+                    suggestions = if (showSuggestions()) AppSuggestions.suggest(records, appSource.apps.value, now()) else emptyList(),
+                    recent = if (showRecent()) recent else emptyList(),
+                )
                 else -> {
                     val enabled = voiceActionsEnabled()
                     val actions = VoiceActionParser.suggest(query).filter { it.kind in enabled }
@@ -297,6 +313,7 @@ class LauncherViewModel(
      * (навіть вимкнені в налаштуваннях — користувач сам їх задав), профіль і програму — тут.
      */
     fun runCustom(command: CustomCommand) {
+        query.value?.let(recentQueries::record)
         command.steps.forEach { step ->
             when (val parsed = VoiceCommandParser.parse(step)) {
                 is VoiceCommand.Action -> _voiceActions.trySend(parsed.action)
@@ -310,15 +327,24 @@ class LauncherViewModel(
 
     /** Команду вибрали в результатах пошуку — виконує екран, як голосову. */
     fun runAction(action: VoiceAction) {
+        query.value?.let(recentQueries::record)
         _voiceActions.trySend(action)
     }
+
+    /** Натиснули останній запит — шукаємо його знову. */
+    fun useRecent(text: String) = updateQuery(text)
+
+    fun removeRecent(text: String) = recentQueries.remove(text)
 
     /** [searchQuery] — з якого запиту відкрили: наступного разу ця програма буде першою. */
     private fun launch(app: AppInfo, searchQuery: String?): Boolean {
         val ok = appSource.launch(app)
         if (ok) {
             history.record(app, now())
-            if (!searchQuery.isNullOrBlank()) learnedQueries.record(searchQuery, app.key)
+            if (!searchQuery.isNullOrBlank()) {
+                learnedQueries.record(searchQuery, app.key)
+                recentQueries.record(searchQuery)
+            }
         } else {
             _messages.trySend(UiMessage.LAUNCH_FAILED)
         }
@@ -365,7 +391,7 @@ class LauncherViewModel(
                 openSearch()
                 updateQuery(heard)
                 // Вимкнену дію просто шукаємо як звичайний запит.
-                if (command.action.kind in voiceActionsEnabled()) _voiceActions.trySend(command.action)
+                if (command.action.kind in voiceActionsEnabled()) runAction(command.action)
             }
             is VoiceCommand.Open -> {
                 // Запит завжди потрапляє в пошук — після повернення з програми він на місці.

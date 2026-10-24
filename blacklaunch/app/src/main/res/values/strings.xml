@@ -300,4 +300,9 @@
     <string name="custom_command_steps_note">One command per line, the same as you would say it. Commands run in order; put an app last.</string>
     <string name="custom_command_save">Save</string>
     <string name="custom_command_delete">Delete command</string>
+    <string name="suggestions_title">App suggestions</string>
+    <string name="suggestions_subtitle">In empty search: apps you usually open at this time and recent ones. Counted only on the phone</string>
+    <string name="recent_queries_title">Recent searches</string>
+    <string name="recent_queries_subtitle">Up to 5 lines above the search field. Long press removes one</string>
+    <string name="suggestions_header">Suggestions</string>
 </resources>

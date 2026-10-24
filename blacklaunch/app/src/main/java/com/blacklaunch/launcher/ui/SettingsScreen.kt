@@ -148,6 +148,20 @@ fun SettingsScreen(
 
         SettingsNav.Search -> SettingsPage(stringResource(R.string.section_search), toMain) {
             Card {
+                SwitchRow(
+                    title = stringResource(R.string.suggestions_title),
+                    subtitle = stringResource(R.string.suggestions_subtitle),
+                    checked = appearance.suggestions,
+                    onCheckedChange = { on -> onChange { it.copy(suggestions = on) } },
+                )
+                SwitchRow(
+                    title = stringResource(R.string.recent_queries_title),
+                    subtitle = stringResource(R.string.recent_queries_subtitle),
+                    checked = appearance.recentQueries,
+                    onCheckedChange = { on -> onChange { it.copy(recentQueries = on) } },
+                )
+            }
+            Card {
                 Text(stringResource(R.string.global_section), color = Oled.TextPrimary, fontSize = 17.sp)
                 GroupKind.entries.forEach { kind ->
                     SwitchRow(

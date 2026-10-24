@@ -18,6 +18,10 @@ data class Appearance(
     val showProfileLabel: Boolean = true,
     /** Легкий вібровідгук на натисканнях — однаково в усьому BlackLaunch. */
     val haptics: Boolean = true,
+    /** Порожній пошук: підказки програм за часом дня й нещодавні. */
+    val suggestions: Boolean = true,
+    /** Порожній пошук: останні запити. */
+    val recentQueries: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -40,6 +44,8 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_SWIPE, next.profileSwipe)
             .putBoolean(KEY_LABEL, next.showProfileLabel)
             .putBoolean(KEY_HAPTICS, next.haptics)
+            .putBoolean(KEY_SUGGESTIONS, next.suggestions)
+            .putBoolean(KEY_RECENT, next.recentQueries)
             .apply()
         _appearance.value = next
     }
@@ -55,6 +61,8 @@ class AppearanceSettings(context: Context) {
             profileSwipe = prefs.getBoolean(KEY_SWIPE, defaults.profileSwipe),
             showProfileLabel = prefs.getBoolean(KEY_LABEL, defaults.showProfileLabel),
             haptics = prefs.getBoolean(KEY_HAPTICS, defaults.haptics),
+            suggestions = prefs.getBoolean(KEY_SUGGESTIONS, defaults.suggestions),
+            recentQueries = prefs.getBoolean(KEY_RECENT, defaults.recentQueries),
         )
     }
 
@@ -66,6 +74,8 @@ class AppearanceSettings(context: Context) {
         private const val KEY_SWIPE = "profile_swipe"
         private const val KEY_LABEL = "profile_label"
         private const val KEY_HAPTICS = "haptics"
+        private const val KEY_SUGGESTIONS = "suggestions"
+        private const val KEY_RECENT = "recent_queries"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }
