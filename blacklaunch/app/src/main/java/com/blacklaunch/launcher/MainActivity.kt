@@ -457,6 +457,7 @@ class MainActivity : ComponentActivity() {
         val sms = setOfNotNull(runCatching { Telephony.Sms.getDefaultSmsPackage(this) }.getOrNull())
         return RolePackages(
             dialer = dialer + resolve(Intent(Intent.ACTION_DIAL)),
+            contacts = resolve(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CONTACTS)),
             // Лише SMS за замовчуванням: месенджери теж приймають «smsto:», але «Написати» відкриває SMS.
             sms = sms,
             calendar = resolve(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)),

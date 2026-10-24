@@ -98,6 +98,7 @@ fun SettingsScreen(
                     checked = appearance.profileSwipe,
                     onCheckedChange = { on -> onChange { it.copy(profileSwipe = on) } },
                 )
+                Note(stringResource(R.string.double_tap_hint))
             }
             Card {
                 Note(stringResource(R.string.display_moved_home))

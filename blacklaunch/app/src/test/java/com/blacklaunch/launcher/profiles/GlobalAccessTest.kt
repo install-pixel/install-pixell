@@ -10,6 +10,7 @@ class GlobalAccessTest {
     private val all = GroupKind.entries.toSet()
     private val roles = RolePackages(
         dialer = setOf("com.google.android.dialer"),
+        contacts = setOf("com.google.android.contacts"),
         sms = setOf("com.google.android.apps.messaging"),
         calendar = setOf("com.google.android.calendar"),
         settings = setOf("com.android.settings"),
@@ -26,6 +27,13 @@ class GlobalAccessTest {
         val access = GlobalAccess.of(GlobalMode.BY_APPS, all, setOf("com.google.android.apps.messaging"), roles)
         assertTrue(access.canMessage)
         assertTrue(GroupKind.SMS in access.kinds && GroupKind.CONTACTS in access.kinds)
+    }
+
+    @Test fun contactsAppGivesContactSearchWithCall() {
+        val access = GlobalAccess.of(GlobalMode.BY_APPS, all, setOf("com.google.android.contacts"), roles)
+        assertTrue(access.canCall)
+        assertTrue(GroupKind.CONTACTS in access.kinds)
+        assertFalse(GroupKind.SMS in access.kinds)
     }
 
     @Test fun offAndOn() {

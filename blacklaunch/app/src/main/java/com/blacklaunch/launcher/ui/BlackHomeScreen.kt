@@ -247,6 +247,7 @@ private fun HomeIdle(
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val haptics = LocalHaptics.current
     var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
+    val profileCount = rememberUpdatedState(home.profileCount)
     var dragging by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
@@ -254,12 +255,21 @@ private fun HomeIdle(
             .pointerInput(Unit) {
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
                 // Довге натискання на значку — це перетягування, а не налаштування.
-                detectTapGestures(onLongPress = { position ->
-                    if (iconBounds.values.none { it.contains(position) }) {
-                        haptics.longPress()
-                        onLongPress()
-                    }
-                })
+                detectTapGestures(
+                    onLongPress = { position ->
+                        if (iconBounds.values.none { it.contains(position) }) {
+                            haptics.longPress()
+                            onLongPress()
+                        }
+                    },
+                    // Подвійний дотик на порожньому місці — наступний профіль (коли немає ні назви, ні свайпу).
+                    onDoubleTap = { position ->
+                        if (profileCount.value > 1 && iconBounds.values.none { it.contains(position) }) {
+                            haptics.tick()
+                            onSwitchProfile(1)
+                        }
+                    },
+                )
             }
             .pointerInput(home.profileCount, profileSwipe) {
                 var drag = Offset.Zero

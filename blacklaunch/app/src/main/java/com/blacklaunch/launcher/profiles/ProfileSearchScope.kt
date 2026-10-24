@@ -17,6 +17,8 @@ enum class GlobalMode { OFF, BY_APPS, ON }
 /** Програми за замовчуванням для дзвінків, SMS, календаря й налаштувань (пакети). */
 data class RolePackages(
     val dialer: Set<String> = emptySet(),
+    /** Програма «Контакти»: у профілі вмикає пошук контактів із дзвінком. */
+    val contacts: Set<String> = emptySet(),
     val sms: Set<String> = emptySet(),
     val calendar: Set<String> = emptySet(),
     val settings: Set<String> = emptySet(),
@@ -31,7 +33,7 @@ data class GlobalAccess(val kinds: Set<GroupKind>, val canCall: Boolean, val can
             GlobalMode.ON -> GlobalAccess(all, canCall = true, canMessage = true, shortcutsOfProfileOnly = false)
             GlobalMode.OFF -> GlobalAccess(all intersect LOCAL, canCall = false, canMessage = false, shortcutsOfProfileOnly = true)
             GlobalMode.BY_APPS -> {
-                val call = profilePackages.any { it in roles.dialer }
+                val call = profilePackages.any { it in roles.dialer || it in roles.contacts }
                 val message = profilePackages.any { it in roles.sms }
                 val kinds = buildSet {
                     addAll(LOCAL)

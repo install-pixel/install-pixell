@@ -350,4 +350,5 @@
     <string name="display_applied">Applied to all profiles</string>
     <string name="display_moved_home">At a glance, profile name and the fully black screen are now set in each profile.</string>
     <string name="display_moved_search">App suggestions, recent searches and the “All apps” button are now set in each profile.</string>
+    <string name="double_tap_hint">Double tap on an empty spot of the home screen — next profile (works even without the profile name and swipe).</string>
 </resources>

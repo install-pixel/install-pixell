@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.filled.Done
 import com.blacklaunch.launcher.profiles.ProfileDisplay
 import androidx.compose.material3.CheckboxDefaults
@@ -225,17 +226,20 @@ fun ProfileEditScreen(
         Card {
             Text(stringResource(R.string.pinned_title), color = Oled.TextPrimary, fontSize = 17.sp)
             if (profile.pinnedAppKeys.isEmpty()) Note(stringResource(R.string.pinned_empty))
-            profile.pinnedAppKeys.forEachIndexed { index, key ->
-                val app = appsByKey[key]
-                PinnedRow(
-                    label = app?.label ?: stringResource(R.string.pinned_missing),
-                    app = app,
-                    iconFor = iconFor,
-                    canMoveUp = index > 0,
-                    canMoveDown = index < profile.pinnedAppKeys.lastIndex,
-                    onMove = { delta -> onChange(profile.copy(pinnedAppKeys = PinnedEdits.move(profile.pinnedAppKeys, key, delta))) },
-                    onRemove = { onChange(profile.copy(pinnedAppKeys = PinnedEdits.remove(profile.pinnedAppKeys, key))) },
-                )
+            // Багато програм не розтягує сторінку: віконце фіксованої висоти з власною прокруткою.
+            Column(Modifier.heightIn(max = PinnedListMaxHeight).verticalScroll(rememberScrollState())) {
+                profile.pinnedAppKeys.forEachIndexed { index, key ->
+                    val app = appsByKey[key]
+                    PinnedRow(
+                        label = app?.label ?: stringResource(R.string.pinned_missing),
+                        app = app,
+                        iconFor = iconFor,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < profile.pinnedAppKeys.lastIndex,
+                        onMove = { delta -> onChange(profile.copy(pinnedAppKeys = PinnedEdits.move(profile.pinnedAppKeys, key, delta))) },
+                        onRemove = { onChange(profile.copy(pinnedAppKeys = PinnedEdits.remove(profile.pinnedAppKeys, key))) },
+                    )
+                }
             }
             ActionOption(R.string.pinned_add, Icons.Filled.Add, onAddApp)
         }
@@ -507,6 +511,9 @@ internal fun SoundMode.label(): Int = when (this) {
     SoundMode.VIBRATE -> R.string.sound_vibrate
     SoundMode.SILENT -> R.string.sound_silent
 }
+
+/** Скільки займає список програм профілю (~5 рядків), далі — прокрутка всередині. */
+private val PinnedListMaxHeight = 300.dp
 
 @StringRes
 private fun GlobalMode.label(): Int = when (this) {

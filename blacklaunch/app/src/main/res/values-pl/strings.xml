@@ -350,4 +350,5 @@
     <string name="display_applied">Zastosowano do wszystkich profili</string>
     <string name="display_moved_home">„W skrócie”, nazwę profilu i całkowicie czarny ekran ustawia się teraz w każdym profilu.</string>
     <string name="display_moved_search">Podpowiedzi aplikacji, ostatnie wyszukiwania i przycisk „Wszystkie aplikacje” ustawia się teraz w każdym profilu.</string>
+    <string name="double_tap_hint">Podwójne dotknięcie w pustym miejscu ekranu głównego — następny profil (działa też bez nazwy profilu i przesunięcia).</string>
 </resources>
