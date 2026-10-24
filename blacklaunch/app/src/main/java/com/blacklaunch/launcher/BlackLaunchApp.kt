@@ -102,7 +102,7 @@ class BlackLaunchApp : Application() {
         appScope.launch { applyProfileOnSwitch() }
         // Змінився профіль, його програми чи фільтр — перевірити сповіщення ще раз.
         appScope.launch {
-            combine(activeProfile, searchScopes.notificationFilter) { profile, _ -> profile }
+            combine(activeProfile, searchScopes.notificationFilter, searchScopes.notificationExtras) { profile, _, _ -> profile }
                 .collect { ProfileNotificationFilter.refreshNow() }
         }
         appScope.launch {

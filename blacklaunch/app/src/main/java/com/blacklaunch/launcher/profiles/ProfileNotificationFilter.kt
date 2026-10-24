@@ -45,7 +45,8 @@ class ProfileNotificationFilter : NotificationListenerService() {
         return NotificationRules.hide(
             packageName = sbn.packageName,
             ownPackage = packageName,
-            allowedPackages = profile.pinnedAppKeys.mapTo(HashSet()) { it.substringBefore('/') },
+            allowedPackages = profile.pinnedAppKeys.mapTo(HashSet()) { it.substringBefore('/') } +
+                app.searchScopes.notificationExtras.value[profile.id].orEmpty(),
             category = notification.category,
             ongoing = sbn.isOngoing || notification.flags and Notification.FLAG_FOREGROUND_SERVICE != 0,
         )

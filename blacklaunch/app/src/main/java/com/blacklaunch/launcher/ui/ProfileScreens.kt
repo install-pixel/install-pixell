@@ -202,6 +202,10 @@ fun ProfileEditScreen(
     onNotificationFilterChange: (Boolean) -> Unit = {},
     hasNotificationAccess: Boolean = false,
     onGrantNotificationAccess: () -> Unit = {},
+    /** «Також дозволити сповіщення від…»: програми поза профілем (назви вже готові). */
+    notificationExtras: List<AppInfo> = emptyList(),
+    onAddNotificationExtras: () -> Unit = {},
+    onRemoveNotificationExtra: (AppInfo) -> Unit = {},
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -254,6 +258,18 @@ fun ProfileEditScreen(
             } else if (notificationFilter) {
                 // Доступ уже є — кнопка зникає, лишається лише підтвердження.
                 Note(stringResource(R.string.notif_filter_granted))
+            }
+            if (notificationFilter) {
+                Text(stringResource(R.string.notif_extra_title), color = Oled.TextPrimary, fontSize = 16.sp)
+                notificationExtras.forEach { extra ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(extra.label, color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { onRemoveNotificationExtra(extra) }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
+                        }
+                    }
+                }
+                ActionOption(R.string.notif_extra_add, Icons.Filled.Add, onAddNotificationExtras)
             }
             val needsAccess = profile.soundMode == SoundMode.SILENT || profile.notificationMode != NotificationMode.SYSTEM_DEFAULT
             if (needsAccess && !hasDndAccess) {

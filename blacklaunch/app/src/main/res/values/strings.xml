@@ -337,4 +337,6 @@
     <string name="notif_filter_access">Needs notification access for Black Glass only. On the page that opens, turn on Black Glass — do not change other apps. Black Glass sees notifications only to put them aside and sends nothing anywhere.</string>
     <string name="notif_filter_grant">Allow notification access</string>
     <string name="notif_filter_granted">✓ Notification access granted — the filter works in this profile</string>
+    <string name="notif_extra_title">Also allow notifications from</string>
+    <string name="notif_extra_add">Add apps</string>
 </resources>

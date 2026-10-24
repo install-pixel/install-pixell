@@ -26,6 +26,19 @@ class PrefsSearchScopes(context: Context) {
     /** Профілі, де сповіщення лише від їхніх програм. */
     val notificationFilter: StateFlow<Set<String>> = _notificationFilter.asStateFlow()
 
+    private val _notificationExtras = MutableStateFlow(
+        prefs.all.keys.filter { it.startsWith(PREFIX_EXTRA) }
+            .associate { it.removePrefix(PREFIX_EXTRA) to prefs.getStringSet(it, emptySet()).orEmpty().toSet() },
+    )
+
+    /** «Також дозволити сповіщення від…»: профіль → пакети програм поза профілем. */
+    val notificationExtras: StateFlow<Map<String, Set<String>>> = _notificationExtras.asStateFlow()
+
+    fun setNotificationExtras(profileId: String, packages: Set<String>) {
+        _notificationExtras.value = _notificationExtras.value + (profileId to packages)
+        prefs.edit().putStringSet(PREFIX_EXTRA + profileId, packages).apply()
+    }
+
     fun setNotificationFilter(profileId: String, on: Boolean) {
         _notificationFilter.value = if (on) _notificationFilter.value + profileId else _notificationFilter.value - profileId
         prefs.edit().putStringSet(KEY_NOTIF_FILTER, _notificationFilter.value).apply()
@@ -46,5 +59,6 @@ class PrefsSearchScopes(context: Context) {
         // Окремий ключ: решта ключів — id профілів.
         const val KEY_GLOBAL_OFF = "_global_off"
         const val KEY_NOTIF_FILTER = "_notification_filter"
+        const val PREFIX_EXTRA = "_notif_extra_"
     }
 }

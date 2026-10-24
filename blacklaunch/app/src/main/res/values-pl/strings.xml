@@ -337,4 +337,6 @@
     <string name="notif_filter_access">Wymaga dostępu do powiadomień tylko dla Black Glass. Na stronie, która się otworzy, włącz Black Glass — nie zmieniaj innych aplikacji. Black Glass widzi powiadomienia tylko po to, by je odłożyć, i nigdzie nic nie wysyła.</string>
     <string name="notif_filter_grant">Zezwól na dostęp do powiadomień</string>
     <string name="notif_filter_granted">✓ Dostęp do powiadomień przyznany — filtr działa w tym profilu</string>
+    <string name="notif_extra_title">Zezwól też na powiadomienia z</string>
+    <string name="notif_extra_add">Dodaj aplikacje</string>
 </resources>

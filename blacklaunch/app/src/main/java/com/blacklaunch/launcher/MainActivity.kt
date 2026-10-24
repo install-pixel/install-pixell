@@ -658,6 +658,7 @@ class MainActivity : ComponentActivity() {
         val scopes by app.searchScopes.scopes.collectAsStateWithLifecycle()
         val globalOff by app.searchScopes.globalOff.collectAsStateWithLifecycle()
         val notifFilter by app.searchScopes.notificationFilter.collectAsStateWithLifecycle()
+        val notifExtras by app.searchScopes.notificationExtras.collectAsStateWithLifecycle()
         val notificationAccess by notificationAccessState.collectAsStateWithLifecycle()
         // Доступ «Не турбувати» перевіряємо щоразу при поверненні з налаштувань Android.
         val dndAccess by dndAccessState.collectAsStateWithLifecycle()
@@ -700,6 +701,13 @@ class MainActivity : ComponentActivity() {
                     onNotificationFilterChange = { app.searchScopes.setNotificationFilter(profile.id, it) },
                     hasNotificationAccess = notificationAccess,
                     onGrantNotificationAccess = ::openNotificationAccess,
+                    notificationExtras = notifExtras[profile.id].orEmpty()
+                        .mapNotNull { pkg -> apps.firstOrNull { it.packageName == pkg } }
+                        .sortedBy { it.label.lowercase() },
+                    onAddNotificationExtras = { onNavigate(SettingsNav.PickNotificationApps(profile.id)) },
+                    onRemoveNotificationExtra = { removed ->
+                        app.searchScopes.setNotificationExtras(profile.id, notifExtras[profile.id].orEmpty() - removed.packageName)
+                    },
                 )
             }
             is SettingsNav.PickApp -> {
@@ -714,6 +722,25 @@ class MainActivity : ComponentActivity() {
                             val keys = picked.fold(profile.pinnedAppKeys) { keys, app -> PinnedEdits.add(keys, app.key) }
                             profileViewModel.update(profile.copy(pinnedAppKeys = keys))
                         }
+                        onNavigate(SettingsNav.Edit(page.profileId))
+                    },
+                )
+            }
+            is SettingsNav.PickNotificationApps -> {
+                val profile = profiles.firstOrNull { it.id == page.profileId }
+                // Програми профілю й уже дозволені — не пропонуємо.
+                val allowed = profile?.pinnedAppKeys.orEmpty().map { it.substringBefore('/') }.toSet() +
+                    notifExtras[page.profileId].orEmpty()
+                AppPickerScreen(
+                    apps = apps,
+                    alreadyPinned = apps.filter { it.packageName in allowed }.map { it.key }.toSet(),
+                    iconFor = iconCache::load,
+                    onBack = { onNavigate(SettingsNav.Edit(page.profileId)) },
+                    onPick = { picked ->
+                        app.searchScopes.setNotificationExtras(
+                            page.profileId,
+                            notifExtras[page.profileId].orEmpty() + picked.map { it.packageName },
+                        )
                         onNavigate(SettingsNav.Edit(page.profileId))
                     },
                 )
