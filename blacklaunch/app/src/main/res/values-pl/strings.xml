@@ -197,4 +197,10 @@
     <string name="profile_swipe_subtitle">Przesuń w lewo lub w prawo na ekranie głównym</string>
     <string name="profile_label_title">Nazwa profilu na ekranie</string>
     <string name="profile_label_subtitle">Mała etykieta u góry; dotknięcie — następny profil. Wyłączone — całkowicie czarny ekran</string>
+    <string name="crash_log_title">Dziennik błędów</string>
+    <string name="crash_log_empty">Na razie bez błędów.</string>
+    <string name="crash_log_hint">Ostatnia awaria BlackLaunch. Zapisana tylko na tym telefonie — skopiuj i wklej do czatu z twórcą.</string>
+    <string name="crash_log_copy">Kopiuj</string>
+    <string name="crash_log_clear">Wyczyść</string>
+    <string name="crash_log_copied">Dziennik błędów skopiowany</string>
 </resources>

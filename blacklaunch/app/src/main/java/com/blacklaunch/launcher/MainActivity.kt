@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.Toast
@@ -171,6 +172,7 @@ class MainActivity : ComponentActivity() {
             val voiceMode by app.voiceSettings.mode.collectAsStateWithLifecycle()
             val userAliases by app.userAliasStore.aliases.collectAsStateWithLifecycle()
             val globalKinds by app.globalSearchSettings.enabled.collectAsStateWithLifecycle()
+            val crashLog by app.crashLog.text.collectAsStateWithLifecycle()
             BlackLaunchTheme {
                 BlackHomeScreen(
                     state = state,
@@ -222,6 +224,9 @@ class MainActivity : ComponentActivity() {
                                 onOpenBattery = { BatterySettings.openBattery(this) },
                                 globalKinds = globalKinds,
                                 onGlobalKindChange = ::setGlobalKind,
+                                crashLog = crashLog,
+                                onCopyCrashLog = ::copyCrashLog,
+                                onClearCrashLog = app.crashLog::clear,
                                 onOpenAppInfo = {
                                     awaitingSmsPermission = true
                                     openAppInfo(packageName)
@@ -285,6 +290,13 @@ class MainActivity : ComponentActivity() {
             is GlobalResult.Event -> startOrToast(Intent(Intent.ACTION_VIEW, app.globalSearch.eventUri(result)))
             is GlobalResult.Sms -> startOrToast(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${result.address}")))
         }
+    }
+
+    /** Копіює журнал вильотів, щоб вставити його в чат. */
+    private fun copyCrashLog() {
+        val text = app.crashLog.text.value ?: return
+        getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("BlackLaunch crash log", text))
+        toast(R.string.crash_log_copied)
     }
 
     private fun openAppInfo(pkg: String) =
@@ -504,18 +516,27 @@ class MainActivity : ComponentActivity() {
         if (!wasStopped) viewModel.forgetSearch()
     }
 
-    // Перейшли в іншу програму — пошук закривається одразу й без анімації (інакше анімація
-    // разом із клавіатурою програвалась би вже після повернення — «смикання»). Запит
-    // запам'ятовується: свайп угору протягом 3 хвилин повертає його з результатами.
+    // Перейшли в іншу програму — пошук лишається відкритим з тими самими результатами
+    // (клавіатуру ховає сам екран пошуку). Повернулись протягом 3 хвилин — усе на місці.
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) {
             voice.cancel()
             wasStopped = true
-            instantSearchClose = true
-            viewModel.closeSearch()
+            stoppedAt = SystemClock.elapsedRealtime()
         }
     }
+
+    // Не було довше 3 хвилин — повертаємось на чистий чорний екран, без анімації.
+    override fun onStart() {
+        super.onStart()
+        if (wasStopped && SystemClock.elapsedRealtime() - stoppedAt > LauncherViewModel.RESTORE_QUERY_MS) {
+            instantSearchClose = true
+            viewModel.forgetSearch()
+        }
+    }
+
+    private var stoppedAt = 0L
 
     /** BlackLaunch був прихований (інша програма) — до наступного onResume. */
     private var wasStopped = false

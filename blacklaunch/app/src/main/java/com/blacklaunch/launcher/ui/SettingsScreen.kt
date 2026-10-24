@@ -1,5 +1,8 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import com.blacklaunch.launcher.diagnostics.CrashEntries
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -55,6 +58,10 @@ fun SettingsScreen(
     globalKinds: Set<GroupKind>,
     onGlobalKindChange: (GroupKind, Boolean) -> Unit,
     onOpenAppInfo: () -> Unit,
+    /** Останні вильоти (найновіший перший) або null. */
+    crashLog: String?,
+    onCopyCrashLog: () -> Unit,
+    onClearCrashLog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val toMain = { onNavigate(SettingsNav.Main) }
@@ -178,6 +185,26 @@ fun SettingsScreen(
                 Text("BlackLaunch $versionName", color = Oled.TextPrimary, fontSize = 17.sp)
                 Note(stringResource(R.string.about_note))
             }
+            Card {
+                Text(stringResource(R.string.crash_log_title), color = Oled.TextPrimary, fontSize = 16.sp)
+                if (crashLog == null) {
+                    Note(stringResource(R.string.crash_log_empty))
+                } else {
+                    Note(stringResource(R.string.crash_log_hint))
+                    Text(
+                        CrashEntries.latest(crashLog),
+                        color = Oled.TextSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = CRASH_PREVIEW_LINES,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SmallButton(stringResource(R.string.crash_log_copy), onCopyCrashLog)
+                        SmallButton(stringResource(R.string.crash_log_clear), onClearCrashLog)
+                    }
+                }
+            }
         }
 
         else -> SettingsPage(stringResource(R.string.settings_title), onDismiss) {
@@ -198,6 +225,8 @@ fun SettingsScreen(
         }
     }
 }
+
+private const val CRASH_PREVIEW_LINES = 14
 
 @StringRes
 private fun OfflineVoiceMode.label(): Int = when (this) {

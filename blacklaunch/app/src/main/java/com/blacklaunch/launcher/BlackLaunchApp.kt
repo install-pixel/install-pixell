@@ -1,6 +1,12 @@
 package com.blacklaunch.launcher
 
 import android.app.Application
+import android.os.Build
+import com.blacklaunch.launcher.diagnostics.CrashLog
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.room.withTransaction
 import com.blacklaunch.launcher.apps.AppRepository
 import com.blacklaunch.launcher.apps.PrefsLaunchHistory
@@ -43,6 +49,15 @@ class BlackLaunchApp : Application() {
         )
     }
 
+    /** Локальний журнал вильотів (лише файл на телефоні). */
+    val crashLog: CrashLog by lazy {
+        CrashLog(File(filesDir, "crashes.txt")) {
+            val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull()
+            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+            "BlackLaunch $version · ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · $time"
+        }
+    }
+
     val database: AppDatabase by lazy { AppDatabase.create(this) }
     val profileRepository: ProfileRepository by lazy {
         ProfileRepository(
@@ -54,6 +69,7 @@ class BlackLaunchApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        crashLog.install()
         appScope.launch {
             profileRepository.ensureDefaults(
                 DefaultProfiles.create(

@@ -68,6 +68,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.global.GlobalResult
@@ -89,7 +92,7 @@ private const val PULL = 1f
 private const val LONG_PULL = 2.5f
 
 /** Тривалість анімації закриття пошуку. */
-private const val CLOSE_MS = 220
+private const val CLOSE_MS = 280
 private const val OPEN_MS = 180
 
 @Composable
@@ -333,8 +336,16 @@ private fun SearchOpen(
     var pull by remember { mutableFloatStateOf(0f) }
     var panelHeight by remember { mutableFloatStateOf(0f) }
     var listWasScrolled by remember { mutableStateOf(false) }
-    // Пошук знову відкрили, поки панель ще від'їжджала — повертаємо її на місце.
-    LaunchedEffect(visible) { if (visible) pull = 0f }
+    val focusManager = LocalFocusManager.current
+    var keyboardWasShown by remember { mutableStateOf(false) }
+    // Клавіатура ховається разом із панеллю, а не після неї.
+    fun hideKeyboard() {
+        keyboardWasShown = false
+        focusManager.clearFocus(force = true)
+    }
+    // Пошук знову відкрили, поки панель ще від'їжджала, — повертаємо її на місце;
+    // почали закривати (Назад, свайп) — клавіатура їде вниз одночасно з панеллю.
+    LaunchedEffect(visible) { if (visible) pull = 0f else hideKeyboard() }
 
     // Відпустили палець: відтягнули достатньо — панель плавно їде вниз і пошук закривається;
     // замало — пружно повертається на місце (видно, що це край списку).
@@ -342,6 +353,7 @@ private fun SearchOpen(
         val needed = thresholdPx * if (listWasScrolled) LONG_PULL else PULL
         scope.launch {
             if (canClose && pull > needed) {
+                hideKeyboard()
                 animate(pull, panelHeight.coerceAtLeast(pull), animationSpec = tween(CLOSE_MS, easing = FastOutLinearInEasing)) { v, _ -> pull = v }
                 close()
             } else {
@@ -391,8 +403,13 @@ private fun SearchOpen(
     }
     val imeVisible = WindowInsets.isImeVisible
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var keyboardWasShown by remember { mutableStateOf(false) }
     var fieldFocused by remember { mutableStateOf(false) }
+    // Пішли в іншу програму — ховаємо клавіатуру; повернулись — результати на місці, без клавіатури.
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) hideKeyboard() }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     // Рахуємо клавіатуру «нашою», лише коли вона відкрилась для поля пошуку. Інакше залишковий
     // стан клавіатури з попередньої програми закривав пошук одразу після відкриття.
     LaunchedEffect(imeVisible, fieldFocused) {

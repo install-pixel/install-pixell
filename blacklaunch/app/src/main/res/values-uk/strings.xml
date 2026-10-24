@@ -197,4 +197,10 @@
     <string name="profile_swipe_subtitle">Свайп вліво чи вправо на головному екрані</string>
     <string name="profile_label_title">Назва профілю на екрані</string>
     <string name="profile_label_subtitle">Маленька плашка вгорі; натискання — наступний профіль. Вимкнено — повністю чорний екран</string>
+    <string name="crash_log_title">Журнал помилок</string>
+    <string name="crash_log_empty">Помилок не було.</string>
+    <string name="crash_log_hint">Останній виліт BlackLaunch. Зберігається лише на цьому телефоні — скопіюйте й вставте в чат з розробником.</string>
+    <string name="crash_log_copy">Скопіювати</string>
+    <string name="crash_log_clear">Очистити</string>
+    <string name="crash_log_copied">Журнал помилок скопійовано</string>
 </resources>
