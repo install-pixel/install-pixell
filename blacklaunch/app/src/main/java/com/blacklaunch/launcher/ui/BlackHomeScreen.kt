@@ -1,20 +1,25 @@
 package com.blacklaunch.launcher.ui
 
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,23 +27,35 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.ui.theme.Oled
+import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 import com.blacklaunch.launcher.voice.VoiceState
+import kotlin.math.abs
 
-private val SwipeUpThreshold = 48.dp
+private val SwipeThreshold = 48.dp
 
 @Composable
 fun BlackHomeScreen(
     state: LauncherUiState,
+    home: HomeState,
+    /** Назва профілю, на який щойно перемкнули (показується на мить), або null. */
+    profileBanner: String?,
+    onSwitchProfile: (delta: Int) -> Unit,
     onOpenSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -66,7 +83,15 @@ fun BlackHomeScreen(
     }
 
     when (state) {
-        LauncherUiState.HomeIdle -> HomeIdle(onOpenSearch, onLongPress = { showSettings = true })
+        LauncherUiState.HomeIdle -> HomeIdle(
+            home = home,
+            profileBanner = profileBanner,
+            iconFor = iconFor,
+            onLaunch = onLaunch,
+            onOpenSearch = onOpenSearch,
+            onLongPress = { showSettings = true },
+            onSwitchProfile = onSwitchProfile,
+        )
         is LauncherUiState.SearchOpen -> SearchOpen(
             state = state,
             onQueryChange = onQueryChange,
@@ -87,8 +112,17 @@ fun BlackHomeScreen(
 }
 
 @Composable
-private fun HomeIdle(onOpenSearch: () -> Unit, onLongPress: () -> Unit) {
-    val thresholdPx = with(LocalDensity.current) { SwipeUpThreshold.toPx() }
+private fun HomeIdle(
+    home: HomeState,
+    profileBanner: String?,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
+    onLaunch: (AppInfo) -> Unit,
+    onOpenSearch: () -> Unit,
+    onLongPress: () -> Unit,
+    onSwitchProfile: (Int) -> Unit,
+) {
+    val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
+    val view = LocalView.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -96,21 +130,63 @@ private fun HomeIdle(onOpenSearch: () -> Unit, onLongPress: () -> Unit) {
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { onOpenSearch() }, onLongPress = { onLongPress() })
             }
-            .pointerInput(Unit) {
-                var dragged = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { dragged = 0f },
-                    onVerticalDrag = { change, dragAmount ->
-                        dragged += dragAmount
-                        if (dragged < -thresholdPx) {
-                            change.consume()
-                            dragged = 0f
-                            onOpenSearch()
+            .pointerInput(home.profileCount) {
+                var drag = Offset.Zero
+                var handled = false
+                detectDragGestures(
+                    onDragStart = {
+                        drag = Offset.Zero
+                        handled = false
+                    },
+                    onDrag = { change, amount ->
+                        if (handled) return@detectDragGestures
+                        drag += amount
+                        val horizontal = abs(drag.x) > abs(drag.y)
+                        when {
+                            // Свайп угору — пошук.
+                            !horizontal && drag.y < -thresholdPx -> {
+                                handled = true
+                                change.consume()
+                                onOpenSearch()
+                            }
+                            // Свайп уліво — наступний профіль, управо — попередній.
+                            horizontal && abs(drag.x) > thresholdPx && home.profileCount > 1 -> {
+                                handled = true
+                                change.consume()
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                onSwitchProfile(if (drag.x < 0) 1 else -1)
+                            }
                         }
                     },
                 )
             },
-    )
+    ) {
+        if (home.pinned.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
+            ) {
+                home.pinned.forEach { app ->
+                    AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = {})
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = profileBanner != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            Text(
+                text = profileBanner.orEmpty(),
+                color = Oled.TextPrimary,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Light,
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

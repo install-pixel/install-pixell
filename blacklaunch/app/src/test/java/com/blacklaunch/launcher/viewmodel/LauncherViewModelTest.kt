@@ -155,9 +155,9 @@ class LauncherViewModelTest {
     }
 
     @Test
-    fun profileCommandReportsNotReady() {
+    fun unknownProfileCommandReportsMessage() {
         viewModel.onVoiceResult(listOf("режим робота"))
-        assertEquals(UiMessage.PROFILES_NOT_READY, viewModel.messages.tryReceive().getOrNull())
+        assertEquals(UiMessage.PROFILE_NOT_FOUND, viewModel.messages.tryReceive().getOrNull())
     }
 
     @Test

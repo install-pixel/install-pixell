@@ -6,7 +6,12 @@ import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.apps.AppSource
 import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import com.blacklaunch.launcher.apps.LaunchHistory
+import com.blacklaunch.launcher.profiles.LauncherProfile
+import com.blacklaunch.launcher.profiles.ProfileSource
+import com.blacklaunch.launcher.profiles.neighbour
 import com.blacklaunch.launcher.search.AppSearchEngine
+import com.blacklaunch.launcher.search.Phonetic
+import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
@@ -31,7 +36,22 @@ sealed interface LauncherUiState {
 }
 
 /** Одноразові повідомлення для користувача. */
-enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILES_NOT_READY }
+enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND }
+
+/** Головний екран: активний профіль і його закріплені програми, які справді встановлені. */
+data class HomeState(
+    val profileId: String? = null,
+    val profileName: String = "",
+    val pinned: List<AppInfo> = emptyList(),
+    val profileCount: Int = 0,
+)
+
+/** Порожнє джерело профілів (тести, що не стосуються профілів). */
+private object NoProfiles : ProfileSource {
+    override val profiles: Flow<List<LauncherProfile>> = flowOf(emptyList())
+    override val activeProfile: Flow<LauncherProfile?> = flowOf(null)
+    override fun setActive(id: String) = Unit
+}
 
 class LauncherViewModel(
     private val appSource: AppSource,
@@ -39,6 +59,7 @@ class LauncherViewModel(
     private val history: LaunchHistory = InMemoryLaunchHistory(),
     engine: AppSearchEngine = AppSearchEngine(),
     private val now: () -> Long = System::currentTimeMillis,
+    private val profileSource: ProfileSource = NoProfiles,
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -55,6 +76,25 @@ class LauncherViewModel(
         history.records
             .map { records -> records.groupingBy { it.appKey }.eachCount() }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private val profiles: StateFlow<List<LauncherProfile>> =
+        profileSource.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val home: StateFlow<HomeState> =
+        combine(profileSource.activeProfile, appSource.apps, profiles) { active, apps, all ->
+            val installed = apps.associateBy { it.key }
+            HomeState(
+                profileId = active?.id,
+                profileName = active?.name.orEmpty(),
+                // Видалені програми просто не показуються, налаштування профілю не змінюються.
+                pinned = active?.pinnedAppKeys.orEmpty().mapNotNull { installed[it] },
+                profileCount = all.size,
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeState())
+
+    /** Назва профілю, на який щойно перемкнули, — показується на мить. */
+    private val _profileSwitched = Channel<String>(Channel.CONFLATED)
+    val profileSwitched: ReceiveChannel<String> get() = _profileSwitched
 
     val state: StateFlow<LauncherUiState> =
         combine(query, index, launchCounts) { query, index, counts ->
@@ -77,6 +117,31 @@ class LauncherViewModel(
 
     fun closeSearch() {
         query.value = null
+    }
+
+    /** Свайп вліво/вправо: наступний чи попередній профіль по колу. */
+    fun switchProfile(delta: Int) {
+        val next = profiles.value.neighbour(home.value.profileId, delta) ?: return
+        if (next.id == home.value.profileId) return
+        activate(next)
+    }
+
+    private fun activate(profile: LauncherProfile) {
+        profileSource.setActive(profile.id)
+        _profileSwitched.trySend(profile.name)
+    }
+
+    /** «Режим робота»: точна назва, початок назви або схоже звучання. */
+    private fun findProfile(name: String): LauncherProfile? {
+        val q = SearchNormalizer.normalize(name)
+        if (q.isEmpty()) return null
+        val all = profiles.value
+        return all.firstOrNull { SearchNormalizer.normalize(it.name) == q }
+            ?: all.firstOrNull { SearchNormalizer.normalize(it.name).startsWith(q) }
+            ?: all.maxByOrNull { Phonetic.similarity(Phonetic.skeleton(SearchNormalizer.normalize(it.name)), Phonetic.skeleton(q)) }
+                ?.takeIf {
+                    Phonetic.similarity(Phonetic.skeleton(SearchNormalizer.normalize(it.name)), Phonetic.skeleton(q)) >= PROFILE_MATCH
+                }
     }
 
     fun launch(app: AppInfo): Boolean {
@@ -103,7 +168,15 @@ class LauncherViewModel(
                 val last = lastLaunched()
                 if (last != null) launch(last) else _messages.trySend(UiMessage.NO_HISTORY)
             }
-            is VoiceCommand.SwitchProfile -> _messages.trySend(UiMessage.PROFILES_NOT_READY)
+            is VoiceCommand.SwitchProfile -> {
+                val profile = findProfile(command.name)
+                if (profile != null) {
+                    activate(profile)
+                    closeSearch()
+                } else {
+                    _messages.trySend(UiMessage.PROFILE_NOT_FOUND)
+                }
+            }
             is VoiceCommand.Open -> {
                 val results = index.value.searchScored(command.query, launchCounts.value)
                 val app = SearchIndex.unambiguous(results)
@@ -116,7 +189,11 @@ class LauncherViewModel(
 
     private fun VoiceCommand.isActionable(): Boolean = when (this) {
         VoiceCommand.OpenLast -> lastLaunched() != null
-        is VoiceCommand.SwitchProfile -> false
+        is VoiceCommand.SwitchProfile -> findProfile(name) != null
         is VoiceCommand.Open -> index.value.search(query).isNotEmpty()
+    }
+
+    private companion object {
+        const val PROFILE_MATCH = 0.75
     }
 }

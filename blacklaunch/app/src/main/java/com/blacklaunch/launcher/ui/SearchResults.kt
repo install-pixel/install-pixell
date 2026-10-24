@@ -60,9 +60,10 @@ fun SearchResults(
     }
 }
 
+/** Рядок програми: значок + назва. Спільний для результатів пошуку й закріплених програм. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AppRow(
+internal fun AppRow(
     app: AppInfo,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,

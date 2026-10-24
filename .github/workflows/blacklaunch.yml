@@ -34,6 +34,15 @@ jobs:
       - name: Build, unit tests, lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
 
+      # Схема бази Room у лозі — щоб закомітити її в репозиторій, якщо змінилася.
+      - name: Show Room schema
+        run: |
+          for f in $(find app/schemas -name '*.json' 2>/dev/null); do
+            echo "=== $f"
+            cat "$f"
+          done
+          git status --porcelain app/schemas
+
       # Версія та коміт у назві файлу, щоб на телефоні не сплутати зі старим APK.
       - name: Rename APK
         run: |

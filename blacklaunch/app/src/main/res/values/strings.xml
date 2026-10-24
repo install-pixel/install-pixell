@@ -26,7 +26,7 @@
     <string name="voice_offline_no_pack">No internet and no offline language pack. Download one in BlackLaunch settings (long press on the home screen)</string>
     <string name="voice_fallback_other">Offline recognition for your language is unavailable — listening in another downloaded language</string>
     <string name="no_history">No apps launched yet</string>
-    <string name="profiles_not_ready">Profiles are coming in a later version</string>
+    <string name="profile_not_found">No profile with that name</string>
 
     <!-- Settings sheet -->
     <string name="settings_title">Settings</string>
@@ -92,4 +92,38 @@
     <string name="profile_work">Work</string>
     <string name="profile_home">Home</string>
     <string name="profile_rest">Rest</string>
+    <string name="profiles_title">Profiles</string>
+    <string name="profile_new">New profile</string>
+    <string name="profile_create">Create</string>
+    <string name="profile_name">Name</string>
+    <string name="cancel">Cancel</string>
+    <string name="profile_edit">Edit</string>
+    <string name="profile_rename">Rename</string>
+    <string name="profiles_note">Tap a profile to make it active. On the home screen swipe left or right to switch, or say “mode work”.</string>
+    <string name="pinned_title">Apps on the home screen</string>
+    <string name="pinned_empty">None — the screen stays black</string>
+    <string name="pinned_add">Add app</string>
+    <string name="pinned_missing">App not installed</string>
+    <string name="pinned_remove">Remove</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="profile_sound">Sound</string>
+    <string name="sound_normal">Normal</string>
+    <string name="sound_vibrate">Vibrate</string>
+    <string name="sound_silent">Silent</string>
+    <string name="profile_notifications">Notifications</string>
+    <string name="notif_system">As in the system</string>
+    <string name="notif_dnd">Do not disturb</string>
+    <string name="profile_apply_note">Sound and notifications are saved now and will be applied when switching profiles in the next version.</string>
+    <string name="profile_delete">Delete profile</string>
+    <string name="profile_delete_confirm">Delete profile “%1$s”?</string>
+    <string name="profile_last">The last profile cannot be deleted</string>
+    <string name="profile_save_failed">Could not save the profile</string>
+    <string name="pick_app_title">Choose app</string>
+    <string name="settings_profiles">Profiles</string>
+    <string name="tile_label">Profile</string>
+    <plurals name="pinned_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
 </resources>

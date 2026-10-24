@@ -24,7 +24,7 @@
     <string name="voice_offline_no_pack">Немає інтернету й немає офлайн-пакета мови. Завантажте його в налаштуваннях BlackLaunch (довге натискання на головному екрані)</string>
     <string name="voice_fallback_other">Ваша мова без інтернету недоступна — слухаю іншою завантаженою мовою</string>
     <string name="no_history">Ще немає запущених програм</string>
-    <string name="profiles_not_ready">Профілі зʼявляться в наступних версіях</string>
+    <string name="profile_not_found">Профілю з такою назвою немає</string>
 
     <!-- Налаштування -->
     <string name="settings_title">Налаштування</string>
@@ -90,4 +90,40 @@
     <string name="profile_work">Робота</string>
     <string name="profile_home">Дім</string>
     <string name="profile_rest">Відпочинок</string>
+    <string name="profiles_title">Профілі</string>
+    <string name="profile_new">Новий профіль</string>
+    <string name="profile_create">Створити</string>
+    <string name="profile_name">Назва</string>
+    <string name="cancel">Скасувати</string>
+    <string name="profile_edit">Редагувати</string>
+    <string name="profile_rename">Перейменувати</string>
+    <string name="profiles_note">Натисніть профіль, щоб зробити його активним. На головному екрані — свайп вліво чи вправо або голосом «режим робота».</string>
+    <string name="pinned_title">Програми на головному екрані</string>
+    <string name="pinned_empty">Немає — екран лишається чорним</string>
+    <string name="pinned_add">Додати програму</string>
+    <string name="pinned_missing">Програму не встановлено</string>
+    <string name="pinned_remove">Прибрати</string>
+    <string name="move_up">Вище</string>
+    <string name="move_down">Нижче</string>
+    <string name="profile_sound">Звук</string>
+    <string name="sound_normal">Звичайний</string>
+    <string name="sound_vibrate">Вібрація</string>
+    <string name="sound_silent">Без звуку</string>
+    <string name="profile_notifications">Сповіщення</string>
+    <string name="notif_system">Як у системі</string>
+    <string name="notif_dnd">Не турбувати</string>
+    <string name="profile_apply_note">Звук і сповіщення вже зберігаються, а застосовуватимуться під час перемикання профілю в наступній версії.</string>
+    <string name="profile_delete">Видалити профіль</string>
+    <string name="profile_delete_confirm">Видалити профіль «%1$s»?</string>
+    <string name="profile_last">Останній профіль видалити не можна</string>
+    <string name="profile_save_failed">Не вдалося зберегти профіль</string>
+    <string name="pick_app_title">Вибрати програму</string>
+    <string name="settings_profiles">Профілі</string>
+    <string name="tile_label">Профіль</string>
+    <plurals name="pinned_count">
+        <item quantity="one">%1$d програма</item>
+        <item quantity="few">%1$d програми</item>
+        <item quantity="many">%1$d програм</item>
+        <item quantity="other">%1$d програми</item>
+    </plurals>
 </resources>

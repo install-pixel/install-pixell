@@ -21,8 +21,8 @@ class ProfileRepository(
     private val activeStore: ActiveProfileStore,
     /** Транзакція бази: у застосунку — `withTransaction`, у тестах — простий виклик. */
     private val transaction: suspend (suspend () -> Unit) -> Unit,
-) {
-    val profiles: Flow<List<LauncherProfile>> =
+) : ProfileSource {
+    override val profiles: Flow<List<LauncherProfile>> =
         combine(dao.observeProfiles(), dao.observePinned(), dao.observeRules()) { profiles, pinned, rules ->
             val pinnedBy = pinned.groupBy { it.profileId }
             val rulesBy = rules.groupBy { it.profileId }
@@ -39,7 +39,7 @@ class ProfileRepository(
         }
 
     /** Активний профіль; якщо збереженого id вже немає — перший у списку. */
-    val activeProfile: Flow<LauncherProfile?> =
+    override val activeProfile: Flow<LauncherProfile?> =
         combine(profiles, activeStore.activeId) { list, id -> list.firstOrNull { it.id == id } ?: list.firstOrNull() }
 
     /** Створює стандартні профілі один раз. Повторний виклик нічого не дублює. */
@@ -51,7 +51,7 @@ class ProfileRepository(
         }
     }.logFailure("ensureDefaults")
 
-    fun setActive(id: String) = activeStore.setActive(id)
+    override fun setActive(id: String) = activeStore.setActive(id)
 
     suspend fun create(name: String): Result<String> = runCatching {
         val id = UUID.randomUUID().toString()
