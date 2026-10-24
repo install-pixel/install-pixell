@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.ComponentName
 import android.content.ContentUris
 import android.provider.ContactsContract
 import android.content.pm.PackageManager
@@ -405,6 +406,23 @@ class MainActivity : ComponentActivity() {
         if (granted) app.voiceActionSettings.setDirectCall(true) else toast(R.string.direct_call_denied)
     }
 
+    /**
+     * Доступ до сповіщень: на Android 11+ — одразу сторінка Black Glass з одним перемикачем,
+     * щоб не чіпати інші програми в загальному списку; на старших — список.
+     */
+    private fun openNotificationAccess() {
+        val list = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
+                Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                ComponentName(this, ProfileNotificationFilter::class.java).flattenToString(),
+            )
+            startOrToast(detail, list)
+        } else {
+            startOrToast(list)
+        }
+    }
+
     /** Встановлені рушії синтезу мовлення (пакет → назва), щоб вибрати голос відповідей. */
     private fun ttsEngines(): List<Pair<String, String>> =
         packageManager.queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
@@ -681,7 +699,7 @@ class MainActivity : ComponentActivity() {
                     notificationFilter = profile.id in notifFilter,
                     onNotificationFilterChange = { app.searchScopes.setNotificationFilter(profile.id, it) },
                     hasNotificationAccess = notificationAccess,
-                    onGrantNotificationAccess = { startOrToast(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+                    onGrantNotificationAccess = ::openNotificationAccess,
                 )
             }
             is SettingsNav.PickApp -> {

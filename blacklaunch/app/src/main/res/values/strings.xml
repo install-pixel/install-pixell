@@ -319,7 +319,7 @@
     <string name="all_apps_button_subtitle">A line in empty search that opens all apps A–Z</string>
     <string name="profile_needs_dnd">“%1$s”: silent mode and Do not disturb need access — open the profile settings and allow it</string>
     <string name="profile_sound_failed">“%1$s”: Android did not allow changing the sound mode</string>
-    <string name="dnd_access_needed">“No sound” and “Do not disturb” need Do not disturb access. Normal and vibrate work without it.</string>
+    <string name="dnd_access_needed">“No sound” and “Do not disturb” need Do not disturb access. In the list that opens, find Black Glass and turn it on — leave other apps as they are. Normal and vibrate work without it.</string>
     <string name="dnd_access_grant">Allow Do not disturb access</string>
     <string name="search_scope_title">Search in this profile</string>
     <string name="search_scope_all">All apps</string>
@@ -334,6 +334,6 @@
     <string name="battery_apps_open">Battery of each app</string>
     <string name="notif_filter_title">Notifications only from profile apps</string>
     <string name="notif_filter_subtitle">Others are put aside, not lost — they come back when you switch the profile. Calls, alarms and music always show</string>
-    <string name="notif_filter_access">Needs notification access. Black Glass sees notifications only to hide them and sends nothing anywhere (it has no internet access).</string>
+    <string name="notif_filter_access">Needs notification access for Black Glass only. On the page that opens, turn on Black Glass — do not change other apps. Black Glass sees notifications only to put them aside and sends nothing anywhere.</string>
     <string name="notif_filter_grant">Allow notification access</string>
 </resources>

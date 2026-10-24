@@ -319,7 +319,7 @@
     <string name="all_apps_button_subtitle">Wiersz w pustym wyszukiwaniu, który otwiera wszystkie aplikacje A–Z</string>
     <string name="profile_needs_dnd">„%1$s”: tryb cichy i „Nie przeszkadzać” wymagają dostępu — otwórz ustawienia profilu i zezwól</string>
     <string name="profile_sound_failed">„%1$s”: Android nie pozwolił zmienić trybu dźwięku</string>
-    <string name="dnd_access_needed">„Bez dźwięku” i „Nie przeszkadzać” wymagają dostępu do „Nie przeszkadzać”. Tryb normalny i wibracje działają bez niego.</string>
+    <string name="dnd_access_needed">„Bez dźwięku” i „Nie przeszkadzać” wymagają dostępu „Nie przeszkadzać”. Na liście, która się otworzy, znajdź Black Glass i włącz — innych aplikacji nie zmieniaj. Tryb normalny i wibracje działają bez niego.</string>
     <string name="dnd_access_grant">Zezwól na dostęp „Nie przeszkadzać”</string>
     <string name="search_scope_title">Wyszukiwanie w tym profilu</string>
     <string name="search_scope_all">Wszystkie aplikacje</string>
@@ -334,6 +334,6 @@
     <string name="battery_apps_open">Bateria każdej aplikacji</string>
     <string name="notif_filter_title">Powiadomienia tylko z aplikacji profilu</string>
     <string name="notif_filter_subtitle">Pozostałe są odkładane, nie giną — wrócą po przełączeniu profilu. Połączenia, budziki i muzyka zawsze się pokazują</string>
-    <string name="notif_filter_access">Wymaga „Dostępu do powiadomień”. Black Glass widzi powiadomienia tylko po to, by je odłożyć, i nigdzie nic nie wysyła (nie ma dostępu do internetu).</string>
+    <string name="notif_filter_access">Wymaga dostępu do powiadomień tylko dla Black Glass. Na stronie, która się otworzy, włącz Black Glass — nie zmieniaj innych aplikacji. Black Glass widzi powiadomienia tylko po to, by je odłożyć, i nigdzie nic nie wysyła.</string>
     <string name="notif_filter_grant">Zezwól na dostęp do powiadomień</string>
 </resources>

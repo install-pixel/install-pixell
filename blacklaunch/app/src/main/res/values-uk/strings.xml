@@ -319,7 +319,7 @@
     <string name="all_apps_button_subtitle">Рядок у порожньому пошуку, що відкриває всі програми за абеткою</string>
     <string name="profile_needs_dnd">«%1$s»: для «Без звуку» й «Не турбувати» потрібен доступ — відкрийте налаштування профілю й дозвольте</string>
     <string name="profile_sound_failed">«%1$s»: Android не дозволив змінити режим звуку</string>
-    <string name="dnd_access_needed">«Без звуку» й «Не турбувати» потребують доступу «Не турбувати». Звичайний режим і вібрація працюють без нього.</string>
+    <string name="dnd_access_needed">«Без звуку» й «Не турбувати» потребують доступу «Не турбувати». У списку, що відкриється, знайдіть Black Glass і увімкніть — інші програми не чіпайте. Звичайний режим і вібрація працюють без нього.</string>
     <string name="dnd_access_grant">Дозволити доступ «Не турбувати»</string>
     <string name="search_scope_title">Пошук у цьому профілі</string>
     <string name="search_scope_all">Усі програми</string>
@@ -334,6 +334,6 @@
     <string name="battery_apps_open">Батарея кожної програми</string>
     <string name="notif_filter_title">Сповіщення лише від програм профілю</string>
     <string name="notif_filter_subtitle">Решта відкладається, а не губиться — повернеться, коли перемкнете профіль. Дзвінки, будильники й музика показуються завжди</string>
-    <string name="notif_filter_access">Потрібен «Доступ до сповіщень». Black Glass бачить сповіщення лише щоб їх відкласти й нікуди нічого не передає (доступу до інтернету в нього немає).</string>
+    <string name="notif_filter_access">Потрібен доступ до сповіщень лише для Black Glass. На сторінці, що відкриється, увімкніть Black Glass — інших програм не змінюйте. Black Glass бачить сповіщення лише щоб їх відкласти й нікуди нічого не передає.</string>
     <string name="notif_filter_grant">Дозволити доступ до сповіщень</string>
 </resources>
