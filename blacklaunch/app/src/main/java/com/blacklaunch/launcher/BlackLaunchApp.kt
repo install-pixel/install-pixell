@@ -5,6 +5,9 @@ import androidx.room.withTransaction
 import com.blacklaunch.launcher.apps.AppRepository
 import com.blacklaunch.launcher.apps.PrefsLaunchHistory
 import com.blacklaunch.launcher.data.AppDatabase
+import com.blacklaunch.launcher.global.AndroidGlobalSearch
+import com.blacklaunch.launcher.global.GlobalSearchSettings
+import com.blacklaunch.launcher.global.SettingsTitles
 import com.blacklaunch.launcher.profiles.DefaultProfiles
 import com.blacklaunch.launcher.profiles.PrefsActiveProfileStore
 import com.blacklaunch.launcher.profiles.ProfileRepository
@@ -29,6 +32,14 @@ class BlackLaunchApp : Application() {
     val voiceSettings: VoiceSettings by lazy { VoiceSettings(this) }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
+    val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }
+    val globalSearch: AndroidGlobalSearch by lazy {
+        AndroidGlobalSearch(
+            context = this,
+            appLabel = { pkg -> appRepository.apps.value.firstOrNull { it.packageName == pkg }?.label },
+            settingTitle = { id -> getString(SettingsTitles.of(id)) },
+        )
+    }
 
     val database: AppDatabase by lazy { AppDatabase.create(this) }
     val profileRepository: ProfileRepository by lazy {

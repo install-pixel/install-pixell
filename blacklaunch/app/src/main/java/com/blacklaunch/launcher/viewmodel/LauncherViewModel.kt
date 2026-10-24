@@ -6,11 +6,21 @@ import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.apps.AppSource
 import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import com.blacklaunch.launcher.apps.LaunchHistory
+import com.blacklaunch.launcher.global.Calculator
+import com.blacklaunch.launcher.global.DEFAULT_GLOBAL_KINDS
+import com.blacklaunch.launcher.global.GlobalResult
+import com.blacklaunch.launcher.global.GlobalSearchSource
+import com.blacklaunch.launcher.global.GroupKind
+import com.blacklaunch.launcher.global.NoGlobalSearch
+import com.blacklaunch.launcher.global.ResultGroup
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
 import com.blacklaunch.launcher.profiles.neighbour
 import com.blacklaunch.launcher.search.AppSearchEngine
 import com.blacklaunch.launcher.search.InMemoryLearnedQueries
+import com.blacklaunch.launcher.search.IndexedName
+import com.blacklaunch.launcher.search.NameMatcher
+import com.blacklaunch.launcher.search.PreparedQuery
 import com.blacklaunch.launcher.search.LearnedQueries
 import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
@@ -19,6 +29,7 @@ import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +40,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -38,6 +50,8 @@ sealed interface LauncherUiState {
     data class SearchOpen(
         val query: String = "",
         val results: List<AppInfo> = emptyList(),
+        /** Глобальний пошук: калькулятор, профілі, налаштування, ярлики, контакти… */
+        val groups: List<ResultGroup> = emptyList(),
     ) : LauncherUiState
 }
 
@@ -69,6 +83,8 @@ class LauncherViewModel(
     private val learnedQueries: LearnedQueries = InMemoryLearnedQueries(),
     /** Побудова індексу й пошук — поза головним потоком, щоб не гальмувала анімація. */
     computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val globalSource: GlobalSearchSource = NoGlobalSearch,
+    globalKinds: Flow<Set<GroupKind>> = flowOf(DEFAULT_GLOBAL_KINDS),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -112,12 +128,36 @@ class LauncherViewModel(
             .flowOn(computeDispatcher)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val groups: StateFlow<List<ResultGroup>> =
+        combine(query.filterNotNull(), globalKinds, profiles) { query, kinds, profiles -> Triple(query, kinds, profiles) }
+            .mapLatest { (query, kinds, profiles) ->
+                if (query.isBlank()) return@mapLatest emptyList()
+                buildList {
+                    if (GroupKind.CALCULATOR in kinds) {
+                        Calculator.evaluate(query)?.let { add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(query.trim(), it)))) }
+                    }
+                    if (GroupKind.PROFILES in kinds) {
+                        val prepared = PreparedQuery(query)
+                        val matching = profiles.filter {
+                            NameMatcher.score(listOf(IndexedName(it.name)), prepared) >= NameMatcher.WORD_PREFIX
+                        }
+                        if (matching.isNotEmpty()) {
+                            add(ResultGroup(GroupKind.PROFILES, matching.map { GlobalResult.Profile(it.id, it.name) }))
+                        }
+                    }
+                    addAll(globalSource.search(query, kinds))
+                }
+            }
+            .flowOn(computeDispatcher)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val state: StateFlow<LauncherUiState> =
-        combine(query, results) { query, results ->
+        combine(query, results, groups) { query, results, groups ->
             when {
                 query == null -> LauncherUiState.HomeIdle
                 query.isBlank() -> LauncherUiState.SearchOpen(query)
-                else -> LauncherUiState.SearchOpen(query, results)
+                else -> LauncherUiState.SearchOpen(query, results, groups)
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherUiState.HomeIdle)
 
@@ -140,6 +180,12 @@ class LauncherViewModel(
         val next = profiles.value.neighbour(home.value.profileId, delta) ?: return
         if (next.id == home.value.profileId) return
         activate(next)
+    }
+
+    /** Профіль, знайдений у пошуку: перемикаємо й повертаємося на головний екран. */
+    fun activateProfile(id: String) {
+        profiles.value.firstOrNull { it.id == id }?.let(::activate)
+        closeSearch()
     }
 
     private fun activate(profile: LauncherProfile) {

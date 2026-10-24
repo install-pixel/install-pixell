@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.settings.OfflineVoiceMode
 import com.blacklaunch.launcher.system.WallpaperTarget
@@ -60,6 +61,8 @@ fun SettingsScreen(
     onImportModel: () -> Unit,
     onOpenProfiles: () -> Unit,
     onOpenBattery: () -> Unit,
+    globalKinds: Set<GroupKind>,
+    onGlobalKindChange: (GroupKind, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     LaunchedEffect(Unit) { onCheckOffline() }
@@ -154,6 +157,19 @@ fun SettingsScreen(
             }
 
             Card {
+                Text(stringResource(R.string.global_section), color = Oled.TextPrimary, fontSize = 17.sp)
+                GroupKind.entries.forEach { kind ->
+                    SwitchRow(
+                        title = stringResource(kind.label()),
+                        subtitle = "",
+                        checked = kind in globalKinds,
+                        onCheckedChange = { onGlobalKindChange(kind, it) },
+                    )
+                }
+                Note(stringResource(R.string.global_note))
+            }
+
+            Card {
                 Text(stringResource(R.string.battery_section), color = Oled.TextPrimary, fontSize = 17.sp)
                 Note(stringResource(R.string.battery_tip))
                 ActionOption(R.string.battery_open, Icons.Filled.Lock, onOpenBattery)
@@ -230,7 +246,13 @@ private fun OfflineRow(language: String, status: OfflineStatus?, onDownload: (St
     }
 }
 
-
-
-
-
+@StringRes
+private fun GroupKind.label(): Int = when (this) {
+    GroupKind.CALCULATOR -> R.string.group_calculator
+    GroupKind.PROFILES -> R.string.group_profiles
+    GroupKind.SETTINGS -> R.string.group_settings
+    GroupKind.SHORTCUTS -> R.string.group_shortcuts
+    GroupKind.CONTACTS -> R.string.group_contacts
+    GroupKind.CALENDAR -> R.string.group_calendar
+    GroupKind.SMS -> R.string.group_sms
+}

@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
@@ -66,6 +67,7 @@ fun BlackHomeScreen(
     onClearQuery: () -> Unit,
     onCloseSearch: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
+    onGlobal: (GlobalResult) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -103,6 +105,7 @@ fun BlackHomeScreen(
             onClearQuery = onClearQuery,
             onLaunch = onLaunch,
             onLongPress = { aliasApp = it },
+            onGlobal = onGlobal,
             iconFor = iconFor,
             voiceState = voiceState,
             onMicClick = onMicClick,
@@ -204,6 +207,7 @@ private fun SearchOpen(
     onClearQuery: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
+    onGlobal: (GlobalResult) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -273,9 +277,11 @@ private fun SearchOpen(
         SearchResults(
             query = state.query,
             results = state.results,
+            groups = state.groups,
             iconFor = iconFor,
             onLaunch = onLaunch,
             onLongPress = onLongPress,
+            onGlobal = onGlobal,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(

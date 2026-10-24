@@ -86,4 +86,29 @@ class ProfileHomeTest {
         viewModel.updateQuery("tele")
         assertEquals(listOf("Telegram"), (viewModel.state.value as LauncherUiState.SearchOpen).results.map { it.label })
     }
+
+    private fun groups() = (viewModel.state.value as LauncherUiState.SearchOpen).groups
+
+    @Test fun profileAppearsInSearchAndActivates() {
+        viewModel.openSearch()
+        viewModel.updateQuery("відпоч")
+        val profile = groups().single { it.kind == com.blacklaunch.launcher.global.GroupKind.PROFILES }.items.single()
+        assertEquals("Відпочинок", profile.title)
+        viewModel.activateProfile("rest")
+        assertEquals("rest", viewModel.home.value.profileId)
+        assertEquals(LauncherUiState.HomeIdle, viewModel.state.value)
+    }
+
+    @Test fun calculatorAppearsInSearch() {
+        viewModel.openSearch()
+        viewModel.updateQuery("25*4")
+        val calc = groups().single { it.kind == com.blacklaunch.launcher.global.GroupKind.CALCULATOR }.items.single()
+        assertEquals("= 100", calc.title)
+    }
+
+    @Test fun plainWordShowsNoCalculator() {
+        viewModel.openSearch()
+        viewModel.updateQuery("tele")
+        assertEquals(emptyList<Any>(), groups())
+    }
 }

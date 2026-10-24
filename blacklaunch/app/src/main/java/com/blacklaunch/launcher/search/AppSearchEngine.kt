@@ -60,26 +60,13 @@ class SearchIndex(
         searchScored(query, launchCounts).map { it.app }
 
     fun searchScored(query: String, launchCounts: Map<String, Int> = emptyMap()): List<ScoredApp> {
-        val q = SearchNormalizer.normalize(query)
-        if (q.isEmpty()) return emptyList()
-        val qWords = SearchNormalizer.words(q)
-        // Кириличний запит до латинської назви: «телеграм» → «telegram».
-        val qLatin = if (Transliteration.hasCyrillic(q)) Transliteration.toLatin(q) else null
-        val qLatinWords = qLatin?.let(SearchNormalizer::words)
-        val qSkeleton = Phonetic.skeleton(q)
-        val topics = Topics.matching(q)
-        val chosen = learned[q].orEmpty()
+        val prepared = PreparedQuery(query)
+        if (prepared.isEmpty) return emptyList()
+        val topics = Topics.matching(prepared.text)
+        val chosen = learned[prepared.text].orEmpty()
         return entries
             .mapNotNull { entry ->
-                val byName = entry.names.maxOf { name ->
-                    val direct = score(name, q, qWords)
-                    val latin = if (qLatin != null && qLatinWords != null) {
-                        score(name, qLatin, qLatinWords) + AppSearchEngine.TRANSLIT_BONUS
-                    } else {
-                        0
-                    }
-                    maxOf(direct, latin, fuzzy(name, qSkeleton))
-                }
+                val byName = NameMatcher.score(entry.names, prepared)
                 val byTopic = if (topics.any { Topics.fits(it, entry.app) }) TOPIC else 0
                 // Цю програму вже обирали на такий самий запит — вона перша.
                 val byLearning = chosen[entry.app.key]?.let { LEARNED + minOf(it, LEARNED_MAX_BONUS) } ?: 0
@@ -94,45 +81,13 @@ class SearchIndex(
             )
     }
 
-    private fun score(name: IndexedName, q: String, qWords: List<String>): Int {
-        val base = when {
-            name.text == q -> EXACT
-            name.text.startsWith(q) -> PREFIX
-            name.words.any { it.startsWith(q) } -> WORD_PREFIX
-            qWords.size > 1 && qWords.all { qw -> name.words.any { it.startsWith(qw) } } -> ALL_WORDS
-            q.length >= 2 && name.text.contains(q) -> CONTAINS
-            else -> return 0
-        }
-        return base + name.bonus
-    }
-
-    /**
-     * Найнижчий рівень: схоже звучання («спотіфай» ≈ Spotify). Лише для запитів від 4 літер
-     * і схожості від 75 %, щоб не давати випадкових збігів.
-     */
-    private fun fuzzy(name: IndexedName, qSkeleton: String): Int {
-        if (qSkeleton.length < FUZZY_MIN_LENGTH || name.skeleton.isEmpty()) return 0
-        val best = (name.wordSkeletons + name.skeleton).maxOf { Phonetic.similarity(it, qSkeleton) }
-        if (best < FUZZY_THRESHOLD) return 0
-        return FUZZY + ((best - FUZZY_THRESHOLD) * FUZZY_RANGE / (1 - FUZZY_THRESHOLD)).toInt()
-    }
-
     companion object {
         private const val TOPIC = 35
         private const val LEARNED = 90
         private const val LEARNED_MAX_BONUS = 9
-        private const val FUZZY = 15
-        private const val FUZZY_RANGE = 10
-        private const val FUZZY_MIN_LENGTH = 4
-        private const val FUZZY_THRESHOLD = 0.75
-        private const val EXACT = 100
-        private const val PREFIX = 80
-        private const val WORD_PREFIX = 60
-        private const val ALL_WORDS = 55
-        private const val CONTAINS = 40
 
         /** Точний збіг назви або псевдоніма. */
-        private const val CONFIDENT = EXACT + AppSearchEngine.ALIAS_BONUS
+        private const val CONFIDENT = NameMatcher.EXACT + AppSearchEngine.ALIAS_BONUS
 
         /**
          * Програма, яку можна запустити голосом без вибору: єдиний результат

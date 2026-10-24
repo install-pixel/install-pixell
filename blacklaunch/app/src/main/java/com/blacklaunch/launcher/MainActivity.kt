@@ -2,6 +2,8 @@ package com.blacklaunch.launcher
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -31,6 +33,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.blacklaunch.launcher.apps.AppIconCache
 import com.blacklaunch.launcher.system.WallpaperController
 import com.blacklaunch.launcher.settings.Appearance
+import com.blacklaunch.launcher.global.GlobalResult
+import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.profiles.PinnedEdits
 import com.blacklaunch.launcher.profiles.ProfileViewModel
 import com.blacklaunch.launcher.ui.AliasDialog
@@ -68,6 +72,8 @@ class MainActivity : ComponentActivity() {
                     history = app.launchHistory,
                     profileSource = app.profileRepository,
                     learnedQueries = app.learnedQueries,
+                    globalSource = app.globalSearch,
+                    globalKinds = app.globalSearchSettings.enabled,
                 )
             }
         }
@@ -161,6 +167,7 @@ class MainActivity : ComponentActivity() {
             val installedModels by app.voiceModelStore.installed.collectAsStateWithLifecycle()
             val voiceMode by app.voiceSettings.mode.collectAsStateWithLifecycle()
             val userAliases by app.userAliasStore.aliases.collectAsStateWithLifecycle()
+            val globalKinds by app.globalSearchSettings.enabled.collectAsStateWithLifecycle()
             BlackLaunchTheme {
                 BlackHomeScreen(
                     state = state,
@@ -172,6 +179,7 @@ class MainActivity : ComponentActivity() {
                     onClearQuery = viewModel::clearQuery,
                     onCloseSearch = viewModel::closeSearch,
                     onLaunch = { app -> viewModel.launch(app) },
+                    onGlobal = ::openGlobalResult,
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
@@ -197,6 +205,8 @@ class MainActivity : ComponentActivity() {
                                 onImportModel = { modelPicker.launch(arrayOf("application/zip", "application/octet-stream")) },
                                 onOpenProfiles = { page = SettingsNav.Profiles },
                                 onOpenBattery = { BatterySettings.openBattery(this) },
+                                globalKinds = globalKinds,
+                                onGlobalKindChange = ::setGlobalKind,
                                 onDismiss = dismiss,
                             )
                             else -> ProfileSettings(current, onNavigate = { page = it })
@@ -225,6 +235,56 @@ class MainActivity : ComponentActivity() {
                 PackageManager.PERMISSION_GRANTED -> voice.start()
             else -> micPermission.launch(Manifest.permission.RECORD_AUDIO)
         }
+    }
+
+    /** Дія на результат глобального пошуку. */
+    private fun openGlobalResult(result: GlobalResult) {
+        when (result) {
+            is GlobalResult.Calculation -> {
+                getSystemService(ClipboardManager::class.java)
+                    ?.setPrimaryClip(ClipData.newPlainText(result.expression, result.value))
+                toast(R.string.copied)
+            }
+            is GlobalResult.Profile -> viewModel.activateProfile(result.profileId)
+            is GlobalResult.Setting -> startOrToast(Intent(result.action), fallback = Intent(Settings.ACTION_SETTINGS))
+            is GlobalResult.Shortcut -> if (!app.globalSearch.startShortcut(result)) toast(R.string.launch_failed)
+            is GlobalResult.Contact -> startOrToast(Intent(Intent.ACTION_VIEW, Uri.parse(result.lookupUri)))
+            is GlobalResult.Event -> startOrToast(Intent(Intent.ACTION_VIEW, app.globalSearch.eventUri(result)))
+            is GlobalResult.Sms -> startOrToast(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${result.address}")))
+        }
+    }
+
+    private fun startOrToast(intent: Intent, fallback: Intent? = null) {
+        try {
+            startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            if (fallback != null) startOrToast(fallback) else toast(R.string.launch_failed)
+        }
+    }
+
+    // Контакти, календар і SMS вмикаються лише з дозволом; без нього джерело лишається вимкненим.
+    private var pendingGlobalKind: GroupKind? = null
+    private val globalPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val kind = pendingGlobalKind ?: return@registerForActivityResult
+        pendingGlobalKind = null
+        if (granted) app.globalSearchSettings.set(kind, true) else toast(R.string.global_permission_denied)
+    }
+
+    private fun setGlobalKind(kind: GroupKind, on: Boolean) {
+        val permission = when (kind) {
+            GroupKind.CONTACTS -> Manifest.permission.READ_CONTACTS
+            GroupKind.CALENDAR -> Manifest.permission.READ_CALENDAR
+            GroupKind.SMS -> Manifest.permission.READ_SMS
+            else -> null
+        }
+        if (on && permission != null &&
+            ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingGlobalKind = kind
+            globalPermission.launch(permission)
+            return
+        }
+        app.globalSearchSettings.set(kind, on)
     }
 
     /** Профілі в налаштуваннях: список → редагування → вибір програми. */

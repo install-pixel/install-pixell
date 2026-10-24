@@ -75,7 +75,7 @@ internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChec
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = Oled.TextPrimary, fontSize = 17.sp)
-            Text(subtitle, color = Oled.TextSecondary, fontSize = 13.sp)
+            if (subtitle.isNotEmpty()) Text(subtitle, color = Oled.TextSecondary, fontSize = 13.sp)
         }
         Switch(
             checked = checked,
