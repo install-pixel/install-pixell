@@ -48,6 +48,7 @@ import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.global.ResultGroup
 import com.blacklaunch.launcher.ui.theme.Oled
+import com.blacklaunch.launcher.voice.VoiceAction
 
 @Composable
 fun SearchResults(
@@ -58,13 +59,15 @@ fun SearchResults(
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
     onGlobal: (GlobalResult) -> Unit,
+    actions: List<VoiceAction> = emptyList(),
+    onAction: (VoiceAction) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
         Box(modifier)
         return
     }
-    if (results.isEmpty() && groups.isEmpty()) {
+    if (results.isEmpty() && groups.isEmpty() && actions.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.BottomStart) {
             Text(stringResource(R.string.nothing_found), color = Oled.TextSecondary, modifier = Modifier.padding(16.dp))
         }
@@ -89,6 +92,8 @@ fun SearchResults(
         calculator.forEach { group ->
             items(group.items, key = { it.key }) { GlobalRow(it, onGlobal) }
         }
+        // Команди (як голосом) — одразу над полем пошуку.
+        items(actions.distinct(), key = { "action:$it" }) { ActionRow(it, onAction) }
         items(apps, key = { it.key }) { app ->
             AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
@@ -177,6 +182,32 @@ private fun GlobalRow(result: GlobalResult, onClick: (GlobalResult) -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(result.title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             result.subtitle?.let {
+                Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionRow(action: VoiceAction, onClick: (VoiceAction) -> Unit) {
+    val haptics = LocalHaptics.current
+    val shape = RoundedCornerShape(18.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clip(shape)
+            .clickable { haptics.tap(); onClick(action) }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Icon(action.icon(), contentDescription = null, tint = Oled.TextPrimary)
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(action.title(), color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            action.subtitle()?.let {
                 Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }

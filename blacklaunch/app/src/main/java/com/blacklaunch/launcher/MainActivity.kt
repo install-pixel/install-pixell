@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import com.blacklaunch.launcher.ui.LocalHaptics
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.voice.VoiceActionRunner
+import com.blacklaunch.launcher.timer.BlackTimer
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.ContactNumber
 import com.blacklaunch.launcher.ui.CallCountdownDialog
@@ -210,6 +212,7 @@ class MainActivity : ComponentActivity() {
                     onCloseSearch = viewModel::closeSearch,
                     onLaunch = { app -> viewModel.launch(app) },
                     onGlobal = ::openGlobalResult,
+                    onAction = viewModel::runAction,
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
@@ -217,7 +220,7 @@ class MainActivity : ComponentActivity() {
                         var page by remember { mutableStateOf<SettingsNav>(SettingsNav.Main) }
                         when (val current = page) {
                             SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
-                            SettingsNav.Voice, SettingsNav.Battery, SettingsNav.About,
+                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Battery, SettingsNav.About,
                             -> SettingsScreen(
                                 page = current,
                                 onNavigate = { page = it },
@@ -316,6 +319,34 @@ class MainActivity : ComponentActivity() {
         if (granted) app.voiceActionSettings.setDirectCall(true) else toast(R.string.direct_call_denied)
     }
 
+    /** Таймер, що чекає дозволу на сповіщення. */
+    private var pendingTimerSeconds = 0
+
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        val seconds = pendingTimerSeconds
+        pendingTimerSeconds = 0
+        if (seconds > 0) startTimer(seconds, askPermission = false)
+    }
+
+    /**
+     * Власний таймер BlackLaunch (відлік у сповіщенні / капсулі, без вікна «Годинника»).
+     * Без дозволу на сповіщення чи точний будильник — таймер ставить «Годинник».
+     */
+    private fun startTimer(seconds: Int, askPermission: Boolean = true) {
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission && askPermission) {
+            pendingTimerSeconds = seconds
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        if (BlackTimer.canRun(this) && BlackTimer.start(this, seconds)) {
+            toast(R.string.timer_started)
+        } else {
+            actionRunner.run(VoiceAction.Timer(seconds))
+        }
+    }
+
     private fun setDirectCall(on: Boolean) {
         if (on && ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
             callPermission.launch(Manifest.permission.CALL_PHONE)
@@ -326,6 +357,10 @@ class MainActivity : ComponentActivity() {
 
     /** Голосова дія: дзвінок і SMS шукають контакт (з дозволом), решту виконує [actionRunner]. */
     private fun runVoiceAction(action: VoiceAction) {
+        if (action is VoiceAction.Timer) {
+            startTimer(action.seconds)
+            return
+        }
         val name = when (action) {
             is VoiceAction.Call -> action.name
             is VoiceAction.Sms -> action.name

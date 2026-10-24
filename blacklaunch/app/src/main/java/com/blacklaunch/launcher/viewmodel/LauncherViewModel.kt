@@ -30,6 +30,7 @@ import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
+import com.blacklaunch.launcher.voice.VoiceActionParser
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
 import kotlinx.coroutines.CoroutineDispatcher
@@ -58,6 +59,8 @@ sealed interface LauncherUiState {
         val results: List<AppInfo> = emptyList(),
         /** Глобальний пошук: калькулятор, профілі, налаштування, ярлики, контакти… */
         val groups: List<ResultGroup> = emptyList(),
+        /** Текстові команди: «wifi», «таймер 10 хвилин», «ліхтарик» — те саме, що голосом. */
+        val actions: List<VoiceAction> = emptyList(),
     ) : LauncherUiState
 }
 
@@ -185,7 +188,11 @@ class LauncherViewModel(
             when {
                 query == null -> LauncherUiState.HomeIdle
                 query.isBlank() -> LauncherUiState.SearchOpen(query)
-                else -> LauncherUiState.SearchOpen(query, results, groups)
+                else -> {
+                    val enabled = voiceActionsEnabled()
+                    val actions = VoiceActionParser.suggest(query).filter { it.kind in enabled }
+                    LauncherUiState.SearchOpen(query, results, groups, actions)
+                }
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherUiState.HomeIdle)
 
@@ -275,6 +282,11 @@ class LauncherViewModel(
 
     fun launch(app: AppInfo): Boolean = launch(app, query.value)
 
+    /** Команду вибрали в результатах пошуку — виконує екран, як голосову. */
+    fun runAction(action: VoiceAction) {
+        _voiceActions.trySend(action)
+    }
+
     /** [searchQuery] — з якого запиту відкрили: наступного разу ця програма буде першою. */
     private fun launch(app: AppInfo, searchQuery: String?): Boolean {
         val ok = appSource.launch(app)
@@ -325,11 +337,15 @@ class LauncherViewModel(
                 }
             }
             is VoiceCommand.Open -> {
-                val results = index.value.searchScored(command.query, launchCounts.value)
-                val app = SearchIndex.unambiguous(results)
-                if (app != null && launch(app, command.query)) return
+                // Запит завжди потрапляє в пошук — після повернення з програми він на місці.
                 openSearch()
                 updateQuery(command.query)
+                // Одразу запускаємо лише на «відкрий X» і лише однозначну програму; просто назва —
+                // список, з якого користувач вибирає сам (розпізнавання буває неточним).
+                if (command.explicit) {
+                    val results = index.value.searchScored(command.query, launchCounts.value)
+                    SearchIndex.unambiguous(results)?.let { launch(it, command.query) }
+                }
             }
         }
     }

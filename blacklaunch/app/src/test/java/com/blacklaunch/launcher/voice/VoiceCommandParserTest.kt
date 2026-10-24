@@ -9,15 +9,15 @@ class VoiceCommandParserTest {
 
     @Test fun plainNameIsOpen() = assertEquals(VoiceCommand.Open("ютуб"), parse("Ютуб"))
 
-    @Test fun ukrainianOpenVerb() = assertEquals(VoiceCommand.Open("телеграм"), parse("Відкрий телеграм"))
+    @Test fun ukrainianOpenVerb() = assertEquals(VoiceCommand.Open("телеграм", explicit = true), parse("Відкрий телеграм"))
 
     @Test fun launchVerbWithPoliteness() =
-        assertEquals(VoiceCommand.Open("калькулятор"), parse("запусти калькулятор будь ласка"))
+        assertEquals(VoiceCommand.Open("калькулятор", explicit = true), parse("запусти калькулятор будь ласка"))
 
-    @Test fun englishOpenVerb() = assertEquals(VoiceCommand.Open("youtube"), parse("Open YouTube"))
+    @Test fun englishOpenVerb() = assertEquals(VoiceCommand.Open("youtube", explicit = true), parse("Open YouTube"))
 
     @Test fun appNounIsDropped() =
-        assertEquals(VoiceCommand.Open("монобанк"), parse("відкрий додаток монобанк"))
+        assertEquals(VoiceCommand.Open("монобанк", explicit = true), parse("відкрий додаток монобанк"))
 
     @Test fun openLastUkrainian() {
         assertEquals(VoiceCommand.OpenLast, parse("відкрий останній"))
@@ -31,7 +31,7 @@ class VoiceCommandParserTest {
     }
 
     @Test fun lastWordInsideAppNameIsNotCommand() =
-        assertEquals(VoiceCommand.Open("last pass"), parse("open last pass"))
+        assertEquals(VoiceCommand.Open("last pass", explicit = true), parse("open last pass"))
 
     @Test fun profileCommand() {
         assertEquals(VoiceCommand.SwitchProfile("робота"), parse("Режим робота"))
@@ -42,11 +42,11 @@ class VoiceCommandParserTest {
 
     @Test fun blankIsNothing() = assertNull(parse("   "))
 
-    @Test fun appNounAloneStaysQuery() = assertEquals(VoiceCommand.Open("додаток"), parse("відкрий додаток"))
+    @Test fun appNounAloneStaysQuery() = assertEquals(VoiceCommand.Open("додаток", explicit = true), parse("відкрий додаток"))
 
     @Test fun polishOpenVerb() {
-        assertEquals(VoiceCommand.Open("telegram"), parse("Otwórz Telegram"))
-        assertEquals(VoiceCommand.Open("kalkulator"), parse("uruchom aplikację kalkulator proszę"))
+        assertEquals(VoiceCommand.Open("telegram", explicit = true), parse("Otwórz Telegram"))
+        assertEquals(VoiceCommand.Open("kalkulator", explicit = true), parse("uruchom aplikację kalkulator proszę"))
     }
 
     @Test fun polishOpenLast() {

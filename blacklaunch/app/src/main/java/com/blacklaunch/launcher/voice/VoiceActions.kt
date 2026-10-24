@@ -77,6 +77,34 @@ object VoiceActionParser {
             ?: call(words)
     }
 
+    /**
+     * Дії для набраного тексту в пошуку: повна команда («таймер 10 хвилин», «wifi») або
+     * початок простої команди («ліхт» → ліхтарик, «гучн» → гучніше).
+     */
+    fun suggest(text: String): List<VoiceAction> {
+        val words = SearchNormalizer.words(SearchNormalizer.normalize(text))
+        if (words.isEmpty()) return emptyList()
+        parse(text, words)?.let { return listOf(it) }
+        val prefix = words.joinToString(" ")
+        if (prefix.length < MIN_PREFIX) return emptyList()
+        return simplePhrases.filter { (phrase, _) -> phrase.startsWith(prefix) }
+            .map { it.second }
+            .distinct()
+            .take(MAX_SUGGESTIONS)
+    }
+
+    private const val MIN_PREFIX = 3
+    private const val MAX_SUGGESTIONS = 2
+
+    // Прості команди без параметрів — для підказок за початком слова.
+    private val simplePhrases: List<Pair<String, VoiceAction>> by lazy {
+        mediaPhrases.flatMap { (command, phrases) -> phrases.map { it to VoiceAction.Media(command) } } +
+            volumePhrases.flatMap { (change, phrases) -> phrases.map { it to VoiceAction.Volume(change) } } +
+            panelPhrases.flatMap { (panel, phrases) -> phrases.map { it to VoiceAction.Panel(panel) } } +
+            torchWords.map { it to VoiceAction.Flashlight(null) } +
+            timePhrases.filter { ' ' in it }.map { it to VoiceAction.Time }
+    }
+
     // ---- Час ----
     private val timePhrases = setOf(
         "котра година", "яка година", "скільки часу", "котра зараз година", "скільки зараз часу",

@@ -3,8 +3,11 @@ package com.blacklaunch.launcher.voice
 import com.blacklaunch.launcher.search.SearchNormalizer
 
 sealed interface VoiceCommand {
-    /** «відкрий телеграм», «open youtube» або просто «ютуб». */
-    data class Open(val query: String) : VoiceCommand
+    /**
+     * «відкрий телеграм», «open youtube» або просто «ютуб».
+     * [explicit] — було слово «відкрий/запусти/open»: лише тоді програма запускається одразу.
+     */
+    data class Open(val query: String, val explicit: Boolean = false) : VoiceCommand
 
     /** «відкрий останній», «попередній додаток», «last app». */
     data object OpenLast : VoiceCommand
@@ -43,14 +46,15 @@ object VoiceCommandParser {
         if (words.first() in profileWords && words.size > 1) {
             return VoiceCommand.SwitchProfile(words.drop(1).joinToString(" "))
         }
-        if (words.first() in openVerbs) words = words.drop(1)
+        val explicit = words.first() in openVerbs
+        if (explicit) words = words.drop(1)
         if (words.isEmpty()) return null
 
         // «останній додаток», «last app», «попередню програму»
         if (words.first() in lastWords && words.drop(1).all { it in appNouns }) return VoiceCommand.OpenLast
 
         if (words.first() in appNouns && words.size > 1) words = words.drop(1)
-        return VoiceCommand.Open(words.joinToString(" "))
+        return VoiceCommand.Open(words.joinToString(" "), explicit)
     }
 
     private fun removePoliteness(text: String): String =

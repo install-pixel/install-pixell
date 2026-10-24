@@ -88,7 +88,7 @@ class VoiceActionParserTest {
     }
 
     @Test fun appNamesStayAppCommands() {
-        assertEquals(VoiceCommand.Open("телеграм"), VoiceCommandParser.parse("відкрий телеграм"))
+        assertEquals(VoiceCommand.Open("телеграм", explicit = true), VoiceCommandParser.parse("відкрий телеграм"))
         assertEquals(VoiceCommand.Open("камера"), VoiceCommandParser.parse("камера"))
     }
 }

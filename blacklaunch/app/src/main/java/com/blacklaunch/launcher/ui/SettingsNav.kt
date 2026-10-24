@@ -7,6 +7,7 @@ sealed interface SettingsNav {
     data object Appearance : SettingsNav
     data object Search : SettingsNav
     data object Voice : SettingsNav
+    data object VoiceActions : SettingsNav
     data object Battery : SettingsNav
     data object About : SettingsNav
     data object Profiles : SettingsNav

@@ -151,15 +151,17 @@ class LauncherViewModelTest {
     private fun app(label: String) = source.apps.value.first { it.label == label }
 
     @Test
-    fun voiceLaunchesUnambiguousAppImmediately() {
+    fun voiceAppNameAloneShowsResultsInsteadOfLaunching() {
         viewModel.onVoiceResult(listOf("ютубе", "you tube", "youtube"))
-        assertEquals(listOf("YouTube"), source.launched.map { it.label })
+        assertEquals(emptyList<Any>(), source.launched)
+        assertEquals(listOf("YouTube"), search().results.map { it.label })
     }
 
     @Test
-    fun voiceOpenCommandLaunchesApp() {
+    fun voiceOpenCommandLaunchesAppAndKeepsTheQuery() {
         viewModel.onVoiceResult(listOf("відкрий телеграм"))
         assertEquals(listOf("Telegram"), source.launched.map { it.label })
+        assertEquals("телеграм", search().query)
     }
 
     @Test

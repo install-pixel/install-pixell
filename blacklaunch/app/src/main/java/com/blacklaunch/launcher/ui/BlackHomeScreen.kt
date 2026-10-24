@@ -75,6 +75,7 @@ import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
+import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceState
 import kotlin.math.abs
 
@@ -114,6 +115,8 @@ fun BlackHomeScreen(
     onCloseSearch: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     onGlobal: (GlobalResult) -> Unit,
+    /** Команда з результатів пошуку («wifi», «таймер 10 хвилин»). */
+    onAction: (VoiceAction) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -178,6 +181,7 @@ fun BlackHomeScreen(
                 onLaunch = onLaunch,
                 onLongPress = { menuApp = it },
                 onGlobal = onGlobal,
+                onAction = onAction,
                 iconFor = iconFor,
                 voiceState = voiceState,
                 onMicClick = onMicClick,
@@ -325,6 +329,8 @@ private fun SearchOpen(
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
     onGlobal: (GlobalResult) -> Unit,
+    /** Команда з результатів пошуку («wifi», «таймер 10 хвилин»). */
+    onAction: (VoiceAction) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -456,6 +462,8 @@ private fun SearchOpen(
             onLaunch = onLaunch,
             onLongPress = onLongPress,
             onGlobal = onGlobal,
+            actions = state.actions,
+            onAction = onAction,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(

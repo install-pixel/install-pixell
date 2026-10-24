@@ -180,7 +180,14 @@ fun SettingsScreen(
                 Note(stringResource(R.string.voice_section_note))
             }
             Card {
-                Text(stringResource(R.string.voice_actions_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                MenuRow(painterResource(R.drawable.ic_mic), R.string.voice_actions_title, R.string.voice_actions_menu_hint) {
+                    onNavigate(SettingsNav.VoiceActions)
+                }
+            }
+        }
+
+        SettingsNav.VoiceActions -> SettingsPage(stringResource(R.string.voice_actions_title), { onNavigate(SettingsNav.Voice) }) {
+            Card {
                 Note(stringResource(R.string.voice_actions_note))
                 VoiceActionKind.entries.forEach { kind ->
                     SwitchRow(
