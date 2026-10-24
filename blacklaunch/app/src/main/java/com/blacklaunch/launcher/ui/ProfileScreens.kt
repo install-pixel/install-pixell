@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Checkbox
 import com.blacklaunch.launcher.profiles.SearchScope
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
@@ -195,6 +197,11 @@ fun ProfileEditScreen(
     /** Глобальний пошук у цьому профілі: контакти, SMS, календар, налаштування, ярлики. */
     globalSearch: Boolean = true,
     onGlobalSearchChange: (Boolean) -> Unit = {},
+    /** Сповіщення лише від програм профілю (через «Доступ до сповіщень»). */
+    notificationFilter: Boolean = false,
+    onNotificationFilterChange: (Boolean) -> Unit = {},
+    hasNotificationAccess: Boolean = false,
+    onGrantNotificationAccess: () -> Unit = {},
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -235,6 +242,16 @@ fun ProfileEditScreen(
                 TargetOption(mode.label(), profile.notificationMode == mode) { onChange(profile.copy(notificationMode = mode)) }
             }
             Note(stringResource(R.string.profile_apply_note))
+            SwitchRow(
+                title = stringResource(R.string.notif_filter_title),
+                subtitle = stringResource(R.string.notif_filter_subtitle),
+                checked = notificationFilter,
+                onCheckedChange = onNotificationFilterChange,
+            )
+            if (notificationFilter && !hasNotificationAccess) {
+                Note(stringResource(R.string.notif_filter_access))
+                ActionOption(R.string.notif_filter_grant, Icons.Filled.Lock, onGrantNotificationAccess)
+            }
             val needsAccess = profile.soundMode == SoundMode.SILENT || profile.notificationMode != NotificationMode.SYSTEM_DEFAULT
             if (needsAccess && !hasDndAccess) {
                 Note(stringResource(R.string.dnd_access_needed))
@@ -334,9 +351,12 @@ fun AppPickerScreen(
     alreadyPinned: Set<String>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onBack: () -> Unit,
-    onPick: (AppInfo) -> Unit,
+    /** Вибрані програми — кілька одразу, кнопкою «Додати». */
+    onPick: (List<AppInfo>) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var picked by remember { mutableStateOf<List<String>>(emptyList()) }
+    val haptics = LocalHaptics.current
     val engine = remember { AppSearchEngine() }
     val index = remember(apps) { engine.index(apps) }
     val shown = (if (query.isBlank()) apps else index.search(query)).filter { it.key !in alreadyPinned }
@@ -365,7 +385,30 @@ fun AppPickerScreen(
         )
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
             items(shown, key = { it.key }) { app ->
-                AppRow(app, iconFor = iconFor, onLaunch = onPick, onLongPress = {})
+                val selected = app.key in picked
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        AppRow(app, iconFor = iconFor, onLaunch = { picked = if (selected) picked - it.key else picked + it.key }, onLongPress = {})
+                    }
+                    Checkbox(
+                        checked = selected,
+                        onCheckedChange = { on ->
+                            haptics.tap()
+                            picked = if (on) picked + app.key else picked - app.key
+                        },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Color(0xFFE6E6E6),
+                            uncheckedColor = Color(0xFF5A5A5A),
+                            checkmarkColor = Color.Black,
+                        ),
+                    )
+                }
+            }
+        }
+        if (picked.isNotEmpty()) {
+            val byKey = apps.associateBy { it.key }
+            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                SmallButton(stringResource(R.string.pick_apps_add, picked.size)) { onPick(picked.mapNotNull { byKey[it] }) }
             }
         }
     }

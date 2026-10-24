@@ -5,6 +5,12 @@ import android.os.Build
 import android.widget.Toast
 import com.blacklaunch.launcher.profiles.PrefsSearchScopes
 import com.blacklaunch.launcher.profiles.ProfileApplier
+import com.blacklaunch.launcher.profiles.LauncherProfile
+import com.blacklaunch.launcher.profiles.ProfileNotificationFilter
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -76,6 +82,11 @@ class BlackLaunchApp : Application() {
     val profileApplier: ProfileApplier by lazy { ProfileApplier(this) }
     val searchScopes: PrefsSearchScopes by lazy { PrefsSearchScopes(this) }
 
+    /** Активний профіль — для фільтра сповіщень, що працює поза екраном. */
+    val activeProfile: StateFlow<LauncherProfile?> by lazy {
+        profileRepository.activeProfile.stateIn(appScope, SharingStarted.Eagerly, null)
+    }
+
     val database: AppDatabase by lazy { AppDatabase.create(this) }
     val profileRepository: ProfileRepository by lazy {
         ProfileRepository(
@@ -89,6 +100,11 @@ class BlackLaunchApp : Application() {
         super.onCreate()
         crashLog.install()
         appScope.launch { applyProfileOnSwitch() }
+        // Змінився профіль, його програми чи фільтр — перевірити сповіщення ще раз.
+        appScope.launch {
+            combine(activeProfile, searchScopes.notificationFilter) { profile, _ -> profile }
+                .collect { ProfileNotificationFilter.refreshNow() }
+        }
         appScope.launch {
             profileRepository.ensureDefaults(
                 DefaultProfiles.create(

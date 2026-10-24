@@ -65,3 +65,20 @@ object NameMatcher {
         return FUZZY + ((best - FUZZY_THRESHOLD) * FUZZY_RANGE / (1 - FUZZY_THRESHOLD)).toInt()
     }
 }
+
+/**
+ * Кожне слово запиту — початок якогось слова імені (кирилицею або транслітом):
+ * «ол пе» → «Олег Петренко», «пе» → «Petro». Для контактів: без збігів «десь усередині».
+ */
+object NameStarts {
+    fun matches(name: String, query: PreparedQuery): Boolean {
+        if (query.isEmpty) return false
+        val words = SearchNormalizer.words(SearchNormalizer.normalize(name))
+        val latinWords = words.map { if (Transliteration.hasCyrillic(it)) Transliteration.toLatin(it) else it }
+        fun allStart(queryWords: List<String>, nameWords: List<String>) =
+            queryWords.all { q -> nameWords.any { it.startsWith(q) } }
+        return allStart(query.words, words) ||
+            allStart(query.words, latinWords) ||
+            (query.latinWords?.let { allStart(it, words) } ?: false)
+    }
+}

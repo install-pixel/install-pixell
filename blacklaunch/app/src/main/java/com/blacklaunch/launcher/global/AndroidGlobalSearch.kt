@@ -18,6 +18,7 @@ import android.text.format.DateUtils
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.blacklaunch.launcher.search.IndexedName
+import com.blacklaunch.launcher.search.NameStarts
 import com.blacklaunch.launcher.search.NameMatcher
 import com.blacklaunch.launcher.search.PreparedQuery
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +52,7 @@ class AndroidGlobalSearch(
             }
             if (GroupKind.SHORTCUTS in kinds) group(GroupKind.SHORTCUTS) { shortcuts(prepared, appPackages) }
             if (GroupKind.CONTACTS in kinds && granted(Manifest.permission.READ_CONTACTS)) {
-                group(GroupKind.CONTACTS) { contacts(prepared.text) }
+                group(GroupKind.CONTACTS) { contacts(prepared) }
             }
             if (GroupKind.CALENDAR in kinds && granted(Manifest.permission.READ_CALENDAR)) {
                 group(GroupKind.CALENDAR) { events(query.trim()) }
@@ -112,8 +113,12 @@ class AndroidGlobalSearch(
             }
     }
 
-    private fun contacts(query: String): List<GlobalResult> {
+    private fun contacts(prepared: PreparedQuery): List<GlobalResult> {
+        val query = prepared.text
         if (query.length < MIN_TEXT) return emptyList()
+        // Фільтр Android шукає й по пошті, організації, прізвиську — тоді «по» знаходило «…Миколайович».
+        // Лишаємо лише тих, у кого збігається ім'я (або номер, якщо шукають цифрами).
+        val byNumber = query.any { it.isDigit() }
         val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_FILTER_URI, Uri.encode(query))
         val projection = arrayOf(
             ContactsContract.Contacts._ID,
@@ -123,8 +128,10 @@ class AndroidGlobalSearch(
         return appContext.contentResolver.query(uri, projection, null, null, null)?.use { c ->
             buildList {
                 while (c.moveToNext() && size < LIMIT) {
+                    val name = c.getString(2).orEmpty()
+                    if (!byNumber && !NameStarts.matches(name, prepared)) continue
                     val lookup = ContactsContract.Contacts.getLookupUri(c.getLong(0), c.getString(1))
-                    add(GlobalResult.Contact(lookup.toString(), c.getString(2).orEmpty(), null))
+                    add(GlobalResult.Contact(lookup.toString(), name, null))
                 }
             }
         }.orEmpty()

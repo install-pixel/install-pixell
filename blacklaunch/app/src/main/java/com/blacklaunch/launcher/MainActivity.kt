@@ -24,10 +24,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.profiles.SearchScope
+import com.blacklaunch.launcher.profiles.ProfileNotificationFilter
 import com.blacklaunch.launcher.voice.VoiceActionRunner
 import com.blacklaunch.launcher.timer.BlackTimer
 import com.blacklaunch.launcher.voice.VoiceAction
@@ -61,6 +63,7 @@ import com.blacklaunch.launcher.ui.AliasDialog
 import com.blacklaunch.launcher.ui.AppActionsDialog
 import com.blacklaunch.launcher.system.BatterySettings
 import com.blacklaunch.launcher.ui.AppPickerScreen
+import com.blacklaunch.launcher.ui.AppListScreen
 import com.blacklaunch.launcher.ui.ProfileEditScreen
 import com.blacklaunch.launcher.ui.ProfilesScreen
 import com.blacklaunch.launcher.ui.SettingsNav
@@ -279,7 +282,7 @@ class MainActivity : ComponentActivity() {
                         var page by remember { mutableStateOf<SettingsNav>(SettingsNav.Main) }
                         when (val current = page) {
                             SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
-                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Battery, SettingsNav.About,
+                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.CustomCommands, SettingsNav.Battery, SettingsNav.About,
                             -> SettingsScreen(
                                 page = current,
                                 onNavigate = { page = it },
@@ -636,13 +639,23 @@ class MainActivity : ComponentActivity() {
         val apps by profileViewModel.apps.collectAsStateWithLifecycle()
         val scopes by app.searchScopes.scopes.collectAsStateWithLifecycle()
         val globalOff by app.searchScopes.globalOff.collectAsStateWithLifecycle()
+        val notifFilter by app.searchScopes.notificationFilter.collectAsStateWithLifecycle()
+        val notificationAccess by notificationAccessState.collectAsStateWithLifecycle()
         // Доступ «Не турбувати» перевіряємо щоразу при поверненні з налаштувань Android.
         val dndAccess by dndAccessState.collectAsStateWithLifecycle()
         when (page) {
+            SettingsNav.BatteryApps -> AppListScreen(
+                title = stringResource(R.string.battery_apps_open),
+                note = stringResource(R.string.battery_profiles_note),
+                apps = apps,
+                iconFor = iconCache::load,
+                onBack = { onNavigate(SettingsNav.Battery) },
+                onPick = { BatterySettings.openForApp(this, it.packageName) },
+            )
             SettingsNav.Profiles -> ProfilesScreen(
                 profiles = profiles,
                 activeId = activeId,
-                onBack = { onNavigate(SettingsNav.HomeScreen) },
+                onBack = { onNavigate(SettingsNav.Main) },
                 onSetActive = profileViewModel::setActive,
                 onEdit = { onNavigate(SettingsNav.Edit(it)) },
                 onCreate = { name -> profileViewModel.create(name) { id -> onNavigate(SettingsNav.Edit(id)) } },
@@ -665,6 +678,10 @@ class MainActivity : ComponentActivity() {
                     onSearchScopeChange = { app.searchScopes.set(profile.id, it) },
                     globalSearch = profile.id !in globalOff,
                     onGlobalSearchChange = { app.searchScopes.setGlobal(profile.id, it) },
+                    notificationFilter = profile.id in notifFilter,
+                    onNotificationFilterChange = { app.searchScopes.setNotificationFilter(profile.id, it) },
+                    hasNotificationAccess = notificationAccess,
+                    onGrantNotificationAccess = { startOrToast(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
                 )
             }
             is SettingsNav.PickApp -> {
@@ -676,7 +693,8 @@ class MainActivity : ComponentActivity() {
                     onBack = { onNavigate(SettingsNav.Edit(page.profileId)) },
                     onPick = { picked ->
                         if (profile != null) {
-                            profileViewModel.update(profile.copy(pinnedAppKeys = PinnedEdits.add(profile.pinnedAppKeys, picked.key)))
+                            val keys = picked.fold(profile.pinnedAppKeys) { keys, app -> PinnedEdits.add(keys, app.key) }
+                            profileViewModel.update(profile.copy(pinnedAppKeys = keys))
                         }
                         onNavigate(SettingsNav.Edit(page.profileId))
                     },
@@ -775,6 +793,7 @@ class MainActivity : ComponentActivity() {
         enableSmsIfGranted()
         wasStopped = false
         dndAccessState.value = app.profileApplier.hasDndAccess()
+        notificationAccessState.value = ProfileNotificationFilter.hasAccess(this)
     }
 
     // Натискання Home, коли BlackLaunch уже на екрані, повертає чистий чорний екран.
@@ -826,6 +845,7 @@ class MainActivity : ComponentActivity() {
 
     private val glance = MutableStateFlow<GlanceInfo?>(null)
     private val dndAccessState = MutableStateFlow(false)
+    private val notificationAccessState = MutableStateFlow(false)
 
     /** Чорний головний екран без відкритого пошуку чи налаштувань. */
     private var homeIdle = true

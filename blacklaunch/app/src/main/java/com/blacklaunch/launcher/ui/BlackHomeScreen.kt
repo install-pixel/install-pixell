@@ -300,7 +300,12 @@ private fun HomeIdle(
             onMove = onMoveApp,
             onRemove = onRemoveApp,
             onIconBounds = { iconBounds = it },
-            reservedTop = (if (showProfileLabel) ProfileLabelSpace else 0.dp) + if (glance != null) GlanceSpace else 0.dp,
+            // З оглядом назва профілю — його перший рядок, окремого місця під плашку не треба.
+            reservedTop = when {
+                glance != null -> GlanceSpace + if (showProfileLabel) GlanceProfileLine else 0.dp
+                showProfileLabel -> ProfileLabelSpace
+                else -> 0.dp
+            },
             reservedBottom = SearchFieldSpace,
             onDraggingChange = { dragging = it },
             modifier = Modifier
@@ -313,19 +318,32 @@ private fun HomeIdle(
             .align(Alignment.TopCenter)
             .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
             .padding(top = 16.dp)
-        glance?.let { info ->
+        // Короткий огляд одним блоком зліва: назва профілю (натискання — наступний), дата, подробиці.
+        if (glance != null && !dragging) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
-                    .padding(start = 24.dp, end = 24.dp, top = if (showProfileLabel) ProfileLabelSpace + 20.dp else 16.dp),
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp),
             ) {
-                Text(info.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                if (info.details.isNotEmpty()) Text(info.details, color = Oled.TextSecondary, fontSize = 13.sp)
+                if (showProfileLabel && home.profileName.isNotEmpty()) {
+                    Text(
+                        text = home.profileName.uppercase(),
+                        color = if (profileBanner != null) Oled.TextPrimary else Oled.TextSecondary,
+                        fontSize = 12.sp,
+                        letterSpacing = 1.5.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .then(if (home.profileCount > 1) Modifier.clickable { haptics.tap(); onSwitchProfile(1) } else Modifier)
+                            .padding(vertical = 2.dp),
+                    )
+                }
+                Text(glance.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)
             }
         }
         // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.
-        if (!dragging && showProfileLabel && home.profileName.isNotEmpty()) {
+        if (glance == null && !dragging && showProfileLabel && home.profileName.isNotEmpty()) {
             // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.
             ProfilePill(
                 name = home.profileName,
@@ -333,7 +351,7 @@ private fun HomeIdle(
                 onClick = if (home.profileCount > 1) ({ onSwitchProfile(1) }) else null,
                 modifier = topModifier,
             )
-        } else if (!dragging) {
+        } else if (glance == null && !dragging) {
             // Без плашки назва коротко з'являється вгорі під час перемикання.
             AnimatedVisibility(visible = profileBanner != null, enter = fadeIn(), exit = fadeOut(), modifier = topModifier) {
                 ProfilePill(name = profileBanner.orEmpty(), highlighted = true, onClick = null)
@@ -346,6 +364,7 @@ private fun HomeIdle(
 private val ProfileLabelSpace = 48.dp
 private val SearchFieldSpace = 64.dp
 private val GlanceSpace = 64.dp
+private val GlanceProfileLine = 20.dp
 
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {

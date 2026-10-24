@@ -117,7 +117,7 @@
     <string name="profile_delete_confirm">Usunąć profil „%1$s”?</string>
     <string name="profile_last">Ostatniego profilu nie można usunąć</string>
     <string name="profile_save_failed">Nie udało się zapisać profilu</string>
-    <string name="pick_app_title">Wybierz aplikację</string>
+    <string name="pick_app_title">Wybierz aplikacje</string>
     <string name="settings_profiles">Profile</string>
     <string name="tile_label">Profil</string>
     <plurals name="pinned_count">
@@ -179,7 +179,7 @@
     <string name="section_about">O Black Glass</string>
     <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
     <string name="search_names_note">Własne nazwy aplikacji: przytrzymaj aplikację w wynikach wyszukiwania.</string>
-    <string name="battery_profiles_note">Ograniczenie działania w tle („Ograniczone” w ustawieniach baterii) ustawia się dla aplikacji na cały telefon — Android nie pozwala launcherom zmieniać go dla każdego profilu. Baterię aplikacji otworzysz: długie naciśnięcie w wyszukiwaniu → „Informacje o aplikacji”.</string>
+    <string name="battery_profiles_note">Ograniczenie działania w tle ustawia się dla aplikacji na cały telefon (Android nie pozwala na to dla profilu). Dotknij aplikacji — otworzą się jej ustawienia baterii, wybierz tam „Ograniczone”.</string>
     <string name="grid_hint">Aplikacje na ekranie głównym: przytrzymaj ikonę i przeciągnij w dowolne miejsce — na górę, na środek, do rogu. Jeśli jest tam inna aplikacja, zamienią się miejscami. Każdy profil ma własny układ.</string>
     <string name="sms_help_title">Jak włączyć wyszukiwanie w SMS</string>
     <string name="sms_help_new">Android 15 i nowsze (oraz niektóre telefony z Androidem 13–14), gdy Black Glass nie jest zainstalowany ze Sklepu Play: Android blokuje dostęp do SMS, dopóki na to nie zezwolisz. 1) Raz spróbuj włączyć „SMS” powyżej. 2) Otwórz informacje o aplikacji Black Glass (przycisk poniżej). 3) Dotknij ⋮ w prawym górnym rogu → „Zezwól na ustawienia z ograniczeniami” i potwierdź PIN-em lub odciskiem palca. 4) Wróć i ponownie włącz „SMS”.</string>
@@ -328,4 +328,12 @@
     <string name="search_scope_note">„Tylko aplikacje profilu” dotyczy też podpowiedzi, „Wszystkich aplikacji” i głosowego „otwórz”. Kontakty, ustawienia i kalkulator zostają. Ostatnie wyszukiwania są osobne dla każdego profilu.</string>
     <string name="profile_global_title">Wyszukiwanie globalne</string>
     <string name="profile_global_subtitle">Kontakty, SMS, kalendarz, ustawienia i skróty aplikacji w tym profilu. Kalkulator i profile zostają zawsze</string>
+    <string name="pick_apps_add">Dodaj (%1$d)</string>
+    <string name="section_profiles_hint">Praca, dom, odpoczynek: aplikacje, dźwięk, „Nie przeszkadzać”, wyszukiwanie</string>
+    <string name="custom_commands_menu_hint">Własna fraza → kilka poleceń po kolei</string>
+    <string name="battery_apps_open">Bateria każdej aplikacji</string>
+    <string name="notif_filter_title">Powiadomienia tylko z aplikacji profilu</string>
+    <string name="notif_filter_subtitle">Pozostałe są odkładane, nie giną — wrócą po przełączeniu profilu. Połączenia, budziki i muzyka zawsze się pokazują</string>
+    <string name="notif_filter_access">Wymaga „Dostępu do powiadomień”. Black Glass widzi powiadomienia tylko po to, by je odłożyć, i nigdzie nic nie wysyła (nie ma dostępu do internetu).</string>
+    <string name="notif_filter_grant">Zezwól na dostęp do powiadomień</string>
 </resources>

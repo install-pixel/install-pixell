@@ -119,7 +119,7 @@
     <string name="profile_delete_confirm">Delete profile “%1$s”?</string>
     <string name="profile_last">The last profile cannot be deleted</string>
     <string name="profile_save_failed">Could not save the profile</string>
-    <string name="pick_app_title">Choose app</string>
+    <string name="pick_app_title">Choose apps</string>
     <string name="settings_profiles">Profiles</string>
     <string name="tile_label">Profile</string>
     <plurals name="pinned_count">
@@ -179,7 +179,7 @@
     <string name="section_about">About Black Glass</string>
     <string name="about_note">A minimal offline launcher: no internet permission, no ads, no tracking. Everything stays on this phone.</string>
     <string name="search_names_note">Your own names for apps: long-press an app in the search results.</string>
-    <string name="battery_profiles_note">Background restriction (“Restricted” in battery settings) is set per app for the whole phone — Android does not let launchers change it per profile. Open an app’s battery settings from its menu: long press in search → App info.</string>
+    <string name="battery_profiles_note">Background restriction is set per app for the whole phone (Android does not allow it per profile). Tap an app to open its battery settings and choose “Restricted”.</string>
     <string name="grid_hint">Apps on the home screen: long-press an icon and drag it to any place — top, centre, a corner. If another app is there, they swap. Each profile has its own layout.</string>
     <string name="sms_help_title">How to turn on SMS search</string>
     <string name="sms_help_new">Android 15 and newer (and some Android 13–14 phones), when Black Glass is not installed from Play: Android blocks SMS access until you allow it. 1) Try to turn on “SMS” above once. 2) Open the Black Glass app info (button below). 3) Tap ⋮ in the top right → “Allow restricted settings” and confirm with your PIN or fingerprint. 4) Come back and turn on “SMS” again.</string>
@@ -328,4 +328,12 @@
     <string name="search_scope_note">“Only profile apps” also applies to suggestions, All apps and voice “open”. Contacts, settings and the calculator stay. Recent searches are kept per profile.</string>
     <string name="profile_global_title">Global search</string>
     <string name="profile_global_subtitle">Contacts, messages, calendar, settings and app shortcuts in this profile. The calculator and profiles always stay</string>
+    <string name="pick_apps_add">Add (%1$d)</string>
+    <string name="section_profiles_hint">Work, home, rest: apps, sound, Do not disturb, search</string>
+    <string name="custom_commands_menu_hint">Your phrase → several commands in a row</string>
+    <string name="battery_apps_open">Battery of each app</string>
+    <string name="notif_filter_title">Notifications only from profile apps</string>
+    <string name="notif_filter_subtitle">Others are put aside, not lost — they come back when you switch the profile. Calls, alarms and music always show</string>
+    <string name="notif_filter_access">Needs notification access. Black Glass sees notifications only to hide them and sends nothing anywhere (it has no internet access).</string>
+    <string name="notif_filter_grant">Allow notification access</string>
 </resources>

@@ -21,6 +21,16 @@ class PrefsSearchScopes(context: Context) {
     /** Профілі, у яких глобальний пошук вимкнено. */
     val globalOff: StateFlow<Set<String>> = _globalOff.asStateFlow()
 
+    private val _notificationFilter = MutableStateFlow(prefs.getStringSet(KEY_NOTIF_FILTER, emptySet()).orEmpty().toSet())
+
+    /** Профілі, де сповіщення лише від їхніх програм. */
+    val notificationFilter: StateFlow<Set<String>> = _notificationFilter.asStateFlow()
+
+    fun setNotificationFilter(profileId: String, on: Boolean) {
+        _notificationFilter.value = if (on) _notificationFilter.value + profileId else _notificationFilter.value - profileId
+        prefs.edit().putStringSet(KEY_NOTIF_FILTER, _notificationFilter.value).apply()
+    }
+
     fun setGlobal(profileId: String, on: Boolean) {
         _globalOff.value = if (on) _globalOff.value - profileId else _globalOff.value + profileId
         prefs.edit().putStringSet(KEY_GLOBAL_OFF, _globalOff.value).apply()
@@ -35,5 +45,6 @@ class PrefsSearchScopes(context: Context) {
     private companion object {
         // Окремий ключ: решта ключів — id профілів.
         const val KEY_GLOBAL_OFF = "_global_off"
+        const val KEY_NOTIF_FILTER = "_notification_filter"
     }
 }

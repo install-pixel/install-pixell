@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
@@ -90,9 +91,6 @@ fun SettingsScreen(
     val toMain = { onNavigate(SettingsNav.Main) }
     when (page) {
         SettingsNav.HomeScreen -> SettingsPage(stringResource(R.string.section_home), toMain) {
-            Card {
-                ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
-            }
             Card {
                 SwitchRow(
                     title = stringResource(R.string.profile_swipe_title),
@@ -245,11 +243,13 @@ fun SettingsScreen(
                 MenuRow(painterResource(R.drawable.ic_mic), R.string.voice_actions_title, R.string.voice_actions_menu_hint) {
                     onNavigate(SettingsNav.VoiceActions)
                 }
+                MenuRow(Icons.Filled.PlayArrow, R.string.custom_commands_title, R.string.custom_commands_menu_hint) {
+                    onNavigate(SettingsNav.CustomCommands)
+                }
             }
         }
 
         SettingsNav.VoiceActions -> SettingsPage(stringResource(R.string.voice_actions_title), { onNavigate(SettingsNav.Voice) }) {
-            CustomCommandsCard(customCommands, onSaveCustomCommand, onDeleteCustomCommand)
             Card {
                 Note(stringResource(R.string.voice_actions_note))
                 VoiceActionKind.entries.forEach { kind ->
@@ -298,6 +298,10 @@ fun SettingsScreen(
             }
         }
 
+        SettingsNav.CustomCommands -> SettingsPage(stringResource(R.string.custom_commands_title), { onNavigate(SettingsNav.Voice) }) {
+            CustomCommandsCard(customCommands, onSaveCustomCommand, onDeleteCustomCommand)
+        }
+
         SettingsNav.Battery -> SettingsPage(stringResource(R.string.battery_section), toMain) {
             Card {
                 Note(stringResource(R.string.battery_tip))
@@ -305,6 +309,7 @@ fun SettingsScreen(
             }
             Card {
                 Note(stringResource(R.string.battery_profiles_note))
+                ActionOption(R.string.battery_apps_open, Icons.Filled.List) { onNavigate(SettingsNav.BatteryApps) }
             }
         }
 
@@ -338,6 +343,7 @@ fun SettingsScreen(
         else -> SettingsPage(stringResource(R.string.settings_title), onDismiss) {
             Card {
                 MenuRow(Icons.Filled.Home, R.string.section_home, R.string.section_home_hint) { onNavigate(SettingsNav.HomeScreen) }
+                MenuRow(Icons.Filled.Person, R.string.settings_profiles, R.string.section_profiles_hint) { onNavigate(SettingsNav.Profiles) }
                 MenuRow(painterResource(R.drawable.ic_palette), R.string.section_appearance, R.string.section_appearance_hint) {
                     onNavigate(SettingsNav.Appearance)
                 }

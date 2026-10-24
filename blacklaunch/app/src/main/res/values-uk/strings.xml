@@ -117,7 +117,7 @@
     <string name="profile_delete_confirm">Видалити профіль «%1$s»?</string>
     <string name="profile_last">Останній профіль видалити не можна</string>
     <string name="profile_save_failed">Не вдалося зберегти профіль</string>
-    <string name="pick_app_title">Вибрати програму</string>
+    <string name="pick_app_title">Вибрати програми</string>
     <string name="settings_profiles">Профілі</string>
     <string name="tile_label">Профіль</string>
     <plurals name="pinned_count">
@@ -179,7 +179,7 @@
     <string name="section_about">Про Black Glass</string>
     <string name="about_note">Мінімалістичний офлайн-лаунчер: без дозволу на інтернет, без реклами й стеження. Усе лишається на цьому телефоні.</string>
     <string name="search_names_note">Власні назви програм: довге натискання на програму в результатах пошуку.</string>
-    <string name="battery_profiles_note">Обмеження фону («Обмежено» в налаштуваннях батареї) задається для програми на весь телефон — Android не дозволяє лаунчерам змінювати його для кожного профілю. Відкрити батарею програми: довге натискання в пошуку → «Про програму».</string>
+    <string name="battery_profiles_note">Обмеження фону задається для програми на весь телефон (Android не дозволяє робити це для профілю). Натисніть програму — відкриються її налаштування батареї, там виберіть «Обмежено».</string>
     <string name="grid_hint">Програми на головному екрані: довге натискання на значок і перетягування в будь-яке місце — вгору, по центру, в кут. Якщо там інша програма, вони міняються місцями. У кожного профілю своя розкладка.</string>
     <string name="sms_help_title">Як увімкнути пошук у SMS</string>
     <string name="sms_help_new">Android 15 і новіші (а також деякі телефони з Android 13–14), якщо Black Glass встановлено не з Play Маркету: Android блокує доступ до SMS, доки ви його не дозволите. 1) Один раз спробуйте ввімкнути «SMS» вище. 2) Відкрийте сторінку Black Glass у налаштуваннях телефона (кнопка нижче). 3) Натисніть ⋮ угорі праворуч → «Дозволити обмежені налаштування» й підтвердьте PIN-кодом або відбитком. 4) Поверніться й знову ввімкніть «SMS».</string>
@@ -328,4 +328,12 @@
     <string name="search_scope_note">«Лише програми профілю» діє і на підказки, «Усі програми» та голосове «відкрий». Контакти, налаштування й калькулятор лишаються. Останні запити — окремо для кожного профілю.</string>
     <string name="profile_global_title">Глобальний пошук</string>
     <string name="profile_global_subtitle">Контакти, SMS, календар, налаштування й ярлики програм у цьому профілі. Калькулятор і профілі лишаються завжди</string>
+    <string name="pick_apps_add">Додати (%1$d)</string>
+    <string name="section_profiles_hint">Робота, дім, відпочинок: програми, звук, «Не турбувати», пошук</string>
+    <string name="custom_commands_menu_hint">Своя фраза → кілька команд поспіль</string>
+    <string name="battery_apps_open">Батарея кожної програми</string>
+    <string name="notif_filter_title">Сповіщення лише від програм профілю</string>
+    <string name="notif_filter_subtitle">Решта відкладається, а не губиться — повернеться, коли перемкнете профіль. Дзвінки, будильники й музика показуються завжди</string>
+    <string name="notif_filter_access">Потрібен «Доступ до сповіщень». Black Glass бачить сповіщення лише щоб їх відкласти й нікуди нічого не передає (доступу до інтернету в нього немає).</string>
+    <string name="notif_filter_grant">Дозволити доступ до сповіщень</string>
 </resources>
