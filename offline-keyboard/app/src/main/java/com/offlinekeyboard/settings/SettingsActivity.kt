@@ -26,10 +26,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -484,12 +482,12 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             if (crash != null) {
                 Text(stringResource(R.string.about_last_crash), style = MaterialTheme.typography.titleSmall)
                 Text(crash.lineSequence().take(6).joinToString("\n"), style = MaterialTheme.typography.bodySmall)
-                OutlinedButton(onClick = {
+                ActionButton(onClick = {
                     val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
                     clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
                 }) { Text(stringResource(R.string.about_copy_crash)) }
             }
-            OutlinedButton(onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
+            ActionButton(onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
         }
     }
 

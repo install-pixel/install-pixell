@@ -8,13 +8,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -109,7 +106,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
     PageScaffold(stringResource(R.string.page_models), onBack) {
         Text(stringResource(R.string.models_intro), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(R.string.models_how), style = MaterialTheme.typography.bodyMedium)
-        Button(enabled = busy == null, onClick = { filesPicker.launch(ZIP_TYPES) }) {
+        ActionButton(enabled = busy == null, onClick = { filesPicker.launch(ZIP_TYPES) }) {
             Text(stringResource(R.string.models_install_downloaded))
         }
 
@@ -124,7 +121,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
         Section(stringResource(R.string.models_speech)) {
             StatusLine(stringResource(R.string.mic_permission), micGranted)
             if (!micGranted) {
-                OutlinedButton(onClick = { micRequest.launch(Manifest.permission.RECORD_AUDIO) }) {
+                ActionButton(onClick = { micRequest.launch(Manifest.permission.RECORD_AUDIO) }) {
                     Text(stringResource(R.string.mic_permission_grant))
                 }
             }
@@ -133,19 +130,25 @@ internal fun ModelsPage(onBack: () -> Unit) {
                 HorizontalDivider()
                 val model = remember(refresh, modelsVersion, language) { store.speechModel(language) }
                 val file = SPEECH_FILES.getValue(language)
-                ModelRow(
-                    title = languageName(language),
-                    status = model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" }
-                        ?: stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second),
-                    installed = model != null,
-                    enabled = busy == null,
-                    onDownload = { Links.open(context, Links.modelFile(file.first)) },
-                    onDelete = {
-                        store.deleteSpeech(language)
-                        refresh++
-                        ModelEvents.modelsChanged()
-                    },
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatusLine(languageName(language), model != null)
+                    Text(
+                        model?.let { "${it.name} · ${formatMb(it.sizeBytes)}" }
+                            ?: (stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second)),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (model == null) {
+                        ActionButton(onClick = { Links.open(context, Links.modelFile(file.first)) }) {
+                            Text(stringResource(R.string.models_download))
+                        }
+                    } else {
+                        ActionButton(enabled = busy == null, onClick = {
+                            store.deleteSpeech(language)
+                            refresh++
+                            ModelEvents.modelsChanged()
+                        }) { Text(stringResource(R.string.delete)) }
+                    }
+                }
             }
         }
 
@@ -154,62 +157,67 @@ internal fun ModelsPage(onBack: () -> Unit) {
             for (direction in TranslationDirection.entries) {
                 HorizontalDivider()
                 val model = remember(refresh, modelsVersion, direction) { store.translationModel(direction) }
+                val isAccurate = remember(model) { model != null && store.isAccurate(model) }
                 val file = TRANSLATION_FILES.getValue(direction)
                 val accurate = ACCURATE_FILES[direction]
-                val accurateLabel = stringResource(R.string.models_accurate_tag)
-                ModelRow(
-                    title = "${languageName(direction.source)} → ${languageName(direction.target)}",
-                    status = model?.let {
-                        val tag = if ("tc-big" in it.name || "accurate" in it.name) " · $accurateLabel" else ""
-                        "${it.name}$tag · ${formatMb(it.sizeBytes)}"
-                    } ?: (stringResource(R.string.models_not_installed) + " · " + stringResource(R.string.models_size, file.second)),
-                    installed = model != null,
-                    enabled = busy == null,
-                    onDownload = { Links.open(context, Links.modelFile(file.first)) },
-                    accurate = accurate?.let { (name, mb) ->
-                        stringResource(R.string.models_download_accurate, mb) to { Links.open(context, Links.modelFile(name)) }
-                    },
-                    onDelete = {
-                        store.deleteTranslation(direction)
-                        refresh++
-                        ModelEvents.modelsChanged()
-                    },
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatusLine("${languageName(direction.source)} → ${languageName(direction.target)}", model != null)
+                    Text(
+                        model?.let {
+                            val kind = stringResource(if (isAccurate) R.string.models_kind_accurate else R.string.models_kind_standard)
+                            stringResource(R.string.models_installed_kind, kind, formatMb(it.sizeBytes))
+                        } ?: stringResource(R.string.models_not_installed),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    // Each size on its own line: the installed one carries the check mark.
+                    ModelVariant(
+                        label = stringResource(R.string.models_variant_standard, file.second),
+                        installed = model != null && !isAccurate,
+                        download = stringResource(R.string.models_download_standard),
+                        onDownload = { Links.open(context, Links.modelFile(file.first)) },
+                    )
+                    accurate?.let { (name, mb) ->
+                        ModelVariant(
+                            label = stringResource(R.string.models_variant_accurate, mb),
+                            installed = isAccurate,
+                            download = stringResource(R.string.models_download_accurate_short),
+                            onDownload = { Links.open(context, Links.modelFile(name)) },
+                        )
+                    }
+                    if (model != null) {
+                        ActionButton(enabled = busy == null, onClick = {
+                            store.deleteTranslation(direction)
+                            refresh++
+                            ModelEvents.modelsChanged()
+                        }) { Text(stringResource(R.string.delete)) }
+                    }
+                }
             }
         }
 
         Section(stringResource(R.string.models_custom)) {
             Text(stringResource(R.string.models_custom_text), style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { Links.open(context, Links.MODELS_GUIDE) }) { Text(stringResource(R.string.models_open_guide)) }
-                OutlinedButton(onClick = { Links.open(context, Links.MODELS_RELEASE) }) { Text(stringResource(R.string.models_open_release)) }
-            }
+            ActionButton(onClick = { Links.open(context, Links.MODELS_GUIDE) }) { Text(stringResource(R.string.models_open_guide)) }
+            ActionButton(onClick = { Links.open(context, Links.MODELS_RELEASE) }) { Text(stringResource(R.string.models_open_release)) }
         }
     }
 }
 
+/** One size of a translation model: "✓ installed" when it is the one on the phone, else its download button. */
 @Composable
-private fun ModelRow(
-    title: String,
-    status: String,
-    installed: Boolean,
-    enabled: Boolean,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit,
-    /** Label and action of the optional larger, more accurate download. */
-    accurate: Pair<String, () -> Unit>? = null,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        StatusLine(title, installed)
-        Text(status, style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun ModelVariant(label: String, installed: Boolean, download: String, onDownload: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             if (installed) {
-                TextButton(enabled = enabled, onClick = onDelete) { Text(stringResource(R.string.delete)) }
-            } else {
-                Button(onClick = onDownload) { Text(stringResource(R.string.models_download)) }
+                Text(
+                    stringResource(R.string.models_variant_installed),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleSmall,
+                )
             }
         }
-        accurate?.let { (label, action) -> TextButton(onClick = action) { Text(label) } }
+        if (!installed) ActionButton(onClick = onDownload) { Text(download) }
     }
 }
 

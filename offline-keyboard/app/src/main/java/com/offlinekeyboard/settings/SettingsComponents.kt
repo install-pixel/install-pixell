@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -92,7 +93,22 @@ internal fun settingsColors(dark: Boolean, accent: Accent, oled: Boolean = false
     }
 }
 
-/** One setup step: a filled button while it is to do, a check mark once done. */
+/**
+ * The one button of the settings screens: outlined and as wide as the screen, so a long label wraps
+ * inside its own button instead of squeezing a neighbour. Several actions stack one under another.
+ */
+@Composable
+internal fun ActionButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth(), content = content)
+}
+
+/** The same button for a row that also holds text (a setup step, a device, a word field). */
+@Composable
+internal fun InlineButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled, content = content)
+}
+
+/** One setup step: a button while it is to do, a check mark once done. */
 @Composable
 internal fun SetupStep(title: String, done: Boolean, action: String, onClick: () -> Unit) {
     Row(
@@ -103,7 +119,7 @@ internal fun SetupStep(title: String, done: Boolean, action: String, onClick: ()
         if (done) {
             Text("✓ " + stringResource(R.string.setup_done), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
         } else {
-            Button(onClick = onClick) { Text(action) }
+            InlineButton(onClick = onClick) { Text(action) }
         }
     }
 }

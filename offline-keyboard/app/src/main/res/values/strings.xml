@@ -211,8 +211,6 @@
     <string name="bluetooth_section_notes">Good to know</string>
     <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for (for example ы in Ukrainian) are not sent. Suggestions, translation and voice work only on the phone.</string>
     <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
-    <string name="models_accurate_tag">accurate</string>
-    <string name="models_download_accurate">More accurate model (about %1$d MB, slower)</string>
     <string name="accent_grey">Grey</string>
     <string name="page_glossary">Translation glossary (your corrections)</string>
     <string name="page_glossary_summary">Entries: %1$d · words and phrases the translation must keep</string>
@@ -269,4 +267,12 @@
     <string name="autocorrect_done">%1$s → %2$s · ⌫ to undo</string>
     <string name="autocorrect_undone">Kept «%1$s»; it will not be corrected again</string>
     <string name="backspace_swipe_preview">Delete: «%1$s»</string>
+    <string name="models_kind_standard">standard model</string>
+    <string name="models_kind_accurate">more accurate model</string>
+    <string name="models_installed_kind">Installed: %1$s · %2$s</string>
+    <string name="models_variant_standard">Standard · about %1$d MB</string>
+    <string name="models_variant_accurate">More accurate · about %1$d MB, slower</string>
+    <string name="models_variant_installed">✓ installed</string>
+    <string name="models_download_standard">Download standard</string>
+    <string name="models_download_accurate_short">Download more accurate</string>
 </resources>

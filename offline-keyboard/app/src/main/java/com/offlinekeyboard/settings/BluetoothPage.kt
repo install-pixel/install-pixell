@@ -8,10 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -90,10 +88,10 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                 }
                 StatusLine(text, ok)
                 when (status.state) {
-                    BluetoothState.NO_PERMISSION -> Button(onClick = { turnOn() }) {
+                    BluetoothState.NO_PERMISSION -> ActionButton(onClick = { turnOn() }) {
                         Text(stringResource(R.string.bluetooth_allow))
                     }
-                    BluetoothState.BLUETOOTH_OFF -> Button(onClick = {
+                    BluetoothState.BLUETOOTH_OFF -> ActionButton(onClick = {
                         openSafely(context, Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
                     }) { Text(stringResource(R.string.bluetooth_open_settings)) }
                     else -> Unit
@@ -104,7 +102,7 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
         if (s.bluetoothKeyboard && status.state in setOf(BluetoothState.WAITING, BluetoothState.CONNECTED)) {
             Section(stringResource(R.string.bluetooth_section_pair)) {
                 Text(stringResource(R.string.bluetooth_pair_steps), style = MaterialTheme.typography.bodyMedium)
-                Button(onClick = {
+                ActionButton(onClick = {
                     openSafely(
                         context,
                         Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
@@ -126,7 +124,7 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                             if (status.state == BluetoothState.CONNECTED && status.deviceName == name) {
                                 Text("✓", color = MaterialTheme.colorScheme.primary)
                             } else {
-                                OutlinedButton(onClick = { Bluetooth.connect(device) }) {
+                                InlineButton(onClick = { Bluetooth.connect(device) }) {
                                     Text(stringResource(R.string.bluetooth_connect))
                                 }
                             }

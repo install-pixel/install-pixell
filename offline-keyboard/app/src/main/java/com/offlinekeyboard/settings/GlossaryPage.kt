@@ -4,12 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,18 +65,18 @@ internal fun GlossaryPage(onBack: () -> Unit) {
             label = { Text(stringResource(R.string.glossary_field)) },
         )
         message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionButton(onClick = {
                 store.save(text)
                 message = context.getString(R.string.glossary_saved, Glossary.parse(text).size)
             }) { Text(stringResource(R.string.save)) }
-            OutlinedButton(onClick = {
+            ActionButton(onClick = {
                 runCatching { context.assets.open(GlossaryStore.EXAMPLE_ASSET).bufferedReader().use { it.readText() } }
                     .onSuccess { append(it) }
             }) { Text(stringResource(R.string.glossary_add_example)) }
-        }
-        OutlinedButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
-            Text(stringResource(R.string.presets_import))
+            ActionButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
+                Text(stringResource(R.string.presets_import))
+            }
         }
     }
 }
