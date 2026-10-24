@@ -11,6 +11,9 @@ sealed interface VoiceCommand {
 
     /** «режим робота», «профіль дім» — виконується після появи профілів (Етап 8). */
     data class SwitchProfile(val name: String) : VoiceCommand
+
+    /** Дія: будильник, таймер, ліхтарик, плеєр, дзвінок, SMS… (Етап 8c). */
+    data class Action(val action: VoiceAction) : VoiceCommand
 }
 
 /** Простий локальний розбір голосових команд українською, польською та англійською, без ШІ. */
@@ -34,6 +37,8 @@ object VoiceCommandParser {
     fun parse(text: String): VoiceCommand? {
         var words = SearchNormalizer.words(removePoliteness(SearchNormalizer.normalize(text)))
         if (words.isEmpty()) return null
+
+        VoiceActionParser.parse(text, words)?.let { return VoiceCommand.Action(it) }
 
         if (words.first() in profileWords && words.size > 1) {
             return VoiceCommand.SwitchProfile(words.drop(1).joinToString(" "))

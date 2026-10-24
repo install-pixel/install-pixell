@@ -16,6 +16,8 @@ data class Appearance(
     val profileSwipe: Boolean = true,
     /** Плашка з назвою профілю вгорі головного екрана. */
     val showProfileLabel: Boolean = true,
+    /** Легкий вібровідгук на натисканнях — однаково в усьому BlackLaunch. */
+    val haptics: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -37,6 +39,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_MONO, next.monochromeIcons)
             .putBoolean(KEY_SWIPE, next.profileSwipe)
             .putBoolean(KEY_LABEL, next.showProfileLabel)
+            .putBoolean(KEY_HAPTICS, next.haptics)
             .apply()
         _appearance.value = next
     }
@@ -51,6 +54,7 @@ class AppearanceSettings(context: Context) {
             monochromeIcons = prefs.getBoolean(KEY_MONO, defaults.monochromeIcons),
             profileSwipe = prefs.getBoolean(KEY_SWIPE, defaults.profileSwipe),
             showProfileLabel = prefs.getBoolean(KEY_LABEL, defaults.showProfileLabel),
+            haptics = prefs.getBoolean(KEY_HAPTICS, defaults.haptics),
         )
     }
 
@@ -61,6 +65,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_MONO = "monochrome_icons"
         private const val KEY_SWIPE = "profile_swipe"
         private const val KEY_LABEL = "profile_label"
+        private const val KEY_HAPTICS = "haptics"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

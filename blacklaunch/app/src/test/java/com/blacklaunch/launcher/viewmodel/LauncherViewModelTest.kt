@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.viewmodel
 
+import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.apps.FakeAppSource
 import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +68,21 @@ class LauncherViewModelTest {
         viewModel.updateQuery("ка")
         viewModel.clearQuery()
         assertEquals(LauncherUiState.SearchOpen(""), viewModel.state.value)
+    }
+
+    @Test
+    fun voiceActionGoesToTheScreen() {
+        viewModel.onVoiceResult(listOf("таймер 10 хвилин"))
+        assertEquals(VoiceAction.Timer(600), viewModel.voiceActions.tryReceive().getOrNull())
+        assertEquals(LauncherUiState.HomeIdle, viewModel.state.value)
+    }
+
+    @Test
+    fun disabledVoiceActionBecomesASearch() {
+        val vm = LauncherViewModel(source, history = history, now = { ++clock }, computeDispatcher = Dispatchers.Main, voiceActionsEnabled = { emptySet() })
+        vm.onVoiceResult(listOf("ліхтарик"))
+        assertNull(vm.voiceActions.tryReceive().getOrNull())
+        assertEquals("ліхтарик", (vm.state.value as LauncherUiState.SearchOpen).query)
     }
 
     @Test

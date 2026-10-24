@@ -28,6 +28,8 @@ import com.blacklaunch.launcher.search.LearnedQueries
 import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
+import com.blacklaunch.launcher.voice.VoiceAction
+import com.blacklaunch.launcher.voice.VoiceActionKind
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
 import kotlinx.coroutines.CoroutineDispatcher
@@ -100,12 +102,18 @@ class LauncherViewModel(
     private val globalSource: GlobalSearchSource = NoGlobalSearch,
     globalKinds: Flow<Set<GroupKind>> = flowOf(DEFAULT_GLOBAL_KINDS),
     private val layoutStore: HomeLayoutStore = InMemoryHomeLayoutStore(),
+    /** Які голосові дії ввімкнено (будильник, ліхтарик, дзвінки…). */
+    private val voiceActionsEnabled: () -> Set<VoiceActionKind> = { VoiceActionKind.entries.toSet() },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
 
     private val _messages = Channel<UiMessage>(Channel.BUFFERED)
     val messages: ReceiveChannel<UiMessage> get() = _messages
+
+    // Голосові дії виконує екран: їм потрібні системні сервіси й дозволи.
+    private val _voiceActions = Channel<VoiceAction>(Channel.BUFFERED)
+    val voiceActions: ReceiveChannel<VoiceAction> get() = _voiceActions
 
     // Індекс перебудовується лише при зміні програм, псевдонімів чи навчання, не на кожну літеру.
     private val index: StateFlow<SearchIndex> =
@@ -306,6 +314,16 @@ class LauncherViewModel(
                     _messages.trySend(UiMessage.PROFILE_NOT_FOUND)
                 }
             }
+            is VoiceCommand.Action -> {
+                if (command.action.kind in voiceActionsEnabled()) {
+                    closeSearch()
+                    _voiceActions.trySend(command.action)
+                } else {
+                    // Дію вимкнено — шукаємо фразу як звичайний запит.
+                    openSearch()
+                    updateQuery(hypotheses.first())
+                }
+            }
             is VoiceCommand.Open -> {
                 val results = index.value.searchScored(command.query, launchCounts.value)
                 val app = SearchIndex.unambiguous(results)
@@ -320,12 +338,13 @@ class LauncherViewModel(
         VoiceCommand.OpenLast -> lastLaunched() != null
         is VoiceCommand.SwitchProfile -> findProfile(name) != null
         is VoiceCommand.Open -> index.value.search(query).isNotEmpty()
+        is VoiceCommand.Action -> action.kind in voiceActionsEnabled()
     }
 
     companion object {
         private const val PROFILE_MATCH = 0.75
 
         /** Скільки часу після закриття пошуку повертається останній запит. */
-        const val RESTORE_QUERY_MS = 3 * 60 * 1000L
+        const val RESTORE_QUERY_MS = 60 * 1000L
     }
 }

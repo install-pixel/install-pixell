@@ -138,6 +138,7 @@ fun ProfilesScreen(
 
 @Composable
 private fun ProfileRow(profile: LauncherProfile, active: Boolean, onSetActive: () -> Unit, onEdit: () -> Unit) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
@@ -145,7 +146,7 @@ private fun ProfileRow(profile: LauncherProfile, active: Boolean, onSetActive: (
             .clip(shape)
             .background(if (active) Oled.Knob else Oled.Surface)
             .border(1.dp, Oled.Glint, shape)
-            .clickable(onClick = onSetActive)
+            .clickable { haptics.tap(); onSetActive() }
             .padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

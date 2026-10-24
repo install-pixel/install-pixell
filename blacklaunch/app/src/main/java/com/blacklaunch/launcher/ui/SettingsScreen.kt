@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import com.blacklaunch.launcher.voice.VoiceActionKind
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import com.blacklaunch.launcher.diagnostics.CrashEntries
@@ -58,6 +59,10 @@ fun SettingsScreen(
     globalKinds: Set<GroupKind>,
     onGlobalKindChange: (GroupKind, Boolean) -> Unit,
     onOpenAppInfo: () -> Unit,
+    voiceActions: Set<VoiceActionKind>,
+    onVoiceActionChange: (VoiceActionKind, Boolean) -> Unit,
+    directCall: Boolean,
+    onDirectCallChange: (Boolean) -> Unit,
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
     onCopyCrashLog: () -> Unit,
@@ -115,6 +120,12 @@ fun SettingsScreen(
                     checked = appearance.monochromeIcons,
                     onCheckedChange = { on -> onChange { it.copy(monochromeIcons = on) } },
                 )
+                SwitchRow(
+                    title = stringResource(R.string.haptics_title),
+                    subtitle = stringResource(R.string.haptics_subtitle),
+                    checked = appearance.haptics,
+                    onCheckedChange = { on -> onChange { it.copy(haptics = on) } },
+                )
             }
             Card {
                 ActionOption(R.string.system_theme, Icons.Filled.Settings, onOpenSystemTheme)
@@ -167,6 +178,26 @@ fun SettingsScreen(
                     OfflineRow(language, offlineStatus[language], onDownloadOffline)
                 }
                 Note(stringResource(R.string.voice_section_note))
+            }
+            Card {
+                Text(stringResource(R.string.voice_actions_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                Note(stringResource(R.string.voice_actions_note))
+                VoiceActionKind.entries.forEach { kind ->
+                    SwitchRow(
+                        title = stringResource(kind.title()),
+                        subtitle = stringResource(kind.example()),
+                        checked = kind in voiceActions,
+                        onCheckedChange = { onVoiceActionChange(kind, it) },
+                    )
+                }
+                if (VoiceActionKind.CALLS in voiceActions) {
+                    SwitchRow(
+                        title = stringResource(R.string.direct_call_title),
+                        subtitle = stringResource(R.string.direct_call_subtitle),
+                        checked = directCall,
+                        onCheckedChange = onDirectCallChange,
+                    )
+                }
             }
         }
 
@@ -227,6 +258,30 @@ fun SettingsScreen(
 }
 
 private const val CRASH_PREVIEW_LINES = 14
+
+@StringRes
+private fun VoiceActionKind.title(): Int = when (this) {
+    VoiceActionKind.ALARM -> R.string.action_alarm
+    VoiceActionKind.FLASHLIGHT -> R.string.action_flashlight
+    VoiceActionKind.MEDIA -> R.string.action_media
+    VoiceActionKind.PANELS -> R.string.action_panels
+    VoiceActionKind.NAVIGATION -> R.string.action_navigation
+    VoiceActionKind.CALLS -> R.string.action_calls
+    VoiceActionKind.SMS -> R.string.action_sms
+    VoiceActionKind.TIME -> R.string.action_time
+}
+
+@StringRes
+private fun VoiceActionKind.example(): Int = when (this) {
+    VoiceActionKind.ALARM -> R.string.action_alarm_example
+    VoiceActionKind.FLASHLIGHT -> R.string.action_flashlight_example
+    VoiceActionKind.MEDIA -> R.string.action_media_example
+    VoiceActionKind.PANELS -> R.string.action_panels_example
+    VoiceActionKind.NAVIGATION -> R.string.action_navigation_example
+    VoiceActionKind.CALLS -> R.string.action_calls_example
+    VoiceActionKind.SMS -> R.string.action_sms_example
+    VoiceActionKind.TIME -> R.string.action_time_example
+}
 
 @StringRes
 private fun OfflineVoiceMode.label(): Int = when (this) {

@@ -47,6 +47,7 @@ fun SearchField(
     modifier: Modifier = Modifier,
 ) {
     val listening = voice != VoiceState.Idle
+    val haptics = LocalHaptics.current
     val partialSpeech = (voice as? VoiceState.Listening)?.partial.orEmpty()
     // Клавіатура не відкривається сама: лише після натискання на поле.
     // Так зручніше для голосового пошуку (рішення від 23.10.2026).
@@ -73,7 +74,7 @@ fun SearchField(
             },
             trailingIcon = {
                 if (query.isNotEmpty() && !listening) {
-                    IconButton(onClick = onClear) {
+                    IconButton(onClick = { haptics.tap(); onClear() }) {
                         Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
                     }
                 }
@@ -96,6 +97,7 @@ fun SearchField(
 
 @Composable
 private fun MicButton(listening: Boolean, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
     Box(
         modifier = Modifier
             .size(56.dp)
@@ -104,7 +106,7 @@ private fun MicButton(listening: Boolean, onClick: () -> Unit) {
             .border(1.dp, Oled.Glint, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        IconButton(onClick = onClick, modifier = Modifier.padding(4.dp)) {
+        IconButton(onClick = { haptics.tap(); onClick() }, modifier = Modifier.padding(4.dp)) {
             Icon(
                 painter = painterResource(R.drawable.ic_mic),
                 contentDescription = stringResource(if (listening) R.string.voice_stop else R.string.voice_search),

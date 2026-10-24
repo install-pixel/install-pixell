@@ -1,6 +1,5 @@
 package com.blacklaunch.launcher.ui
 
-import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
@@ -63,7 +62,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -212,7 +210,7 @@ private fun HomeIdle(
     showProfileLabel: Boolean,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
-    val view = LocalView.current
+    val haptics = LocalHaptics.current
     var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
     var dragging by remember { mutableStateOf(false) }
     Box(
@@ -222,7 +220,10 @@ private fun HomeIdle(
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
                 // Довге натискання на значку — це перетягування, а не налаштування.
                 detectTapGestures(onLongPress = { position ->
-                    if (iconBounds.values.none { it.contains(position) }) onLongPress()
+                    if (iconBounds.values.none { it.contains(position) }) {
+                        haptics.longPress()
+                        onLongPress()
+                    }
                 })
             }
             .pointerInput(home.profileCount, profileSwipe) {
@@ -248,7 +249,7 @@ private fun HomeIdle(
                             horizontal && profileSwipe && abs(drag.x) > thresholdPx && home.profileCount > 1 -> {
                                 handled = true
                                 change.consume()
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                haptics.tick()
                                 onSwitchProfile(if (drag.x < 0) 1 else -1)
                             }
                         }
@@ -297,6 +298,7 @@ private val SearchFieldSpace = 64.dp
 
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(20.dp)
     Text(
         text = name,
@@ -307,7 +309,7 @@ private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit
             .clip(shape)
             .background(Oled.Surface)
             .border(1.dp, Oled.Glint, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable { haptics.tap(); onClick() } else Modifier)
             .padding(horizontal = 18.dp, vertical = 8.dp),
     )
 }

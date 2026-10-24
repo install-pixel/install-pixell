@@ -7,6 +7,11 @@
     <!-- Голосовий пошук: запитується лише при першому натисканні мікрофона. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Голосові дії (Етап 8c): будильник і таймер — звичайний дозвіл; дзвінок одразу — лише якщо
+         користувач увімкне «Дзвонити одразу» (запит дозволу в той момент). -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
     <!-- «Видалити програму» з меню програми: системний діалог видалення, рішення за користувачем. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 

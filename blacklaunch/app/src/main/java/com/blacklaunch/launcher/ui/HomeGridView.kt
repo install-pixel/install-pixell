@@ -1,6 +1,5 @@
 package com.blacklaunch.launcher.ui
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,7 +41,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -82,7 +80,7 @@ fun HomeGridView(
     onDraggingChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val view = LocalView.current
+    val haptics = LocalHaptics.current
     val move by rememberUpdatedState(onMove)
     val remove by rememberUpdatedState(onRemove)
     val draggingChanged by rememberUpdatedState(onDraggingChange)
@@ -141,7 +139,7 @@ fun HomeGridView(
                                 dragging = app.key
                                 dragOffset = Offset.Zero
                                 draggingChanged(true)
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                haptics.longPress()
                             },
                             onDrag = { change, amount ->
                                 change.consume()
@@ -149,7 +147,7 @@ fun HomeGridView(
                             },
                             onDragEnd = {
                                 if (y + dragOffset.y + cellHeightPx / 2 < removeZonePx) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    haptics.longPress()
                                     remove(app.key)
                                 } else {
                                     val target = HomeGridMath.targetCell(
@@ -169,7 +167,7 @@ fun HomeGridView(
                         )
                     }
                     .clip(RoundedCornerShape(20.dp))
-                    .clickable { onLaunch(app) },
+                    .clickable { haptics.tap(); onLaunch(app) },
                 contentAlignment = Alignment.Center,
             ) {
                 GridIcon(app, iconFor)

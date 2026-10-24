@@ -20,6 +20,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
+import com.blacklaunch.launcher.ui.LocalHaptics
+import com.blacklaunch.launcher.ui.Haptics
+import com.blacklaunch.launcher.voice.VoiceActionRunner
+import com.blacklaunch.launcher.voice.VoiceAction
+import com.blacklaunch.launcher.voice.ContactNumber
+import com.blacklaunch.launcher.ui.CallCountdownDialog
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +85,7 @@ class MainActivity : ComponentActivity() {
                     globalSource = app.globalSearch,
                     globalKinds = app.globalSearchSettings.enabled,
                     layoutStore = app.homeLayoutStore,
+                    voiceActionsEnabled = { app.voiceActionSettings.enabled.value },
                 )
             }
         }
@@ -142,6 +151,11 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                for (action in viewModel.voiceActions) runVoiceAction(action)
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 for (message in profileViewModel.messages) {
                     toast(
                         when (message) {
@@ -173,7 +187,10 @@ class MainActivity : ComponentActivity() {
             val userAliases by app.userAliasStore.aliases.collectAsStateWithLifecycle()
             val globalKinds by app.globalSearchSettings.enabled.collectAsStateWithLifecycle()
             val crashLog by app.crashLog.text.collectAsStateWithLifecycle()
+            val voiceActions by app.voiceActionSettings.enabled.collectAsStateWithLifecycle()
+            val directCall by app.voiceActionSettings.directCall.collectAsStateWithLifecycle()
             BlackLaunchTheme {
+            CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 BlackHomeScreen(
                     state = state,
                     home = home,
@@ -224,6 +241,10 @@ class MainActivity : ComponentActivity() {
                                 onOpenBattery = { BatterySettings.openBattery(this) },
                                 globalKinds = globalKinds,
                                 onGlobalKindChange = ::setGlobalKind,
+                                voiceActions = voiceActions,
+                                onVoiceActionChange = app.voiceActionSettings::set,
+                                directCall = directCall,
+                                onDirectCallChange = ::setDirectCall,
                                 crashLog = crashLog,
                                 onCopyCrashLog = ::copyCrashLog,
                                 onClearCrashLog = app.crashLog::clear,
@@ -260,6 +281,75 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                 )
+                pendingCall?.let { contact ->
+                    CallCountdownDialog(
+                        contact = contact,
+                        onCall = {
+                            pendingCall = null
+                            actionRunner.call(contact)
+                        },
+                        onCancel = { pendingCall = null },
+                    )
+                }
+            }
+            }
+        }
+    }
+
+    private val actionRunner by lazy {
+        VoiceActionRunner(this) { message -> Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
+    }
+
+    /** Голосовий дзвінок, що чекає кінця відліку. */
+    private var pendingCall by mutableStateOf<ContactNumber?>(null)
+
+    /** Дія з контактом, що чекає дозволу на контакти. */
+    private var pendingContactAction: VoiceAction? = null
+
+    private val contactsPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val action = pendingContactAction
+        pendingContactAction = null
+        if (granted && action != null) runVoiceAction(action) else if (!granted) toast(R.string.voice_permission_contacts)
+    }
+
+    private val callPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) app.voiceActionSettings.setDirectCall(true) else toast(R.string.direct_call_denied)
+    }
+
+    private fun setDirectCall(on: Boolean) {
+        if (on && ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            callPermission.launch(Manifest.permission.CALL_PHONE)
+            return
+        }
+        app.voiceActionSettings.setDirectCall(on)
+    }
+
+    /** Голосова дія: дзвінок і SMS шукають контакт (з дозволом), решту виконує [actionRunner]. */
+    private fun runVoiceAction(action: VoiceAction) {
+        val name = when (action) {
+            is VoiceAction.Call -> action.name
+            is VoiceAction.Sms -> action.name
+            else -> {
+                actionRunner.run(action)
+                return
+            }
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            pendingContactAction = action
+            contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+            return
+        }
+        val contact = actionRunner.findContact(name)
+        if (contact == null) {
+            Toast.makeText(this, getString(R.string.voice_contact_not_found, name), Toast.LENGTH_LONG).show()
+            return
+        }
+        when (action) {
+            is VoiceAction.Sms -> actionRunner.sms(contact, action.body)
+            else -> {
+                val canCall = app.voiceActionSettings.directCall.value &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+                if (canCall) pendingCall = contact else actionRunner.dial(contact)
             }
         }
     }
@@ -509,7 +599,7 @@ class MainActivity : ComponentActivity() {
 
     // Натискання Home, коли BlackLaunch уже на екрані, повертає чистий чорний екран.
     // Повернення з іншої програми жестом «Додому» — теж Home, але запит не стираємо:
-    // він повернеться свайпом угору протягом 3 хвилин.
+    // він повернеться свайпом угору протягом хвилини.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         voice.cancel()
@@ -517,19 +607,22 @@ class MainActivity : ComponentActivity() {
     }
 
     // Перейшли в іншу програму — пошук лишається відкритим з тими самими результатами
-    // (клавіатуру ховає сам екран пошуку). Повернулись протягом 3 хвилин — усе на місці.
+    // (клавіатуру ховає сам екран пошуку). Повернулись протягом хвилини — усе на місці.
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) {
             voice.cancel()
+            actionRunner.onStop()
+            pendingCall = null
             wasStopped = true
             stoppedAt = SystemClock.elapsedRealtime()
         }
     }
 
-    // Не було довше 3 хвилин — повертаємось на чистий чорний екран, без анімації.
+    // Не було довше хвилини — повертаємось на чистий чорний екран, без анімації.
     override fun onStart() {
         super.onStart()
+        actionRunner.onStart()
         if (wasStopped && SystemClock.elapsedRealtime() - stoppedAt > LauncherViewModel.RESTORE_QUERY_MS) {
             instantSearchClose = true
             viewModel.forgetSearch()

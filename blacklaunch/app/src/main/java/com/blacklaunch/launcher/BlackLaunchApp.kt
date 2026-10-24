@@ -21,6 +21,7 @@ import com.blacklaunch.launcher.profiles.ProfileRepository
 import com.blacklaunch.launcher.search.PrefsLearnedQueries
 import com.blacklaunch.launcher.search.UserAliasStore
 import com.blacklaunch.launcher.settings.AppearanceSettings
+import com.blacklaunch.launcher.settings.VoiceActionSettings
 import com.blacklaunch.launcher.settings.VoiceSettings
 import com.blacklaunch.launcher.voice.VoiceModelStore
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ class BlackLaunchApp : Application() {
     val launchHistory: PrefsLaunchHistory by lazy { PrefsLaunchHistory(this) }
     val appearanceSettings: AppearanceSettings by lazy { AppearanceSettings(this) }
     val voiceSettings: VoiceSettings by lazy { VoiceSettings(this) }
+    val voiceActionSettings: VoiceActionSettings by lazy { VoiceActionSettings(this) }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }

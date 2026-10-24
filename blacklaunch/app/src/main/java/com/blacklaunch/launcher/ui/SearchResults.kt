@@ -109,13 +109,17 @@ internal fun AppRow(
     onLongPress: (AppInfo) -> Unit,
 ) {
     val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onLongPress(app) })
+            .combinedClickable(
+                onClick = { haptics.tap(); onLaunch(app) },
+                onLongClick = { haptics.longPress(); onLongPress(app) },
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -142,13 +146,14 @@ private fun GroupHeader(kind: GroupKind) {
 
 @Composable
 private fun GlobalRow(result: GlobalResult, onClick: (GlobalResult) -> Unit) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .clickable { onClick(result) }
+            .clickable { haptics.tap(); onClick(result) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

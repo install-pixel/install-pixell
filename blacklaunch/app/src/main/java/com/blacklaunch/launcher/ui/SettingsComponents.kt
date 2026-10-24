@@ -40,6 +40,7 @@ internal val CardShape = RoundedCornerShape(20.dp)
 
 @Composable
 internal fun SmallButton(text: String, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(12.dp)
     Text(
         text = text,
@@ -49,7 +50,7 @@ internal fun SmallButton(text: String, onClick: () -> Unit) {
             .clip(shape)
             .background(Oled.Knob)
             .border(1.dp, Oled.Glint, shape)
-            .clickable(onClick = onClick)
+            .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
 }
@@ -74,6 +75,7 @@ internal fun Note(text: String) {
 
 @Composable
 internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val haptics = LocalHaptics.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = Oled.TextPrimary, fontSize = 17.sp)
@@ -81,7 +83,7 @@ internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChec
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = { haptics.tap(); onCheckedChange(it) },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color(0xFFF2F2F2),
                 checkedTrackColor = Color(0xFF5A5A5A),
@@ -96,6 +98,7 @@ internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChec
 /** Варіант вибору: однакові рядки один під одним, вибраний — світліший і з точкою. */
 @Composable
 internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
@@ -103,7 +106,7 @@ internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () 
             .clip(shape)
             .background(if (selected) Oled.Knob else Oled.Surface)
             .border(1.dp, Oled.Glint, shape)
-            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .selectable(selected = selected, onClick = { haptics.tap(); onClick() }, role = Role.RadioButton)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -128,6 +131,7 @@ internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () 
 /** Дія в тому ж вигляді, що й варіанти вибору, — щоб блок виглядав цілісно. */
 @Composable
 internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
@@ -135,7 +139,7 @@ internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () 
             .clip(shape)
             .background(Oled.Surface)
             .border(1.dp, Oled.Glint, shape)
-            .clickable(onClick = onClick)
+            .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -152,12 +156,13 @@ internal fun MenuRow(icon: ImageVector, @StringRes title: Int, @StringRes hint: 
 
 @Composable
 internal fun MenuRow(icon: Painter, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .clickable(onClick = onClick)
+            .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 6.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
