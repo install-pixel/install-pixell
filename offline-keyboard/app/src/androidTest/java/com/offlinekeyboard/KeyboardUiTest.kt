@@ -320,8 +320,13 @@ class KeyboardUiTest {
             waitFor("three-button navigation", timeoutMs = 10_000) {
                 shellOutput("settings get secure navigation_mode").trim().takeIf { it == "0" }
             }
-            // SystemUI restarts with the new bar and the keyboard closes: open it again.
+            // The new bar is a configuration change: the test screen is recreated and the keyboard closes.
             Thread.sleep(1_500)
+            scenario.close()
+            scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
+            val ref = AtomicReference<KeyboardTestActivity>()
+            scenario.onActivity { ref.set(it) }
+            activity = ref.get()
             focus(activity.plain)
             screenshot("nav-three-button")
             val keyboard = service()
