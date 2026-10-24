@@ -4,6 +4,7 @@ import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
@@ -105,6 +106,8 @@ fun BlackHomeScreen(
     /** Назва профілю вгорі екрана (можна вимкнути — тоді екран повністю чорний). */
     showProfileLabel: Boolean,
     onOpenSearch: () -> Unit,
+    /** false — пошук закривається миттєво (повернулись після довгої відсутності). */
+    animateSearchClose: Boolean = true,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onCloseSearch: () -> Unit,
@@ -138,8 +141,8 @@ fun BlackHomeScreen(
     // Під час анімації закриття показуємо останній стан пошуку, а не порожнечу.
     var lastSearch by remember { mutableStateOf<LauncherUiState.SearchOpen?>(null) }
     if (state is LauncherUiState.SearchOpen) lastSearch = state
-    val homeBlur by animateDpAsState(if (searchOpen) 10.dp else 0.dp, tween(CLOSE_MS), label = "homeBlur")
-    val homeAlpha by animateFloatAsState(if (searchOpen) 0.7f else 1f, tween(CLOSE_MS), label = "homeAlpha")
+    val homeBlur by animateDpAsState(if (searchOpen) 10.dp else 0.dp, tween(if (animateSearchClose) CLOSE_MS else 0), label = "homeBlur")
+    val homeAlpha by animateFloatAsState(if (searchOpen) 0.7f else 1f, tween(if (animateSearchClose) CLOSE_MS else 0), label = "homeAlpha")
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // Під пошуком головний екран лишається на фоні — розмитий і притемнений.
         HomeIdle(
@@ -159,7 +162,11 @@ fun BlackHomeScreen(
         AnimatedVisibility(
             visible = searchOpen,
             enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
-            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
+            exit = if (animateSearchClose) {
+                fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 }
+            } else {
+                ExitTransition.None
+            },
         ) {
             val search = lastSearch ?: return@AnimatedVisibility
             SearchOpen(

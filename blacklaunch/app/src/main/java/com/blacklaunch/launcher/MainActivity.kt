@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.Toast
@@ -181,7 +182,11 @@ class MainActivity : ComponentActivity() {
                     onRemoveApp = viewModel::unpin,
                     profileSwipe = appearance.profileSwipe,
                     showProfileLabel = appearance.showProfileLabel,
-                    onOpenSearch = viewModel::openSearch,
+                    onOpenSearch = {
+                        instantSearchClose = false
+                        viewModel.openSearch()
+                    },
+                    animateSearchClose = !instantSearchClose,
                     onQueryChange = viewModel::updateQuery,
                     onClearQuery = viewModel::clearQuery,
                     onCloseSearch = viewModel::closeSearch,
@@ -497,14 +502,32 @@ class MainActivity : ComponentActivity() {
         viewModel.forgetSearch()
     }
 
-    // Після переходу в іншу програму пошук закривається; поворот екрана його не скидає.
+    // Перейшли в іншу програму — пошук лишається як був: повернулись протягом 3 хвилин —
+    // той самий запит і результати. Закривати його у фоні не можна: анімація закриття
+    // разом із клавіатурою програвалась би вже після повернення («смикання»).
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) {
             voice.cancel()
-            viewModel.closeSearch()
+            stoppedAt = SystemClock.elapsedRealtime()
         }
     }
+
+    // Не було довше 3 хвилин — повертаємось на чистий чорний екран, без анімації.
+    override fun onStart() {
+        super.onStart()
+        val away = SystemClock.elapsedRealtime() - stoppedAt
+        if (stoppedAt > 0 && away > LauncherViewModel.RESTORE_QUERY_MS) {
+            instantSearchClose = true
+            viewModel.forgetSearch()
+        }
+        stoppedAt = 0L
+    }
+
+    private var stoppedAt = 0L
+
+    /** Закрити пошук без анімації (після довгої відсутності); скидається з наступним відкриттям. */
+    private var instantSearchClose by mutableStateOf(false)
 
     override fun onDestroy() {
         voice.destroy()
