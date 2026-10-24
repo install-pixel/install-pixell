@@ -1,10 +1,13 @@
 package com.offlinekeyboard
 
+import android.content.res.Resources
+import android.os.Build
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
@@ -301,6 +304,45 @@ class KeyboardUiTest {
         tapText("a")
         tapSpecial(SpecialKey.BACKSPACE)
         assertEquals("", text(activity.plain))
+    }
+
+    /**
+     * With three-button navigation (back, home, recent apps, and on Android 15 the keyboard switch globe),
+     * the bar must not cover the bottom row: Android 15 draws the keyboard window behind it.
+     */
+    @Test
+    fun keysStayAboveTheNavigationBar() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        useMode(KeyboardMode.MOBILE)
+        val mode = shellOutput("settings get secure navigation_mode").trim()
+        shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton")
+        try {
+            waitFor("three-button navigation", timeoutMs = 10_000) {
+                shellOutput("settings get secure navigation_mode").trim().takeIf { it == "0" }
+            }
+            Thread.sleep(1_500)
+            screenshot("nav-three-button")
+            val keyboard = service()
+            val bottom = AtomicReference<Int>()
+            instrumentation.runOnMainSync {
+                val view = keyboard.inputRootForTest!!.keyboardView
+                val location = IntArray(2)
+                view.getLocationOnScreen(location)
+                bottom.set(location[1] + view.height)
+            }
+            val context = instrumentation.targetContext
+            val screen = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds.height()
+            val id = Resources.getSystem().getIdentifier("navigation_bar_height", "dimen", "android")
+            val bar = if (id != 0) Resources.getSystem().getDimensionPixelSize(id) else 0
+            assertTrue("keys end at ${bottom.get()}, the bar starts at ${screen - bar}", bottom.get() <= screen - bar)
+        } finally {
+            val restore = when (mode) {
+                "1" -> "twobutton"
+                "2" -> "gestural"
+                else -> "threebutton"
+            }
+            shell("cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.$restore")
+        }
     }
 
     @Test
