@@ -9,9 +9,14 @@ import com.blacklaunch.launcher.apps.AppInfo
  */
 class AppSearchEngine(private val aliases: AppAliases = AppAliases()) {
 
-    fun index(apps: List<AppInfo>, userAliases: Map<String, Set<String>> = emptyMap()): SearchIndex =
+    fun index(
+        apps: List<AppInfo>,
+        userAliases: Map<String, Set<String>> = emptyMap(),
+        learned: Map<String, Map<String, Int>> = emptyMap(),
+    ): SearchIndex =
         SearchIndex(
-            apps.map { app ->
+            learned = learned,
+            entries = apps.map { app ->
                 val label = IndexedName(app.label)
                 val names = buildList {
                     add(label)
@@ -40,7 +45,11 @@ class IndexedName(raw: String, val bonus: Int = 0) {
 
 data class ScoredApp(val app: AppInfo, val score: Int)
 
-class SearchIndex(private val entries: List<Entry>) {
+class SearchIndex(
+    private val entries: List<Entry>,
+    /** Навчання на діях: нормалізований запит → (ключ програми → кількість виборів). */
+    private val learned: Map<String, Map<String, Int>> = emptyMap(),
+) {
     class Entry(val app: AppInfo, val names: List<IndexedName>)
 
     /**
@@ -58,9 +67,11 @@ class SearchIndex(private val entries: List<Entry>) {
         val qLatin = if (Transliteration.hasCyrillic(q)) Transliteration.toLatin(q) else null
         val qLatinWords = qLatin?.let(SearchNormalizer::words)
         val qSkeleton = Phonetic.skeleton(q)
+        val topics = Topics.matching(q)
+        val chosen = learned[q].orEmpty()
         return entries
             .mapNotNull { entry ->
-                val score = entry.names.maxOf { name ->
+                val byName = entry.names.maxOf { name ->
                     val direct = score(name, q, qWords)
                     val latin = if (qLatin != null && qLatinWords != null) {
                         score(name, qLatin, qLatinWords) + AppSearchEngine.TRANSLIT_BONUS
@@ -69,6 +80,10 @@ class SearchIndex(private val entries: List<Entry>) {
                     }
                     maxOf(direct, latin, fuzzy(name, qSkeleton))
                 }
+                val byTopic = if (topics.any { Topics.fits(it, entry.app) }) TOPIC else 0
+                // Цю програму вже обирали на такий самий запит — вона перша.
+                val byLearning = chosen[entry.app.key]?.let { LEARNED + minOf(it, LEARNED_MAX_BONUS) } ?: 0
+                val score = maxOf(byName, byTopic, byLearning)
                 if (score > 0) ScoredApp(entry.app, score) else null
             }
             .sortedWith(
@@ -103,6 +118,9 @@ class SearchIndex(private val entries: List<Entry>) {
     }
 
     companion object {
+        private const val TOPIC = 35
+        private const val LEARNED = 90
+        private const val LEARNED_MAX_BONUS = 9
         private const val FUZZY = 15
         private const val FUZZY_RANGE = 10
         private const val FUZZY_MIN_LENGTH = 4

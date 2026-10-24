@@ -61,6 +61,7 @@ class AppRepository(context: Context) : AppSource {
                             packageName = info.componentName.packageName,
                             activityName = info.componentName.className,
                             userSerial = serial,
+                            category = info.applicationInfo.category,
                         ).also { found[it.key] = info }
                     }
             }.sortedBy { it.label.lowercase() }

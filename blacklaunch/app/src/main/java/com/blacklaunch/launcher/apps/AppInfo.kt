@@ -10,6 +10,8 @@ data class AppInfo(
     val activityName: String,
     /** Серійний номер профілю користувача Android (основний або робочий). */
     val userSerial: Long,
+    /** `ApplicationInfo.category`: ігри, музика, карти… або -1, якщо програма не вказала. */
+    val category: Int = -1,
 ) {
     val key: String get() = "$packageName/$activityName/$userSerial"
 }

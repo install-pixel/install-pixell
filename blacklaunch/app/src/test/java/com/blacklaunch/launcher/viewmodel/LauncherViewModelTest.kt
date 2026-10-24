@@ -197,4 +197,16 @@ class LauncherViewModelTest {
         viewModel.onVoiceResult(emptyList())
         assertEquals(LauncherUiState.HomeIdle, viewModel.state.value)
     }
+
+    @Test
+    fun launchFromSearchTeachesTheQuery() {
+        source.apps.value = listOf(FakeAppSource.app("Camera A"), FakeAppSource.app("Camera B"))
+        viewModel.openSearch()
+        viewModel.updateQuery("фотик")
+        assertEquals(emptyList<Any>(), search().results)
+        viewModel.launch(app("Camera B"))
+        viewModel.openSearch()
+        viewModel.updateQuery("фотик")
+        assertEquals(listOf("Camera B"), search().results.map { it.label })
+    }
 }

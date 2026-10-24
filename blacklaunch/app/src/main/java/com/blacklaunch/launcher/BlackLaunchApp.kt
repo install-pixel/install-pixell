@@ -8,6 +8,7 @@ import com.blacklaunch.launcher.data.AppDatabase
 import com.blacklaunch.launcher.profiles.DefaultProfiles
 import com.blacklaunch.launcher.profiles.PrefsActiveProfileStore
 import com.blacklaunch.launcher.profiles.ProfileRepository
+import com.blacklaunch.launcher.search.PrefsLearnedQueries
 import com.blacklaunch.launcher.search.UserAliasStore
 import com.blacklaunch.launcher.settings.AppearanceSettings
 import com.blacklaunch.launcher.settings.VoiceSettings
@@ -27,6 +28,7 @@ class BlackLaunchApp : Application() {
     val appearanceSettings: AppearanceSettings by lazy { AppearanceSettings(this) }
     val voiceSettings: VoiceSettings by lazy { VoiceSettings(this) }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
+    val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
 
     val database: AppDatabase by lazy { AppDatabase.create(this) }
     val profileRepository: ProfileRepository by lazy {

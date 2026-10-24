@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
                     userAliases = app.userAliasStore.aliases,
                     history = app.launchHistory,
                     profileSource = app.profileRepository,
+                    learnedQueries = app.learnedQueries,
                 )
             }
         }

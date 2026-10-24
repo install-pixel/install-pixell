@@ -10,6 +10,8 @@ import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
 import com.blacklaunch.launcher.profiles.neighbour
 import com.blacklaunch.launcher.search.AppSearchEngine
+import com.blacklaunch.launcher.search.InMemoryLearnedQueries
+import com.blacklaunch.launcher.search.LearnedQueries
 import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
@@ -60,6 +62,7 @@ class LauncherViewModel(
     engine: AppSearchEngine = AppSearchEngine(),
     private val now: () -> Long = System::currentTimeMillis,
     private val profileSource: ProfileSource = NoProfiles,
+    private val learnedQueries: LearnedQueries = InMemoryLearnedQueries(),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -67,9 +70,9 @@ class LauncherViewModel(
     private val _messages = Channel<UiMessage>(Channel.BUFFERED)
     val messages: ReceiveChannel<UiMessage> get() = _messages
 
-    // Індекс перебудовується лише при зміні програм чи псевдонімів, не на кожну літеру.
+    // Індекс перебудовується лише при зміні програм, псевдонімів чи навчання, не на кожну літеру.
     private val index: StateFlow<SearchIndex> =
-        combine(appSource.apps, userAliases, engine::index)
+        combine(appSource.apps, userAliases, learnedQueries.learned, engine::index)
             .stateIn(viewModelScope, SharingStarted.Eagerly, SearchIndex(emptyList()))
 
     private val launchCounts: StateFlow<Map<String, Int>> =
@@ -144,9 +147,17 @@ class LauncherViewModel(
                 }
     }
 
-    fun launch(app: AppInfo): Boolean {
+    fun launch(app: AppInfo): Boolean = launch(app, query.value)
+
+    /** [searchQuery] — з якого запиту відкрили: наступного разу ця програма буде першою. */
+    private fun launch(app: AppInfo, searchQuery: String?): Boolean {
         val ok = appSource.launch(app)
-        if (ok) history.record(app, now()) else _messages.trySend(UiMessage.LAUNCH_FAILED)
+        if (ok) {
+            history.record(app, now())
+            if (!searchQuery.isNullOrBlank()) learnedQueries.record(searchQuery, app.key)
+        } else {
+            _messages.trySend(UiMessage.LAUNCH_FAILED)
+        }
         return ok
     }
 
@@ -166,7 +177,7 @@ class LauncherViewModel(
         when (command) {
             VoiceCommand.OpenLast -> {
                 val last = lastLaunched()
-                if (last != null) launch(last) else _messages.trySend(UiMessage.NO_HISTORY)
+                if (last != null) launch(last, null) else _messages.trySend(UiMessage.NO_HISTORY)
             }
             is VoiceCommand.SwitchProfile -> {
                 val profile = findProfile(command.name)
@@ -180,7 +191,7 @@ class LauncherViewModel(
             is VoiceCommand.Open -> {
                 val results = index.value.searchScored(command.query, launchCounts.value)
                 val app = SearchIndex.unambiguous(results)
-                if (app != null && launch(app)) return
+                if (app != null && launch(app, command.query)) return
                 openSearch()
                 updateQuery(command.query)
             }
