@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.material.icons.filled.Done
+import com.blacklaunch.launcher.profiles.ProfileDisplay
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Checkbox
 import com.blacklaunch.launcher.profiles.SearchScope
@@ -204,6 +206,10 @@ fun ProfileEditScreen(
     hasNotificationAccess: Boolean = false,
     onGrantNotificationAccess: () -> Unit = {},
     /** «Також дозволити сповіщення від…»: програми поза профілем (назви вже готові). */
+    /** Екран і пошук цього профілю. */
+    display: ProfileDisplay = ProfileDisplay(),
+    onDisplayChange: (ProfileDisplay) -> Unit = {},
+    onApplyDisplayToAll: () -> Unit = {},
     notificationExtras: List<AppInfo> = emptyList(),
     onAddNotificationExtras: () -> Unit = {},
     onRemoveNotificationExtra: (AppInfo) -> Unit = {},
@@ -232,6 +238,29 @@ fun ProfileEditScreen(
                 )
             }
             ActionOption(R.string.pinned_add, Icons.Filled.Add, onAddApp)
+        }
+
+        Card {
+            Text(stringResource(R.string.display_title), color = Oled.TextPrimary, fontSize = 17.sp)
+            SwitchRow(stringResource(R.string.glance_title), stringResource(R.string.glance_subtitle), display.glance) {
+                onDisplayChange(display.copy(glance = it))
+            }
+            SwitchRow(stringResource(R.string.profile_label_title), stringResource(R.string.profile_label_subtitle), display.profileLabel) {
+                onDisplayChange(display.copy(profileLabel = it))
+            }
+            SwitchRow(stringResource(R.string.hide_status_title), stringResource(R.string.hide_status_subtitle), display.hideStatusBar) {
+                onDisplayChange(display.copy(hideStatusBar = it))
+            }
+            SwitchRow(stringResource(R.string.suggestions_title), stringResource(R.string.suggestions_subtitle), display.suggestions) {
+                onDisplayChange(display.copy(suggestions = it))
+            }
+            SwitchRow(stringResource(R.string.recent_queries_title), stringResource(R.string.recent_queries_subtitle), display.recentQueries) {
+                onDisplayChange(display.copy(recentQueries = it))
+            }
+            SwitchRow(stringResource(R.string.all_apps_button_title), stringResource(R.string.all_apps_button_subtitle), display.allAppsButton) {
+                onDisplayChange(display.copy(allAppsButton = it))
+            }
+            ActionOption(R.string.display_apply_all, Icons.Filled.Done, onApplyDisplayToAll)
         }
 
         Card {

@@ -345,4 +345,9 @@
     <string name="global_by_apps">Według aplikacji profilu</string>
     <string name="global_on">Włączone</string>
     <string name="global_by_apps_note">Tylko to, do czego profil ma aplikację: „Telefon” → kontakty z połączeniem, „Wiadomości” → przycisk „Napisz” i SMS, „Kalendarz” → wydarzenia, „Ustawienia” → ustawienia. Kalkulator i profile zawsze zostają.</string>
+    <string name="display_title">Ekran i wyszukiwanie</string>
+    <string name="display_apply_all">Zastosuj do wszystkich profili</string>
+    <string name="display_applied">Zastosowano do wszystkich profili</string>
+    <string name="display_moved_home">„W skrócie”, nazwę profilu i całkowicie czarny ekran ustawia się teraz w każdym profilu.</string>
+    <string name="display_moved_search">Podpowiedzi aplikacji, ostatnie wyszukiwania i przycisk „Wszystkie aplikacje” ustawia się teraz w każdym profilu.</string>
 </resources>

@@ -98,24 +98,10 @@ fun SettingsScreen(
                     checked = appearance.profileSwipe,
                     onCheckedChange = { on -> onChange { it.copy(profileSwipe = on) } },
                 )
-                SwitchRow(
-                    title = stringResource(R.string.glance_title),
-                    subtitle = stringResource(R.string.glance_subtitle),
-                    checked = appearance.glance,
-                    onCheckedChange = { on -> onChange { it.copy(glance = on) } },
-                )
-                SwitchRow(
-                    title = stringResource(R.string.hide_status_title),
-                    subtitle = stringResource(R.string.hide_status_subtitle),
-                    checked = appearance.hideStatusBar,
-                    onCheckedChange = { on -> onChange { it.copy(hideStatusBar = on) } },
-                )
-                SwitchRow(
-                    title = stringResource(R.string.profile_label_title),
-                    subtitle = stringResource(R.string.profile_label_subtitle),
-                    checked = appearance.showProfileLabel,
-                    onCheckedChange = { on -> onChange { it.copy(showProfileLabel = on) } },
-                )
+            }
+            Card {
+                Note(stringResource(R.string.display_moved_home))
+                ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
             }
             Card {
                 Note(stringResource(R.string.grid_hint))
@@ -175,24 +161,8 @@ fun SettingsScreen(
                 }
             }
             Card {
-                SwitchRow(
-                    title = stringResource(R.string.suggestions_title),
-                    subtitle = stringResource(R.string.suggestions_subtitle),
-                    checked = appearance.suggestions,
-                    onCheckedChange = { on -> onChange { it.copy(suggestions = on) } },
-                )
-                SwitchRow(
-                    title = stringResource(R.string.recent_queries_title),
-                    subtitle = stringResource(R.string.recent_queries_subtitle),
-                    checked = appearance.recentQueries,
-                    onCheckedChange = { on -> onChange { it.copy(recentQueries = on) } },
-                )
-                SwitchRow(
-                    title = stringResource(R.string.all_apps_button_title),
-                    subtitle = stringResource(R.string.all_apps_button_subtitle),
-                    checked = appearance.allAppsButton,
-                    onCheckedChange = { on -> onChange { it.copy(allAppsButton = on) } },
-                )
+                Note(stringResource(R.string.display_moved_search))
+                ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
             }
             Card {
                 Text(stringResource(R.string.global_section), color = Oled.TextPrimary, fontSize = 17.sp)

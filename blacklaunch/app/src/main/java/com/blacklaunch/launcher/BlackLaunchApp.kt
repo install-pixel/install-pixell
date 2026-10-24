@@ -5,6 +5,8 @@ import android.os.Build
 import android.widget.Toast
 import com.blacklaunch.launcher.profiles.PrefsSearchScopes
 import com.blacklaunch.launcher.profiles.ProfileApplier
+import com.blacklaunch.launcher.profiles.PrefsProfileDisplay
+import com.blacklaunch.launcher.profiles.ProfileDisplay
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileNotificationFilter
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,6 +62,22 @@ class BlackLaunchApp : Application() {
     val recentQueries: PrefsRecentQueries by lazy { PrefsRecentQueries(this) }
     val hiddenApps: PrefsHiddenApps by lazy { PrefsHiddenApps(this) }
     val ownIcons: OwnIcons by lazy { OwnIcons(this) }
+
+    /** Екран і пошук для кожного профілю; без власного вибору — колишні загальні налаштування. */
+    val profileDisplay: PrefsProfileDisplay by lazy {
+        PrefsProfileDisplay(this) {
+            appearanceSettings.appearance.value.let {
+                ProfileDisplay(
+                    glance = it.glance,
+                    profileLabel = it.showProfileLabel,
+                    hideStatusBar = it.hideStatusBar,
+                    suggestions = it.suggestions,
+                    recentQueries = it.recentQueries,
+                    allAppsButton = it.allAppsButton,
+                )
+            }
+        }
+    }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }

@@ -345,4 +345,9 @@
     <string name="global_by_apps">By profile apps</string>
     <string name="global_on">On</string>
     <string name="global_by_apps_note">Only what the profile has an app for: Phone → contacts with call, Messages → message button and SMS, Calendar → events, Settings → settings. The calculator and profiles always stay.</string>
+    <string name="display_title">Screen and search</string>
+    <string name="display_apply_all">Apply to all profiles</string>
+    <string name="display_applied">Applied to all profiles</string>
+    <string name="display_moved_home">At a glance, profile name and the fully black screen are now set in each profile.</string>
+    <string name="display_moved_search">App suggestions, recent searches and the “All apps” button are now set in each profile.</string>
 </resources>

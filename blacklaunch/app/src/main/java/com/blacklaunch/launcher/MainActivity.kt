@@ -116,8 +116,8 @@ class MainActivity : ComponentActivity() {
                     voiceActionsEnabled = { app.voiceActionSettings.enabled.value },
                     customCommands = { app.customCommands.commands.value },
                     recentQueries = app.recentQueries,
-                    showSuggestions = { app.appearanceSettings.appearance.value.suggestions },
-                    showRecent = { app.appearanceSettings.appearance.value.recentQueries },
+                    showSuggestions = { activeDisplay().suggestions },
+                    showRecent = { activeDisplay().recentQueries },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
                     globalModes = app.searchScopes.globalModes,
@@ -198,7 +198,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
-                    if (app.appearanceSettings.appearance.value.glance) {
+                    if (activeDisplay().glance) {
                         glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
                     }
                     delay(GLANCE_REFRESH_MS)
@@ -253,8 +253,13 @@ class MainActivity : ComponentActivity() {
             }
             val glanceInfo by glance.collectAsStateWithLifecycle()
             // Увімкнули «Короткий огляд» — показуємо одразу, не чекаючи хвилини.
-            LaunchedEffect(appearance.glance) {
-                if (appearance.glance) glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
+            val displays by app.profileDisplay.displays.collectAsStateWithLifecycle()
+            // Екран і пошук активного профілю (без власного вибору — колишні загальні налаштування).
+            val display = remember(displays, home.profileId, appearance) { app.profileDisplay.of(home.profileId) }
+            // Перемкнули профіль — у нового своє рішення щодо рядка стану.
+            LaunchedEffect(display.hideStatusBar) { applyStatusBar() }
+            LaunchedEffect(display.glance) {
+                if (display.glance) glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
             }
             val hiddenKeys by app.hiddenApps.hidden.collectAsStateWithLifecycle()
             val installedApps by repository.apps.collectAsStateWithLifecycle()
@@ -268,8 +273,8 @@ class MainActivity : ComponentActivity() {
                     onMoveApp = viewModel::moveApp,
                     onRemoveApp = viewModel::unpin,
                     profileSwipe = appearance.profileSwipe,
-                    showProfileLabel = appearance.showProfileLabel,
-                    glance = if (appearance.glance) glanceInfo else null,
+                    showProfileLabel = display.profileLabel,
+                    glance = if (display.glance) glanceInfo else null,
                     onIdleChange = { idle ->
                         homeIdle = idle
                         applyStatusBar()
@@ -289,7 +294,7 @@ class MainActivity : ComponentActivity() {
                     onCustom = viewModel::runCustom,
                     onRecent = viewModel::useRecent,
                     onRemoveRecent = viewModel::removeRecent,
-                    allApps = if (appearance.allAppsButton) allApps else emptyList(),
+                    allApps = if (display.allAppsButton) allApps else emptyList(),
                     onContactAction = ::contactAction,
                     iconFor = iconFor,
                     voiceState = voiceState,
@@ -695,6 +700,7 @@ class MainActivity : ComponentActivity() {
         val globalModes by app.searchScopes.globalModes.collectAsStateWithLifecycle()
         val notifFilter by app.searchScopes.notificationFilter.collectAsStateWithLifecycle()
         val notifExtras by app.searchScopes.notificationExtras.collectAsStateWithLifecycle()
+        val displays by app.profileDisplay.displays.collectAsStateWithLifecycle()
         val notificationAccess by notificationAccessState.collectAsStateWithLifecycle()
         // Доступ «Не турбувати» перевіряємо щоразу при поверненні з налаштувань Android.
         val dndAccess by dndAccessState.collectAsStateWithLifecycle()
@@ -737,6 +743,12 @@ class MainActivity : ComponentActivity() {
                     onNotificationFilterChange = { app.searchScopes.setNotificationFilter(profile.id, it) },
                     hasNotificationAccess = notificationAccess,
                     onGrantNotificationAccess = ::openNotificationAccess,
+                    display = displays[profile.id] ?: app.profileDisplay.of(profile.id),
+                    onDisplayChange = { app.profileDisplay.set(profile.id, it) },
+                    onApplyDisplayToAll = {
+                        app.profileDisplay.setAll(profiles.map { it.id }, displays[profile.id] ?: app.profileDisplay.of(profile.id))
+                        toast(R.string.display_applied)
+                    },
                     notificationExtras = notifExtras[profile.id].orEmpty()
                         .mapNotNull { pkg -> apps.firstOrNull { it.packageName == pkg } }
                         .sortedBy { it.label.lowercase() },
@@ -924,6 +936,9 @@ class MainActivity : ComponentActivity() {
 
     private var stoppedAt = 0L
 
+    /** Екран і пошук активного профілю. */
+    private fun activeDisplay() = app.profileDisplay.of(app.activeProfile.value?.id)
+
     private val glance = MutableStateFlow<GlanceInfo?>(null)
     private val dndAccessState = MutableStateFlow(false)
     private val notificationAccessState = MutableStateFlow(false)
@@ -935,7 +950,7 @@ class MainActivity : ComponentActivity() {
     private fun applyStatusBar() {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (homeIdle && app.appearanceSettings.appearance.value.hideStatusBar) {
+        if (homeIdle && activeDisplay().hideStatusBar) {
             controller.hide(WindowInsetsCompat.Type.statusBars())
         } else {
             controller.show(WindowInsetsCompat.Type.statusBars())

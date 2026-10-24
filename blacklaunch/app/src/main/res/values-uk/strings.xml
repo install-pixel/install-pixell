@@ -345,4 +345,9 @@
     <string name="global_by_apps">За програмами профілю</string>
     <string name="global_on">Увімкнено</string>
     <string name="global_by_apps_note">Лише те, для чого в профілі є програма: «Телефон» → контакти з дзвінком, «Повідомлення» → кнопка «Написати» й SMS, «Календар» → події, «Налаштування» → розділи налаштувань. Калькулятор і профілі — завжди.</string>
+    <string name="display_title">Екран і пошук</string>
+    <string name="display_apply_all">Застосувати до всіх профілів</string>
+    <string name="display_applied">Застосовано до всіх профілів</string>
+    <string name="display_moved_home">Короткий огляд, назва профілю й повністю чорний екран тепер налаштовуються в кожному профілі.</string>
+    <string name="display_moved_search">Підказки програм, останні запити й кнопка «Усі програми» тепер налаштовуються в кожному профілі.</string>
 </resources>
