@@ -9,6 +9,8 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.offlinekeyboard.R
 
 /**
@@ -128,6 +130,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         // The key preview of the top row is drawn over the toolbar above it.
         clipChildren = false
         clipToPadding = false
+        // Android 15 draws the keyboard window behind the navigation bar (back, home, the keyboard switch
+        // globe): the keys move up by the bar's height, and the keyboard's background shows behind it.
+        // Older Android places the window above the bar and reports no inset here.
+        ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            view.setPadding(bars.left, 0, bars.right, bars.bottom)
+            insets
+        }
 
         val infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL

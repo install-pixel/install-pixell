@@ -17,8 +17,8 @@ android {
         applicationId = "com.offlinekeyboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.9.2"
+        versionCode = 15
+        versionName = "0.9.3"
 
         // Native code of Vosk and ONNX Runtime for phones only (64- and 32-bit ARM).
         ndk {
