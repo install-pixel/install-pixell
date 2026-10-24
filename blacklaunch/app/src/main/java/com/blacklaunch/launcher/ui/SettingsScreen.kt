@@ -304,7 +304,7 @@ fun SettingsScreen(
 
         SettingsNav.About -> SettingsPage(stringResource(R.string.section_about), toMain) {
             Card {
-                Text("BlackLaunch $versionName", color = Oled.TextPrimary, fontSize = 17.sp)
+                Text(stringResource(R.string.app_name) + " $versionName", color = Oled.TextPrimary, fontSize = 17.sp)
                 Note(stringResource(R.string.about_note))
             }
             Card {

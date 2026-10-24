@@ -21,7 +21,7 @@
     <string name="voice_error_busy">Rozpoznawanie jest zajęte. Spróbuj za chwilę</string>
     <string name="voice_error_other">Błąd wprowadzania głosowego</string>
     <string name="voice_fallback_english">Rozpoznawanie offline w Twoim języku jest niedostępne — słucham po angielsku</string>
-    <string name="voice_offline_no_pack">Brak internetu i pakietu językowego offline. Pobierz go w ustawieniach BlackLaunch (długie naciśnięcie na ekranie głównym)</string>
+    <string name="voice_offline_no_pack">Brak internetu i pakietu językowego offline. Pobierz go w ustawieniach Black Glass (długie naciśnięcie na ekranie głównym)</string>
     <string name="voice_fallback_other">Rozpoznawanie offline w Twoim języku jest niedostępne — słucham w innym pobranym języku</string>
     <string name="no_history">Nie uruchomiono jeszcze żadnej aplikacji</string>
     <string name="profile_not_found">Nie ma profilu o tej nazwie</string>
@@ -29,7 +29,7 @@
     <!-- Ustawienia -->
     <string name="settings_title">Ustawienia</string>
     <string name="auto_wallpaper_title">Czarna tapeta automatycznie</string>
-    <string name="auto_wallpaper_subtitle">Jeśli tapeta się zmieni, BlackLaunch znów ustawi czarną. Poprzednia tapeta nie jest zapisywana.</string>
+    <string name="auto_wallpaper_subtitle">Jeśli tapeta się zmieni, Black Glass znów ustawi czarną. Poprzednia tapeta nie jest zapisywana.</string>
     <string name="target_home_lock">Ekran główny + blokady</string>
     <string name="target_home">Tylko ekran główny</string>
     <string name="wallpaper_now">Ustaw czarną tapetę teraz</string>
@@ -60,7 +60,7 @@
     <string name="preparing">Proszę czekać…</string>
     <string name="voice_model_broken">Nie udało się uruchomić modelu głosowego offline. Spróbuj zaimportować go ponownie</string>
     <string name="models_section">Modele głosowe offline</string>
-    <string name="models_note">Modele są już pobrane (np. dla klawiatury)? Wybierz pliki — można wszystkie trzy naraz, język zostanie rozpoznany automatycznie. W przeciwnym razie pobierz je w przeglądarce i otwórz plik za pomocą BlackLaunch. Modele działają bez internetu i tylko wtedy, gdy mówisz.</string>
+    <string name="models_note">Modele są już pobrane (np. dla klawiatury)? Wybierz pliki — można wszystkie trzy naraz, język zostanie rozpoznany automatycznie. W przeciwnym razie pobierz je w przeglądarce i otwórz plik za pomocą Black Glass. Modele działają bez internetu i tylko wtedy, gdy mówisz.</string>
     <string name="model_installed">zainstalowany</string>
     <string name="model_missing">niezainstalowany</string>
     <string name="model_delete">Usuń</string>
@@ -70,7 +70,7 @@
     <string name="mode_always">Zawsze</string>
     <string name="import_title">Instaluję model głosowy…</string>
     <string name="import_done">Zainstalowano modele głosowe: %1$s</string>
-    <string name="import_failed">Ten plik nie jest modelem głosowym BlackLaunch</string>
+    <string name="import_failed">Ten plik nie jest modelem głosowym Black Glass</string>
     <string name="import_ok">Gotowe</string>
     <string name="browser_missing">Brak przeglądarki do pobrania modelu</string>
 
@@ -80,7 +80,7 @@
     <string name="alias_add">Dodaj</string>
     <string name="alias_done">Gotowe</string>
     <string name="alias_remove">Usuń %1$s</string>
-    <string name="import_error_read">BlackLaunch nie otrzymał dostępu do tego pliku. Użyj „Udostępnij → BlackLaunch” albo wybierz plik poniżej</string>
+    <string name="import_error_read">Black Glass nie otrzymał dostępu do tego pliku. Użyj „Udostępnij → Black Glass” albo wybierz plik poniżej</string>
     <string name="import_error_language">Nie udało się rozpoznać języka modelu (oczekiwany ukraiński, polski lub angielski)</string>
     <string name="import_error_space">Za mało wolnego miejsca, aby zainstalować model</string>
     <string name="import_error_other">Nie udało się zainstalować modelu. Spróbuj ponownie</string>
@@ -169,7 +169,7 @@
     <string name="setting_cast">Przesyłanie ekranu</string>
     <string name="setting_about">O telefonie</string>
     <string name="setting_developer">Opcje programisty</string>
-    <string name="sms_restricted">Android blokuje dostęp do SMS dla aplikacji spoza Sklepu Play. W otwieranych teraz ustawieniach BlackLaunch dotknij ⋮ → „Zezwól na ustawienia z ograniczeniami”, a potem ponownie włącz SMS.</string>
+    <string name="sms_restricted">Android blokuje dostęp do SMS dla aplikacji spoza Sklepu Play. W otwieranych teraz ustawieniach Black Glass dotknij ⋮ → „Zezwól na ustawienia z ograniczeniami”, a potem ponownie włącz SMS.</string>
     <string name="section_home">Ekran główny</string>
     <string name="section_home_hint">Profile, panel aplikacji</string>
     <string name="section_appearance">Wygląd</string>
@@ -179,15 +179,15 @@
     <string name="section_voice">Głos</string>
     <string name="section_voice_hint">Modele offline i rozpoznawanie</string>
     <string name="section_battery_hint">Ochrona ładowania, aplikacje w tle</string>
-    <string name="section_about">O BlackLaunch</string>
+    <string name="section_about">O Black Glass</string>
     <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
     <string name="search_names_note">Własne nazwy aplikacji: przytrzymaj aplikację w wynikach wyszukiwania.</string>
     <string name="battery_profiles_note">Aby aplikacje spoza profilu nie działały w tle: Ekran główny → Profile → profil → „Ogranicz inne aplikacje w tle”.</string>
     <string name="grid_hint">Aplikacje na ekranie głównym: przytrzymaj ikonę i przeciągnij w dowolne miejsce — na górę, na środek, do rogu. Jeśli jest tam inna aplikacja, zamienią się miejscami. Każdy profil ma własny układ.</string>
     <string name="sms_help_title">Jak włączyć wyszukiwanie w SMS</string>
-    <string name="sms_help_new">Android 15 i nowsze (oraz niektóre telefony z Androidem 13–14), gdy BlackLaunch nie jest zainstalowany ze Sklepu Play: Android blokuje dostęp do SMS, dopóki na to nie zezwolisz. 1) Raz spróbuj włączyć „SMS” powyżej. 2) Otwórz informacje o aplikacji BlackLaunch (przycisk poniżej). 3) Dotknij ⋮ w prawym górnym rogu → „Zezwól na ustawienia z ograniczeniami” i potwierdź PIN-em lub odciskiem palca. 4) Wróć i ponownie włącz „SMS”.</string>
+    <string name="sms_help_new">Android 15 i nowsze (oraz niektóre telefony z Androidem 13–14), gdy Black Glass nie jest zainstalowany ze Sklepu Play: Android blokuje dostęp do SMS, dopóki na to nie zezwolisz. 1) Raz spróbuj włączyć „SMS” powyżej. 2) Otwórz informacje o aplikacji Black Glass (przycisk poniżej). 3) Dotknij ⋮ w prawym górnym rogu → „Zezwól na ustawienia z ograniczeniami” i potwierdź PIN-em lub odciskiem palca. 4) Wróć i ponownie włącz „SMS”.</string>
     <string name="sms_help_old">Android 14 i starsze: po prostu włącz „SMS” powyżej i zezwól na dostęp, gdy telefon zapyta.</string>
-    <string name="sms_help_open">Otwórz informacje o BlackLaunch</string>
+    <string name="sms_help_open">Otwórz informacje o Black Glass</string>
     <string name="remove_from_home">Usuń z ekranu głównego</string>
     <string name="add_to_home">Dodaj do ekranu głównego</string>
     <string name="alias_menu">Moje nazwy aplikacji</string>
@@ -199,12 +199,12 @@
     <string name="profile_label_subtitle">Mała etykieta u góry; dotknięcie — następny profil. Wyłączone — całkowicie czarny ekran</string>
     <string name="crash_log_title">Dziennik błędów</string>
     <string name="crash_log_empty">Na razie bez błędów.</string>
-    <string name="crash_log_hint">Ostatnia awaria BlackLaunch. Zapisana tylko na tym telefonie — skopiuj i wklej do czatu z twórcą.</string>
+    <string name="crash_log_hint">Ostatnia awaria Black Glass. Zapisana tylko na tym telefonie — skopiuj i wklej do czatu z twórcą.</string>
     <string name="crash_log_copy">Kopiuj</string>
     <string name="crash_log_clear">Wyczyść</string>
     <string name="crash_log_copied">Dziennik błędów skopiowany</string>
     <string name="haptics_title">Wibracje przy dotyku</string>
-    <string name="haptics_subtitle">Lekka wibracja przy dotknięciach i długich naciśnięciach — wszędzie w BlackLaunch</string>
+    <string name="haptics_subtitle">Lekka wibracja przy dotknięciach i długich naciśnięciach — wszędzie w Black Glass</string>
     <string name="voice_time">Jest %1$s</string>
     <string name="voice_no_flashlight">Latarka jest niedostępna</string>
     <string name="voice_no_app">Na telefonie nie ma aplikacji do tej czynności</string>
@@ -212,7 +212,7 @@
     <string name="voice_permission_contacts">Zezwól na dostęp do kontaktów, aby dzwonić i pisać po imieniu</string>
     <string name="voice_calling">Połączenie z %1$s za %2$d…</string>
     <string name="call_now">Zadzwoń</string>
-    <string name="direct_call_denied">Bez uprawnienia do połączeń BlackLaunch tylko otwiera numer w aplikacji Telefon</string>
+    <string name="direct_call_denied">Bez uprawnienia do połączeń Black Glass tylko otwiera numer w aplikacji Telefon</string>
     <string name="voice_actions_title">Polecenia głosowe</string>
     <string name="voice_actions_note">Powiedz po dotknięciu mikrofonu. Wszystko jest rozpoznawane na telefonie; wiadomości zawsze wysyłasz ty.</string>
     <string name="action_alarm">Budzik i minutnik</string>
@@ -259,7 +259,7 @@
     <string name="action_row_route">Trasa: %1$s</string>
     <string name="action_row_call">Zadzwoń: %1$s</string>
     <string name="action_row_sms">SMS: %1$s</string>
-    <string name="brightness_permission">Zezwól BlackLaunch na „Modyfikowanie ustawień systemu”, aby zmieniać jasność</string>
+    <string name="brightness_permission">Zezwól Black Glass na „Modyfikowanie ustawień systemu”, aby zmieniać jasność</string>
     <string name="brightness_set">Jasność %1$d%%</string>
     <string name="action_display">Jasność</string>
     <string name="action_display_example">„Jasność 50”, „jaśniej”, „ciemniej”</string>
@@ -270,7 +270,7 @@
     <string name="speak_answers_title">Odpowiadaj na głos</string>
     <string name="speak_answers_subtitle">Na przykład „która godzina”</string>
     <string name="assistant_title">Asystent cyfrowy</string>
-    <string name="assistant_note">Wybierz BlackLaunch jako domyślną aplikację asystenta cyfrowego — wtedy długie naciśnięcie przycisku zasilania (lub gest asystenta) otworzy wyszukiwanie i od razu zacznie słuchać.</string>
+    <string name="assistant_note">Wybierz Black Glass jako domyślną aplikację asystenta cyfrowego — wtedy długie naciśnięcie przycisku zasilania (lub gest asystenta) otworzy wyszukiwanie i od razu zacznie słuchać.</string>
     <string name="assistant_open">Otwórz aplikacje domyślne</string>
     <string name="action_row_brightness">Jasność %1$d%%</string>
     <string name="action_row_brighter">Jaśniej</string>
@@ -307,7 +307,7 @@
     <string name="suggestions_header">Podpowiedzi</string>
     <string name="hide_from_search">Ukryj w wyszukiwaniu</string>
     <string name="hidden_apps_title">Ukryte w wyszukiwaniu</string>
-    <string name="hidden_apps_note">Te aplikacje zostają na telefonie i na ekranie głównym, tylko nie pojawiają się w wyszukiwaniu BlackLaunch.</string>
+    <string name="hidden_apps_note">Te aplikacje zostają na telefonie i na ekranie głównym, tylko nie pojawiają się w wyszukiwaniu Black Glass.</string>
     <string name="hidden_apps_show">Pokaż</string>
     <string name="all_apps">Wszystkie aplikacje (%1$d)</string>
     <string name="hide_status_title">Całkowicie czarny ekran</string>

@@ -53,7 +53,7 @@ jobs:
       - name: Rename APK
         run: |
           VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
-          APK="BlackLaunch-v${VERSION}-${GITHUB_SHA::7}.apk"
+          APK="BlackGlass-v${VERSION}-${GITHUB_SHA::7}.apk"
           cp app/build/outputs/apk/debug/app-debug.apk "$APK"
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -78,10 +78,10 @@ jobs:
         with:
           tag_name: blacklaunch-latest
           target_commitish: ${{ github.sha }}
-          name: BlackLaunch v${{ env.VERSION }} (тестова збірка)
+          name: Black Glass v${{ env.VERSION }} (тестова збірка)
           prerelease: true
           body: |
-            Остання тестова збірка BlackLaunch з гілки ${{ github.ref_name }}.
+            Остання тестова збірка Black Glass з гілки ${{ github.ref_name }}.
             Версія: ${{ env.VERSION }}
             Коміт: ${{ github.sha }}
           files: blacklaunch/${{ env.APK }}

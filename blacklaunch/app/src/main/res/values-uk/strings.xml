@@ -21,7 +21,7 @@
     <string name="voice_error_busy">Розпізнавання зайняте. Спробуйте за мить</string>
     <string name="voice_error_other">Помилка голосового введення</string>
     <string name="voice_fallback_english">Українська без інтернету недоступна — слухаю англійською</string>
-    <string name="voice_offline_no_pack">Немає інтернету й немає офлайн-пакета мови. Завантажте його в налаштуваннях BlackLaunch (довге натискання на головному екрані)</string>
+    <string name="voice_offline_no_pack">Немає інтернету й немає офлайн-пакета мови. Завантажте його в налаштуваннях Black Glass (довге натискання на головному екрані)</string>
     <string name="voice_fallback_other">Ваша мова без інтернету недоступна — слухаю іншою завантаженою мовою</string>
     <string name="no_history">Ще немає запущених програм</string>
     <string name="profile_not_found">Профілю з такою назвою немає</string>
@@ -29,7 +29,7 @@
     <!-- Налаштування -->
     <string name="settings_title">Налаштування</string>
     <string name="auto_wallpaper_title">Чорні шпалери автоматично</string>
-    <string name="auto_wallpaper_subtitle">Якщо шпалери зміняться, BlackLaunch знову зробить їх чорними. Попередні шпалери не зберігаються.</string>
+    <string name="auto_wallpaper_subtitle">Якщо шпалери зміняться, Black Glass знову зробить їх чорними. Попередні шпалери не зберігаються.</string>
     <string name="target_home_lock">Головний + блокування</string>
     <string name="target_home">Тільки головний</string>
     <string name="wallpaper_now">Застосувати чорні шпалери зараз</string>
@@ -60,7 +60,7 @@
     <string name="preparing">Чекайте…</string>
     <string name="voice_model_broken">Не вдалося запустити офлайн-модель голосу. Спробуйте імпортувати її ще раз</string>
     <string name="models_section">Офлайн-моделі голосу</string>
-    <string name="models_note">Уже завантажували моделі (наприклад, для клавіатури)? Виберіть файли — можна всі три одразу, мова визначиться сама. Інакше завантажте в браузері й відкрийте файл за допомогою BlackLaunch. Моделі працюють без інтернету і лише поки ви говорите.</string>
+    <string name="models_note">Уже завантажували моделі (наприклад, для клавіатури)? Виберіть файли — можна всі три одразу, мова визначиться сама. Інакше завантажте в браузері й відкрийте файл за допомогою Black Glass. Моделі працюють без інтернету і лише поки ви говорите.</string>
     <string name="model_installed">встановлено</string>
     <string name="model_missing">не встановлено</string>
     <string name="model_delete">Видалити</string>
@@ -70,7 +70,7 @@
     <string name="mode_always">Завжди</string>
     <string name="import_title">Встановлюю модель голосу…</string>
     <string name="import_done">Встановлено моделі голосу: %1$s</string>
-    <string name="import_failed">Цей файл не є моделлю голосу BlackLaunch</string>
+    <string name="import_failed">Цей файл не є моделлю голосу Black Glass</string>
     <string name="import_ok">Готово</string>
     <string name="browser_missing">Немає браузера, щоб завантажити модель</string>
 
@@ -80,7 +80,7 @@
     <string name="alias_add">Додати</string>
     <string name="alias_done">Готово</string>
     <string name="alias_remove">Видалити %1$s</string>
-    <string name="import_error_read">BlackLaunch не отримав доступу до цього файлу. Скористайтеся «Поділитися → BlackLaunch» або виберіть файл нижче</string>
+    <string name="import_error_read">Black Glass не отримав доступу до цього файлу. Скористайтеся «Поділитися → Black Glass» або виберіть файл нижче</string>
     <string name="import_error_language">Не вдалося визначити мову моделі (очікується українська, польська або англійська)</string>
     <string name="import_error_space">Замало вільного місця, щоб встановити модель</string>
     <string name="import_error_other">Не вдалося встановити модель. Спробуйте ще раз</string>
@@ -169,7 +169,7 @@
     <string name="setting_cast">Трансляція</string>
     <string name="setting_about">Про телефон</string>
     <string name="setting_developer">Для розробників</string>
-    <string name="sms_restricted">Android блокує доступ до SMS для програм не з Play Маркету. У налаштуваннях BlackLaunch, що зараз відкриються, натисніть ⋮ → «Дозволити обмежені налаштування», потім знову ввімкніть SMS.</string>
+    <string name="sms_restricted">Android блокує доступ до SMS для програм не з Play Маркету. У налаштуваннях Black Glass, що зараз відкриються, натисніть ⋮ → «Дозволити обмежені налаштування», потім знову ввімкніть SMS.</string>
     <string name="section_home">Головний екран</string>
     <string name="section_home_hint">Профілі, панель програм</string>
     <string name="section_appearance">Оформлення</string>
@@ -179,15 +179,15 @@
     <string name="section_voice">Голос</string>
     <string name="section_voice_hint">Офлайн-моделі та розпізнавання</string>
     <string name="section_battery_hint">Захист заряду, програми у фоні</string>
-    <string name="section_about">Про BlackLaunch</string>
+    <string name="section_about">Про Black Glass</string>
     <string name="about_note">Мінімалістичний офлайн-лаунчер: без дозволу на інтернет, без реклами й стеження. Усе лишається на цьому телефоні.</string>
     <string name="search_names_note">Власні назви програм: довге натискання на програму в результатах пошуку.</string>
     <string name="battery_profiles_note">Щоб програми поза профілем не працювали у фоні: Головний екран → Профілі → профіль → «Обмежити інші програми у фоні».</string>
     <string name="grid_hint">Програми на головному екрані: довге натискання на значок і перетягування в будь-яке місце — вгору, по центру, в кут. Якщо там інша програма, вони міняються місцями. У кожного профілю своя розкладка.</string>
     <string name="sms_help_title">Як увімкнути пошук у SMS</string>
-    <string name="sms_help_new">Android 15 і новіші (а також деякі телефони з Android 13–14), якщо BlackLaunch встановлено не з Play Маркету: Android блокує доступ до SMS, доки ви його не дозволите. 1) Один раз спробуйте ввімкнути «SMS» вище. 2) Відкрийте сторінку BlackLaunch у налаштуваннях телефона (кнопка нижче). 3) Натисніть ⋮ угорі праворуч → «Дозволити обмежені налаштування» й підтвердьте PIN-кодом або відбитком. 4) Поверніться й знову ввімкніть «SMS».</string>
+    <string name="sms_help_new">Android 15 і новіші (а також деякі телефони з Android 13–14), якщо Black Glass встановлено не з Play Маркету: Android блокує доступ до SMS, доки ви його не дозволите. 1) Один раз спробуйте ввімкнути «SMS» вище. 2) Відкрийте сторінку Black Glass у налаштуваннях телефона (кнопка нижче). 3) Натисніть ⋮ угорі праворуч → «Дозволити обмежені налаштування» й підтвердьте PIN-кодом або відбитком. 4) Поверніться й знову ввімкніть «SMS».</string>
     <string name="sms_help_old">Android 14 і старіші: просто ввімкніть «SMS» вище й дозвольте доступ, коли телефон запитає.</string>
-    <string name="sms_help_open">Відкрити сторінку BlackLaunch</string>
+    <string name="sms_help_open">Відкрити сторінку Black Glass</string>
     <string name="remove_from_home">Прибрати з головного екрана</string>
     <string name="add_to_home">Додати на головний екран</string>
     <string name="alias_menu">Мої назви для програми</string>
@@ -199,12 +199,12 @@
     <string name="profile_label_subtitle">Маленька плашка вгорі; натискання — наступний профіль. Вимкнено — повністю чорний екран</string>
     <string name="crash_log_title">Журнал помилок</string>
     <string name="crash_log_empty">Помилок не було.</string>
-    <string name="crash_log_hint">Останній виліт BlackLaunch. Зберігається лише на цьому телефоні — скопіюйте й вставте в чат з розробником.</string>
+    <string name="crash_log_hint">Останній виліт Black Glass. Зберігається лише на цьому телефоні — скопіюйте й вставте в чат з розробником.</string>
     <string name="crash_log_copy">Скопіювати</string>
     <string name="crash_log_clear">Очистити</string>
     <string name="crash_log_copied">Журнал помилок скопійовано</string>
     <string name="haptics_title">Вібровідгук</string>
-    <string name="haptics_subtitle">Легка вібрація на натисканнях і довгих натисканнях — однаково всюди в BlackLaunch</string>
+    <string name="haptics_subtitle">Легка вібрація на натисканнях і довгих натисканнях — однаково всюди в Black Glass</string>
     <string name="voice_time">Зараз %1$s</string>
     <string name="voice_no_flashlight">Ліхтарик недоступний</string>
     <string name="voice_no_app">На телефоні немає програми для цієї дії</string>
@@ -212,7 +212,7 @@
     <string name="voice_permission_contacts">Дозвольте доступ до контактів, щоб дзвонити й писати за іменем</string>
     <string name="voice_calling">Дзвінок на %1$s через %2$d…</string>
     <string name="call_now">Дзвонити</string>
-    <string name="direct_call_denied">Без дозволу на дзвінки BlackLaunch лише відкриває номер у «Телефоні»</string>
+    <string name="direct_call_denied">Без дозволу на дзвінки Black Glass лише відкриває номер у «Телефоні»</string>
     <string name="voice_actions_title">Голосові дії</string>
     <string name="voice_actions_note">Скажіть після натискання мікрофона. Усе розпізнається на телефоні; повідомлення завжди надсилаєте ви.</string>
     <string name="action_alarm">Будильник і таймер</string>
@@ -259,7 +259,7 @@
     <string name="action_row_route">Маршрут: %1$s</string>
     <string name="action_row_call">Подзвонити: %1$s</string>
     <string name="action_row_sms">SMS: %1$s</string>
-    <string name="brightness_permission">Дозвольте BlackLaunch «Зміну системних налаштувань», щоб змінювати яскравість</string>
+    <string name="brightness_permission">Дозвольте Black Glass «Зміну системних налаштувань», щоб змінювати яскравість</string>
     <string name="brightness_set">Яскравість %1$d%%</string>
     <string name="action_display">Яскравість</string>
     <string name="action_display_example">«Яскравість 50», «яскравіше», «темніше»</string>
@@ -270,7 +270,7 @@
     <string name="speak_answers_title">Відповідати вголос</string>
     <string name="speak_answers_subtitle">Наприклад, «котра година»</string>
     <string name="assistant_title">Цифровий асистент</string>
-    <string name="assistant_note">Виберіть BlackLaunch програмою цифрового асистента за замовчуванням — тоді довге натискання кнопки живлення (або жест асистента) відкриє пошук і одразу слухатиме.</string>
+    <string name="assistant_note">Виберіть Black Glass програмою цифрового асистента за замовчуванням — тоді довге натискання кнопки живлення (або жест асистента) відкриє пошук і одразу слухатиме.</string>
     <string name="assistant_open">Відкрити програми за замовчуванням</string>
     <string name="action_row_brightness">Яскравість %1$d%%</string>
     <string name="action_row_brighter">Яскравіше</string>
@@ -307,7 +307,7 @@
     <string name="suggestions_header">Підказки</string>
     <string name="hide_from_search">Приховати з пошуку</string>
     <string name="hidden_apps_title">Приховані з пошуку</string>
-    <string name="hidden_apps_note">Ці програми лишаються на телефоні й на головному екрані, лише не з\'являються в пошуку BlackLaunch.</string>
+    <string name="hidden_apps_note">Ці програми лишаються на телефоні й на головному екрані, лише не з\'являються в пошуку Black Glass.</string>
     <string name="hidden_apps_show">Показати</string>
     <string name="all_apps">Усі програми (%1$d)</string>
     <string name="hide_status_title">Повністю чорний екран</string>

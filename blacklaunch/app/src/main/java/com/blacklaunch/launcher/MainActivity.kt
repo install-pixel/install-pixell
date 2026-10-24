@@ -563,7 +563,7 @@ class MainActivity : ComponentActivity() {
     /** Копіює журнал вильотів, щоб вставити його в чат. */
     private fun copyCrashLog() {
         val text = app.crashLog.text.value ?: return
-        getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("BlackLaunch crash log", text))
+        getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Black Glass crash log", text))
         toast(R.string.crash_log_copied)
     }
 

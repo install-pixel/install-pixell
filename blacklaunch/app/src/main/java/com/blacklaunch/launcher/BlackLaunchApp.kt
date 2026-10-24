@@ -62,7 +62,7 @@ class BlackLaunchApp : Application() {
         CrashLog(File(filesDir, "crashes.txt")) {
             val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull()
             val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
-            "BlackLaunch $version · ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · $time"
+            "Black Glass $version · ${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · $time"
         }
     }
 
