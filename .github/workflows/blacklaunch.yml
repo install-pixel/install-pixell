@@ -41,7 +41,13 @@ jobs:
             echo "=== $f"
             cat "$f"
           done
-          git status --porcelain app/schemas
+          # Схема в репозиторії має збігатися зі згенерованою — інакше забули закомітити зміну й міграцію.
+          if [ -n "$(git status --porcelain app/schemas)" ]; then
+            git status --porcelain app/schemas
+            git diff app/schemas || true
+            echo "::error::Room schema changed — commit app/schemas and add a migration"
+            exit 1
+          fi
 
       # Версія та коміт у назві файлу, щоб на телефоні не сплутати зі старим APK.
       - name: Rename APK
