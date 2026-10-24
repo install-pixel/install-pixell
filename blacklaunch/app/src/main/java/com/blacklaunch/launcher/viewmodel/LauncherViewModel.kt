@@ -67,6 +67,13 @@ data class HomeState(
     val profileCount: Int = 0,
 )
 
+private data class GroupInput(
+    val query: String,
+    val kinds: Set<GroupKind>,
+    val profiles: List<LauncherProfile>,
+    val apps: List<AppInfo>,
+)
+
 /** Порожнє джерело профілів (тести, що не стосуються профілів). */
 private object NoProfiles : ProfileSource {
     override val profiles: Flow<List<LauncherProfile>> = flowOf(emptyList())
@@ -132,8 +139,10 @@ class LauncherViewModel(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val groups: StateFlow<List<ResultGroup>> =
-        combine(query.filterNotNull(), globalKinds, profiles) { query, kinds, profiles -> Triple(query, kinds, profiles) }
-            .mapLatest { (query, kinds, profiles) ->
+        combine(query.filterNotNull(), globalKinds, profiles, results) { query, kinds, profiles, apps ->
+            GroupInput(query, kinds, profiles, apps)
+        }
+            .mapLatest { (query, kinds, profiles, apps) ->
                 if (query.isBlank()) return@mapLatest emptyList()
                 buildList {
                     if (GroupKind.CALCULATOR in kinds) {
@@ -148,7 +157,8 @@ class LauncherViewModel(
                             add(ResultGroup(GroupKind.PROFILES, matching.map { GlobalResult.Profile(it.id, it.name) }))
                         }
                     }
-                    addAll(globalSource.search(query, kinds))
+                    // Ярлики лише найкращої програми — щоб не засипати список чужими чатами.
+                    addAll(globalSource.search(query, kinds, apps.take(1).map { it.packageName }))
                 }
             }
             .flowOn(computeDispatcher)

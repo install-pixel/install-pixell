@@ -169,4 +169,10 @@
     <string name="setting_cast">Cast</string>
     <string name="setting_about">About phone</string>
     <string name="setting_developer">Developer options</string>
+    <string name="sms_restricted">Android blocks SMS access for apps not installed from Play. In the BlackLaunch app info that opens now, tap ⋮ → “Allow restricted settings”, then turn SMS on again.</string>
+    <string name="dock_title">Apps panel</string>
+    <string name="dock_top">Top</string>
+    <string name="dock_center">Centre</string>
+    <string name="dock_bottom">Bottom</string>
+    <string name="dock_hint">You can also long-press an empty spot of the panel and drag it up or down. Drag an icon to change the order (needs at least two apps).</string>
 </resources>

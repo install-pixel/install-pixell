@@ -14,6 +14,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -144,7 +147,16 @@ private fun GlobalRow(result: GlobalResult, onClick: (GlobalResult) -> Unit) {
     ) {
         Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
             if (result is GlobalResult.Calculation) {
-                Text("=", color = Oled.TextPrimary, fontSize = 22.sp)
+                // Без додаткових відступів шрифту — щоб «=» стояв рівно по центру рядка.
+                Text(
+                    "=",
+                    color = Oled.TextPrimary,
+                    style = TextStyle(
+                        fontSize = 26.sp,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+                    ),
+                )
             } else {
                 Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
             }

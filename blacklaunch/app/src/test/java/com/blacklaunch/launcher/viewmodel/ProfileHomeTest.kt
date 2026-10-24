@@ -108,7 +108,7 @@ class ProfileHomeTest {
         viewModel.openSearch()
         viewModel.updateQuery("25*4")
         val calc = groups().single { it.kind == com.blacklaunch.launcher.global.GroupKind.CALCULATOR }.items.single()
-        assertEquals("= 100", calc.title)
+        assertEquals("100", calc.title)
     }
 
     @Test fun plainWordShowsNoCalculator() {

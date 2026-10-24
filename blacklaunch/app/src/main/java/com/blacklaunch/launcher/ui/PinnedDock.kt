@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.view.HapticFeedbackConstants
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.settings.DockPosition
 import com.blacklaunch.launcher.ui.theme.Oled
 import kotlin.math.roundToInt
 
@@ -58,6 +59,8 @@ fun PinnedDock(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
     onReorder: (List<String>) -> Unit,
+    /** Панель перетягнули за порожнє місце на [deltaY] пікселів по вертикалі. */
+    onMoved: (deltaY: Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (apps.isEmpty()) return
@@ -66,10 +69,39 @@ fun PinnedDock(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     val currentApps by rememberUpdatedState(apps)
     val reorder by rememberUpdatedState(onReorder)
+    val moved by rememberUpdatedState(onMoved)
+    var dockDrag by remember { mutableStateOf<Float?>(null) }
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer { translationY = dockDrag ?: 0f }
+            .pointerInput(Unit) {
+                // Довге натискання на порожньому місці панелі — переміщення всієї панелі.
+                val columnWidth = (size.width - 16.dp.toPx()) / COLUMNS
+                val rowHeight = CellHeight.toPx()
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { start ->
+                        val col = ((start.x - 8.dp.toPx()) / columnWidth).toInt().coerceIn(0, COLUMNS - 1)
+                        val row = ((start.y - 10.dp.toPx()) / rowHeight).toInt().coerceAtLeast(0)
+                        if (row * COLUMNS + col >= currentApps.size) {
+                            dockDrag = 0f
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        }
+                    },
+                    onDrag = { change, amount ->
+                        dockDrag?.let {
+                            change.consume()
+                            dockDrag = it + amount.y
+                        }
+                    },
+                    onDragEnd = {
+                        dockDrag?.let(moved)
+                        dockDrag = null
+                    },
+                    onDragCancel = { dockDrag = null },
+                )
+            }
             .clip(DockShape)
             .background(Oled.Surface)
             .border(1.dp, Oled.Glint, DockShape)
@@ -163,5 +195,14 @@ object DockMath {
         val col = from % columns + (offset.x / cellWidth).roundToInt()
         val row = from / columns + (offset.y / cellHeight).roundToInt()
         return (row * columns + col.coerceIn(0, columns - 1)).coerceIn(0, count - 1)
+    }
+}
+
+/** Куди стане панель після перетягування: верхня, середня чи нижня третина екрана. */
+object DockLayout {
+    fun positionFor(centerY: Float, screenHeight: Float): DockPosition = when {
+        centerY < screenHeight / 3 -> DockPosition.TOP
+        centerY < screenHeight * 2 / 3 -> DockPosition.CENTER
+        else -> DockPosition.BOTTOM
     }
 }

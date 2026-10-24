@@ -40,14 +40,15 @@ class AndroidGlobalSearch(
     private var shortcutsCache: List<ShortcutInfo> = emptyList()
     private var shortcutsLoadedAt = 0L
 
-    override suspend fun search(query: String, kinds: Set<GroupKind>): List<ResultGroup> = withContext(Dispatchers.IO) {
+    override suspend fun search(query: String, kinds: Set<GroupKind>, appPackages: List<String>): List<ResultGroup> =
+        withContext(Dispatchers.IO) {
         val prepared = PreparedQuery(query)
         if (prepared.isEmpty) return@withContext emptyList()
         buildList {
             if (GroupKind.SETTINGS in kinds) {
                 group(GroupKind.SETTINGS) { SettingsCatalog.search(prepared).map { it.copy(title = settingTitle(it.entryId)) } }
             }
-            if (GroupKind.SHORTCUTS in kinds) group(GroupKind.SHORTCUTS) { shortcuts(prepared) }
+            if (GroupKind.SHORTCUTS in kinds) group(GroupKind.SHORTCUTS) { shortcuts(prepared, appPackages) }
             if (GroupKind.CONTACTS in kinds && granted(Manifest.permission.READ_CONTACTS)) {
                 group(GroupKind.CONTACTS) { contacts(prepared.text) }
             }
@@ -75,7 +76,7 @@ class AndroidGlobalSearch(
         ContextCompat.checkSelfPermission(appContext, permission) == PackageManager.PERMISSION_GRANTED
 
     // Ярлики програм (чати, швидкі дії) доступні лише лаунчеру за замовчуванням.
-    private fun shortcuts(query: PreparedQuery): List<GlobalResult> {
+    private fun shortcuts(query: PreparedQuery, appPackages: List<String>): List<GlobalResult> {
         if (!launcherApps.hasShortcutHostPermission()) return emptyList()
         val now = SystemClock.elapsedRealtime()
         if (now - shortcutsLoadedAt > SHORTCUTS_TTL_MS) {
@@ -90,7 +91,9 @@ class AndroidGlobalSearch(
         return shortcutsCache
             .map { info ->
                 val names = listOfNotNull(info.shortLabel, info.longLabel).map { IndexedName(it.toString()) }
-                info to NameMatcher.score(names, query)
+                // Ярлики знайденої програми («Telegram» → її чати й «Новий чат») або збіг за назвою ярлика.
+                val ofFoundApp = if (info.`package` in appPackages) NameMatcher.ALL_WORDS else 0
+                info to maxOf(NameMatcher.score(names, query), ofFoundApp)
             }
             .filter { it.second >= NameMatcher.ALL_WORDS }
             .sortedByDescending { it.second }

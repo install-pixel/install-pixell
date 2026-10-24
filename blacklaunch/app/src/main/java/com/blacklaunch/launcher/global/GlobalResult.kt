@@ -11,7 +11,7 @@ sealed interface GlobalResult {
 
     data class Calculation(val expression: String, val value: String) : GlobalResult {
         override val key get() = "calc:$expression"
-        override val title get() = "= $value"
+        override val title get() = value
         override val subtitle get() = expression
     }
 

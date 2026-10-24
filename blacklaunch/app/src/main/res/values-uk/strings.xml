@@ -169,4 +169,10 @@
     <string name="setting_cast">Трансляція</string>
     <string name="setting_about">Про телефон</string>
     <string name="setting_developer">Для розробників</string>
+    <string name="sms_restricted">Android блокує доступ до SMS для програм не з Play Маркету. У налаштуваннях BlackLaunch, що зараз відкриються, натисніть ⋮ → «Дозволити обмежені налаштування», потім знову ввімкніть SMS.</string>
+    <string name="dock_title">Панель програм</string>
+    <string name="dock_top">Вгорі</string>
+    <string name="dock_center">По центру</string>
+    <string name="dock_bottom">Внизу</string>
+    <string name="dock_hint">Можна й так: довге натискання на порожньому місці панелі й перетягування вгору чи вниз. Перетягування значка змінює порядок (потрібно хоча б дві програми).</string>
 </resources>

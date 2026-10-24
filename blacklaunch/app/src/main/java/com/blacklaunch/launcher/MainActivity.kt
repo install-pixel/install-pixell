@@ -175,6 +175,8 @@ class MainActivity : ComponentActivity() {
                     profileBanner = banner,
                     onSwitchProfile = viewModel::switchProfile,
                     onReorderPinned = viewModel::reorderPinned,
+                    dockPosition = appearance.dockPosition,
+                    onDockPosition = { position -> app.appearanceSettings.update { it.copy(dockPosition = position) } },
                     onOpenSearch = viewModel::openSearch,
                     onQueryChange = viewModel::updateQuery,
                     onClearQuery = viewModel::clearQuery,
@@ -268,7 +270,17 @@ class MainActivity : ComponentActivity() {
     private val globalPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val kind = pendingGlobalKind ?: return@registerForActivityResult
         pendingGlobalKind = null
-        if (granted) app.globalSearchSettings.set(kind, true) else toast(R.string.global_permission_denied)
+        when {
+            granted -> app.globalSearchSettings.set(kind, true)
+            // Android 15+ блокує SMS-дозволи для програм не з Play, доки користувач не зніме обмеження.
+            kind == GroupKind.SMS -> {
+                Toast.makeText(this, R.string.sms_restricted, Toast.LENGTH_LONG).show()
+                startOrToast(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
+                )
+            }
+            else -> toast(R.string.global_permission_denied)
+        }
     }
 
     private fun setGlobalKind(kind: GroupKind, on: Boolean) {

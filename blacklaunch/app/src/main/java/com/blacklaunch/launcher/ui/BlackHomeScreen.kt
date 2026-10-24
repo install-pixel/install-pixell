@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -50,6 +51,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.global.GlobalResult
+import com.blacklaunch.launcher.settings.DockPosition
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
@@ -66,6 +68,8 @@ fun BlackHomeScreen(
     profileBanner: String?,
     onSwitchProfile: (delta: Int) -> Unit,
     onReorderPinned: (List<String>) -> Unit,
+    dockPosition: DockPosition,
+    onDockPosition: (DockPosition) -> Unit,
     onOpenSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -103,6 +107,8 @@ fun BlackHomeScreen(
             onLongPress = { showSettings = true },
             onSwitchProfile = onSwitchProfile,
             onReorderPinned = onReorderPinned,
+            dockPosition = dockPosition,
+            onDockPosition = onDockPosition,
         )
         is LauncherUiState.SearchOpen -> SearchOpen(
             state = state,
@@ -135,13 +141,17 @@ private fun HomeIdle(
     onLongPress: () -> Unit,
     onSwitchProfile: (Int) -> Unit,
     onReorderPinned: (List<String>) -> Unit,
+    dockPosition: DockPosition,
+    onDockPosition: (DockPosition) -> Unit,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val view = LocalView.current
     var dockBounds by remember { mutableStateOf<Rect?>(null) }
+    var screenHeight by remember { mutableStateOf(0f) }
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { screenHeight = it.height.toFloat() }
             .background(Color.Black)
             .pointerInput(Unit) {
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
@@ -186,8 +196,19 @@ private fun HomeIdle(
             iconFor = iconFor,
             onLaunch = onLaunch,
             onReorder = onReorderPinned,
+            onMoved = { dy ->
+                val bounds = dockBounds ?: return@PinnedDock
+                if (screenHeight > 0f) onDockPosition(DockLayout.positionFor(bounds.center.y + dy, screenHeight))
+            },
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(
+                    when (dockPosition) {
+                        DockPosition.TOP -> Alignment.TopCenter
+                        DockPosition.CENTER -> Alignment.Center
+                        DockPosition.BOTTOM -> Alignment.BottomCenter
+                    },
+                )
+                .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 24.dp)
                 .onGloballyPositioned { dockBounds = it.boundsInParent() },

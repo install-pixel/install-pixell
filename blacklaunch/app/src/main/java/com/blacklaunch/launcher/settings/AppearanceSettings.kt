@@ -12,7 +12,11 @@ data class Appearance(
     val wallpaperTarget: WallpaperTarget = WallpaperTarget.HOME_AND_LOCK,
     /** Сірі одноколірні значки в результатах пошуку. */
     val monochromeIcons: Boolean = true,
+    /** Де на головному екрані стоїть панель закріплених програм. */
+    val dockPosition: DockPosition = DockPosition.BOTTOM,
 )
+
+enum class DockPosition { TOP, CENTER, BOTTOM }
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
 class AppearanceSettings(context: Context) {
@@ -31,6 +35,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_AUTO, next.autoBlackWallpaper)
             .putString(KEY_TARGET, next.wallpaperTarget.name)
             .putBoolean(KEY_MONO, next.monochromeIcons)
+            .putString(KEY_DOCK, next.dockPosition.name)
             .apply()
         _appearance.value = next
     }
@@ -43,6 +48,9 @@ class AppearanceSettings(context: Context) {
                 ?.let { name -> WallpaperTarget.entries.firstOrNull { it.name == name } }
                 ?: defaults.wallpaperTarget,
             monochromeIcons = prefs.getBoolean(KEY_MONO, defaults.monochromeIcons),
+            dockPosition = prefs.getString(KEY_DOCK, null)
+                ?.let { name -> DockPosition.entries.firstOrNull { it.name == name } }
+                ?: defaults.dockPosition,
         )
     }
 
@@ -51,6 +59,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_AUTO = "auto_black_wallpaper"
         private const val KEY_TARGET = "wallpaper_target"
         private const val KEY_MONO = "monochrome_icons"
+        private const val KEY_DOCK = "dock_position"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

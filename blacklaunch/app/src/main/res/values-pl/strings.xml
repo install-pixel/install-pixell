@@ -169,4 +169,10 @@
     <string name="setting_cast">Przesyłanie ekranu</string>
     <string name="setting_about">O telefonie</string>
     <string name="setting_developer">Opcje programisty</string>
+    <string name="sms_restricted">Android blokuje dostęp do SMS dla aplikacji spoza Sklepu Play. W otwieranych teraz ustawieniach BlackLaunch dotknij ⋮ → „Zezwól na ustawienia z ograniczeniami”, a potem ponownie włącz SMS.</string>
+    <string name="dock_title">Panel aplikacji</string>
+    <string name="dock_top">Na górze</string>
+    <string name="dock_center">Na środku</string>
+    <string name="dock_bottom">Na dole</string>
+    <string name="dock_hint">Można też przytrzymać puste miejsce panelu i przeciągnąć go w górę lub w dół. Przeciągnięcie ikony zmienia kolejność (potrzebne co najmniej dwie aplikacje).</string>
 </resources>
