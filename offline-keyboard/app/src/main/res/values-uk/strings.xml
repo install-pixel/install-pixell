@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Offlingo</string>
-    <string name="ime_name">Offlingo</string>
+    <string name="app_name">OffKey</string>
+    <string name="ime_name">OffKey</string>
 
     <string name="toolbar_voice_description">Голосове введення</string>
     <string name="toolbar_mode_description">Перемкнути комп\'ютерну та мобільну клавіатуру</string>
@@ -163,7 +163,7 @@
     <string name="accent_peach">Персиковий</string>
     <string name="accent_rose">Пудровий</string>
     <string name="no_browser">Не знайдено браузер, щоб відкрити посилання.</string>
-    <string name="models_how">Як: 1) «Завантажити» біля потрібної моделі — браузер збереже файл. 2) Коли завантажиться, торкніться в браузері «Відкрити» й виберіть Offlingo — модель встановиться сама. Або натисніть «Встановити завантажені файли» й виберіть один чи кілька файлів — клавіатура сама розпізнає кожен.</string>
+    <string name="models_how">Як: 1) «Завантажити» біля потрібної моделі — браузер збереже файл. 2) Коли завантажиться, торкніться в браузері «Відкрити» й виберіть OffKey — модель встановиться сама. Або натисніть «Встановити завантажені файли» й виберіть один чи кілька файлів — клавіатура сама розпізнає кожен.</string>
     <string name="models_download">Завантажити</string>
     <string name="models_size">близько %1$d МБ</string>
     <string name="models_custom">Інші моделі (для досвідчених)</string>
@@ -235,7 +235,7 @@
     <string name="vibration_medium">Середня</string>
     <string name="vibration_strong">Сильна</string>
     <string name="toolbar_undo_translation_description">Повернути оригінал</string>
-    <string name="stickers_title">Стікери Offlingo</string>
+    <string name="stickers_title">Стікери OffKey</string>
     <string name="stickers_letters">АБВ</string>
     <string name="stickers_back_to_emoji">Назад до емодзі</string>
     <string name="stickers_not_supported">Цей застосунок не приймає стікери з клавіатури</string>

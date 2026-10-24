@@ -1,6 +1,6 @@
 # install-pixell
 
-- **Offlingo** — офлайн-клавіатура Android: [offline-keyboard/](offline-keyboard/README.md). Готовий APK: [keyboard-latest](https://github.com/install-pixel/install-pixell/releases/tag/keyboard-latest).
+- **OffKey** — офлайн-клавіатура Android: [offline-keyboard/](offline-keyboard/README.md). Готовий APK: [keyboard-latest](https://github.com/install-pixel/install-pixell/releases/tag/keyboard-latest).
 - **WMS Sklado** — Flutter-застосунок у корені репозиторію (нижче).
 
 ## wms_core

@@ -1,6 +1,6 @@
 # Lingo for Telegram
 
-Telegram turns a GIF sent from a keyboard into a video, and video has no transparency, so the Offlingo
+Telegram turns a GIF sent from a keyboard into a video, and video has no transparency, so the OffKey
 stickers arrive on a white square. These are the same 18 animated stickers as Telegram **video stickers**
 (512 px WebM VP9 with a transparent background, under 3 s and 256 KB): add them once as your own pack and
 send them from Telegram's sticker panel, animated and transparent.

@@ -1,7 +1,8 @@
 name: Offline Keyboard Release
 
 # Publishes a GitHub release page with direct download links: the APK and all offline model packs.
-# Runs when this file changes on the keyboard branch, on a keyboard-v* tag, or manually.
+# Runs when this file changes on the keyboard branch, on a keyboard-v* tag, or manually. A manual run with
+# a version (for example 1.0.0) also publishes a final, non-test release "OffKey 1.0.0" (tag keyboard-v1.0.0).
 
 on:
   push:
@@ -12,6 +13,11 @@ on:
     tags:
       - 'keyboard-v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Final release version, e.g. 1.0.0 (empty: just a build)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -49,25 +55,42 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-build-${{ github.run_number }}
-          name: Offlingo (збірка ${{ github.run_number }})
+          name: OffKey (збірка ${{ github.run_number }})
           target_commitish: ${{ github.sha }}
           prerelease: true
           files: out/*
           body: |
             **Як встановити**
-            1. Завантажте `OfflineKeyboard.apk` і встановіть (стару версію спочатку видаліть).
+            1. Завантажте `OfflineKeyboard.apk` і встановіть (нова версія ставиться поверх старої, налаштування зберігаються).
             2. Голос: завантажте потрібні `vosk-model-small-…zip` (українська `uk`, польська `pl`, англійська `en-us`).
             3. Переклад: `offline-keyboard-mt-ЗВІДКИ-КУДИ.zip` (uk — українська, pl — польська, en — англійська), наприклад `offline-keyboard-mt-uk-pl.zip`. Файли з `-accurate` — точніші, але більші й повільніші моделі.
-            4. Після завантаження торкніться «Відкрити» й виберіть Offlingo — модель встановиться сама. Або: Налаштування → «Офлайн-моделі» → «Встановити завантажені файли» (можна кілька одразу). Розпаковувати zip не треба.
+            4. Після завантаження торкніться «Відкрити» й виберіть OffKey — модель встановиться сама. Або: Налаштування → «Офлайн-моделі» → «Встановити завантажені файли» (можна кілька одразу). Розпаковувати zip не треба.
 
             Застосунок працює без інтернету; файли моделей потрібні лише один раз.
+
+      - name: Publish the final release
+        if: inputs.version != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: keyboard-v${{ inputs.version }}
+          name: OffKey ${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          prerelease: false
+          make_latest: false
+          files: out/*
+          body: |
+            **OffKey ${{ inputs.version }}** — офлайн-клавіатура для Android: українська, польська, англійська.
+            Без інтернету: набір, автовиправлення, голосовий ввід, переклад між трьома мовами, стікери, теми (зокрема OLED), комп'ютерний режим і Bluetooth-клавіатура.
+
+            **Встановлення:** завантажте `OfflineKeyboard.apk` і встановіть. Нова версія ставиться поверх старої.
+            **Моделі** голосу (`vosk-model-small-…zip`) і перекладу (`offline-keyboard-mt-…zip`) — за бажанням: після завантаження «Відкрити» → OffKey.
 
       # Permanent link to the newest APK: …/releases/download/keyboard-latest/OfflineKeyboard.apk
       - name: Update the latest-APK release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-latest
-          name: Offlingo — найновіша версія
+          name: OffKey — найновіша версія
           target_commitish: ${{ github.sha }}
           make_latest: true
           files: out/OfflineKeyboard.apk
@@ -81,7 +104,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-models
-          name: Offlingo — моделі
+          name: OffKey — моделі
           target_commitish: ${{ github.sha }}
           make_latest: false
           files: out/*.zip
