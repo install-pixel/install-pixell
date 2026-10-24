@@ -22,6 +22,11 @@ class ProfileHomeTest {
         val active = MutableStateFlow<String?>(null)
         override val activeProfile = combine(profiles, active) { all, id -> all.firstOrNull { it.id == id } ?: all.firstOrNull() }
         override fun setActive(id: String) { active.value = id }
+        override suspend fun reorderPinned(profileId: String, orderedKeys: List<String>) {
+            profiles.value = profiles.value.map {
+                if (it.id == profileId) it.copy(pinnedAppKeys = com.blacklaunch.launcher.profiles.mergePinnedOrder(it.pinnedAppKeys, orderedKeys)) else it
+            }
+        }
     }
 
     private val apps = FakeAppSource("Sklado", "Scanner", "Telegram")
@@ -110,5 +115,11 @@ class ProfileHomeTest {
         viewModel.openSearch()
         viewModel.updateQuery("tele")
         assertEquals(emptyList<Any>(), groups())
+    }
+
+    @Test fun reorderKeepsUninstalledPinnedApps() {
+        viewModel.reorderPinned(listOf(key("Sklado"), key("Scanner")))
+        assertEquals(listOf("Sklado", "Scanner"), viewModel.home.value.pinned.map { it.label })
+        assertEquals("gone/Main/0", profiles.profiles.value.first().pinnedAppKeys.last())
     }
 }

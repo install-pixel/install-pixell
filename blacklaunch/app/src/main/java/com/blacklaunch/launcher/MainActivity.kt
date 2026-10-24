@@ -174,6 +174,7 @@ class MainActivity : ComponentActivity() {
                     home = home,
                     profileBanner = banner,
                     onSwitchProfile = viewModel::switchProfile,
+                    onReorderPinned = viewModel::reorderPinned,
                     onOpenSearch = viewModel::openSearch,
                     onQueryChange = viewModel::updateQuery,
                     onClearQuery = viewModel::clearQuery,

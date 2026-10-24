@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 sealed interface LauncherUiState {
     data object HomeIdle : LauncherUiState
@@ -71,6 +72,7 @@ private object NoProfiles : ProfileSource {
     override val profiles: Flow<List<LauncherProfile>> = flowOf(emptyList())
     override val activeProfile: Flow<LauncherProfile?> = flowOf(null)
     override fun setActive(id: String) = Unit
+    override suspend fun reorderPinned(profileId: String, orderedKeys: List<String>) = Unit
 }
 
 class LauncherViewModel(
@@ -180,6 +182,11 @@ class LauncherViewModel(
         val next = profiles.value.neighbour(home.value.profileId, delta) ?: return
         if (next.id == home.value.profileId) return
         activate(next)
+    }
+
+    fun reorderPinned(orderedKeys: List<String>) {
+        val profileId = home.value.profileId ?: return
+        viewModelScope.launch { profileSource.reorderPinned(profileId, orderedKeys) }
     }
 
     /** Профіль, знайдений у пошуку: перемикаємо й повертаємося на головний екран. */

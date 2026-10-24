@@ -32,6 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -62,6 +65,7 @@ fun BlackHomeScreen(
     /** Назва профілю, на який щойно перемкнули (показується на мить), або null. */
     profileBanner: String?,
     onSwitchProfile: (delta: Int) -> Unit,
+    onReorderPinned: (List<String>) -> Unit,
     onOpenSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
@@ -98,6 +102,7 @@ fun BlackHomeScreen(
             onOpenSearch = onOpenSearch,
             onLongPress = { showSettings = true },
             onSwitchProfile = onSwitchProfile,
+            onReorderPinned = onReorderPinned,
         )
         is LauncherUiState.SearchOpen -> SearchOpen(
             state = state,
@@ -129,16 +134,21 @@ private fun HomeIdle(
     onOpenSearch: () -> Unit,
     onLongPress: () -> Unit,
     onSwitchProfile: (Int) -> Unit,
+    onReorderPinned: (List<String>) -> Unit,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val view = LocalView.current
+    var dockBounds by remember { mutableStateOf<Rect?>(null) }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .pointerInput(Unit) {
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
-                detectTapGestures(onLongPress = { onLongPress() })
+                // Довге натискання на панелі програм — це перетягування, а не налаштування.
+                detectTapGestures(onLongPress = { position ->
+                    if (dockBounds?.contains(position) != true) onLongPress()
+                })
             }
             .pointerInput(home.profileCount) {
                 var drag = Offset.Zero
@@ -171,18 +181,17 @@ private fun HomeIdle(
                 )
             },
     ) {
-        if (home.pinned.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 24.dp),
-            ) {
-                home.pinned.forEach { app ->
-                    AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = {})
-                }
-            }
-        }
+        PinnedDock(
+            apps = home.pinned,
+            iconFor = iconFor,
+            onLaunch = onLaunch,
+            onReorder = onReorderPinned,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 24.dp)
+                .onGloballyPositioned { dockBounds = it.boundsInParent() },
+        )
         AnimatedVisibility(
             visible = profileBanner != null,
             enter = fadeIn(),
