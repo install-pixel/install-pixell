@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
 import com.blacklaunch.launcher.ui.Haptics
+import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.voice.VoiceActionRunner
 import com.blacklaunch.launcher.timer.BlackTimer
 import com.blacklaunch.launcher.voice.VoiceAction
@@ -110,6 +111,7 @@ class MainActivity : ComponentActivity() {
                     showSuggestions = { app.appearanceSettings.appearance.value.suggestions },
                     showRecent = { app.appearanceSettings.appearance.value.recentQueries },
                     hiddenApps = app.hiddenApps.hidden,
+                    searchScopes = app.searchScopes.scopes,
                 )
             }
         }
@@ -632,6 +634,9 @@ class MainActivity : ComponentActivity() {
         val profiles by profileViewModel.profiles.collectAsStateWithLifecycle()
         val activeId by profileViewModel.activeId.collectAsStateWithLifecycle()
         val apps by profileViewModel.apps.collectAsStateWithLifecycle()
+        val scopes by app.searchScopes.scopes.collectAsStateWithLifecycle()
+        // Доступ «Не турбувати» перевіряємо щоразу при поверненні з налаштувань Android.
+        val dndAccess by dndAccessState.collectAsStateWithLifecycle()
         when (page) {
             SettingsNav.Profiles -> ProfilesScreen(
                 profiles = profiles,
@@ -654,6 +659,10 @@ class MainActivity : ComponentActivity() {
                     onAddApp = { onNavigate(SettingsNav.PickApp(profile.id)) },
                     onBatteryApps = { onNavigate(SettingsNav.BatteryApps(profile.id)) },
                     onDelete = { profileViewModel.delete(profile.id) { onNavigate(SettingsNav.Profiles) } },
+                    hasDndAccess = dndAccess,
+                    onGrantDnd = { startOrToast(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
+                    searchScope = scopes[profile.id] ?: SearchScope.ALL,
+                    onSearchScopeChange = { app.searchScopes.set(profile.id, it) },
                 )
             }
             is SettingsNav.BatteryApps -> {
@@ -773,6 +782,7 @@ class MainActivity : ComponentActivity() {
         ensureBlackWallpaper()
         enableSmsIfGranted()
         wasStopped = false
+        dndAccessState.value = app.profileApplier.hasDndAccess()
     }
 
     // Натискання Home, коли BlackLaunch уже на екрані, повертає чистий чорний екран.
@@ -823,6 +833,7 @@ class MainActivity : ComponentActivity() {
     private var stoppedAt = 0L
 
     private val glance = MutableStateFlow<GlanceInfo?>(null)
+    private val dndAccessState = MutableStateFlow(false)
 
     /** Чорний головний екран без відкритого пошуку чи налаштувань. */
     private var homeIdle = true

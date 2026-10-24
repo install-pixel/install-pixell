@@ -114,7 +114,7 @@
     <string name="profile_notifications">Notifications</string>
     <string name="notif_system">As in the system</string>
     <string name="notif_dnd">Do not disturb</string>
-    <string name="profile_apply_note">Sound and notifications are saved now and will be applied when switching profiles in the next version.</string>
+    <string name="profile_apply_note">Applied when you switch to this profile (swipe, tile, voice). “Do not disturb” uses your system exceptions (calls, alarms).</string>
     <string name="profile_delete">Delete profile</string>
     <string name="profile_delete_confirm">Delete profile “%1$s”?</string>
     <string name="profile_last">The last profile cannot be deleted</string>
@@ -320,4 +320,13 @@
     <string name="glance_subtitle">Date, next alarm, nearest event and battery at the top of the home screen</string>
     <string name="all_apps_button_title">“All apps” button</string>
     <string name="all_apps_button_subtitle">A line in empty search that opens all apps A–Z</string>
+    <string name="profile_needs_dnd">“%1$s”: silent mode and Do not disturb need access — open the profile settings and allow it</string>
+    <string name="profile_sound_failed">“%1$s”: Android did not allow changing the sound mode</string>
+    <string name="dnd_access_needed">“No sound” and “Do not disturb” need Do not disturb access. Normal and vibrate work without it.</string>
+    <string name="dnd_access_grant">Allow Do not disturb access</string>
+    <string name="search_scope_title">Search in this profile</string>
+    <string name="search_scope_all">All apps</string>
+    <string name="search_scope_first">Profile apps first</string>
+    <string name="search_scope_only">Only profile apps</string>
+    <string name="search_scope_note">“Only profile apps” also applies to suggestions, All apps and voice “open”. Contacts, settings and the calculator stay. Recent searches are kept per profile.</string>
 </resources>

@@ -112,7 +112,7 @@
     <string name="profile_notifications">Сповіщення</string>
     <string name="notif_system">Як у системі</string>
     <string name="notif_dnd">Не турбувати</string>
-    <string name="profile_apply_note">Звук і сповіщення вже зберігаються, а застосовуватимуться під час перемикання профілю в наступній версії.</string>
+    <string name="profile_apply_note">Застосовується, коли ви перемикаєтеся на цей профіль (свайп, плитка, голос). «Не турбувати» — з вашими системними винятками (дзвінки, будильники).</string>
     <string name="profile_delete">Видалити профіль</string>
     <string name="profile_delete_confirm">Видалити профіль «%1$s»?</string>
     <string name="profile_last">Останній профіль видалити не можна</string>
@@ -320,4 +320,13 @@
     <string name="glance_subtitle">Дата, найближчий будильник, подія й батарея вгорі головного екрана</string>
     <string name="all_apps_button_title">Кнопка «Усі програми»</string>
     <string name="all_apps_button_subtitle">Рядок у порожньому пошуку, що відкриває всі програми за абеткою</string>
+    <string name="profile_needs_dnd">«%1$s»: для «Без звуку» й «Не турбувати» потрібен доступ — відкрийте налаштування профілю й дозвольте</string>
+    <string name="profile_sound_failed">«%1$s»: Android не дозволив змінити режим звуку</string>
+    <string name="dnd_access_needed">«Без звуку» й «Не турбувати» потребують доступу «Не турбувати». Звичайний режим і вібрація працюють без нього.</string>
+    <string name="dnd_access_grant">Дозволити доступ «Не турбувати»</string>
+    <string name="search_scope_title">Пошук у цьому профілі</string>
+    <string name="search_scope_all">Усі програми</string>
+    <string name="search_scope_first">Програми профілю першими</string>
+    <string name="search_scope_only">Лише програми профілю</string>
+    <string name="search_scope_note">«Лише програми профілю» діє і на підказки, «Усі програми» та голосове «відкрий». Контакти, налаштування й калькулятор лишаються. Останні запити — окремо для кожного профілю.</string>
 </resources>

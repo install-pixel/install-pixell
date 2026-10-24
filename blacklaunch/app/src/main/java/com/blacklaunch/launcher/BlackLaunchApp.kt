@@ -2,6 +2,13 @@ package com.blacklaunch.launcher
 
 import android.app.Application
 import android.os.Build
+import android.widget.Toast
+import com.blacklaunch.launcher.profiles.PrefsSearchScopes
+import com.blacklaunch.launcher.profiles.ProfileApplier
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import com.blacklaunch.launcher.diagnostics.CrashLog
 import java.io.File
 import java.text.SimpleDateFormat
@@ -66,6 +73,9 @@ class BlackLaunchApp : Application() {
         }
     }
 
+    val profileApplier: ProfileApplier by lazy { ProfileApplier(this) }
+    val searchScopes: PrefsSearchScopes by lazy { PrefsSearchScopes(this) }
+
     val database: AppDatabase by lazy { AppDatabase.create(this) }
     val profileRepository: ProfileRepository by lazy {
         ProfileRepository(
@@ -78,6 +88,7 @@ class BlackLaunchApp : Application() {
     override fun onCreate() {
         super.onCreate()
         crashLog.install()
+        appScope.launch { applyProfileOnSwitch() }
         appScope.launch {
             profileRepository.ensureDefaults(
                 DefaultProfiles.create(
@@ -87,5 +98,30 @@ class BlackLaunchApp : Application() {
                 ),
             )
         }
+    }
+
+    /**
+     * Перемкнули профіль (свайп, плитка, голос, пошук) або змінили звук активного —
+     * застосовуємо звук і «Не турбувати». Під час запуску нічого не чіпаємо.
+     */
+    private suspend fun applyProfileOnSwitch() {
+        var started = false
+        profileRepository.activeProfile
+            .filterNotNull()
+            .map { Triple(it.id, it.soundMode, it.notificationMode) to it }
+            .distinctUntilChangedBy { it.first }
+            .collect { (_, profile) ->
+                if (!started) {
+                    started = true
+                    return@collect
+                }
+                val result = profileApplier.apply(profile)
+                if (!result.ok) {
+                    withContext(Dispatchers.Main) {
+                        val text = if (result.needsAccess) R.string.profile_needs_dnd else R.string.profile_sound_failed
+                        Toast.makeText(this@BlackLaunchApp, getString(text, result.profileName), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
     }
 }

@@ -37,9 +37,13 @@ class SuggestionsTest {
 
     @Test fun recentQueriesNewestFirstWithoutDuplicates() {
         val recent = InMemoryRecentQueries(max = 3)
-        listOf("таймер 10 хвилин", "Telegram", "wifi", "telegram!", "music").forEach(recent::record)
-        assertEquals(listOf("music", "telegram!", "wifi"), recent.queries.value)
-        recent.remove("wifi")
-        assertEquals(listOf("music", "telegram!"), recent.queries.value)
+        listOf("таймер 10 хвилин", "Telegram", "wifi", "telegram!", "music").forEach { recent.record("home", it) }
+        recent.record("work", "scanner")
+        assertEquals(listOf("music", "telegram!", "wifi"), recent.queries.value["home"])
+        assertEquals(listOf("scanner"), recent.queries.value["work"])
+        recent.remove("home", "wifi")
+        assertEquals(listOf("music", "telegram!"), recent.queries.value["home"])
+        val decoded = InMemoryRecentQueries.decode(InMemoryRecentQueries.encode(recent.queries.value))
+        assertEquals(recent.queries.value, decoded)
     }
 }

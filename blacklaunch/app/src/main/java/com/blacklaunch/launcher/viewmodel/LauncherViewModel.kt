@@ -30,6 +30,7 @@ import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
 import com.blacklaunch.launcher.commands.CustomCommand
+import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.search.AppSuggestions
 import com.blacklaunch.launcher.search.InMemoryRecentQueries
 import com.blacklaunch.launcher.search.RecentQueries
@@ -77,6 +78,9 @@ sealed interface LauncherUiState {
         val recent: List<String> = emptyList(),
     ) : LauncherUiState
 }
+
+/** Пошук в активному профілі: [pinned] — його програми. */
+private data class ProfileScope(val profileId: String, val scope: SearchScope, val pinned: Set<String>)
 
 /** Одноразові повідомлення для користувача. */
 enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND }
@@ -130,6 +134,8 @@ class LauncherViewModel(
     private val showRecent: () -> Boolean = { false },
     /** Приховані з пошуку програми (ключі). */
     hiddenApps: Flow<Set<String>> = flowOf(emptySet()),
+    /** Що шукати в кожному профілі (усі / свої першими / лише свої). */
+    searchScopes: Flow<Map<String, SearchScope>> = flowOf(emptyMap()),
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -143,9 +149,18 @@ class LauncherViewModel(
 
     // Індекс перебудовується лише при зміні програм, псевдонімів чи навчання, не на кожну літеру.
     // Приховані програми не шукаються й не підказуються; на головному екрані лишаються.
+    // Пошук у профілі: вибір користувача і програми активного профілю.
+    private val scope: StateFlow<ProfileScope> =
+        combine(profileSource.activeProfile, searchScopes) { active, scopes ->
+            ProfileScope(active?.id.orEmpty(), active?.let { scopes[it.id] } ?: SearchScope.ALL, active?.pinnedAppKeys.orEmpty().toSet())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ProfileScope("", SearchScope.ALL, emptySet()))
+
     private val visibleApps: StateFlow<List<AppInfo>> =
-        combine(appSource.apps, hiddenApps) { apps, hidden -> apps.filterNot { it.key in hidden } }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        combine(appSource.apps, hiddenApps, scope) { apps, hidden, scope ->
+            val shown = apps.filterNot { it.key in hidden }
+            // «Лише програми профілю» — пошук, підказки, «Усі програми» й голосове «відкрий» бачать тільки їх.
+            if (scope.scope == SearchScope.PROFILE_ONLY) shown.filter { it.key in scope.pinned } else shown
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Усі (не приховані) програми за абеткою — список A–Z у порожньому пошуку. */
     val allApps: StateFlow<List<AppInfo>> =
@@ -186,7 +201,11 @@ class LauncherViewModel(
 
     // Результати рахуються у фоні; сам текст запиту оновлюється одразу, щоб набір не «стрибав».
     private val results: StateFlow<List<AppInfo>> =
-        combine(query.filterNotNull(), index, launchCounts) { query, index, counts -> index.search(query, counts) }
+        combine(query.filterNotNull(), index, launchCounts, scope) { query, index, counts, scope ->
+            val found = index.search(query, counts)
+            // «Програми профілю першими» — стабільно вгору, решта в тому ж порядку.
+            if (scope.scope == SearchScope.PROFILE_FIRST) found.sortedBy { if (it.key in scope.pinned) 0 else 1 } else found
+        }
             .flowOn(computeDispatcher)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -226,7 +245,7 @@ class LauncherViewModel(
                 query.isBlank() -> LauncherUiState.SearchOpen(
                     query = query,
                     suggestions = if (showSuggestions()) AppSuggestions.suggest(records, visibleApps.value, now(), limit = SUGGESTIONS) else emptyList(),
-                    recent = if (showRecent()) recent else emptyList(),
+                    recent = if (showRecent()) recent[scope.value.profileId].orEmpty() else emptyList(),
                 )
                 else -> {
                     val enabled = voiceActionsEnabled()
@@ -370,7 +389,7 @@ class LauncherViewModel(
      * (навіть вимкнені в налаштуваннях — користувач сам їх задав), профіль і програму — тут.
      */
     fun runCustom(command: CustomCommand) {
-        query.value?.let(recentQueries::record)
+        query.value?.let { recentQueries.record(scope.value.profileId, it) }
         command.steps.forEach { step ->
             when (val parsed = VoiceCommandParser.parse(step)) {
                 is VoiceCommand.Action -> _voiceActions.trySend(parsed.action)
@@ -384,14 +403,14 @@ class LauncherViewModel(
 
     /** Команду вибрали в результатах пошуку — виконує екран, як голосову. */
     fun runAction(action: VoiceAction) {
-        query.value?.let(recentQueries::record)
+        query.value?.let { recentQueries.record(scope.value.profileId, it) }
         _voiceActions.trySend(action)
     }
 
     /** Натиснули останній запит — шукаємо його знову. */
     fun useRecent(text: String) = updateQuery(text)
 
-    fun removeRecent(text: String) = recentQueries.remove(text)
+    fun removeRecent(text: String) = recentQueries.remove(scope.value.profileId, text)
 
     /** [searchQuery] — з якого запиту відкрили: наступного разу ця програма буде першою. */
     private fun launch(app: AppInfo, searchQuery: String?): Boolean {
@@ -400,7 +419,7 @@ class LauncherViewModel(
             history.record(app, now())
             if (!searchQuery.isNullOrBlank()) {
                 learnedQueries.record(searchQuery, app.key)
-                recentQueries.record(searchQuery)
+                recentQueries.record(scope.value.profileId, searchQuery)
             }
         } else {
             _messages.trySend(UiMessage.LAUNCH_FAILED)

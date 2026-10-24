@@ -6,11 +6,11 @@ class PrefsRecentQueries(context: Context) : InMemoryRecentQueries() {
     private val prefs = context.applicationContext.getSharedPreferences("recent_queries", Context.MODE_PRIVATE)
 
     init {
-        restore(prefs.getString(KEY, null).orEmpty().lines().filter { it.isNotBlank() })
+        restore(decode(prefs.getString(KEY, null)))
     }
 
     override fun onChanged() {
-        prefs.edit().putString(KEY, queries.value.joinToString("\n")).apply()
+        prefs.edit().putString(KEY, encode(queries.value)).apply()
     }
 
     private companion object {

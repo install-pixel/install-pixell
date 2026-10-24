@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import com.blacklaunch.launcher.profiles.SearchScope
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -187,6 +188,11 @@ fun ProfileEditScreen(
     onAddApp: () -> Unit,
     onBatteryApps: () -> Unit,
     onDelete: () -> Unit,
+    /** Доступ «Не турбувати» (потрібен для «Без звуку» й «Не турбувати»). */
+    hasDndAccess: Boolean = true,
+    onGrantDnd: () -> Unit = {},
+    searchScope: SearchScope = SearchScope.ALL,
+    onSearchScopeChange: (SearchScope) -> Unit = {},
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -227,6 +233,19 @@ fun ProfileEditScreen(
                 TargetOption(mode.label(), profile.notificationMode == mode) { onChange(profile.copy(notificationMode = mode)) }
             }
             Note(stringResource(R.string.profile_apply_note))
+            val needsAccess = profile.soundMode == SoundMode.SILENT || profile.notificationMode != NotificationMode.SYSTEM_DEFAULT
+            if (needsAccess && !hasDndAccess) {
+                Note(stringResource(R.string.dnd_access_needed))
+                ActionOption(R.string.dnd_access_grant, Icons.Filled.Lock, onGrantDnd)
+            }
+        }
+
+        Card {
+            Text(stringResource(R.string.search_scope_title), color = Oled.TextPrimary, fontSize = 17.sp)
+            SearchScope.entries.forEach { scope ->
+                TargetOption(scope.label(), searchScope == scope) { onSearchScopeChange(scope) }
+            }
+            Note(stringResource(R.string.search_scope_note))
         }
 
         Card {
@@ -393,6 +412,13 @@ internal fun SoundMode.label(): Int = when (this) {
     SoundMode.NORMAL -> R.string.sound_normal
     SoundMode.VIBRATE -> R.string.sound_vibrate
     SoundMode.SILENT -> R.string.sound_silent
+}
+
+@StringRes
+private fun SearchScope.label(): Int = when (this) {
+    SearchScope.ALL -> R.string.search_scope_all
+    SearchScope.PROFILE_FIRST -> R.string.search_scope_first
+    SearchScope.PROFILE_ONLY -> R.string.search_scope_only
 }
 
 @StringRes
