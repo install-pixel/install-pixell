@@ -318,4 +318,6 @@
     <string name="glance_battery">%1$d%%</string>
     <string name="glance_title">W skrócie</string>
     <string name="glance_subtitle">Data, najbliższy budzik, wydarzenie i bateria u góry ekranu głównego</string>
+    <string name="all_apps_button_title">Przycisk „Wszystkie aplikacje”</string>
+    <string name="all_apps_button_subtitle">Wiersz w pustym wyszukiwaniu, który otwiera wszystkie aplikacje A–Z</string>
 </resources>

@@ -189,6 +189,12 @@ fun SettingsScreen(
                     checked = appearance.recentQueries,
                     onCheckedChange = { on -> onChange { it.copy(recentQueries = on) } },
                 )
+                SwitchRow(
+                    title = stringResource(R.string.all_apps_button_title),
+                    subtitle = stringResource(R.string.all_apps_button_subtitle),
+                    checked = appearance.allAppsButton,
+                    onCheckedChange = { on -> onChange { it.copy(allAppsButton = on) } },
+                )
             }
             Card {
                 Text(stringResource(R.string.global_section), color = Oled.TextPrimary, fontSize = 17.sp)

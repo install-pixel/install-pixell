@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
                     onCustom = viewModel::runCustom,
                     onRecent = viewModel::useRecent,
                     onRemoveRecent = viewModel::removeRecent,
-                    allApps = allApps,
+                    allApps = if (appearance.allAppsButton) allApps else emptyList(),
                     onContactAction = ::contactAction,
                     iconFor = iconCache::load,
                     voiceState = voiceState,

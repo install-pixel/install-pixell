@@ -26,6 +26,8 @@ data class Appearance(
     val hideStatusBar: Boolean = true,
     /** «Короткий огляд»: дата, будильник, подія, батарея вгорі головного екрана. */
     val glance: Boolean = false,
+    /** Рядок «Усі програми» в порожньому пошуку. */
+    val allAppsButton: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -52,6 +54,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_RECENT, next.recentQueries)
             .putBoolean(KEY_HIDE_STATUS, next.hideStatusBar)
             .putBoolean(KEY_GLANCE, next.glance)
+            .putBoolean(KEY_ALL_APPS, next.allAppsButton)
             .apply()
         _appearance.value = next
     }
@@ -71,6 +74,7 @@ class AppearanceSettings(context: Context) {
             recentQueries = prefs.getBoolean(KEY_RECENT, defaults.recentQueries),
             hideStatusBar = prefs.getBoolean(KEY_HIDE_STATUS, defaults.hideStatusBar),
             glance = prefs.getBoolean(KEY_GLANCE, defaults.glance),
+            allAppsButton = prefs.getBoolean(KEY_ALL_APPS, defaults.allAppsButton),
         )
     }
 
@@ -86,6 +90,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_RECENT = "recent_queries"
         private const val KEY_HIDE_STATUS = "hide_status_bar"
         private const val KEY_GLANCE = "glance"
+        private const val KEY_ALL_APPS = "all_apps_button"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }
