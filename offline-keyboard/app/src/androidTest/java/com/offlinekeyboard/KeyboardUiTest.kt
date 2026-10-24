@@ -471,7 +471,9 @@ class KeyboardUiTest {
             val location = IntArray(2).also { root.keyboardView.getLocationOnScreen(it) }
             ref.set(
                 "shown=${root.keyboardView.isShown} y=${location[1]} h=${root.keyboardView.height} " +
-                    "padding=${root.paddingBottom} changes=${root.bottomSpaceChangesForTest}",
+                    "padding=${root.paddingBottom} changes=${root.bottomSpaceChangesForTest} " +
+                    "editor=${KeyboardService.instance?.currentInputEditorInfo?.fieldId} " +
+                    "plain=${activity.plain.id} focused=${activity.plain.hasFocus()}",
             )
         }
         return ref.get()
@@ -504,7 +506,11 @@ class KeyboardUiTest {
                 field.requestFocus()
                 field.context.getSystemService(InputMethodManager::class.java).showSoftInput(field, 0)
             }
-            val shown = runCatching { waitFor("keyboard service", timeoutMs = 8_000) { visibleService() } }.isSuccess
+            // Shown is not enough: on Android 15 the keyboard can come up still bound to the previous screen's
+            // field, and then everything typed goes nowhere. Wait until it is typing into this field.
+            val shown = runCatching {
+                waitFor("keyboard on this field", timeoutMs = 8_000) { visibleService()?.takeIf { typesInto(it, field) } }
+            }.isSuccess
             if (shown) {
                 clear(field)
                 // Android 14 and 15 slide the keyboard in (slowly on the emulator); a touch during the
@@ -517,6 +523,18 @@ class KeyboardUiTest {
         }
         service()
         clear(field)
+    }
+
+    private fun typesInto(keyboard: KeyboardService, field: EditText): Boolean {
+        val ref = AtomicReference(false)
+        instrumentation.runOnMainSync {
+            val info = keyboard.currentInputEditorInfo
+            ref.set(
+                keyboard.currentInputStarted && info != null && info.fieldId == field.id &&
+                    info.packageName == field.context.packageName && field.hasFocus(),
+            )
+        }
+        return ref.get()
     }
 
     private fun visibleService(): KeyboardService? {
