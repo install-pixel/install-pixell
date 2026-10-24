@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,13 +74,18 @@ fun HomeGridView(
     onRemove: (appKey: String) -> Unit,
     /** Де на екрані значки — щоб довге натискання на них не відкривало налаштування. */
     onIconBounds: (Map<String, Rect>) -> Unit,
-    /** Скільки верхніх рядів зайнято (назва профілю) — туди значки не ставляться. */
-    reservedTopRows: Int = 0,
+    /** Смуга вгорі під назву профілю — туди значки не ставляться. */
+    reservedTop: Dp = 0.dp,
+    /** Смуга внизу під поле пошуку — щоб пошук не закривав значки. */
+    reservedBottom: Dp = 0.dp,
+    /** Почалось/закінчилось перетягування — щоб сховати плашку профілю під зоною «Прибрати». */
+    onDraggingChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val view = LocalView.current
     val move by rememberUpdatedState(onMove)
     val remove by rememberUpdatedState(onRemove)
+    val draggingChanged by rememberUpdatedState(onDraggingChange)
     var dragging by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     val bounds = remember { mutableMapOf<String, Rect>() }
@@ -89,13 +95,16 @@ fun HomeGridView(
         val cellWidth = maxWidth / HomeGrid.COLUMNS
         val cellWidthPx = with(density) { cellWidth.toPx() }
         val cellHeightPx = with(density) { CellHeight.toPx() }
-        val heightPx = with(density) { maxHeight.toPx() }
-        val rows = ((heightPx / cellHeightPx).toInt() - reservedTopRows).coerceAtLeast(1)
+        val topPx = with(density) { reservedTop.toPx() }
+        // Нижня межа сітки: рядки рахуються знизу, тож розкладка просто піднімається над смугою.
+        val heightPx = with(density) { maxHeight.toPx() - reservedBottom.toPx() }
+        val rows = ((heightPx - topPx) / cellHeightPx).toInt().coerceAtLeast(1)
         val removeZonePx = with(density) { RemoveZoneHeight.toPx() }
         val draggedTop = dragging?.let { key ->
             cells[key]?.let { heightPx - (HomeGrid.rowFromBottom(it).coerceAtMost(rows - 1) + 1) * cellHeightPx + dragOffset.y }
         }
-        val overRemoveZone = draggedTop != null && draggedTop < removeZonePx
+        // Прибираємо, коли центр значка в зоні — легкий рух верхнього ряду не видаляє.
+        val overRemoveZone = draggedTop != null && draggedTop + cellHeightPx / 2 < removeZonePx
 
         // Зона «Прибрати» з'являється лише під час перетягування.
         if (dragging != null) {
@@ -131,6 +140,7 @@ fun HomeGridView(
                             onDragStart = {
                                 dragging = app.key
                                 dragOffset = Offset.Zero
+                                draggingChanged(true)
                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             },
                             onDrag = { change, amount ->
@@ -138,7 +148,7 @@ fun HomeGridView(
                                 dragOffset += amount
                             },
                             onDragEnd = {
-                                if (y + dragOffset.y < removeZonePx) {
+                                if (y + dragOffset.y + cellHeightPx / 2 < removeZonePx) {
                                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                     remove(app.key)
                                 } else {
@@ -149,10 +159,12 @@ fun HomeGridView(
                                 }
                                 dragging = null
                                 dragOffset = Offset.Zero
+                                draggingChanged(false)
                             },
                             onDragCancel = {
                                 dragging = null
                                 dragOffset = Offset.Zero
+                                draggingChanged(false)
                             },
                         )
                     }

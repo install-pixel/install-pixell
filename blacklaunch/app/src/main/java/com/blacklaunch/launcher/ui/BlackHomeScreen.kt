@@ -120,7 +120,7 @@ fun BlackHomeScreen(
             onRemoveApp = onRemoveApp,
             profileSwipe = profileSwipe,
             showProfileLabel = showProfileLabel,
-            modifier = if (searchOpen) Modifier.blur(18.dp).alpha(0.35f) else Modifier,
+            modifier = if (searchOpen) Modifier.blur(10.dp).alpha(0.7f) else Modifier,
         )
         if (state is LauncherUiState.SearchOpen) SearchOpen(
             state = state,
@@ -162,6 +162,7 @@ private fun HomeIdle(
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val view = LocalView.current
     var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
+    var dragging by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -211,14 +212,17 @@ private fun HomeIdle(
             onMove = onMoveApp,
             onRemove = onRemoveApp,
             onIconBounds = { iconBounds = it },
-            reservedTopRows = if (showProfileLabel) 1 else 0,
+            reservedTop = if (showProfileLabel) ProfileLabelSpace else 0.dp,
+            reservedBottom = SearchFieldSpace,
+            onDraggingChange = { dragging = it },
             modifier = Modifier
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 12.dp),
         )
         val topModifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 16.dp)
-        if (showProfileLabel && home.profileName.isNotEmpty()) {
+        // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.
+        if (!dragging && showProfileLabel && home.profileName.isNotEmpty()) {
             // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.
             ProfilePill(
                 name = home.profileName,
@@ -226,7 +230,7 @@ private fun HomeIdle(
                 onClick = if (home.profileCount > 1) ({ onSwitchProfile(1) }) else null,
                 modifier = topModifier,
             )
-        } else {
+        } else if (!dragging) {
             // Без плашки назва коротко з'являється вгорі під час перемикання.
             AnimatedVisibility(visible = profileBanner != null, enter = fadeIn(), exit = fadeOut(), modifier = topModifier) {
                 ProfilePill(name = profileBanner.orEmpty(), highlighted = true, onClick = null)
@@ -234,6 +238,10 @@ private fun HomeIdle(
         }
     }
 }
+
+/** Місце вгорі під плашку профілю і внизу під поле пошуку — значки туди не стають. */
+private val ProfileLabelSpace = 48.dp
+private val SearchFieldSpace = 64.dp
 
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
@@ -306,7 +314,7 @@ private fun SearchOpen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x99000000))
+            .background(Color(0x40000000))
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
