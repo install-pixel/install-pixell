@@ -251,6 +251,9 @@ fun ProfileEditScreen(
             if (notificationFilter && !hasNotificationAccess) {
                 Note(stringResource(R.string.notif_filter_access))
                 ActionOption(R.string.notif_filter_grant, Icons.Filled.Lock, onGrantNotificationAccess)
+            } else if (notificationFilter) {
+                // Доступ уже є — кнопка зникає, лишається лише підтвердження.
+                Note(stringResource(R.string.notif_filter_granted))
             }
             val needsAccess = profile.soundMode == SoundMode.SILENT || profile.notificationMode != NotificationMode.SYSTEM_DEFAULT
             if (needsAccess && !hasDndAccess) {

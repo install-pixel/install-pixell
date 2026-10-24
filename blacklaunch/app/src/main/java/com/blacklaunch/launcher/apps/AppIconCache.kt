@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.RadialGradient
@@ -65,16 +66,25 @@ class AppIconCache(
         val radius = PROBE / 2f
         var inside = 0
         var filled = 0
+        var corners = 0
+        var cornersFilled = 0
         for (y in 0 until PROBE) for (x in 0 until PROBE) {
             val dx = x - radius + 0.5f
             val dy = y - radius + 0.5f
-            if (dx * dx + dy * dy > radius * radius) continue
-            inside++
-            if ((probe.getPixel(x, y) ushr 24) > 128) filled++
+            val opaque = (probe.getPixel(x, y) ushr 24) > 128
+            if (dx * dx + dy * dy > radius * radius) {
+                // Кути поза кружечком — поза «безпечною зоною»: справжній силует туди не заходить.
+                corners++
+                if (opaque) cornersFilled++
+            } else {
+                inside++
+                if (opaque) filled++
+            }
         }
         probe.recycle()
         val share = filled.toFloat() / inside
-        return share in MIN_GLYPH..MAX_GLYPH
+        val spill = cornersFilled.toFloat() / corners
+        return share in MIN_GLYPH..MAX_GLYPH && spill <= MAX_SPILL
     }
 
     private fun themedIcon(glyph: Drawable): Bitmap {
@@ -93,11 +103,15 @@ class AppIconCache(
         canvas.drawCircle(radius, radius, radius - rim.strokeWidth, rim)
         // Шар одноколірного значка займає 108dp із «безпечною зоною» 72dp, тому його розширюємо.
         val inset = -(sizePx * 0.25f).toInt()
+        // Силует — лише всередині кружечка, щоб нічого не вилазило за край.
+        canvas.save()
+        canvas.clipPath(Path().apply { addCircle(radius, radius, radius, Path.Direction.CW) })
         glyph.mutate().apply {
             colorFilter = PorterDuffColorFilter(GLYPH, PorterDuff.Mode.SRC_IN)
             setBounds(inset, inset, sizePx - inset, sizePx - inset)
             draw(canvas)
         }
+        canvas.restore()
         return bitmap
     }
 
@@ -121,5 +135,6 @@ class AppIconCache(
         const val PROBE = 48
         const val MIN_GLYPH = 0.02f
         const val MAX_GLYPH = 0.6f
+        const val MAX_SPILL = 0.05f
     }
 }

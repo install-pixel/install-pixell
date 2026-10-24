@@ -336,4 +336,5 @@
     <string name="notif_filter_subtitle">Решта відкладається, а не губиться — повернеться, коли перемкнете профіль. Дзвінки, будильники й музика показуються завжди</string>
     <string name="notif_filter_access">Потрібен доступ до сповіщень лише для Black Glass. На сторінці, що відкриється, увімкніть Black Glass — інших програм не змінюйте. Black Glass бачить сповіщення лише щоб їх відкласти й нікуди нічого не передає.</string>
     <string name="notif_filter_grant">Дозволити доступ до сповіщень</string>
+    <string name="notif_filter_granted">✓ Доступ до сповіщень надано — фільтр працює в цьому профілі</string>
 </resources>
