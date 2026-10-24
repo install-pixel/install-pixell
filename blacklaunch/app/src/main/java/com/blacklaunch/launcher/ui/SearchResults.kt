@@ -70,8 +70,15 @@ fun SearchResults(
         }
         return
     }
-    val calculator = groups.filter { it.kind == GroupKind.CALCULATOR }
-    val others = groups.filter { it.kind != GroupKind.CALCULATOR }.sortedBy { it.kind.ordinal }
+    // Ключі LazyColumn мають бути унікальними, інакше Compose падає: однакові SMS
+    // від одного відправника чи повторений ярлик дали б однаковий ключ.
+    val seen = HashSet<String>()
+    val apps = results.filter { seen.add(it.key) }
+    val unique = groups.mapNotNull { group ->
+        group.items.filter { seen.add(it.key) }.takeIf { it.isNotEmpty() }?.let { group.copy(items = it) }
+    }
+    val calculator = unique.filter { it.kind == GroupKind.CALCULATOR }
+    val others = unique.filter { it.kind != GroupKind.CALCULATOR }.sortedBy { it.kind.ordinal }
     // Найкращий результат — унизу, ближче до поля пошуку й великого пальця:
     // калькулятор, програми, далі групи; заголовок групи — над її рядками.
     LazyColumn(
@@ -82,7 +89,7 @@ fun SearchResults(
         calculator.forEach { group ->
             items(group.items, key = { it.key }) { GlobalRow(it, onGlobal) }
         }
-        items(results, key = { it.key }) { app ->
+        items(apps, key = { it.key }) { app ->
             AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
         others.forEach { group ->
