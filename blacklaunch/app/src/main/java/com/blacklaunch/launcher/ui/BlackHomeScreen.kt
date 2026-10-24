@@ -76,6 +76,7 @@ import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 import com.blacklaunch.launcher.voice.VoiceAction
+import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.voice.VoiceState
 import kotlin.math.abs
 
@@ -117,6 +118,8 @@ fun BlackHomeScreen(
     onGlobal: (GlobalResult) -> Unit,
     /** Команда з результатів пошуку («wifi», «таймер 10 хвилин»). */
     onAction: (VoiceAction) -> Unit,
+    /** Власна команда з результатів пошуку. */
+    onCustom: (CustomCommand) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -182,6 +185,7 @@ fun BlackHomeScreen(
                 onLongPress = { menuApp = it },
                 onGlobal = onGlobal,
                 onAction = onAction,
+                onCustom = onCustom,
                 iconFor = iconFor,
                 voiceState = voiceState,
                 onMicClick = onMicClick,
@@ -331,6 +335,8 @@ private fun SearchOpen(
     onGlobal: (GlobalResult) -> Unit,
     /** Команда з результатів пошуку («wifi», «таймер 10 хвилин»). */
     onAction: (VoiceAction) -> Unit,
+    /** Власна команда з результатів пошуку. */
+    onCustom: (CustomCommand) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
@@ -464,6 +470,8 @@ private fun SearchOpen(
             onGlobal = onGlobal,
             actions = state.actions,
             onAction = onAction,
+            custom = state.custom,
+            onCustom = onCustom,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(

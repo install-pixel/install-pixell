@@ -97,7 +97,11 @@ internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChec
 
 /** Варіант вибору: однакові рядки один під одним, вибраний — світліший і з точкою. */
 @Composable
-internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () -> Unit) {
+internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () -> Unit) =
+    TargetOption(stringResource(label), selected, onClick)
+
+@Composable
+internal fun TargetOption(label: String, selected: Boolean, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
@@ -121,7 +125,7 @@ internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () 
         }
         Spacer(Modifier.width(12.dp))
         Text(
-            stringResource(label),
+            label,
             color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
             fontSize = 16.sp,
         )

@@ -10,6 +10,7 @@ import java.util.Locale
 import androidx.room.withTransaction
 import com.blacklaunch.launcher.apps.AppRepository
 import com.blacklaunch.launcher.apps.PrefsLaunchHistory
+import com.blacklaunch.launcher.commands.PrefsCustomCommandStore
 import com.blacklaunch.launcher.data.AppDatabase
 import com.blacklaunch.launcher.global.AndroidGlobalSearch
 import com.blacklaunch.launcher.global.GlobalSearchSettings
@@ -39,6 +40,7 @@ class BlackLaunchApp : Application() {
     val appearanceSettings: AppearanceSettings by lazy { AppearanceSettings(this) }
     val voiceSettings: VoiceSettings by lazy { VoiceSettings(this) }
     val voiceActionSettings: VoiceActionSettings by lazy { VoiceActionSettings(this) }
+    val customCommands: PrefsCustomCommandStore by lazy { PrefsCustomCommandStore(this) }
     val voiceModelStore: VoiceModelStore by lazy { VoiceModelStore(this) }
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }

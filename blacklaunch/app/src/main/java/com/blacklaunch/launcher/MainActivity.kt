@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
 import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -42,6 +43,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.blacklaunch.launcher.apps.AppIconCache
+import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.system.WallpaperController
 import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.global.GlobalResult
@@ -71,6 +73,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+/** Системний екран «Синтез мовлення» (рушій, голоси, завантаження офлайн). */
+private const val TTS_SETTINGS = "com.android.settings.TTS_SETTINGS"
+
 class MainActivity : ComponentActivity() {
     private val app by lazy { application as BlackLaunchApp }
     private val repository by lazy { app.appRepository }
@@ -88,6 +93,7 @@ class MainActivity : ComponentActivity() {
                     globalKinds = app.globalSearchSettings.enabled,
                     layoutStore = app.homeLayoutStore,
                     voiceActionsEnabled = { app.voiceActionSettings.enabled.value },
+                    customCommands = { app.customCommands.commands.value },
                 )
             }
         }
@@ -194,6 +200,8 @@ class MainActivity : ComponentActivity() {
             val voiceActions by app.voiceActionSettings.enabled.collectAsStateWithLifecycle()
             val directCall by app.voiceActionSettings.directCall.collectAsStateWithLifecycle()
             val speakAnswers by app.voiceActionSettings.speakAnswers.collectAsStateWithLifecycle()
+            val ttsEngine by app.voiceActionSettings.ttsEngine.collectAsStateWithLifecycle()
+            val customCommands by app.customCommands.commands.collectAsStateWithLifecycle()
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 BlackHomeScreen(
@@ -216,6 +224,7 @@ class MainActivity : ComponentActivity() {
                     onLaunch = { app -> viewModel.launch(app) },
                     onGlobal = ::openGlobalResult,
                     onAction = viewModel::runAction,
+                    onCustom = viewModel::runCustom,
                     iconFor = iconCache::load,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
@@ -253,6 +262,14 @@ class MainActivity : ComponentActivity() {
                                 onDirectCallChange = ::setDirectCall,
                                 speakAnswers = speakAnswers,
                                 onSpeakAnswersChange = app.voiceActionSettings::setSpeakAnswers,
+                                ttsEngines = remember(page) { ttsEngines() },
+                                ttsEngine = ttsEngine,
+                                onTtsEngineChange = app.voiceActionSettings::setTtsEngine,
+                                onTestVoice = actionRunner::speakSample,
+                                onOpenTtsSettings = { startOrToast(Intent(TTS_SETTINGS)) },
+                                customCommands = customCommands,
+                                onSaveCustomCommand = app.customCommands::save,
+                                onDeleteCustomCommand = app.customCommands::delete,
                                 onOpenDefaultApps = { startOrToast(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
                                 crashLog = crashLog,
                                 onCopyCrashLog = ::copyCrashLog,
@@ -310,6 +327,7 @@ class MainActivity : ComponentActivity() {
             context = this,
             onMessage = { message -> Toast.makeText(this, message, Toast.LENGTH_LONG).show() },
             speakAnswers = { app.voiceActionSettings.speakAnswers.value },
+            ttsEngine = { app.voiceActionSettings.ttsEngine.value },
         )
     }
 
@@ -327,6 +345,23 @@ class MainActivity : ComponentActivity() {
 
     private val callPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) app.voiceActionSettings.setDirectCall(true) else toast(R.string.direct_call_denied)
+    }
+
+    /** Встановлені рушії синтезу мовлення (пакет → назва), щоб вибрати голос відповідей. */
+    private fun ttsEngines(): List<Pair<String, String>> =
+        packageManager.queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
+            .map { it.serviceInfo.packageName to it.loadLabel(packageManager).toString() }
+            .distinctBy { it.first }
+            .sortedBy { it.second.lowercase() }
+
+    /** Подія, що чекає дозволу на запис календаря. */
+    private var pendingCalendarEvent: VoiceAction.CalendarEvent? = null
+
+    private val calendarPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val event = pendingCalendarEvent ?: return@registerForActivityResult
+        pendingCalendarEvent = null
+        // Без дозволу — вікно календаря з заповненою подією, як раніше.
+        if (granted) actionRunner.run(event) else startOrToast(actionRunner.calendarIntent(event))
     }
 
     /** Таймер, що чекає дозволу на сповіщення. */
@@ -371,10 +406,31 @@ class MainActivity : ComponentActivity() {
             startTimer(action.seconds)
             return
         }
+        // Подія записується одразу — потрібен дозвіл на запис календаря (питаємо раз).
+        if (action is VoiceAction.CalendarEvent &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingCalendarEvent = action
+            calendarPermission.launch(Manifest.permission.WRITE_CALENDAR)
+            return
+        }
+        var messenger: AppInfo? = null
+        if (action is VoiceAction.Message) {
+            messenger = viewModel.findApp(action.app)
+            if (messenger == null) {
+                Toast.makeText(this, getString(R.string.app_not_found, action.app), Toast.LENGTH_LONG).show()
+                return
+            }
+            // Месенджер без чату за номером — його «Поділитися», контакт не потрібен.
+            if (!actionRunner.opensChatByNumber(messenger.packageName)) {
+                actionRunner.message(messenger.packageName, null, action.body)
+                return
+            }
+        }
         val name = when (action) {
             is VoiceAction.Call -> action.name
             is VoiceAction.Sms -> action.name
-            is VoiceAction.WhatsApp -> action.name
+            is VoiceAction.Message -> action.name
             else -> {
                 actionRunner.run(action)
                 return
@@ -392,7 +448,7 @@ class MainActivity : ComponentActivity() {
         }
         when (action) {
             is VoiceAction.Sms -> actionRunner.sms(contact, action.body)
-            is VoiceAction.WhatsApp -> actionRunner.whatsApp(contact, action.body)
+            is VoiceAction.Message -> actionRunner.message(messenger?.packageName ?: return, contact, action.body)
             else -> {
                 val canCall = app.voiceActionSettings.directCall.value &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED

@@ -59,7 +59,7 @@ internal fun VoiceAction.title(): String = when (this) {
     VoiceAction.Time -> stringResource(R.string.action_time)
     is VoiceAction.BrightnessLevel -> stringResource(R.string.action_row_brightness, percent)
     is VoiceAction.BrightnessStep -> stringResource(if (up) R.string.action_row_brighter else R.string.action_row_darker)
-    is VoiceAction.WhatsApp -> stringResource(R.string.action_row_whatsapp, name)
+    is VoiceAction.Message -> stringResource(R.string.action_row_message, app, name)
     is VoiceAction.CalendarEvent -> if (title.isBlank()) {
         stringResource(R.string.action_row_event_new)
     } else {
@@ -71,7 +71,7 @@ internal fun VoiceAction.title(): String = when (this) {
 @Composable
 internal fun VoiceAction.subtitle(): String? = when (this) {
     is VoiceAction.Sms -> body.takeIf { it.isNotBlank() }
-    is VoiceAction.WhatsApp -> body.takeIf { it.isNotBlank() }
+    is VoiceAction.Message -> body.takeIf { it.isNotBlank() }
     is VoiceAction.CalendarEvent -> {
         val day = when (dayOffset) {
             0 -> stringResource(R.string.day_today)

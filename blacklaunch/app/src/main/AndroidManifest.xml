@@ -25,6 +25,8 @@
     <!-- Глобальний пошук: запитуються лише коли користувач вмикає відповідне джерело. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- «Подія завтра о 15…» записується одразу; дозвіл питаємо при першій такій команді. -->
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <!-- SMS — необов'язкова можливість: BlackLaunch ставиться й на пристрої без SIM. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
@@ -37,6 +39,10 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Рушії синтезу мовлення — щоб вибрати голос відповідей. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
         <!-- Служба розпізнавання мовлення та системне вікно голосового введення. -->
         <intent>

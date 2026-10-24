@@ -30,6 +30,16 @@ class VoiceActionSettings(context: Context) {
         _speakAnswers.value = on
     }
 
+    private val _ttsEngine = MutableStateFlow(prefs.getString(KEY_TTS_ENGINE, null))
+
+    /** Рушій синтезу мовлення для відповідей; null — як у системі. */
+    val ttsEngine: StateFlow<String?> = _ttsEngine.asStateFlow()
+
+    fun setTtsEngine(packageName: String?) {
+        prefs.edit().putString(KEY_TTS_ENGINE, packageName).apply()
+        _ttsEngine.value = packageName
+    }
+
     fun set(kind: VoiceActionKind, on: Boolean) {
         prefs.edit().putBoolean(kind.name, on).apply()
         _enabled.value = if (on) _enabled.value + kind else _enabled.value - kind
@@ -43,5 +53,6 @@ class VoiceActionSettings(context: Context) {
     private companion object {
         const val KEY_DIRECT_CALL = "direct_call"
         const val KEY_SPEAK = "speak_answers"
+        const val KEY_TTS_ENGINE = "tts_engine"
     }
 }

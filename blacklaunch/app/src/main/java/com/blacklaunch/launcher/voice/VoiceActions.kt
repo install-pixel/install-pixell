@@ -66,8 +66,11 @@ sealed interface VoiceAction {
         override val kind get() = VoiceActionKind.DISPLAY
     }
 
-    /** Чат WhatsApp з контактом і готовим текстом — надсилає користувач. */
-    data class WhatsApp(val name: String, val body: String) : VoiceAction {
+    /**
+     * Повідомлення через будь-який месенджер: [app] — як назвали програму («телеграм», «вайбер»),
+     * [name] — кому, [body] — текст. Надсилає завжди користувач.
+     */
+    data class Message(val app: String, val name: String, val body: String) : VoiceAction {
         override val kind get() = VoiceActionKind.MESSENGERS
     }
 
@@ -97,7 +100,7 @@ object VoiceActionParser {
             ?: panel(words)
             ?: brightness(words)
             ?: navigate(original, words)
-            ?: whatsApp(original, words)
+            ?: message(original, words)
             ?: calendar(words)
             ?: sms(original, words)
             ?: call(words)
@@ -313,21 +316,23 @@ object VoiceActionParser {
         }
     }
 
-    // ---- WhatsApp ----
-    private val whatsAppWords = setOf("whatsapp", "ватсап", "вотсап", "ватсапі", "ватсапу", "вацап", "вацапі", "wotsap", "watsap")
+    // ---- Месенджери ----
+    private val viaWords = setOf("в", "у", "на", "через", "in", "on", "via", "w", "na", "przez")
 
-    private fun whatsApp(original: String, words: List<String>): VoiceAction? {
+    private fun message(original: String, words: List<String>): VoiceAction? {
         // «whats app» розпізнавач часто пише двома словами.
         val joined = words.joinToString(" ").replace("whats app", "whatsapp").split(' ')
-        val at = joined.indexOfFirst { it in whatsAppWords }
-        if (at < 0) return null
-        val rest = joined.drop(at + 1).dropWhile { it in callPrepositions }
+        if (joined.size < 4 || joined[0] !in smsVerbs || joined[1] !in viaWords) return null
+        val app = joined[2]
+        val rest = joined.drop(3).dropWhile { it in callPrepositions }
         if (rest.isEmpty()) return null
         val marker = rest.indexOfFirst { it in bodyMarkers }
         val nameWords = if (marker > 0) rest.take(marker) else rest.take(1)
         val bodyCount = if (marker > 0) rest.size - marker - 1 else rest.size - 1
         val body = if (bodyCount > 0) originalTail(original, bodyCount) else ""
-        return VoiceAction.WhatsApp(nameWords.joinToString(" "), body)
+        val name = nameWords.joinToString(" ")
+        // «напиши в смс…» — звичайне SMS.
+        return if (app in smsWords) VoiceAction.Sms(name, body) else VoiceAction.Message(app, name, body)
     }
 
     // ---- Календар ----

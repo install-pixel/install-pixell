@@ -1,6 +1,9 @@
 package com.blacklaunch.launcher.voice
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
@@ -17,11 +20,13 @@ import android.speech.tts.UtteranceProgressListener
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.format.DateFormat
+import android.text.format.DateUtils
 import android.view.KeyEvent
 import com.blacklaunch.launcher.R
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -38,6 +43,8 @@ class VoiceActionRunner(
     private val onMessage: (String) -> Unit,
     /** Чи відповідати вголос (час). */
     private val speakAnswers: () -> Boolean = { false },
+    /** Вибраний рушій синтезу мовлення; null — системний. */
+    private val ttsEngine: () -> String? = { null },
 ) {
     private var tts: TextToSpeech? = null
 
@@ -115,8 +122,8 @@ class VoiceActionRunner(
                 val percent = valueToPercent(current) + if (action.up) BRIGHTNESS_STEP else -BRIGHTNESS_STEP
                 percentToValue(percent.coerceIn(0, 100))
             }
-            is VoiceAction.CalendarEvent -> start(calendarIntent(action))
-            is VoiceAction.Call, is VoiceAction.Sms, is VoiceAction.WhatsApp -> Unit
+            is VoiceAction.CalendarEvent -> if (!addEvent(action)) start(calendarIntent(action))
+            is VoiceAction.Call, is VoiceAction.Sms, is VoiceAction.Message -> Unit
         }
     }
 
@@ -131,13 +138,40 @@ class VoiceActionRunner(
         Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", contact.number, null)).putExtra("sms_body", body),
     )
 
-    /** Чат WhatsApp з контактом і готовим текстом — надсилає користувач. */
-    fun whatsApp(contact: ContactNumber, body: String) {
-        var digits = contact.number.filter { it.isDigit() }
-        if (digits.startsWith("00")) digits = digits.drop(2)
-        val uri = Uri.parse("https://wa.me/$digits" + if (body.isNotBlank()) "?text=" + Uri.encode(body) else "")
-        val inApp = Intent(Intent.ACTION_VIEW, uri).setPackage(WHATSAPP)
-        if (!tryStart(inApp)) start(Intent(Intent.ACTION_VIEW, uri))
+    /** Чи вміємо відкрити чат цього месенджера за номером контакту (інакше — «Поділитися» в ньому). */
+    fun opensChatByNumber(packageName: String): Boolean = chatUri(packageName, "0", "") != null
+
+    /**
+     * Повідомлення через месенджер [packageName]. Де можна — одразу чат контакту з текстом;
+     * де текст не передається — чат відкривається, а текст копіюється для вставки;
+     * інші месенджери — їхнє вікно «Поділитися» з текстом (контакт вибирає користувач).
+     */
+    fun message(packageName: String, contact: ContactNumber?, body: String) {
+        val uri = contact?.let { chatUri(packageName, internationalDigits(it.number), body) }
+        if (uri == null) {
+            start(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, body).setPackage(packageName))
+            return
+        }
+        if (body.isNotBlank() && !uri.toString().contains("text=")) {
+            context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("message", body))
+            onMessage(context.getString(R.string.message_text_copied))
+        }
+        start(Intent(Intent.ACTION_VIEW, uri).setPackage(packageName))
+    }
+
+    private fun chatUri(packageName: String, digits: String, body: String): Uri? = when {
+        packageName.startsWith("com.whatsapp") ->
+            Uri.parse("https://wa.me/$digits" + if (body.isNotBlank()) "?text=" + Uri.encode(body) else "")
+        packageName.startsWith("org.telegram") || packageName == "org.thunderdog.challegram" ->
+            Uri.parse("tg://resolve?phone=$digits")
+        packageName == "com.viber.voip" -> Uri.parse("viber://chat?number=%2B$digits")
+        packageName == "org.thoughtcrime.securesms" -> Uri.parse("sgnl://signal.me/#p/+$digits")
+        else -> null
+    }
+
+    private fun internationalDigits(number: String): String {
+        val digits = number.filter { it.isDigit() }
+        return if (digits.startsWith("00")) digits.drop(2) else digits
     }
 
     /** Контакт за іменем у будь-якій формі: «Марії» → «Марія», «мамі» → «Мама». */
@@ -164,15 +198,18 @@ class VoiceActionRunner(
         return null
     }
 
+    /** Перевірка голосу з налаштувань. */
+    fun speakSample() = speak(context.getString(R.string.tts_sample))
+
     // Озвучити відповідь: голос створюється лише на цей раз і закривається після мовлення.
     private fun speak(text: String) {
         tts?.shutdown()
         var engine: TextToSpeech? = null
-        engine = TextToSpeech(context) { status ->
-            val ready = engine ?: return@TextToSpeech
+        val listener = TextToSpeech.OnInitListener { status ->
+            val ready = engine ?: return@OnInitListener
             if (status != TextToSpeech.SUCCESS) {
                 ready.shutdown()
-                return@TextToSpeech
+                return@OnInitListener
             }
             ready.language = Locale.getDefault()
             ready.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -184,6 +221,7 @@ class VoiceActionRunner(
             })
             ready.speak(text, TextToSpeech.QUEUE_FLUSH, null, "answer")
         }
+        engine = ttsEngine()?.let { TextToSpeech(context, listener, it) } ?: TextToSpeech(context, listener)
         tts = engine
     }
 
@@ -207,14 +245,54 @@ class VoiceActionRunner(
 
     private fun valueToPercent(value: Int): Int = (sqrt(value.toDouble() / MAX_BRIGHTNESS) * 100).roundToInt()
 
-    private fun calendarIntent(event: VoiceAction.CalendarEvent): Intent {
-        val begin = Calendar.getInstance().apply {
+    /**
+     * Записати подію одразу в основний календар (потрібен дозвіл на запис календаря).
+     * false — немає календаря чи запис не вдався; тоді відкриваємо вікно календаря.
+     */
+    fun addEvent(event: VoiceAction.CalendarEvent): Boolean {
+        val calendarId = runCatching {
+            context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                arrayOf(CalendarContract.Calendars._ID),
+                "${CalendarContract.Calendars.VISIBLE} = 1 AND " +
+                    "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}",
+                null,
+                "${CalendarContract.Calendars.IS_PRIMARY} DESC",
+            )?.use { c -> if (c.moveToFirst()) c.getLong(0) else null }
+        }.getOrNull() ?: return false
+        val allDay = event.hour == null
+        // Події на весь день Android зберігає опівночі за UTC.
+        val zone = if (allDay) TimeZone.getTimeZone("UTC") else TimeZone.getDefault()
+        val begin = eventStart(event, zone)
+        val title = event.title.ifBlank { context.getString(R.string.action_row_event_new) }
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DTSTART, begin)
+            put(CalendarContract.Events.DTEND, begin + if (allDay) DAY_MS else HOUR_MS)
+            put(CalendarContract.Events.EVENT_TIMEZONE, zone.id)
+            put(CalendarContract.Events.ALL_DAY, if (allDay) 1 else 0)
+        }
+        val inserted = runCatching { context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values) }.getOrNull()
+            ?: return false
+        val flags = DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or
+            if (allDay) DateUtils.FORMAT_UTC else DateUtils.FORMAT_SHOW_TIME
+        onMessage(context.getString(R.string.event_added, title, DateUtils.formatDateTime(context, begin, flags)))
+        return inserted.lastPathSegment != null
+    }
+
+    private fun eventStart(event: VoiceAction.CalendarEvent, zone: TimeZone): Long {
+        val today = Calendar.getInstance()
+        return Calendar.getInstance(zone).apply {
+            clear()
+            set(today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH), event.hour ?: 0, event.minute)
             add(Calendar.DAY_OF_YEAR, event.dayOffset)
-            set(Calendar.HOUR_OF_DAY, event.hour ?: 0)
-            set(Calendar.MINUTE, if (event.hour == null) 0 else event.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
         }.timeInMillis
+    }
+
+    /** Вікно календаря з заповненою подією — якщо записати одразу не можна. */
+    fun calendarIntent(event: VoiceAction.CalendarEvent): Intent {
+        val begin = eventStart(event, TimeZone.getDefault())
         return Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI)
             .putExtra(CalendarContract.Events.TITLE, event.title)
             .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
@@ -262,7 +340,6 @@ class VoiceActionRunner(
     }
 
     private companion object {
-        const val WHATSAPP = "com.whatsapp"
         const val MAX_BRIGHTNESS = 255
         const val BRIGHTNESS_STEP = 15
         const val HOUR_MS = 60 * 60 * 1000L

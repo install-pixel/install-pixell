@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.viewmodel
 
+import com.blacklaunch.launcher.voice.SystemPanel
+import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.apps.FakeAppSource
 import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
@@ -74,7 +76,21 @@ class LauncherViewModelTest {
     fun voiceActionGoesToTheScreen() {
         viewModel.onVoiceResult(listOf("таймер 10 хвилин"))
         assertEquals(VoiceAction.Timer(600), viewModel.voiceActions.tryReceive().getOrNull())
-        assertEquals(LauncherUiState.HomeIdle, viewModel.state.value)
+        // Фраза лишається в пошуку, як набрана: з рядком дії і для повернення з іншої програми.
+        assertEquals("таймер 10 хвилин", search().query)
+        assertEquals(listOf(VoiceAction.Timer(600)), search().actions)
+    }
+
+    @Test
+    fun customCommandRunsItsStepsInOrder() {
+        val custom = CustomCommand("1", "Я вдома", listOf("вайфай", "таймер 5 хвилин", "відкрий телеграм"))
+        val vm = LauncherViewModel(source, history = history, now = { ++clock }, computeDispatcher = Dispatchers.Main, customCommands = { listOf(custom) })
+        vm.onVoiceResult(listOf("я вдома"))
+        assertEquals(VoiceAction.Panel(SystemPanel.WIFI), vm.voiceActions.tryReceive().getOrNull())
+        assertEquals(VoiceAction.Timer(300), vm.voiceActions.tryReceive().getOrNull())
+        assertEquals(listOf("Telegram"), source.launched.map { it.label })
+        vm.updateQuery("я вд")
+        assertEquals(listOf(custom), (vm.state.value as LauncherUiState.SearchOpen).custom)
     }
 
     @Test

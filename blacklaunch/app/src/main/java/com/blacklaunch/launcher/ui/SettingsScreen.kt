@@ -1,6 +1,7 @@
 package com.blacklaunch.launcher.ui
 
 import com.blacklaunch.launcher.voice.VoiceActionKind
+import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import com.blacklaunch.launcher.diagnostics.CrashEntries
@@ -65,6 +66,15 @@ fun SettingsScreen(
     onDirectCallChange: (Boolean) -> Unit,
     speakAnswers: Boolean,
     onSpeakAnswersChange: (Boolean) -> Unit,
+    /** Встановлені рушії синтезу мовлення: пакет → назва. */
+    ttsEngines: List<Pair<String, String>>,
+    ttsEngine: String?,
+    onTtsEngineChange: (String?) -> Unit,
+    onTestVoice: () -> Unit,
+    onOpenTtsSettings: () -> Unit,
+    customCommands: List<CustomCommand>,
+    onSaveCustomCommand: (CustomCommand) -> Unit,
+    onDeleteCustomCommand: (String) -> Unit,
     onOpenDefaultApps: () -> Unit,
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
@@ -190,6 +200,7 @@ fun SettingsScreen(
         }
 
         SettingsNav.VoiceActions -> SettingsPage(stringResource(R.string.voice_actions_title), { onNavigate(SettingsNav.Voice) }) {
+            CustomCommandsCard(customCommands, onSaveCustomCommand, onDeleteCustomCommand)
             Card {
                 Note(stringResource(R.string.voice_actions_note))
                 VoiceActionKind.entries.forEach { kind ->
@@ -216,6 +227,22 @@ fun SettingsScreen(
                     checked = speakAnswers,
                     onCheckedChange = onSpeakAnswersChange,
                 )
+            }
+            if (speakAnswers) {
+                Card {
+                    Text(stringResource(R.string.tts_engine_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TargetOption(R.string.tts_engine_system, ttsEngine == null) { onTtsEngineChange(null) }
+                        ttsEngines.forEach { (pkg, label) ->
+                            TargetOption(label, ttsEngine == pkg) { onTtsEngineChange(pkg) }
+                        }
+                    }
+                    Note(stringResource(R.string.tts_engine_note))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SmallButton(stringResource(R.string.tts_test), onTestVoice)
+                        SmallButton(stringResource(R.string.tts_settings), onOpenTtsSettings)
+                    }
+                }
             }
             Card {
                 Text(stringResource(R.string.assistant_title), color = Oled.TextPrimary, fontSize = 17.sp)

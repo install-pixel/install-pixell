@@ -18,11 +18,13 @@ class VoiceActionsPart2Test {
         assertNull(action("яскравість"))
     }
 
-    @Test fun whatsApp() {
-        assertEquals(VoiceAction.WhatsApp("мамі", "Я вже їду"), action("напиши в ватсап мамі, що Я вже їду"))
-        assertEquals(VoiceAction.WhatsApp("john", "see you soon"), action("whats app John see you soon".lowercase()))
-        assertEquals(VoiceAction.WhatsApp("mamy", ""), action("napisz na whatsapp do mamy"))
-        assertNull(action("ватсап"))
+    @Test fun messageThroughAnyMessenger() {
+        assertEquals(VoiceAction.Message("ватсап", "мамі", "Я вже їду"), action("напиши в ватсап мамі, що Я вже їду"))
+        assertEquals(VoiceAction.Message("телеграм", "олегу", "буду о 7"), action("напиши в телеграм Олегу буду о 7"))
+        assertEquals(VoiceAction.Message("whatsapp", "john", "see you soon"), action("send via whats app john saying see you soon"))
+        assertEquals(VoiceAction.Message("telegram", "mamy", ""), action("napisz na telegram do mamy"))
+        assertEquals(VoiceAction.Sms("мамі", "привіт"), action("напиши в смс мамі привіт"))
+        assertNull(action("напиши в телеграм"))
     }
 
     @Test fun calendarEvent() {

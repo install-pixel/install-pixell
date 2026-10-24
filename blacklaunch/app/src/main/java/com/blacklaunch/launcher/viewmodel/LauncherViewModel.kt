@@ -28,6 +28,8 @@ import com.blacklaunch.launcher.search.LearnedQueries
 import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
+import com.blacklaunch.launcher.commands.CustomCommand
+import com.blacklaunch.launcher.commands.CustomCommandMatcher
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
 import com.blacklaunch.launcher.voice.VoiceActionParser
@@ -61,6 +63,8 @@ sealed interface LauncherUiState {
         val groups: List<ResultGroup> = emptyList(),
         /** Текстові команди: «wifi», «таймер 10 хвилин», «ліхтарик» — те саме, що голосом. */
         val actions: List<VoiceAction> = emptyList(),
+        /** Власні команди, що збігаються з набраним. */
+        val custom: List<CustomCommand> = emptyList(),
     ) : LauncherUiState
 }
 
@@ -107,6 +111,8 @@ class LauncherViewModel(
     private val layoutStore: HomeLayoutStore = InMemoryHomeLayoutStore(),
     /** Які голосові дії ввімкнено (будильник, ліхтарик, дзвінки…). */
     private val voiceActionsEnabled: () -> Set<VoiceActionKind> = { VoiceActionKind.entries.toSet() },
+    /** Власні команди користувача: фраза → кроки. */
+    private val customCommands: () -> List<CustomCommand> = { emptyList() },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -191,7 +197,8 @@ class LauncherViewModel(
                 else -> {
                     val enabled = voiceActionsEnabled()
                     val actions = VoiceActionParser.suggest(query).filter { it.kind in enabled }
-                    LauncherUiState.SearchOpen(query, results, groups, actions)
+                    val custom = CustomCommandMatcher.suggest(customCommands(), query)
+                    LauncherUiState.SearchOpen(query, results, groups, actions, custom)
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherUiState.HomeIdle)
@@ -282,6 +289,25 @@ class LauncherViewModel(
 
     fun launch(app: AppInfo): Boolean = launch(app, query.value)
 
+    /** Програма за назвою, як її сказали («телеграм» → Telegram), — для повідомлень через месенджер. */
+    fun findApp(name: String): AppInfo? = index.value.search(name, launchCounts.value).firstOrNull()
+
+    /**
+     * Власна команда: кроки по черзі, кожен — як сказана команда. Дії виконує екран
+     * (навіть вимкнені в налаштуваннях — користувач сам їх задав), профіль і програму — тут.
+     */
+    fun runCustom(command: CustomCommand) {
+        command.steps.forEach { step ->
+            when (val parsed = VoiceCommandParser.parse(step)) {
+                is VoiceCommand.Action -> _voiceActions.trySend(parsed.action)
+                is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let(::activate)
+                VoiceCommand.OpenLast -> lastLaunched()?.let { launch(it, null) }
+                is VoiceCommand.Open -> index.value.search(parsed.query, launchCounts.value).firstOrNull()?.let { launch(it, null) }
+                null -> Unit
+            }
+        }
+    }
+
     /** Команду вибрали в результатах пошуку — виконує екран, як голосову. */
     fun runAction(action: VoiceAction) {
         _voiceActions.trySend(action)
@@ -310,8 +336,16 @@ class LauncherViewModel(
      * Якщо програма визначена однозначно — запускаємо одразу, інакше показуємо список.
      */
     fun onVoiceResult(hypotheses: List<String>) {
-        val commands = hypotheses.mapNotNull(VoiceCommandParser::parse)
-        val command = commands.firstOrNull { it.isActionable() } ?: commands.firstOrNull() ?: return
+        // Власна команда має перевагу: користувач сам задав цю фразу.
+        hypotheses.firstNotNullOfOrNull { text -> CustomCommandMatcher.exact(customCommands(), text)?.let { text to it } }
+            ?.let { (heard, custom) ->
+                openSearch()
+                updateQuery(heard)
+                runCustom(custom)
+                return
+            }
+        val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
+        val (heard, command) = parsed.firstOrNull { it.second.isActionable() } ?: parsed.firstOrNull() ?: return
         when (command) {
             VoiceCommand.OpenLast -> {
                 val last = lastLaunched()
@@ -327,14 +361,11 @@ class LauncherViewModel(
                 }
             }
             is VoiceCommand.Action -> {
-                if (command.action.kind in voiceActionsEnabled()) {
-                    closeSearch()
-                    _voiceActions.trySend(command.action)
-                } else {
-                    // Дію вимкнено — шукаємо фразу як звичайний запит.
-                    openSearch()
-                    updateQuery(hypotheses.first())
-                }
+                // Сказане лишається в пошуку (як і набране) — після повернення воно на місці.
+                openSearch()
+                updateQuery(heard)
+                // Вимкнену дію просто шукаємо як звичайний запит.
+                if (command.action.kind in voiceActionsEnabled()) _voiceActions.trySend(command.action)
             }
             is VoiceCommand.Open -> {
                 // Запит завжди потрапляє в пошук — після повернення з програми він на місці.

@@ -49,6 +49,8 @@ import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.global.ResultGroup
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.voice.VoiceAction
+import com.blacklaunch.launcher.commands.CustomCommand
+import androidx.compose.material.icons.filled.PlayArrow
 
 @Composable
 fun SearchResults(
@@ -61,13 +63,15 @@ fun SearchResults(
     onGlobal: (GlobalResult) -> Unit,
     actions: List<VoiceAction> = emptyList(),
     onAction: (VoiceAction) -> Unit = {},
+    custom: List<CustomCommand> = emptyList(),
+    onCustom: (CustomCommand) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
         Box(modifier)
         return
     }
-    if (results.isEmpty() && groups.isEmpty() && actions.isEmpty()) {
+    if (results.isEmpty() && groups.isEmpty() && actions.isEmpty() && custom.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.BottomStart) {
             Text(stringResource(R.string.nothing_found), color = Oled.TextSecondary, modifier = Modifier.padding(16.dp))
         }
@@ -93,7 +97,12 @@ fun SearchResults(
             items(group.items, key = { it.key }) { GlobalRow(it, onGlobal) }
         }
         // Команди (як голосом) — одразу над полем пошуку.
-        items(actions.distinct(), key = { "action:$it" }) { ActionRow(it, onAction) }
+        items(custom, key = { "custom:${it.id}" }) { command ->
+            CommandRow(Icons.Filled.PlayArrow, command.phrase, command.steps.joinToString(" → ")) { onCustom(command) }
+        }
+        items(actions.distinct(), key = { "action:$it" }) { action ->
+            CommandRow(action.icon(), action.title(), action.subtitle()) { onAction(action) }
+        }
         items(apps, key = { it.key }) { app ->
             AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
@@ -189,7 +198,7 @@ private fun GlobalRow(result: GlobalResult, onClick: (GlobalResult) -> Unit) {
 }
 
 @Composable
-private fun ActionRow(action: VoiceAction, onClick: (VoiceAction) -> Unit) {
+private fun CommandRow(icon: ImageVector, title: String, subtitle: String?, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
     Row(
@@ -197,17 +206,17 @@ private fun ActionRow(action: VoiceAction, onClick: (VoiceAction) -> Unit) {
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .clickable { haptics.tap(); onClick(action) }
+            .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Icon(action.icon(), contentDescription = null, tint = Oled.TextPrimary)
+            Icon(icon, contentDescription = null, tint = Oled.TextPrimary)
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(action.title(), color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            action.subtitle()?.let {
+            Text(title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            subtitle?.let {
                 Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
