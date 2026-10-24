@@ -320,7 +320,9 @@ class KeyboardUiTest {
             waitFor("three-button navigation", timeoutMs = 10_000) {
                 shellOutput("settings get secure navigation_mode").trim().takeIf { it == "0" }
             }
+            // SystemUI restarts with the new bar and the keyboard closes: open it again.
             Thread.sleep(1_500)
+            focus(activity.plain)
             screenshot("nav-three-button")
             val keyboard = service()
             val bottom = AtomicReference<Int>()
@@ -363,8 +365,7 @@ class KeyboardUiTest {
             instrumentation.waitForIdleSync()
             screenshot("theme-oled-${accent.name.lowercase()}")
         }
-        tapText("а")
-        assertEquals("а", text(activity.plain))
+        typeWord(activity.plain, "а")
     }
 
     @Test
