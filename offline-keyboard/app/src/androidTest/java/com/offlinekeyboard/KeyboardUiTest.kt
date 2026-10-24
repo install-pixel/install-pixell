@@ -463,6 +463,27 @@ class KeyboardUiTest {
     }
 
     /** Focuses [field] and shows the keyboard; asks again if Android ignores the first request. */
+    private fun waitForKeysToSettle() {
+        var last: Int? = null
+        var still = 0
+        val end = SystemClock.uptimeMillis() + 8_000
+        while (SystemClock.uptimeMillis() < end && still < 3) {
+            Thread.sleep(200)
+            val y = AtomicReference<Int?>()
+            instrumentation.runOnMainSync {
+                KeyboardService.instance?.inputRootForTest?.keyboardView?.let { view ->
+                    val location = IntArray(2)
+                    view.getLocationOnScreen(location)
+                    y.set(if (view.isShown) location[1] else null)
+                }
+            }
+            val now = y.get()
+            still = if (now != null && now == last) still + 1 else 0
+            last = now
+        }
+        Thread.sleep(200)
+    }
+
     private fun focus(field: EditText) {
         repeat(6) {
             instrumentation.runOnMainSync {
@@ -472,8 +493,9 @@ class KeyboardUiTest {
             val shown = runCatching { waitFor("keyboard service", timeoutMs = 8_000) { visibleService() } }.isSuccess
             if (shown) {
                 clear(field)
-                // Android 14 slides the keyboard in; a touch during the slide can be lost.
-                Thread.sleep(600)
+                // Android 14 and 15 slide the keyboard in (slowly on the emulator); a touch during the
+                // slide is lost. Wait until the keys stop moving.
+                waitForKeysToSettle()
                 return
             }
             // A tap on the field is what a person would do.
