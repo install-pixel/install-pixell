@@ -17,6 +17,8 @@ import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -63,6 +67,8 @@ class LauncherViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     private val profileSource: ProfileSource = NoProfiles,
     private val learnedQueries: LearnedQueries = InMemoryLearnedQueries(),
+    /** Побудова індексу й пошук — поза головним потоком, щоб не гальмувала анімація. */
+    computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -73,6 +79,7 @@ class LauncherViewModel(
     // Індекс перебудовується лише при зміні програм, псевдонімів чи навчання, не на кожну літеру.
     private val index: StateFlow<SearchIndex> =
         combine(appSource.apps, userAliases, learnedQueries.learned, engine::index)
+            .flowOn(computeDispatcher)
             .stateIn(viewModelScope, SharingStarted.Eagerly, SearchIndex(emptyList()))
 
     private val launchCounts: StateFlow<Map<String, Int>> =
@@ -99,12 +106,18 @@ class LauncherViewModel(
     private val _profileSwitched = Channel<String>(Channel.CONFLATED)
     val profileSwitched: ReceiveChannel<String> get() = _profileSwitched
 
+    // Результати рахуються у фоні; сам текст запиту оновлюється одразу, щоб набір не «стрибав».
+    private val results: StateFlow<List<AppInfo>> =
+        combine(query.filterNotNull(), index, launchCounts) { query, index, counts -> index.search(query, counts) }
+            .flowOn(computeDispatcher)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val state: StateFlow<LauncherUiState> =
-        combine(query, index, launchCounts) { query, index, counts ->
-            if (query == null) {
-                LauncherUiState.HomeIdle
-            } else {
-                LauncherUiState.SearchOpen(query, index.search(query, counts))
+        combine(query, results) { query, results ->
+            when {
+                query == null -> LauncherUiState.HomeIdle
+                query.isBlank() -> LauncherUiState.SearchOpen(query)
+                else -> LauncherUiState.SearchOpen(query, results)
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, LauncherUiState.HomeIdle)
 

@@ -39,7 +39,7 @@ class ProfileHomeTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        viewModel = LauncherViewModel(apps, profileSource = profiles)
+        viewModel = LauncherViewModel(apps, profileSource = profiles, computeDispatcher = Dispatchers.Main)
     }
 
     @After

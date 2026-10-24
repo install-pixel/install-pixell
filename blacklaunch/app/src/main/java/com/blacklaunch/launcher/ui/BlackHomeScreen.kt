@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,6 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -105,6 +110,7 @@ fun BlackHomeScreen(
             onKeyboardHidden = {
                 if (aliasApp == null && voiceState == VoiceState.Idle) onCloseSearch()
             },
+            onSwipeDown = onCloseSearch,
         )
     }
 
@@ -128,7 +134,8 @@ private fun HomeIdle(
             .fillMaxSize()
             .background(Color.Black)
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { onOpenSearch() }, onLongPress = { onLongPress() })
+                // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
+                detectTapGestures(onLongPress = { onLongPress() })
             }
             .pointerInput(home.profileCount) {
                 var drag = Offset.Zero
@@ -201,7 +208,29 @@ private fun SearchOpen(
     voiceState: VoiceState,
     onMicClick: () -> Unit,
     onKeyboardHidden: () -> Unit,
+    onSwipeDown: () -> Unit,
 ) {
+    val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
+    val close by rememberUpdatedState(onSwipeDown)
+    // Свайп униз закриває пошук: і по вільному місцю, і коли список результатів уже догорнуто.
+    val pullToClose = remember(thresholdPx) {
+        object : NestedScrollConnection {
+            var pulled = 0f
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                    pulled += available.y
+                    if (pulled > thresholdPx) {
+                        pulled = 0f
+                        close()
+                    }
+                } else {
+                    pulled = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
     val imeVisible = WindowInsets.isImeVisible
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var keyboardWasShown by remember { mutableStateOf(false) }
@@ -221,7 +250,22 @@ private fun SearchOpen(
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .nestedScroll(pullToClose)
+            .pointerInput(thresholdPx) {
+                var dragged = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { dragged = 0f },
+                    onVerticalDrag = { change, amount ->
+                        dragged += amount
+                        if (dragged > thresholdPx) {
+                            change.consume()
+                            dragged = 0f
+                            close()
+                        }
+                    },
+                )
+            },
     ) {
         SearchResults(
             query = state.query,

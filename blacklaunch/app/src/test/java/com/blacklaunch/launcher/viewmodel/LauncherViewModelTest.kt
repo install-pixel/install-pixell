@@ -26,7 +26,7 @@ class LauncherViewModelTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         source = FakeAppSource("Telegram", "YouTube", "Камера")
         history = InMemoryLaunchHistory()
-        viewModel = LauncherViewModel(source, history = history, now = { ++clock })
+        viewModel = LauncherViewModel(source, history = history, now = { ++clock }, computeDispatcher = Dispatchers.Main)
     }
 
     @After
