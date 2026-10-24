@@ -654,7 +654,7 @@ class MainActivity : ComponentActivity() {
                 backup.restore(text)
             }
             result.onSuccess {
-                Toast.makeText(this@MainActivity, getString(R.string.backup_restored, it.profiles, it.skippedApps), Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, getString(R.string.backup_restored, it.profiles, it.waitingApps), Toast.LENGTH_LONG).show()
             }.onFailure { toast(R.string.backup_failed) }
         }
     }

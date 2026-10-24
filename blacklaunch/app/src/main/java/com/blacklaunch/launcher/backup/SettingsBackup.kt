@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Підсумок відновлення для повідомлення користувачу. */
-data class RestoreResult(val profiles: Int, val skippedApps: Int)
+/** Підсумок відновлення: [waitingApps] — ще не встановлені програми, що з'являться самі після встановлення. */
+data class RestoreResult(val profiles: Int, val waitingApps: Int)
 
 /**
  * Резервна копія налаштувань Black Glass в одному файлі JSON: профілі (програми, розкладка,
@@ -88,13 +88,13 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             val profile = LauncherProfile(
                 id = id,
                 name = p.getString("name"),
-                pinnedAppKeys = remap.mapAll(p.getJSONArray("pinned").strings()),
+                pinnedAppKeys = remap.mapAllOrKeep(p.getJSONArray("pinned").strings()),
                 soundMode = enumOr(p.optString("sound"), SoundMode.NORMAL),
                 notificationMode = enumOr(p.optString("notification"), NotificationMode.SYSTEM_DEFAULT),
             )
             app.profileRepository.save(profile, index).getOrThrow()
             val layout = p.optJSONObject("layout")?.let { obj ->
-                obj.keys().asSequence().mapNotNull { key -> remap.map(key)?.let { it to obj.getInt(key) } }.toMap()
+                obj.keys().asSequence().map { key -> remap.mapOrKeep(key) to obj.getInt(key) }.toMap()
             }.orEmpty()
             app.homeLayoutStore.save(id, layout)
             ProfileDisplay.decode(p.optString("display"))?.let { app.profileDisplay.set(id, it) }
@@ -120,11 +120,11 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         }
         root.optJSONArray("hidden")?.let { hidden ->
             app.hiddenApps.hidden.value.forEach(app.hiddenApps::show)
-            remap.mapAll(hidden.strings()).forEach(app.hiddenApps::hide)
+            remap.mapAllOrKeep(hidden.strings()).forEach(app.hiddenApps::hide)
         }
         root.optJSONArray("ownIcons")?.let { icons ->
             app.ownIcons.keys.value.forEach { app.ownIcons.set(it, false) }
-            remap.mapAll(icons.strings()).forEach { app.ownIcons.set(it, true) }
+            remap.mapAllOrKeep(icons.strings()).forEach { app.ownIcons.set(it, true) }
         }
         root.optJSONObject("appearance")?.let { a ->
             app.appearanceSettings.update {
@@ -147,7 +147,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         root.optJSONArray("globalKinds")?.strings()?.toSet()?.let { kinds ->
             GroupKind.entries.forEach { app.globalSearchSettings.set(it, it.name in kinds) }
         }
-        return RestoreResult(imported.size, remap.skipped)
+        return RestoreResult(imported.size, remap.waiting)
     }
 
     private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }

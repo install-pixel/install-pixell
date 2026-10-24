@@ -12,4 +12,10 @@ class AppKeyRemapTest {
         )
         assertEquals(1, remap.skipped)
     }
+
+    @Test fun missingAppsAreKeptForLater() {
+        val remap = AppKeyRemap(listOf("pl.sklado.app/Main/0"))
+        assertEquals(listOf("pl.sklado.app/Main/0", "com.later/Main/0"), remap.mapAllOrKeep(listOf("pl.sklado.app/Main/10", "com.later/Main/0", "com.later/Main/0")))
+        assertEquals(1, remap.waiting)
+    }
 }

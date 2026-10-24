@@ -352,12 +352,12 @@
     <string name="display_moved_search">App suggestions, recent searches and the “All apps” button are now set in each profile.</string>
     <string name="double_tap_hint">Double tap on an empty spot of the home screen — next profile (works even without the profile name and swipe).</string>
     <string name="backup_title">Backup</string>
-    <string name="backup_note">Profiles with their apps, layout, sound, screen and search, your app names, “My commands”, hidden apps, own icons, appearance and voice actions — in one file. Search history is not saved. Apps missing on the phone are skipped.</string>
+    <string name="backup_note">Profiles with their apps, layout, sound, screen and search, your app names, “My commands”, hidden apps, own icons, appearance and voice actions — in one file. Search history is not saved. Apps missing on the phone are remembered and appear in their places once you install them.</string>
     <string name="backup_export">Save to file</string>
     <string name="backup_import">Restore from file</string>
     <string name="backup_import_confirm">Current Black Glass settings will be replaced with the ones from the file.</string>
     <string name="backup_import_choose">Choose file</string>
     <string name="backup_saved">Settings saved</string>
     <string name="backup_failed">Could not read or save the file</string>
-    <string name="backup_restored">Restored: profiles %1$d. Apps not on this phone skipped: %2$d</string>
+    <string name="backup_restored">Restored: profiles %1$d. Apps not installed yet: %2$d — they will appear in their places once installed</string>
 </resources>
