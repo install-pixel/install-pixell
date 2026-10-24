@@ -234,9 +234,12 @@ private fun SearchOpen(
     val imeVisible = WindowInsets.isImeVisible
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var keyboardWasShown by remember { mutableStateOf(false) }
-    LaunchedEffect(imeVisible) {
+    var fieldFocused by remember { mutableStateOf(false) }
+    // Рахуємо клавіатуру «нашою», лише коли вона відкрилась для поля пошуку. Інакше залишковий
+    // стан клавіатури з попередньої програми закривав пошук одразу після відкриття.
+    LaunchedEffect(imeVisible, fieldFocused) {
         if (imeVisible) {
-            keyboardWasShown = true
+            if (fieldFocused) keyboardWasShown = true
         } else if (keyboardWasShown && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             keyboardWasShown = false
             onKeyboardHidden()
@@ -281,6 +284,7 @@ private fun SearchOpen(
             onClear = onClearQuery,
             voice = voiceState,
             onMicClick = onMicClick,
+            onFocusChange = { fieldFocused = it },
         )
     }
 }

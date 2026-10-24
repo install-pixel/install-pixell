@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -42,6 +43,7 @@ fun SearchField(
     onClear: () -> Unit,
     voice: VoiceState,
     onMicClick: () -> Unit,
+    onFocusChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val listening = voice != VoiceState.Idle
@@ -56,7 +58,8 @@ fun SearchField(
                 .weight(1f)
                 .clip(FieldShape)
                 .background(Oled.Surface)
-                .border(1.dp, if (listening) Oled.KnobListening else Oled.Glint, FieldShape),
+                .border(1.dp, if (listening) Oled.KnobListening else Oled.Glint, FieldShape)
+                .onFocusChanged { onFocusChange(it.isFocused) },
             singleLine = true,
             readOnly = listening,
             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp),
