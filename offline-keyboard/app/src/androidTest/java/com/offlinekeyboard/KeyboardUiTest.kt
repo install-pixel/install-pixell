@@ -463,6 +463,20 @@ class KeyboardUiTest {
     }
 
     /** Focuses [field] and shows the keyboard; asks again if Android ignores the first request. */
+    /** Where the keys are and how often the space below them changed, for failure messages. */
+    private fun keyboardState(): String {
+        val ref = AtomicReference<String>("no keyboard")
+        instrumentation.runOnMainSync {
+            val root = KeyboardService.instance?.inputRootForTest ?: return@runOnMainSync
+            val location = IntArray(2).also { root.keyboardView.getLocationOnScreen(it) }
+            ref.set(
+                "shown=${root.keyboardView.isShown} y=${location[1]} h=${root.keyboardView.height} " +
+                    "padding=${root.paddingBottom} changes=${root.bottomSpaceChangesForTest}",
+            )
+        }
+        return ref.get()
+    }
+
     private fun waitForKeysToSettle() {
         var last: Int? = null
         var still = 0
@@ -580,7 +594,7 @@ class KeyboardUiTest {
                 }.isSuccess
                 if (typed) break
             }
-            assertEquals(expected, text(field))
+            assertEquals("$expected (keyboard: ${keyboardState()})", expected, text(field))
         }
     }
 

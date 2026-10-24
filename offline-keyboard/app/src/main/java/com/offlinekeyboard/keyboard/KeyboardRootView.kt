@@ -169,6 +169,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private var navBars = Insets.NONE
+    internal var bottomSpaceChangesForTest = 0
     private val layoutWatcher = ViewTreeObserver.OnGlobalLayoutListener { updateBottomSpace() }
 
     override fun onAttachedToWindow() {
@@ -184,6 +185,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun updateBottomSpace() {
         val bottom = maxOf(navBars.bottom, imeButtonsHeight())
         if (paddingLeft != navBars.left || paddingRight != navBars.right || paddingBottom != bottom) {
+            bottomSpaceChangesForTest++
             setPadding(navBars.left, 0, navBars.right, bottom)
         }
     }
