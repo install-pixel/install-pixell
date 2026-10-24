@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.os.SystemClock
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.Toast
@@ -493,40 +492,35 @@ class MainActivity : ComponentActivity() {
         repository.refresh()
         ensureBlackWallpaper()
         enableSmsIfGranted()
+        wasStopped = false
     }
 
-    // Натискання Home, коли BlackLaunch уже відкритий, повертає чистий чорний екран.
+    // Натискання Home, коли BlackLaunch уже на екрані, повертає чистий чорний екран.
+    // Повернення з іншої програми жестом «Додому» — теж Home, але запит не стираємо:
+    // він повернеться свайпом угору протягом 3 хвилин.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         voice.cancel()
-        viewModel.forgetSearch()
+        if (!wasStopped) viewModel.forgetSearch()
     }
 
-    // Перейшли в іншу програму — пошук лишається як був: повернулись протягом 3 хвилин —
-    // той самий запит і результати. Закривати його у фоні не можна: анімація закриття
-    // разом із клавіатурою програвалась би вже після повернення («смикання»).
+    // Перейшли в іншу програму — пошук закривається одразу й без анімації (інакше анімація
+    // разом із клавіатурою програвалась би вже після повернення — «смикання»). Запит
+    // запам'ятовується: свайп угору протягом 3 хвилин повертає його з результатами.
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) {
             voice.cancel()
-            stoppedAt = SystemClock.elapsedRealtime()
-        }
-    }
-
-    // Не було довше 3 хвилин — повертаємось на чистий чорний екран, без анімації.
-    override fun onStart() {
-        super.onStart()
-        val away = SystemClock.elapsedRealtime() - stoppedAt
-        if (stoppedAt > 0 && away > LauncherViewModel.RESTORE_QUERY_MS) {
+            wasStopped = true
             instantSearchClose = true
-            viewModel.forgetSearch()
+            viewModel.closeSearch()
         }
-        stoppedAt = 0L
     }
 
-    private var stoppedAt = 0L
+    /** BlackLaunch був прихований (інша програма) — до наступного onResume. */
+    private var wasStopped = false
 
-    /** Закрити пошук без анімації (після довгої відсутності); скидається з наступним відкриттям. */
+    /** Закрити пошук без анімації; скидається з наступним відкриттям пошуку. */
     private var instantSearchClose by mutableStateOf(false)
 
     override fun onDestroy() {
