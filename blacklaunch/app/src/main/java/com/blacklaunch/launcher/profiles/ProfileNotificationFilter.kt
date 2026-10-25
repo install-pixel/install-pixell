@@ -63,6 +63,13 @@ class ProfileNotificationFilter : NotificationListenerService() {
         @Volatile
         private var connected: ProfileNotificationFilter? = null
 
+        /** Сповіщення в шторці й відкладені фільтром профілю — для пошуку за текстом. */
+        fun current(): List<StatusBarNotification> {
+            val service = connected ?: return emptyList()
+            return runCatching { service.activeNotifications.orEmpty().toList() }.getOrDefault(emptyList()) +
+                runCatching { service.snoozedNotifications.orEmpty().toList() }.getOrDefault(emptyList())
+        }
+
         /** Перемкнули профіль чи змінили налаштування — перевірити сповіщення ще раз. */
         fun refreshNow() = connected?.refresh()
 
