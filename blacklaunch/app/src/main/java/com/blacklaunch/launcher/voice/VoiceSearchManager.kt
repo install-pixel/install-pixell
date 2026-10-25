@@ -83,6 +83,7 @@ class VoiceSearchManager(
      */
     private var deadNetwork: Network? = null
     private var deadNetworkAt = 0L
+    private var lastMode: OfflineVoiceMode? = null
 
     private fun rememberDeadNetwork() {
         deadNetwork = context.getSystemService(ConnectivityManager::class.java)?.activeNetwork
@@ -95,12 +96,23 @@ class VoiceSearchManager(
         return context.getSystemService(ConnectivityManager::class.java)?.activeNetwork == network
     }
 
+    /**
+     * «Завжди» — лише власна модель; «Лише системне» — лише розпізнавач Android/Google, без власної моделі
+     * й без пам'яті про мережу; «Коли немає інтернету» — власна модель без мережі, а мережа, у якій Google
+     * щойно не дістав інтернету, запам'ятовується на 10 хв.
+     */
     fun start(language: String = VoiceLanguages.forLocale()) {
         this.language = language
         session++
-        val online = hasInternet() && !onDeadNetwork()
+        val mode = settings.mode.value
+        if (mode != lastMode) deadNetwork = null
+        lastMode = mode
         val voskLanguage = voskLanguage()
-        val useVosk = when (settings.mode.value) {
+        val online = when (mode) {
+            OfflineVoiceMode.WHEN_OFFLINE -> hasInternet() && !onDeadNetwork()
+            else -> hasInternet()
+        }
+        val useVosk = when (mode) {
             OfflineVoiceMode.OFF -> false
             OfflineVoiceMode.WHEN_OFFLINE -> !online
             OfflineVoiceMode.ALWAYS -> true
@@ -315,6 +327,8 @@ class VoiceSearchManager(
         }
 
         override fun onResults(results: Bundle?) {
+            // Розпізнавач з мережею спрацював — мережа жива, забуваємо, що вона «без інтернету».
+            if (current?.onDevice == false) deadNetwork = null
             val texts = results.texts()
             attempts = emptyList()
             release()
@@ -324,8 +338,9 @@ class VoiceSearchManager(
         override fun onError(error: Int) {
             val failed = current
             // Мережа зникла посеред розмови — власна модель або вбудований офлайн-розпізнавач.
-            // Початок фрази вже втрачено — просимо сказати ще раз.
-            if (isNetworkError(error) && failed != null && !failed.onDevice) {
+            // Початок фрази вже втрачено — просимо сказати ще раз. Лише в режимі «Коли немає інтернету»:
+            // «Лише системне» власну модель не чіпає.
+            if (isNetworkError(error) && failed != null && !failed.onDevice && settings.mode.value == OfflineVoiceMode.WHEN_OFFLINE) {
                 val voskLanguage = voskLanguage().takeIf { settings.mode.value != OfflineVoiceMode.OFF }
                 when {
                     voskLanguage != null -> { rememberDeadNetwork(); onMessage(R.string.voice_switched_offline); startVosk(voskLanguage); return }
