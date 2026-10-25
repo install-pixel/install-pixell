@@ -353,21 +353,29 @@ private fun HomeIdle(
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
         // Профіль-монітор: замість значків — монітор системи (під назвою профілю, над полем пошуку).
         if (monitor != null) {
-            // Моніторинг прокручується; свайп угору, коли вже внизу (залишок прокрутки), — пошук, як і деінде.
+            // Моніторинг прокручується; свайп угору — пошук, але лише окремим жестом, почавши вже внизу:
+            // якщо цим самим рухом гортали картки, пошук не вискакує посеред прокрутки (було «нервово»).
             val searchPull = remember(thresholdPx) {
                 object : NestedScrollConnection {
                     var pull = 0f
+                    var scrolled = false
+                    var opened = false
                     override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
                         if (source != NestedScrollSource.UserInput) return Offset.Zero
+                        if (consumed.y != 0f) scrolled = true
+                        if (scrolled || opened) return Offset.Zero
                         pull = if (available.y < 0f) pull - available.y else 0f
                         if (pull > thresholdPx) {
-                            pull = 0f
+                            opened = true
                             onOpenSearch()
                         }
                         return Offset.Zero
                     }
+                    // Палець відпустили — наступний жест рахуємо заново.
                     override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
                         pull = 0f
+                        scrolled = false
+                        opened = false
                         return androidx.compose.ui.unit.Velocity.Zero
                     }
                 }
