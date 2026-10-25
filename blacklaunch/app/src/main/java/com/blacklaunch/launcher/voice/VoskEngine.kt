@@ -69,6 +69,8 @@ class VoskEngine(private val store: VoiceModelStore) {
         val current = model ?: return false
         cancel()
         delivered = false
+        // Сказаний початок команди («відкрий») — чекаємо продовження, не запускаючи пошук.
+        var started = ""
         return try {
             val recognizer = Recognizer(current, SAMPLE_RATE).apply { setMaxAlternatives(ALTERNATIVES) }
             val speech = SpeechService(recognizer, SAMPLE_RATE)
@@ -76,12 +78,14 @@ class VoskEngine(private val store: VoiceModelStore) {
             speech.startListening(
                 object : RecognitionListener {
                     override fun onPartialResult(hypothesis: String?) {
-                        partial(hypothesis)?.takeIf { it.isNotBlank() }?.let(onPartial)
+                        partial(hypothesis)?.takeIf { it.isNotBlank() }?.let { onPartial(join(started, it)) }
                     }
 
-                    override fun onResult(hypothesis: String?) = deliver(hypothesis)
+                    // Пауза в мовленні (модель вважає фразу закінченою) — проміжний результат.
+                    override fun onResult(hypothesis: String?) = deliver(hypothesis, final = false)
 
-                    override fun onFinalResult(hypothesis: String?) = deliver(hypothesis)
+                    // Слухання завершено (кнопкою чи за часом) — віддаємо все почуте.
+                    override fun onFinalResult(hypothesis: String?) = deliver(hypothesis, final = true)
 
                     override fun onError(exception: Exception?) {
                         Log.w(TAG, "Vosk error", exception)
@@ -89,16 +93,22 @@ class VoskEngine(private val store: VoiceModelStore) {
                         onError()
                     }
 
-                    override fun onTimeout() = deliver(null)
+                    override fun onTimeout() = deliver(null, final = true)
 
-                    private fun deliver(hypothesis: String?) {
+                    private fun deliver(hypothesis: String?, final: Boolean) {
                         if (delivered) return
                         val texts = texts(hypothesis)
                         // Порожній проміжний результат (пауза до мовлення) — слухаємо далі.
-                        if (texts.isEmpty() && hypothesis != null && service != null) return
+                        if (texts.isEmpty() && !final) return
+                        // Лише початок команди й пауза («відкрий… телеграм») — запам'ятовуємо й слухаємо далі.
+                        if (!final && IncompletePhrase.isIncomplete(texts.first())) {
+                            started = join(started, texts.first())
+                            onPartial(started)
+                            return
+                        }
                         delivered = true
                         finish()
-                        onResult(texts)
+                        onResult(if (texts.isEmpty()) listOfNotNull(started.ifBlank { null }) else texts.map { join(started, it) })
                     }
                 },
                 TIMEOUT_MS,
@@ -109,6 +119,8 @@ class VoskEngine(private val store: VoiceModelStore) {
             false
         }
     }
+
+    private fun join(first: String, second: String) = listOf(first, second).filter { it.isNotBlank() }.joinToString(" ")
 
     /** Завершити слухання й отримати те, що вже сказано. */
     fun stop() {

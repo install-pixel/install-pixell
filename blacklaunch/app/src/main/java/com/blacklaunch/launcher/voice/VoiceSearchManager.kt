@@ -3,6 +3,8 @@ package com.blacklaunch.launcher.voice
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.os.SystemClock
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
@@ -75,10 +77,28 @@ class VoiceSearchManager(
     private fun onDeviceAvailable(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
+    /**
+     * Мережа, у якій розпізнавач Google щойно не дістав інтернету: поки телефон у ній (до 10 хв),
+     * одразу слухає офлайн-модель — без спроби через Google і втраченого початку фрази.
+     */
+    private var deadNetwork: Network? = null
+    private var deadNetworkAt = 0L
+
+    private fun rememberDeadNetwork() {
+        deadNetwork = context.getSystemService(ConnectivityManager::class.java)?.activeNetwork
+        deadNetworkAt = SystemClock.elapsedRealtime()
+    }
+
+    private fun onDeadNetwork(): Boolean {
+        val network = deadNetwork ?: return false
+        if (SystemClock.elapsedRealtime() - deadNetworkAt > DEAD_NETWORK_MS) return false
+        return context.getSystemService(ConnectivityManager::class.java)?.activeNetwork == network
+    }
+
     fun start(language: String = VoiceLanguages.forLocale()) {
         this.language = language
         session++
-        val online = hasInternet()
+        val online = hasInternet() && !onDeadNetwork()
         val voskLanguage = voskLanguage()
         val useVosk = when (settings.mode.value) {
             OfflineVoiceMode.OFF -> false
@@ -173,7 +193,9 @@ class VoiceSearchManager(
     private fun hasInternet(): Boolean {
         val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return true
         val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED))
     }
 
     private fun nextAttempt() {
@@ -306,8 +328,14 @@ class VoiceSearchManager(
             if (isNetworkError(error) && failed != null && !failed.onDevice) {
                 val voskLanguage = voskLanguage().takeIf { settings.mode.value != OfflineVoiceMode.OFF }
                 when {
-                    voskLanguage != null -> { onMessage(R.string.voice_switched_offline); startVosk(voskLanguage); return }
-                    onDeviceAvailable() -> { attempts = emptyList(); onMessage(R.string.voice_switched_offline); startOffline(); return }
+                    voskLanguage != null -> { rememberDeadNetwork(); onMessage(R.string.voice_switched_offline); startVosk(voskLanguage); return }
+                    onDeviceAvailable() -> {
+                        rememberDeadNetwork()
+                        attempts = emptyList()
+                        onMessage(R.string.voice_switched_offline)
+                        startOffline()
+                        return
+                    }
                 }
             }
             // Вбудований офлайн-розпізнавач Android не зміг (немає пакета мови) — краще власна модель, ніж англійська.
@@ -336,6 +364,8 @@ class VoiceSearchManager(
         this?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty().filter { it.isNotBlank() }
 
     companion object {
+        private const val SILENCE_MS = 2_000L
+        private const val DEAD_NETWORK_MS = 10 * 60 * 1000L
         // Константи з API 31; значення фіксовані, тож працюють і на старіших версіях.
         private const val ERROR_LANGUAGE_NOT_SUPPORTED = 12
         private const val ERROR_LANGUAGE_UNAVAILABLE = 13
@@ -368,6 +398,9 @@ class VoiceSearchManager(
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            // Довша пауза до кінця фрази — встигнути договорити після «відкрий…» (розпізнавач може не врахувати).
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_MS)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_MS)
             putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.voice_prompt))
             // Android 14+: розпізнавач сам визначає, українська, польська чи англійська.
             if (detectLanguage && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

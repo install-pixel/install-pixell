@@ -19,6 +19,27 @@ sealed interface VoiceCommand {
     data class Action(val action: VoiceAction) : VoiceCommand
 }
 
+/**
+ * Почато лише команду — «відкрий», «подзвони», «режим»… Офлайн-модель вважає паузу кінцем фрази;
+ * після такого початку слухаємо далі, щоб людина встигла договорити.
+ */
+object IncompletePhrase {
+    private val starters = setOf(
+        "відкрий", "відкрити", "запусти", "запустити", "покажи", "open", "launch", "start", "otworz", "uruchom", "pokaz",
+        "режим", "профіль", "mode", "profile", "tryb", "profil",
+        "подзвони", "зателефонуй", "набери", "call", "dial", "zadzwon",
+        "напиши", "надішли", "відправ", "write", "text", "send", "message", "napisz", "wyslij",
+        "таймер", "будильник", "timer", "alarm", "budzik", "minutnik",
+        "маршрут", "навігація", "route", "navigate", "trasa", "nawiguj",
+        "яскравість", "brightness", "jasnosc", "на", "до", "to", "w", "у", "в",
+    )
+
+    fun isIncomplete(text: String): Boolean {
+        val words = SearchNormalizer.words(SearchNormalizer.normalize(text))
+        return words.isNotEmpty() && words.all { it in starters }
+    }
+}
+
 /** Простий локальний розбір голосових команд українською, польською та англійською, без ШІ. */
 object VoiceCommandParser {
     private val politeness = listOf("будь ласка", "будьласка", "please", "пожалуйста", "prosze")
