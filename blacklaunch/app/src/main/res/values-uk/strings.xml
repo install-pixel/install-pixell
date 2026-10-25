@@ -451,4 +451,6 @@
     <string name="step_bluetooth">блютуз</string>
     <string name="step_mobile_data">мобільні дані</string>
     <string name="step_time">котра година</string>
+    <string name="show_all">Показати всі</string>
+    <string name="show_less">Згорнути</string>
 </resources>

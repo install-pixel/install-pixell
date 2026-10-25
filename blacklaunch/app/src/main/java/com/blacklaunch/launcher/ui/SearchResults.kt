@@ -5,6 +5,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
@@ -86,6 +89,8 @@ fun SearchResults(
     allApps: List<AppInfo> = emptyList(),
     privateSpace: PrivateSpaceState? = null,
     onTogglePrivate: () -> Unit = {},
+    onExpand: (GroupKind?) -> Unit = {},
+    thumbFor: suspend (String) -> ImageBitmap? = { null },
     /** Швидкі дії біля контакту: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit = { _, _ -> },
     /** Які кнопки біля контакту дозволені профілем. */
@@ -120,7 +125,7 @@ fun SearchResults(
         verticalArrangement = Arrangement.Bottom,
     ) {
         calculator.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage) }
+            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage, thumbFor) }
         }
         // Команди (як голосом) — одразу над полем пошуку.
         items(custom, key = { "custom:${it.id}" }) { command ->
@@ -133,7 +138,17 @@ fun SearchResults(
             AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
         }
         others.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage) }
+            // Список знизу вгору: рядок «Показати всі» / «Згорнути» — під групою, заголовок — над нею.
+            if (group.more) item(key = "more:${group.kind}") { ExpandRow(R.string.show_all) { onExpand(group.kind) } }
+            if (group.expanded) item(key = "less:${group.kind}") { ExpandRow(R.string.show_less) { onExpand(null) } }
+            if (group.expanded && group.kind in GRID_KINDS) {
+                // Сітка мініатюр: найновіші — вгорі зліва.
+                items(group.items.chunked(GRID_COLUMNS).reversed(), key = { row -> "grid:" + row.first().key }) { row ->
+                    ThumbRow(row, thumbFor, onGlobal)
+                }
+            } else {
+                items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage, thumbFor) }
+            }
             item(key = "header:${group.kind}") { GroupHeader(group.kind) }
         }
     }
@@ -384,6 +399,7 @@ private fun GlobalRow(
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     canCall: Boolean,
     canMessage: Boolean,
+    thumbFor: suspend (String) -> ImageBitmap?,
 ) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
@@ -408,6 +424,12 @@ private fun GlobalRow(
                         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
                     ),
                 )
+            } else if (result is GlobalResult.Media && !result.mime.startsWith("audio/")) {
+                // Фото й відео — мініатюрою; поки вантажиться — звичайний значок.
+                val thumb by produceState<ImageBitmap?>(null, result.uri) { value = thumbFor(result.uri) }
+                thumb?.let {
+                    Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)))
+                } ?: Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
             } else {
                 Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
             }
@@ -441,6 +463,49 @@ private fun GlobalRow(
         }
     }
 }
+
+@Composable
+private fun ExpandRow(@StringRes label: Int, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
+    Text(
+        stringResource(label),
+        color = Oled.TextSecondary,
+        fontSize = 15.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable { haptics.tap(); onClick() }
+            .padding(start = 68.dp, top = 10.dp, bottom = 10.dp),
+    )
+}
+
+/** Рядок сітки: квадратні мініатюри; дотик відкриває фото чи відео. */
+@Composable
+private fun ThumbRow(row: List<GlobalResult>, thumbFor: suspend (String) -> ImageBitmap?, onClick: (GlobalResult) -> Unit) {
+    val haptics = LocalHaptics.current
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        row.forEach { result ->
+            val uri = (result as? GlobalResult.Media)?.uri.orEmpty()
+            val thumb by produceState<ImageBitmap?>(null, uri) { value = thumbFor(uri) }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Oled.Surface)
+                    .clickable { haptics.tap(); onClick(result) },
+                contentAlignment = Alignment.Center,
+            ) {
+                thumb?.let { Image(it, contentDescription = result.title, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize()) }
+                    ?: Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
+            }
+        }
+        repeat(GRID_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+private val GRID_KINDS = setOf(GroupKind.PHOTOS, GroupKind.VIDEO)
+private const val GRID_COLUMNS = 3
 
 @Composable
 private fun CommandRow(icon: ImageVector, title: String, subtitle: String?, onClick: () -> Unit) {

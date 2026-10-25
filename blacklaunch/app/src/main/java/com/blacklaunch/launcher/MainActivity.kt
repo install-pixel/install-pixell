@@ -12,6 +12,10 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.compose.ui.graphics.asImageBitmap
+import android.provider.MediaStore
+import android.util.Size
+import android.util.LruCache
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
@@ -305,6 +309,8 @@ class MainActivity : ComponentActivity() {
                     allApps = if (display.allAppsButton) allApps else emptyList(),
                     privateSpace = privateSpace,
                     onTogglePrivate = app.privateSpace::toggle,
+                    onExpand = viewModel::expandGroup,
+                    thumbFor = ::thumbnail,
                     onContactAction = ::contactAction,
                     iconFor = iconFor,
                     voiceState = voiceState,
@@ -717,6 +723,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Мініатюри фото й відео в пошуку — офіційним API сховища, у пам'яті до 200 штук.
+    private val thumbnails = LruCache<String, ImageBitmap>(THUMB_CACHE)
+
+    private suspend fun thumbnail(uri: String): ImageBitmap? {
+        if (uri.isEmpty()) return null
+        thumbnails.get(uri)?.let { return it }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val parsed = Uri.parse(uri)
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentResolver.loadThumbnail(parsed, Size(THUMB_PX, THUMB_PX), null)
+                } else {
+                    @Suppress("DEPRECATION")
+                    if ("/video/" in uri) {
+                        MediaStore.Video.Thumbnails.getThumbnail(contentResolver, ContentUris.parseId(parsed), MediaStore.Video.Thumbnails.MINI_KIND, null)
+                    } else {
+                        MediaStore.Images.Thumbnails.getThumbnail(contentResolver, ContentUris.parseId(parsed), MediaStore.Images.Thumbnails.MINI_KIND, null)
+                    }
+                }
+                bitmap?.asImageBitmap()
+            }.getOrNull()
+        }?.also { thumbnails.put(uri, it) }
+    }
+
     private fun openAppInfo(pkg: String) =
         startOrToast(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
 
@@ -1089,5 +1119,7 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val PROFILE_BANNER_MS = 1_000L
+        const val THUMB_CACHE = 200
+        const val THUMB_PX = 256
     }
 }

@@ -2,12 +2,20 @@ package com.blacklaunch.launcher.global
 
 /** Джерела, що потребують Android: налаштування, ярлики, контакти, календар, SMS. */
 interface GlobalSearchSource {
-    /** [appPackages] — програми, що найкраще підійшли до запиту: показуємо і їхні ярлики. */
-    suspend fun search(query: String, kinds: Set<GroupKind>, appPackages: List<String> = emptyList()): List<ResultGroup>
+    /**
+     * [appPackages] — програми, що найкраще підійшли до запиту: показуємо і їхні ярлики.
+     * [expanded] — група, для якої натиснули «Показати всі».
+     */
+    suspend fun search(
+        query: String,
+        kinds: Set<GroupKind>,
+        appPackages: List<String> = emptyList(),
+        expanded: GroupKind? = null,
+    ): List<ResultGroup>
 }
 
 object NoGlobalSearch : GlobalSearchSource {
-    override suspend fun search(query: String, kinds: Set<GroupKind>, appPackages: List<String>): List<ResultGroup> =
+    override suspend fun search(query: String, kinds: Set<GroupKind>, appPackages: List<String>, expanded: GroupKind?): List<ResultGroup> =
         emptyList()
 }
 

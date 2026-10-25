@@ -79,4 +79,8 @@ sealed interface GlobalResult {
     }
 }
 
-data class ResultGroup(val kind: GroupKind, val items: List<GlobalResult>)
+/** [more] — знайдено більше, ніж показано: під групою з'являється «Показати всі». [expanded] — показано всі. */
+data class ResultGroup(val kind: GroupKind, val items: List<GlobalResult>, val more: Boolean = false, val expanded: Boolean = false)
+
+/** Групи, які можна розгорнути: фото й відео — сіткою, дзвінки й сповіщення — списком. */
+val EXPANDABLE_KINDS = setOf(GroupKind.PHOTOS, GroupKind.VIDEO, GroupKind.CALLS, GroupKind.NOTIFICATIONS)

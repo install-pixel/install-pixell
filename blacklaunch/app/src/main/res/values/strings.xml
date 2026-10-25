@@ -451,4 +451,6 @@
     <string name="step_bluetooth">bluetooth</string>
     <string name="step_mobile_data">mobile data</string>
     <string name="step_time">what time is it</string>
+    <string name="show_all">Show all</string>
+    <string name="show_less">Show less</string>
 </resources>

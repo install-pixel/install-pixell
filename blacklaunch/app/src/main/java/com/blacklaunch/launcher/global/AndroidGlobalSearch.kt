@@ -48,7 +48,7 @@ class AndroidGlobalSearch(
     private var shortcutsCache: List<ShortcutInfo> = emptyList()
     private var shortcutsLoadedAt = 0L
 
-    override suspend fun search(query: String, kinds: Set<GroupKind>, appPackages: List<String>): List<ResultGroup> =
+    override suspend fun search(query: String, kinds: Set<GroupKind>, appPackages: List<String>, expanded: GroupKind?): List<ResultGroup> =
         withContext(Dispatchers.IO) {
         val prepared = PreparedQuery(query)
         if (prepared.isEmpty) return@withContext emptyList()
@@ -57,6 +57,8 @@ class AndroidGlobalSearch(
         fun dated(kind: GroupKind) = date != null && kind in DateQuery.DATED && (date.sources.isEmpty() || kind in date.sources)
         fun plain(kind: GroupKind) = date == null || date.sources.isEmpty() && kind !in DateQuery.DATED
         fun wanted(kind: GroupKind) = kind in kinds && (dated(kind) || plain(kind))
+        // Розгорнута група — до EXPANDED_LIMIT; на один більше, щоб знати, чи є ще.
+        fun limit(kind: GroupKind) = (if (kind == expanded) EXPANDED_LIMIT else LIMIT) + 1
         buildList {
             if (GroupKind.SETTINGS in kinds) {
                 group(GroupKind.SETTINGS) { SettingsCatalog.search(prepared).map { it.copy(title = settingTitle(it.entryId)) } }
@@ -66,7 +68,7 @@ class AndroidGlobalSearch(
                 group(GroupKind.CONTACTS) { contacts(prepared) }
             }
             if (wanted(GroupKind.CALLS) && granted(Manifest.permission.READ_CALL_LOG)) {
-                group(GroupKind.CALLS) { calls(prepared, date.takeIf { dated(GroupKind.CALLS) }) }
+                group(GroupKind.CALLS, expanded) { calls(prepared, date.takeIf { dated(GroupKind.CALLS) }, limit(GroupKind.CALLS)) }
             }
             if (GroupKind.CALENDAR in kinds && granted(Manifest.permission.READ_CALENDAR)) {
                 group(GroupKind.CALENDAR) { events(query.trim()) }
@@ -75,23 +77,34 @@ class AndroidGlobalSearch(
                 group(GroupKind.SMS) { sms(query.trim()) }
             }
             if (wanted(GroupKind.NOTIFICATIONS)) {
-                group(GroupKind.NOTIFICATIONS) { notifications(query.trim(), date.takeIf { dated(GroupKind.NOTIFICATIONS) }) }
+                group(GroupKind.NOTIFICATIONS, expanded) {
+                    notifications(query.trim(), date.takeIf { dated(GroupKind.NOTIFICATIONS) }, limit(GroupKind.NOTIFICATIONS))
+                }
             }
             for (kind in MEDIA_KINDS) {
-                if (wanted(kind) && hasMediaAccess(kind)) group(kind) { media(kind, query.trim(), date.takeIf { dated(kind) }) }
+                if (wanted(kind) && hasMediaAccess(kind)) group(kind, expanded) { media(kind, query.trim(), date.takeIf { dated(kind) }, limit(kind)) }
             }
         }
     }
 
-    /** Помилка одного джерела не ламає інші. */
-    private inline fun MutableList<ResultGroup>.group(kind: GroupKind, block: () -> List<GlobalResult>) {
+    /**
+     * Помилка одного джерела не ламає інші. Джерело з [EXPANDABLE_KINDS] повертає на один більше,
+     * ніж показуємо: так видно, чи потрібне «Показати всі».
+     */
+    private inline fun MutableList<ResultGroup>.group(kind: GroupKind, expanded: GroupKind? = null, block: () -> List<GlobalResult>) {
         val items = try {
             block()
         } catch (e: RuntimeException) {
             Log.w(TAG, "Global search source $kind failed", e)
             emptyList()
         }
-        if (items.isNotEmpty()) add(ResultGroup(kind, items))
+        if (items.isEmpty()) return
+        if (kind !in EXPANDABLE_KINDS) {
+            add(ResultGroup(kind, items))
+            return
+        }
+        val shown = if (kind == expanded) EXPANDED_LIMIT else LIMIT
+        add(ResultGroup(kind, items.take(shown), more = items.size > shown && kind != expanded, expanded = kind == expanded))
     }
 
     private fun granted(permission: String) =
@@ -201,7 +214,7 @@ class AndroidGlobalSearch(
     }
 
     // Журнал дзвінків: за іменем (початки слів, як у контактах) або за цифрами номера.
-    private fun calls(prepared: PreparedQuery, date: DateQuery?): List<GlobalResult> {
+    private fun calls(prepared: PreparedQuery, date: DateQuery?, limit: Int): List<GlobalResult> {
         val name = if (date != null) PreparedQuery(date.text) else prepared
         val query = name.text.trim()
         if (date == null && query.length < MIN_TEXT) return emptyList()
@@ -223,7 +236,7 @@ class AndroidGlobalSearch(
         )?.use { c ->
             val seen = HashSet<String>()
             buildList {
-                while (c.moveToNext() && size < LIMIT) {
+                while (c.moveToNext() && size < limit) {
                     val number = c.getString(0)?.takeIf { it.isNotBlank() } ?: continue
                     val cached = c.getString(1)?.takeIf { it.isNotBlank() }
                     if (query.isNotEmpty() && !byNumber && (cached == null || !NameStarts.matches(cached, name))) continue
@@ -240,12 +253,12 @@ class AndroidGlobalSearch(
         }.orEmpty()
     }
 
-    private fun notifications(query: String, date: DateQuery?): List<GlobalResult> {
+    private fun notifications(query: String, date: DateQuery?, limit: Int): List<GlobalResult> {
         val text = date?.text ?: query
         if (date == null && text.length < MIN_TEXT) return emptyList()
         val window = date?.let { millis(it.start) until millis(it.endExclusive) }
         val current = ProfileNotificationFilter.current()
-        return NotificationTexts.search(text, current, appContext.packageName, LIMIT, window).map { entry ->
+        return NotificationTexts.search(text, current, appContext.packageName, limit, window).map { entry ->
             val app = appLabel(entry.packageName) ?: entry.packageName
             val title = entry.title.ifBlank { app }
             val body = entry.text.ifBlank { entry.title }
@@ -257,7 +270,7 @@ class AndroidGlobalSearch(
     private fun hasMediaAccess(kind: GroupKind): Boolean = mediaPermissions(kind).any(::granted)
 
     // Пісні — за назвою, виконавцем, альбомом; відео й фото — за назвою файлу або альбомом («Camera», «Screenshots»).
-    private fun media(kind: GroupKind, query: String, date: DateQuery?): List<GlobalResult> {
+    private fun media(kind: GroupKind, query: String, date: DateQuery?, limit: Int): List<GlobalResult> {
         val text = date?.text ?: query
         if (date == null && text.length < MIN_TEXT) return emptyList()
         val like = "%${escapeLike(text)}%"
@@ -300,7 +313,7 @@ class AndroidGlobalSearch(
         val selection = clauses.joinToString(" AND ") { "($it)" }
         return appContext.contentResolver.query(uri, projection, selection, args.toTypedArray(), sort)?.use { c ->
             buildList {
-                while (c.moveToNext() && size < LIMIT) {
+                while (c.moveToNext() && size < limit) {
                     val title = c.getString(2)?.takeIf { it.isNotBlank() } ?: continue
                     val album = c.getString(3)?.takeIf { it.isNotBlank() && it != MediaStore.UNKNOWN_STRING }
                     // Фото й відео — з датою, щоб було видно, з якого дня.
@@ -388,6 +401,7 @@ class AndroidGlobalSearch(
         private const val MENU_SHORTCUTS = 4
         private const val TAG = "AndroidGlobalSearch"
         private const val LIMIT = 5
+        private const val EXPANDED_LIMIT = 300
         private const val MIN_TEXT = 2
         private const val SHORTCUTS_TTL_MS = 30_000L
         private const val PAST_MS = 30L * 24 * 60 * 60 * 1000

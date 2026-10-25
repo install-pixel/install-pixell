@@ -139,6 +139,10 @@ fun BlackHomeScreen(
     /** Приватний простір Android 15+ унизу списку A–Z; null — його немає. */
     privateSpace: PrivateSpaceState? = null,
     onTogglePrivate: () -> Unit = {},
+    /** «Показати всі» / «Згорнути» під групою результатів. */
+    onExpand: (GroupKind?) -> Unit = {},
+    /** Мініатюра фото чи відео за адресою в сховищі. */
+    thumbFor: suspend (String) -> ImageBitmap? = { null },
     /** Біля контакту в пошуку: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -217,6 +221,8 @@ fun BlackHomeScreen(
                 allApps = allApps,
                 privateSpace = privateSpace,
                 onTogglePrivate = onTogglePrivate,
+                onExpand = onExpand,
+                thumbFor = thumbFor,
                 onContactAction = onContactAction,
                 iconFor = iconFor,
                 voiceState = voiceState,
@@ -428,6 +434,10 @@ private fun SearchOpen(
     /** Приватний простір Android 15+ унизу списку A–Z; null — його немає. */
     privateSpace: PrivateSpaceState? = null,
     onTogglePrivate: () -> Unit = {},
+    /** «Показати всі» / «Згорнути» під групою результатів. */
+    onExpand: (GroupKind?) -> Unit = {},
+    /** Мініатюра фото чи відео за адресою в сховищі. */
+    thumbFor: suspend (String) -> ImageBitmap? = { null },
     /** Біля контакту в пошуку: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -572,6 +582,8 @@ private fun SearchOpen(
             allApps = allApps,
             privateSpace = privateSpace,
             onTogglePrivate = onTogglePrivate,
+            onExpand = onExpand,
+            thumbFor = thumbFor,
             onContactAction = onContactAction,
             canCall = state.canCall,
             canMessage = state.canMessage,
