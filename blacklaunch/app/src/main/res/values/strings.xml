@@ -678,6 +678,6 @@
     <string name="mon_wifi_link">connection %1$d Mbit/s</string>
     <string name="mon_wifi_rx">Wi‑Fi connection: receive</string>
     <string name="mon_wifi_tx">Wi‑Fi connection: send</string>
-    <string name="mon_net_now">receiving %1$s · sending %2$s</string>
+    <string name="mon_net_now">↓ receiving %1$s · ↑ sending %2$s</string>
     <string name="mon_net_graph">graph — receiving, last 5 min</string>
 </resources>

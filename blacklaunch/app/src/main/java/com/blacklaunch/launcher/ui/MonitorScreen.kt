@@ -162,7 +162,7 @@ internal fun MonitorScreen(
     val powerText = s.battery.powerW?.let { stringResource(R.string.mon_u_w, "%.1f".format(abs(it))) }
     val voltageText = s.battery.voltageMv?.let { stringResource(R.string.mon_u_v, "%.2f".format(it / 1000f)) }
     val stateText = stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging)
-    // Словами, а не стрілками: скільки телефон отримує й надсилає щосекунди.
+    // Стрілки з підписом: скільки телефон отримує й надсилає щосекунди.
     val rateText = rate?.let { (down, up) ->
         stringResource(R.string.mon_net_now, stringResource(R.string.mon_u_rate, size(down)), stringResource(R.string.mon_u_rate, size(up)))
     }

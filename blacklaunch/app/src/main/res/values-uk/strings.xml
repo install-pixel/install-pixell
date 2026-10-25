@@ -678,6 +678,6 @@
     <string name="mon_wifi_link">з\'єднання %1$d Мбіт/с</string>
     <string name="mon_wifi_rx">з\'єднання Wi‑Fi: прийом</string>
     <string name="mon_wifi_tx">з\'єднання Wi‑Fi: передача</string>
-    <string name="mon_net_now">отримує %1$s · надсилає %2$s</string>
+    <string name="mon_net_now">↓ отримує %1$s · ↑ надсилає %2$s</string>
     <string name="mon_net_graph">графік — отримання за 5 хв</string>
 </resources>

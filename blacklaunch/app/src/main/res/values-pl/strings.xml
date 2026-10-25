@@ -678,6 +678,6 @@
     <string name="mon_wifi_link">połączenie %1$d Mb/s</string>
     <string name="mon_wifi_rx">połączenie Wi‑Fi: odbiór</string>
     <string name="mon_wifi_tx">połączenie Wi‑Fi: wysyłanie</string>
-    <string name="mon_net_now">odbiera %1$s · wysyła %2$s</string>
+    <string name="mon_net_now">↓ odbiera %1$s · ↑ wysyła %2$s</string>
     <string name="mon_net_graph">wykres — odbiór, ostatnie 5 min</string>
 </resources>
