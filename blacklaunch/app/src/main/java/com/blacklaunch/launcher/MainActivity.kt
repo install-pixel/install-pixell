@@ -782,9 +782,10 @@ class MainActivity : ComponentActivity() {
             openNotificationAccess()
             return
         }
+        // Перший дозвіл — основний: «вибрані фото й відео», дані для відео, не відкривають самих фото.
         val permissions = globalPermissions(kind)
         if (permissions.isNotEmpty() &&
-            permissions.none { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+            ContextCompat.checkSelfPermission(this, permissions.first()) != PackageManager.PERMISSION_GRANTED
         ) {
             pendingGlobalKind = kind
             globalPermission.launch(permissions.toTypedArray())

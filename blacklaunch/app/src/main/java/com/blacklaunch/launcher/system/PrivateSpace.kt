@@ -1,6 +1,5 @@
 package com.blacklaunch.launcher.system
 
-import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -66,13 +65,6 @@ class PrivateSpace(context: Context, private val onAppsChanged: () -> Unit) {
         } catch (e: SecurityException) {
             Log.w(TAG, "Private space toggle refused", e)
         }
-    }
-
-    /** Системні налаштування приватного простору (Android сам просить підтвердження). */
-    fun openSettings(activity: Activity): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return false
-        val sender = launcherApps.privateSpaceSettingsIntent ?: return false
-        return runCatching { activity.startIntentSender(sender, null, 0, 0, 0) }.isSuccess
     }
 
     private fun privateUser(): UserHandle? {
