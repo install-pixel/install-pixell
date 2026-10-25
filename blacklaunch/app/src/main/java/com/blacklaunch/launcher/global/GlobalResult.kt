@@ -54,6 +54,13 @@ sealed interface GlobalResult {
         override val title get() = sender
         override val subtitle get() = snippet
     }
+
+    /** Налаштування конкретної програми: «сповіщення Telegram». Назву показує інтерфейс мовою телефону. */
+    data class AppSetting(val packageName: String, val appLabel: String, val kind: AppSettingKind) : GlobalResult {
+        override val key get() = "appsetting:$packageName:$kind"
+        override val title get() = appLabel
+        override val subtitle: String? get() = null
+    }
 }
 
 data class ResultGroup(val kind: GroupKind, val items: List<GlobalResult>)

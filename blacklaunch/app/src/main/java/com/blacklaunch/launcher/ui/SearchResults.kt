@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.global.AppSettingKind
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.global.ResultGroup
@@ -372,7 +373,8 @@ private fun GlobalRow(
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(result.title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val title = if (result is GlobalResult.AppSetting) stringResource(result.kind.title(), result.appLabel) else result.title
+            Text(title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             result.subtitle?.let {
                 Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -427,6 +429,16 @@ private fun GlobalResult.icon(): ImageVector = when (this) {
     is GlobalResult.Contact -> Icons.Filled.Person
     is GlobalResult.Event -> Icons.Filled.DateRange
     is GlobalResult.Sms -> Icons.Filled.Email
+    is GlobalResult.AppSetting -> Icons.Filled.Settings
+}
+
+@StringRes
+private fun AppSettingKind.title(): Int = when (this) {
+    AppSettingKind.NOTIFICATIONS -> R.string.app_setting_notifications
+    AppSettingKind.BATTERY -> R.string.app_setting_battery
+    AppSettingKind.INFO -> R.string.app_setting_info
+    AppSettingKind.DATA -> R.string.app_setting_data
+    AppSettingKind.LINKS -> R.string.app_setting_links
 }
 
 @StringRes

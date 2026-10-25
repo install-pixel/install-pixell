@@ -62,6 +62,7 @@ import com.blacklaunch.launcher.apps.AppIconCache
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.system.WallpaperController
 import com.blacklaunch.launcher.settings.Appearance
+import com.blacklaunch.launcher.global.AppSettingKind
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.profiles.PinnedEdits
@@ -632,6 +633,7 @@ class MainActivity : ComponentActivity() {
             is GlobalResult.Contact -> startOrToast(Intent(Intent.ACTION_VIEW, Uri.parse(result.lookupUri)))
             is GlobalResult.Event -> startOrToast(Intent(Intent.ACTION_VIEW, app.globalSearch.eventUri(result)))
             is GlobalResult.Sms -> startOrToast(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${result.address}")))
+            is GlobalResult.AppSetting -> openAppSetting(result)
         }
     }
 
@@ -671,6 +673,27 @@ class MainActivity : ComponentActivity() {
         val text = app.crashLog.text.value ?: return
         getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Black Glass crash log", text))
         toast(R.string.crash_log_copied)
+    }
+
+    /** Сторінка налаштувань конкретної програми; де її немає — «Про програму». */
+    private fun openAppSetting(result: GlobalResult.AppSetting) {
+        val pkg = result.packageName
+        val packageUri = Uri.fromParts("package", pkg, null)
+        val details = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
+        when (result.kind) {
+            AppSettingKind.NOTIFICATIONS -> startOrToast(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, pkg),
+                details,
+            )
+            AppSettingKind.BATTERY -> BatterySettings.openForApp(this, pkg)
+            AppSettingKind.INFO -> startOrToast(details)
+            AppSettingKind.DATA -> startOrToast(Intent(Settings.ACTION_IGNORE_BACKGROUND_DATA_RESTRICTIONS_SETTINGS, packageUri), details)
+            AppSettingKind.LINKS -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                startOrToast(Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS, packageUri), details)
+            } else {
+                startOrToast(details)
+            }
+        }
     }
 
     private fun openAppInfo(pkg: String) =

@@ -6,6 +6,7 @@ import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.apps.AppSource
 import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import com.blacklaunch.launcher.apps.LaunchHistory
+import com.blacklaunch.launcher.global.AppSettingsParser
 import com.blacklaunch.launcher.global.Calculator
 import com.blacklaunch.launcher.global.UnitConverter
 import com.blacklaunch.launcher.global.DEFAULT_GLOBAL_KINDS
@@ -259,7 +260,25 @@ class LauncherViewModel(
                         }
                     }
                     // Ярлики лише найкращої програми — щоб не засипати список чужими чатами.
-                    val global = globalSource.search(query, kinds, apps.take(1).map { it.packageName })
+                    // «сповіщення Telegram» — сторінка налаштувань цієї програми, першою серед налаштувань.
+                    val appSetting = if (GroupKind.SETTINGS !in kinds) {
+                        null
+                    } else {
+                        AppSettingsParser.parse(query)?.let { (kind, appName) ->
+                            index.value.search(appName, launchCounts.value).firstOrNull()?.let {
+                                GlobalResult.AppSetting(it.packageName, it.label, kind)
+                            }
+                        }
+                    }
+                    val global = globalSource.search(query, kinds, apps.take(1).map { it.packageName }).let { groups ->
+                        when {
+                            appSetting == null -> groups
+                            groups.any { it.kind == GroupKind.SETTINGS } -> groups.map { group ->
+                                if (group.kind == GroupKind.SETTINGS) group.copy(items = listOf(appSetting) + group.items) else group
+                            }
+                            else -> groups + ResultGroup(GroupKind.SETTINGS, listOf(appSetting))
+                        }
+                    }
                     // «Лише програми профілю» — і ярлики лише цих програм.
                     addAll(
                         if (scope.scope != SearchScope.PROFILE_ONLY && !access(scope).shortcutsOfProfileOnly) {
