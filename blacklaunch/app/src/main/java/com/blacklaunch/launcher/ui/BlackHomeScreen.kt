@@ -272,6 +272,9 @@ private fun HomeIdle(
     glance: GlanceInfo?,
     monitor: (@Composable (Modifier) -> Unit)? = null,
 ) {
+    // На моніторі свій верхній рядок — «Короткий огляд» не накладається на нього.
+    @Suppress("NAME_SHADOWING")
+    val glance = if (monitor != null) null else glance
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val haptics = LocalHaptics.current
     var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }

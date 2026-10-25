@@ -626,4 +626,8 @@
     <string name="mon_patch">poprawka zabezpieczeń</string>
     <string name="mon_kernel">jądro</string>
     <string name="mtile_device">Dane telefonu (stuknij, by rozwinąć)</string>
+    <string name="mon_chip">układ</string>
+    <string name="mon_cpu">procesor</string>
+    <string name="mon_android">Android</string>
+    <string name="close">Zamknij</string>
 </resources>

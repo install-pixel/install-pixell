@@ -110,7 +110,9 @@ class SystemStats(context: Context) {
             null
         }
         val percent = if (level >= 0 && scale > 0) level * 100 / scale else batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 0
-        return BatteryStats(percent, charging, currentMa(), voltage, temperature, health, cycles, toFull)
+        // Знак струму прошивки віддають по-різному (OnePlus — навпаки): вирівнюємо за станом заряду.
+        val current = currentMa()?.let { ma -> if (charging) abs(ma) else -abs(ma) }
+        return BatteryStats(percent, charging, current, voltage, temperature, health, cycles, toFull)
     }
 
     /** Android віддає мікроампери, але деякі прошивки — міліампери; великі значення — це мкА. */

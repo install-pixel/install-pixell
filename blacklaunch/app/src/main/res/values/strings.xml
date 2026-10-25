@@ -626,4 +626,8 @@
     <string name="mon_patch">security patch</string>
     <string name="mon_kernel">kernel</string>
     <string name="mtile_device">Phone specs (tap to expand)</string>
+    <string name="mon_chip">chip</string>
+    <string name="mon_cpu">processor</string>
+    <string name="mon_android">Android</string>
+    <string name="close">Close</string>
 </resources>

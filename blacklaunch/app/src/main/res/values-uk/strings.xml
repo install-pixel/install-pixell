@@ -626,4 +626,8 @@
     <string name="mon_patch">оновлення безпеки</string>
     <string name="mon_kernel">ядро</string>
     <string name="mtile_device">Характеристики телефона (дотик — повністю)</string>
+    <string name="mon_chip">чип</string>
+    <string name="mon_cpu">процесор</string>
+    <string name="mon_android">Android</string>
+    <string name="close">Закрити</string>
 </resources>
