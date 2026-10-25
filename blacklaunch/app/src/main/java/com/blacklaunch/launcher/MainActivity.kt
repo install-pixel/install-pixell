@@ -250,6 +250,8 @@ class MainActivity : ComponentActivity() {
             val speakAnswers by app.voiceActionSettings.speakAnswers.collectAsStateWithLifecycle()
             val ttsEngine by app.voiceActionSettings.ttsEngine.collectAsStateWithLifecycle()
             val customCommands by app.customCommands.commands.collectAsStateWithLifecycle()
+            val commandProfiles by profileViewModel.profiles.collectAsStateWithLifecycle()
+            val commandApps by app.appRepository.apps.collectAsStateWithLifecycle()
             val allApps by viewModel.allApps.collectAsStateWithLifecycle()
             val privateSpace by app.privateSpace.state.collectAsStateWithLifecycle()
             val ownIcons by app.ownIcons.keys.collectAsStateWithLifecycle()
@@ -349,6 +351,9 @@ class MainActivity : ComponentActivity() {
                                 hiddenApps = installedApps.filter { it.key in hiddenKeys }.sortedBy { it.label.lowercase() },
                                 onShowApp = app.hiddenApps::show,
                                 customCommands = customCommands,
+                                commandApps = commandApps,
+                                commandProfiles = commandProfiles.map { it.name },
+                                iconFor = iconFor,
                                 onSaveCustomCommand = app.customCommands::save,
                                 onDeleteCustomCommand = app.customCommands::delete,
                                 onOpenDefaultApps = { startOrToast(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },

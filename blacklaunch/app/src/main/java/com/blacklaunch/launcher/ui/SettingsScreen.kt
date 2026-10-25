@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -88,6 +89,10 @@ fun SettingsScreen(
     hiddenApps: List<AppInfo>,
     onShowApp: (String) -> Unit,
     customCommands: List<CustomCommand>,
+    /** Для конструктора команд: програми (зі значками) і назви профілів. */
+    commandApps: List<AppInfo>,
+    commandProfiles: List<String>,
+    iconFor: suspend (AppInfo) -> ImageBitmap?,
     onSaveCustomCommand: (CustomCommand) -> Unit,
     onDeleteCustomCommand: (String) -> Unit,
     onOpenDefaultApps: () -> Unit,
@@ -314,7 +319,7 @@ fun SettingsScreen(
         }
 
         SettingsNav.CustomCommands -> SettingsPage(stringResource(R.string.custom_commands_title), { onNavigate(SettingsNav.Voice) }) {
-            CustomCommandsCard(customCommands, onSaveCustomCommand, onDeleteCustomCommand)
+            CustomCommandsCard(customCommands, commandApps, commandProfiles, iconFor, onSaveCustomCommand, onDeleteCustomCommand)
         }
 
         SettingsNav.Battery -> SettingsPage(stringResource(R.string.battery_section), toMain) {
