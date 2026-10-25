@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Звичайний дозвіл, надається автоматично; використовується лише після підтвердження. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
@@ -45,7 +46,8 @@
 
     <!-- Приватний простір Android 15+: лаунчер за замовчуванням бачить його й може заблокувати/розблокувати
          (розблокування підтверджує сама система). -->
-    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+    <!-- Дозвіл надається лише програмі з роллю «Головний екран» — тобто лаунчеру за замовчуванням. -->
+    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" tools:ignore="ProtectedPermissions" />
 
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>

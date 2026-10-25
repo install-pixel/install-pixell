@@ -59,6 +59,7 @@ class PrivateSpace(context: Context, private val onAppsChanged: () -> Unit) {
 
     /** Заблокувати або розблокувати; розблокування система підтверджує сама. */
     fun toggle() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
         val user = privateUser() ?: return
         try {
             userManager.requestQuietModeEnabled(!userManager.isQuietModeEnabled(user), user)
