@@ -166,7 +166,7 @@ class BlackLaunchApp : Application() {
                 if (!result.ok) {
                     withContext(Dispatchers.Main) {
                         val text = if (result.needsAccess) R.string.profile_needs_dnd else R.string.profile_sound_failed
-                        Toast.makeText(this@BlackLaunchApp, getString(text, result.profileName), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@BlackLaunchApp, getString(text, result.profileName), Toast.LENGTH_SHORT).show()
                     }
                 }
             }

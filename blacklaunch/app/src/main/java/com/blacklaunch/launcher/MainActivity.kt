@@ -468,7 +468,7 @@ class MainActivity : ComponentActivity() {
     private val actionRunner by lazy {
         VoiceActionRunner(
             context = this,
-            onMessage = { message -> Toast.makeText(this, message, Toast.LENGTH_LONG).show() },
+            onMessage = { message -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show() },
             speakAnswers = { app.voiceActionSettings.speakAnswers.value },
             ttsEngine = { app.voiceActionSettings.ttsEngine.value },
         )
@@ -598,7 +598,7 @@ class MainActivity : ComponentActivity() {
         if (action is VoiceAction.Message) {
             messenger = viewModel.findApp(action.app)
             if (messenger == null) {
-                Toast.makeText(this, getString(R.string.app_not_found, action.app), Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.app_not_found, action.app), Toast.LENGTH_SHORT).show()
                 return
             }
             // Месенджер без чату за номером — його «Поділитися», контакт не потрібен.
@@ -623,7 +623,7 @@ class MainActivity : ComponentActivity() {
         }
         val contact = actionRunner.findContact(name)
         if (contact == null) {
-            Toast.makeText(this, getString(R.string.voice_contact_not_found, name), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.voice_contact_not_found, name), Toast.LENGTH_SHORT).show()
             return
         }
         when (action) {
@@ -652,7 +652,7 @@ class MainActivity : ComponentActivity() {
     private fun contactAction(contact: GlobalResult.Contact, call: Boolean) {
         val number = contactNumber(contact)
         if (number == null) {
-            Toast.makeText(this, getString(R.string.voice_contact_not_found, contact.name), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.voice_contact_not_found, contact.name), Toast.LENGTH_SHORT).show()
             return
         }
         val found = ContactNumber(contact.name, number)
@@ -724,7 +724,7 @@ class MainActivity : ComponentActivity() {
                 backup.restore(text)
             }
             result.onSuccess {
-                Toast.makeText(this@MainActivity, getString(R.string.backup_restored, it.profiles, it.waitingApps), Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, getString(R.string.backup_restored, it.profiles, it.waitingApps), Toast.LENGTH_SHORT).show()
             }.onFailure { toast(R.string.backup_failed) }
         }
     }
