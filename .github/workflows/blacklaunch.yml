@@ -94,3 +94,18 @@ jobs:
           files: |
             blacklaunch/${{ env.APK }}
             blacklaunch/BlackGlass.apk
+
+      # Фінальна версія (без «-rc», «-beta»…) — ще й окремий постійний реліз, який не перезаписується.
+      - name: Publish final release
+        if: ${{ !contains(env.VERSION, '-') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: blacklaunch-v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: Black Glass ${{ env.VERSION }}
+          prerelease: false
+          make_latest: false
+          body: |
+            Black Glass ${{ env.VERSION }} — фінальна версія. Що нового — у CHANGELOG.md.
+            Коміт: ${{ github.sha }}
+          files: blacklaunch/${{ env.APK }}
