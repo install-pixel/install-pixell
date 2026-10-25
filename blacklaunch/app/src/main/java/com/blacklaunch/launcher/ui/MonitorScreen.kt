@@ -4,6 +4,11 @@ import android.os.BatteryManager
 import android.os.SystemClock
 import android.text.format.Formatter
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -184,7 +189,7 @@ internal fun MonitorScreen(
                 Modifier.size(176.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(88.dp)).clickable { detail = Detail.BATTERY },
                 contentAlignment = Alignment.Center,
             ) {
-                BatteryDial(s.battery.percent / 100f, accent, Modifier.fillMaxSize())
+                BatteryDial(s.battery.percent / 100f, s.battery.charging, accent, Modifier.fillMaxSize())
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("${s.battery.percent}%", style = num(40.sp, Oled.TextPrimary, FontWeight.ExtraLight))
                     currentText?.let { Text(it, style = num(12.sp, accent)) }
@@ -532,20 +537,29 @@ private fun PhoneGlyph(color: Color, modifier: Modifier) {
     }
 }
 
-/** Шкала батареї з поділками: світлі — заряд, тьмяні — розряджена частина. */
+/** Шкала батареї з поділками: світлі — заряд, тьмяні — розряджена частина; під час заряджання світлом біжить хвиля. */
 @Composable
-private fun BatteryDial(battery: Float, accent: Color, modifier: Modifier) {
+private fun BatteryDial(battery: Float, charging: Boolean, accent: Color, modifier: Modifier) {
+    // Хвиля — лише поки заряджається й екран на виду (анімація не йде у фоні).
+    val wave = if (charging) {
+        rememberInfiniteTransition(label = "charge")
+            .animateFloat(0f, 1f, infiniteRepeatable(tween(CHARGE_WAVE_MS, easing = LinearEasing)), label = "wave").value
+    } else {
+        -1f
+    }
     Canvas(modifier) {
         val r = size.minDimension / 2
         val c = Offset(size.width / 2, size.height / 2)
         val lit = (battery * TICKS).roundToInt()
         repeat(TICKS) { i ->
             // Неон: тонка світла лінія над м'яким світінням; колір плавно світлішає вздовж кола.
-            val tint = lerp(accent, Color.White, 0.35f * i / TICKS)
+            // Яскравість хвилі на цій поділці: найсильніше в її центрі, згасає за ~4 поділки.
+            val boost = if (wave >= 0f && i < lit) (1f - abs(i - wave * (lit + WAVE_TAIL)) / WAVE_TAIL).coerceIn(0f, 1f) else 0f
+            val tint = lerp(lerp(accent, Color.White, 0.35f * i / TICKS), Color.White, 0.6f * boost)
             rotate(i * 360f / TICKS, c) {
                 val start = Offset(c.x, c.y - r + 3.dp.toPx())
                 val end = Offset(c.x, c.y - r + (if (i % 5 == 0) 13.dp else 9.dp).toPx())
-                if (i < lit) drawLine(tint.copy(alpha = 0.22f), start, end, strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round)
+                if (i < lit) drawLine(tint.copy(alpha = 0.22f + 0.4f * boost), start, end, strokeWidth = (5f + 3f * boost).dp.toPx(), cap = StrokeCap.Round)
                 drawLine(if (i < lit) tint else DialTrack, start, end, strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
             }
         }
@@ -642,3 +656,5 @@ private const val HISTORY = 150
 private const val TICKS = 60
 private const val SEGMENTS = 20
 private const val LONG_VALUE = 11
+private const val CHARGE_WAVE_MS = 2_200
+private const val WAVE_TAIL = 4f
