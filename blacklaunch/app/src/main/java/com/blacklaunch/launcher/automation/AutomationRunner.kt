@@ -6,6 +6,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.text.format.DateFormat
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -27,7 +29,11 @@ import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionRunner
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import java.util.Date
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -56,6 +62,23 @@ class AutomationRunner(private val app: BlackLaunchApp) {
     private var lastEvent: Pair<String, Long>? = null
 
     /** Повертає роботу, поки вона триває (приймач тримає Android, щоб не зупинив процес раніше). */
+    /** Остання подія, яку побачив Black Glass, — щоб перевірити, чи доходять події (видно під командами). */
+    private val _lastSeen = MutableStateFlow(prefs.getString(KEY_LAST, null))
+    val lastSeen: StateFlow<String?> = _lastSeen.asStateFlow()
+
+    private fun noteSeen(event: TriggerKind, address: String?) {
+        val device = address?.let { a -> deviceName(a) ?: a }
+        val time = DateFormat.getTimeFormat(app).format(Date())
+        val text = listOfNotNull(app.getString(event.label()), device).joinToString(" · ") + " — " + time
+        _lastSeen.value = text
+        prefs.edit().putString(KEY_LAST, text).apply()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun deviceName(address: String): String? = runCatching {
+        app.getSystemService(BluetoothManager::class.java)?.adapter?.getRemoteDevice(address)?.name
+    }.getOrNull()
+
     fun fire(event: TriggerKind, address: String? = null): Job? {
         if (address != null && event == TriggerKind.BLUETOOTH_CONNECTED) app.commandConditions.noteBluetooth(address, true)
         if (address != null && event == TriggerKind.BLUETOOTH_DISCONNECTED) app.commandConditions.noteBluetooth(address, false)
@@ -64,6 +87,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         val now = SystemClock.elapsedRealtime()
         lastEvent?.let { (previous, at) -> if (previous == key && now - at < DEBOUNCE_MS) return null }
         lastEvent = key to now
+        noteSeen(event, address)
         val matching = app.customCommands.commands.value.filter { command -> command.triggers.any { it.matches(event, address) } }
         if (matching.isEmpty()) return null
         return app.appScope.launch {
@@ -165,6 +189,18 @@ class AutomationRunner(private val app: BlackLaunchApp) {
             addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction(AudioManager.ACTION_HEADSET_PLUG)
         }
+        // Поки Black Glass працює — ще й Bluetooth напряму (на випадок, якщо прошивка не будить приймач з маніфесту).
+        ContextCompat.registerReceiver(
+            app,
+            BluetoothAutomationReceiver(),
+            IntentFilter().apply {
+                addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+                addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            },
+            Manifest.permission.BLUETOOTH_CONNECT,
+            null,
+            ContextCompat.RECEIVER_EXPORTED,
+        )
         ContextCompat.registerReceiver(app, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
@@ -179,7 +215,19 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         }, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
+    private val prefs get() = app.getSharedPreferences("automations", Context.MODE_PRIVATE)
+
+    private fun TriggerKind.label(): Int = when (this) {
+        TriggerKind.BLUETOOTH_CONNECTED -> R.string.trigger_bt_on
+        TriggerKind.BLUETOOTH_DISCONNECTED -> R.string.trigger_bt_off
+        TriggerKind.POWER_CONNECTED -> R.string.trigger_power_on
+        TriggerKind.POWER_DISCONNECTED -> R.string.trigger_power_off
+        TriggerKind.HEADSET_PLUGGED -> R.string.trigger_headset_on
+        TriggerKind.HEADSET_UNPLUGGED -> R.string.trigger_headset_off
+    }
+
     private companion object {
+        const val KEY_LAST = "last_event"
         const val CHANNEL = "automations"
         const val DEBOUNCE_MS = 5_000L
     }

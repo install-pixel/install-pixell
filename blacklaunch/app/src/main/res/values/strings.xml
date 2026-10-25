@@ -540,4 +540,7 @@
     <string name="vgroup_partial">On: %1$d of %2$d</string>
     <string name="details_show">More detail</string>
     <string name="details_hide">Less detail</string>
+    <string name="automation_last_seen">Last event Black Glass saw: %1$s</string>
+    <string name="automation_last_seen_none">none yet</string>
+    <string name="custom_command_save_hint">To save: a phrase or an event, and at least one step</string>
 </resources>

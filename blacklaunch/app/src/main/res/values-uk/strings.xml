@@ -540,4 +540,7 @@
     <string name="vgroup_partial">Увімкнено %1$d з %2$d</string>
     <string name="details_show">Детальніше</string>
     <string name="details_hide">Згорнути детальне</string>
+    <string name="automation_last_seen">Остання подія, яку побачив Black Glass: %1$s</string>
+    <string name="automation_last_seen_none">ще жодної</string>
+    <string name="custom_command_save_hint">Щоб зберегти: фраза або подія і хоча б один крок</string>
 </resources>

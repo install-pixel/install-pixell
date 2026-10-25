@@ -386,7 +386,8 @@ class MainActivity : ComponentActivity() {
                                         onSave = ::saveCommand,
                                         onDelete = app.customCommands::delete,
                                     )
-                                    OpenDirectlyCard(canOpenDirectly) {
+                                    val lastSeen by app.automationRunner.lastSeen.collectAsStateWithLifecycle()
+                                    OpenDirectlyCard(canOpenDirectly, lastSeen) {
                                         startOrToast(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", packageName, null)))
                                     }
                                 },

@@ -20,6 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Close
@@ -190,20 +192,17 @@ private fun CommandEditor(
             )
         }
         ActionOption(R.string.custom_step_add, Icons.Filled.Add) { picker = StepPicker.MENU }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            if (onDelete != null) {
-                TextButton(onClick = onDelete) { Text(stringResource(R.string.custom_command_delete), color = Oled.TextSecondary) }
-                Spacer(Modifier.weight(1f))
+        // Кнопки — у тому ж вигляді, що й пункти меню налаштувань.
+        if (canSave) {
+            ActionOption(R.string.custom_command_save, Icons.Filled.Done) {
+                val id = command.id.ifEmpty { CustomCommand.create(phrase, steps).id }
+                onSave(CustomCommand(id, phrase.trim(), steps, triggers, condition))
             }
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-            TextButton(
-                onClick = {
-                    val id = command.id.ifEmpty { CustomCommand.create(phrase, steps).id }
-                    onSave(CustomCommand(id, phrase.trim(), steps, triggers, condition))
-                },
-                enabled = canSave,
-            ) { Text(stringResource(R.string.custom_command_save), color = if (canSave) Oled.TextPrimary else Oled.TextSecondary) }
+        } else {
+            Note(stringResource(R.string.custom_command_save_hint))
         }
+        ActionOption(R.string.cancel, Icons.Filled.Close, onCancel)
+        if (onDelete != null) ActionOption(R.string.custom_command_delete, Icons.Filled.Delete, onDelete)
     }
     if (pickingCondition) {
         ConditionDialog(condition, devices, onPick = { condition = it; pickingCondition = false }, onDismiss = { pickingCondition = false })

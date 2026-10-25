@@ -176,10 +176,13 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
-        <!-- Автоматизації: Android будить лише в момент підключення/відключення Bluetooth-пристрою. -->
+        <!-- Автоматизації: Android будить лише в момент підключення/відключення Bluetooth-пристрою.
+             Подію надсилає системна програма Bluetooth (не сама система), тому приймач відкритий,
+             але лише для відправника з дозволом Bluetooth. -->
         <receiver
             android:name=".automation.BluetoothAutomationReceiver"
-            android:exported="false">
+            android:exported="true"
+            android:permission="android.permission.BLUETOOTH_CONNECT">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
                 <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />

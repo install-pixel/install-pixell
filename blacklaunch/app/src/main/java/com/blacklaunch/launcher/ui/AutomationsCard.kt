@@ -45,13 +45,15 @@ data class DeviceAccess(val allowed: Boolean, val list: () -> List<PairedDevice>
 
 /** «Відкривати програми одразу»: з дозволом «Поверх інших вікон» команда, що запустилась сама, відкриває програму без дотику. */
 @Composable
-internal fun OpenDirectlyCard(canOpenDirectly: Boolean, onOpenOverlaySettings: () -> Unit) {
+internal fun OpenDirectlyCard(canOpenDirectly: Boolean, lastSeen: String?, onOpenOverlaySettings: () -> Unit) {
     Card {
         Text(stringResource(R.string.automation_direct_title), color = Oled.TextPrimary, fontSize = 17.sp)
         Note(stringResource(R.string.automations_note))
         Note(stringResource(if (canOpenDirectly) R.string.automation_direct_on else R.string.automation_direct_off))
         if (!canOpenDirectly) ActionOption(R.string.automation_direct_open, Icons.Filled.Settings, onOpenOverlaySettings)
         Note(stringResource(R.string.automation_live_note))
+        // Перевірка: чи доходять події до Black Glass (підключили навушники — тут має з'явитися).
+        Note(stringResource(R.string.automation_last_seen, lastSeen ?: stringResource(R.string.automation_last_seen_none)))
     }
 }
 

@@ -540,4 +540,7 @@
     <string name="vgroup_partial">Włączone %1$d z %2$d</string>
     <string name="details_show">Więcej szczegółów</string>
     <string name="details_hide">Mniej szczegółów</string>
+    <string name="automation_last_seen">Ostatnie zdarzenie, które zobaczył Black Glass: %1$s</string>
+    <string name="automation_last_seen_none">jeszcze żadnego</string>
+    <string name="custom_command_save_hint">Aby zapisać: fraza lub zdarzenie i co najmniej jeden krok</string>
 </resources>
