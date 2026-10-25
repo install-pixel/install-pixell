@@ -1,6 +1,7 @@
 package com.blacklaunch.launcher.backup
 
 import com.blacklaunch.launcher.BlackLaunchApp
+import com.blacklaunch.launcher.automation.InMemoryAutomationStore
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.profiles.GlobalMode
@@ -19,8 +20,8 @@ data class RestoreResult(val profiles: Int, val waitingApps: Int)
 
 /**
  * Резервна копія налаштувань Black Glass в одному файлі JSON: профілі (програми, розкладка,
- * звук, «Не турбувати», екран і пошук, фільтр сповіщень), власні назви, «Мої команди»,
- * приховані програми, власні значки, оформлення й голосові дії. Історія запусків і запитів
+ * звук, «Не турбувати», екран і пошук, фільтр сповіщень), власні назви, «Мої команди» й автоматизації,
+ * приховані програми, власні значки, оформлення, «Короткий огляд» і голос. Історія запусків і запитів
  * не зберігається — вона особиста й накопичується сама. Без мережі й без дозволів на пам'ять.
  */
 class SettingsBackup(private val app: BlackLaunchApp) {
@@ -62,6 +63,10 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                 put("monochromeIcons", look.monochromeIcons)
                 put("profileSwipe", look.profileSwipe)
                 put("haptics", look.haptics)
+                put("glanceClock", look.glanceClock)
+                put("glanceAlarm", look.glanceAlarm)
+                put("glanceEvent", look.glanceEvent)
+                put("glanceBattery", look.glanceBattery)
             })
             val voice = app.voiceActionSettings
             put("voiceActions", JSONObject().apply {
@@ -71,6 +76,8 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                 voice.ttsEngine.value?.let { put("ttsEngine", it) }
             })
             put("globalKinds", JSONArray(app.globalSearchSettings.enabled.value.map { it.name }))
+            put("offlineVoice", app.voiceSettings.mode.value.name)
+            put("automations", InMemoryAutomationStore.encode(app.automations.automations.value))
         }.toString(2)
     }
 
@@ -134,6 +141,10 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                     monochromeIcons = a.optBoolean("monochromeIcons", it.monochromeIcons),
                     profileSwipe = a.optBoolean("profileSwipe", it.profileSwipe),
                     haptics = a.optBoolean("haptics", it.haptics),
+                    glanceClock = a.optBoolean("glanceClock", it.glanceClock),
+                    glanceAlarm = a.optBoolean("glanceAlarm", it.glanceAlarm),
+                    glanceEvent = a.optBoolean("glanceEvent", it.glanceEvent),
+                    glanceBattery = a.optBoolean("glanceBattery", it.glanceBattery),
                 )
             }
         }
@@ -146,6 +157,14 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         }
         root.optJSONArray("globalKinds")?.strings()?.toSet()?.let { kinds ->
             GroupKind.entries.forEach { app.globalSearchSettings.set(it, it.name in kinds) }
+        }
+        root.optString("offlineVoice").takeIf { it.isNotEmpty() }?.let {
+            app.voiceSettings.setMode(enumOr(it, app.voiceSettings.mode.value))
+        }
+        // Автоматизації посилаються на «Мої команди» за id — команди відновлено вище з тими самими id.
+        if (root.has("automations")) {
+            app.automations.automations.value.forEach { app.automations.delete(it.id) }
+            InMemoryAutomationStore.decode(root.optString("automations")).forEach(app.automations::save)
         }
         return RestoreResult(imported.size, remap.waiting)
     }

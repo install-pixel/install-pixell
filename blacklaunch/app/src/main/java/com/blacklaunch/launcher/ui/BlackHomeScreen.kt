@@ -315,6 +315,7 @@ private fun HomeIdle(
                 )
             },
     ) {
+        val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
         HomeGridView(
             apps = home.pinned,
             cells = home.cells,
@@ -324,10 +325,11 @@ private fun HomeIdle(
             onRemove = onRemoveApp,
             onIconBounds = { iconBounds = it },
             // З оглядом назва профілю — його перший рядок, окремого місця під плашку не треба.
+            // Великий шрифт Android — більше місця під текст, щоб значки не налазили.
             reservedTop = when {
-                glance != null -> GlanceSpace + (if (showProfileLabel) GlanceProfileLine else 0.dp) +
-                    if (glance.time != null) GlanceClockLine else 0.dp
-                showProfileLabel -> ProfileLabelSpace
+                glance != null -> GlanceSpace + ((if (showProfileLabel) GlanceProfileLine else 0.dp) +
+                    (if (glance.time != null) GlanceClockLine else 0.dp)) * fontScale
+                showProfileLabel -> ProfileLabelSpace * fontScale
                 else -> 0.dp
             },
             reservedBottom = SearchFieldSpace,

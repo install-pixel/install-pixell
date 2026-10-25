@@ -12,6 +12,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.annotation.StringRes
+import com.blacklaunch.launcher.ui.PermissionItem
+import com.blacklaunch.launcher.ui.PermissionsScreen
 import com.blacklaunch.launcher.ui.PairedDevice
 import com.blacklaunch.launcher.ui.AutomationsCard
 import com.blacklaunch.launcher.automation.Automation
@@ -405,6 +408,11 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onDismiss = dismiss,
                             )
+                            SettingsNav.Permissions -> {
+                                // Повернулись із налаштувань Android — стан перевіряється знову.
+                                resumeTick.collectAsStateWithLifecycle().value
+                                PermissionsScreen(permissionItems(), onBack = { page = SettingsNav.Main })
+                            }
                             else -> ProfileSettings(current, onNavigate = { page = it })
                         }
                     },
@@ -771,6 +779,59 @@ class MainActivity : ComponentActivity() {
         }?.also { thumbnails.put(uri, it) }
     }
 
+    // ---- Дозволи: усі на одній сторінці ----
+    private val resumeTick = MutableStateFlow(0)
+
+    private fun granted(permission: String) = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun isDefaultLauncher(): Boolean {
+        val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        return packageManager.resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName == packageName
+    }
+
+    private fun permissionItems(): List<PermissionItem> {
+        val appInfo = { openAppInfo(packageName) }
+        fun runtime(@StringRes title: Int, @StringRes purpose: Int, permission: String) =
+            PermissionItem(getString(title), getString(purpose), granted(permission), appInfo)
+        return buildList {
+            add(PermissionItem(getString(R.string.perm_home), getString(R.string.perm_home_why), isDefaultLauncher()) {
+                startOrToast(Intent(Settings.ACTION_HOME_SETTINGS), Intent(Settings.ACTION_SETTINGS))
+            })
+            add(PermissionItem(getString(R.string.perm_notification_access), getString(R.string.perm_notification_access_why),
+                ProfileNotificationFilter.hasAccess(this@MainActivity), ::openNotificationAccess))
+            add(PermissionItem(getString(R.string.perm_dnd), getString(R.string.perm_dnd_why), app.profileApplier.hasDndAccess()) {
+                startOrToast(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            })
+            add(PermissionItem(getString(R.string.perm_write_settings), getString(R.string.perm_write_settings_why), Settings.System.canWrite(this@MainActivity)) {
+                startOrToast(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.fromParts("package", packageName, null)))
+            })
+            add(PermissionItem(getString(R.string.perm_overlay), getString(R.string.perm_overlay_why), Settings.canDrawOverlays(this@MainActivity)) {
+                startOrToast(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", packageName, null)))
+            })
+            add(runtime(R.string.perm_microphone, R.string.perm_microphone_why, Manifest.permission.RECORD_AUDIO))
+            add(runtime(R.string.group_contacts, R.string.perm_contacts_why, Manifest.permission.READ_CONTACTS))
+            add(runtime(R.string.group_calls, R.string.perm_calls_why, Manifest.permission.READ_CALL_LOG))
+            add(runtime(R.string.perm_call_phone, R.string.perm_call_phone_why, Manifest.permission.CALL_PHONE))
+            add(runtime(R.string.group_sms, R.string.perm_sms_why, Manifest.permission.READ_SMS))
+            add(runtime(R.string.group_calendar, R.string.perm_calendar_why, Manifest.permission.WRITE_CALENDAR))
+            AndroidGlobalSearch.MEDIA_KINDS.forEach { kind ->
+                val title = when (kind) {
+                    GroupKind.MUSIC -> R.string.group_music
+                    GroupKind.VIDEO -> R.string.group_video
+                    else -> R.string.group_photos
+                }
+                add(PermissionItem(getString(title), getString(R.string.perm_media_why),
+                    AndroidGlobalSearch.mediaPermissions(kind).any(::granted), appInfo))
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                add(runtime(R.string.perm_bluetooth, R.string.perm_bluetooth_why, Manifest.permission.BLUETOOTH_CONNECT))
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(runtime(R.string.perm_post_notifications, R.string.perm_post_notifications_why, Manifest.permission.POST_NOTIFICATIONS))
+            }
+        }
+    }
+
     // ---- Автоматизації ----
     private val bluetoothAllowedState = MutableStateFlow(false)
     private val overlayAllowedState = MutableStateFlow(false)
@@ -1088,6 +1149,7 @@ class MainActivity : ComponentActivity() {
         app.privateSpace.refresh()
         bluetoothAllowedState.value = bluetoothGranted()
         overlayAllowedState.value = Settings.canDrawOverlays(this)
+        resumeTick.value++
         wasStopped = false
         dndAccessState.value = app.profileApplier.hasDndAccess()
         notificationAccessState.value = ProfileNotificationFilter.hasAccess(this)

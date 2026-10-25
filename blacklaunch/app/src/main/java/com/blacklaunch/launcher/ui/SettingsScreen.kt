@@ -401,6 +401,7 @@ fun SettingsScreen(
                 MenuRow(painterResource(R.drawable.ic_battery), R.string.battery_section, R.string.section_battery_hint) {
                     onNavigate(SettingsNav.Battery)
                 }
+                MenuRow(Icons.Filled.Lock, R.string.section_permissions, R.string.section_permissions_hint) { onNavigate(SettingsNav.Permissions) }
                 MenuRow(Icons.Filled.Info, R.string.section_about, null) { onNavigate(SettingsNav.About) }
             }
         }

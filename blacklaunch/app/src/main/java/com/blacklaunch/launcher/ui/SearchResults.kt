@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.ImageBitmap
@@ -180,7 +181,7 @@ private fun EmptySearch(
         // Видно два останні запити; решту (до 5) — гортанням у цьому ж блоці.
         if (recent.isNotEmpty()) item(key = "recent") {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().height(RecentRowHeight * minOf(recent.size, RECENT_VISIBLE)),
+                modifier = Modifier.fillMaxWidth().height(recentRowHeight() * minOf(recent.size, RECENT_VISIBLE)),
                 reverseLayout = true,
             ) {
                 items(recent, key = { "recent:$it" }) { text -> RecentRow(text, onRecent, onRemoveRecent) }
@@ -321,6 +322,10 @@ private fun AllAppsList(
 private const val SUGGESTION_COLUMNS = 4
 
 private val RecentRowHeight = 56.dp
+
+/** Висота рядка росте з великим шрифтом Android, щоб текст не обрізався. */
+@Composable
+private fun recentRowHeight() = RecentRowHeight * LocalDensity.current.fontScale.coerceAtLeast(1f)
 private const val RECENT_VISIBLE = 2
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -330,7 +335,7 @@ private fun RecentRow(text: String, onRecent: (String) -> Unit, onRemoveRecent: 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(RecentRowHeight)
+            .height(recentRowHeight())
             .clip(RoundedCornerShape(18.dp))
             .combinedClickable(
                 onClick = { haptics.tap(); onRecent(text) },
