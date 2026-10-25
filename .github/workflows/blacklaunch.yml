@@ -55,6 +55,8 @@ jobs:
           VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
           APK="BlackGlass-v${VERSION}-${GITHUB_SHA::7}.apk"
           cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          # Копія з постійною назвою — одне посилання в закладках завжди дає найновішу збірку.
+          cp app/build/outputs/apk/debug/app-debug.apk BlackGlass.apk
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
@@ -84,4 +86,7 @@ jobs:
             Остання тестова збірка Black Glass з гілки ${{ github.ref_name }}.
             Версія: ${{ env.VERSION }}
             Коміт: ${{ github.sha }}
-          files: blacklaunch/${{ env.APK }}
+            Постійне посилання: https://github.com/${{ github.repository }}/releases/download/blacklaunch-latest/BlackGlass.apk
+          files: |
+            blacklaunch/${{ env.APK }}
+            blacklaunch/BlackGlass.apk

@@ -7,6 +7,8 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.blacklaunch.launcher.BlackLaunchApp
+import com.blacklaunch.launcher.global.GroupKind
+import com.blacklaunch.launcher.global.NotificationTexts
 
 /**
  * «Сповіщення лише від програм профілю»: сповіщення програм поза профілем відкладаються
@@ -25,6 +27,8 @@ class ProfileNotificationFilter : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        val app = application as? BlackLaunchApp
+        if (app != null && GroupKind.NOTIFICATIONS in app.globalSearchSettings.enabled.value) NotificationTexts.record(sbn, packageName)
         if (shouldHide(sbn)) runCatching { snoozeNotification(sbn.key, HIDE_MS) }
     }
 

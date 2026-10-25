@@ -137,7 +137,6 @@
     <string name="group_calendar">Kalendarz</string>
     <string name="group_sms">SMS</string>
     <string name="global_section">Wyszukiwanie globalne</string>
-    <string name="global_note">Kontakty, kalendarz i SMS są przeszukiwane tylko podczas pisania i tylko za Twoją zgodą. SMS: czaty w Google Messages (RCS) są niedostępne dla innych aplikacji — wyszukiwane są tylko zwykłe SMS.</string>
     <string name="global_permission_denied">Brak uprawnienia — to źródło pozostaje wyłączone</string>
     <string name="copied">Skopiowano</string>
     <string name="setting_wifi">Wi-Fi</string>
@@ -172,7 +171,7 @@
     <string name="section_appearance">Wygląd</string>
     <string name="section_appearance_hint">Czarna tapeta, szare ikony, ciemny motyw</string>
     <string name="section_search">Wyszukiwanie</string>
-    <string name="section_search_hint">Kalkulator, ustawienia, skróty, kontakty, kalendarz, SMS</string>
+    <string name="section_search_hint">Ustawienia, kontakty, połączenia, kalendarz, SMS, powiadomienia, multimedia</string>
     <string name="section_voice">Głos</string>
     <string name="section_voice_hint">Modele offline i rozpoznawanie</string>
     <string name="section_battery_hint">Ochrona ładowania, aplikacje w tle</string>
@@ -402,4 +401,16 @@
     <string name="app_setting_info">Informacje · %1$s</string>
     <string name="app_setting_data">Dane w tle · %1$s</string>
     <string name="app_setting_links">Otwieraj domyślnie · %1$s</string>
+    <string name="group_calls">Ostatnie połączenia</string>
+    <string name="group_notifications">Treść powiadomień</string>
+    <string name="group_music">Muzyka</string>
+    <string name="group_video">Filmy</string>
+    <string name="group_photos">Zdjęcia</string>
+    <string name="call_missed">Nieodebrane</string>
+    <string name="call_incoming">Przychodzące</string>
+    <string name="call_outgoing">Wychodzące</string>
+    <string name="call_back">Oddzwoń</string>
+    <string name="calls_restricted">Android blokuje historię połączeń dla aplikacji spoza Sklepu Play. W ustawieniach Black Glass, które się teraz otworzą, stuknij ⋮ → „Zezwól na ustawienia z ograniczonym dostępem”, a potem ponownie włącz Ostatnie połączenia.</string>
+    <string name="notifications_search_access">Włącz dostęp do powiadomień dla Black Glass — wtedy treść powiadomień będzie wyszukiwana.</string>
+    <string name="global_note">Źródła są przeszukiwane tylko podczas pisania i tylko za Twoją zgodą. Treść powiadomień jest tylko w pamięci (nie na dysku i nigdzie nie wysyłana): to, co usunięto z paska, znajdzie się do ponownego uruchomienia Black Glass. SMS: czaty w Google Messages (RCS) nie są dostępne dla innych aplikacji — wyszukiwane są tylko zwykłe SMS.</string>
 </resources>

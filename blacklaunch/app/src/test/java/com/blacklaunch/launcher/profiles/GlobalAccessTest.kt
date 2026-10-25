@@ -20,13 +20,15 @@ class GlobalAccessTest {
         val work = GlobalAccess.of(GlobalMode.BY_APPS, all, setOf("pl.sklado.app", "com.google.android.dialer"), roles)
         assertTrue(work.canCall)
         assertFalse(work.canMessage)
-        assertEquals(setOf(GroupKind.CALCULATOR, GroupKind.PROFILES, GroupKind.SHORTCUTS, GroupKind.CONTACTS), work.kinds)
+        assertEquals(setOf(GroupKind.CALCULATOR, GroupKind.PROFILES, GroupKind.SHORTCUTS, GroupKind.CONTACTS, GroupKind.CALLS), work.kinds)
     }
 
     @Test fun messagesAppAddsSmsAndMessageButton() {
         val access = GlobalAccess.of(GlobalMode.BY_APPS, all, setOf("com.google.android.apps.messaging"), roles)
         assertTrue(access.canMessage)
         assertTrue(GroupKind.SMS in access.kinds && GroupKind.CONTACTS in access.kinds)
+        // Без програми дзвінків — без журналу дзвінків.
+        assertFalse(GroupKind.CALLS in access.kinds)
     }
 
     @Test fun contactsAppGivesContactSearchWithCall() {

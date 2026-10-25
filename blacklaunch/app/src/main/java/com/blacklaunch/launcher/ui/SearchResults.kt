@@ -5,10 +5,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -379,6 +381,12 @@ private fun GlobalRow(
                 Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
+        // Недавній дзвінок — «Передзвонити» одним дотиком (номер відкривається в «Телефоні»).
+        if (result is GlobalResult.Call && canCall) {
+            IconButton(onClick = { haptics.tap(); onClick(result) }) {
+                Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.call_back), tint = Oled.TextPrimary)
+            }
+        }
         // S2: біля контакту — «Подзвонити» й «Написати» одним дотиком.
         if (result is GlobalResult.Contact) {
             if (canCall) {
@@ -430,6 +438,12 @@ private fun GlobalResult.icon(): ImageVector = when (this) {
     is GlobalResult.Event -> Icons.Filled.DateRange
     is GlobalResult.Sms -> Icons.Filled.Email
     is GlobalResult.AppSetting -> Icons.Filled.Settings
+    is GlobalResult.Call -> Icons.Filled.Call
+    is GlobalResult.NotificationText -> Icons.Filled.Notifications
+    is GlobalResult.Media -> when {
+        mime.startsWith("image/") -> Icons.Filled.AccountBox
+        else -> Icons.Filled.PlayArrow
+    }
 }
 
 @StringRes
@@ -450,4 +464,9 @@ private fun GroupKind.title(): Int = when (this) {
     GroupKind.CONTACTS -> R.string.group_contacts
     GroupKind.CALENDAR -> R.string.group_calendar
     GroupKind.SMS -> R.string.group_sms
+    GroupKind.CALLS -> R.string.group_calls
+    GroupKind.NOTIFICATIONS -> R.string.group_notifications
+    GroupKind.MUSIC -> R.string.group_music
+    GroupKind.VIDEO -> R.string.group_video
+    GroupKind.PHOTOS -> R.string.group_photos
 }

@@ -137,7 +137,6 @@
     <string name="group_calendar">Calendar</string>
     <string name="group_sms">SMS</string>
     <string name="global_section">Global search</string>
-    <string name="global_note">Contacts, calendar and SMS are searched only while you type and only with your permission. SMS: chats in Google Messages (RCS) are not available to other apps — only regular SMS are found.</string>
     <string name="global_permission_denied">Permission not granted — this source stays off</string>
     <string name="copied">Copied</string>
     <string name="setting_wifi">Wi-Fi</string>
@@ -172,7 +171,7 @@
     <string name="section_appearance">Appearance</string>
     <string name="section_appearance_hint">Black wallpaper, grey icons, dark theme</string>
     <string name="section_search">Search</string>
-    <string name="section_search_hint">Calculator, settings, shortcuts, contacts, calendar, SMS</string>
+    <string name="section_search_hint">Settings, contacts, calls, calendar, SMS, notifications, media</string>
     <string name="section_voice">Voice</string>
     <string name="section_voice_hint">Offline models and recognition</string>
     <string name="section_battery_hint">Charge protection, background apps</string>
@@ -402,4 +401,16 @@
     <string name="app_setting_info">App info · %1$s</string>
     <string name="app_setting_data">Background data · %1$s</string>
     <string name="app_setting_links">Open by default · %1$s</string>
+    <string name="group_calls">Recent calls</string>
+    <string name="group_notifications">Notification texts</string>
+    <string name="group_music">Music</string>
+    <string name="group_video">Videos</string>
+    <string name="group_photos">Photos</string>
+    <string name="call_missed">Missed</string>
+    <string name="call_incoming">Incoming</string>
+    <string name="call_outgoing">Outgoing</string>
+    <string name="call_back">Call back</string>
+    <string name="calls_restricted">Android blocks call history for apps not from Play Store. In the Black Glass settings that open now, tap ⋮ → “Allow restricted settings”, then turn on Recent calls again.</string>
+    <string name="notifications_search_access">Turn on notification access for Black Glass — then notification texts can be found in search.</string>
+    <string name="global_note">Sources are searched only while you type and only with your permission. Notification texts are kept in memory only (never written to storage or sent anywhere): what you swiped away is found until Black Glass restarts. SMS: Google Messages (RCS) chats are not available to other apps — only regular SMS are found.</string>
 </resources>

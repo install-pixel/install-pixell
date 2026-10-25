@@ -62,9 +62,11 @@ import com.blacklaunch.launcher.apps.AppIconCache
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.system.WallpaperController
 import com.blacklaunch.launcher.settings.Appearance
+import com.blacklaunch.launcher.global.AndroidGlobalSearch
 import com.blacklaunch.launcher.global.AppSettingKind
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
+import com.blacklaunch.launcher.global.NotificationTexts
 import com.blacklaunch.launcher.profiles.PinnedEdits
 import com.blacklaunch.launcher.profiles.ProfileViewModel
 import com.blacklaunch.launcher.ui.AliasDialog
@@ -355,11 +357,12 @@ class MainActivity : ComponentActivity() {
                                     app.launchHistory.clear()
                                     app.learnedQueries.clear()
                                     app.recentQueries.clear()
+                                    NotificationTexts.clear()
                                     toast(R.string.history_cleared)
                                 },
                                 onClearCrashLog = app.crashLog::clear,
                                 onOpenAppInfo = {
-                                    awaitingSmsPermission = true
+                                    awaitingKind = GroupKind.SMS
                                     openAppInfo(packageName)
                                 },
                                 onDismiss = dismiss,
@@ -634,6 +637,16 @@ class MainActivity : ComponentActivity() {
             is GlobalResult.Event -> startOrToast(Intent(Intent.ACTION_VIEW, app.globalSearch.eventUri(result)))
             is GlobalResult.Sms -> startOrToast(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${result.address}")))
             is GlobalResult.AppSetting -> openAppSetting(result)
+            is GlobalResult.Call -> actionRunner.dial(ContactNumber(result.title, result.number))
+            is GlobalResult.NotificationText -> {
+                val entry = NotificationTexts.find(result.id)
+                if (entry == null || !NotificationTexts.open(this, entry)) {
+                    packageManager.getLaunchIntentForPackage(result.packageName)?.let { startOrToast(it) } ?: toast(R.string.launch_failed)
+                }
+            }
+            is GlobalResult.Media -> startOrToast(
+                Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(result.uri), result.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+            )
         }
     }
 
@@ -700,16 +713,21 @@ class MainActivity : ComponentActivity() {
         startOrToast(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
 
     /**
-     * Дозвіл SMS дали в системних налаштуваннях (обмежені налаштування Android 15+) —
-     * після повернення вмикаємо пошук у SMS сам, без повторного натискання.
+     * Дозвіл SMS чи журналу дзвінків дали в системних налаштуваннях (обмежені налаштування Android 15+),
+     * доступ до сповіщень — на окремій сторінці: після повернення вмикаємо джерело саме.
      */
-    private var awaitingSmsPermission = false
+    private var awaitingKind: GroupKind? = null
 
-    private fun enableSmsIfGranted() {
-        if (!awaitingSmsPermission) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
-            awaitingSmsPermission = false
-            app.globalSearchSettings.set(GroupKind.SMS, true)
+    private fun enableAwaitedKind() {
+        val kind = awaitingKind ?: return
+        val ready = if (kind == GroupKind.NOTIFICATIONS) {
+            ProfileNotificationFilter.hasAccess(this)
+        } else {
+            globalPermissions(kind).any { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+        }
+        if (ready) {
+            awaitingKind = null
+            app.globalSearchSettings.set(kind, true)
         }
     }
 
@@ -721,38 +739,55 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Контакти, календар і SMS вмикаються лише з дозволом; без нього джерело лишається вимкненим.
+    // Контакти, календар, SMS, дзвінки й медіа вмикаються лише з дозволом; без нього джерело лишається вимкненим.
     private var pendingGlobalKind: GroupKind? = null
-    private val globalPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    private val globalPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         val kind = pendingGlobalKind ?: return@registerForActivityResult
         pendingGlobalKind = null
         when {
-            granted -> app.globalSearchSettings.set(kind, true)
-            // Android 15+ блокує SMS-дозволи для програм не з Play, доки користувач не зніме обмеження.
-            kind == GroupKind.SMS -> {
-                Toast.makeText(this, R.string.sms_restricted, Toast.LENGTH_LONG).show()
-                awaitingSmsPermission = true
+            // Фото й відео: досить і «лише вибраних» (Android 14+).
+            result.values.any { it } -> app.globalSearchSettings.set(kind, true)
+            // Android 15+ блокує SMS і журнал дзвінків для програм не з Play, доки користувач не зніме обмеження.
+            kind == GroupKind.SMS || kind == GroupKind.CALLS -> {
+                Toast.makeText(this, if (kind == GroupKind.SMS) R.string.sms_restricted else R.string.calls_restricted, Toast.LENGTH_LONG).show()
+                awaitingKind = kind
                 openAppInfo(packageName)
             }
             else -> toast(R.string.global_permission_denied)
         }
     }
 
+    private fun globalPermissions(kind: GroupKind): List<String> = when (kind) {
+        GroupKind.CONTACTS -> listOf(Manifest.permission.READ_CONTACTS)
+        GroupKind.CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
+        GroupKind.SMS -> listOf(Manifest.permission.READ_SMS)
+        GroupKind.CALLS -> listOf(Manifest.permission.READ_CALL_LOG)
+        in AndroidGlobalSearch.MEDIA_KINDS -> AndroidGlobalSearch.mediaPermissions(kind)
+        else -> emptyList()
+    }
+
     private fun setGlobalKind(kind: GroupKind, on: Boolean) {
-        val permission = when (kind) {
-            GroupKind.CONTACTS -> Manifest.permission.READ_CONTACTS
-            GroupKind.CALENDAR -> Manifest.permission.READ_CALENDAR
-            GroupKind.SMS -> Manifest.permission.READ_SMS
-            else -> null
-        }
-        if (on && permission != null &&
-            ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED
-        ) {
-            pendingGlobalKind = kind
-            globalPermission.launch(permission)
+        if (!on) {
+            if (kind == GroupKind.NOTIFICATIONS) NotificationTexts.clear()
+            app.globalSearchSettings.set(kind, false)
             return
         }
-        app.globalSearchSettings.set(kind, on)
+        // Тексти сповіщень — через той самий «Доступ до сповіщень», що й фільтр профілю.
+        if (kind == GroupKind.NOTIFICATIONS && !ProfileNotificationFilter.hasAccess(this)) {
+            Toast.makeText(this, R.string.notifications_search_access, Toast.LENGTH_LONG).show()
+            awaitingKind = kind
+            openNotificationAccess()
+            return
+        }
+        val permissions = globalPermissions(kind)
+        if (permissions.isNotEmpty() &&
+            permissions.none { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+        ) {
+            pendingGlobalKind = kind
+            globalPermission.launch(permissions.toTypedArray())
+            return
+        }
+        app.globalSearchSettings.set(kind, true)
     }
 
     /** Профілі в налаштуваннях: список → редагування → вибір програми. */
@@ -948,7 +983,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         repository.refresh()
         ensureBlackWallpaper()
-        enableSmsIfGranted()
+        enableAwaitedKind()
         wasStopped = false
         dndAccessState.value = app.profileApplier.hasDndAccess()
         notificationAccessState.value = ProfileNotificationFilter.hasAccess(this)

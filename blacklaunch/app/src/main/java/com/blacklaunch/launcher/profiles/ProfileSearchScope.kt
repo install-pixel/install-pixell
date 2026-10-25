@@ -39,6 +39,7 @@ data class GlobalAccess(val kinds: Set<GroupKind>, val canCall: Boolean, val can
                     addAll(LOCAL)
                     add(GroupKind.SHORTCUTS)
                     if (call || message) add(GroupKind.CONTACTS)
+                    if (call) add(GroupKind.CALLS)
                     if (message) add(GroupKind.SMS)
                     if (profilePackages.any { it in roles.calendar }) add(GroupKind.CALENDAR)
                     if (profilePackages.any { it in roles.settings }) add(GroupKind.SETTINGS)

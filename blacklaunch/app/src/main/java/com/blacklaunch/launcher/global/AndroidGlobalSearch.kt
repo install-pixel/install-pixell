@@ -12,11 +12,15 @@ import android.os.Process
 import android.os.SystemClock
 import android.os.UserManager
 import android.provider.CalendarContract
+import android.provider.CallLog
+import android.provider.MediaStore
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.text.format.DateUtils
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.profiles.ProfileNotificationFilter
 import com.blacklaunch.launcher.search.IndexedName
 import com.blacklaunch.launcher.search.NameStarts
 import com.blacklaunch.launcher.search.NameMatcher
@@ -54,11 +58,18 @@ class AndroidGlobalSearch(
             if (GroupKind.CONTACTS in kinds && granted(Manifest.permission.READ_CONTACTS)) {
                 group(GroupKind.CONTACTS) { contacts(prepared) }
             }
+            if (GroupKind.CALLS in kinds && granted(Manifest.permission.READ_CALL_LOG)) {
+                group(GroupKind.CALLS) { calls(prepared) }
+            }
             if (GroupKind.CALENDAR in kinds && granted(Manifest.permission.READ_CALENDAR)) {
                 group(GroupKind.CALENDAR) { events(query.trim()) }
             }
             if (GroupKind.SMS in kinds && granted(Manifest.permission.READ_SMS)) {
                 group(GroupKind.SMS) { sms(query.trim()) }
+            }
+            if (GroupKind.NOTIFICATIONS in kinds) group(GroupKind.NOTIFICATIONS) { notifications(query.trim()) }
+            for (kind in MEDIA_KINDS) {
+                if (kind in kinds && hasMediaAccess(kind)) group(kind) { media(kind, query.trim()) }
             }
         }
     }
@@ -178,6 +189,85 @@ class AndroidGlobalSearch(
         }.orEmpty()
     }
 
+    // Журнал дзвінків: за іменем (початки слів, як у контактах) або за цифрами номера.
+    private fun calls(prepared: PreparedQuery): List<GlobalResult> {
+        val query = prepared.text
+        if (query.length < MIN_TEXT) return emptyList()
+        val byNumber = query.any { it.isDigit() }
+        val like = "%${escapeLike(query.trim())}%"
+        val projection = arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.DATE, CallLog.Calls.TYPE)
+        val selection = if (byNumber) "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'" else "${CallLog.Calls.CACHED_NAME} LIKE ? ESCAPE '\\'"
+        return appContext.contentResolver.query(
+            CallLog.Calls.CONTENT_URI, projection, selection, arrayOf(like), "${CallLog.Calls.DATE} DESC",
+        )?.use { c ->
+            val seen = HashSet<String>()
+            buildList {
+                while (c.moveToNext() && size < LIMIT) {
+                    val number = c.getString(0)?.takeIf { it.isNotBlank() } ?: continue
+                    val name = c.getString(1)?.takeIf { it.isNotBlank() }
+                    if (!byNumber && (name == null || !NameStarts.matches(name, prepared))) continue
+                    if (!seen.add(number)) continue
+                    val type = when (c.getInt(3)) {
+                        CallLog.Calls.MISSED_TYPE, CallLog.Calls.REJECTED_TYPE -> R.string.call_missed
+                        CallLog.Calls.OUTGOING_TYPE -> R.string.call_outgoing
+                        else -> R.string.call_incoming
+                    }
+                    val whenText = DateUtils.formatDateTime(appContext, c.getLong(2), DATE_FLAGS)
+                    add(GlobalResult.Call(number, name, appContext.getString(type) + " · " + whenText))
+                }
+            }
+        }.orEmpty()
+    }
+
+    private fun notifications(query: String): List<GlobalResult> {
+        if (query.length < MIN_TEXT) return emptyList()
+        val current = ProfileNotificationFilter.current()
+        return NotificationTexts.search(query, current, appContext.packageName, LIMIT).map { entry ->
+            val app = appLabel(entry.packageName) ?: entry.packageName
+            val title = entry.title.ifBlank { app }
+            GlobalResult.NotificationText(entry.id, entry.packageName, title, app + " · " + TextMatch.snippet(entry.text.ifBlank { entry.title }, query))
+        }
+    }
+
+    private fun hasMediaAccess(kind: GroupKind): Boolean = mediaPermissions(kind).any(::granted)
+
+    // Пісні — за назвою, виконавцем, альбомом; відео й фото — за назвою файлу або альбомом («Camera», «Screenshots»).
+    private fun media(kind: GroupKind, query: String): List<GlobalResult> {
+        if (query.length < MIN_TEXT) return emptyList()
+        val like = "%${escapeLike(query)}%"
+        val (uri, columns, sort) = when (kind) {
+            GroupKind.MUSIC -> Triple(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                listOf(MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM),
+                MediaStore.Audio.Media.TITLE,
+            )
+            GroupKind.VIDEO -> Triple(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                listOf(MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.BUCKET_DISPLAY_NAME, MediaStore.Video.Media.TITLE),
+                "${MediaStore.Video.Media.DATE_ADDED} DESC",
+            )
+            else -> Triple(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                listOf(MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.Images.Media.TITLE),
+                "${MediaStore.Images.Media.DATE_ADDED} DESC",
+            )
+        }
+        val selection = columns.joinToString(" OR ", prefix = "(", postfix = ")") { "$it LIKE ? ESCAPE '\\'" } +
+            if (kind == GroupKind.MUSIC) " AND ${MediaStore.Audio.Media.IS_MUSIC} != 0" else ""
+        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.MIME_TYPE) + columns.take(2)
+        return appContext.contentResolver.query(uri, projection, selection, Array(columns.size) { like }, sort)?.use { c ->
+            buildList {
+                while (c.moveToNext() && size < LIMIT) {
+                    val title = c.getString(2)?.takeIf { it.isNotBlank() } ?: continue
+                    val detail = c.getString(3)?.takeIf { it.isNotBlank() && it != MediaStore.UNKNOWN_STRING }
+                    add(GlobalResult.Media(ContentUris.withAppendedId(uri, c.getLong(0)).toString(), c.getString(1) ?: "*/*", title, detail))
+                }
+            }
+        }.orEmpty()
+    }
+
+    private fun escapeLike(text: String) = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     private fun contactName(number: String): String? {
         if (!granted(Manifest.permission.READ_CONTACTS)) return null
         val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
@@ -234,16 +324,28 @@ class AndroidGlobalSearch(
     fun eventUri(result: GlobalResult.Event): Uri =
         ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, result.eventId)
 
-    private companion object {
-        const val MENU_SHORTCUTS = 4
-        const val TAG = "AndroidGlobalSearch"
-        const val LIMIT = 5
-        const val MIN_TEXT = 2
-        const val SHORTCUTS_TTL_MS = 30_000L
-        const val PAST_MS = 30L * 24 * 60 * 60 * 1000
-        const val FUTURE_MS = 365L * 24 * 60 * 60 * 1000
-        const val SNIPPET_BEFORE = 20
-        const val SNIPPET_AFTER = 50
-        const val DATE_FLAGS = DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH
+    companion object {
+        val MEDIA_KINDS = listOf(GroupKind.MUSIC, GroupKind.VIDEO, GroupKind.PHOTOS)
+
+        /** Дозволи сховища для пісень, відео й фото; Android 14+ — і «вибрані фото й відео». */
+        fun mediaPermissions(kind: GroupKind): List<String> = when {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            kind == GroupKind.MUSIC -> listOf(Manifest.permission.READ_MEDIA_AUDIO)
+            else -> listOfNotNull(
+                if (kind == GroupKind.VIDEO) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_MEDIA_IMAGES,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED else null,
+            )
+        }
+
+        private const val MENU_SHORTCUTS = 4
+        private const val TAG = "AndroidGlobalSearch"
+        private const val LIMIT = 5
+        private const val MIN_TEXT = 2
+        private const val SHORTCUTS_TTL_MS = 30_000L
+        private const val PAST_MS = 30L * 24 * 60 * 60 * 1000
+        private const val FUTURE_MS = 365L * 24 * 60 * 60 * 1000
+        private const val SNIPPET_BEFORE = 20
+        private const val SNIPPET_AFTER = 50
+        private const val DATE_FLAGS = DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH
     }
 }

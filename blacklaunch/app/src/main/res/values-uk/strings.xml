@@ -137,7 +137,6 @@
     <string name="group_calendar">Календар</string>
     <string name="group_sms">SMS</string>
     <string name="global_section">Глобальний пошук</string>
-    <string name="global_note">Контакти, календар і SMS шукаються лише під час набору й лише з вашого дозволу. SMS: чати в Google Messages (RCS) іншим програмам недоступні — знаходяться лише звичайні SMS.</string>
     <string name="global_permission_denied">Дозвіл не надано — це джерело лишається вимкненим</string>
     <string name="copied">Скопійовано</string>
     <string name="setting_wifi">Wi-Fi</string>
@@ -172,7 +171,7 @@
     <string name="section_appearance">Оформлення</string>
     <string name="section_appearance_hint">Чорні шпалери, сірі значки, темна тема</string>
     <string name="section_search">Пошук</string>
-    <string name="section_search_hint">Калькулятор, налаштування, ярлики, контакти, календар, SMS</string>
+    <string name="section_search_hint">Налаштування, контакти, дзвінки, календар, SMS, сповіщення, медіа</string>
     <string name="section_voice">Голос</string>
     <string name="section_voice_hint">Офлайн-моделі та розпізнавання</string>
     <string name="section_battery_hint">Захист заряду, програми у фоні</string>
@@ -402,4 +401,16 @@
     <string name="app_setting_info">Про програму · %1$s</string>
     <string name="app_setting_data">Дані у фоні · %1$s</string>
     <string name="app_setting_links">Відкривати посилання · %1$s</string>
+    <string name="group_calls">Недавні дзвінки</string>
+    <string name="group_notifications">Тексти сповіщень</string>
+    <string name="group_music">Музика</string>
+    <string name="group_video">Відео</string>
+    <string name="group_photos">Фото</string>
+    <string name="call_missed">Пропущений</string>
+    <string name="call_incoming">Вхідний</string>
+    <string name="call_outgoing">Вихідний</string>
+    <string name="call_back">Передзвонити</string>
+    <string name="calls_restricted">Android блокує журнал дзвінків для програм не з Play Маркету. У налаштуваннях Black Glass, що зараз відкриються, натисніть ⋮ → «Дозволити обмежені налаштування», потім знову ввімкніть «Недавні дзвінки».</string>
+    <string name="notifications_search_access">Увімкніть доступ до сповіщень для Black Glass — тоді тексти сповіщень знаходитимуться в пошуку.</string>
+    <string name="global_note">Джерела шукаються лише під час набору й лише з вашого дозволу. Тексти сповіщень зберігаються тільки в пам\'яті (не на диску й нікуди не передаються): змахнуте зі шторки знаходиться, доки Black Glass не перезапуститься. SMS: чати в Google Messages (RCS) іншим програмам недоступні — знаходяться лише звичайні SMS.</string>
 </resources>

@@ -30,6 +30,13 @@
     <!-- «Подія завтра о 15…» записується одразу; дозвіл питаємо при першій такій команді. -->
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Недавні дзвінки, музика, відео, фото — теж лише коли користувач вмикає джерело. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <!-- SMS — необов'язкова можливість: BlackLaunch ставиться й на пристрої без SIM. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 

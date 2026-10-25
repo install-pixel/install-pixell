@@ -502,5 +502,10 @@ private fun GroupKind.label(): Int = when (this) {
     GroupKind.CONTACTS -> R.string.group_contacts
     GroupKind.CALENDAR -> R.string.group_calendar
     GroupKind.SMS -> R.string.group_sms
+    GroupKind.CALLS -> R.string.group_calls
+    GroupKind.NOTIFICATIONS -> R.string.group_notifications
+    GroupKind.MUSIC -> R.string.group_music
+    GroupKind.VIDEO -> R.string.group_video
+    GroupKind.PHOTOS -> R.string.group_photos
 }
 

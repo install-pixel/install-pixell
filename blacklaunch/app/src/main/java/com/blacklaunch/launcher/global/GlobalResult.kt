@@ -1,7 +1,7 @@
 package com.blacklaunch.launcher.global
 
 /** Джерела глобального пошуку; порядок — знизу вгору над полем пошуку. */
-enum class GroupKind { CALCULATOR, PROFILES, SETTINGS, SHORTCUTS, CONTACTS, CALENDAR, SMS }
+enum class GroupKind { CALCULATOR, PROFILES, SETTINGS, SHORTCUTS, CONTACTS, CALLS, CALENDAR, SMS, NOTIFICATIONS, MUSIC, VIDEO, PHOTOS }
 
 /** Результат глобального пошуку (не програма). */
 sealed interface GlobalResult {
@@ -53,6 +53,22 @@ sealed interface GlobalResult {
         override val key get() = "sms:$address:${snippet.hashCode()}"
         override val title get() = sender
         override val subtitle get() = snippet
+    }
+
+    /** Недавній дзвінок; [subtitle] — вид дзвінка й час мовою телефону. */
+    data class Call(val number: String, val name: String?, override val subtitle: String) : GlobalResult {
+        override val key get() = "call:$number"
+        override val title get() = name ?: number
+    }
+
+    /** Текст сповіщення — і того, що вже зникло зі шторки (поки Black Glass запущений). */
+    data class NotificationText(val id: String, val packageName: String, override val title: String, override val subtitle: String) : GlobalResult {
+        override val key get() = "notification:$id"
+    }
+
+    /** Пісня, відео чи фото зі сховища телефону; відкривається програмою, що вміє цей тип. */
+    data class Media(val uri: String, val mime: String, override val title: String, override val subtitle: String?) : GlobalResult {
+        override val key get() = "media:$uri"
     }
 
     /** Налаштування конкретної програми: «сповіщення Telegram». Назву показує інтерфейс мовою телефону. */
