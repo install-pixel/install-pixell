@@ -356,7 +356,7 @@ private fun HomeIdle(
                 Modifier
                     .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
                     .navigationBarsPadding()
-                    .padding(top = if (showProfileLabel) ProfileLabelSpace * fontScale else 16.dp, bottom = SearchFieldSpace),
+                    .padding(top = 16.dp, bottom = SearchFieldSpace),
             )
         } else HomeGridView(
             apps = home.pinned,
@@ -412,7 +412,8 @@ private fun HomeIdle(
             }
         }
         // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.
-        if (glance == null && !dragging && showProfileLabel && home.profileName.isNotEmpty()) {
+        // На моніторі плашки немає: назва профілю — у верхньому рядку монітора (не «віджет у віджеті»).
+        if (monitor == null && glance == null && !dragging && showProfileLabel && home.profileName.isNotEmpty()) {
             // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.
             ProfilePill(
                 name = profileBanner ?: home.profileName,

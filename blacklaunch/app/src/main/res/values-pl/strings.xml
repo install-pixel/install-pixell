@@ -563,8 +563,8 @@
     <string name="monitor_usage_grant">Przyznaj dostęp</string>
     <string name="perm_usage_why">Czas ekranu, dane dziś i top aplikacji w monitorze systemu</string>
     <string name="mtile_battery">Tarcza baterii (w środku pierścienie pamięci i ciepła)</string>
-    <string name="mtile_memory">Pamięć</string>
-    <string name="mtile_storage">Miejsce</string>
+    <string name="mtile_memory">Pamięć RAM</string>
+    <string name="mtile_storage">Pamięć (dysk)</string>
     <string name="mtile_thermal">Ciepło</string>
     <string name="mtile_network">Sieć</string>
     <string name="mtile_details">Tabela wskaźników</string>
@@ -587,7 +587,7 @@
     <string name="mon_charging">ładuje się</string>
     <string name="mon_discharging">rozładowanie</string>
     <string name="mon_current">PRĄD BATERII</string>
-    <string name="mon_memory_graph">PAMIĘĆ</string>
+    <string name="mon_memory_graph">RAM</string>
     <string name="mon_voltage">napięcie</string>
     <string name="mon_cycles">cykle</string>
     <string name="mon_health">stan</string>
@@ -644,4 +644,8 @@
     <string name="mon_model">model</string>
     <string name="mon_battery_title">Bateria</string>
     <string name="mon_device_title">Telefon</string>
+    <string name="mon_row_ram">RAM</string>
+    <string name="mon_row_disk">DYSK</string>
+    <string name="mon_row_heat">CIEPŁO</string>
+    <string name="mon_row_net">SIEĆ</string>
 </resources>

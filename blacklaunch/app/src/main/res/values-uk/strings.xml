@@ -563,8 +563,8 @@
     <string name="monitor_usage_grant">Дати доступ до використання</string>
     <string name="perm_usage_why">Час екрана, дані сьогодні й топ програм у моніторі системи</string>
     <string name="mtile_battery">Шкала батареї (усередині кільця пам\'яті й тепла)</string>
-    <string name="mtile_memory">Пам\'ять</string>
-    <string name="mtile_storage">Сховище</string>
+    <string name="mtile_memory">Оперативна пам\'ять (RAM)</string>
+    <string name="mtile_storage">Сховище (диск)</string>
     <string name="mtile_thermal">Тепло</string>
     <string name="mtile_network">Мережа</string>
     <string name="mtile_details">Таблиця показників</string>
@@ -587,7 +587,7 @@
     <string name="mon_charging">заряджається</string>
     <string name="mon_discharging">розряд</string>
     <string name="mon_current">СТРУМ БАТАРЕЇ</string>
-    <string name="mon_memory_graph">ПАМ\'ЯТЬ</string>
+    <string name="mon_memory_graph">RAM</string>
     <string name="mon_voltage">напруга</string>
     <string name="mon_cycles">цикли</string>
     <string name="mon_health">стан</string>
@@ -621,7 +621,7 @@
     <string name="mon_signal">сигнал</string>
     <string name="mon_cores">%1$d ядер</string>
     <string name="mon_screen">екран</string>
-    <string name="mon_memory_total">пам\'ять · сховище</string>
+    <string name="mon_memory_total">RAM · сховище</string>
     <string name="mon_cameras">камери (↺ фронтальна)</string>
     <string name="mon_patch">оновлення безпеки</string>
     <string name="mon_kernel">ядро</string>
@@ -644,4 +644,8 @@
     <string name="mon_model">модель</string>
     <string name="mon_battery_title">Батарея</string>
     <string name="mon_device_title">Телефон</string>
+    <string name="mon_row_ram">RAM</string>
+    <string name="mon_row_disk">ДИСК</string>
+    <string name="mon_row_heat">ТЕПЛО</string>
+    <string name="mon_row_net">МЕРЕЖА</string>
 </resources>

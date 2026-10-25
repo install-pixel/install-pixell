@@ -78,7 +78,14 @@ private fun num(size: TextUnit, color: Color, weight: FontWeight = FontWeight.No
  * таблиця, графіки, топ програм і характеристики телефона. Дані — раз на 2 с і лише поки екран на виду.
  */
 @Composable
-internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (String) -> String?, modifier: Modifier = Modifier) {
+internal fun MonitorScreen(
+    look: MonitorLook,
+    stats: SystemStats,
+    appLabel: (String) -> String?,
+    /** Назва профілю (або «МОНІТОР», якщо відкрито командою) — замість окремої плашки. */
+    title: String,
+    modifier: Modifier = Modifier,
+) {
     val accent = Color(look.accent.argb)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var snap by remember { mutableStateOf<SystemSnapshot?>(null) }
@@ -112,7 +119,7 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
 
     Column(modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.mon_title), color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
+            Text(title, color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     listOfNotNull(duration(s.uptimeMs), stringResource(s.network.type.label()), s.battery.temperatureC?.let { "%.1f °C".format(it) }).joinToString(" · "),
@@ -136,25 +143,19 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
                 contentAlignment = Alignment.Center,
             ) {
                 BatteryDial(s.battery.percent / 100f, memUsed.takeIf { MonitorTile.MEMORY in tiles }, heat.takeIf { MonitorTile.THERMAL in tiles }, accent, Modifier.fillMaxSize())
+                // Лише коротке всередині кола: відсоток, струм, температура — решта у вікні за дотиком.
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${s.battery.percent}%", style = num(42.sp, Oled.TextPrimary, FontWeight.ExtraLight))
-                    s.battery.currentMa?.let { Text(signed(it) + " мА", style = num(13.sp, accent)) }
-                    Text(
-                        listOfNotNull(
-                            stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging),
-                            s.battery.temperatureC?.let { "%.1f °C".format(it) },
-                        ).joinToString(" · "),
-                        style = num(11.sp, Oled.TextSecondary),
-                    )
+                    Text("${s.battery.percent}%", style = num(40.sp, Oled.TextPrimary, FontWeight.ExtraLight))
+                    s.battery.currentMa?.let { Text(signed(it) + " мА", style = num(12.sp, accent)) }
+                    s.battery.temperatureC?.let { Text("%.1f °C".format(it), style = num(11.sp, Oled.TextSecondary)) }
                 }
             }
         }
 
         // «Термінал»: сегментні смуги, як у htop.
         val bars = buildList {
-            if (MonitorTile.BATTERY in tiles) add(BarRow("BAT", s.battery.percent / 100f, accent, "${s.battery.percent}%", Detail.BATTERY))
-            if (MonitorTile.MEMORY in tiles) add(BarRow("MEM", memUsed, accent, "${size(s.memory.totalBytes - s.memory.availableBytes)} / ${size(s.memory.totalBytes)}", Detail.MEMORY))
-            if (MonitorTile.STORAGE in tiles) add(BarRow("DSK", storageUsed, accent, "${size(s.storage.totalBytes - s.storage.freeBytes)} / ${size(s.storage.totalBytes)}", Detail.STORAGE))
+            if (MonitorTile.MEMORY in tiles) add(BarRow(stringResource(R.string.mon_row_ram), memUsed, accent, "${size(s.memory.totalBytes - s.memory.availableBytes)} / ${size(s.memory.totalBytes)}", Detail.MEMORY))
+            if (MonitorTile.STORAGE in tiles) add(BarRow(stringResource(R.string.mon_row_disk), storageUsed, accent, "${size(s.storage.totalBytes - s.storage.freeBytes)} / ${size(s.storage.totalBytes)}", Detail.STORAGE))
             if (MonitorTile.THERMAL in tiles) {
                 // Тепло цифрами: температура батареї й запас до сповільнення (те, чого прошивка не дає, — не показуємо).
                 val value = listOfNotNull(
@@ -162,12 +163,12 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
                     s.thermal.headroom?.let { stringResource(R.string.mon_headroom, ((1f - it.coerceIn(0f, 1f)) * 100).roundToInt()) },
                 ).joinToString(" · ")
                 val level = s.thermal.headroom?.coerceIn(0f, 1f) ?: s.battery.temperatureC?.let { ((it - 20f) / 25f).coerceIn(0f, 1f) }
-                if (value.isNotEmpty() && level != null) add(BarRow("THR", level, Warm, value, Detail.THERMAL))
+                if (value.isNotEmpty() && level != null) add(BarRow(stringResource(R.string.mon_row_heat), level, Warm, value, Detail.THERMAL))
             }
             if (MonitorTile.NETWORK in tiles) {
                 add(
                     BarRow(
-                        "NET",
+                        stringResource(R.string.mon_row_net),
                         s.network.signalDbm?.let { signalLevel(it, s.network.type) },
                         accent,
                         listOfNotNull(stringResource(s.network.type.label()), s.network.downKbps?.let { "~${it / 1000} Мбіт/с" }).joinToString(" · "),
@@ -319,7 +320,7 @@ private fun SegmentRow(bar: BarRow, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(bar.label, color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.width(30.dp))
+        Text(bar.label, color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1, modifier = Modifier.width(52.dp))
         val level = bar.level
         if (level == null) {
             Box(Modifier.weight(1f))

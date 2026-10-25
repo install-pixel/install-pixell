@@ -314,7 +314,10 @@ class MainActivity : ComponentActivity() {
                     home = if (display.showApps) home else home.copy(pinned = emptyList()),
                     profileBanner = banner,
                     monitor = if (display.monitor || monitorShown) {
-                        { modifier -> MonitorScreen(monitorLook, app.systemStats, ::appLabel, modifier) }
+                        { modifier ->
+                            val title = if (display.monitor) home.profileName else stringResource(R.string.mon_title)
+                            MonitorScreen(monitorLook, app.systemStats, ::appLabel, title.uppercase(), modifier)
+                        }
                     } else {
                         null
                     },
@@ -358,7 +361,7 @@ class MainActivity : ComponentActivity() {
                         var page by remember { mutableStateOf<SettingsNav>(SettingsNav.Main) }
                         when (val current = page) {
                             SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
-                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Recognition, SettingsNav.CustomCommands, SettingsNav.Battery, SettingsNav.About,
+                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Recognition, SettingsNav.CustomCommands, SettingsNav.Monitor, SettingsNav.Battery, SettingsNav.About,
                             -> SettingsScreen(
                                 page = current,
                                 onNavigate = { page = it },
@@ -1160,7 +1163,8 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
-            else -> Unit
+            // Невідома сторінка не лишає порожній чорний екран без «Назад» — повертаємось на головну налаштувань.
+            else -> LaunchedEffect(page) { onNavigate(SettingsNav.Main) }
         }
     }
 

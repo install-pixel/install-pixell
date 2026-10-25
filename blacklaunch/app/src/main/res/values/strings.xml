@@ -563,8 +563,8 @@
     <string name="monitor_usage_grant">Grant usage access</string>
     <string name="perm_usage_why">Screen time, data today and top apps in the system monitor</string>
     <string name="mtile_battery">Battery dial (memory and heat rings inside)</string>
-    <string name="mtile_memory">Memory</string>
-    <string name="mtile_storage">Storage</string>
+    <string name="mtile_memory">RAM (working memory)</string>
+    <string name="mtile_storage">Storage (disk)</string>
     <string name="mtile_thermal">Heat</string>
     <string name="mtile_network">Network</string>
     <string name="mtile_details">Details table</string>
@@ -587,7 +587,7 @@
     <string name="mon_charging">charging</string>
     <string name="mon_discharging">discharging</string>
     <string name="mon_current">BATTERY CURRENT</string>
-    <string name="mon_memory_graph">MEMORY</string>
+    <string name="mon_memory_graph">RAM</string>
     <string name="mon_voltage">voltage</string>
     <string name="mon_cycles">cycles</string>
     <string name="mon_health">health</string>
@@ -644,4 +644,8 @@
     <string name="mon_model">model</string>
     <string name="mon_battery_title">Battery</string>
     <string name="mon_device_title">Phone</string>
+    <string name="mon_row_ram">RAM</string>
+    <string name="mon_row_disk">DISK</string>
+    <string name="mon_row_heat">HEAT</string>
+    <string name="mon_row_net">NET</string>
 </resources>
