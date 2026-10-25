@@ -32,7 +32,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build, unit tests, lint
-        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
+        run: ./gradlew --no-daemon assembleRelease testDebugUnitTest lintDebug
 
       # Схема бази Room у лозі — щоб закомітити її в репозиторій, якщо змінилася.
       - name: Show Room schema
@@ -54,9 +54,10 @@ jobs:
         run: |
           VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
           APK="BlackGlass-v${VERSION}-${GITHUB_SHA::7}.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          # З 1.0.0 — релізна збірка (R8), підписана тим самим ключем, що й тестові: ставиться поверх.
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
           # Копія з постійною назвою — одне посилання в закладках завжди дає найновішу збірку.
-          cp app/build/outputs/apk/debug/app-debug.apk BlackGlass.apk
+          cp app/build/outputs/apk/release/app-release.apk BlackGlass.apk
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 

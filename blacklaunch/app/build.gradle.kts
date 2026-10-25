@@ -14,8 +14,8 @@ android {
         applicationId = "com.blacklaunch.launcher"
         minSdk = 26
         targetSdk = 36
-        versionCode = 81
-        versionName = "0.35.0"
+        versionCode = 82
+        versionName = "1.0.0-rc1"
 
         // Офлайн-голос (Vosk) має нативні бібліотеки; лишаємо лише ARM — це всі реальні телефони.
         ndk {
@@ -35,8 +35,13 @@ android {
     }
 
     buildTypes {
+        // Релізна збірка (з 1.0.0): R8 прибирає невикористаний код і ресурси — APK менший і швидший.
+        // Поки що підписана тим самим ключем, що й тестові (рішення користувача 25.10.2026, варіант А):
+        // оновлюється поверх без видалення. Власний секретний ключ — пізніше.
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
