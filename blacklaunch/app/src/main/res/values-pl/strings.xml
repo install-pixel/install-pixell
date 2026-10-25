@@ -364,7 +364,7 @@
     <string name="glance_part_alarm">Najbliższy budzik</string>
     <string name="glance_part_event">Najbliższe wydarzenie</string>
     <string name="glance_part_battery">Bateria</string>
-    <string name="glance_parts_note">Data jest zawsze widoczna. Samo „W skrócie” włącza się w każdym profilu.</string>
+    <string name="glance_parts_note">Data jest widoczna zawsze. Sam „Krótki przegląd” włącza się w każdym profilu — tam też można wybrać, co ma pokazywać.</string>
     <string name="history_note">Black Glass pamięta, które aplikacje otwierasz i czego szukałeś — tylko na tym telefonie i z automatycznymi limitami.</string>
     <string name="history_clear">Wyczyść historię</string>
     <string name="history_clear_confirm">Zostaną usunięte historia uruchomień, nauka wyszukiwania i ostatnie wyszukiwania we wszystkich profilach. Ustawienia zostaną.</string>
@@ -509,4 +509,6 @@
     <string name="perm_post_notifications_why">Powiadomienia minutnika i automatyzacji</string>
     <string name="show_apps_title">Pokazuj aplikacje na ekranie</string>
     <string name="show_apps_subtitle">Wyłączone — ikon profilu nie widać, ale jego aplikacje nadal określają wyszukiwanie, filtr powiadomień i wyszukiwanie globalne</string>
+    <string name="glance_own_title">Własny wybór dla tego profilu</string>
+    <string name="glance_own_subtitle">Wyłączone — jak w Ustawienia → Ekran główny</string>
 </resources>

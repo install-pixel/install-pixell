@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.blacklaunch.launcher.system.GlanceParts
 
 /** Що видно на головному екрані й у порожньому пошуку — окремо для кожного профілю. */
 data class ProfileDisplay(
@@ -20,16 +21,29 @@ data class ProfileDisplay(
      * (пошук «лише свої», фільтр сповіщень, глобальний пошук «за програмами»), просто їх не видно.
      */
     val showApps: Boolean = true,
+    /** Що показує «Короткий огляд» саме в цьому профілі; null — як у загальних налаштуваннях. */
+    val ownGlance: GlanceParts? = null,
 ) {
-    fun encode(): String = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch, showApps)
-        .joinToString(",") { if (it) "1" else "0" }
+    fun encode(): String {
+        val bits = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch, showApps)
+            .joinToString(",") { if (it) "1" else "0" }
+        val own = ownGlance?.let { g -> ",g" + listOf(g.clock, g.alarm, g.event, g.battery).joinToString("") { if (it) "1" else "0" } }
+        return bits + own.orEmpty()
+    }
 
     companion object {
         /** До 0.28.0 бітів було 6, до 0.30.0 — 7; нових налаштувань тоді не було — значення за замовчуванням. */
         fun decode(text: String?): ProfileDisplay? {
-            val bits = text?.split(',')?.map { it == "1" } ?: return null
+            val parts = text?.split(',') ?: return null
+            // «g1011» у кінці — свій вибір для «Короткого огляду» (з 0.31.0).
+            val own = parts.lastOrNull()?.takeIf { it.length == 5 && it.startsWith("g") }?.let { g ->
+                GlanceParts(clock = g[1] == '1', alarm = g[2] == '1', event = g[3] == '1', battery = g[4] == '1')
+            }
+            val bits = (if (own != null) parts.dropLast(1) else parts).map { it == "1" }
             if (bits.size !in 6..8) return null
-            return ProfileDisplay(bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits.getOrElse(6) { true }, bits.getOrElse(7) { true })
+            return ProfileDisplay(
+                bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits.getOrElse(6) { true }, bits.getOrElse(7) { true }, own,
+            )
         }
     }
 }

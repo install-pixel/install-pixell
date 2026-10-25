@@ -364,7 +364,7 @@
     <string name="glance_part_alarm">Найближчий будильник</string>
     <string name="glance_part_event">Найближча подія</string>
     <string name="glance_part_battery">Батарея</string>
-    <string name="glance_parts_note">Дата показується завжди. Сам «Короткий огляд» вмикається в кожному профілі.</string>
+    <string name="glance_parts_note">Дата показується завжди. Сам «Короткий огляд» вмикається в кожному профілі — там же можна вибрати, що показувати саме в ньому.</string>
     <string name="history_note">Black Glass пам\'ятає, які програми ви відкриваєте і що шукали, — лише на цьому телефоні й з автоматичними межами.</string>
     <string name="history_clear">Очистити історію</string>
     <string name="history_clear_confirm">Буде видалено історію запусків, навчання пошуку й останні запити в усіх профілях. Налаштування лишаться.</string>
@@ -509,4 +509,6 @@
     <string name="perm_post_notifications_why">Сповіщення таймера й автоматизацій</string>
     <string name="show_apps_title">Показувати програми на екрані</string>
     <string name="show_apps_subtitle">Вимкнено — значків профілю не видно, але його програми й далі визначають пошук, фільтр сповіщень і глобальний пошук</string>
+    <string name="glance_own_title">Свій вибір для цього профілю</string>
+    <string name="glance_own_subtitle">Вимкнено — як у Налаштування → Головний екран</string>
 </resources>

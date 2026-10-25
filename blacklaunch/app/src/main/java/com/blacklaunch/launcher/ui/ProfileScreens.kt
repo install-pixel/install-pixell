@@ -2,6 +2,7 @@ package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.filled.Done
+import com.blacklaunch.launcher.system.GlanceParts
 import com.blacklaunch.launcher.profiles.ProfileDisplay
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Checkbox
@@ -209,6 +210,8 @@ fun ProfileEditScreen(
     /** «Також дозволити сповіщення від…»: програми поза профілем (назви вже готові). */
     /** Екран і пошук цього профілю. */
     display: ProfileDisplay = ProfileDisplay(),
+    /** Загальний вибір «Короткого огляду» — з нього починається свій вибір профілю. */
+    globalGlance: GlanceParts = GlanceParts(),
     onDisplayChange: (ProfileDisplay) -> Unit = {},
     onApplyDisplayToAll: () -> Unit = {},
     notificationExtras: List<AppInfo> = emptyList(),
@@ -248,6 +251,19 @@ fun ProfileEditScreen(
             Text(stringResource(R.string.display_title), color = Oled.TextPrimary, fontSize = 17.sp)
             SwitchRow(stringResource(R.string.glance_title), stringResource(R.string.glance_subtitle), display.glance) {
                 onDisplayChange(display.copy(glance = it))
+            }
+            if (display.glance) {
+                // Що показує огляд у цьому профілі: як у загальних налаштуваннях або своє.
+                val own = display.ownGlance
+                SwitchRow(stringResource(R.string.glance_own_title), stringResource(R.string.glance_own_subtitle), own != null) { on ->
+                    onDisplayChange(display.copy(ownGlance = if (on) globalGlance else null))
+                }
+                if (own != null) {
+                    SwitchRow(stringResource(R.string.glance_part_clock), "", own.clock) { onDisplayChange(display.copy(ownGlance = own.copy(clock = it))) }
+                    SwitchRow(stringResource(R.string.glance_part_alarm), "", own.alarm) { onDisplayChange(display.copy(ownGlance = own.copy(alarm = it))) }
+                    SwitchRow(stringResource(R.string.glance_part_event), "", own.event) { onDisplayChange(display.copy(ownGlance = own.copy(event = it))) }
+                    SwitchRow(stringResource(R.string.glance_part_battery), "", own.battery) { onDisplayChange(display.copy(ownGlance = own.copy(battery = it))) }
+                }
             }
             SwitchRow(stringResource(R.string.profile_label_title), stringResource(R.string.profile_label_subtitle), display.profileLabel) {
                 onDisplayChange(display.copy(profileLabel = it))

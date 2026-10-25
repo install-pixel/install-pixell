@@ -279,7 +279,7 @@ class MainActivity : ComponentActivity() {
             val display = remember(displays, home.profileId, appearance) { app.profileDisplay.of(home.profileId) }
             // Перемкнули профіль — у нового своє рішення щодо рядка стану.
             LaunchedEffect(display.hideStatusBar) { applyStatusBar() }
-            LaunchedEffect(display.glance, appearance.glanceClock, appearance.glanceAlarm, appearance.glanceEvent, appearance.glanceBattery) {
+            LaunchedEffect(display.glance, display.ownGlance, appearance.glanceClock, appearance.glanceAlarm, appearance.glanceEvent, appearance.glanceBattery) {
                 if (display.glance) glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity, glanceParts()) }
             }
             val hiddenKeys by app.hiddenApps.hidden.collectAsStateWithLifecycle()
@@ -1007,6 +1007,7 @@ class MainActivity : ComponentActivity() {
                     hasNotificationAccess = notificationAccess,
                     onGrantNotificationAccess = ::openNotificationAccess,
                     display = displays[profile.id] ?: app.profileDisplay.of(profile.id),
+                    globalGlance = globalGlanceParts(),
                     onDisplayChange = { app.profileDisplay.set(profile.id, it) },
                     onApplyDisplayToAll = {
                         app.profileDisplay.setAll(profiles.map { it.id }, displays[profile.id] ?: app.profileDisplay.of(profile.id))
@@ -1212,7 +1213,10 @@ class MainActivity : ComponentActivity() {
 
     private var stoppedAt = 0L
 
-    private fun glanceParts() = app.appearanceSettings.appearance.value.let {
+    /** Свій вибір профілю, інакше — загальний. */
+    private fun glanceParts() = activeDisplay().ownGlance ?: globalGlanceParts()
+
+    private fun globalGlanceParts() = app.appearanceSettings.appearance.value.let {
         GlanceParts(clock = it.glanceClock, alarm = it.glanceAlarm, event = it.glanceEvent, battery = it.glanceBattery)
     }
 

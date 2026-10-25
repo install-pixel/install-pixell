@@ -364,7 +364,7 @@
     <string name="glance_part_alarm">Next alarm</string>
     <string name="glance_part_event">Nearest event</string>
     <string name="glance_part_battery">Battery</string>
-    <string name="glance_parts_note">The date is always shown. “At a glance” itself is turned on in each profile.</string>
+    <string name="glance_parts_note">The date is always shown. The glance itself is turned on in each profile, where you can also choose what it shows.</string>
     <string name="history_note">Black Glass remembers which apps you open and what you searched for — only on this phone, with automatic limits.</string>
     <string name="history_clear">Clear history</string>
     <string name="history_clear_confirm">Launch history, learned searches and recent searches in all profiles will be deleted. Settings stay.</string>
@@ -509,4 +509,6 @@
     <string name="perm_post_notifications_why">Timer and automation notifications</string>
     <string name="show_apps_title">Show apps on screen</string>
     <string name="show_apps_subtitle">Off — the profile’s icons are hidden, but its apps still define search, the notification filter and global search</string>
+    <string name="glance_own_title">Own choice for this profile</string>
+    <string name="glance_own_subtitle">Off — as in Settings → Home screen</string>
 </resources>
