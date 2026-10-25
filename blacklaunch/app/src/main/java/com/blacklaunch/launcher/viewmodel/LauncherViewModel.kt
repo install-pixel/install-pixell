@@ -556,9 +556,10 @@ class LauncherViewModel(
     private val _openMonitor = Channel<Unit>(Channel.CONFLATED)
     val openMonitor: ReceiveChannel<Unit> get() = _openMonitor
 
-    // «Пульт» (з 1.1.6) — звичайне слово, яке знає й офлайн-модель; «монітор» лишається запасним.
+    // «Моніторинг» (з 1.1.8) — слово, яке знає й офлайн-модель; «монітор» лишається запасним. «Пульт» прибрано — так звуть програми для телевізора.
     private val monitorPhrases = setOf(
-        "пульт", "відкрий пульт", "покажи пульт", "монітор",
+        "моніторинг", "відкрий моніторинг", "покажи моніторинг", "монітор",
+        "monitoring", "open monitoring", "show monitoring", "otworz monitoring", "pokaz monitoring",
         "dashboard", "open dashboard", "show dashboard",
         "panel", "otworz panel", "pokaz panel",
     )

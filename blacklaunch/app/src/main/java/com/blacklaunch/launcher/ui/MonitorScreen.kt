@@ -1,6 +1,7 @@
 package com.blacklaunch.launcher.ui
 
 import android.os.BatteryManager
+import android.os.SystemClock
 import android.text.format.Formatter
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
@@ -15,16 +16,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,19 +34,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -63,6 +68,7 @@ import com.blacklaunch.launcher.ui.theme.Oled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Приглушене тепле для тепла — у тон акцентів, не яскраве. */
@@ -71,6 +77,7 @@ private val Track = Color(0x1FFFFFFF)
 /** Розряджені поділки шкали — рівні й помітні, щоб не здавалось, ніби частину кола щось закриває. */
 private val DialTrack = Color(0x40FFFFFF)
 private val GlassShape = RoundedCornerShape(18.dp)
+private val PlateShape = RoundedCornerShape(14.dp)
 
 /** Наш шрифт, але цифри однакової ширини — щоб значення не «стрибали» щосекунди. */
 @Composable
@@ -78,15 +85,16 @@ private fun num(size: TextUnit, color: Color, weight: FontWeight = FontWeight.No
     LocalTextStyle.current.merge(TextStyle(fontSize = size, color = color, fontWeight = weight, fontFeatureSettings = "tnum", letterSpacing = 0.sp))
 
 /**
- * Монітор системи: зверху шкала батареї з кільцями пам'яті й тепла, нижче «термінал» — сегментні смуги,
- * таблиця, графіки, топ програм і характеристики телефона. Дані — раз на 2 с і лише поки екран на виду.
+ * Моніторинг системи у дусі htop: шкала батареї, під нею окремі картки — батарея з графіком струму, RAM, диск,
+ * тепло, мережа з живою швидкістю, час екрана. Дотик на картці — плашки з усіма даними.
+ * Дані — раз на 2 с і лише поки екран на виду.
  */
 @Composable
 internal fun MonitorScreen(
     look: MonitorLook,
     stats: SystemStats,
     appLabel: (String) -> String?,
-    /** Назва профілю (або «МОНІТОР», якщо відкрито командою) — замість окремої плашки. */
+    /** Назва профілю (або «МОНІТОРИНГ», якщо відкрито командою) — замість окремої плашки. */
     title: String,
     modifier: Modifier = Modifier,
 ) {
@@ -96,18 +104,40 @@ internal fun MonitorScreen(
     var usage by remember { mutableStateOf<UsageInfo?>(null) }
     var device by remember { mutableStateOf<DeviceInfo?>(null) }
     var detail by remember { mutableStateOf<Detail?>(null) }
+    /** Швидкість мережі зараз, байт/с: отримання й надсилання. */
+    var rate by remember { mutableStateOf<Pair<Long, Long>?>(null) }
     val currentHistory = remember { mutableStateListOf<Float>() }
     val memoryHistory = remember { mutableStateListOf<Float>() }
+    val tempHistory = remember { mutableStateListOf<Float>() }
+    val downHistory = remember { mutableStateListOf<Float>() }
     LaunchedEffect(lifecycle, stats) {
         if (device == null) device = withContext(Dispatchers.IO) { runCatching { stats.device() }.getOrNull() }
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var tick = 0
+            var last: Triple<Long, Long, Long>? = null
             while (true) {
                 val next = withContext(Dispatchers.IO) { stats.snapshot() }
                 snap = next
                 next.battery.currentMa?.let { currentHistory.push(it.toFloat()) }
+                next.battery.temperatureC?.let { tempHistory.push(it) }
                 memoryHistory.push(1f - next.memory.availableBytes.toFloat() / next.memory.totalBytes.coerceAtLeast(1))
-                if (MonitorTile.USAGE in look.tiles && tick % USAGE_EVERY == 0) usage = withContext(Dispatchers.IO) { stats.usage(appLabel) }
+                // Швидкість мережі — різниця лічильників між знімками.
+                val now = SystemClock.elapsedRealtime()
+                val rx = next.network.rxBytes
+                val tx = next.network.txBytes
+                if (rx != null && tx != null) {
+                    last?.let { (t, r, x) ->
+                        val seconds = ((now - t) / 1000f).coerceAtLeast(0.5f)
+                        val down = ((rx - r).coerceAtLeast(0) / seconds).toLong()
+                        val up = ((tx - x).coerceAtLeast(0) / seconds).toLong()
+                        rate = down to up
+                        downHistory.push(down.toFloat())
+                    }
+                    last = Triple(now, rx, tx)
+                }
+                if (MonitorTile.USAGE in look.tiles && tick % USAGE_EVERY == 0) {
+                    usage = withContext(Dispatchers.IO) { runCatching { stats.usage(appLabel) }.getOrNull() }
+                }
                 tick++
                 delay(REFRESH_MS)
             }
@@ -119,82 +149,115 @@ internal fun MonitorScreen(
     val memUsed = 1f - s.memory.availableBytes.toFloat() / s.memory.totalBytes.coerceAtLeast(1)
     val storageUsed = 1f - s.storage.freeBytes.toFloat() / s.storage.totalBytes.coerceAtLeast(1)
     val tiles = look.tiles
+    val headroomPct = s.thermal.headroom?.let { ((1f - it.coerceIn(0f, 1f)) * 100).roundToInt() }
+    val signal = s.network.signalDbm?.let { signalLevel(it, s.network.type) }
+    val currentText = s.battery.currentMa?.let { stringResource(R.string.mon_u_ma, signed(it)) }
+    val powerText = s.battery.powerW?.let { stringResource(R.string.mon_u_w, "%.1f".format(abs(it))) }
+    val voltageText = s.battery.voltageMv?.let { stringResource(R.string.mon_u_v, "%.2f".format(it / 1000f)) }
+    val stateText = stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging)
+    val rateText = rate?.let { (down, up) ->
+        "↓ " + stringResource(R.string.mon_u_rate, size(down)) + "   ↑ " + stringResource(R.string.mon_u_rate, size(up))
+    }
 
-    Column(modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(title, color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Лише час без перезапуску: мережа й температура — у своїх рядках нижче, без повторів.
-                Text(stringResource(R.string.mon_uptime, duration(s.uptimeMs)), style = num(11.sp, Oled.TextSecondary))
-                // Характеристики — за кнопкою, щоб не займати місце на екрані.
-                if (MonitorTile.DEVICE in tiles && device != null) {
-                    Box(
-                        Modifier.padding(start = 6.dp).size(36.dp).clip(RoundedCornerShape(18.dp)).clickable { detail = Detail.DEVICE },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("ⓘ", color = accent, fontSize = 18.sp)
-                    }
+            // Характеристики — за кнопкою-телефоном, щоб не займати місце на екрані.
+            if (MonitorTile.DEVICE in tiles && device != null) {
+                Box(
+                    Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, Oled.Glint, RoundedCornerShape(20.dp))
+                        .clickable { detail = Detail.DEVICE },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PhoneGlyph(accent, Modifier.size(width = 12.dp, height = 20.dp))
                 }
             }
         }
 
         if (MonitorTile.BATTERY in tiles) {
             Box(
-                Modifier.padding(top = 8.dp).size(176.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(88.dp)).clickable { detail = Detail.BATTERY },
+                Modifier.size(176.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(88.dp)).clickable { detail = Detail.BATTERY },
                 contentAlignment = Alignment.Center,
             ) {
                 BatteryDial(s.battery.percent / 100f, accent, Modifier.fillMaxSize())
-                // Лише батарея: відсоток, струм і стан — решта у вікні за дотиком.
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("${s.battery.percent}%", style = num(40.sp, Oled.TextPrimary, FontWeight.ExtraLight))
-                    s.battery.currentMa?.let { Text(signed(it) + " мА", style = num(12.sp, accent)) }
-                    Text(stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging), style = num(11.sp, Oled.TextSecondary))
+                    currentText?.let { Text(it, style = num(12.sp, accent)) }
+                    Text(stateText, style = num(11.sp, Oled.TextSecondary))
                 }
             }
         }
 
-        // «Термінал»: сегментні смуги, як у htop.
-        val bars = buildList {
-            if (MonitorTile.MEMORY in tiles) add(BarRow(stringResource(R.string.mon_row_ram), memUsed, accent, "${size(s.memory.totalBytes - s.memory.availableBytes)} / ${size(s.memory.totalBytes)}", Detail.MEMORY))
-            if (MonitorTile.STORAGE in tiles) add(BarRow(stringResource(R.string.mon_row_disk), storageUsed, accent, "${size(s.storage.totalBytes - s.storage.freeBytes)} / ${size(s.storage.totalBytes)}", Detail.STORAGE))
-            if (MonitorTile.THERMAL in tiles) {
-                // Тепло цифрами: температура батареї й запас до сповільнення (те, чого прошивка не дає, — не показуємо).
-                val value = listOfNotNull(
-                    s.battery.temperatureC?.let { "%.1f °C".format(it) },
-                    s.thermal.headroom?.let { stringResource(R.string.mon_headroom, ((1f - it.coerceIn(0f, 1f)) * 100).roundToInt()) },
-                ).joinToString(" · ")
-                // Смуга — температура батареї (20–45 °C): запас до сповільнення часто 0 і смуга стояла порожня.
-                val level = s.battery.temperatureC?.let { ((it - 20f) / 25f).coerceIn(0f, 1f) } ?: s.thermal.headroom?.coerceIn(0f, 1f)
-                if (value.isNotEmpty() && level != null) add(BarRow(stringResource(R.string.mon_row_heat), level, Warm, value, Detail.THERMAL))
-            }
-            if (MonitorTile.NETWORK in tiles) {
-                // Смуга — сила сигналу (повна = 100%), швидкість — у вікні деталей.
-                val signal = s.network.signalDbm?.let { signalLevel(it, s.network.type) }
-                add(
-                    BarRow(
-                        stringResource(R.string.mon_row_net),
-                        signal,
-                        accent,
-                        listOfNotNull(stringResource(s.network.type.label()), signal?.let { stringResource(R.string.mon_signal_pct, (it * 100).roundToInt()) }).joinToString(" · "),
-                        Detail.NETWORK,
-                    ),
-                )
-            }
-        }
-        // Дотик на рядку чи шкалі — вікно з усіма даними цієї частини (на екрані — лише головне).
-        if (bars.isNotEmpty()) {
-            Glass {
-                bars.forEach { bar -> SegmentRow(bar) { detail = bar.detail } }
+        // Батарея — одразу під шкалою: напруга й потужність, графік струму, мін/сер/макс.
+        if (MonitorTile.CURRENT_GRAPH in tiles && currentHistory.size > 1) {
+            val minText = stringResource(R.string.mon_u_ma, signed(currentHistory.min().roundToInt()))
+            val avgText = stringResource(R.string.mon_u_ma, signed(currentHistory.average().roundToInt()))
+            val maxText = stringResource(R.string.mon_u_ma, signed(currentHistory.max().roundToInt()))
+            MetricCard(stringResource(R.string.mon_battery), listOfNotNull(voltageText, powerText).joinToString(" · "), accent, { detail = Detail.BATTERY }) {
+                Sparkline(currentHistory, accent, null, Modifier.fillMaxWidth().height(52.dp))
+                Footnote(stringResource(R.string.mon_minmax, minText, avgText, maxText))
             }
         }
 
-        // Живі графіки — кожен у своїй картці на всю ширину.
-        if (MonitorTile.CURRENT_GRAPH in tiles && currentHistory.size > 1) {
-            Glass { GraphCell(R.string.mon_current, s.battery.currentMa?.let { signed(it) + " мА" }.orEmpty(), currentHistory, accent, range = null) }
+        if (MonitorTile.MEMORY in tiles) {
+            MetricCard(
+                stringResource(R.string.mon_row_ram),
+                "${size(s.memory.totalBytes - s.memory.availableBytes)} / ${size(s.memory.totalBytes)} · ${(memUsed * 100).roundToInt()}%",
+                accent,
+                { detail = Detail.MEMORY },
+            ) {
+                Segments(memUsed, accent)
+                // Пам'ять — у межах 0–100%, щоб висота лінії й була зайнятою часткою.
+                if (MonitorTile.MEMORY_GRAPH in tiles && memoryHistory.size > 1) Sparkline(memoryHistory, accent, 0f to 1f, Modifier.fillMaxWidth().height(40.dp))
+                Footnote(stringResource(R.string.mon_free, size(s.memory.availableBytes)))
+            }
         }
-        if (MonitorTile.MEMORY_GRAPH in tiles && memoryHistory.size > 1) {
-            // Пам'ять — у межах 0–100%, щоб висота лінії й була зайнятою часткою.
-            Glass { GraphCell(R.string.mon_memory_graph, "${(memUsed * 100).roundToInt()}%", memoryHistory, accent, range = 0f to 1f) }
+
+        if (MonitorTile.STORAGE in tiles) {
+            MetricCard(
+                stringResource(R.string.mon_row_disk),
+                "${size(s.storage.totalBytes - s.storage.freeBytes)} / ${size(s.storage.totalBytes)} · ${(storageUsed * 100).roundToInt()}%",
+                accent,
+                { detail = Detail.STORAGE },
+            ) {
+                Segments(storageUsed, accent)
+                Footnote(
+                    listOfNotNull(
+                        stringResource(R.string.mon_free, size(s.storage.freeBytes)),
+                        usage?.appsBytes?.let { stringResource(R.string.mon_apps_size, size(it)) },
+                    ).joinToString(" · "),
+                )
+            }
+        }
+
+        val temp = s.battery.temperatureC
+        if (MonitorTile.THERMAL in tiles && temp != null) {
+            val state = s.thermal.status?.let { stringResource(thermalLabel(it)) }
+            val headroomText = headroomPct?.let { stringResource(R.string.mon_headroom_full, stringResource(R.string.mon_headroom_label), it) }
+            MetricCard(stringResource(R.string.mon_row_heat), listOfNotNull("%.1f °C".format(temp), state).joinToString(" · "), Warm, { detail = Detail.THERMAL }) {
+                // Смуга — температура батареї від 20 до 45 °C.
+                Segments(((temp - 20f) / 25f).coerceIn(0f, 1f), Warm)
+                if (tempHistory.size > 1) Sparkline(tempHistory, Warm, null, Modifier.fillMaxWidth().height(32.dp))
+                headroomText?.let { Footnote(it) }
+            }
+        }
+
+        if (MonitorTile.NETWORK in tiles) {
+            val linkText = s.network.downKbps?.let { stringResource(R.string.mon_link, it / 1000) }
+            MetricCard(
+                stringResource(R.string.mon_row_net),
+                listOfNotNull(stringResource(s.network.type.label()), signal?.let { stringResource(R.string.mon_signal_pct, (it * 100).roundToInt()) }).joinToString(" · "),
+                accent,
+                { detail = Detail.NETWORK },
+            ) {
+                // Смуга — сила сигналу (повна = 100%), графік — швидкість отримання зараз.
+                signal?.let { Segments(it, accent) }
+                if (downHistory.size > 1) Sparkline(downHistory, accent, 0f to maxOf(downHistory.max(), 1f), Modifier.fillMaxWidth().height(32.dp))
+                Footnote(listOfNotNull(rateText, linkText).joinToString(" · "))
+            }
         }
 
         if (MonitorTile.USAGE in tiles) {
@@ -202,94 +265,102 @@ internal fun MonitorScreen(
             if (u == null) {
                 Text(stringResource(R.string.mon_usage_off), color = Oled.TextSecondary, fontSize = 11.sp)
             } else {
+                val wifiToday = u.wifiBytes?.let { stringResource(R.string.mon_wifi_today, size(it)) }
+                val mobileToday = u.mobileBytes?.let { stringResource(R.string.mon_mobile_today, size(it)) }
                 Glass {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.mon_screen_today, duration(u.screenMs)), style = num(11.sp, Oled.TextPrimary))
-                        u.mobileBytes?.let { Text(stringResource(R.string.mon_data_today, size(it)), style = num(11.sp, Oled.TextPrimary)) }
+                        Text(stringResource(R.string.mon_screen_today, duration(u.screenMs)), style = num(12.sp, Oled.TextPrimary))
+                        u.unlocks?.let { Text(stringResource(R.string.mon_unlocks, it), style = num(11.sp, Oled.TextSecondary)) }
                     }
-                    u.top.take(TOP_SHOWN).forEachIndexed { i, (name, ms) ->
+                    u.top.forEachIndexed { i, (name, ms) ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("${i + 1}", style = num(11.sp, Oled.TextSecondary))
-                            Text(name, style = num(11.sp, Oled.TextPrimary), modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(name, style = num(12.sp, Oled.TextPrimary), modifier = Modifier.weight(1f), maxLines = 1)
                             Text(duration(ms), style = num(11.sp, Oled.TextSecondary))
                         }
                     }
+                    Footnote(listOfNotNull(wifiToday, mobileToday).joinToString(" · "))
                 }
             }
         }
 
+        // Час без перезапуску — внизу, дрібно.
+        Text(
+            stringResource(R.string.mon_uptime, duration(s.uptimeMs)),
+            style = num(11.sp, Oled.TextSecondary),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        )
+
         detail?.let { which ->
-            val rows: List<Pair<String, String>> = when (which) {
+            val plates: List<Plate> = when (which) {
                 Detail.BATTERY -> listOfNotNull(
-                    stringResource(R.string.mon_level) to "${s.battery.percent}%",
-                    stringResource(R.string.mon_state) to stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging),
-                    s.battery.currentMa?.let { stringResource(R.string.mon_current_label) to signed(it) + " мА" },
-                    s.battery.voltageMv?.let { stringResource(R.string.mon_voltage) to "%.2f В".format(it / 1000f) },
-                    s.battery.temperatureC?.let { stringResource(R.string.mon_temperature) to "%.1f °C".format(it) },
-                    healthLabel(s.battery.health)?.let { stringResource(R.string.mon_health) to stringResource(it) },
-                    s.battery.cycles?.let { stringResource(R.string.mon_cycles) to "$it" },
-                    s.battery.toFullMs?.let { stringResource(R.string.mon_to_full) to duration(it) },
+                    Plate(stringResource(R.string.mon_level), "${s.battery.percent}%"),
+                    Plate(stringResource(R.string.mon_state), stateText),
+                    currentText?.let { Plate(stringResource(R.string.mon_current_label), it) },
+                    powerText?.let { Plate(stringResource(R.string.mon_power), it) },
+                    voltageText?.let { Plate(stringResource(R.string.mon_voltage), it) },
+                    temp?.let { Plate(stringResource(R.string.mon_temperature), "%.1f °C".format(it)) },
+                    s.battery.chargeMah?.let { Plate(stringResource(R.string.mon_charge_now), stringResource(R.string.mon_u_mah, "$it")) },
+                    s.battery.capacityMah?.let { Plate(stringResource(R.string.mon_capacity), stringResource(R.string.mon_u_mah, "~$it")) },
+                    healthLabel(s.battery.health)?.let { Plate(stringResource(R.string.mon_health), stringResource(it)) },
+                    s.battery.cycles?.let { Plate(stringResource(R.string.mon_cycles), "$it") },
+                    s.battery.toFullMs?.let { Plate(stringResource(R.string.mon_to_full), duration(it)) },
                 )
                 Detail.MEMORY -> listOf(
-                    stringResource(R.string.mon_total) to size(s.memory.totalBytes),
-                    stringResource(R.string.mon_used) to "${size(s.memory.totalBytes - s.memory.availableBytes)} · ${(memUsed * 100).roundToInt()}%",
-                    stringResource(R.string.mon_available) to size(s.memory.availableBytes),
-                    stringResource(R.string.mon_pressure) to stringResource(if (s.memory.low) R.string.mon_yes else R.string.mon_no),
+                    Plate(stringResource(R.string.mon_total), size(s.memory.totalBytes)),
+                    Plate(stringResource(R.string.mon_used), "${size(s.memory.totalBytes - s.memory.availableBytes)} · ${(memUsed * 100).roundToInt()}%"),
+                    Plate(stringResource(R.string.mon_available), size(s.memory.availableBytes)),
+                    Plate(stringResource(R.string.mon_pressure), stringResource(if (s.memory.low) R.string.mon_yes else R.string.mon_no)),
                 )
-                Detail.STORAGE -> listOf(
-                    stringResource(R.string.mon_total) to size(s.storage.totalBytes),
-                    stringResource(R.string.mon_used) to "${size(s.storage.totalBytes - s.storage.freeBytes)} · ${(storageUsed * 100).roundToInt()}%",
-                    stringResource(R.string.mon_available) to size(s.storage.freeBytes),
+                Detail.STORAGE -> listOfNotNull(
+                    Plate(stringResource(R.string.mon_total), size(s.storage.totalBytes)),
+                    Plate(stringResource(R.string.mon_used), "${size(s.storage.totalBytes - s.storage.freeBytes)} · ${(storageUsed * 100).roundToInt()}%"),
+                    Plate(stringResource(R.string.mon_available), size(s.storage.freeBytes)),
+                    usage?.appsBytes?.let { Plate(stringResource(R.string.mon_apps_label), size(it)) },
                 )
                 Detail.THERMAL -> listOfNotNull(
-                    s.battery.temperatureC?.let { stringResource(R.string.mon_temperature) to "%.1f °C".format(it) },
-                    s.thermal.status?.let { stringResource(R.string.mon_thermal_state) to stringResource(thermalLabel(it)) },
-                    s.thermal.headroom?.let { stringResource(R.string.mon_headroom_label) to "${((1f - it.coerceIn(0f, 1f)) * 100).roundToInt()}%" },
+                    temp?.let { Plate(stringResource(R.string.mon_temperature), "%.1f °C".format(it)) },
+                    s.thermal.status?.let { Plate(stringResource(R.string.mon_thermal_state), stringResource(thermalLabel(it))) },
+                    headroomPct?.let { Plate(stringResource(R.string.mon_headroom_label), "$it%", wide = true) },
+                    headroomPct?.let { Plate("", stringResource(R.string.mon_headroom_hint), wide = true, note = true) },
                 )
                 Detail.NETWORK -> listOfNotNull(
-                    stringResource(R.string.mon_type) to stringResource(s.network.type.label()),
-                    s.network.signalDbm?.let { stringResource(R.string.mon_signal) to "${stringResource(R.string.mon_signal_pct, (signalLevel(it, s.network.type) * 100).roundToInt())} · $it дБм" },
-                    s.network.downKbps?.let { stringResource(R.string.mon_speed) to "~${it / 1000} Мбіт/с" },
+                    Plate(stringResource(R.string.mon_type), stringResource(s.network.type.label())),
+                    s.network.signalDbm?.let { dbm ->
+                        Plate(
+                            stringResource(R.string.mon_signal),
+                            stringResource(R.string.mon_signal_pct, (signalLevel(dbm, s.network.type) * 100).roundToInt()) + "\n" + stringResource(R.string.mon_u_dbm, dbm),
+                        )
+                    },
+                    rate?.let { Plate(stringResource(R.string.mon_down), stringResource(R.string.mon_u_rate, size(it.first))) },
+                    rate?.let { Plate(stringResource(R.string.mon_up), stringResource(R.string.mon_u_rate, size(it.second))) },
+                    s.network.downKbps?.let { Plate(stringResource(R.string.mon_speed), stringResource(R.string.mon_u_mbps, it / 1000)) },
+                    s.network.upKbps?.let { Plate(stringResource(R.string.mon_link_up), stringResource(R.string.mon_u_mbps, it / 1000)) },
+                    usage?.wifiBytes?.let { Plate(stringResource(R.string.mon_wifi_label), size(it)) },
+                    usage?.mobileBytes?.let { Plate(stringResource(R.string.mon_mobile_label), size(it)) },
                 )
                 Detail.DEVICE -> device?.let { d ->
+                    val cores = (
+                        listOf(stringResource(R.string.mon_cores, d.cores)) +
+                            d.clusters.map { (count, mhz) -> "$count × " + stringResource(R.string.mon_ghz, "%.2f".format(mhz / 1000f)) }
+                        ).joinToString("\n")
+                    val screen = listOfNotNull(d.screenPx, d.screenInches?.let { "%.1f″".format(it) }, d.refreshHz?.let { stringResource(R.string.mon_u_hz, it) }).joinToString("\n")
                     listOfNotNull(
-                        stringResource(R.string.mon_model) to d.model,
-                        d.soc?.let { stringResource(R.string.mon_chip) to it },
-                        stringResource(R.string.mon_cpu) to (
-                            listOf(stringResource(R.string.mon_cores, d.cores)) +
-                                d.clusters.map { (count, mhz) -> "$count × " + stringResource(R.string.mon_ghz, "%.2f".format(mhz / 1000f)) }
-                            ).joinToString("\n"),
-                        stringResource(R.string.mon_screen) to listOfNotNull(d.screenPx, d.screenInches?.let { "%.1f″".format(it) }, d.refreshHz?.let { "$it Гц" }).joinToString(" · "),
-                        stringResource(R.string.mon_memory_total) to "${size(d.ramBytes)} · ${size(d.storageBytes)}",
-                        d.cameras.takeIf { it.isNotEmpty() }?.let { cams ->
-                            stringResource(R.string.mon_cameras) to listOfNotNull(
-                                cams.filter { !it.first }.takeIf { it.isNotEmpty() }?.let { back -> stringResource(R.string.mon_cam_back, back.sortedByDescending { it.second }.joinToString(", ") { "%.0f".format(it.second) }) },
-                                cams.filter { it.first }.takeIf { it.isNotEmpty() }?.let { front -> stringResource(R.string.mon_cam_front, front.sortedByDescending { it.second }.joinToString(", ") { "%.0f".format(it.second) }) },
-                            ).joinToString("\n")
-                        },
-                        stringResource(R.string.mon_android) to d.android,
-                        d.securityPatch?.let { stringResource(R.string.mon_patch) to it },
-                        d.kernel?.let { stringResource(R.string.mon_kernel) to it },
+                        Plate(stringResource(R.string.mon_model), d.model, wide = true),
+                        d.soc?.let { Plate(stringResource(R.string.mon_chip), it, wide = true) },
+                        Plate(stringResource(R.string.mon_cpu), cores),
+                        Plate(stringResource(R.string.mon_screen), screen),
+                        Plate(stringResource(R.string.mon_row_ram), size(d.ramBytes)),
+                        Plate(stringResource(R.string.mon_row_disk), size(s.storage.totalBytes)),
+                        d.cameras.takeIf { it.isNotEmpty() }?.let { cams -> Plate(stringResource(R.string.mon_cameras), cameraText(cams), wide = true) },
+                        Plate(stringResource(R.string.mon_android), d.android),
+                        d.securityPatch?.let { Plate(stringResource(R.string.mon_patch), it) },
+                        d.kernel?.let { Plate(stringResource(R.string.mon_kernel), it) },
                     )
                 }.orEmpty()
             }
-            AlertDialog(
-                onDismissRequest = { detail = null },
-                containerColor = Color(0xFF141414),
-                title = { Text(stringResource(which.title), color = Oled.TextPrimary, fontSize = 18.sp) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        rows.forEach { (k, v) ->
-                            // Назва дрібно, значення під нею — без перенесень посеред рядка.
-                            Column(Modifier.fillMaxWidth()) {
-                                Text(k, style = num(11.sp, Oled.TextSecondary))
-                                Text(v, style = num(15.sp, Oled.TextPrimary))
-                            }
-                        }
-                    }
-                },
-                confirmButton = { TextButton(onClick = { detail = null }) { Text(stringResource(R.string.close), color = Oled.TextPrimary) } },
-            )
+            DetailSheet(stringResource(which.title), plates, if (which == Detail.THERMAL) Warm else accent) { detail = null }
         }
     }
 }
@@ -300,8 +371,98 @@ private enum class Detail(@StringRes val title: Int) {
     THERMAL(R.string.mtile_thermal), NETWORK(R.string.mtile_network), DEVICE(R.string.mon_device_title),
 }
 
-/** [level] null — смуги немає (прошивка не дає значення), лише текст; [detail] — що відкрити дотиком. */
-private class BarRow(val label: String, val level: Float?, val color: Color, val value: String, val detail: Detail)
+/** Плашка у вікні деталей: [wide] — на всю ширину, [note] — пояснення дрібним текстом без рамки. */
+private class Plate(val label: String, val value: String, val wide: Boolean = false, val note: Boolean = false)
+
+/** Камери: мегапікселі — лише коли телефон дав повну роздільність кожної; інакше чесна кількість. */
+@Composable
+private fun cameraText(cams: List<Pair<Boolean, Float?>>): String {
+    val back = cams.filter { !it.first }.map { it.second }
+    val front = cams.filter { it.first }.map { it.second }
+    val backPart = cameraPart(back)
+    val frontPart = cameraPart(front)
+    return listOfNotNull(
+        backPart?.let { stringResource(R.string.mon_cam_back, it) },
+        frontPart?.let { stringResource(R.string.mon_cam_front, it) },
+    ).joinToString("\n")
+}
+
+@Composable
+private fun cameraPart(mp: List<Float?>): String? = when {
+    mp.isEmpty() -> null
+    mp.all { it != null } -> stringResource(R.string.mon_u_mp, mp.filterNotNull().sortedDescending().joinToString(", ") { "%.0f".format(it) })
+    else -> "${mp.size}"
+}
+
+/** Вікно деталей у нашому стилі: скляна панель із плашками по дві в ряд; дотик будь-де — закрити. */
+@Composable
+private fun DetailSheet(title: String, plates: List<Plate>, accent: Color, onClose: () -> Unit) {
+    // Широкі плашки — окремим рядком, вузькі — парами.
+    val rows = remember(plates) {
+        val out = mutableListOf<List<Plate>>()
+        var pending: Plate? = null
+        for (p in plates) {
+            val waiting = pending
+            when {
+                p.wide -> {
+                    if (waiting != null) out.add(listOf(waiting))
+                    pending = null
+                    out.add(listOf(p))
+                }
+                waiting == null -> pending = p
+                else -> {
+                    out.add(listOf(waiting, p))
+                    pending = null
+                }
+            }
+        }
+        pending?.let { out.add(listOf(it)) }
+        out
+    }
+    Dialog(onDismissRequest = onClose) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 640.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF0A0A0A))
+                .border(1.dp, Oled.Glint, RoundedCornerShape(24.dp))
+                .clickable(onClick = onClose)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.padding(start = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(6.dp).clip(RoundedCornerShape(3.dp)).background(accent))
+                Text(title.uppercase(), style = num(12.sp, Oled.TextSecondary).copy(letterSpacing = 2.sp))
+            }
+            rows.forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { p -> PlateView(p, accent, Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlateView(p: Plate, accent: Color, modifier: Modifier) {
+    if (p.note) {
+        Text(p.value, style = num(11.sp, Oled.TextSecondary), modifier = modifier.padding(horizontal = 4.dp))
+        return
+    }
+    Column(
+        modifier
+            .clip(PlateShape)
+            .background(Oled.Surface)
+            .border(1.dp, Oled.Glint, PlateShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(p.label.uppercase(), style = num(9.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp), maxLines = 2)
+        Text(p.value, style = num(15.sp, lerp(accent, Color.White, 0.6f)))
+    }
+}
 
 /** Скляна картка, як у налаштуваннях Black Glass. */
 @Composable
@@ -313,50 +474,58 @@ private fun Glass(modifier: Modifier = Modifier, content: @Composable ColumnScop
             .background(Oled.Surface)
             .border(1.dp, Oled.Glint, GlassShape)
             .then(modifier)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         content = content,
     )
 }
 
+/** Картка показника: назва й головне значення зверху, далі шкала, графік і дрібний підсумок; дотик — деталі. */
 @Composable
-private fun SegmentRow(bar: BarRow, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text(bar.label, style = num(10.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp), maxLines = 1, modifier = Modifier.width(64.dp))
-        val level = bar.level
-        if (level == null) {
-            Box(Modifier.weight(1f))
-        } else {
-            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                val lit = (level.coerceIn(0f, 1f) * SEGMENTS).roundToInt()
-                // Скляний сегмент: світліший відблиск зверху, колір знизу.
-                val glass = Brush.verticalGradient(listOf(lerp(bar.color, Color.White, 0.45f), bar.color, bar.color.copy(alpha = 0.6f)))
-                repeat(SEGMENTS) { i ->
-                    Box(
-                        Modifier.weight(1f).height(7.dp).clip(RoundedCornerShape(2.dp))
-                            .then(if (i < lit) Modifier.background(glass) else Modifier.background(Track)),
-                    )
-                }
-            }
+private fun MetricCard(label: String, value: String, color: Color, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Glass(Modifier.clickable(onClick = onClick)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(5.dp).clip(RoundedCornerShape(3.dp)).background(color))
+            Text(label, style = num(10.sp, Oled.TextSecondary).copy(letterSpacing = 1.5.sp), maxLines = 1, modifier = Modifier.weight(1f))
+            Text(value, style = num(12.sp, Oled.TextPrimary), maxLines = 1)
         }
-        Text(bar.value, style = num(11.sp, Oled.TextPrimary), maxLines = 1, softWrap = false, modifier = Modifier.width(132.dp))
+        content()
     }
 }
 
 @Composable
-private fun GraphCell(@StringRes label: Int, value: String, history: List<Float>, color: Color, range: Pair<Float, Float>?) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(label), style = num(10.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp))
-        Text(value, style = num(12.sp, color))
-    }
-    Sparkline(history, color, range, Modifier.fillMaxWidth().height(56.dp))
+private fun Footnote(text: String) {
+    if (text.isNotEmpty()) Text(text, style = num(10.sp, Oled.TextSecondary), maxLines = 1)
 }
 
-/** Шкала батареї з поділками: світлі — заряд, тьмяні — розряджена частина (кільця пам'яті й тепла прибрано — вони є в рядках). */
+/** Сегментна шкала, як у htop: скляні сегменти, світліший відблиск зверху. */
+@Composable
+private fun Segments(level: Float, color: Color) {
+    val lit = (level.coerceIn(0f, 1f) * SEGMENTS).roundToInt()
+    val glass = Brush.verticalGradient(listOf(lerp(color, Color.White, 0.45f), color, color.copy(alpha = 0.6f)))
+    Canvas(Modifier.fillMaxWidth().height(8.dp)) {
+        val gap = 2.dp.toPx()
+        val w = (size.width - gap * (SEGMENTS - 1)) / SEGMENTS
+        val corner = CornerRadius(2.dp.toPx())
+        repeat(SEGMENTS) { i ->
+            val topLeft = Offset(i * (w + gap), 0f)
+            val cell = Size(w, size.height)
+            if (i < lit) drawRoundRect(glass, topLeft, cell, corner) else drawRoundRect(Track, topLeft, cell, corner)
+        }
+    }
+}
+
+/** Значок телефона: корпус із заокругленими кутами й риска внизу. */
+@Composable
+private fun PhoneGlyph(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val stroke = 1.5.dp.toPx()
+        drawRoundRect(color, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), CornerRadius(3.dp.toPx()), style = Stroke(stroke))
+        drawLine(color, Offset(size.width * 0.35f, size.height * 0.82f), Offset(size.width * 0.65f, size.height * 0.82f), strokeWidth = stroke, cap = StrokeCap.Round)
+    }
+}
+
+/** Шкала батареї з поділками: світлі — заряд, тьмяні — розряджена частина. */
 @Composable
 private fun BatteryDial(battery: Float, accent: Color, modifier: Modifier) {
     Canvas(modifier) {
@@ -374,8 +543,7 @@ private fun BatteryDial(battery: Float, accent: Color, modifier: Modifier) {
             }
         }
         // Тонке скляне коло навколо цифр.
-        val inner = r - 22.dp.toPx()
-        drawCircle(Track, inner, c, style = Stroke(1.dp.toPx()))
+        drawCircle(Track, r - 22.dp.toPx(), c, style = Stroke(1.dp.toPx()))
     }
 }
 
@@ -426,7 +594,7 @@ private fun duration(ms: Long): String {
     }
 }
 
-/** Сигнал у дБм → 0..1 (Wi‑Fi від −90 до −40, мобільна від −120 до −70); без даних — повна смуга, якщо мережа є. */
+/** Сигнал у дБм → 0..1 (Wi‑Fi від −90 до −40, мобільна від −120 до −70). */
 private fun signalLevel(dbm: Int, type: NetworkType): Float = when {
     type == NetworkType.NONE -> 0f
     type == NetworkType.MOBILE -> ((dbm + 120) / 50f).coerceIn(0f, 1f)
@@ -466,4 +634,3 @@ private const val USAGE_EVERY = 15
 private const val HISTORY = 150
 private const val TICKS = 60
 private const val SEGMENTS = 20
-private const val TOP_SHOWN = 3

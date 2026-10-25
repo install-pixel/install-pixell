@@ -311,7 +311,7 @@ private fun HomeIdle(
                     // Подвійний дотик на порожньому місці — наступний профіль (коли немає ні назви, ні свайпу).
                     onDoubleTap = { position ->
                         val justWoke = SystemClock.uptimeMillis() - shownAt.longValue < WAKE_GUARD_MS
-                        // На «Пульті» подвійний дотик не перемикає профіль: випадкові дотики там часті, а профіль може вимкнути звук.
+                        // На моніторингу подвійний дотик не перемикає профіль: випадкові дотики там часті, а профіль може вимкнути звук.
                         if (monitor == null && !justWoke && profileCount.value > 1 && iconBounds.values.none { it.contains(position) }) {
                             haptics.tick()
                             onSwitchProfile(1)
@@ -353,8 +353,28 @@ private fun HomeIdle(
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
         // Профіль-монітор: замість значків — монітор системи (під назвою профілю, над полем пошуку).
         if (monitor != null) {
+            // Моніторинг прокручується; свайп угору, коли вже внизу (залишок прокрутки), — пошук, як і деінде.
+            val searchPull = remember(thresholdPx) {
+                object : NestedScrollConnection {
+                    var pull = 0f
+                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                        if (source != NestedScrollSource.UserInput) return Offset.Zero
+                        pull = if (available.y < 0f) pull - available.y else 0f
+                        if (pull > thresholdPx) {
+                            pull = 0f
+                            onOpenSearch()
+                        }
+                        return Offset.Zero
+                    }
+                    override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                        pull = 0f
+                        return androidx.compose.ui.unit.Velocity.Zero
+                    }
+                }
+            }
             monitor(
                 Modifier
+                    .nestedScroll(searchPull)
                     .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
                     .navigationBarsPadding()
                     .padding(top = 16.dp, bottom = SearchFieldSpace),

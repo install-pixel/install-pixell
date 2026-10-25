@@ -33,7 +33,15 @@ data class BatteryStats(
     val cycles: Int?,
     /** Скільки до повного заряду, мс (лише під час заряджання, Android 9+). */
     val toFullMs: Long?,
-)
+    /** Заряд у батареї зараз, мА·год (лічильник заряду; не всі прошивки дають). */
+    val chargeMah: Int?,
+) {
+    /** Оцінка повної ємності зараз: заряд ÷ відсоток (з 20%+, щоб похибка не роздувалась). */
+    val capacityMah: Int? get() = chargeMah?.takeIf { percent >= 20 }?.let { it * 100 / percent }
+
+    /** Потужність, Вт: струм × напруга. */
+    val powerW: Float? get() = if (currentMa != null && voltageMv != null) currentMa * voltageMv / 1_000_000f else null
+}
 
 data class MemoryStats(val totalBytes: Long, val availableBytes: Long, val low: Boolean)
 
@@ -42,12 +50,13 @@ data class StorageStats(val totalBytes: Long, val freeBytes: Long)
 /** Тепло: стан Android (0 — норма … 6 — вимкнення) і запас до сповільнення (1.0 — сповільнення почнеться). */
 data class ThermalStats(val status: Int?, val headroom: Float?)
 
-data class NetworkStatsInfo(val type: NetworkType, val signalDbm: Int?, val downKbps: Int?)
+/** [rxBytes]/[txBytes] — усього отримано/надіслано телефоном від увімкнення: різниця між знімками — швидкість зараз. */
+data class NetworkStatsInfo(val type: NetworkType, val signalDbm: Int?, val downKbps: Int?, val upKbps: Int?, val rxBytes: Long?, val txBytes: Long?)
 
 enum class NetworkType { NONE, WIFI, MOBILE, ETHERNET, OTHER }
 
 /** З «Доступом до використання»: час екрана й мобільні дані сьогодні, топ програм за часом. */
-data class UsageInfo(val screenMs: Long, val mobileBytes: Long?, val top: List<Pair<String, Long>>)
+data class UsageInfo(val screenMs: Long, val mobileBytes: Long?, val wifiBytes: Long?, val top: List<Pair<String, Long>>, val unlocks: Int?, val appsBytes: Long?)
 
 /** Характеристики телефона — офіційно доступне (типу пам'яті й заводської ємності батареї Android не дає). */
 data class DeviceInfo(
@@ -63,8 +72,8 @@ data class DeviceInfo(
     val screenPx: String,
     val screenInches: Float?,
     val refreshHz: Int?,
-    /** Камери, які телефон відкриває програмам: напрямок (true — фронтальна) і мегапікселі на повній роздільності. */
-    val cameras: List<Pair<Boolean, Float>>,
+    /** Камери, які телефон відкриває програмам: напрямок (true — фронтальна) і мегапікселі — лише якщо телефон дає повну роздільність. */
+    val cameras: List<Pair<Boolean, Float?>>,
     val ramBytes: Long,
     val storageBytes: Long,
 )
@@ -114,7 +123,9 @@ class SystemStats(context: Context) {
         val percent = if (level >= 0 && scale > 0) level * 100 / scale else batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 0
         // Знак струму прошивки віддають по-різному (OnePlus — навпаки): вирівнюємо за станом заряду.
         val current = currentMa()?.let { ma -> if (charging) abs(ma) else -abs(ma) }
-        return BatteryStats(percent, charging, current, voltage, temperature, health, cycles, toFull)
+        val charge = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+            ?.takeIf { it > 0 && it != Int.MIN_VALUE }?.let { if (it > MICROAMP_HOURS_THRESHOLD) it / 1000 else it }
+        return BatteryStats(percent, charging, current, voltage, temperature, health, cycles, toFull, charge)
     }
 
     /** Android віддає мікроампери, але деякі прошивки — міліампери; великі значення — це мкА. */
@@ -131,6 +142,13 @@ class SystemStats(context: Context) {
     }
 
     private fun storage(): StorageStats {
+        // Як у «Про пристрій»: повний обсяг пам'яті (256 ГБ) разом із системою, а не лише розділ даних.
+        runCatching {
+            val manager = app.getSystemService(android.app.usage.StorageStatsManager::class.java)
+            val total = manager.getTotalBytes(android.os.storage.StorageManager.UUID_DEFAULT)
+            val free = manager.getFreeBytes(android.os.storage.StorageManager.UUID_DEFAULT)
+            if (total > 0 && free in 0..total) return StorageStats(total, free)
+        }
         val stat = StatFs(Environment.getDataDirectory().path)
         return StorageStats(stat.totalBytes, stat.availableBytes)
     }
@@ -147,7 +165,9 @@ class SystemStats(context: Context) {
     }
 
     private fun network(): NetworkStatsInfo {
-        val caps = connectivity?.getNetworkCapabilities(connectivity.activeNetwork) ?: return NetworkStatsInfo(NetworkType.NONE, null, null)
+        val rx = android.net.TrafficStats.getTotalRxBytes().takeIf { it >= 0 }
+        val tx = android.net.TrafficStats.getTotalTxBytes().takeIf { it >= 0 }
+        val caps = connectivity?.getNetworkCapabilities(connectivity.activeNetwork) ?: return NetworkStatsInfo(NetworkType.NONE, null, null, null, rx, tx)
         val type = when {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkType.WIFI
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkType.MOBILE
@@ -165,7 +185,7 @@ class SystemStats(context: Context) {
             NetworkType.MOBILE -> mobileDbm()
             else -> null
         }
-        return NetworkStatsInfo(type, signal, caps.linkDownstreamBandwidthKbps.takeIf { it > 0 })
+        return NetworkStatsInfo(type, signal, caps.linkDownstreamBandwidthKbps.takeIf { it > 0 }, caps.linkUpstreamBandwidthKbps.takeIf { it > 0 }, rx, tx)
     }
 
     /** Характеристики — читаються раз, при відкритті монітора. */
@@ -203,9 +223,9 @@ class SystemStats(context: Context) {
                 } else {
                     null
                 }
-                val size = full ?: c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE) ?: return@mapNotNull null
                 val front = c.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING) == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT
-                front to size.width * size.height / 1_000_000f
+                // Без повної роздільності прошивка дає «об'єднану» (50 Мп → 13 Мп) — таку не показуємо, лише кількість.
+                front to full?.let { it.width * it.height / 1_000_000f }
             }
         }.getOrDefault(emptyList())
         val patch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Build.VERSION.SECURITY_PATCH.ifBlank { null } else null
@@ -266,7 +286,10 @@ class SystemStats(context: Context) {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    /** Сьогодні з півночі. [label] — назва програми за пакетом. */
+    /**
+     * Сьогодні з півночі — з подій (відкрито/закрито програму, екран увімкнено/вимкнено): зведена статистика Android
+     * захоплює й учорашні години. [label] — назва програми за пакетом (null — не програма з іконкою, пропускаємо в топі).
+     */
     fun usage(label: (String) -> String?): UsageInfo? {
         if (!hasUsageAccess()) return null
         val start = Calendar.getInstance().apply {
@@ -274,24 +297,69 @@ class SystemStats(context: Context) {
         }.timeInMillis
         val now = System.currentTimeMillis()
         val usage = app.getSystemService(UsageStatsManager::class.java) ?: return null
-        val perApp = runCatching { usage.queryAndAggregateUsageStats(start, now) }.getOrNull().orEmpty()
-            .filterKeys { it != app.packageName }
-            .mapValues { it.value.totalTimeInForeground }
-            .filterValues { it > 0 }
-        val top = perApp.entries.sortedByDescending { it.value }.take(TOP_APPS).map { (pkg, ms) -> (label(pkg) ?: pkg) to ms }
-        val mobile = runCatching {
-            val stats = app.getSystemService(NetworkStatsManager::class.java)
+        val events = runCatching { usage.queryEvents(start, now) }.getOrNull() ?: return null
+        val perApp = HashMap<String, Long>()
+        val resumed = HashMap<String, Long>()
+        var screenMs = 0L
+        var screenOn: Long? = null
+        var firstScreenEvent = true
+        var unlocks = 0
+        val event = android.app.usage.UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            val pkg = event.packageName ?: continue
+            val t = event.timeStamp
+            when (event.eventType) {
+                android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> resumed.putIfAbsent(pkg, t)
+                // «Зупинено» не беремо: воно приходить і після переходу на інший екран тієї ж програми.
+                android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED -> {
+                    // Без «відкрито» — програма була на екрані ще до півночі.
+                    val from = resumed.remove(pkg) ?: if (perApp.containsKey(pkg)) null else start
+                    if (from != null) perApp[pkg] = (perApp[pkg] ?: 0L) + (t - from)
+                }
+                android.app.usage.UsageEvents.Event.SCREEN_INTERACTIVE -> { screenOn = t; firstScreenEvent = false }
+                android.app.usage.UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    val from = screenOn ?: if (firstScreenEvent) start else null
+                    if (from != null) screenMs += t - from
+                    screenOn = null
+                    firstScreenEvent = false
+                }
+                android.app.usage.UsageEvents.Event.KEYGUARD_HIDDEN -> unlocks++
+            }
+        }
+        resumed.forEach { (pkg, from) -> perApp[pkg] = (perApp[pkg] ?: 0L) + (now - from) }
+        // Екран зараз увімкнений (ми ж на ньому).
+        screenMs += now - (screenOn ?: if (firstScreenEvent) start else now)
+        // До Android 9 подій екрана немає — тоді час екрана як сума часу програм.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) screenMs = perApp.values.sum()
+        val top = perApp.entries.asSequence()
+            .filter { it.key != app.packageName && it.value >= MIN_TOP_MS }
+            .sortedByDescending { it.value }
+            .mapNotNull { (pkg, ms) -> label(pkg)?.let { it to ms } }
+            .take(TOP_APPS).toList()
+        val network = app.getSystemService(NetworkStatsManager::class.java)
+        fun bytes(type: Int) = runCatching {
             @Suppress("DEPRECATION")
-            val bucket: NetworkStats.Bucket? = stats?.querySummaryForDevice(ConnectivityManager.TYPE_MOBILE, null, start, now)
-            bucket?.let { it.rxBytes + it.txBytes }
+            network?.querySummaryForDevice(type, null, start, now)?.let { it.rxBytes + it.txBytes }
         }.getOrNull()
-        return UsageInfo(perApp.values.sum(), mobile, top)
+        @Suppress("DEPRECATION")
+        val mobile = bytes(ConnectivityManager.TYPE_MOBILE)
+        @Suppress("DEPRECATION")
+        val wifi = bytes(ConnectivityManager.TYPE_WIFI)
+        val apps = runCatching {
+            val stats = app.getSystemService(android.app.usage.StorageStatsManager::class.java)
+                .queryStatsForUser(android.os.storage.StorageManager.UUID_DEFAULT, Process.myUserHandle())
+            stats.appBytes + stats.dataBytes
+        }.getOrNull()
+        return UsageInfo(screenMs, mobile, wifi, top, unlocks.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.P }, apps)
     }
 
     private companion object {
         const val MICROAMP_THRESHOLD = 20_000
         const val HEADROOM_FORECAST_S = 10
-        const val TOP_APPS = 5
+        const val TOP_APPS = 3
+        const val MIN_TOP_MS = 60_000L
+        const val MICROAMP_HOURS_THRESHOLD = 100_000
         val SOC_NAMES = mapOf(
             "SM8850" to "Snapdragon 8 Elite Gen 5", "SM8750" to "Snapdragon 8 Elite", "SM8650" to "Snapdragon 8 Gen 3",
             "SM8550" to "Snapdragon 8 Gen 2", "SM8475" to "Snapdragon 8+ Gen 1", "SM8450" to "Snapdragon 8 Gen 1",

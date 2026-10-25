@@ -17,7 +17,7 @@ import com.blacklaunch.launcher.settings.MonitorLook
 import com.blacklaunch.launcher.settings.MonitorTile
 import com.blacklaunch.launcher.ui.theme.Oled
 
-/** Налаштування → «Монітор системи»: як відкрити, які плитки показувати, колір, «Доступ до використання». */
+/** Налаштування → «Моніторинг»: як відкрити, які плитки показувати, колір, «Доступ до використання». */
 @Composable
 internal fun MonitorSettingsContent(
     look: MonitorLook,
