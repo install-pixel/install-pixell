@@ -507,4 +507,6 @@
     <string name="perm_bluetooth_why">Автоматизації, коли підключаються навушники чи авто</string>
     <string name="perm_post_notifications">Сповіщення</string>
     <string name="perm_post_notifications_why">Сповіщення таймера й автоматизацій</string>
+    <string name="show_apps_title">Показувати програми на екрані</string>
+    <string name="show_apps_subtitle">Вимкнено — значків профілю не видно, але його програми й далі визначають пошук, фільтр сповіщень і глобальний пошук</string>
 </resources>

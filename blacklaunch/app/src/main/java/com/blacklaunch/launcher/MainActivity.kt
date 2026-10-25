@@ -288,7 +288,8 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 BlackHomeScreen(
                     state = state,
-                    home = home,
+                    // «Показувати програми на екрані» вимкнено — значків не видно, профіль працює як раніше.
+                    home = if (display.showApps) home else home.copy(pinned = emptyList()),
                     profileBanner = banner,
                     onSwitchProfile = viewModel::switchProfile,
                     onMoveApp = viewModel::moveApp,

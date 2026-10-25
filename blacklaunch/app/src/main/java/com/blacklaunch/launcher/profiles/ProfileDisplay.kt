@@ -15,16 +15,21 @@ data class ProfileDisplay(
     val allAppsButton: Boolean = true,
     /** Профіль у швидкому перемиканні (подвійний дотик, плитка, назва профілю, свайпи). */
     val quickSwitch: Boolean = true,
+    /**
+     * Значки програм профілю на екрані й у порожньому пошуку. Вимкнено — програми лишаються в профілі
+     * (пошук «лише свої», фільтр сповіщень, глобальний пошук «за програмами»), просто їх не видно.
+     */
+    val showApps: Boolean = true,
 ) {
-    fun encode(): String = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch)
+    fun encode(): String = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch, showApps)
         .joinToString(",") { if (it) "1" else "0" }
 
     companion object {
-        /** До 0.28.0 бітів було 6 — тоді профіль у швидкому перемиканні. */
+        /** До 0.28.0 бітів було 6, до 0.30.0 — 7; нових налаштувань тоді не було — значення за замовчуванням. */
         fun decode(text: String?): ProfileDisplay? {
             val bits = text?.split(',')?.map { it == "1" } ?: return null
-            if (bits.size != 6 && bits.size != 7) return null
-            return ProfileDisplay(bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits.getOrElse(6) { true })
+            if (bits.size !in 6..8) return null
+            return ProfileDisplay(bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits.getOrElse(6) { true }, bits.getOrElse(7) { true })
         }
     }
 }

@@ -507,4 +507,6 @@
     <string name="perm_bluetooth_why">Automatyzacje, gdy łączą się słuchawki lub samochód</string>
     <string name="perm_post_notifications">Powiadomienia</string>
     <string name="perm_post_notifications_why">Powiadomienia minutnika i automatyzacji</string>
+    <string name="show_apps_title">Pokazuj aplikacje na ekranie</string>
+    <string name="show_apps_subtitle">Wyłączone — ikon profilu nie widać, ale jego aplikacje nadal określają wyszukiwanie, filtr powiadomień i wyszukiwanie globalne</string>
 </resources>

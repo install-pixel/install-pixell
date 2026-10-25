@@ -507,4 +507,6 @@
     <string name="perm_bluetooth_why">Automations when headphones or a car connect</string>
     <string name="perm_post_notifications">Notifications</string>
     <string name="perm_post_notifications_why">Timer and automation notifications</string>
+    <string name="show_apps_title">Show apps on screen</string>
+    <string name="show_apps_subtitle">Off — the profile’s icons are hidden, but its apps still define search, the notification filter and global search</string>
 </resources>
