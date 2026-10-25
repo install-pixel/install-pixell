@@ -172,8 +172,8 @@
     <string name="section_appearance_hint">Czarna tapeta, szare ikony, ciemny motyw</string>
     <string name="section_search">Wyszukiwanie</string>
     <string name="section_search_hint">Ustawienia, kontakty, połączenia, kalendarz, SMS, powiadomienia, multimedia</string>
-    <string name="section_voice">Głos</string>
-    <string name="section_voice_hint">Modele offline i rozpoznawanie</string>
+    <string name="section_voice">Głos i polecenia</string>
+    <string name="section_voice_hint">Moje polecenia, wbudowane polecenia, rozpoznawanie</string>
     <string name="section_battery_hint">Ochrona ładowania, aplikacje w tle</string>
     <string name="section_about">O Black Glass</string>
     <string name="about_note">Minimalistyczny launcher offline: bez uprawnienia do internetu, bez reklam i śledzenia. Wszystko zostaje na tym telefonie.</string>
@@ -527,4 +527,17 @@
     <string name="share">Udostępnij</string>
     <string name="to_trash">Do kosza</string>
     <string name="moved_to_trash">Przeniesiono do kosza — można przywrócić przez 30 dni</string>
+    <string name="builtin_commands_title">Wbudowane polecenia</string>
+    <string name="builtin_commands_hint">Połączenia, budzik, latarka, muzyka… — w trzech grupach</string>
+    <string name="recognition_title">Rozpoznawanie i odpowiedzi</string>
+    <string name="recognition_hint">Modele offline, głos odpowiedzi, asystent</string>
+    <string name="vgroup_calls">Połączenia i wiadomości</string>
+    <string name="vgroup_calls_example">„zadzwoń …”, „napisz SMS …”, „napisz w komunikatorze …”</string>
+    <string name="vgroup_phone">Telefon</string>
+    <string name="vgroup_phone_example">„budzik 7:30”, „minutnik 10 minut”, „latarka”, „jasność 50”, „wifi”, „pauza”</string>
+    <string name="vgroup_other">Inne</string>
+    <string name="vgroup_other_example">„trasa do …”, „wydarzenie jutro o 15”, „która godzina”</string>
+    <string name="vgroup_partial">Włączone %1$d z %2$d</string>
+    <string name="details_show">Więcej szczegółów</string>
+    <string name="details_hide">Mniej szczegółów</string>
 </resources>

@@ -172,8 +172,8 @@
     <string name="section_appearance_hint">Чорні шпалери, сірі значки, темна тема</string>
     <string name="section_search">Пошук</string>
     <string name="section_search_hint">Налаштування, контакти, дзвінки, календар, SMS, сповіщення, медіа</string>
-    <string name="section_voice">Голос</string>
-    <string name="section_voice_hint">Офлайн-моделі та розпізнавання</string>
+    <string name="section_voice">Голос і команди</string>
+    <string name="section_voice_hint">Мої команди, вбудовані команди, розпізнавання</string>
     <string name="section_battery_hint">Захист заряду, програми у фоні</string>
     <string name="section_about">Про Black Glass</string>
     <string name="about_note">Мінімалістичний офлайн-лаунчер: без дозволу на інтернет, без реклами й стеження. Усе лишається на цьому телефоні.</string>
@@ -527,4 +527,17 @@
     <string name="share">Поділитися</string>
     <string name="to_trash">У кошик</string>
     <string name="moved_to_trash">Переміщено в кошик — можна відновити протягом 30 днів</string>
+    <string name="builtin_commands_title">Вбудовані команди</string>
+    <string name="builtin_commands_hint">Дзвінки, будильник, ліхтарик, музика… — трьома групами</string>
+    <string name="recognition_title">Розпізнавання й відповіді</string>
+    <string name="recognition_hint">Офлайн-моделі, голос відповідей, асистент</string>
+    <string name="vgroup_calls">Дзвінки й повідомлення</string>
+    <string name="vgroup_calls_example">«подзвони …», «напиши SMS …», «напиши в месенджері …»</string>
+    <string name="vgroup_phone">Телефон</string>
+    <string name="vgroup_phone_example">«будильник на 7:30», «таймер 10 хвилин», «ліхтарик», «яскравість 50», «вайфай», «пауза»</string>
+    <string name="vgroup_other">Інше</string>
+    <string name="vgroup_other_example">«маршрут до …», «подія завтра о 15», «котра година»</string>
+    <string name="vgroup_partial">Увімкнено %1$d з %2$d</string>
+    <string name="details_show">Детальніше</string>
+    <string name="details_hide">Згорнути детальне</string>
 </resources>

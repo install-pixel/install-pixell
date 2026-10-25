@@ -172,8 +172,8 @@
     <string name="section_appearance_hint">Black wallpaper, grey icons, dark theme</string>
     <string name="section_search">Search</string>
     <string name="section_search_hint">Settings, contacts, calls, calendar, SMS, notifications, media</string>
-    <string name="section_voice">Voice</string>
-    <string name="section_voice_hint">Offline models and recognition</string>
+    <string name="section_voice">Voice and commands</string>
+    <string name="section_voice_hint">My commands, built-in commands, recognition</string>
     <string name="section_battery_hint">Charge protection, background apps</string>
     <string name="section_about">About Black Glass</string>
     <string name="about_note">A minimal offline launcher: no internet permission, no ads, no tracking. Everything stays on this phone.</string>
@@ -527,4 +527,17 @@
     <string name="share">Share</string>
     <string name="to_trash">To trash</string>
     <string name="moved_to_trash">Moved to trash — it can be restored for 30 days</string>
+    <string name="builtin_commands_title">Built-in commands</string>
+    <string name="builtin_commands_hint">Calls, alarm, flashlight, music… — in three groups</string>
+    <string name="recognition_title">Recognition and answers</string>
+    <string name="recognition_hint">Offline models, answer voice, assistant</string>
+    <string name="vgroup_calls">Calls and messages</string>
+    <string name="vgroup_calls_example">“call …”, “text …”, “message … in a messenger”</string>
+    <string name="vgroup_phone">Phone</string>
+    <string name="vgroup_phone_example">“alarm 7:30”, “timer 10 minutes”, “flashlight”, “brightness 50”, “wifi”, “pause”</string>
+    <string name="vgroup_other">Other</string>
+    <string name="vgroup_other_example">“route to …”, “event tomorrow at 3”, “what time is it”</string>
+    <string name="vgroup_partial">On: %1$d of %2$d</string>
+    <string name="details_show">More detail</string>
+    <string name="details_hide">Less detail</string>
 </resources>

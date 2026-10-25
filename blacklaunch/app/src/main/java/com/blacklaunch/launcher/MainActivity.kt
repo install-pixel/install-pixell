@@ -335,7 +335,7 @@ class MainActivity : ComponentActivity() {
                         var page by remember { mutableStateOf<SettingsNav>(SettingsNav.Main) }
                         when (val current = page) {
                             SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
-                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.CustomCommands, SettingsNav.Battery, SettingsNav.About,
+                            SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Recognition, SettingsNav.CustomCommands, SettingsNav.Battery, SettingsNav.About,
                             -> SettingsScreen(
                                 page = current,
                                 onNavigate = { page = it },

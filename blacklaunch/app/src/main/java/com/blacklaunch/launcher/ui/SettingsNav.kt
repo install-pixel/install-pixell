@@ -8,6 +8,7 @@ sealed interface SettingsNav {
     data object Search : SettingsNav
     data object Voice : SettingsNav
     data object VoiceActions : SettingsNav
+    data object Recognition : SettingsNav
     data object CustomCommands : SettingsNav
     data object BatteryApps : SettingsNav
     data object Battery : SettingsNav

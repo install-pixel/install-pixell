@@ -233,6 +233,20 @@ fun SettingsScreen(
         }
 
         SettingsNav.Voice -> SettingsPage(stringResource(R.string.section_voice), toMain) {
+            Card {
+                MenuRow(Icons.Filled.PlayArrow, R.string.custom_commands_title, R.string.custom_commands_menu_hint) {
+                    onNavigate(SettingsNav.CustomCommands)
+                }
+                MenuRow(painterResource(R.drawable.ic_mic), R.string.builtin_commands_title, R.string.builtin_commands_hint) {
+                    onNavigate(SettingsNav.VoiceActions)
+                }
+                MenuRow(Icons.Filled.Settings, R.string.recognition_title, R.string.recognition_hint) {
+                    onNavigate(SettingsNav.Recognition)
+                }
+            }
+        }
+
+        SettingsNav.Recognition -> SettingsPage(stringResource(R.string.recognition_title), { onNavigate(SettingsNav.Voice) }) {
             LaunchedEffect(Unit) { onCheckOffline() }
             Card {
                 Text(stringResource(R.string.models_section), color = Oled.TextPrimary, fontSize = 17.sp)
@@ -255,36 +269,6 @@ fun SettingsScreen(
                 Note(stringResource(R.string.voice_section_note))
             }
             Card {
-                MenuRow(painterResource(R.drawable.ic_mic), R.string.voice_actions_title, R.string.voice_actions_menu_hint) {
-                    onNavigate(SettingsNav.VoiceActions)
-                }
-                MenuRow(Icons.Filled.PlayArrow, R.string.custom_commands_title, R.string.custom_commands_menu_hint) {
-                    onNavigate(SettingsNav.CustomCommands)
-                }
-            }
-        }
-
-        SettingsNav.VoiceActions -> SettingsPage(stringResource(R.string.voice_actions_title), { onNavigate(SettingsNav.Voice) }) {
-            Card {
-                Note(stringResource(R.string.voice_actions_note))
-                VoiceActionKind.entries.forEach { kind ->
-                    SwitchRow(
-                        title = stringResource(kind.title()),
-                        subtitle = stringResource(kind.example()),
-                        checked = kind in voiceActions,
-                        onCheckedChange = { onVoiceActionChange(kind, it) },
-                    )
-                }
-            }
-            Card {
-                if (VoiceActionKind.CALLS in voiceActions) {
-                    SwitchRow(
-                        title = stringResource(R.string.direct_call_title),
-                        subtitle = stringResource(R.string.direct_call_subtitle),
-                        checked = directCall,
-                        onCheckedChange = onDirectCallChange,
-                    )
-                }
                 SwitchRow(
                     title = stringResource(R.string.speak_answers_title),
                     subtitle = stringResource(R.string.speak_answers_subtitle),
@@ -311,6 +295,46 @@ fun SettingsScreen(
                 Note(stringResource(R.string.assistant_note))
                 ActionOption(R.string.assistant_open, Icons.Filled.Settings, onOpenDefaultApps)
             }
+        }
+
+        SettingsNav.VoiceActions -> SettingsPage(stringResource(R.string.builtin_commands_title), { onNavigate(SettingsNav.Voice) }) {
+            // Три групи замість 11 перемикачів; «Детальніше» — окремі перемикачі для тонкого налаштування.
+            var details by remember { mutableStateOf(false) }
+            Card { Note(stringResource(R.string.voice_actions_note)) }
+            VOICE_GROUPS.forEach { group ->
+                Card {
+                    val on = group.kinds.count { it in voiceActions }
+                    SwitchRow(
+                        title = stringResource(group.title),
+                        subtitle = if (on in 1 until group.kinds.size) {
+                            stringResource(R.string.vgroup_partial, on, group.kinds.size)
+                        } else {
+                            stringResource(group.example)
+                        },
+                        checked = on > 0,
+                        onCheckedChange = { enabled -> group.kinds.forEach { onVoiceActionChange(it, enabled) } },
+                    )
+                    if (details) {
+                        group.kinds.forEach { kind ->
+                            SwitchRow(
+                                title = stringResource(kind.title()),
+                                subtitle = stringResource(kind.example()),
+                                checked = kind in voiceActions,
+                                onCheckedChange = { onVoiceActionChange(kind, it) },
+                            )
+                        }
+                    }
+                    if (VoiceActionKind.CALLS in group.kinds && VoiceActionKind.CALLS in voiceActions) {
+                        SwitchRow(
+                            title = stringResource(R.string.direct_call_title),
+                            subtitle = stringResource(R.string.direct_call_subtitle),
+                            checked = directCall,
+                            onCheckedChange = onDirectCallChange,
+                        )
+                    }
+                }
+            }
+            ActionOption(if (details) R.string.details_hide else R.string.details_show, Icons.Filled.Settings) { details = !details }
         }
 
         SettingsNav.CustomCommands -> SettingsPage(stringResource(R.string.custom_commands_title), { onNavigate(SettingsNav.Voice) }) {
@@ -510,3 +534,15 @@ private fun GroupKind.label(): Int = when (this) {
     GroupKind.PHOTOS -> R.string.group_photos
 }
 
+/** Група вбудованих команд у налаштуваннях: назва, приклад фраз і що входить. */
+private class VoiceGroup(@StringRes val title: Int, @StringRes val example: Int, val kinds: List<VoiceActionKind>)
+
+private val VOICE_GROUPS = listOf(
+    VoiceGroup(R.string.vgroup_calls, R.string.vgroup_calls_example, listOf(VoiceActionKind.CALLS, VoiceActionKind.SMS, VoiceActionKind.MESSENGERS)),
+    VoiceGroup(
+        R.string.vgroup_phone,
+        R.string.vgroup_phone_example,
+        listOf(VoiceActionKind.ALARM, VoiceActionKind.FLASHLIGHT, VoiceActionKind.DISPLAY, VoiceActionKind.PANELS, VoiceActionKind.MEDIA),
+    ),
+    VoiceGroup(R.string.vgroup_other, R.string.vgroup_other_example, listOf(VoiceActionKind.NAVIGATION, VoiceActionKind.CALENDAR, VoiceActionKind.TIME)),
+)
