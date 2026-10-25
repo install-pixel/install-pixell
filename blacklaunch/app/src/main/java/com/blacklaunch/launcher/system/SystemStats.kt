@@ -226,8 +226,20 @@ class SystemStats(context: Context) {
                 val physical = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) manager.getCameraCharacteristics(id).physicalCameraIds else emptySet()
                 if (physical.isEmpty()) listOf(id) else physical.toList()
             }.distinct()
+            // Деякі прошивки показують той самий сенсор під кількома номерами (інший режим) — такі рахуємо раз.
+            val seen = HashSet<String>()
             ids.mapNotNull { id ->
                 val c = manager.getCameraCharacteristics(id)
+                // Лише фотокамери: датчики глибини чи ІЧ без звичайного знімання не рахуємо.
+                val caps = c.get(android.hardware.camera2.CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                if (caps != null && android.hardware.camera2.CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE !in caps) return@mapNotNull null
+                val sensor = listOf(
+                    c.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING),
+                    c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE),
+                    c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE),
+                    c.get(android.hardware.camera2.CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)?.toList(),
+                ).joinToString("|")
+                if (!seen.add(sensor)) return@mapNotNull null
                 // Сенсори 50 Мп звично звітують «об'єднану» роздільність (12,5 Мп); повна — окремим ключем (Android 12+).
                 val full = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE_MAXIMUM_RESOLUTION)
@@ -241,7 +253,7 @@ class SystemStats(context: Context) {
         }.getOrDefault(emptyList())
         val patch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Build.VERSION.SECURITY_PATCH.ifBlank { null } else null
         return DeviceInfo(
-            model, soc?.let { socName(it) }, Runtime.getRuntime().availableProcessors(), clusters(), Build.VERSION.RELEASE, patch,
+            model, soc?.let { socName(it) }, cores(), clusters(), Build.VERSION.RELEASE, patch,
             System.getProperty("os.version")?.substringBefore('-'),
             "${maxOf(w, h)}×${minOf(w, h)}", inches, hz, cameras, memory().totalBytes, storage().totalBytes,
         )
@@ -254,8 +266,19 @@ class SystemStats(context: Context) {
     }
 
     /** Ядра, згруповані за найвищою частотою: [(2, 4320), (6, 3530)]. */
+    /**
+     * Скільки ядер у процесорі: з системного списку «present» («0-7» → 8). [Runtime.availableProcessors] рахує лише
+     * ввімкнені зараз — прошивка може тимчасово вимикати частину ядер, щоб берегти батарею.
+     */
+    private fun cores(): Int = runCatching {
+        java.io.File("/sys/devices/system/cpu/present").readText().trim().split(',').sumOf { part ->
+            val bounds = part.split('-').map { it.trim().toInt() }
+            if (bounds.size == 2) bounds[1] - bounds[0] + 1 else 1
+        }
+    }.getOrNull()?.takeIf { it > 0 } ?: Runtime.getRuntime().availableProcessors()
+
     private fun clusters(): List<Pair<Int, Int>> = runCatching {
-        val cores = Runtime.getRuntime().availableProcessors()
+        val cores = cores()
         val max = (0 until cores).mapNotNull { cpu ->
             java.io.File("/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq").takeIf { it.canRead() }?.readText()?.trim()?.toIntOrNull()?.div(1000)
         }
