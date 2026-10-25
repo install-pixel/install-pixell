@@ -585,7 +585,7 @@
     <string name="mon_free">wolne %1$s</string>
     <string name="mon_headroom">zapas %1$d%%</string>
     <string name="mon_charging">ładuje się</string>
-    <string name="mon_discharging">rozładowanie</string>
+    <string name="mon_discharging">rozładowuje się</string>
     <string name="mon_current">PRĄD BATERII</string>
     <string name="mon_memory_graph">RAM</string>
     <string name="mon_voltage">napięcie</string>
@@ -593,7 +593,7 @@
     <string name="mon_health">stan</string>
     <string name="mon_to_full">do 100%</string>
     <string name="mon_pressure">brak pamięci</string>
-    <string name="mon_uptime">czas pracy</string>
+    <string name="mon_uptime">bez restartu %1$s</string>
     <string name="mon_yes">tak</string>
     <string name="mon_no">nie</string>
     <string name="mon_screen_today">ekran dziś %1$s</string>
@@ -622,7 +622,7 @@
     <string name="mon_cores">%1$d rdzeni</string>
     <string name="mon_screen">ekran</string>
     <string name="mon_memory_total">RAM · pamięć</string>
-    <string name="mon_cameras">aparaty (↺ przedni)</string>
+    <string name="mon_cameras">aparaty dostępne dla aplikacji</string>
     <string name="mon_patch">poprawka zabezpieczeń</string>
     <string name="mon_kernel">jądro</string>
     <string name="mtile_device">Dane telefonu (stuknij, by rozwinąć)</string>
@@ -648,4 +648,8 @@
     <string name="mon_row_disk">DYSK</string>
     <string name="mon_row_heat">CIEPŁO</string>
     <string name="mon_row_net">SIEĆ</string>
+    <string name="mon_signal_pct">sygnał %1$d%%</string>
+    <string name="mon_ghz">%1$s GHz</string>
+    <string name="mon_cam_back">tylne: %1$s MP</string>
+    <string name="mon_cam_front">przedni: %1$s MP</string>
 </resources>

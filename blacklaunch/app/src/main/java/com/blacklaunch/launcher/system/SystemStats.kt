@@ -55,13 +55,15 @@ data class DeviceInfo(
     /** Чип: «Qualcomm SM8750» (Android 12+), інакше null. */
     val soc: String?,
     val cores: Int,
+    /** Кластери ядер: кількість і найвища частота, МГц (з офіційного sysfs; не прочиталось — порожньо). */
+    val clusters: List<Pair<Int, Int>>,
     val android: String,
     val securityPatch: String?,
     val kernel: String?,
     val screenPx: String,
     val screenInches: Float?,
     val refreshHz: Int?,
-    /** Камери: напрямок (true — фронтальна) і мегапікселі. */
+    /** Камери, які телефон відкриває програмам: напрямок (true — фронтальна) і мегапікселі на повній роздільності. */
     val cameras: List<Pair<Boolean, Float>>,
     val ramBytes: Long,
     val storageBytes: Long,
@@ -188,20 +190,48 @@ class SystemStats(context: Context) {
         val hz = display?.supportedModes?.maxOfOrNull { it.refreshRate }?.let { kotlin.math.round(it).toInt() }
         val cameras = runCatching {
             val manager = app.getSystemService(android.hardware.camera2.CameraManager::class.java)
-            manager.cameraIdList.mapNotNull { id ->
+            // Логічна камера може складатися з кількох фізичних (основна, ширококутна, теле) — беремо й їх.
+            val ids = manager.cameraIdList.flatMap { id ->
+                val physical = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) manager.getCameraCharacteristics(id).physicalCameraIds else emptySet()
+                if (physical.isEmpty()) listOf(id) else physical.toList()
+            }.distinct()
+            ids.mapNotNull { id ->
                 val c = manager.getCameraCharacteristics(id)
-                val size = c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE) ?: return@mapNotNull null
+                // Сенсори 50 Мп звично звітують «об'єднану» роздільність (12,5 Мп); повна — окремим ключем (Android 12+).
+                val full = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE_MAXIMUM_RESOLUTION)
+                } else {
+                    null
+                }
+                val size = full ?: c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE) ?: return@mapNotNull null
                 val front = c.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING) == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT
                 front to size.width * size.height / 1_000_000f
-            }.distinct()
+            }
         }.getOrDefault(emptyList())
         val patch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Build.VERSION.SECURITY_PATCH.ifBlank { null } else null
         return DeviceInfo(
-            model, soc, Runtime.getRuntime().availableProcessors(), Build.VERSION.RELEASE, patch,
+            model, soc?.let { socName(it) }, Runtime.getRuntime().availableProcessors(), clusters(), Build.VERSION.RELEASE, patch,
             System.getProperty("os.version")?.substringBefore('-'),
             "${maxOf(w, h)}×${minOf(w, h)}", inches, hz, cameras, memory().totalBytes, storage().totalBytes,
         )
     }
+
+    /** «QTI SM8750» → «Snapdragon 8 Elite (SM8750)» для відомих чипів, інакше як дає Android. */
+    private fun socName(soc: String): String {
+        val code = soc.substringAfterLast(' ')
+        return SOC_NAMES[code]?.let { "$it ($code)" } ?: soc
+    }
+
+    /** Ядра, згруповані за найвищою частотою: [(2, 4320), (6, 3530)]. */
+    private fun clusters(): List<Pair<Int, Int>> = runCatching {
+        val cores = Runtime.getRuntime().availableProcessors()
+        val max = (0 until cores).mapNotNull { cpu ->
+            java.io.File("/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq").takeIf { it.canRead() }?.readText()?.trim()?.toIntOrNull()?.div(1000)
+        }
+        // Неповні дані не показуємо.
+        if (max.size != cores) return@runCatching emptyList()
+        max.groupingBy { it }.eachCount().map { (mhz, count) -> count to mhz }.sortedByDescending { it.second }
+    }.getOrDefault(emptyList())
 
     @Suppress("DEPRECATION")
     private fun wifiRssi(): Int? = runCatching {
@@ -262,5 +292,11 @@ class SystemStats(context: Context) {
         const val MICROAMP_THRESHOLD = 20_000
         const val HEADROOM_FORECAST_S = 10
         const val TOP_APPS = 5
+        val SOC_NAMES = mapOf(
+            "SM8850" to "Snapdragon 8 Elite Gen 5", "SM8750" to "Snapdragon 8 Elite", "SM8650" to "Snapdragon 8 Gen 3",
+            "SM8550" to "Snapdragon 8 Gen 2", "SM8475" to "Snapdragon 8+ Gen 1", "SM8450" to "Snapdragon 8 Gen 1",
+            "SM8350" to "Snapdragon 888", "SM8250" to "Snapdragon 865", "SM7675" to "Snapdragon 7+ Gen 3",
+            "SM7550" to "Snapdragon 7 Gen 3", "SM6450" to "Snapdragon 6 Gen 1",
+        )
     }
 }

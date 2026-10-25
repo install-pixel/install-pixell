@@ -593,7 +593,7 @@
     <string name="mon_health">health</string>
     <string name="mon_to_full">to 100%</string>
     <string name="mon_pressure">memory pressure</string>
-    <string name="mon_uptime">uptime</string>
+    <string name="mon_uptime">since restart %1$s</string>
     <string name="mon_yes">yes</string>
     <string name="mon_no">no</string>
     <string name="mon_screen_today">screen today %1$s</string>
@@ -622,7 +622,7 @@
     <string name="mon_cores">%1$d cores</string>
     <string name="mon_screen">screen</string>
     <string name="mon_memory_total">RAM · storage</string>
-    <string name="mon_cameras">cameras (↺ front)</string>
+    <string name="mon_cameras">cameras available to apps</string>
     <string name="mon_patch">security patch</string>
     <string name="mon_kernel">kernel</string>
     <string name="mtile_device">Phone specs (tap to expand)</string>
@@ -648,4 +648,8 @@
     <string name="mon_row_disk">DISK</string>
     <string name="mon_row_heat">HEAT</string>
     <string name="mon_row_net">NET</string>
+    <string name="mon_signal_pct">signal %1$d%%</string>
+    <string name="mon_ghz">%1$s GHz</string>
+    <string name="mon_cam_back">rear: %1$s MP</string>
+    <string name="mon_cam_front">front: %1$s MP</string>
 </resources>

@@ -585,7 +585,7 @@
     <string name="mon_free">вільно %1$s</string>
     <string name="mon_headroom">запас %1$d%%</string>
     <string name="mon_charging">заряджається</string>
-    <string name="mon_discharging">розряд</string>
+    <string name="mon_discharging">розряджається</string>
     <string name="mon_current">СТРУМ БАТАРЕЇ</string>
     <string name="mon_memory_graph">RAM</string>
     <string name="mon_voltage">напруга</string>
@@ -593,7 +593,7 @@
     <string name="mon_health">стан</string>
     <string name="mon_to_full">до 100%</string>
     <string name="mon_pressure">пам\'ять тисне</string>
-    <string name="mon_uptime">у роботі</string>
+    <string name="mon_uptime">без перезапуску %1$s</string>
     <string name="mon_yes">так</string>
     <string name="mon_no">ні</string>
     <string name="mon_screen_today">екран сьогодні %1$s</string>
@@ -622,7 +622,7 @@
     <string name="mon_cores">%1$d ядер</string>
     <string name="mon_screen">екран</string>
     <string name="mon_memory_total">RAM · сховище</string>
-    <string name="mon_cameras">камери (↺ фронтальна)</string>
+    <string name="mon_cameras">камери, доступні програмам</string>
     <string name="mon_patch">оновлення безпеки</string>
     <string name="mon_kernel">ядро</string>
     <string name="mtile_device">Характеристики телефона (дотик — повністю)</string>
@@ -648,4 +648,8 @@
     <string name="mon_row_disk">ДИСК</string>
     <string name="mon_row_heat">ТЕПЛО</string>
     <string name="mon_row_net">МЕРЕЖА</string>
+    <string name="mon_signal_pct">сигнал %1$d%%</string>
+    <string name="mon_ghz">%1$s ГГц</string>
+    <string name="mon_cam_back">задні: %1$s Мп</string>
+    <string name="mon_cam_front">фронтальна: %1$s Мп</string>
 </resources>
