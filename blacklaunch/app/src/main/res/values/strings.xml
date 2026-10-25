@@ -653,7 +653,6 @@
     <string name="mon_cam_back">rear: %1$s</string>
     <string name="mon_cam_front">front: %1$s</string>
     <string name="mon_u_ma">%1$s mA</string>
-    <string name="mon_u_mah">%1$s mAh</string>
     <string name="mon_u_v">%1$s V</string>
     <string name="mon_u_w">%1$s W</string>
     <string name="mon_u_dbm">%1$d dBm</string>
@@ -668,11 +667,9 @@
     <string name="mon_wifi_today">Wi‑Fi today %1$s</string>
     <string name="mon_mobile_today">mobile today %1$s</string>
     <string name="mon_unlocks">unlocks %1$d</string>
-    <string name="mon_charge_now">charge now</string>
-    <string name="mon_capacity">full capacity now (estimate)</string>
     <string name="mon_power">power</string>
-    <string name="mon_down">download now</string>
-    <string name="mon_up">upload now</string>
+    <string name="mon_down">receiving now</string>
+    <string name="mon_up">sending now</string>
     <string name="mon_link_up">Android estimate: upload</string>
     <string name="mon_apps_label">apps and their data</string>
     <string name="mon_wifi_label">Wi‑Fi today</string>
@@ -681,4 +678,6 @@
     <string name="mon_wifi_link">connection %1$d Mbit/s</string>
     <string name="mon_wifi_rx">Wi‑Fi connection: receive</string>
     <string name="mon_wifi_tx">Wi‑Fi connection: send</string>
+    <string name="mon_net_now">receiving %1$s · sending %2$s</string>
+    <string name="mon_net_graph">graph — receiving, last 5 min</string>
 </resources>

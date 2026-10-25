@@ -162,8 +162,9 @@ internal fun MonitorScreen(
     val powerText = s.battery.powerW?.let { stringResource(R.string.mon_u_w, "%.1f".format(abs(it))) }
     val voltageText = s.battery.voltageMv?.let { stringResource(R.string.mon_u_v, "%.2f".format(it / 1000f)) }
     val stateText = stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging)
+    // Словами, а не стрілками: скільки телефон отримує й надсилає щосекунди.
     val rateText = rate?.let { (down, up) ->
-        "↓ " + stringResource(R.string.mon_u_rate, size(down)) + "   ↑ " + stringResource(R.string.mon_u_rate, size(up))
+        stringResource(R.string.mon_net_now, stringResource(R.string.mon_u_rate, size(down)), stringResource(R.string.mon_u_rate, size(up)))
     }
 
     Column(
@@ -266,7 +267,8 @@ internal fun MonitorScreen(
                 // Смуга — сила сигналу (повна = 100%), графік — швидкість отримання зараз.
                 signal?.let { Segments(it, accent) }
                 if (downHistory.size > 1) Sparkline(downHistory, accent, 0f to maxOf(downHistory.max(), 1f), Modifier.fillMaxWidth().height(32.dp))
-                Footnote(listOfNotNull(rateText, linkText).joinToString(" · "))
+                rateText?.let { Footnote(it) }
+                Footnote(listOfNotNull(linkText, stringResource(R.string.mon_net_graph).takeIf { downHistory.size > 1 }).joinToString(" · "))
             }
         }
 
@@ -311,8 +313,6 @@ internal fun MonitorScreen(
                     powerText?.let { Plate(stringResource(R.string.mon_power), it) },
                     voltageText?.let { Plate(stringResource(R.string.mon_voltage), it) },
                     temp?.let { Plate(stringResource(R.string.mon_temperature), "%.1f °C".format(it)) },
-                    s.battery.chargeMah?.let { Plate(stringResource(R.string.mon_charge_now), stringResource(R.string.mon_u_mah, "$it")) },
-                    s.battery.capacityMah?.let { Plate(stringResource(R.string.mon_capacity), stringResource(R.string.mon_u_mah, "~$it")) },
                     healthLabel(s.battery.health)?.let { Plate(stringResource(R.string.mon_health), stringResource(it)) },
                     s.battery.cycles?.let { Plate(stringResource(R.string.mon_cycles), "$it") },
                     s.battery.toFullMs?.let { Plate(stringResource(R.string.mon_to_full), duration(it)) },

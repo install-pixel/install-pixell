@@ -653,7 +653,6 @@
     <string name="mon_cam_back">tylne: %1$s</string>
     <string name="mon_cam_front">przedni: %1$s</string>
     <string name="mon_u_ma">%1$s mA</string>
-    <string name="mon_u_mah">%1$s mAh</string>
     <string name="mon_u_v">%1$s V</string>
     <string name="mon_u_w">%1$s W</string>
     <string name="mon_u_dbm">%1$d dBm</string>
@@ -668,11 +667,9 @@
     <string name="mon_wifi_today">Wi‑Fi dziś %1$s</string>
     <string name="mon_mobile_today">komórkowe dziś %1$s</string>
     <string name="mon_unlocks">odblokowań %1$d</string>
-    <string name="mon_charge_now">ładunek teraz</string>
-    <string name="mon_capacity">pełna pojemność teraz (szacunek)</string>
     <string name="mon_power">moc</string>
-    <string name="mon_down">pobieranie teraz</string>
-    <string name="mon_up">wysyłanie teraz</string>
+    <string name="mon_down">odbiera teraz</string>
+    <string name="mon_up">wysyła teraz</string>
     <string name="mon_link_up">szacunek Androida: wysyłanie</string>
     <string name="mon_apps_label">aplikacje z danymi</string>
     <string name="mon_wifi_label">Wi‑Fi dziś</string>
@@ -681,4 +678,6 @@
     <string name="mon_wifi_link">połączenie %1$d Mb/s</string>
     <string name="mon_wifi_rx">połączenie Wi‑Fi: odbiór</string>
     <string name="mon_wifi_tx">połączenie Wi‑Fi: wysyłanie</string>
+    <string name="mon_net_now">odbiera %1$s · wysyła %2$s</string>
+    <string name="mon_net_graph">wykres — odbiór, ostatnie 5 min</string>
 </resources>

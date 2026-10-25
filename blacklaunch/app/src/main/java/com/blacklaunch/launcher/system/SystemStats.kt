@@ -33,11 +33,8 @@ data class BatteryStats(
     val cycles: Int?,
     /** Скільки до повного заряду, мс (лише під час заряджання, Android 9+). */
     val toFullMs: Long?,
-    /** Заряд у батареї зараз, мА·год (лічильник заряду; не всі прошивки дають). */
-    val chargeMah: Int?,
 ) {
-    /** Оцінка повної ємності зараз: заряд ÷ відсоток (з 20%+, щоб похибка не роздувалась). */
-    val capacityMah: Int? get() = chargeMah?.takeIf { percent >= 20 }?.let { it * 100 / percent }
+    // Ємність із лічильника заряду прибрано (1.1.13): на OnePlus він давав ~78% при «Максимальній ємності» 96% у налаштуваннях.
 
     /** Потужність, Вт: струм × напруга. */
     val powerW: Float? get() = if (currentMa != null && voltageMv != null) currentMa * voltageMv / 1_000_000f else null
@@ -134,9 +131,7 @@ class SystemStats(context: Context) {
         val percent = if (level >= 0 && scale > 0) level * 100 / scale else batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 0
         // Знак струму прошивки віддають по-різному (OnePlus — навпаки): вирівнюємо за станом заряду.
         val current = currentMa()?.let { ma -> if (charging) abs(ma) else -abs(ma) }
-        val charge = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
-            ?.takeIf { it > 0 && it != Int.MIN_VALUE }?.let { if (it > MICROAMP_HOURS_THRESHOLD) it / 1000 else it }
-        return BatteryStats(percent, charging, current, voltage, temperature, health, cycles, toFull, charge)
+        return BatteryStats(percent, charging, current, voltage, temperature, health, cycles, toFull)
     }
 
     /** Android віддає мікроампери, але деякі прошивки — міліампери; великі значення — це мкА. */
@@ -376,7 +371,6 @@ class SystemStats(context: Context) {
         const val HEADROOM_FORECAST_S = 10
         const val TOP_APPS = 3
         const val MIN_TOP_MS = 60_000L
-        const val MICROAMP_HOURS_THRESHOLD = 100_000
         val SOC_NAMES = mapOf(
             "SM8850" to "Snapdragon 8 Elite Gen 5", "SM8750" to "Snapdragon 8 Elite", "SM8650" to "Snapdragon 8 Gen 3",
             "SM8550" to "Snapdragon 8 Gen 2", "SM8475" to "Snapdragon 8+ Gen 1", "SM8450" to "Snapdragon 8 Gen 1",

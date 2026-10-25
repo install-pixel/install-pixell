@@ -653,7 +653,6 @@
     <string name="mon_cam_back">задні: %1$s</string>
     <string name="mon_cam_front">фронтальна: %1$s</string>
     <string name="mon_u_ma">%1$s мА</string>
-    <string name="mon_u_mah">%1$s мА·год</string>
     <string name="mon_u_v">%1$s В</string>
     <string name="mon_u_w">%1$s Вт</string>
     <string name="mon_u_dbm">%1$d дБм</string>
@@ -668,11 +667,9 @@
     <string name="mon_wifi_today">Wi‑Fi сьогодні %1$s</string>
     <string name="mon_mobile_today">мобільні сьогодні %1$s</string>
     <string name="mon_unlocks">розблокувань %1$d</string>
-    <string name="mon_charge_now">заряд зараз</string>
-    <string name="mon_capacity">повна ємність зараз (оцінка)</string>
     <string name="mon_power">потужність</string>
-    <string name="mon_down">завантаження зараз</string>
-    <string name="mon_up">вивантаження зараз</string>
+    <string name="mon_down">отримує зараз</string>
+    <string name="mon_up">надсилає зараз</string>
     <string name="mon_link_up">оцінка Android: вивантаження</string>
     <string name="mon_apps_label">програми з даними</string>
     <string name="mon_wifi_label">Wi‑Fi сьогодні</string>
@@ -681,4 +678,6 @@
     <string name="mon_wifi_link">з\'єднання %1$d Мбіт/с</string>
     <string name="mon_wifi_rx">з\'єднання Wi‑Fi: прийом</string>
     <string name="mon_wifi_tx">з\'єднання Wi‑Fi: передача</string>
+    <string name="mon_net_now">отримує %1$s · надсилає %2$s</string>
+    <string name="mon_net_graph">графік — отримання за 5 хв</string>
 </resources>
