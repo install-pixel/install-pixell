@@ -12,6 +12,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import com.blacklaunch.launcher.profiles.NotificationMode
+import com.blacklaunch.launcher.profiles.SoundMode
 import androidx.activity.result.IntentSenderRequest
 import androidx.annotation.RequiresApi
 import com.blacklaunch.launcher.commands.CustomCommand
@@ -242,9 +244,11 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 for (name in viewModel.profileSwitched) {
-                    profileBanner.value = name
+                    // Разом з назвою — що профіль робить зі звуком, щоб тихий режим не вмикався непомітно.
+                    val text = bannerText(name)
+                    profileBanner.value = text
                     delay(PROFILE_BANNER_MS)
-                    if (profileBanner.value == name) profileBanner.value = null
+                    if (profileBanner.value == text) profileBanner.value = null
                 }
             }
         }
@@ -909,6 +913,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** «Відпочинок · Без звуку · Не турбувати»; звичайний звук не дописуємо. */
+    private fun bannerText(name: String): String {
+        val profile = profileViewModel.profiles.value.firstOrNull { it.name == name } ?: return name
+        val sound = when (profile.soundMode) {
+            SoundMode.VIBRATE -> getString(R.string.sound_vibrate)
+            SoundMode.SILENT -> getString(R.string.sound_silent)
+            else -> null
+        }
+        val dnd = if (profile.notificationMode == NotificationMode.DO_NOT_DISTURB) getString(R.string.notif_dnd) else null
+        return listOfNotNull(name, sound, dnd).joinToString(" · ")
+    }
+
     private fun openAppInfo(pkg: String) =
         startOrToast(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
 
@@ -1299,7 +1315,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Кроки автоматизації, яким потрібен екран (відкрити програму тощо). */
         const val EXTRA_RUN_STEPS = "com.blacklaunch.launcher.RUN_STEPS"
-        private const val PROFILE_BANNER_MS = 1_000L
+        private const val PROFILE_BANNER_MS = 1_500L
         private const val THUMB_CACHE = 200
         private const val THUMB_PX = 256
     }

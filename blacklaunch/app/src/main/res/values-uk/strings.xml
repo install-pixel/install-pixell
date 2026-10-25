@@ -543,4 +543,8 @@
     <string name="automation_last_seen">Остання подія, яку побачив Black Glass: %1$s</string>
     <string name="automation_last_seen_none">ще жодної</string>
     <string name="custom_command_save_hint">Щоб зберегти: фраза або подія і хоча б один крок</string>
+    <string name="phrase_conflict_command">Така фраза вже є в іншій команді без умови — виконається лише одна. Додайте «Лише якщо» або змініть фразу.</string>
+    <string name="phrase_conflict_profile">Так називається профіль — за цією фразою виконуватиметься ваша команда, а не перемикання на нього.</string>
+    <string name="phrase_conflict_app">Так називається програма «%1$s» — голосом виконуватиметься ваша команда, у пошуку видно обидві.</string>
+    <string name="phrase_conflict_builtin">Це також вбудована команда — виконуватиметься ваша.</string>
 </resources>

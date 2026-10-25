@@ -12,8 +12,11 @@ data class Appearance(
     val wallpaperTarget: WallpaperTarget = WallpaperTarget.HOME_AND_LOCK,
     /** Сірі одноколірні значки в результатах пошуку. */
     val monochromeIcons: Boolean = true,
-    /** Перемикання профілів свайпом вліво/вправо на головному екрані. */
-    val profileSwipe: Boolean = true,
+    /**
+     * Перемикання профілів свайпом вліво/вправо на головному екрані. Для нових встановлень вимкнено (0.35.0):
+     * свайп легко зачепити, а профіль може вимкнути звук. Збережений вибір не змінюється.
+     */
+    val profileSwipe: Boolean = false,
     /** Плашка з назвою профілю вгорі головного екрана. */
     val showProfileLabel: Boolean = true,
     /** Легкий вібровідгук на натисканнях — однаково в усьому BlackLaunch. */

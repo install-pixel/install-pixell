@@ -543,4 +543,8 @@
     <string name="automation_last_seen">Ostatnie zdarzenie, które zobaczył Black Glass: %1$s</string>
     <string name="automation_last_seen_none">jeszcze żadnego</string>
     <string name="custom_command_save_hint">Aby zapisać: fraza lub zdarzenie i co najmniej jeden krok</string>
+    <string name="phrase_conflict_command">Inne polecenie ma już tę frazę bez warunku — wykona się tylko jedno. Dodaj „Tylko jeśli” albo zmień frazę.</string>
+    <string name="phrase_conflict_profile">Tak nazywa się profil — po tej frazie wykona się Twoje polecenie, a nie przełączenie na niego.</string>
+    <string name="phrase_conflict_app">Tak nazywa się aplikacja „%1$s” — głosem wykona się Twoje polecenie, w wyszukiwaniu widać obie.</string>
+    <string name="phrase_conflict_builtin">To także wbudowane polecenie — wykona się Twoje.</string>
 </resources>

@@ -365,7 +365,7 @@ private fun HomeIdle(
             ) {
                 if (showProfileLabel && home.profileName.isNotEmpty()) {
                     Text(
-                        text = home.profileName.uppercase(),
+                        text = (profileBanner ?: home.profileName).uppercase(),
                         color = if (profileBanner != null) Oled.TextPrimary else Oled.TextSecondary,
                         fontSize = 12.sp,
                         letterSpacing = 1.5.sp,
@@ -384,7 +384,7 @@ private fun HomeIdle(
         if (glance == null && !dragging && showProfileLabel && home.profileName.isNotEmpty()) {
             // Постійна «скляна» плашка з назвою профілю; натискання — наступний профіль.
             ProfilePill(
-                name = home.profileName,
+                name = profileBanner ?: home.profileName,
                 highlighted = profileBanner != null,
                 onClick = if (home.profileCount > 1) ({ onSwitchProfile(1) }) else null,
                 modifier = topModifier,

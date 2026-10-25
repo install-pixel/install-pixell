@@ -543,4 +543,8 @@
     <string name="automation_last_seen">Last event Black Glass saw: %1$s</string>
     <string name="automation_last_seen_none">none yet</string>
     <string name="custom_command_save_hint">To save: a phrase or an event, and at least one step</string>
+    <string name="phrase_conflict_command">Another command already has this phrase without a condition — only one of them will run. Add “Only if” or change the phrase.</string>
+    <string name="phrase_conflict_profile">A profile has this name — your command will run instead of switching to it by this phrase.</string>
+    <string name="phrase_conflict_app">An app is called “%1$s” — by voice your command will run; search shows both.</string>
+    <string name="phrase_conflict_builtin">This is also a built-in command — your command will run instead.</string>
 </resources>

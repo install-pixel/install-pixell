@@ -221,11 +221,14 @@ fun SettingsScreen(
                 }
                 Note(stringResource(R.string.global_note))
             }
-            Card {
-                Text(stringResource(R.string.sms_help_title), color = Oled.TextPrimary, fontSize = 17.sp)
-                Note(stringResource(R.string.sms_help_new))
-                Note(stringResource(R.string.sms_help_old))
-                ActionOption(R.string.sms_help_open, Icons.Filled.Settings, onOpenAppInfo)
+            // Довідка «як увімкнути SMS» — лише поки SMS не ввімкнено; далі вона лише займає місце.
+            if (GroupKind.SMS !in globalKinds) {
+                Card {
+                    Text(stringResource(R.string.sms_help_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                    Note(stringResource(R.string.sms_help_new))
+                    Note(stringResource(R.string.sms_help_old))
+                    ActionOption(R.string.sms_help_open, Icons.Filled.Settings, onOpenAppInfo)
+                }
             }
             Card {
                 Note(stringResource(R.string.search_names_note))

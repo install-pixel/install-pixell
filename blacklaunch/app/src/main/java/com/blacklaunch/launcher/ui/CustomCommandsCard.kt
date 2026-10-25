@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.commands.CustomCommand
+import com.blacklaunch.launcher.commands.CommandCondition
+import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.AppSearchEngine
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.voice.VoiceCommand
@@ -88,6 +90,7 @@ internal fun CustomCommandsCard(
     if (current != null) {
         CommandEditor(
             command = current,
+            others = commands.filter { it.id != current.id },
             apps = apps,
             profiles = profiles,
             iconFor = iconFor,
@@ -134,9 +137,33 @@ internal fun CustomCommandsCard(
 
 private enum class StepPicker { MENU, APP, ACTION, PROFILE, TEXT }
 
+/** З чим збігається фраза: інша команда без умови, програма, профіль, вбудована команда. */
+@Composable
+private fun phraseConflict(
+    phrase: String,
+    condition: CommandCondition?,
+    others: List<CustomCommand>,
+    apps: List<AppInfo>,
+    profiles: List<String>,
+): String? {
+    val q = SearchNormalizer.normalize(phrase)
+    if (q.isEmpty()) return null
+    val twin = others.firstOrNull { SearchNormalizer.normalize(it.phrase) == q && it.condition == null }
+    return when {
+        twin != null && condition == null -> stringResource(R.string.phrase_conflict_command)
+        profiles.any { SearchNormalizer.normalize(it) == q } -> stringResource(R.string.phrase_conflict_profile)
+        apps.firstOrNull { SearchNormalizer.normalize(it.label) == q } != null ->
+            stringResource(R.string.phrase_conflict_app, apps.first { SearchNormalizer.normalize(it.label) == q }.label)
+        VoiceCommandParser.parse(phrase).let { it is VoiceCommand.Action || it is VoiceCommand.SwitchProfile || it == VoiceCommand.OpenLast } ->
+            stringResource(R.string.phrase_conflict_builtin)
+        else -> null
+    }
+}
+
 @Composable
 private fun CommandEditor(
     command: CustomCommand,
+    others: List<CustomCommand>,
     apps: List<AppInfo>,
     profiles: List<String>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -166,6 +193,8 @@ private fun CommandEditor(
             modifier = Modifier.fillMaxWidth(),
             colors = fieldColors(),
         )
+        // Фраза, що збігається з чимось іншим, — попереджаємо, щоб жодна команда не «зникала» мовчки.
+        phraseConflict(phrase, condition, others, apps, profiles)?.let { Note(it) }
         Text(stringResource(R.string.condition_title), color = Oled.TextSecondary, fontSize = 13.sp)
         ActionOption(condition?.let { conditionText(it) } ?: stringResource(R.string.condition_always), Icons.Filled.Lock) {
             pickingCondition = true
