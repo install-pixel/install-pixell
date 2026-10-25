@@ -13,15 +13,18 @@ data class ProfileDisplay(
     val suggestions: Boolean = true,
     val recentQueries: Boolean = true,
     val allAppsButton: Boolean = true,
+    /** Профіль у швидкому перемиканні (подвійний дотик, плитка, назва профілю, свайпи). */
+    val quickSwitch: Boolean = true,
 ) {
-    fun encode(): String = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton)
+    fun encode(): String = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch)
         .joinToString(",") { if (it) "1" else "0" }
 
     companion object {
+        /** До 0.28.0 бітів було 6 — тоді профіль у швидкому перемиканні. */
         fun decode(text: String?): ProfileDisplay? {
             val bits = text?.split(',')?.map { it == "1" } ?: return null
-            if (bits.size != 6) return null
-            return ProfileDisplay(bits[0], bits[1], bits[2], bits[3], bits[4], bits[5])
+            if (bits.size != 6 && bits.size != 7) return null
+            return ProfileDisplay(bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits.getOrElse(6) { true })
         }
     }
 }
@@ -41,8 +44,10 @@ class PrefsProfileDisplay(context: Context, private val defaults: () -> ProfileD
 
     fun set(profileId: String, display: ProfileDisplay) = setAll(listOf(profileId), display)
 
+    /** «Застосувати до всіх» — крім швидкого перемикання: його кожен профіль зберігає свій. */
     fun setAll(profileIds: List<String>, display: ProfileDisplay) {
-        _displays.value = _displays.value + profileIds.associateWith { display }
-        prefs.edit().apply { profileIds.forEach { putString(it, display.encode()) } }.apply()
+        val updated = profileIds.associateWith { display.copy(quickSwitch = of(it).quickSwitch) }
+        _displays.value = _displays.value + updated
+        prefs.edit().apply { updated.forEach { (id, value) -> putString(id, value.encode()) } }.apply()
     }
 }

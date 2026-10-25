@@ -476,4 +476,7 @@
     <string name="trigger_power_off">Charger disconnected</string>
     <string name="trigger_headset_on">Wired headphones plugged in</string>
     <string name="trigger_headset_off">Wired headphones unplugged</string>
+    <string name="quick_switch_title">In quick switching</string>
+    <string name="quick_switch_subtitle">Double tap, the tile, the profile name and swipes cycle only through such profiles; the rest — from settings, search or voice</string>
+    <string name="custom_step_panels_note">Wi‑Fi, Bluetooth and mobile data: Android lets only you switch them — the step opens a small panel with the switch, one tap.</string>
 </resources>

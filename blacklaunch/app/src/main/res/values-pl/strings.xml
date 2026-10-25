@@ -476,4 +476,7 @@
     <string name="trigger_power_off">Odłączono ładowarkę</string>
     <string name="trigger_headset_on">Podłączono słuchawki przewodowe</string>
     <string name="trigger_headset_off">Odłączono słuchawki przewodowe</string>
+    <string name="quick_switch_title">W szybkim przełączaniu</string>
+    <string name="quick_switch_subtitle">Podwójne stuknięcie, kafelek, nazwa profilu i przesunięcia przełączają tylko takie profile; resztę — z ustawień, wyszukiwania lub głosem</string>
+    <string name="custom_step_panels_note">Wi‑Fi, Bluetooth i dane mobilne Android pozwala przełączać tylko Tobie — krok otwiera mały panel z przełącznikiem, jedno stuknięcie.</string>
 </resources>

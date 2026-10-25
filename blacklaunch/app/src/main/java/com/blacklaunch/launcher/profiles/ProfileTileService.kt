@@ -41,7 +41,8 @@ class ProfileTileService : TileService() {
         super.onClick()
         (application as BlackLaunchApp).appScope.launch {
             val (all, active) = combine(repository.profiles, repository.activeProfile) { a, b -> a to b }.first()
-            all.neighbour(active?.id, 1)?.let { repository.setActive(it.id) }
+            val app = application as BlackLaunchApp
+            all.quickNeighbour(active?.id, 1) { app.profileDisplay.of(it).quickSwitch }?.let { repository.setActive(it.id) }
         }
     }
 

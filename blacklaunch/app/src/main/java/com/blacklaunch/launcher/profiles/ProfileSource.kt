@@ -19,6 +19,23 @@ fun List<LauncherProfile>.neighbour(currentId: String?, delta: Int): LauncherPro
     return this[Math.floorMod(index + delta, size)]
 }
 
+/**
+ * Швидке перемикання (подвійний дотик, плитка, назва профілю, свайпи) — лише профілі з [quick];
+ * якщо таких немає — усі. З профілю поза списком — до найближчого позначеного в тому ж напрямку.
+ */
+fun List<LauncherProfile>.quickNeighbour(currentId: String?, delta: Int, quick: (String) -> Boolean): LauncherProfile? {
+    val candidates = filter { quick(it.id) }.ifEmpty { this }
+    if (candidates.any { it.id == currentId }) return candidates.neighbour(currentId, delta)
+    val start = indexOfFirst { it.id == currentId }
+    if (start < 0) return candidates.first()
+    val step = if (delta < 0) -1 else 1
+    for (offset in 1..size) {
+        val profile = this[Math.floorMod(start + offset * step, size)]
+        if (profile in candidates) return profile
+    }
+    return null
+}
+
 /** Зміни списку закріплених програм (чисті функції — для тестів і екрана). */
 object PinnedEdits {
     fun add(keys: List<String>, key: String): List<String> = if (key in keys) keys else keys + key

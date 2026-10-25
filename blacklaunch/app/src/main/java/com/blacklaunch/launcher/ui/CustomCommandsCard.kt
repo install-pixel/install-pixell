@@ -286,6 +286,8 @@ private fun ActionStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                 item { ActionOption(R.string.custom_action_timer, Icons.Filled.Settings) { param = R.string.step_timer } }
                 item { ActionOption(R.string.custom_action_alarm, Icons.Filled.Settings) { param = R.string.step_alarm } }
                 items(simple) { text -> ActionOption(text.replaceFirstChar { it.uppercase() }, Icons.Filled.Settings) { onPick(text) } }
+                // Чесно: Wi-Fi, Bluetooth і дані Android дозволяє перемикати лише самому користувачу.
+                item { Note(stringResource(R.string.custom_step_panels_note)) }
             }
         }
     }

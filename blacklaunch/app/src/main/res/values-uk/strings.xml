@@ -476,4 +476,7 @@
     <string name="trigger_power_off">Відключено зарядку</string>
     <string name="trigger_headset_on">Підключено дротові навушники</string>
     <string name="trigger_headset_off">Відключено дротові навушники</string>
+    <string name="quick_switch_title">У швидкому перемиканні</string>
+    <string name="quick_switch_subtitle">Подвійний дотик, плитка, назва профілю й свайпи гортають лише такі профілі; решта — з налаштувань, пошуку чи голосом</string>
+    <string name="custom_step_panels_note">Wi‑Fi, Bluetooth і мобільні дані Android дозволяє перемикати лише вам — крок відкриває маленьку панель з перемикачем, один дотик.</string>
 </resources>

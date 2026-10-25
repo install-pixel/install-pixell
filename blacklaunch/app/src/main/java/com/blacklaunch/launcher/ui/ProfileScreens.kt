@@ -264,6 +264,9 @@ fun ProfileEditScreen(
             SwitchRow(stringResource(R.string.all_apps_button_title), stringResource(R.string.all_apps_button_subtitle), display.allAppsButton) {
                 onDisplayChange(display.copy(allAppsButton = it))
             }
+            SwitchRow(stringResource(R.string.quick_switch_title), stringResource(R.string.quick_switch_subtitle), display.quickSwitch) {
+                onDisplayChange(display.copy(quickSwitch = it))
+            }
             ActionOption(R.string.display_apply_all, Icons.Filled.Done, onApplyDisplayToAll)
         }
 

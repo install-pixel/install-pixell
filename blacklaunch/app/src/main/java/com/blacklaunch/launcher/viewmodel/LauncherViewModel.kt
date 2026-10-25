@@ -20,7 +20,7 @@ import com.blacklaunch.launcher.profiles.HomeLayoutStore
 import com.blacklaunch.launcher.profiles.InMemoryHomeLayoutStore
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
-import com.blacklaunch.launcher.profiles.neighbour
+import com.blacklaunch.launcher.profiles.quickNeighbour
 import com.blacklaunch.launcher.search.AppSearchEngine
 import com.blacklaunch.launcher.search.InMemoryLearnedQueries
 import com.blacklaunch.launcher.search.IndexedName
@@ -152,6 +152,8 @@ class LauncherViewModel(
     globalModes: Flow<Map<String, GlobalMode>> = flowOf(emptyMap()),
     /** Програми за замовчуванням для дзвінків, SMS, календаря, налаштувань — для режиму «За програмами». */
     private val rolePackages: () -> RolePackages = { RolePackages() },
+    /** Чи профіль у швидкому перемиканні (свайпи, подвійний дотик, назва профілю). */
+    private val inQuickSwitch: (String) -> Boolean = { true },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -399,7 +401,7 @@ class LauncherViewModel(
 
     /** Свайп вліво/вправо: наступний чи попередній профіль по колу. */
     fun switchProfile(delta: Int) {
-        val next = profiles.value.neighbour(home.value.profileId, delta) ?: return
+        val next = profiles.value.quickNeighbour(home.value.profileId, delta, inQuickSwitch) ?: return
         if (next.id == home.value.profileId) return
         activate(next)
     }
