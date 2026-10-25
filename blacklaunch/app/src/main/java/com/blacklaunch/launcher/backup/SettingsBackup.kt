@@ -14,6 +14,7 @@ import com.blacklaunch.launcher.profiles.NotificationMode
 import com.blacklaunch.launcher.profiles.ProfileDisplay
 import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.profiles.SoundMode
+import com.blacklaunch.launcher.settings.MonitorTile
 import com.blacklaunch.launcher.voice.VoiceActionKind
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
@@ -86,6 +87,9 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             })
             put("globalKinds", JSONArray(app.globalSearchSettings.enabled.value.map { it.name }))
             put("offlineVoice", app.voiceSettings.mode.value.name)
+            app.monitorSettings.look.value.let { look ->
+                put("monitor", JSONObject().put("tiles", JSONArray(look.tiles.map { it.name })).put("accent", look.accent.name))
+            }
         }.toString(2)
     }
 
@@ -175,6 +179,12 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         }
         root.optJSONArray("globalKinds")?.strings()?.toSet()?.let { kinds ->
             GroupKind.entries.forEach { app.globalSearchSettings.set(it, it.name in kinds) }
+        }
+        root.optJSONObject("monitor")?.let { m ->
+            m.optJSONArray("tiles")?.strings()?.toSet()?.let { tiles ->
+                MonitorTile.entries.forEach { app.monitorSettings.setTile(it, it.name in tiles) }
+            }
+            app.monitorSettings.setAccent(enumOr(m.optString("accent"), app.monitorSettings.look.value.accent))
         }
         root.optString("offlineVoice").takeIf { it.isNotEmpty() }?.let {
             app.voiceSettings.setMode(enumOr(it, app.voiceSettings.mode.value))

@@ -95,6 +95,8 @@ fun SettingsScreen(
     onShowApp: (String) -> Unit,
     /** Сторінка «Мої команди» — будує екран, бо їй потрібні програми, профілі й Bluetooth. */
     commandsPage: @Composable () -> Unit,
+    /** Сторінка «Монітор системи» — будує екран (потрібні стан доступу й відкриття монітора). */
+    monitorPage: @Composable () -> Unit = {},
     onOpenDefaultApps: () -> Unit,
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
@@ -345,6 +347,10 @@ fun SettingsScreen(
             ActionOption(if (details) R.string.details_hide else R.string.details_show, Icons.Filled.Settings) { details = !details }
         }
 
+        SettingsNav.Monitor -> SettingsPage(stringResource(R.string.section_monitor), toMain) {
+            monitorPage()
+        }
+
         SettingsNav.CustomCommands -> SettingsPage(stringResource(R.string.custom_commands_title), { onNavigate(SettingsNav.Voice) }) {
             commandsPage()
         }
@@ -425,6 +431,7 @@ fun SettingsScreen(
                 MenuRow(painterResource(R.drawable.ic_battery), R.string.battery_section, R.string.section_battery_hint) {
                     onNavigate(SettingsNav.Battery)
                 }
+                MenuRow(Icons.Filled.Info, R.string.section_monitor, R.string.section_monitor_hint) { onNavigate(SettingsNav.Monitor) }
                 MenuRow(Icons.Filled.Lock, R.string.section_permissions, R.string.section_permissions_hint) { onNavigate(SettingsNav.Permissions) }
                 MenuRow(Icons.Filled.Info, R.string.section_about, null) { onNavigate(SettingsNav.About) }
             }

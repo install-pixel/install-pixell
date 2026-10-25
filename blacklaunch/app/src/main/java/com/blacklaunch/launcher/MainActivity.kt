@@ -12,6 +12,10 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
+import com.blacklaunch.launcher.global.SettingsCatalog
+import com.blacklaunch.launcher.ui.MonitorSettingsContent
+import com.blacklaunch.launcher.ui.MonitorScreen
 import com.blacklaunch.launcher.profiles.NotificationMode
 import com.blacklaunch.launcher.profiles.SoundMode
 import androidx.activity.result.IntentSenderRequest
@@ -252,6 +256,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                for (unused in viewModel.openMonitor) openMonitor()
+            }
+        }
         // Запущено як «цифровий асистент» — одразу пошук і мікрофон.
         if (savedInstanceState == null && !handleAssist(intent)) handleRunSteps(intent)
         setContent {
@@ -293,6 +302,10 @@ class MainActivity : ComponentActivity() {
             }
             val hiddenKeys by app.hiddenApps.hidden.collectAsStateWithLifecycle()
             val installedApps by repository.apps.collectAsStateWithLifecycle()
+            val monitorLook by app.monitorSettings.look.collectAsStateWithLifecycle()
+            val monitorShown by monitorOpen.collectAsStateWithLifecycle()
+            // Монітор відкрили командою з іншого профілю — «Назад» повертає звичайний екран.
+            BackHandler(enabled = monitorShown) { monitorOpen.value = false }
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 BlackHomeScreen(
@@ -300,6 +313,11 @@ class MainActivity : ComponentActivity() {
                     // «Показувати програми на екрані» вимкнено — значків не видно, профіль працює як раніше.
                     home = if (display.showApps) home else home.copy(pinned = emptyList()),
                     profileBanner = banner,
+                    monitor = if (display.monitor || monitorShown) {
+                        { modifier -> MonitorScreen(monitorLook, app.systemStats, ::appLabel, modifier) }
+                    } else {
+                        null
+                    },
                     onSwitchProfile = viewModel::switchProfile,
                     onMoveApp = viewModel::moveApp,
                     onRemoveApp = viewModel::unpin,
@@ -378,6 +396,17 @@ class MainActivity : ComponentActivity() {
                                 onOpenTtsSettings = { startOrToast(Intent(TTS_SETTINGS)) },
                                 hiddenApps = installedApps.filter { it.key in hiddenKeys }.sortedBy { it.label.lowercase() },
                                 onShowApp = app.hiddenApps::show,
+                                monitorPage = {
+                                    resumeTick.collectAsStateWithLifecycle().value
+                                    MonitorSettingsContent(
+                                        look = monitorLook,
+                                        usageAccess = app.systemStats.hasUsageAccess(),
+                                        onTile = app.monitorSettings::setTile,
+                                        onAccent = app.monitorSettings::setAccent,
+                                        onOpenUsageAccess = ::openUsageAccess,
+                                        onOpenMonitor = { dismiss(); openMonitor() },
+                                    )
+                                },
                                 commandsPage = {
                                     val bluetoothAllowed by bluetoothAllowedState.collectAsStateWithLifecycle()
                                     val canOpenDirectly by overlayAllowedState.collectAsStateWithLifecycle()
@@ -685,7 +714,11 @@ class MainActivity : ComponentActivity() {
                 toast(R.string.copied)
             }
             is GlobalResult.Profile -> viewModel.activateProfile(result.profileId)
-            is GlobalResult.Setting -> startOrToast(Intent(result.action), fallback = Intent(Settings.ACTION_SETTINGS))
+            is GlobalResult.Setting -> if (result.action == SettingsCatalog.MONITOR_ACTION) {
+                openMonitor()
+            } else {
+                startOrToast(Intent(result.action), fallback = Intent(Settings.ACTION_SETTINGS))
+            }
             is GlobalResult.Shortcut -> if (!app.globalSearch.startShortcut(result)) toast(R.string.launch_failed)
             is GlobalResult.Contact -> startOrToast(Intent(Intent.ACTION_VIEW, Uri.parse(result.lookupUri)))
             is GlobalResult.Event -> startOrToast(Intent(Intent.ACTION_VIEW, app.globalSearch.eventUri(result)))
@@ -853,6 +886,7 @@ class MainActivity : ComponentActivity() {
                 startOrToast(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", packageName, null)))
             })
             add(runtime(R.string.perm_microphone, R.string.perm_microphone_why, Manifest.permission.RECORD_AUDIO))
+            add(PermissionItem(getString(R.string.monitor_usage_title), getString(R.string.perm_usage_why), app.systemStats.hasUsageAccess(), ::openUsageAccess))
             add(runtime(R.string.group_contacts, R.string.perm_contacts_why, Manifest.permission.READ_CONTACTS))
             add(runtime(R.string.group_calls, R.string.perm_calls_why, Manifest.permission.READ_CALL_LOG))
             add(runtime(R.string.perm_call_phone, R.string.perm_call_phone_why, Manifest.permission.CALL_PHONE))
@@ -926,6 +960,19 @@ class MainActivity : ComponentActivity() {
         val dnd = if (profile.notificationMode == NotificationMode.DO_NOT_DISTURB) getString(R.string.notif_dnd) else null
         return listOfNotNull(name, sound, dnd).joinToString(" · ")
     }
+
+    // ---- Монітор системи ----
+    /** Монітор, відкритий командою «монітор» з будь-якого профілю (у профілі-моніторі він і так на екрані). */
+    private val monitorOpen = MutableStateFlow(false)
+
+    private fun openMonitor() {
+        viewModel.forgetSearch()
+        monitorOpen.value = true
+    }
+
+    private fun appLabel(pkg: String): String? = app.appRepository.apps.value.firstOrNull { it.packageName == pkg }?.label
+
+    private fun openUsageAccess() = startOrToast(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
 
     private fun openAppInfo(pkg: String) =
         startOrToast(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
@@ -1221,6 +1268,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (handleAssist(intent)) return
         if (handleRunSteps(intent)) return
+        monitorOpen.value = false
         voice.cancel()
         if (!wasStopped) viewModel.forgetSearch()
     }

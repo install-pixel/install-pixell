@@ -146,6 +146,8 @@ fun BlackHomeScreen(
     /** Приватний простір Android 15+ унизу списку A–Z; null — його немає. */
     privateSpace: PrivateSpaceState? = null,
     onTogglePrivate: () -> Unit = {},
+    /** Профіль-монітор: замість програм на чорному екрані. */
+    monitor: (@Composable (Modifier) -> Unit)? = null,
     /** «Показати всі» / «Згорнути» під групою результатів. */
     onExpand: (GroupKind?) -> Unit = {},
     /** Мініатюра фото чи відео за адресою в сховищі. */
@@ -202,6 +204,7 @@ fun BlackHomeScreen(
             profileSwipe = profileSwipe,
             showProfileLabel = showProfileLabel,
             glance = glance,
+            monitor = monitor,
             modifier = Modifier.blur(homeBlur).alpha(homeAlpha),
         )
         AnimatedVisibility(
@@ -267,6 +270,7 @@ private fun HomeIdle(
     profileSwipe: Boolean,
     showProfileLabel: Boolean,
     glance: GlanceInfo?,
+    monitor: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val haptics = LocalHaptics.current
@@ -327,7 +331,15 @@ private fun HomeIdle(
             },
     ) {
         val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
-        HomeGridView(
+        // Профіль-монітор: замість значків — монітор системи (під назвою профілю, над полем пошуку).
+        if (monitor != null) {
+            monitor(
+                Modifier
+                    .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+                    .navigationBarsPadding()
+                    .padding(top = if (showProfileLabel) ProfileLabelSpace * fontScale else 16.dp, bottom = SearchFieldSpace),
+            )
+        } else HomeGridView(
             apps = home.pinned,
             cells = home.cells,
             iconFor = iconFor,

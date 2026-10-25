@@ -280,6 +280,9 @@ fun ProfileEditScreen(
             SwitchRow(stringResource(R.string.all_apps_button_title), stringResource(R.string.all_apps_button_subtitle), display.allAppsButton) {
                 onDisplayChange(display.copy(allAppsButton = it))
             }
+            SwitchRow(stringResource(R.string.monitor_profile_title), stringResource(R.string.monitor_profile_subtitle), display.monitor) {
+                onDisplayChange(display.copy(monitor = it))
+            }
             SwitchRow(stringResource(R.string.show_apps_title), stringResource(R.string.show_apps_subtitle), display.showApps) {
                 onDisplayChange(display.copy(showApps = it))
             }

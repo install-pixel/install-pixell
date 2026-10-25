@@ -55,6 +55,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Монітор системи: час екрана, дані й топ програм — лише з «Доступом до використання», який дає користувач. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>

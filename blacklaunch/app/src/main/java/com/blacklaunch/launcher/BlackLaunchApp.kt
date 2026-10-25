@@ -46,6 +46,8 @@ import com.blacklaunch.launcher.settings.AppearanceSettings
 import com.blacklaunch.launcher.settings.VoiceActionSettings
 import com.blacklaunch.launcher.settings.VoiceSettings
 import com.blacklaunch.launcher.system.PrivateSpace
+import com.blacklaunch.launcher.system.SystemStats
+import com.blacklaunch.launcher.settings.MonitorSettings
 import com.blacklaunch.launcher.voice.VoiceModelStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +68,8 @@ class BlackLaunchApp : Application() {
     val automations: PrefsAutomationStore by lazy { PrefsAutomationStore(this) }
     val automationRunner: AutomationRunner by lazy { AutomationRunner(this) }
     val commandConditions: CommandConditions by lazy { CommandConditions(this) }
+    val systemStats: SystemStats by lazy { SystemStats(this) }
+    val monitorSettings: MonitorSettings by lazy { MonitorSettings(this) }
     val recentQueries: PrefsRecentQueries by lazy { PrefsRecentQueries(this) }
     val hiddenApps: PrefsHiddenApps by lazy { PrefsHiddenApps(this) }
     val ownIcons: OwnIcons by lazy { OwnIcons(this) }

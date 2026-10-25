@@ -68,7 +68,12 @@ object SettingsCatalog {
         Entry("biometrics", "android.settings.BIOMETRIC_ENROLL", listOf("відбиток пальця", "розблокування обличчям", "біометрія", "odcisk palca", "rozpoznawanie twarzy", "fingerprint", "face unlock", "biometrics")),
         Entry("auto_rotate", "android.settings.AUTO_ROTATE_SETTINGS", listOf("автоповорот", "поворот екрана", "autoobracanie", "auto rotate", "rotation")),
         Entry("settings", "android.settings.SETTINGS", listOf("налаштування", "параметри", "ustawienia", "settings")),
+        // Власний екран Black Glass, не сторінка Android: відкривається в самому лаунчері.
+        Entry("monitor", MONITOR_ACTION, listOf("монітор", "монітор системи", "оперативна пам'ять", "температура телефона", "monitor", "system monitor", "monitor systemu", "ram")),
     )
+
+    /** «Дія» розділу «Монітор системи» — Black Glass відкриває свій екран замість налаштувань Android. */
+    const val MONITOR_ACTION = "com.blacklaunch.launcher.MONITOR"
 
     /** Розділи, що підходять до запиту; лише впевнені збіги (не менше «початку слова»). */
     fun search(query: PreparedQuery, limit: Int = 4): List<GlobalResult.Setting> {

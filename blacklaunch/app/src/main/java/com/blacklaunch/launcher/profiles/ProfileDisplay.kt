@@ -23,9 +23,11 @@ data class ProfileDisplay(
     val showApps: Boolean = true,
     /** Що показує «Короткий огляд» саме в цьому профілі; null — як у загальних налаштуваннях. */
     val ownGlance: GlanceParts? = null,
+    /** Замість програм на екрані — монітор системи (етап 12b). */
+    val monitor: Boolean = false,
 ) {
     fun encode(): String {
-        val bits = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch, showApps)
+        val bits = listOf(glance, profileLabel, hideStatusBar, suggestions, recentQueries, allAppsButton, quickSwitch, showApps, monitor)
             .joinToString(",") { if (it) "1" else "0" }
         val own = ownGlance?.let { g -> ",g" + listOf(g.clock, g.alarm, g.event, g.battery).joinToString("") { if (it) "1" else "0" } }
         return bits + own.orEmpty()
@@ -40,9 +42,10 @@ data class ProfileDisplay(
                 GlanceParts(clock = g[1] == '1', alarm = g[2] == '1', event = g[3] == '1', battery = g[4] == '1')
             }
             val bits = (if (own != null) parts.dropLast(1) else parts).map { it == "1" }
-            if (bits.size !in 6..8) return null
+            if (bits.size !in 6..9) return null
             return ProfileDisplay(
                 bits[0], bits[1], bits[2], bits[3], bits[4], bits[5], bits.getOrElse(6) { true }, bits.getOrElse(7) { true }, own,
+                monitor = bits.getOrElse(8) { false },
             )
         }
     }

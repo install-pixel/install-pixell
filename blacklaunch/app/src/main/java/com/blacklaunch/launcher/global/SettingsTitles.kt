@@ -59,6 +59,7 @@ object SettingsTitles {
         "biometrics" -> R.string.setting_biometrics
         "auto_rotate" -> R.string.setting_auto_rotate
         "settings" -> R.string.setting_settings
+        "monitor" -> R.string.setting_monitor
         else -> R.string.group_settings
     }
 }

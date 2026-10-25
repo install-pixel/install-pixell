@@ -552,7 +552,22 @@ class LauncherViewModel(
                 index.value.searchScored((command as VoiceCommand.Open).query, launchCounts.value).firstOrNull()?.score ?: 0
             }
 
+    /** «Монітор» голосом — Black Glass відкриває свій монітор системи. */
+    private val _openMonitor = Channel<Unit>(Channel.CONFLATED)
+    val openMonitor: ReceiveChannel<Unit> get() = _openMonitor
+
+    private val monitorPhrases = setOf(
+        "монітор", "монітор системи", "відкрий монітор", "покажи монітор",
+        "monitor", "system monitor", "open monitor", "show monitor", "monitor systemu", "otworz monitor", "pokaz monitor",
+    )
+
     fun onVoiceResult(hypotheses: List<String>) {
+        if (customCommands().isEmpty() || hypotheses.none { CustomCommandMatcher.exactAll(customCommands(), it).isNotEmpty() }) {
+            if (hypotheses.any { SearchNormalizer.normalize(it) in monitorPhrases }) {
+                _openMonitor.trySend(Unit)
+                return
+            }
+        }
         // Власна команда має перевагу: користувач сам задав цю фразу.
         hypotheses.map { text -> CustomCommandMatcher.exactAll(customCommands(), text) }.firstOrNull { it.isNotEmpty() }
             ?.let { matching ->
