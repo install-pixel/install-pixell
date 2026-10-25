@@ -33,7 +33,8 @@ internal fun MonitorSettingsContent(
     }
     Card {
         Text(stringResource(R.string.monitor_tiles), color = Oled.TextPrimary, fontSize = 17.sp)
-        MonitorTile.entries.forEach { tile ->
+        // «Таблиця» тепер у вікнах деталей (дотик на рядку) — окремого перемикача не треба.
+        MonitorTile.entries.filter { it != MonitorTile.DETAILS }.forEach { tile ->
             SwitchRow(stringResource(tile.title()), "", tile in look.tiles) { onTile(tile, it) }
         }
     }

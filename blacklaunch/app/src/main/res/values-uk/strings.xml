@@ -630,4 +630,18 @@
     <string name="mon_cpu">процесор</string>
     <string name="mon_android">Android</string>
     <string name="close">Закрити</string>
+    <string name="mon_level">заряд</string>
+    <string name="mon_state">стан</string>
+    <string name="mon_current_label">струм</string>
+    <string name="mon_temperature">температура</string>
+    <string name="mon_total">всього</string>
+    <string name="mon_used">зайнято</string>
+    <string name="mon_available">вільно</string>
+    <string name="mon_thermal_state">тепловий стан Android</string>
+    <string name="mon_headroom_label">запас до сповільнення</string>
+    <string name="mon_type">тип</string>
+    <string name="mon_speed">швидкість каналу</string>
+    <string name="mon_model">модель</string>
+    <string name="mon_battery_title">Батарея</string>
+    <string name="mon_device_title">Телефон</string>
 </resources>

@@ -630,4 +630,18 @@
     <string name="mon_cpu">procesor</string>
     <string name="mon_android">Android</string>
     <string name="close">Zamknij</string>
+    <string name="mon_level">naładowanie</string>
+    <string name="mon_state">stan</string>
+    <string name="mon_current_label">prąd</string>
+    <string name="mon_temperature">temperatura</string>
+    <string name="mon_total">razem</string>
+    <string name="mon_used">zajęte</string>
+    <string name="mon_available">wolne</string>
+    <string name="mon_thermal_state">stan cieplny Androida</string>
+    <string name="mon_headroom_label">zapas do spowolnienia</string>
+    <string name="mon_type">typ</string>
+    <string name="mon_speed">szybkość łącza</string>
+    <string name="mon_model">model</string>
+    <string name="mon_battery_title">Bateria</string>
+    <string name="mon_device_title">Telefon</string>
 </resources>

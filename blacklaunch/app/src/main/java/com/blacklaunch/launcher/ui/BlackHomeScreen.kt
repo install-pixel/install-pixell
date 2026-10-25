@@ -48,6 +48,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.mutableLongStateOf
+import android.os.SystemClock
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
@@ -87,6 +89,9 @@ import com.blacklaunch.launcher.voice.VoiceState
 import kotlin.math.abs
 
 private val SwipeThreshold = 48.dp
+
+/** Скільки після увімкнення екрана подвійний дотик не перемикає профіль (дотик «розбудити» — не команда). */
+private const val WAKE_GUARD_MS = 800L
 
 /** «Гумовий» опір: панель їде вниз удвічі повільніше за палець. */
 private const val RESISTANCE = 0.5f
@@ -275,6 +280,16 @@ private fun HomeIdle(
     // На моніторі свій верхній рядок — «Короткий огляд» не накладається на нього.
     @Suppress("NAME_SHADOWING")
     val glance = if (monitor != null) null else glance
+    // Екран увімкнули подвійним дотиком — цей самий дотик не має перемикати профіль.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val shownAt = remember { mutableLongStateOf(0L) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) shownAt.longValue = SystemClock.uptimeMillis()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val haptics = LocalHaptics.current
     var iconBounds by remember { mutableStateOf<Map<String, Rect>>(emptyMap()) }
@@ -295,7 +310,8 @@ private fun HomeIdle(
                     },
                     // Подвійний дотик на порожньому місці — наступний профіль (коли немає ні назви, ні свайпу).
                     onDoubleTap = { position ->
-                        if (profileCount.value > 1 && iconBounds.values.none { it.contains(position) }) {
+                        val justWoke = SystemClock.uptimeMillis() - shownAt.longValue < WAKE_GUARD_MS
+                        if (!justWoke && profileCount.value > 1 && iconBounds.values.none { it.contains(position) }) {
                             haptics.tick()
                             onSwitchProfile(1)
                         }
