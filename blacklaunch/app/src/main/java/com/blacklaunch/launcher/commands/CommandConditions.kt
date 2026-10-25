@@ -19,11 +19,22 @@ import kotlin.coroutines.resume
 class CommandConditions(context: Context) {
     private val appContext = context.applicationContext
 
+    /**
+     * Пристрої, про підключення яких Android щойно повідомив. Аудіоз'єднання встановлюється на секунду-дві
+     * пізніше, і без цього «Лише якщо навушники» в момент підключення бачило б, що їх ще немає.
+     */
+    private val justConnected = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    fun noteBluetooth(address: String, connected: Boolean) {
+        val key = address.uppercase()
+        if (connected) justConnected.add(key) else justConnected.remove(key)
+    }
+
     suspend fun met(condition: CommandCondition): Boolean = when (condition.kind) {
         ConditionKind.CHARGING -> appContext.getSystemService(BatteryManager::class.java)?.isCharging == true
         ConditionKind.WIRED_HEADSET -> wiredHeadset()
         ConditionKind.BLUETOOTH_DEVICE -> condition.deviceAddress?.let { address ->
-            connectedBluetooth().any { it.equals(address, ignoreCase = true) }
+            address.uppercase() in justConnected || connectedBluetooth().any { it.equals(address, ignoreCase = true) }
         } ?: false
     }
 

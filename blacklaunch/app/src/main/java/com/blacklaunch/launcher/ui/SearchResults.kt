@@ -448,7 +448,7 @@ private fun GlobalRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .background(if (selected) Oled.Surface else Color.Transparent)
+            .then(if (selected) Modifier.background(Oled.Surface) else Modifier)
             .combinedClickable(
                 onClick = { haptics.tap(); onClick(result) },
                 onLongClick = onLongClick?.let { long -> { haptics.longPress(); long() } },

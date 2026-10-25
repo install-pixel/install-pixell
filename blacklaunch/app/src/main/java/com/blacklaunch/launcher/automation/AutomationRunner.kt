@@ -29,6 +29,7 @@ import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -54,15 +55,18 @@ class PrefsAutomationStore(context: Context) : InMemoryAutomationStore(
 class AutomationRunner(private val app: BlackLaunchApp) {
     private var lastEvent: Pair<String, Long>? = null
 
-    fun fire(event: TriggerKind, address: String? = null) {
+    /** Повертає роботу, поки вона триває (приймач тримає Android, щоб не зупинив процес раніше). */
+    fun fire(event: TriggerKind, address: String? = null): Job? {
+        if (address != null && event == TriggerKind.BLUETOOTH_CONNECTED) app.commandConditions.noteBluetooth(address, true)
+        if (address != null && event == TriggerKind.BLUETOOTH_DISCONNECTED) app.commandConditions.noteBluetooth(address, false)
         // Android інколи надсилає ту саму подію двічі поспіль.
         val key = "$event/$address"
         val now = SystemClock.elapsedRealtime()
-        lastEvent?.let { (previous, at) -> if (previous == key && now - at < DEBOUNCE_MS) return }
+        lastEvent?.let { (previous, at) -> if (previous == key && now - at < DEBOUNCE_MS) return null }
         lastEvent = key to now
         val matching = app.customCommands.commands.value.filter { command -> command.triggers.any { it.matches(event, address) } }
-        if (matching.isEmpty()) return
-        app.appScope.launch {
+        if (matching.isEmpty()) return null
+        return app.appScope.launch {
             matching.forEach { command ->
                 // «Лише якщо» діє й для автоматичного запуску.
                 if (command.condition?.let { app.commandConditions.met(it) } != false) {
@@ -194,9 +198,13 @@ class BluetoothAutomationReceiver : BroadcastReceiver() {
             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         }
         val address = device?.address ?: return
-        when (intent.action) {
+        val job = when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> app.automationRunner.fire(TriggerKind.BLUETOOTH_CONNECTED, address)
             BluetoothDevice.ACTION_ACL_DISCONNECTED -> app.automationRunner.fire(TriggerKind.BLUETOOTH_DISCONNECTED, address)
-        }
+            else -> null
+        } ?: return
+        // Black Glass міг бути не запущений — просимо Android дочекатися кінця команди.
+        val pending = goAsync()
+        job.invokeOnCompletion { pending.finish() }
     }
 }
