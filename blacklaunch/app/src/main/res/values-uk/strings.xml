@@ -360,4 +360,15 @@
     <string name="backup_saved">Налаштування збережено</string>
     <string name="backup_failed">Не вдалося прочитати чи зберегти файл</string>
     <string name="backup_restored">Відновлено профілів: %1$d. Ще не встановлено програм: %2$d — з\'являться на своїх місцях після встановлення</string>
+    <string name="glance_parts_title">Що показує «Короткий огляд»</string>
+    <string name="glance_part_clock">Годинник</string>
+    <string name="glance_part_alarm">Найближчий будильник</string>
+    <string name="glance_part_event">Найближча подія</string>
+    <string name="glance_part_battery">Батарея</string>
+    <string name="glance_parts_note">Дата показується завжди. Сам «Короткий огляд» вмикається в кожному профілі.</string>
+    <string name="history_note">Black Glass пам\'ятає, які програми ви відкриваєте і що шукали, — лише на цьому телефоні й з автоматичними межами.</string>
+    <string name="history_clear">Очистити історію</string>
+    <string name="history_clear_confirm">Буде видалено історію запусків, навчання пошуку й останні запити в усіх профілях. Налаштування лишаться.</string>
+    <string name="history_clear_yes">Очистити</string>
+    <string name="history_cleared">Історію очищено</string>
 </resources>

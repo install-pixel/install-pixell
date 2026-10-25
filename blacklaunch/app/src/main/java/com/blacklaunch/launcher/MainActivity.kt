@@ -91,6 +91,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.blacklaunch.launcher.system.GlanceInfo
+import com.blacklaunch.launcher.system.GlanceParts
 import com.blacklaunch.launcher.system.Glance
 
 /** Системний екран «Синтез мовлення» (рушій, голоси, завантаження офлайн). */
@@ -200,7 +201,7 @@ class MainActivity : ComponentActivity() {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
                     if (activeDisplay().glance) {
-                        glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
+                        glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity, glanceParts()) }
                     }
                     delay(GLANCE_REFRESH_MS)
                 }
@@ -259,8 +260,8 @@ class MainActivity : ComponentActivity() {
             val display = remember(displays, home.profileId, appearance) { app.profileDisplay.of(home.profileId) }
             // Перемкнули профіль — у нового своє рішення щодо рядка стану.
             LaunchedEffect(display.hideStatusBar) { applyStatusBar() }
-            LaunchedEffect(display.glance) {
-                if (display.glance) glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity) }
+            LaunchedEffect(display.glance, appearance.glanceClock, appearance.glanceAlarm, appearance.glanceEvent, appearance.glanceBattery) {
+                if (display.glance) glance.value = withContext(Dispatchers.IO) { Glance.read(this@MainActivity, glanceParts()) }
             }
             val hiddenKeys by app.hiddenApps.hidden.collectAsStateWithLifecycle()
             val installedApps by repository.apps.collectAsStateWithLifecycle()
@@ -349,6 +350,12 @@ class MainActivity : ComponentActivity() {
                                 onCopyCrashLog = ::copyCrashLog,
                                 onExportSettings = { exportFile.launch("black-glass-$versionName.json") },
                                 onImportSettings = { importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                                onClearHistory = {
+                                    app.launchHistory.clear()
+                                    app.learnedQueries.clear()
+                                    app.recentQueries.clear()
+                                    toast(R.string.history_cleared)
+                                },
                                 onClearCrashLog = app.crashLog::clear,
                                 onOpenAppInfo = {
                                     awaitingSmsPermission = true
@@ -970,6 +977,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private var stoppedAt = 0L
+
+    private fun glanceParts() = app.appearanceSettings.appearance.value.let {
+        GlanceParts(clock = it.glanceClock, alarm = it.glanceAlarm, event = it.glanceEvent, battery = it.glanceBattery)
+    }
 
     /** Екран і пошук активного профілю. */
     private fun activeDisplay() = app.profileDisplay.of(app.activeProfile.value?.id)

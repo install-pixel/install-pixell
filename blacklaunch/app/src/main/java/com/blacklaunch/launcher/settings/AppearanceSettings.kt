@@ -28,6 +28,11 @@ data class Appearance(
     val glance: Boolean = false,
     /** Рядок «Усі програми» в порожньому пошуку. */
     val allAppsButton: Boolean = true,
+    /** Що показує «Короткий огляд» (однаково для всіх профілів, де він увімкнений). */
+    val glanceClock: Boolean = true,
+    val glanceAlarm: Boolean = true,
+    val glanceEvent: Boolean = true,
+    val glanceBattery: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -55,6 +60,10 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_HIDE_STATUS, next.hideStatusBar)
             .putBoolean(KEY_GLANCE, next.glance)
             .putBoolean(KEY_ALL_APPS, next.allAppsButton)
+            .putBoolean(KEY_GLANCE_CLOCK, next.glanceClock)
+            .putBoolean(KEY_GLANCE_ALARM, next.glanceAlarm)
+            .putBoolean(KEY_GLANCE_EVENT, next.glanceEvent)
+            .putBoolean(KEY_GLANCE_BATTERY, next.glanceBattery)
             .apply()
         _appearance.value = next
     }
@@ -75,6 +84,10 @@ class AppearanceSettings(context: Context) {
             hideStatusBar = prefs.getBoolean(KEY_HIDE_STATUS, defaults.hideStatusBar),
             glance = prefs.getBoolean(KEY_GLANCE, defaults.glance),
             allAppsButton = prefs.getBoolean(KEY_ALL_APPS, defaults.allAppsButton),
+            glanceClock = prefs.getBoolean(KEY_GLANCE_CLOCK, defaults.glanceClock),
+            glanceAlarm = prefs.getBoolean(KEY_GLANCE_ALARM, defaults.glanceAlarm),
+            glanceEvent = prefs.getBoolean(KEY_GLANCE_EVENT, defaults.glanceEvent),
+            glanceBattery = prefs.getBoolean(KEY_GLANCE_BATTERY, defaults.glanceBattery),
         )
     }
 
@@ -91,6 +104,10 @@ class AppearanceSettings(context: Context) {
         private const val KEY_HIDE_STATUS = "hide_status_bar"
         private const val KEY_GLANCE = "glance"
         private const val KEY_ALL_APPS = "all_apps_button"
+        private const val KEY_GLANCE_CLOCK = "glance_clock"
+        private const val KEY_GLANCE_ALARM = "glance_alarm"
+        private const val KEY_GLANCE_EVENT = "glance_event"
+        private const val KEY_GLANCE_BATTERY = "glance_battery"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

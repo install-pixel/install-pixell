@@ -13,6 +13,7 @@ interface RecentQueries {
     val queries: StateFlow<Map<String, List<String>>>
     fun record(profileId: String, query: String)
     fun remove(profileId: String, query: String)
+    fun clear()
 }
 
 open class InMemoryRecentQueries(private val max: Int = MAX) : RecentQueries {
@@ -31,6 +32,11 @@ open class InMemoryRecentQueries(private val max: Int = MAX) : RecentQueries {
 
     override fun remove(profileId: String, query: String) {
         _queries.value = _queries.value + (profileId to (_queries.value[profileId].orEmpty() - query))
+        onChanged()
+    }
+
+    override fun clear() {
+        _queries.value = emptyMap()
         onChanged()
     }
 

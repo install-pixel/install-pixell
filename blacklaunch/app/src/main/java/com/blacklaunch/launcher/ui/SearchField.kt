@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -44,6 +45,8 @@ fun SearchField(
     voice: VoiceState,
     onMicClick: () -> Unit,
     onFocusChange: (Boolean) -> Unit = {},
+    /** Enter на клавіатурі — виконати найнижчий результат (лише явною дією). */
+    onSubmit: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val listening = voice != VoiceState.Idle
@@ -80,6 +83,7 @@ fun SearchField(
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Oled.TextPrimary,
                 unfocusedTextColor = Oled.TextPrimary,

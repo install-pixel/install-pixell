@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.global.GlobalResult
+import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
@@ -312,7 +313,8 @@ private fun HomeIdle(
             onIconBounds = { iconBounds = it },
             // З оглядом назва профілю — його перший рядок, окремого місця під плашку не треба.
             reservedTop = when {
-                glance != null -> GlanceSpace + if (showProfileLabel) GlanceProfileLine else 0.dp
+                glance != null -> GlanceSpace + (if (showProfileLabel) GlanceProfileLine else 0.dp) +
+                    if (glance.time != null) GlanceClockLine else 0.dp
                 showProfileLabel -> ProfileLabelSpace
                 else -> 0.dp
             },
@@ -348,6 +350,7 @@ private fun HomeIdle(
                             .padding(vertical = 2.dp),
                     )
                 }
+                glance.time?.let { Text(it, color = Oled.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Light) }
                 Text(glance.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)
             }
@@ -375,6 +378,7 @@ private val ProfileLabelSpace = 48.dp
 private val SearchFieldSpace = 64.dp
 private val GlanceSpace = 64.dp
 private val GlanceProfileLine = 20.dp
+private val GlanceClockLine = 52.dp
 
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
@@ -571,6 +575,17 @@ private fun SearchOpen(
             onFocusChange = {
                 fieldFocused = it
                 if (it) onFieldFocused()
+            },
+            // Найнижчий результат — той, що найближче до поля: калькулятор, своя команда, дія, програма, решта.
+            onSubmit = {
+                val calculation = state.groups.firstOrNull { it.kind == GroupKind.CALCULATOR }?.items?.firstOrNull()
+                when {
+                    calculation != null -> onGlobal(calculation)
+                    state.custom.isNotEmpty() -> onCustom(state.custom.first())
+                    state.actions.isNotEmpty() -> onAction(state.actions.first())
+                    state.results.isNotEmpty() -> onLaunch(state.results.first())
+                    else -> state.groups.sortedBy { it.kind.ordinal }.firstOrNull()?.items?.firstOrNull()?.let(onGlobal)
+                }
             },
         )
     }

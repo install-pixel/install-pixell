@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -96,6 +97,8 @@ fun SettingsScreen(
     /** Резервна копія: зберегти у файл / відновити з файлу. */
     onExportSettings: () -> Unit = {},
     onImportSettings: () -> Unit = {},
+    /** Стерти історію запусків, навчання й останні запити. */
+    onClearHistory: () -> Unit = {},
     onClearCrashLog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -110,6 +113,14 @@ fun SettingsScreen(
                     onCheckedChange = { on -> onChange { it.copy(profileSwipe = on) } },
                 )
                 Note(stringResource(R.string.double_tap_hint))
+            }
+            Card {
+                Text(stringResource(R.string.glance_parts_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                SwitchRow(stringResource(R.string.glance_part_clock), "", appearance.glanceClock) { on -> onChange { it.copy(glanceClock = on) } }
+                SwitchRow(stringResource(R.string.glance_part_alarm), "", appearance.glanceAlarm) { on -> onChange { it.copy(glanceAlarm = on) } }
+                SwitchRow(stringResource(R.string.glance_part_event), "", appearance.glanceEvent) { on -> onChange { it.copy(glanceEvent = on) } }
+                SwitchRow(stringResource(R.string.glance_part_battery), "", appearance.glanceBattery) { on -> onChange { it.copy(glanceBattery = on) } }
+                Note(stringResource(R.string.glance_parts_note))
             }
             Card {
                 Note(stringResource(R.string.display_moved_home))
@@ -171,6 +182,28 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+            var confirmClear by remember { mutableStateOf(false) }
+            Card {
+                Note(stringResource(R.string.history_note))
+                ActionOption(R.string.history_clear, Icons.Filled.Delete) { confirmClear = true }
+            }
+            if (confirmClear) {
+                AlertDialog(
+                    onDismissRequest = { confirmClear = false },
+                    containerColor = Color(0xFF141414),
+                    title = { Text(stringResource(R.string.history_clear), color = Oled.TextPrimary) },
+                    text = { Text(stringResource(R.string.history_clear_confirm), color = Oled.TextSecondary) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            confirmClear = false
+                            onClearHistory()
+                        }) { Text(stringResource(R.string.history_clear_yes), color = Oled.TextPrimary) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
+                    },
+                )
             }
             Card {
                 Note(stringResource(R.string.display_moved_search))
