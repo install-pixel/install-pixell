@@ -45,6 +45,20 @@ class DateQueryTest {
         assertEquals(LocalDate.of(2025, 1, 1), parse("фото 2025")?.start)
     }
 
+    @Test fun rollingPeriods() {
+        val week = parse("фото тиждень")!!
+        assertEquals(LocalDate.of(2026, 10, 19) to LocalDate.of(2026, 10, 26), week.start to week.endExclusive)
+        assertEquals(LocalDate.of(2026, 10, 19), parse("фото за тиждень")?.start)
+        assertEquals(LocalDate.of(2026, 10, 19), parse("відео за тиждень")?.start)
+        assertEquals(LocalDate.of(2026, 9, 26), parse("фото місяць")?.start)
+        assertEquals(LocalDate.of(2025, 10, 26), parse("photos year")?.start)
+        assertEquals(LocalDate.of(2026, 1, 1), parse("фото цього року")?.start)
+        assertEquals(LocalDate.of(2025, 1, 1) to LocalDate.of(2026, 1, 1), parse("zdjęcia w zeszłym roku")?.let { it.start to it.endExclusive })
+        assertEquals("", parse("фото за тиждень")?.text)
+        // Голе слово без джерела — не дата.
+        assertNull(parse("тиждень"))
+    }
+
     @Test fun notADate() {
         assertNull(parse("telegram"))
         assertNull(parse("2025"))

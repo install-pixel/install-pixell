@@ -45,7 +45,11 @@ data class DateQuery(val start: LocalDate, val endExclusive: LocalDate, val sour
 
         private val prepositions = setOf("у", "в", "за", "w", "we", "in", "on", "from", "z", "з")
 
-        private enum class Span { TODAY, YESTERDAY, BEFORE_YESTERDAY, THIS_WEEK, LAST_WEEK, THIS_MONTH, LAST_MONTH }
+        private enum class Span {
+            TODAY, YESTERDAY, BEFORE_YESTERDAY, THIS_WEEK, LAST_WEEK, THIS_MONTH, LAST_MONTH,
+            /** «за тиждень / місяць / рік» — останні 7 / 30 / 365 днів до сьогодні включно. */
+            PAST_WEEK, PAST_MONTH, PAST_YEAR, THIS_YEAR, LAST_YEAR,
+        }
 
         private val phrases: List<Pair<List<String>, Span>> = listOf(
             "сьогодні" to Span.TODAY, "today" to Span.TODAY, "dzisiaj" to Span.TODAY, "dzis" to Span.TODAY,
@@ -60,7 +64,24 @@ data class DateQuery(val start: LocalDate, val endExclusive: LocalDate, val sour
             "zeszlym miesiacu" to Span.LAST_MONTH, "zeszly miesiac" to Span.LAST_MONTH, "poprzedni miesiac" to Span.LAST_MONTH,
             "цього місяця" to Span.THIS_MONTH, "цей місяць" to Span.THIS_MONTH, "this month" to Span.THIS_MONTH,
             "tym miesiacu" to Span.THIS_MONTH, "ten miesiac" to Span.THIS_MONTH,
+            "за тиждень" to Span.PAST_WEEK, "за останній тиждень" to Span.PAST_WEEK, "past week" to Span.PAST_WEEK,
+            "ostatni tydzien" to Span.PAST_WEEK, "z ostatniego tygodnia" to Span.PAST_WEEK,
+            "за місяць" to Span.PAST_MONTH, "за останній місяць" to Span.PAST_MONTH, "past month" to Span.PAST_MONTH,
+            "ostatni miesiac" to Span.PAST_MONTH, "z ostatniego miesiaca" to Span.PAST_MONTH,
+            "за рік" to Span.PAST_YEAR, "за останній рік" to Span.PAST_YEAR, "past year" to Span.PAST_YEAR,
+            "ostatni rok" to Span.PAST_YEAR, "z ostatniego roku" to Span.PAST_YEAR,
+            "цього року" to Span.THIS_YEAR, "цей рік" to Span.THIS_YEAR, "this year" to Span.THIS_YEAR, "tym roku" to Span.THIS_YEAR,
+            "ten rok" to Span.THIS_YEAR,
+            "минулого року" to Span.LAST_YEAR, "минулий рік" to Span.LAST_YEAR, "last year" to Span.LAST_YEAR,
+            "zeszlym roku" to Span.LAST_YEAR, "zeszly rok" to Span.LAST_YEAR,
         ).map { (text, span) -> text.split(' ') to span }.sortedByDescending { it.first.size }
+
+        /** Голе «тиждень», «місяць», «рік» — лише з назвою джерела («фото тиждень»), інакше це просто слово. */
+        private val bareSpans = mapOf(
+            "тиждень" to Span.PAST_WEEK, "week" to Span.PAST_WEEK, "tydzien" to Span.PAST_WEEK,
+            "місяць" to Span.PAST_MONTH, "month" to Span.PAST_MONTH, "miesiac" to Span.PAST_MONTH,
+            "рік" to Span.PAST_YEAR, "year" to Span.PAST_YEAR, "rok" to Span.PAST_YEAR,
+        )
 
         private val numericDate = Regex("""(?<!\d)(\d{1,2})[./](\d{1,2})(?:[./](\d{4}|\d{2}))?(?!\d)""")
 
@@ -89,6 +110,13 @@ data class DateQuery(val start: LocalDate, val endExclusive: LocalDate, val sour
                 if (phrase != null) {
                     range = spanRange(phrase.second, today)
                     for (k in i until i + phrase.first.size) used[k] = true
+                    at = i
+                    break
+                }
+                val bare = bareSpans[tokens[i]]
+                if (bare != null && sources.isNotEmpty()) {
+                    range = spanRange(bare, today)
+                    used[i] = true
                     at = i
                     break
                 }
@@ -146,6 +174,11 @@ data class DateQuery(val start: LocalDate, val endExclusive: LocalDate, val sour
                 Span.LAST_WEEK -> monday.minusWeeks(1) to monday
                 Span.THIS_MONTH -> month to today.plusDays(1)
                 Span.LAST_MONTH -> month.minusMonths(1) to month
+                Span.PAST_WEEK -> today.minusDays(6) to today.plusDays(1)
+                Span.PAST_MONTH -> today.minusDays(29) to today.plusDays(1)
+                Span.PAST_YEAR -> today.minusDays(364) to today.plusDays(1)
+                Span.THIS_YEAR -> today.withDayOfYear(1) to today.plusDays(1)
+                Span.LAST_YEAR -> today.withDayOfYear(1).minusYears(1) to today.withDayOfYear(1)
             }
         }
 
