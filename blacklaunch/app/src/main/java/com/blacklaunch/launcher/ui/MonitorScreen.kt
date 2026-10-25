@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Brush
@@ -70,8 +71,9 @@ private val Track = Color(0x1FFFFFFF)
 private val GlassShape = RoundedCornerShape(18.dp)
 
 /** Наш шрифт, але цифри однакової ширини — щоб значення не «стрибали» щосекунди. */
+@Composable
 private fun num(size: TextUnit, color: Color, weight: FontWeight = FontWeight.Normal) =
-    TextStyle(fontSize = size, color = color, fontWeight = weight, fontFeatureSettings = "tnum")
+    LocalTextStyle.current.merge(TextStyle(fontSize = size, color = color, fontWeight = weight, fontFeatureSettings = "tnum", letterSpacing = 0.sp))
 
 /**
  * Монітор системи: зверху шкала батареї з кільцями пам'яті й тепла, нижче «термінал» — сегментні смуги,
@@ -162,7 +164,8 @@ internal fun MonitorScreen(
                     s.battery.temperatureC?.let { "%.1f °C".format(it) },
                     s.thermal.headroom?.let { stringResource(R.string.mon_headroom, ((1f - it.coerceIn(0f, 1f)) * 100).roundToInt()) },
                 ).joinToString(" · ")
-                val level = s.thermal.headroom?.coerceIn(0f, 1f) ?: s.battery.temperatureC?.let { ((it - 20f) / 25f).coerceIn(0f, 1f) }
+                // Смуга — температура батареї (20–45 °C): запас до сповільнення часто 0 і смуга стояла порожня.
+                val level = s.battery.temperatureC?.let { ((it - 20f) / 25f).coerceIn(0f, 1f) } ?: s.thermal.headroom?.coerceIn(0f, 1f)
                 if (value.isNotEmpty() && level != null) add(BarRow(stringResource(R.string.mon_row_heat), level, Warm, value, Detail.THERMAL))
             }
             if (MonitorTile.NETWORK in tiles) {
@@ -189,7 +192,7 @@ internal fun MonitorScreen(
         val showMemory = MonitorTile.MEMORY_GRAPH in tiles && memoryHistory.size > 1
         if (showCurrent || showMemory) {
             Glass {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (showCurrent) GraphCell(R.string.mon_current, s.battery.currentMa?.let { signed(it) + " мА" }.orEmpty(), currentHistory, accent, Modifier.weight(1f))
                     if (showMemory) GraphCell(R.string.mon_memory_graph, "${(memUsed * 100).roundToInt()}%", memoryHistory, accent.copy(alpha = 0.7f), Modifier.weight(1f))
                 }
@@ -202,14 +205,14 @@ internal fun MonitorScreen(
                 Text(stringResource(R.string.mon_usage_off), color = Oled.TextSecondary, fontSize = 11.sp)
             } else {
                 Glass {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.mon_screen_today, duration(u.screenMs)), style = num(11.sp, Oled.TextPrimary))
                         u.mobileBytes?.let { Text(stringResource(R.string.mon_data_today, size(it)), style = num(11.sp, Oled.TextPrimary)) }
                     }
                     u.top.take(TOP_SHOWN).forEachIndexed { i, (name, ms) ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("${i + 1}", style = num(11.sp, Oled.TextSecondary))
-                            Text(name, color = Oled.TextPrimary, fontSize = 11.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(name, style = num(11.sp, Oled.TextPrimary), modifier = Modifier.weight(1f), maxLines = 1)
                             Text(duration(ms), style = num(11.sp, Oled.TextSecondary))
                         }
                     }
@@ -275,9 +278,10 @@ internal fun MonitorScreen(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         rows.forEach { (k, v) ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(k, color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                                Text(v, style = num(13.sp, Oled.TextPrimary), modifier = Modifier.weight(1.4f))
+                            // Назва дрібно, значення під нею — без перенесень посеред рядка.
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(k, style = num(11.sp, Oled.TextSecondary))
+                                Text(v, style = num(15.sp, Oled.TextPrimary))
                             }
                         }
                     }
@@ -320,7 +324,7 @@ private fun SegmentRow(bar: BarRow, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(bar.label, color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1, modifier = Modifier.width(52.dp))
+        Text(bar.label, style = num(10.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp), maxLines = 1, modifier = Modifier.width(52.dp))
         val level = bar.level
         if (level == null) {
             Box(Modifier.weight(1f))
@@ -337,15 +341,15 @@ private fun SegmentRow(bar: BarRow, onClick: () -> Unit) {
                 }
             }
         }
-        Text(bar.value, style = num(11.sp, Oled.TextPrimary), maxLines = 1, modifier = Modifier.width(112.dp))
+        Text(bar.value, style = num(11.sp, Oled.TextPrimary), maxLines = 1, softWrap = false, modifier = Modifier.width(132.dp))
     }
 }
 
 @Composable
 private fun GraphCell(@StringRes label: Int, value: String, history: List<Float>, color: Color, modifier: Modifier) {
     Column(modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(label), color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(label), style = num(10.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp))
             Text(value, style = num(11.sp, color))
         }
         Sparkline(history, color, Modifier.fillMaxWidth().height(30.dp))

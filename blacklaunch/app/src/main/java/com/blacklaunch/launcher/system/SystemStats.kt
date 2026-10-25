@@ -152,10 +152,16 @@ class SystemStats(context: Context) {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkType.ETHERNET
             else -> NetworkType.OTHER
         }
-        val signal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val generic = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             caps.signalStrength.takeIf { it != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED }
         } else {
             null
+        }
+        // Деякі прошивки (OxygenOS) загальний сигнал не дають — беремо з Wi‑Fi чи мобільної мережі напряму.
+        val signal = generic ?: when (type) {
+            NetworkType.WIFI -> wifiRssi()
+            NetworkType.MOBILE -> mobileDbm()
+            else -> null
         }
         return NetworkStatsInfo(type, signal, caps.linkDownstreamBandwidthKbps.takeIf { it > 0 })
     }
@@ -195,6 +201,27 @@ class SystemStats(context: Context) {
             System.getProperty("os.version")?.substringBefore('-'),
             "${maxOf(w, h)}×${minOf(w, h)}", inches, hz, cameras, memory().totalBytes, storage().totalBytes,
         )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun wifiRssi(): Int? = runCatching {
+        val fromNetwork = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.transportInfo as? android.net.wifi.WifiInfo
+        } else {
+            null
+        }
+        val info = fromNetwork ?: app.getSystemService(android.net.wifi.WifiManager::class.java)?.connectionInfo
+        info?.rssi?.takeIf { it in -127..-1 }
+    }.getOrNull()
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun mobileDbm(): Int? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runCatching {
+            app.getSystemService(android.telephony.TelephonyManager::class.java)?.signalStrength
+                ?.cellSignalStrengths?.firstOrNull()?.dbm?.takeIf { it in -140..-1 }
+        }.getOrNull()
+    } else {
+        null
     }
 
     /** Чи дано «Доступ до використання» (дає користувач у налаштуваннях Android). */
