@@ -262,6 +262,7 @@ class MainActivity : ComponentActivity() {
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
             val offline by offlineStatus.collectAsStateWithLifecycle()
             val installedModels by app.voiceModelStore.installed.collectAsStateWithLifecycle()
+            val modelInfo by app.voiceModelStore.info.collectAsStateWithLifecycle()
             val voiceMode by app.voiceSettings.mode.collectAsStateWithLifecycle()
             val userAliases by app.userAliasStore.aliases.collectAsStateWithLifecycle()
             val globalKinds by app.globalSearchSettings.enabled.collectAsStateWithLifecycle()
@@ -355,6 +356,7 @@ class MainActivity : ComponentActivity() {
                                     toast(R.string.download_started)
                                 },
                                 installedModels = installedModels,
+                                modelInfo = modelInfo,
                                 voiceMode = voiceMode,
                                 onVoiceModeChange = app.voiceSettings::setMode,
                                 onDownloadModel = ::downloadModel,

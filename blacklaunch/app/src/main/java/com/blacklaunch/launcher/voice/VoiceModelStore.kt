@@ -18,6 +18,9 @@ enum class ImportError { READ, NOT_MODEL, LANGUAGE, NO_SPACE, OTHER }
 
 class ModelImportException(val reason: ImportError, cause: Throwable? = null) : IOException(reason.name, cause)
 
+/** Встановлена модель: назва архіву (наприклад, `vosk-model-uk-v3`; null — встановлена до 1.0.1) і розмір на телефоні. */
+data class ModelInfo(val name: String?, val bytes: Long)
+
 /** Офлайн-моделі Vosk у внутрішній пам'яті BlackLaunch: `files/voice-models/<uk|pl|en>/`. */
 class VoiceModelStore(context: Context) {
     private val appContext = context.applicationContext
@@ -25,6 +28,10 @@ class VoiceModelStore(context: Context) {
 
     private val _installed = MutableStateFlow(scan())
     val installed: StateFlow<Set<String>> = _installed.asStateFlow()
+
+    private val _info = MutableStateFlow(readInfo())
+    /** Назва й розмір кожної встановленої моделі — щоб було видно, що саме стоїть. */
+    val info: StateFlow<Map<String, ModelInfo>> = _info.asStateFlow()
 
     fun dir(language: String): File = File(root, language.substringBefore('-'))
 
@@ -71,7 +78,10 @@ class VoiceModelStore(context: Context) {
                 throw IOException("Cannot install model")
             }
             old.deleteRecursively()
+            // Назва моделі — з теки в архіві («vosk-model-uk-v3»), щоб потім було видно, що встановлено.
+            modelRoot.trimEnd('/').substringAfterLast('/').takeIf { it.isNotEmpty() }?.let { File(target, NAME_FILE).writeText(it) }
             _installed.value = scan()
+            _info.value = readInfo()
             Result.success(language)
         } catch (e: ModelImportException) {
             Log.w(TAG, "Import failed: ${e.reason}", e)
@@ -95,6 +105,13 @@ class VoiceModelStore(context: Context) {
     fun delete(language: String) {
         dir(language).deleteRecursively()
         _installed.value = scan()
+        _info.value = readInfo()
+    }
+
+    private fun readInfo(): Map<String, ModelInfo> = scan().associateWith { language ->
+        val dir = dir(language)
+        val name = File(dir, NAME_FILE).takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null }
+        ModelInfo(name, dir.walkTopDown().filter { it.isFile && it.name != NAME_FILE }.sumOf { it.length() })
     }
 
     private fun scan(): Set<String> =
@@ -106,6 +123,7 @@ class VoiceModelStore(context: Context) {
     companion object {
         private const val TAG = "VoiceModelStore"
         private const val MIN_FREE = 50L * 1024 * 1024
+        private const val NAME_FILE = "black-glass-model.txt"
 
         /** Ті самі моделі Vosk, що й у клавіатурі Offlingo, — одне місце для всіх проєктів. */
         private const val RELEASE = "https://github.com/install-pixel/install-pixell/releases/download/keyboard-models"

@@ -41,6 +41,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.voice.ModelInfo
+import androidx.compose.ui.platform.LocalContext
+import android.text.format.Formatter
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.settings.Appearance
 import com.blacklaunch.launcher.settings.OfflineVoiceMode
@@ -64,6 +67,8 @@ fun SettingsScreen(
     onCheckOffline: () -> Unit,
     onDownloadOffline: (String) -> Unit,
     installedModels: Set<String>,
+    /** Назва й розмір встановлених моделей. */
+    modelInfo: Map<String, ModelInfo> = emptyMap(),
     voiceMode: OfflineVoiceMode,
     onVoiceModeChange: (OfflineVoiceMode) -> Unit,
     onDownloadModel: (String) -> Unit,
@@ -259,7 +264,7 @@ fun SettingsScreen(
                     }
                 }
                 VoiceLanguages.ALL.forEach { language ->
-                    ModelRow(language, language in installedModels, onDownloadModel, onDeleteModel)
+                    ModelRow(language, language in installedModels, modelInfo[language], onDownloadModel, onDeleteModel)
                 }
                 ActionOption(R.string.model_import, Icons.Filled.Add, onImportModel)
                 Note(stringResource(R.string.models_note))
@@ -470,17 +475,21 @@ private fun OfflineVoiceMode.label(): Int = when (this) {
 private fun ModelRow(
     language: String,
     installed: Boolean,
+    info: ModelInfo?,
     onDownload: (String) -> Unit,
     onDelete: (String) -> Unit,
 ) {
+    val context = LocalContext.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(stringResource(ModelImportActivity.languageName(language)), color = Oled.TextPrimary, fontSize = 16.sp)
-            Text(
-                stringResource(if (installed) R.string.model_installed else R.string.model_missing),
-                color = Oled.TextSecondary,
-                fontSize = 13.sp,
-            )
+            // Яка саме модель стоїть і скільки займає — щоб через тиждень не гадати, мала чи велика.
+            val status = if (installed && info != null) {
+                listOf(info.name ?: stringResource(R.string.model_installed), Formatter.formatShortFileSize(context, info.bytes)).joinToString(" · ")
+            } else {
+                stringResource(if (installed) R.string.model_installed else R.string.model_missing)
+            }
+            Text(status, color = Oled.TextSecondary, fontSize = 13.sp)
         }
         if (installed) {
             SmallButton(stringResource(R.string.model_delete)) { onDelete(language) }

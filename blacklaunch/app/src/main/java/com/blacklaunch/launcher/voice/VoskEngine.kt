@@ -21,6 +21,8 @@ import java.io.IOException
 class VoskEngine(private val store: VoiceModelStore) {
     private var model: Model? = null
     private var modelLanguage: String? = null
+    /** Коли встановлено модель: імпортували іншу — завантажуємо нову, а не стару з пам'яті. */
+    private var modelStamp = 0L
     private var service: SpeechService? = null
     private var delivered = false
 
@@ -29,16 +31,37 @@ class VoskEngine(private val store: VoiceModelStore) {
     }
 
     suspend fun prepare(language: String): Boolean = withContext(Dispatchers.IO) {
-        if (model != null && modelLanguage == language) return@withContext true
+        val stamp = store.dir(language).lastModified()
+        if (model != null && modelLanguage == language && modelStamp == stamp) return@withContext true
         releaseModel()
         try {
-            model = Model(store.dir(language).absolutePath)
+            val loaded = Model(store.dir(language).absolutePath)
+            warmUp(loaded)
+            model = loaded
             modelLanguage = language
+            modelStamp = stamp
             true
         } catch (e: IOException) {
             Log.w(TAG, "Cannot load model $language", e)
             false
         }
+    }
+
+    /**
+     * Велика модель перші секунди «розігрівається» (телефон підтягує її з пам'яті) і не встигає за мікрофоном —
+     * початок фрази губився, хоча вже було «Слухаю». Проганяємо пів секунди тиші ще під час «Чекайте…».
+     */
+    private fun warmUp(loaded: Model) {
+        runCatching {
+            val recognizer = Recognizer(loaded, SAMPLE_RATE)
+            try {
+                val silence = ShortArray((SAMPLE_RATE / 2).toInt())
+                recognizer.acceptWaveForm(silence, silence.size)
+                recognizer.finalResult
+            } finally {
+                recognizer.close()
+            }
+        }.onFailure { Log.w(TAG, "Model warm-up failed", it) }
     }
 
     /** Викликати в головному потоці після [prepare]. */
