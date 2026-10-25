@@ -662,7 +662,7 @@
     <string name="mon_u_rate">%1$s/s</string>
     <string name="mon_minmax">min %1$s · śr %2$s · maks %3$s</string>
     <string name="mon_apps_size">aplikacje %1$s</string>
-    <string name="mon_headroom_full">%1$s · zapas %2$d%%</string>
+    <string name="mon_headroom_full">%1$s %2$d%%</string>
     <string name="mon_headroom_hint">Zapas — ile jeszcze telefon może się nagrzać, zanim Android zacznie spowalniać procesor, by go schłodzić. 100% — chłodny, 0% — spowalnia.</string>
     <string name="mon_link">łącze ~%1$d Mb/s</string>
     <string name="mon_wifi_today">Wi‑Fi dziś %1$s</string>

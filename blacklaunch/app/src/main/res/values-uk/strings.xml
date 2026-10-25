@@ -662,7 +662,7 @@
     <string name="mon_u_rate">%1$s/с</string>
     <string name="mon_minmax">мін %1$s · сер %2$s · макс %3$s</string>
     <string name="mon_apps_size">програми %1$s</string>
-    <string name="mon_headroom_full">%1$s · запас %2$d%%</string>
+    <string name="mon_headroom_full">%1$s %2$d%%</string>
     <string name="mon_headroom_hint">Запас — скільки ще телефон може грітися, поки Android не почне сповільнювати процесор, щоб охолонути. 100% — холодний, 0% — сповільнює.</string>
     <string name="mon_link">канал ~%1$d Мбіт/с</string>
     <string name="mon_wifi_today">Wi‑Fi сьогодні %1$s</string>

@@ -662,7 +662,7 @@
     <string name="mon_u_rate">%1$s/s</string>
     <string name="mon_minmax">min %1$s · avg %2$s · max %3$s</string>
     <string name="mon_apps_size">apps %1$s</string>
-    <string name="mon_headroom_full">%1$s · headroom %2$d%%</string>
+    <string name="mon_headroom_full">%1$s %2$d%%</string>
     <string name="mon_headroom_hint">Headroom — how much more the phone can heat up before Android starts slowing the processor to cool it down. 100% — cool, 0% — slowing down.</string>
     <string name="mon_link">link ~%1$d Mbit/s</string>
     <string name="mon_wifi_today">Wi‑Fi today %1$s</string>

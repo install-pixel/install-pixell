@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -192,7 +194,8 @@ internal fun MonitorScreen(
         }
 
         // Батарея — одразу під шкалою: напруга й потужність, графік струму, мін/сер/макс.
-        if (MonitorTile.CURRENT_GRAPH in tiles && currentHistory.size > 1) {
+        // Картка є з першого знімка, щоб не з'являлась пізніше й не зсувала все вниз; графік домалюється.
+        if (MonitorTile.CURRENT_GRAPH in tiles && currentHistory.isNotEmpty()) {
             val minText = stringResource(R.string.mon_u_ma, signed(currentHistory.min().roundToInt()))
             val avgText = stringResource(R.string.mon_u_ma, signed(currentHistory.average().roundToInt()))
             val maxText = stringResource(R.string.mon_u_ma, signed(currentHistory.max().roundToInt()))
@@ -330,7 +333,7 @@ internal fun MonitorScreen(
                     s.network.signalDbm?.let { dbm ->
                         Plate(
                             stringResource(R.string.mon_signal),
-                            stringResource(R.string.mon_signal_pct, (signalLevel(dbm, s.network.type) * 100).roundToInt()) + "\n" + stringResource(R.string.mon_u_dbm, dbm),
+                            "${(signalLevel(dbm, s.network.type) * 100).roundToInt()}%\n" + stringResource(R.string.mon_u_dbm, dbm),
                         )
                     },
                     rate?.let { Plate(stringResource(R.string.mon_down), stringResource(R.string.mon_u_rate, size(it.first))) },
@@ -437,8 +440,9 @@ private fun DetailSheet(title: String, plates: List<Plate>, accent: Color, onClo
                 Text(title.uppercase(), style = num(12.sp, Oled.TextSecondary).copy(letterSpacing = 2.sp))
             }
             rows.forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { p -> PlateView(p, accent, Modifier.weight(1f)) }
+                // Плашки в ряду — однієї висоти, навіть якщо в одній текст у два рядки.
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { p -> PlateView(p, accent, Modifier.weight(1f).fillMaxHeight()) }
                 }
             }
         }
@@ -448,7 +452,7 @@ private fun DetailSheet(title: String, plates: List<Plate>, accent: Color, onClo
 @Composable
 private fun PlateView(p: Plate, accent: Color, modifier: Modifier) {
     if (p.note) {
-        Text(p.value, style = num(11.sp, Oled.TextSecondary), modifier = modifier.padding(horizontal = 4.dp))
+        Text(p.value, style = num(11.sp, Oled.TextSecondary).copy(lineHeight = 16.sp), modifier = modifier.padding(horizontal = 4.dp))
         return
     }
     Column(
@@ -459,8 +463,11 @@ private fun PlateView(p: Plate, accent: Color, modifier: Modifier) {
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(p.label.uppercase(), style = num(9.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp), maxLines = 2)
-        Text(p.value, style = num(15.sp, lerp(accent, Color.White, 0.6f)))
+        Text(p.label.uppercase(), style = num(9.sp, Oled.TextSecondary).copy(letterSpacing = 1.sp, lineHeight = 12.sp), maxLines = 2)
+        // Довге слово («розряджається») — дрібніше, щоб не рвалось посередині.
+        val longest = p.value.lines().maxOfOrNull { it.length } ?: 0
+        val valueSize = if (longest > LONG_VALUE) 13.sp else 15.sp
+        Text(p.value, style = num(valueSize, lerp(accent, Color.White, 0.6f)).copy(lineHeight = valueSize * 1.3f))
     }
 }
 
@@ -634,3 +641,4 @@ private const val USAGE_EVERY = 15
 private const val HISTORY = 150
 private const val TICKS = 60
 private const val SEGMENTS = 20
+private const val LONG_VALUE = 11
