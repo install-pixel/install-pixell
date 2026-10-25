@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import com.blacklaunch.launcher.BlackLaunchApp
 import com.blacklaunch.launcher.MainActivity
 import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.commands.CommandTrigger
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.timer.BlackTimer
 import com.blacklaunch.launcher.voice.VoiceAction
@@ -27,7 +28,9 @@ import com.blacklaunch.launcher.voice.VoiceActionRunner
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Автоматизації в SharedPreferences — лише на телефоні. */
 class PrefsAutomationStore(context: Context) : InMemoryAutomationStore(
@@ -57,16 +60,34 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         val now = SystemClock.elapsedRealtime()
         lastEvent?.let { (previous, at) -> if (previous == key && now - at < DEBOUNCE_MS) return }
         lastEvent = key to now
-        val matching = app.automations.automations.value.filter { it.matches(event, address) }
+        val matching = app.customCommands.commands.value.filter { command -> command.triggers.any { it.matches(event, address) } }
         if (matching.isEmpty()) return
-        val commands = app.customCommands.commands.value
-        matching.forEach { automation ->
-            val command = commands.firstOrNull { it.id == automation.commandId } ?: return@forEach
-            run(command.phrase, command.steps)
+        app.appScope.launch {
+            matching.forEach { command ->
+                // «Лише якщо» діє й для автоматичного запуску.
+                if (command.condition?.let { app.commandConditions.met(it) } != false) {
+                    withContext(Dispatchers.Main) { run(command.phrase.ifBlank { app.getString(R.string.custom_commands_title) }, command.steps) }
+                }
+            }
         }
     }
 
-    private fun run(phrase: String, steps: List<String>) {
+    /**
+     * Автоматизації до 0.32.0 жили окремо — переносимо їх у самі команди (подія → «Запускати саму»)
+     * і більше окремо не зберігаємо.
+     */
+    fun migrateOldAutomations() {
+        val old = app.automations.automations.value
+        if (old.isEmpty()) return
+        old.filter { it.enabled }.groupBy { it.commandId }.forEach { (commandId, list) ->
+            val command = app.customCommands.commands.value.firstOrNull { it.id == commandId } ?: return@forEach
+            val added = list.map { CommandTrigger(it.kind, it.deviceAddress, it.deviceName) }
+            app.customCommands.save(command.copy(triggers = (command.triggers + added).distinct()))
+        }
+        old.forEach { app.automations.delete(it.id) }
+    }
+
+    private fun run(title: String, steps: List<String>) {
         val runner = VoiceActionRunner(app, onMessage = {})
         val later = mutableListOf<String>()
         steps.forEach { step ->
@@ -87,7 +108,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
                 else -> Unit
             }
         }
-        if (later.isNotEmpty()) finishInBlackGlass(phrase, later)
+        if (later.isNotEmpty()) finishInBlackGlass(title, later)
     }
 
     private fun switchProfile(name: String) {

@@ -30,6 +30,7 @@ import com.blacklaunch.launcher.search.LearnedQueries
 import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
+import com.blacklaunch.launcher.commands.CommandCondition
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.profiles.GlobalAccess
@@ -94,7 +95,7 @@ private data class ProfileScope(val profileId: String, val scope: SearchScope, v
 }
 
 /** Одноразові повідомлення для користувача. */
-enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND }
+enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND, CONDITION_NOT_MET }
 
 /** Головний екран: активний профіль і його закріплені програми, які справді встановлені. */
 data class HomeState(
@@ -154,6 +155,8 @@ class LauncherViewModel(
     private val rolePackages: () -> RolePackages = { RolePackages() },
     /** Чи профіль у швидкому перемиканні (свайпи, подвійний дотик, назва профілю). */
     private val inQuickSwitch: (String) -> Boolean = { true },
+    /** «Лише якщо» команди: чи підключено вибрані навушники, зарядку… (перевірка в момент запуску). */
+    private val conditionMet: suspend (CommandCondition) -> Boolean = { true },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -460,11 +463,27 @@ class LauncherViewModel(
      * Власна команда: кроки по черзі, кожен — як сказана команда. Дії виконує екран
      * (навіть вимкнені в налаштуваннях — користувач сам їх задав), профіль і програму — тут.
      */
-    fun runCustom(command: CustomCommand) {
+    /** Рядок команди в пошуку чи Enter: та сама фраза може мати кілька варіантів з різними умовами. */
+    fun runCustom(command: CustomCommand) =
+        runMatching(CustomCommandMatcher.exactAll(customCommands(), command.phrase).ifEmpty { listOf(command) })
+
+    /**
+     * Перша команда, чия умова виконана (з умовою — першими). Без умов — одразу, як і раніше;
+     * жодна умова не виконана — коротке пояснення.
+     */
+    private fun runMatching(commands: List<CustomCommand>) {
         query.value?.takeIf { it.isNotBlank() }?.let { recentQueries.record(scope.value.profileId, it) }
-        runSteps(command.steps)
         // Виконано — пошук закривається, щоб не лишались результати за словами команди.
         if (query.value != null) forgetSearch()
+        val first = commands.firstOrNull() ?: return
+        if (first.condition == null) {
+            runSteps(first.steps)
+            return
+        }
+        viewModelScope.launch {
+            val chosen = commands.firstOrNull { command -> command.condition?.let { conditionMet(it) } ?: true }
+            if (chosen != null) runSteps(chosen.steps) else _messages.trySend(UiMessage.CONDITION_NOT_MET)
+        }
     }
 
     /** Кроки по черзі — «Моя команда» або решта автоматизації після дотику до сповіщення. */
@@ -518,10 +537,10 @@ class LauncherViewModel(
      */
     fun onVoiceResult(hypotheses: List<String>) {
         // Власна команда має перевагу: користувач сам задав цю фразу.
-        hypotheses.firstNotNullOfOrNull { text -> CustomCommandMatcher.exact(customCommands(), text)?.let { text to it } }
-            ?.let { (_, custom) ->
+        hypotheses.map { text -> CustomCommandMatcher.exactAll(customCommands(), text) }.firstOrNull { it.isNotEmpty() }
+            ?.let { matching ->
                 // Своя команда просто виконується — без результатів пошуку за цими словами.
-                runCustom(custom)
+                runMatching(matching)
                 return
             }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }

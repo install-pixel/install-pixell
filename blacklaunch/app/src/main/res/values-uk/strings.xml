@@ -287,7 +287,7 @@
     <string name="tts_settings">Синтез мовлення</string>
     <string name="event_added">Додано в календар: %1$s, %2$s</string>
     <string name="custom_commands_title">Мої команди</string>
-    <string name="custom_commands_note">Своя фраза, що виконує кілька команд поспіль — голосом або текстом у пошуку.</string>
+    <string name="custom_commands_note">Фраза голосом чи текстом → кроки по черзі. Команда може мати умову («Лише якщо» підключено навушники) і запускатися сама від події — тоді фраза необов\'язкова.</string>
     <string name="custom_command_add">Додати команду</string>
     <string name="custom_command_phrase">Фраза</string>
     <string name="custom_command_phrase_hint">Наприклад, «я вдома»</string>
@@ -511,4 +511,15 @@
     <string name="show_apps_subtitle">Вимкнено — значків профілю не видно, але його програми й далі визначають пошук, фільтр сповіщень і глобальний пошук</string>
     <string name="glance_own_title">Свій вибір для цього профілю</string>
     <string name="glance_own_subtitle">Вимкнено — як у Налаштування → Головний екран</string>
+    <string name="condition_not_met">Умова команди не виконана (наприклад, навушники не підключені)</string>
+    <string name="condition_title">Лише якщо</string>
+    <string name="condition_always">Будь-коли</string>
+    <string name="condition_device">Підключено Bluetooth-пристрій</string>
+    <string name="condition_device_named">Підключено: %1$s</string>
+    <string name="condition_charging">Заряджається</string>
+    <string name="condition_wired">Підключено дротові навушники</string>
+    <string name="condition_only_if">Лише якщо: %1$s</string>
+    <string name="command_auto_title">Запускати саму</string>
+    <string name="command_auto_add">Додати подію</string>
+    <string name="command_auto_short">Сама: %1$s</string>
 </resources>

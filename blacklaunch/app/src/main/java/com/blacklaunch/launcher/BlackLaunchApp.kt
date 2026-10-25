@@ -29,6 +29,7 @@ import com.blacklaunch.launcher.apps.PrefsLaunchHistory
 import com.blacklaunch.launcher.commands.PrefsCustomCommandStore
 import com.blacklaunch.launcher.data.AppDatabase
 import com.blacklaunch.launcher.automation.AutomationRunner
+import com.blacklaunch.launcher.commands.CommandConditions
 import com.blacklaunch.launcher.automation.PrefsAutomationStore
 import com.blacklaunch.launcher.global.AndroidGlobalSearch
 import com.blacklaunch.launcher.global.GlobalSearchSettings
@@ -64,6 +65,7 @@ class BlackLaunchApp : Application() {
     val customCommands: PrefsCustomCommandStore by lazy { PrefsCustomCommandStore(this) }
     val automations: PrefsAutomationStore by lazy { PrefsAutomationStore(this) }
     val automationRunner: AutomationRunner by lazy { AutomationRunner(this) }
+    val commandConditions: CommandConditions by lazy { CommandConditions(this) }
     val recentQueries: PrefsRecentQueries by lazy { PrefsRecentQueries(this) }
     val hiddenApps: PrefsHiddenApps by lazy { PrefsHiddenApps(this) }
     val ownIcons: OwnIcons by lazy { OwnIcons(this) }
@@ -127,6 +129,7 @@ class BlackLaunchApp : Application() {
         super.onCreate()
         crashLog.install()
         automationRunner.registerLiveEvents()
+        automationRunner.migrateOldAutomations()
         appScope.launch { applyProfileOnSwitch() }
         // Змінився профіль, його програми чи фільтр — перевірити сповіщення ще раз.
         appScope.launch {

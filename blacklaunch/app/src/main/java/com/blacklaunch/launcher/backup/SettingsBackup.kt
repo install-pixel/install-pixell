@@ -2,6 +2,10 @@ package com.blacklaunch.launcher.backup
 
 import com.blacklaunch.launcher.BlackLaunchApp
 import com.blacklaunch.launcher.automation.InMemoryAutomationStore
+import com.blacklaunch.launcher.automation.TriggerKind
+import com.blacklaunch.launcher.commands.CommandCondition
+import com.blacklaunch.launcher.commands.CommandTrigger
+import com.blacklaunch.launcher.commands.ConditionKind
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.profiles.GlobalMode
@@ -52,7 +56,12 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             }))
             put("aliases", JSONObject(app.userAliasStore.aliases.value.mapValues { JSONArray(it.value.toList()) }))
             put("commands", JSONArray(app.customCommands.commands.value.map { c ->
-                JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.steps))
+                JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.steps)).apply {
+                    put("triggers", JSONArray(c.triggers.map { t ->
+                        JSONObject().put("kind", t.kind.name).putOpt("address", t.deviceAddress).putOpt("name", t.deviceName)
+                    }))
+                    c.condition?.let { put("condition", JSONObject().put("kind", it.kind.name).putOpt("address", it.deviceAddress).putOpt("name", it.deviceName)) }
+                }
             }))
             put("hidden", JSONArray(app.hiddenApps.hidden.value.toList()))
             put("ownIcons", JSONArray(app.ownIcons.keys.value.toList()))
@@ -77,7 +86,6 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             })
             put("globalKinds", JSONArray(app.globalSearchSettings.enabled.value.map { it.name }))
             put("offlineVoice", app.voiceSettings.mode.value.name)
-            put("automations", InMemoryAutomationStore.encode(app.automations.automations.value))
         }.toString(2)
     }
 
@@ -122,7 +130,17 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         root.optJSONArray("commands")?.let { commands ->
             app.customCommands.commands.value.forEach { app.customCommands.delete(it.id) }
             commands.objects().forEach { c ->
-                app.customCommands.save(CustomCommand(c.getString("id"), c.getString("phrase"), c.getJSONArray("steps").strings()))
+                val triggers = c.optJSONArray("triggers")?.objects().orEmpty().mapNotNull { t ->
+                    TriggerKind.entries.firstOrNull { it.name == t.optString("kind") }
+                        ?.let { CommandTrigger(it, t.optString("address").ifEmpty { null }, t.optString("name").ifEmpty { null }) }
+                }
+                val condition = c.optJSONObject("condition")?.let { o ->
+                    ConditionKind.entries.firstOrNull { it.name == o.optString("kind") }
+                        ?.let { CommandCondition(it, o.optString("address").ifEmpty { null }, o.optString("name").ifEmpty { null }) }
+                }
+                app.customCommands.save(
+                    CustomCommand(c.getString("id"), c.getString("phrase"), c.getJSONArray("steps").strings(), triggers, condition),
+                )
             }
         }
         root.optJSONArray("hidden")?.let { hidden ->
@@ -161,10 +179,10 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         root.optString("offlineVoice").takeIf { it.isNotEmpty() }?.let {
             app.voiceSettings.setMode(enumOr(it, app.voiceSettings.mode.value))
         }
-        // Автоматизації посилаються на «Мої команди» за id — команди відновлено вище з тими самими id.
+        // Копія 0.27–0.31: автоматизації окремо — переносимо їх у відновлені команди (ті самі id).
         if (root.has("automations")) {
-            app.automations.automations.value.forEach { app.automations.delete(it.id) }
             InMemoryAutomationStore.decode(root.optString("automations")).forEach(app.automations::save)
+            app.automationRunner.migrateOldAutomations()
         }
         return RestoreResult(imported.size, remap.waiting)
     }

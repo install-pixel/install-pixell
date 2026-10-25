@@ -20,6 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -61,9 +63,9 @@ import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
 
 /**
- * «Мої команди»: своя фраза → кроки по черзі. Кроки збираються з готових блоків
- * (програма, дія, режим); кожен зберігається звичайною командою мовою телефону,
- * тож її видно й можна виправити текстом.
+ * «Мої команди»: фраза (голосом чи текстом), «Лише якщо» (що має бути підключено), «Запускати саму»
+ * (подія) → кроки по черзі. Кроки збираються з готових блоків (програма, дія, режим); кожен зберігається
+ * звичайною командою мовою телефону, тож її видно й можна виправити текстом.
  */
 @Composable
 internal fun CustomCommandsCard(
@@ -71,6 +73,9 @@ internal fun CustomCommandsCard(
     apps: List<AppInfo>,
     profiles: List<String>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
+    bluetoothAllowed: Boolean,
+    pairedDevices: () -> List<PairedDevice>,
+    onRequestBluetooth: () -> Unit,
     onSave: (CustomCommand) -> Unit,
     onDelete: (String) -> Unit,
 ) {
@@ -84,6 +89,7 @@ internal fun CustomCommandsCard(
             apps = apps,
             profiles = profiles,
             iconFor = iconFor,
+            devices = DeviceAccess(bluetoothAllowed, pairedDevices, onRequestBluetooth),
             onSave = { onSave(it); editing = null },
             onDelete = if (current.id.isEmpty()) null else ({ onDelete(current.id); editing = null }),
             onCancel = { editing = null },
@@ -101,7 +107,16 @@ internal fun CustomCommandsCard(
                     .clickable { haptics.tap(); editing = command }
                     .padding(horizontal = 6.dp, vertical = 8.dp),
             ) {
-                Text(command.phrase, color = Oled.TextPrimary, fontSize = 16.sp)
+                val title = command.phrase.ifBlank { command.triggers.firstOrNull()?.let { triggerText(it) }.orEmpty() }
+                Text(title, color = Oled.TextPrimary, fontSize = 16.sp)
+                // Умова й події — одним рядком, щоб було видно, коли команда спрацює.
+                val details = listOfNotNull(
+                    command.condition?.let { stringResource(R.string.condition_only_if, conditionText(it)) },
+                    command.triggers.takeIf { it.isNotEmpty() && command.phrase.isNotBlank() }?.let { list ->
+                        stringResource(R.string.command_auto_short, list.map { triggerText(it) }.joinToString(", "))
+                    },
+                )
+                details.forEach { Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 Text(
                     command.steps.joinToString(" → "),
                     color = Oled.TextSecondary,
@@ -123,14 +138,20 @@ private fun CommandEditor(
     apps: List<AppInfo>,
     profiles: List<String>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
+    devices: DeviceAccess,
     onSave: (CustomCommand) -> Unit,
     onDelete: (() -> Unit)?,
     onCancel: () -> Unit,
 ) {
     var phrase by remember { mutableStateOf(command.phrase) }
     var steps by remember { mutableStateOf(command.steps) }
+    var triggers by remember { mutableStateOf(command.triggers) }
+    var condition by remember { mutableStateOf(command.condition) }
     var picker by remember { mutableStateOf<StepPicker?>(null) }
-    val canSave = phrase.isNotBlank() && steps.isNotEmpty()
+    var pickingCondition by remember { mutableStateOf(false) }
+    var addingTrigger by remember { mutableStateOf(false) }
+    // Без фрази команда можлива, лише якщо вона запускається сама.
+    val canSave = (phrase.isNotBlank() || triggers.isNotEmpty()) && steps.isNotEmpty()
     val addStep: (String) -> Unit = { step -> steps = CustomCommand.clean(steps + step); picker = null }
     Card {
         Text(stringResource(R.string.custom_commands_title), color = Oled.TextPrimary, fontSize = 17.sp)
@@ -143,6 +164,20 @@ private fun CommandEditor(
             modifier = Modifier.fillMaxWidth(),
             colors = fieldColors(),
         )
+        Text(stringResource(R.string.condition_title), color = Oled.TextSecondary, fontSize = 13.sp)
+        ActionOption(condition?.let { conditionText(it) } ?: stringResource(R.string.condition_always), Icons.Filled.Lock) {
+            pickingCondition = true
+        }
+        Text(stringResource(R.string.command_auto_title), color = Oled.TextSecondary, fontSize = 13.sp)
+        triggers.forEach { trigger ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(triggerText(trigger), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                SmallButton(Icons.Filled.Close, R.string.custom_step_remove) { triggers = triggers - trigger }
+            }
+        }
+        ActionOption(R.string.command_auto_add, Icons.Filled.Add) { addingTrigger = true }
         Text(stringResource(R.string.custom_command_steps), color = Oled.TextSecondary, fontSize = 13.sp)
         if (steps.isEmpty()) Note(stringResource(R.string.custom_steps_empty))
         steps.forEachIndexed { index, step ->
@@ -164,11 +199,17 @@ private fun CommandEditor(
             TextButton(
                 onClick = {
                     val id = command.id.ifEmpty { CustomCommand.create(phrase, steps).id }
-                    onSave(CustomCommand(id, phrase.trim(), steps))
+                    onSave(CustomCommand(id, phrase.trim(), steps, triggers, condition))
                 },
                 enabled = canSave,
             ) { Text(stringResource(R.string.custom_command_save), color = if (canSave) Oled.TextPrimary else Oled.TextSecondary) }
         }
+    }
+    if (pickingCondition) {
+        ConditionDialog(condition, devices, onPick = { condition = it; pickingCondition = false }, onDismiss = { pickingCondition = false })
+    }
+    if (addingTrigger) {
+        TriggerDialog(devices, onPick = { triggers = (triggers + it).distinct(); addingTrigger = false }, onDismiss = { addingTrigger = false })
     }
     when (picker) {
         StepPicker.MENU -> StepMenu(onPick = { picker = it }, onDismiss = { picker = null })

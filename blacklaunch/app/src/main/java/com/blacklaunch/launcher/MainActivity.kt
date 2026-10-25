@@ -12,12 +12,13 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.annotation.StringRes
 import com.blacklaunch.launcher.ui.PermissionItem
 import com.blacklaunch.launcher.ui.PermissionsScreen
 import com.blacklaunch.launcher.ui.PairedDevice
-import com.blacklaunch.launcher.ui.AutomationsCard
-import com.blacklaunch.launcher.automation.Automation
+import com.blacklaunch.launcher.ui.CustomCommandsCard
+import com.blacklaunch.launcher.ui.OpenDirectlyCard
 import android.bluetooth.BluetoothManager
 import android.annotation.SuppressLint
 import androidx.compose.ui.graphics.asImageBitmap
@@ -136,6 +137,7 @@ class MainActivity : ComponentActivity() {
                     showSuggestions = { activeDisplay().suggestions },
                     showRecent = { activeDisplay().recentQueries },
                     inQuickSwitch = { app.profileDisplay.of(it).quickSwitch },
+                    conditionMet = app.commandConditions::met,
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
                     globalModes = app.searchScopes.globalModes,
@@ -366,29 +368,23 @@ class MainActivity : ComponentActivity() {
                                 onOpenTtsSettings = { startOrToast(Intent(TTS_SETTINGS)) },
                                 hiddenApps = installedApps.filter { it.key in hiddenKeys }.sortedBy { it.label.lowercase() },
                                 onShowApp = app.hiddenApps::show,
-                                customCommands = customCommands,
-                                commandApps = commandApps,
-                                commandProfiles = commandProfiles.map { it.name },
-                                iconFor = iconFor,
-                                onSaveCustomCommand = app.customCommands::save,
-                                onDeleteCustomCommand = app.customCommands::delete,
-                                automations = {
-                                    val list by app.automations.automations.collectAsStateWithLifecycle()
+                                commandsPage = {
                                     val bluetoothAllowed by bluetoothAllowedState.collectAsStateWithLifecycle()
                                     val canOpenDirectly by overlayAllowedState.collectAsStateWithLifecycle()
-                                    AutomationsCard(
-                                        automations = list,
+                                    CustomCommandsCard(
                                         commands = customCommands,
+                                        apps = commandApps,
+                                        profiles = commandProfiles.map { it.name },
+                                        iconFor = iconFor,
                                         bluetoothAllowed = bluetoothAllowed,
                                         pairedDevices = ::pairedDevices,
                                         onRequestBluetooth = ::requestBluetooth,
-                                        canOpenDirectly = canOpenDirectly,
-                                        onOpenOverlaySettings = {
-                                            startOrToast(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", packageName, null)))
-                                        },
-                                        onSave = ::saveAutomation,
-                                        onDelete = app.automations::delete,
+                                        onSave = ::saveCommand,
+                                        onDelete = app.customCommands::delete,
                                     )
+                                    OpenDirectlyCard(canOpenDirectly) {
+                                        startOrToast(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", packageName, null)))
+                                    }
                                 },
                                 onOpenDefaultApps = { startOrToast(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
                                 crashLog = crashLog,
@@ -862,9 +858,10 @@ class MainActivity : ComponentActivity() {
     // Сповіщення «Торкніться, щоб виконати» — питаємо дозвіл, коли зберігають першу автоматизацію.
     private val automationNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    private fun saveAutomation(automation: Automation) {
-        app.automations.save(automation)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+    /** Команда, що запускається сама, може попросити дотик сповіщенням — питаємо дозвіл на сповіщення. */
+    private fun saveCommand(command: CustomCommand) {
+        app.customCommands.save(command)
+        if (command.triggers.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             automationNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -1139,6 +1136,7 @@ class MainActivity : ComponentActivity() {
         UiMessage.LAUNCH_FAILED -> R.string.launch_failed
         UiMessage.NO_HISTORY -> R.string.no_history
         UiMessage.PROFILE_NOT_FOUND -> R.string.profile_not_found
+        UiMessage.CONDITION_NOT_MET -> R.string.condition_not_met
     }
 
     private fun toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()

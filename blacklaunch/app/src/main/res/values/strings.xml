@@ -287,7 +287,7 @@
     <string name="tts_settings">Speech settings</string>
     <string name="event_added">Added to calendar: %1$s, %2$s</string>
     <string name="custom_commands_title">My commands</string>
-    <string name="custom_commands_note">Your own phrase that runs several commands in a row — by voice or typed in search.</string>
+    <string name="custom_commands_note">A phrase by voice or text → steps in order. A command can have a condition (“Only if” headphones are connected) and can run by itself on an event — then the phrase is optional.</string>
     <string name="custom_command_add">Add a command</string>
     <string name="custom_command_phrase">Phrase</string>
     <string name="custom_command_phrase_hint">For example, “I’m home”</string>
@@ -511,4 +511,15 @@
     <string name="show_apps_subtitle">Off — the profile’s icons are hidden, but its apps still define search, the notification filter and global search</string>
     <string name="glance_own_title">Own choice for this profile</string>
     <string name="glance_own_subtitle">Off — as in Settings → Home screen</string>
+    <string name="condition_not_met">The command’s condition isn’t met (for example, the headphones aren’t connected)</string>
+    <string name="condition_title">Only if</string>
+    <string name="condition_always">Any time</string>
+    <string name="condition_device">A Bluetooth device is connected</string>
+    <string name="condition_device_named">Connected: %1$s</string>
+    <string name="condition_charging">Charging</string>
+    <string name="condition_wired">Wired headphones are plugged in</string>
+    <string name="condition_only_if">Only if: %1$s</string>
+    <string name="command_auto_title">Also run by itself</string>
+    <string name="command_auto_add">Add event</string>
+    <string name="command_auto_short">By itself: %1$s</string>
 </resources>

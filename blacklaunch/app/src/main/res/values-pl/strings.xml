@@ -287,7 +287,7 @@
     <string name="tts_settings">Synteza mowy</string>
     <string name="event_added">Dodano do kalendarza: %1$s, %2$s</string>
     <string name="custom_commands_title">Moje polecenia</string>
-    <string name="custom_commands_note">Własna fraza, która wykonuje kilka poleceń po kolei — głosem lub wpisana w wyszukiwaniu.</string>
+    <string name="custom_commands_note">Fraza głosem lub tekstem → kroki po kolei. Polecenie może mieć warunek („Tylko jeśli” połączono słuchawki) i uruchamiać się samo po zdarzeniu — wtedy fraza jest opcjonalna.</string>
     <string name="custom_command_add">Dodaj polecenie</string>
     <string name="custom_command_phrase">Fraza</string>
     <string name="custom_command_phrase_hint">Na przykład „jestem w domu”</string>
@@ -511,4 +511,15 @@
     <string name="show_apps_subtitle">Wyłączone — ikon profilu nie widać, ale jego aplikacje nadal określają wyszukiwanie, filtr powiadomień i wyszukiwanie globalne</string>
     <string name="glance_own_title">Własny wybór dla tego profilu</string>
     <string name="glance_own_subtitle">Wyłączone — jak w Ustawienia → Ekran główny</string>
+    <string name="condition_not_met">Warunek polecenia nie jest spełniony (na przykład słuchawki nie są połączone)</string>
+    <string name="condition_title">Tylko jeśli</string>
+    <string name="condition_always">Zawsze</string>
+    <string name="condition_device">Połączono urządzenie Bluetooth</string>
+    <string name="condition_device_named">Połączono: %1$s</string>
+    <string name="condition_charging">Ładuje się</string>
+    <string name="condition_wired">Podłączono słuchawki przewodowe</string>
+    <string name="condition_only_if">Tylko jeśli: %1$s</string>
+    <string name="command_auto_title">Uruchamiaj samo</string>
+    <string name="command_auto_add">Dodaj zdarzenie</string>
+    <string name="command_auto_short">Samo: %1$s</string>
 </resources>

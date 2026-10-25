@@ -88,15 +88,8 @@ fun SettingsScreen(
     /** Приховані з пошуку програми — щоб повернути. */
     hiddenApps: List<AppInfo>,
     onShowApp: (String) -> Unit,
-    customCommands: List<CustomCommand>,
-    /** Для конструктора команд: програми (зі значками) і назви профілів. */
-    commandApps: List<AppInfo>,
-    commandProfiles: List<String>,
-    iconFor: suspend (AppInfo) -> ImageBitmap?,
-    onSaveCustomCommand: (CustomCommand) -> Unit,
-    onDeleteCustomCommand: (String) -> Unit,
-    /** Автоматизації «Коли → Що» — під «Моїми командами». */
-    automations: @Composable () -> Unit,
+    /** Сторінка «Мої команди» — будує екран, бо їй потрібні програми, профілі й Bluetooth. */
+    commandsPage: @Composable () -> Unit,
     onOpenDefaultApps: () -> Unit,
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
@@ -321,8 +314,7 @@ fun SettingsScreen(
         }
 
         SettingsNav.CustomCommands -> SettingsPage(stringResource(R.string.custom_commands_title), { onNavigate(SettingsNav.Voice) }) {
-            CustomCommandsCard(customCommands, commandApps, commandProfiles, iconFor, onSaveCustomCommand, onDeleteCustomCommand)
-            automations()
+            commandsPage()
         }
 
         SettingsNav.Battery -> SettingsPage(stringResource(R.string.battery_section), toMain) {

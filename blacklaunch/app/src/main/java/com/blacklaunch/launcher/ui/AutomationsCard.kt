@@ -11,14 +11,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,142 +28,89 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
-import com.blacklaunch.launcher.automation.Automation
 import com.blacklaunch.launcher.automation.TriggerKind
-import com.blacklaunch.launcher.commands.CustomCommand
+import com.blacklaunch.launcher.commands.CommandCondition
+import com.blacklaunch.launcher.commands.CommandTrigger
+import com.blacklaunch.launcher.commands.ConditionKind
 import com.blacklaunch.launcher.ui.theme.Oled
 
-/** Спарений Bluetooth-пристрій для вибору в автоматизації. */
+/** Спарений Bluetooth-пристрій для вибору в команді. */
 data class PairedDevice(val name: String, val address: String)
 
-/** Автоматизації «Коли → Що»: подія запускає «Мою команду». */
+/** Доступ до списку спарених пристроїв (потрібен дозвіл «Пристрої поблизу»). */
+data class DeviceAccess(val allowed: Boolean, val list: () -> List<PairedDevice>, val request: () -> Unit)
+
+/** «Відкривати програми одразу»: з дозволом «Поверх інших вікон» команда, що запустилась сама, відкриває програму без дотику. */
 @Composable
-internal fun AutomationsCard(
-    automations: List<Automation>,
-    commands: List<CustomCommand>,
-    bluetoothAllowed: Boolean,
-    pairedDevices: () -> List<PairedDevice>,
-    onRequestBluetooth: () -> Unit,
-    canOpenDirectly: Boolean,
-    onOpenOverlaySettings: () -> Unit,
-    onSave: (Automation) -> Unit,
-    onDelete: (String) -> Unit,
-) {
-    // null — діалог закрито; порожній id — нова.
-    var editing by remember { mutableStateOf<Automation?>(null) }
-    val haptics = LocalHaptics.current
-    Card {
-        Text(stringResource(R.string.automations_title), color = Oled.TextPrimary, fontSize = 17.sp)
-        Note(stringResource(R.string.automations_note))
-        automations.forEach { automation ->
-            val phrase = commands.firstOrNull { it.id == automation.commandId }?.phrase ?: "—"
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable { haptics.tap(); editing = automation }
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    val trigger = stringResource(automation.kind.label())
-                    Text(listOfNotNull(trigger, automation.deviceName).joinToString(" · "), color = Oled.TextPrimary, fontSize = 15.sp)
-                    Text("→ $phrase", color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Switch(
-                    checked = automation.enabled,
-                    onCheckedChange = { haptics.tap(); onSave(automation.copy(enabled = it)) },
-                    colors = SwitchDefaults.colors(checkedTrackColor = Oled.TextSecondary, checkedThumbColor = Oled.TextPrimary),
-                )
-            }
-        }
-        if (commands.isEmpty()) {
-            Note(stringResource(R.string.automation_no_commands))
-        } else {
-            ActionOption(R.string.automation_add, Icons.Filled.Add) {
-                editing = Automation("", TriggerKind.BLUETOOTH_CONNECTED, commands.first().id)
-            }
-        }
-        Note(stringResource(R.string.automation_live_note))
-    }
+internal fun OpenDirectlyCard(canOpenDirectly: Boolean, onOpenOverlaySettings: () -> Unit) {
     Card {
         Text(stringResource(R.string.automation_direct_title), color = Oled.TextPrimary, fontSize = 17.sp)
+        Note(stringResource(R.string.automations_note))
         Note(stringResource(if (canOpenDirectly) R.string.automation_direct_on else R.string.automation_direct_off))
         if (!canOpenDirectly) ActionOption(R.string.automation_direct_open, Icons.Filled.Settings, onOpenOverlaySettings)
+        Note(stringResource(R.string.automation_live_note))
     }
-    editing?.let { automation ->
-        AutomationDialog(
-            automation = automation,
-            commands = commands,
-            bluetoothAllowed = bluetoothAllowed,
-            pairedDevices = pairedDevices,
-            onRequestBluetooth = onRequestBluetooth,
-            onSave = { onSave(it); editing = null },
-            onDelete = if (automation.id.isEmpty()) null else ({ onDelete(automation.id); editing = null }),
-            onDismiss = { editing = null },
-        )
+}
+
+/** «Лише якщо»: будь-коли, вибраний Bluetooth-пристрій, зарядка чи дротові навушники. */
+@Composable
+internal fun ConditionDialog(current: CommandCondition?, devices: DeviceAccess, onPick: (CommandCondition?) -> Unit, onDismiss: () -> Unit) {
+    var kind by remember { mutableStateOf(current?.kind) }
+    var device by remember { mutableStateOf(current?.deviceAddress?.let { PairedDevice(current.deviceName.orEmpty(), it) }) }
+    val canSave = kind != ConditionKind.BLUETOOTH_DEVICE || device != null
+    PickDialog(
+        title = R.string.condition_title,
+        onDismiss = onDismiss,
+        confirm = if (canSave) ({ onPick(kind?.let { CommandCondition(it, device?.address.takeIf { _ -> it == ConditionKind.BLUETOOTH_DEVICE }, device?.name.takeIf { _ -> it == ConditionKind.BLUETOOTH_DEVICE }) }) }) else null,
+    ) {
+        Choice(stringResource(R.string.condition_always), selected = kind == null) { kind = null }
+        ConditionKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
+        if (kind == ConditionKind.BLUETOOTH_DEVICE) DevicePicker(devices, device) { device = it }
+    }
+}
+
+/** «Запускати саму»: подія, від якої команда стартує без фрази. */
+@Composable
+internal fun TriggerDialog(devices: DeviceAccess, onPick: (CommandTrigger) -> Unit, onDismiss: () -> Unit) {
+    var kind by remember { mutableStateOf(TriggerKind.BLUETOOTH_CONNECTED) }
+    var device by remember { mutableStateOf<PairedDevice?>(null) }
+    val bluetooth = kind == TriggerKind.BLUETOOTH_CONNECTED || kind == TriggerKind.BLUETOOTH_DISCONNECTED
+    val canSave = !bluetooth || device != null
+    PickDialog(
+        title = R.string.command_auto_add,
+        onDismiss = onDismiss,
+        confirm = if (canSave) ({ onPick(CommandTrigger(kind, device?.address.takeIf { bluetooth }, device?.name.takeIf { bluetooth })) }) else null,
+    ) {
+        TriggerKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
+        if (bluetooth) DevicePicker(devices, device) { device = it }
     }
 }
 
 @Composable
-private fun AutomationDialog(
-    automation: Automation,
-    commands: List<CustomCommand>,
-    bluetoothAllowed: Boolean,
-    pairedDevices: () -> List<PairedDevice>,
-    onRequestBluetooth: () -> Unit,
-    onSave: (Automation) -> Unit,
-    onDelete: (() -> Unit)?,
-    onDismiss: () -> Unit,
-) {
-    var kind by remember { mutableStateOf(automation.kind) }
-    var device by remember { mutableStateOf(automation.deviceAddress?.let { PairedDevice(automation.deviceName.orEmpty(), it) }) }
-    var commandId by remember { mutableStateOf(automation.commandId) }
-    val bluetooth = kind == TriggerKind.BLUETOOTH_CONNECTED || kind == TriggerKind.BLUETOOTH_DISCONNECTED
-    val devices = remember(bluetoothAllowed) { if (bluetoothAllowed) pairedDevices() else emptyList() }
-    val canSave = commands.any { it.id == commandId } && (!bluetooth || device != null)
+private fun DevicePicker(devices: DeviceAccess, selected: PairedDevice?, onSelect: (PairedDevice) -> Unit) {
+    val list = remember(devices.allowed) { if (devices.allowed) devices.list() else emptyList() }
+    Text(stringResource(R.string.automation_device), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+    when {
+        !devices.allowed -> ActionOption(R.string.automation_bt_permission, Icons.Filled.Lock, devices.request)
+        list.isEmpty() -> Note(stringResource(R.string.automation_no_devices))
+        else -> list.forEach { option -> Choice(option.name, selected = selected?.address == option.address) { onSelect(option) } }
+    }
+}
+
+@Composable
+private fun PickDialog(@StringRes title: Int, onDismiss: () -> Unit, confirm: (() -> Unit)?, content: @Composable () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF141414),
-        title = { Text(stringResource(R.string.automations_title), color = Oled.TextPrimary) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.automation_when), color = Oled.TextSecondary, fontSize = 13.sp)
-                TriggerKind.entries.forEach { option ->
-                    Choice(stringResource(option.label()), selected = kind == option) { kind = option }
-                }
-                if (bluetooth) {
-                    Text(stringResource(R.string.automation_device), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                    when {
-                        !bluetoothAllowed -> ActionOption(R.string.automation_bt_permission, Icons.Filled.Lock, onRequestBluetooth)
-                        devices.isEmpty() -> Note(stringResource(R.string.automation_no_devices))
-                        else -> devices.forEach { option ->
-                            Choice(option.name, selected = device?.address == option.address) { device = option }
-                        }
-                    }
-                }
-                Text(stringResource(R.string.automation_then), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                commands.forEach { command ->
-                    Choice(command.phrase, selected = commandId == command.id) { commandId = command.id }
-                }
-                if (onDelete != null) {
-                    TextButton(onClick = onDelete) { Text(stringResource(R.string.automation_delete), color = Oled.TextSecondary) }
-                }
-            }
-        },
+        title = { Text(stringResource(title), color = Oled.TextPrimary) },
+        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() } },
         confirmButton = {
-            TextButton(
-                enabled = canSave,
-                onClick = {
-                    val chosen = device.takeIf { bluetooth }
-                    val base = if (automation.id.isEmpty()) Automation.create(kind, commandId, null, null) else automation
-                    onSave(base.copy(kind = kind, commandId = commandId, deviceAddress = chosen?.address, deviceName = chosen?.name))
-                },
-            ) { Text(stringResource(R.string.custom_command_save), color = if (canSave) Oled.TextPrimary else Oled.TextSecondary) }
+            TextButton(onClick = { confirm?.invoke() }, enabled = confirm != null) {
+                Text(stringResource(R.string.custom_step_add_confirm), color = if (confirm != null) Oled.TextPrimary else Oled.TextSecondary)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
@@ -193,6 +137,19 @@ private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+/** «Підключено Bluetooth-пристрій · Мої навушники». */
+@Composable
+internal fun triggerText(trigger: CommandTrigger): String =
+    listOfNotNull(stringResource(trigger.kind.label()), trigger.deviceName).joinToString(" · ")
+
+@Composable
+internal fun conditionText(condition: CommandCondition): String =
+    if (condition.kind == ConditionKind.BLUETOOTH_DEVICE) {
+        stringResource(R.string.condition_device_named, condition.deviceName ?: condition.deviceAddress.orEmpty())
+    } else {
+        stringResource(condition.kind.label())
+    }
+
 @StringRes
 private fun TriggerKind.label(): Int = when (this) {
     TriggerKind.BLUETOOTH_CONNECTED -> R.string.trigger_bt_on
@@ -201,4 +158,11 @@ private fun TriggerKind.label(): Int = when (this) {
     TriggerKind.POWER_DISCONNECTED -> R.string.trigger_power_off
     TriggerKind.HEADSET_PLUGGED -> R.string.trigger_headset_on
     TriggerKind.HEADSET_UNPLUGGED -> R.string.trigger_headset_off
+}
+
+@StringRes
+private fun ConditionKind.label(): Int = when (this) {
+    ConditionKind.BLUETOOTH_DEVICE -> R.string.condition_device
+    ConditionKind.CHARGING -> R.string.condition_charging
+    ConditionKind.WIRED_HEADSET -> R.string.condition_wired
 }
