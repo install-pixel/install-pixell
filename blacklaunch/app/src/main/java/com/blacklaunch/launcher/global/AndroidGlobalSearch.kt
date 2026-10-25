@@ -27,6 +27,8 @@ import com.blacklaunch.launcher.search.NameMatcher
 import com.blacklaunch.launcher.search.PreparedQuery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Глобальний пошук через офіційні API. Читає лише в момент пошуку, без фонового
@@ -50,6 +52,11 @@ class AndroidGlobalSearch(
         withContext(Dispatchers.IO) {
         val prepared = PreparedQuery(query)
         if (prepared.isEmpty) return@withContext emptyList()
+        // «фото вчора», «дзвінки 12 жовтня»: джерела з датою шукають за нею (й рештою слів), назване джерело — лише воно.
+        val date = DateQuery.parse(query, LocalDate.now())
+        fun dated(kind: GroupKind) = date != null && kind in DateQuery.DATED && (date.sources.isEmpty() || kind in date.sources)
+        fun plain(kind: GroupKind) = date == null || date.sources.isEmpty() && kind !in DateQuery.DATED
+        fun wanted(kind: GroupKind) = kind in kinds && (dated(kind) || plain(kind))
         buildList {
             if (GroupKind.SETTINGS in kinds) {
                 group(GroupKind.SETTINGS) { SettingsCatalog.search(prepared).map { it.copy(title = settingTitle(it.entryId)) } }
@@ -58,8 +65,8 @@ class AndroidGlobalSearch(
             if (GroupKind.CONTACTS in kinds && granted(Manifest.permission.READ_CONTACTS)) {
                 group(GroupKind.CONTACTS) { contacts(prepared) }
             }
-            if (GroupKind.CALLS in kinds && granted(Manifest.permission.READ_CALL_LOG)) {
-                group(GroupKind.CALLS) { calls(prepared) }
+            if (wanted(GroupKind.CALLS) && granted(Manifest.permission.READ_CALL_LOG)) {
+                group(GroupKind.CALLS) { calls(prepared, date.takeIf { dated(GroupKind.CALLS) }) }
             }
             if (GroupKind.CALENDAR in kinds && granted(Manifest.permission.READ_CALENDAR)) {
                 group(GroupKind.CALENDAR) { events(query.trim()) }
@@ -67,9 +74,11 @@ class AndroidGlobalSearch(
             if (GroupKind.SMS in kinds && granted(Manifest.permission.READ_SMS)) {
                 group(GroupKind.SMS) { sms(query.trim()) }
             }
-            if (GroupKind.NOTIFICATIONS in kinds) group(GroupKind.NOTIFICATIONS) { notifications(query.trim()) }
+            if (wanted(GroupKind.NOTIFICATIONS)) {
+                group(GroupKind.NOTIFICATIONS) { notifications(query.trim(), date.takeIf { dated(GroupKind.NOTIFICATIONS) }) }
+            }
             for (kind in MEDIA_KINDS) {
-                if (kind in kinds && hasMediaAccess(kind)) group(kind) { media(kind, query.trim()) }
+                if (wanted(kind) && hasMediaAccess(kind)) group(kind) { media(kind, query.trim(), date.takeIf { dated(kind) }) }
             }
         }
     }
@@ -192,22 +201,32 @@ class AndroidGlobalSearch(
     }
 
     // Журнал дзвінків: за іменем (початки слів, як у контактах) або за цифрами номера.
-    private fun calls(prepared: PreparedQuery): List<GlobalResult> {
-        val query = prepared.text
-        if (query.length < MIN_TEXT) return emptyList()
+    private fun calls(prepared: PreparedQuery, date: DateQuery?): List<GlobalResult> {
+        val name = if (date != null) PreparedQuery(date.text) else prepared
+        val query = name.text.trim()
+        if (date == null && query.length < MIN_TEXT) return emptyList()
         val byNumber = query.any { it.isDigit() }
-        val like = "%${escapeLike(query.trim())}%"
+        val clauses = mutableListOf<String>()
+        val args = mutableListOf<String>()
+        if (query.isNotEmpty()) {
+            clauses += if (byNumber) "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'" else "${CallLog.Calls.CACHED_NAME} LIKE ? ESCAPE '\\'"
+            args += "%${escapeLike(query)}%"
+        }
+        if (date != null) {
+            clauses += "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} < ?"
+            args += millis(date.start).toString()
+            args += millis(date.endExclusive).toString()
+        }
         val projection = arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.DATE, CallLog.Calls.TYPE)
-        val selection = if (byNumber) "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'" else "${CallLog.Calls.CACHED_NAME} LIKE ? ESCAPE '\\'"
         return appContext.contentResolver.query(
-            CallLog.Calls.CONTENT_URI, projection, selection, arrayOf(like), "${CallLog.Calls.DATE} DESC",
+            CallLog.Calls.CONTENT_URI, projection, clauses.joinToString(" AND ") { "($it)" }, args.toTypedArray(), "${CallLog.Calls.DATE} DESC",
         )?.use { c ->
             val seen = HashSet<String>()
             buildList {
                 while (c.moveToNext() && size < LIMIT) {
                     val number = c.getString(0)?.takeIf { it.isNotBlank() } ?: continue
-                    val name = c.getString(1)?.takeIf { it.isNotBlank() }
-                    if (!byNumber && (name == null || !NameStarts.matches(name, prepared))) continue
+                    val cached = c.getString(1)?.takeIf { it.isNotBlank() }
+                    if (query.isNotEmpty() && !byNumber && (cached == null || !NameStarts.matches(cached, name))) continue
                     if (!seen.add(number)) continue
                     val type = when (c.getInt(3)) {
                         CallLog.Calls.MISSED_TYPE, CallLog.Calls.REJECTED_TYPE -> R.string.call_missed
@@ -215,28 +234,33 @@ class AndroidGlobalSearch(
                         else -> R.string.call_incoming
                     }
                     val whenText = DateUtils.formatDateTime(appContext, c.getLong(2), DATE_FLAGS)
-                    add(GlobalResult.Call(number, name, appContext.getString(type) + " · " + whenText))
+                    add(GlobalResult.Call(number, cached, appContext.getString(type) + " · " + whenText))
                 }
             }
         }.orEmpty()
     }
 
-    private fun notifications(query: String): List<GlobalResult> {
-        if (query.length < MIN_TEXT) return emptyList()
+    private fun notifications(query: String, date: DateQuery?): List<GlobalResult> {
+        val text = date?.text ?: query
+        if (date == null && text.length < MIN_TEXT) return emptyList()
+        val window = date?.let { millis(it.start) until millis(it.endExclusive) }
         val current = ProfileNotificationFilter.current()
-        return NotificationTexts.search(query, current, appContext.packageName, LIMIT).map { entry ->
+        return NotificationTexts.search(text, current, appContext.packageName, LIMIT, window).map { entry ->
             val app = appLabel(entry.packageName) ?: entry.packageName
             val title = entry.title.ifBlank { app }
-            GlobalResult.NotificationText(entry.id, entry.packageName, title, app + " · " + TextMatch.snippet(entry.text.ifBlank { entry.title }, query))
+            val body = entry.text.ifBlank { entry.title }
+            val detail = if (date != null) DateUtils.formatDateTime(appContext, entry.postedAt, DATE_FLAGS) else TextMatch.snippet(body, text)
+            GlobalResult.NotificationText(entry.id, entry.packageName, title, "$app · $detail")
         }
     }
 
     private fun hasMediaAccess(kind: GroupKind): Boolean = mediaPermissions(kind).any(::granted)
 
     // Пісні — за назвою, виконавцем, альбомом; відео й фото — за назвою файлу або альбомом («Camera», «Screenshots»).
-    private fun media(kind: GroupKind, query: String): List<GlobalResult> {
-        if (query.length < MIN_TEXT) return emptyList()
-        val like = "%${escapeLike(query)}%"
+    private fun media(kind: GroupKind, query: String, date: DateQuery?): List<GlobalResult> {
+        val text = date?.text ?: query
+        if (date == null && text.length < MIN_TEXT) return emptyList()
+        val like = "%${escapeLike(text)}%"
         val (uri, columns, sort) = when (kind) {
             GroupKind.MUSIC -> Triple(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -246,27 +270,49 @@ class AndroidGlobalSearch(
             GroupKind.VIDEO -> Triple(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                 listOf(MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.BUCKET_DISPLAY_NAME, MediaStore.Video.Media.TITLE),
-                "${MediaStore.Video.Media.DATE_ADDED} DESC",
+                "${MediaStore.Video.VideoColumns.DATE_TAKEN} DESC, ${MediaStore.Video.Media.DATE_ADDED} DESC",
             )
             else -> Triple(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 listOf(MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.Images.Media.TITLE),
-                "${MediaStore.Images.Media.DATE_ADDED} DESC",
+                "${MediaStore.Images.ImageColumns.DATE_TAKEN} DESC, ${MediaStore.Images.Media.DATE_ADDED} DESC",
             )
         }
-        val selection = columns.joinToString(" OR ", prefix = "(", postfix = ")") { "$it LIKE ? ESCAPE '\\'" } +
-            if (kind == GroupKind.MUSIC) " AND ${MediaStore.Audio.Media.IS_MUSIC} != 0" else ""
-        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.MIME_TYPE) + columns.take(2)
-        return appContext.contentResolver.query(uri, projection, selection, Array(columns.size) { like }, sort)?.use { c ->
+        val clauses = mutableListOf<String>()
+        val args = mutableListOf<String>()
+        if (text.isNotEmpty()) {
+            clauses += columns.joinToString(" OR ") { "$it LIKE ? ESCAPE '\\'" }
+            repeat(columns.size) { args += like }
+        }
+        if (kind == GroupKind.MUSIC) clauses += "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        // Дата зйомки (мс); якщо її немає — коли файл з'явився на телефоні (с).
+        val taken = if (kind == GroupKind.VIDEO) MediaStore.Video.VideoColumns.DATE_TAKEN else MediaStore.Images.ImageColumns.DATE_TAKEN
+        val added = MediaStore.MediaColumns.DATE_ADDED
+        if (date != null) {
+            clauses += "($taken >= ? AND $taken < ?) OR ($taken IS NULL AND $added >= ? AND $added < ?)"
+            val from = millis(date.start)
+            val to = millis(date.endExclusive)
+            args += listOf(from.toString(), to.toString(), (from / 1000).toString(), (to / 1000).toString())
+        }
+        val dated = kind != GroupKind.MUSIC
+        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.MIME_TYPE) + columns.take(2) +
+            (if (dated) arrayOf(taken, added) else emptyArray())
+        val selection = clauses.joinToString(" AND ") { "($it)" }
+        return appContext.contentResolver.query(uri, projection, selection, args.toTypedArray(), sort)?.use { c ->
             buildList {
                 while (c.moveToNext() && size < LIMIT) {
                     val title = c.getString(2)?.takeIf { it.isNotBlank() } ?: continue
-                    val detail = c.getString(3)?.takeIf { it.isNotBlank() && it != MediaStore.UNKNOWN_STRING }
+                    val album = c.getString(3)?.takeIf { it.isNotBlank() && it != MediaStore.UNKNOWN_STRING }
+                    // Фото й відео — з датою, щоб було видно, з якого дня.
+                    val time = if (!dated) 0L else if (!c.isNull(4)) c.getLong(4) else c.getLong(5) * 1000
+                    val detail = if (time > 0) listOfNotNull(album, DateUtils.formatDateTime(appContext, time, DATE_FLAGS)).joinToString(" · ") else album
                     add(GlobalResult.Media(ContentUris.withAppendedId(uri, c.getLong(0)).toString(), c.getString(1) ?: "*/*", title, detail))
                 }
             }
         }.orEmpty()
     }
+
+    private fun millis(day: LocalDate) = day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     private fun escapeLike(text: String) = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 

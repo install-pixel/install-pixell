@@ -30,12 +30,14 @@ object NotificationTexts {
     fun clear() = entries.clear()
 
     /** Збіги серед запам'ятованих і тих, що зараз у шторці (або відкладені фільтром профілю). */
-    fun search(query: String, current: List<StatusBarNotification>, ownPackage: String, limit: Int): List<Entry> {
+    /** [window] — лише сповіщення з цього проміжку часу (мс); порожній [query] з [window] — усі за цей час. */
+    fun search(query: String, current: List<StatusBarNotification>, ownPackage: String, limit: Int, window: LongRange? = null): List<Entry> {
         val all = LinkedHashMap<String, Entry>()
         synchronized(this) { entries.values.forEach { all[it.id] = it } }
         current.mapNotNull { entryOf(it, ownPackage) }.forEach { all[it.id] = it }
         return all.values
-            .filter { TextMatch.containsAll(it.title + " " + it.text, query) }
+            .filter { window == null || it.postedAt in window }
+            .filter { (window != null && query.isBlank()) || TextMatch.containsAll(it.title + " " + it.text, query) }
             .sortedByDescending { it.postedAt }
             .take(limit)
     }
