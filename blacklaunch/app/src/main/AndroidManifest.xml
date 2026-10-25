@@ -49,6 +49,12 @@
     <!-- Дозвіл надається лише програмі з роллю «Головний екран» — тобто лаунчеру за замовчуванням. -->
     <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" tools:ignore="ProtectedPermissions" />
 
+    <!-- Автоматизації: підключення Bluetooth-пристрою (дозвіл питаємо, коли вибирають такий тригер);
+         «Поверх інших вікон» — необов'язково, щоб Android дозволив відкрити програму без дотику. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>
@@ -170,6 +176,15 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+        <!-- Автоматизації: Android будить лише в момент підключення/відключення Bluetooth-пристрою. -->
+        <receiver
+            android:name=".automation.BluetoothAutomationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

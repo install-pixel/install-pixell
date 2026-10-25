@@ -460,7 +460,12 @@ class LauncherViewModel(
      */
     fun runCustom(command: CustomCommand) {
         query.value?.let { recentQueries.record(scope.value.profileId, it) }
-        command.steps.forEach { step ->
+        runSteps(command.steps)
+    }
+
+    /** Кроки по черзі — «Моя команда» або решта автоматизації після дотику до сповіщення. */
+    fun runSteps(steps: List<String>) {
+        steps.forEach { step ->
             when (val parsed = VoiceCommandParser.parse(step)) {
                 is VoiceCommand.Action -> _voiceActions.trySend(parsed.action)
                 is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let(::activate)

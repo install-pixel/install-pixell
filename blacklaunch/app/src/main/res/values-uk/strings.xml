@@ -453,4 +453,27 @@
     <string name="step_time">котра година</string>
     <string name="show_all">Показати всі</string>
     <string name="show_less">Згорнути</string>
+    <string name="automations_title">Автоматизації</string>
+    <string name="automations_note">«Моя команда» запускається сама, коли щось стається. Музика, гучність, ліхтарик, яскравість, режим і таймер виконуються одразу; відкрити програму Android дозволяє лише дотиком до сповіщення — або одразу з дозволом нижче.</string>
+    <string name="automation_add">Додати автоматизацію</string>
+    <string name="automation_when">Коли</string>
+    <string name="automation_then">Що виконати</string>
+    <string name="automation_device">Пристрій</string>
+    <string name="automation_bt_permission">Дозволити доступ до Bluetooth-пристроїв</string>
+    <string name="automation_no_devices">Немає спарених пристроїв</string>
+    <string name="automation_no_commands">Спершу створіть «Мою команду» вище.</string>
+    <string name="automation_live_note">Зарядка й дротові навушники спрацьовують, поки Black Glass працює (як лаунчер — майже завжди).</string>
+    <string name="automation_direct_title">Відкривати програми одразу</string>
+    <string name="automation_direct_on">✓ Дозвіл «Поверх інших вікон» надано — програми відкриваються без дотику.</string>
+    <string name="automation_direct_off">Без нього програма відкривається дотиком до сповіщення. Дозвіл «Поверх інших вікон» дає Android відкривати одразу.</string>
+    <string name="automation_direct_open">Дати дозвіл</string>
+    <string name="automation_channel">Автоматизації</string>
+    <string name="automation_tap">Торкніться, щоб виконати: %1$s</string>
+    <string name="automation_delete">Видалити автоматизацію</string>
+    <string name="trigger_bt_on">Підключено Bluetooth-пристрій</string>
+    <string name="trigger_bt_off">Відключено Bluetooth-пристрій</string>
+    <string name="trigger_power_on">Підключено зарядку</string>
+    <string name="trigger_power_off">Відключено зарядку</string>
+    <string name="trigger_headset_on">Підключено дротові навушники</string>
+    <string name="trigger_headset_off">Відключено дротові навушники</string>
 </resources>

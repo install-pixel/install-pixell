@@ -453,4 +453,27 @@
     <string name="step_time">która godzina</string>
     <string name="show_all">Pokaż wszystkie</string>
     <string name="show_less">Zwiń</string>
+    <string name="automations_title">Automatyzacje</string>
+    <string name="automations_note">„Moje polecenie” uruchamia się samo, gdy coś się dzieje. Muzyka, głośność, latarka, jasność, tryb i minutnik działają od razu; otworzyć aplikację Android pozwala tylko po stuknięciu w powiadomienie — albo od razu z uprawnieniem poniżej.</string>
+    <string name="automation_add">Dodaj automatyzację</string>
+    <string name="automation_when">Kiedy</string>
+    <string name="automation_then">Co wykonać</string>
+    <string name="automation_device">Urządzenie</string>
+    <string name="automation_bt_permission">Zezwól na dostęp do urządzeń Bluetooth</string>
+    <string name="automation_no_devices">Brak sparowanych urządzeń</string>
+    <string name="automation_no_commands">Najpierw utwórz „Moje polecenie” powyżej.</string>
+    <string name="automation_live_note">Ładowarka i przewodowe słuchawki działają, gdy Black Glass jest uruchomiony (jako launcher — prawie zawsze).</string>
+    <string name="automation_direct_title">Otwieraj aplikacje od razu</string>
+    <string name="automation_direct_on">✓ Uprawnienie „Wyświetlanie nad innymi aplikacjami” przyznane — aplikacje otwierają się bez stuknięcia.</string>
+    <string name="automation_direct_off">Bez niego aplikacja otwiera się po stuknięciu w powiadomienie. „Wyświetlanie nad innymi aplikacjami” pozwala Androidowi otworzyć ją od razu.</string>
+    <string name="automation_direct_open">Zezwól</string>
+    <string name="automation_channel">Automatyzacje</string>
+    <string name="automation_tap">Stuknij, aby wykonać: %1$s</string>
+    <string name="automation_delete">Usuń automatyzację</string>
+    <string name="trigger_bt_on">Połączono urządzenie Bluetooth</string>
+    <string name="trigger_bt_off">Rozłączono urządzenie Bluetooth</string>
+    <string name="trigger_power_on">Podłączono ładowarkę</string>
+    <string name="trigger_power_off">Odłączono ładowarkę</string>
+    <string name="trigger_headset_on">Podłączono słuchawki przewodowe</string>
+    <string name="trigger_headset_off">Odłączono słuchawki przewodowe</string>
 </resources>

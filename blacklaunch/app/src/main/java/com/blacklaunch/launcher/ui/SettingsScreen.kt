@@ -95,6 +95,8 @@ fun SettingsScreen(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onSaveCustomCommand: (CustomCommand) -> Unit,
     onDeleteCustomCommand: (String) -> Unit,
+    /** Автоматизації «Коли → Що» — під «Моїми командами». */
+    automations: @Composable () -> Unit,
     onOpenDefaultApps: () -> Unit,
     /** Останні вильоти (найновіший перший) або null. */
     crashLog: String?,
@@ -320,6 +322,7 @@ fun SettingsScreen(
 
         SettingsNav.CustomCommands -> SettingsPage(stringResource(R.string.custom_commands_title), { onNavigate(SettingsNav.Voice) }) {
             CustomCommandsCard(customCommands, commandApps, commandProfiles, iconFor, onSaveCustomCommand, onDeleteCustomCommand)
+            automations()
         }
 
         SettingsNav.Battery -> SettingsPage(stringResource(R.string.battery_section), toMain) {

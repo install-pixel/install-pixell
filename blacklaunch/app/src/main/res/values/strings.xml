@@ -453,4 +453,27 @@
     <string name="step_time">what time is it</string>
     <string name="show_all">Show all</string>
     <string name="show_less">Show less</string>
+    <string name="automations_title">Automations</string>
+    <string name="automations_note">A “My command” runs by itself when something happens. Music, volume, flashlight, brightness, mode and timer run right away; Android lets an app open only with a tap on the notification — or right away with the permission below.</string>
+    <string name="automation_add">Add automation</string>
+    <string name="automation_when">When</string>
+    <string name="automation_then">Run</string>
+    <string name="automation_device">Device</string>
+    <string name="automation_bt_permission">Allow access to Bluetooth devices</string>
+    <string name="automation_no_devices">No paired devices</string>
+    <string name="automation_no_commands">Create a “My command” above first.</string>
+    <string name="automation_live_note">Charger and wired headphones work while Black Glass is running (as the launcher — almost always).</string>
+    <string name="automation_direct_title">Open apps right away</string>
+    <string name="automation_direct_on">✓ “Display over other apps” is allowed — apps open without a tap.</string>
+    <string name="automation_direct_off">Without it an app opens with a tap on the notification. “Display over other apps” lets Android open it right away.</string>
+    <string name="automation_direct_open">Allow</string>
+    <string name="automation_channel">Automations</string>
+    <string name="automation_tap">Tap to run: %1$s</string>
+    <string name="automation_delete">Delete automation</string>
+    <string name="trigger_bt_on">Bluetooth device connected</string>
+    <string name="trigger_bt_off">Bluetooth device disconnected</string>
+    <string name="trigger_power_on">Charger connected</string>
+    <string name="trigger_power_off">Charger disconnected</string>
+    <string name="trigger_headset_on">Wired headphones plugged in</string>
+    <string name="trigger_headset_off">Wired headphones unplugged</string>
 </resources>

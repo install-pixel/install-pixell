@@ -12,6 +12,11 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import com.blacklaunch.launcher.ui.PairedDevice
+import com.blacklaunch.launcher.ui.AutomationsCard
+import com.blacklaunch.launcher.automation.Automation
+import android.bluetooth.BluetoothManager
+import android.annotation.SuppressLint
 import androidx.compose.ui.graphics.asImageBitmap
 import android.provider.MediaStore
 import android.util.Size
@@ -236,7 +241,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         // Запущено як «цифровий асистент» — одразу пошук і мікрофон.
-        if (savedInstanceState == null) handleAssist(intent)
+        if (savedInstanceState == null && !handleAssist(intent)) handleRunSteps(intent)
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
             val home by viewModel.home.collectAsStateWithLifecycle()
@@ -362,6 +367,24 @@ class MainActivity : ComponentActivity() {
                                 iconFor = iconFor,
                                 onSaveCustomCommand = app.customCommands::save,
                                 onDeleteCustomCommand = app.customCommands::delete,
+                                automations = {
+                                    val list by app.automations.automations.collectAsStateWithLifecycle()
+                                    val bluetoothAllowed by bluetoothAllowedState.collectAsStateWithLifecycle()
+                                    val canOpenDirectly by overlayAllowedState.collectAsStateWithLifecycle()
+                                    AutomationsCard(
+                                        automations = list,
+                                        commands = customCommands,
+                                        bluetoothAllowed = bluetoothAllowed,
+                                        pairedDevices = ::pairedDevices,
+                                        onRequestBluetooth = ::requestBluetooth,
+                                        canOpenDirectly = canOpenDirectly,
+                                        onOpenOverlaySettings = {
+                                            startOrToast(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", packageName, null)))
+                                        },
+                                        onSave = ::saveAutomation,
+                                        onDelete = app.automations::delete,
+                                    )
+                                },
                                 onOpenDefaultApps = { startOrToast(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)) },
                                 crashLog = crashLog,
                                 onCopyCrashLog = ::copyCrashLog,
@@ -747,6 +770,44 @@ class MainActivity : ComponentActivity() {
         }?.also { thumbnails.put(uri, it) }
     }
 
+    // ---- Автоматизації ----
+    private val bluetoothAllowedState = MutableStateFlow(false)
+    private val overlayAllowedState = MutableStateFlow(false)
+
+    private fun bluetoothGranted() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+
+    private val bluetoothPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        bluetoothAllowedState.value = granted
+        if (!granted) toast(R.string.global_permission_denied)
+    }
+
+    private fun requestBluetooth() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
+
+    /** Спарені пристрої — щоб вибрати навушники чи авто; лише з дозволом «Пристрої поблизу». */
+    @SuppressLint("MissingPermission")
+    private fun pairedDevices(): List<PairedDevice> {
+        if (!bluetoothGranted()) return emptyList()
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return emptyList()
+        return runCatching {
+            adapter.bondedDevices.orEmpty().map { PairedDevice(it.name ?: it.address, it.address) }.sortedBy { it.name.lowercase() }
+        }.getOrDefault(emptyList())
+    }
+
+    // Сповіщення «Торкніться, щоб виконати» — питаємо дозвіл, коли зберігають першу автоматизацію.
+    private val automationNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    private fun saveAutomation(automation: Automation) {
+        app.automations.save(automation)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            automationNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     private fun openAppInfo(pkg: String) =
         startOrToast(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
 
@@ -1024,6 +1085,8 @@ class MainActivity : ComponentActivity() {
         ensureBlackWallpaper()
         enableAwaitedKind()
         app.privateSpace.refresh()
+        bluetoothAllowedState.value = bluetoothGranted()
+        overlayAllowedState.value = Settings.canDrawOverlays(this)
         wasStopped = false
         dndAccessState.value = app.profileApplier.hasDndAccess()
         notificationAccessState.value = ProfileNotificationFilter.hasAccess(this)
@@ -1035,8 +1098,17 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (handleAssist(intent)) return
+        if (handleRunSteps(intent)) return
         voice.cancel()
         if (!wasStopped) viewModel.forgetSearch()
+    }
+
+    /** Автоматизація: кроки, яким потрібен екран, — після дотику до сповіщення чи одразу. */
+    private fun handleRunSteps(intent: Intent?): Boolean {
+        val steps = intent?.getStringArrayExtra(EXTRA_RUN_STEPS) ?: return false
+        intent.removeExtra(EXTRA_RUN_STEPS)
+        viewModel.runSteps(steps.toList())
+        return true
     }
 
     /**
@@ -1117,9 +1189,11 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private companion object {
-        const val PROFILE_BANNER_MS = 1_000L
-        const val THUMB_CACHE = 200
-        const val THUMB_PX = 256
+    companion object {
+        /** Кроки автоматизації, яким потрібен екран (відкрити програму тощо). */
+        const val EXTRA_RUN_STEPS = "com.blacklaunch.launcher.RUN_STEPS"
+        private const val PROFILE_BANNER_MS = 1_000L
+        private const val THUMB_CACHE = 200
+        private const val THUMB_PX = 256
     }
 }
