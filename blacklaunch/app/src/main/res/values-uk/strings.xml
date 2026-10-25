@@ -522,4 +522,9 @@
     <string name="command_auto_title">Запускати саму</string>
     <string name="command_auto_add">Додати подію</string>
     <string name="command_auto_short">Сама: %1$s</string>
+    <string name="selected">Вибрано</string>
+    <string name="selected_count">Вибрано: %1$d</string>
+    <string name="share">Поділитися</string>
+    <string name="to_trash">У кошик</string>
+    <string name="moved_to_trash">Переміщено в кошик — можна відновити протягом 30 днів</string>
 </resources>

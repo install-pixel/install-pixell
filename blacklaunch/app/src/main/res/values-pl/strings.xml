@@ -522,4 +522,9 @@
     <string name="command_auto_title">Uruchamiaj samo</string>
     <string name="command_auto_add">Dodaj zdarzenie</string>
     <string name="command_auto_short">Samo: %1$s</string>
+    <string name="selected">Wybrane</string>
+    <string name="selected_count">Wybrano: %1$d</string>
+    <string name="share">Udostępnij</string>
+    <string name="to_trash">Do kosza</string>
+    <string name="moved_to_trash">Przeniesiono do kosza — można przywrócić przez 30 dni</string>
 </resources>

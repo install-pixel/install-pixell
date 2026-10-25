@@ -522,4 +522,9 @@
     <string name="command_auto_title">Also run by itself</string>
     <string name="command_auto_add">Add event</string>
     <string name="command_auto_short">By itself: %1$s</string>
+    <string name="selected">Selected</string>
+    <string name="selected_count">Selected: %1$d</string>
+    <string name="share">Share</string>
+    <string name="to_trash">To trash</string>
+    <string name="moved_to_trash">Moved to trash — it can be restored for 30 days</string>
 </resources>

@@ -5,6 +5,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.layout.ContentScale
@@ -92,6 +96,9 @@ fun SearchResults(
     onTogglePrivate: () -> Unit = {},
     onExpand: (GroupKind?) -> Unit = {},
     thumbFor: suspend (String) -> ImageBitmap? = { null },
+    /** Вибрані довгим натисканням фото й відео: поділитися / у кошик (null — кошика немає, Android до 11). */
+    onShareMedia: (List<GlobalResult.Media>) -> Unit = {},
+    onTrashMedia: ((List<GlobalResult.Media>) -> Unit)? = null,
     /** Швидкі дії біля контакту: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit = { _, _ -> },
     /** Які кнопки біля контакту дозволені профілем. */
@@ -116,6 +123,15 @@ fun SearchResults(
     val unique = groups.mapNotNull { group ->
         group.items.filter { seen.add(it.key) }.takeIf { it.isNotEmpty() }?.let { group.copy(items = it) }
     }
+    // Вибір фото й відео: довге натискання починає, далі дотик додає чи прибирає; новий запит скидає.
+    var selected by remember(query) { mutableStateOf<List<GlobalResult.Media>>(emptyList()) }
+    val toggle: (GlobalResult.Media) -> Unit = { media ->
+        selected = if (selected.any { it.uri == media.uri }) selected.filterNot { it.uri == media.uri } else selected + media
+    }
+    val tapGlobal: (GlobalResult) -> Unit = { result ->
+        if (selected.isNotEmpty() && result is GlobalResult.Media) toggle(result) else onGlobal(result)
+    }
+    val selectedUris = selected.map { it.uri }.toSet()
     val calculator = unique.filter { it.kind == GroupKind.CALCULATOR }
     val others = unique.filter { it.kind != GroupKind.CALCULATOR }.sortedBy { it.kind.ordinal }
     // Найкращий результат — унизу, ближче до поля пошуку й великого пальця:
@@ -125,8 +141,17 @@ fun SearchResults(
         reverseLayout = true,
         verticalArrangement = Arrangement.Bottom,
     ) {
+        // Панель вибору — у самому низу, під пальцем.
+        if (selected.isNotEmpty()) item(key = "selection") {
+            SelectionBar(
+                count = selected.size,
+                onShare = { onShareMedia(selected); selected = emptyList() },
+                onTrash = onTrashMedia?.let { trash -> { trash(selected); selected = emptyList() } },
+                onCancel = { selected = emptyList() },
+            )
+        }
         calculator.forEach { group ->
-            items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage, thumbFor) }
+            items(group.items, key = { it.key }) { GlobalRow(it, tapGlobal, onContactAction, canCall, canMessage, thumbFor) }
         }
         // Команди (як голосом) — одразу над полем пошуку.
         items(custom, key = { "custom:${it.id}" }) { command ->
@@ -145,10 +170,16 @@ fun SearchResults(
             if (group.expanded && group.kind in GRID_KINDS) {
                 // Сітка мініатюр: найновіші — вгорі зліва.
                 items(group.items.chunked(GRID_COLUMNS).reversed(), key = { row -> "grid:" + row.first().key }) { row ->
-                    ThumbRow(row, thumbFor, onGlobal)
+                    ThumbRow(row, thumbFor, selectedUris, onClick = tapGlobal, onLongClick = toggle)
                 }
             } else {
-                items(group.items, key = { it.key }) { GlobalRow(it, onGlobal, onContactAction, canCall, canMessage, thumbFor) }
+                items(group.items, key = { it.key }) { result ->
+                    GlobalRow(
+                        result, tapGlobal, onContactAction, canCall, canMessage, thumbFor,
+                        selected = result is GlobalResult.Media && result.uri in selectedUris,
+                        onLongClick = (result as? GlobalResult.Media)?.takeIf { !it.mime.startsWith("audio/") }?.let { media -> { toggle(media) } },
+                    )
+                }
             }
             item(key = "header:${group.kind}") { GroupHeader(group.kind) }
         }
@@ -397,6 +428,7 @@ private fun GroupHeader(kind: GroupKind) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GlobalRow(
     result: GlobalResult,
@@ -405,6 +437,9 @@ private fun GlobalRow(
     canCall: Boolean,
     canMessage: Boolean,
     thumbFor: suspend (String) -> ImageBitmap?,
+    selected: Boolean = false,
+    /** Фото й відео: довге натискання — вибрати. */
+    onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
@@ -413,7 +448,11 @@ private fun GlobalRow(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(shape)
-            .clickable { haptics.tap(); onClick(result) }
+            .background(if (selected) Oled.Surface else Color.Transparent)
+            .combinedClickable(
+                onClick = { haptics.tap(); onClick(result) },
+                onLongClick = onLongClick?.let { long -> { haptics.longPress(); long() } },
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -484,13 +523,22 @@ private fun ExpandRow(@StringRes label: Int, onClick: () -> Unit) {
     )
 }
 
-/** Рядок сітки: квадратні мініатюри; дотик відкриває фото чи відео. */
+/** Рядок сітки: квадратні мініатюри; дотик відкриває фото чи відео, довге натискання — вибір. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ThumbRow(row: List<GlobalResult>, thumbFor: suspend (String) -> ImageBitmap?, onClick: (GlobalResult) -> Unit) {
+private fun ThumbRow(
+    row: List<GlobalResult>,
+    thumbFor: suspend (String) -> ImageBitmap?,
+    selected: Set<String>,
+    onClick: (GlobalResult) -> Unit,
+    onLongClick: (GlobalResult.Media) -> Unit,
+) {
     val haptics = LocalHaptics.current
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         row.forEach { result ->
-            val uri = (result as? GlobalResult.Media)?.uri.orEmpty()
+            val media = result as? GlobalResult.Media
+            val uri = media?.uri.orEmpty()
+            val isSelected = uri in selected
             val thumb by produceState<ImageBitmap?>(null, uri) { value = thumbFor(uri) }
             Box(
                 modifier = Modifier
@@ -498,14 +546,46 @@ private fun ThumbRow(row: List<GlobalResult>, thumbFor: suspend (String) -> Imag
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(10.dp))
                     .background(Oled.Surface)
-                    .clickable { haptics.tap(); onClick(result) },
+                    .then(if (isSelected) Modifier.border(3.dp, Oled.TextPrimary, RoundedCornerShape(10.dp)) else Modifier)
+                    .combinedClickable(
+                        onClick = { haptics.tap(); onClick(result) },
+                        onLongClick = media?.let { m -> { haptics.longPress(); onLongClick(m) } },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 thumb?.let { Image(it, contentDescription = result.title, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize()) }
                     ?: Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
+                if (isSelected) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = stringResource(R.string.selected),
+                        tint = Oled.TextPrimary,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(22.dp),
+                    )
+                }
             }
         }
         repeat(GRID_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+/** Вибрано N: поділитися, у кошик (з підтвердженням Android), скасувати. */
+@Composable
+private fun SelectionBar(count: Int, onShare: () -> Unit, onTrash: (() -> Unit)?, onCancel: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Oled.Surface)
+            .border(1.dp, Oled.Glint, RoundedCornerShape(18.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.selected_count, count), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f).padding(start = 6.dp))
+        TextButton(onClick = onShare) { Text(stringResource(R.string.share), color = Oled.TextPrimary) }
+        if (onTrash != null) TextButton(onClick = onTrash) { Text(stringResource(R.string.to_trash), color = Oled.TextPrimary) }
+        IconButton(onClick = onCancel) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel), tint = Oled.TextSecondary) }
     }
 }
 

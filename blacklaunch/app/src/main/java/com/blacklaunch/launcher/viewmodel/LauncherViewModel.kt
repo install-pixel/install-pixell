@@ -243,6 +243,11 @@ class LauncherViewModel(
     /** «Показати всі» під групою — лише для поточного запиту; новий запит згортає. */
     private val expandedGroup = MutableStateFlow<Pair<String, GroupKind>?>(null)
 
+    /** Шукати те саме ще раз — після видалення фото, щоб вони зникли з результатів. */
+    private val refreshTick = MutableStateFlow(0)
+
+    fun refreshResults() = refreshTick.update { it + 1 }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val groups: StateFlow<List<ResultGroup>> =
         combine(query.filterNotNull(), globalKinds, profiles, results, scope) { query, allKinds, profiles, apps, scope ->
@@ -250,7 +255,9 @@ class LauncherViewModel(
             val kinds = access(scope, allKinds).kinds
             GroupInput(query, kinds, profiles, apps, scope)
         }
-            .combine(expandedGroup) { input, expanded -> input to expanded?.takeIf { it.first == input.query }?.second }
+            .combine(combine(expandedGroup, refreshTick) { expanded, _ -> expanded }) { input, expanded ->
+                input to expanded?.takeIf { it.first == input.query }?.second
+            }
             .mapLatest { (input, expanded) ->
                 val (query, kinds, profiles, apps, scope) = input
                 if (query.isBlank()) return@mapLatest emptyList()

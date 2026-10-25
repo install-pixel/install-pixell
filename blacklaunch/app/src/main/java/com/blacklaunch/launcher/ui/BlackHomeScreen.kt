@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -93,8 +94,14 @@ private const val RESISTANCE = 0.5f
 /** Скільки (у порогах свайпу) треба відтягнути панель, щоб пошук закрився. */
 private const val PULL = 1f
 
-/** Те саме, якщо список уже гортали, — навмисний, довший свайп. */
-private const val LONG_PULL = 2.5f
+/** Те саме, якщо список уже гортали, — навмисний, довший свайп (до 0.33.0 було 2.5 — закривалось лише з третьої спроби). */
+private const val LONG_PULL = 1.8f
+
+/** Швидкий змах униз (пікселів за секунду) закриває пошук і з коротшим відтягуванням. */
+private const val FLICK_VELOCITY = 1500f
+
+/** Частка порогу, якої досить для швидкого змаху: легкий дотик усе одно нічого не закриває. */
+private const val FLICK_PULL = 0.4f
 
 /** Тривалість анімації закриття пошуку. */
 private const val CLOSE_MS = 280
@@ -143,6 +150,8 @@ fun BlackHomeScreen(
     onExpand: (GroupKind?) -> Unit = {},
     /** Мініатюра фото чи відео за адресою в сховищі. */
     thumbFor: suspend (String) -> ImageBitmap? = { null },
+    onShareMedia: (List<GlobalResult.Media>) -> Unit = {},
+    onTrashMedia: ((List<GlobalResult.Media>) -> Unit)? = null,
     /** Біля контакту в пошуку: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -223,6 +232,8 @@ fun BlackHomeScreen(
                 onTogglePrivate = onTogglePrivate,
                 onExpand = onExpand,
                 thumbFor = thumbFor,
+                onShareMedia = onShareMedia,
+                onTrashMedia = onTrashMedia,
                 onContactAction = onContactAction,
                 iconFor = iconFor,
                 voiceState = voiceState,
@@ -440,6 +451,8 @@ private fun SearchOpen(
     onExpand: (GroupKind?) -> Unit = {},
     /** Мініатюра фото чи відео за адресою в сховищі. */
     thumbFor: suspend (String) -> ImageBitmap? = { null },
+    onShareMedia: (List<GlobalResult.Media>) -> Unit = {},
+    onTrashMedia: ((List<GlobalResult.Media>) -> Unit)? = null,
     /** Біля контакту в пошуку: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -465,13 +478,16 @@ private fun SearchOpen(
     // Пошук знову відкрили, поки панель ще від'їжджала, — повертаємо її на місце;
     // почали закривати (Назад, свайп) — клавіатура їде вниз одночасно з панеллю.
     LaunchedEffect(visible) { if (visible) pull = 0f else hideKeyboard() }
+    // Новий запит — новий список: довший свайп потрібен, лише якщо гортали саме його.
+    LaunchedEffect(state.query) { listWasScrolled = false }
 
     // Відпустили палець: відтягнули достатньо — панель плавно їде вниз і пошук закривається;
     // замало — пружно повертається на місце (видно, що це край списку).
-    fun release(canClose: Boolean) {
+    fun release(canClose: Boolean, velocity: Float = 0f) {
         val needed = thresholdPx * if (listWasScrolled) LONG_PULL else PULL
+        val flick = velocity > FLICK_VELOCITY && pull > thresholdPx * FLICK_PULL
         scope.launch {
-            if (canClose && pull > needed) {
+            if (canClose && (pull > needed || flick)) {
                 hideKeyboard()
                 animate(pull, panelHeight.coerceAtLeast(pull), animationSpec = tween(CLOSE_MS, easing = FastOutLinearInEasing)) { v, _ -> pull = v }
                 close()
@@ -515,7 +531,7 @@ private fun SearchOpen(
                 val canClose = !scrolledThisGesture
                 scrolledThisGesture = false
                 if (pull <= 0f) return Velocity.Zero
-                release(canClose)
+                release(canClose, available.y)
                 return available
             }
         }
@@ -555,12 +571,15 @@ private fun SearchOpen(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .nestedScroll(pullToClose)
             .pointerInput(thresholdPx) {
+                val tracker = VelocityTracker()
                 detectVerticalDragGestures(
+                    onDragStart = { tracker.resetTracking() },
                     onVerticalDrag = { change, amount ->
                         change.consume()
+                        tracker.addPosition(change.uptimeMillis, change.position)
                         pull = (pull + amount * RESISTANCE).coerceAtLeast(0f)
                     },
-                    onDragEnd = { release(canClose = true) },
+                    onDragEnd = { release(canClose = true, velocity = tracker.calculateVelocity().y) },
                     onDragCancel = { release(canClose = false) },
                 )
             },
@@ -586,6 +605,8 @@ private fun SearchOpen(
             onTogglePrivate = onTogglePrivate,
             onExpand = onExpand,
             thumbFor = thumbFor,
+            onShareMedia = onShareMedia,
+            onTrashMedia = onTrashMedia,
             onContactAction = onContactAction,
             canCall = state.canCall,
             canMessage = state.canMessage,

@@ -12,6 +12,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.activity.result.IntentSenderRequest
+import androidx.annotation.RequiresApi
 import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.annotation.StringRes
 import com.blacklaunch.launcher.ui.PermissionItem
@@ -323,6 +325,8 @@ class MainActivity : ComponentActivity() {
                     onTogglePrivate = app.privateSpace::toggle,
                     onExpand = viewModel::expandGroup,
                     thumbFor = ::thumbnail,
+                    onShareMedia = ::shareMedia,
+                    onTrashMedia = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ::trashMedia else null,
                     onContactAction = ::contactAction,
                     iconFor = iconFor,
                     voiceState = voiceState,
@@ -750,6 +754,42 @@ class MainActivity : ComponentActivity() {
                 startOrToast(details)
             }
         }
+    }
+
+    /** Вибрані фото й відео — у звичайне системне меню «Поділитися». */
+    private fun shareMedia(items: List<GlobalResult.Media>) {
+        if (items.isEmpty()) return
+        val uris = ArrayList(items.map { Uri.parse(it.uri) })
+        val type = when {
+            items.all { it.mime.startsWith("image/") } -> "image/*"
+            items.all { it.mime.startsWith("video/") } -> "video/*"
+            else -> "*/*"
+        }
+        val send = if (uris.size == 1) {
+            Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris.first())
+        } else {
+            Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        }.setType(type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        send.clipData = ClipData.newUri(contentResolver, items.first().title, uris.first()).apply {
+            uris.drop(1).forEach { addItem(ClipData.Item(it)) }
+        }
+        startOrToast(Intent.createChooser(send, null))
+    }
+
+    // «У кошик»: Android сам питає підтвердження, фото можна відновити 30 днів (Android 11+).
+    private val trashRequest = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            toast(R.string.moved_to_trash)
+            viewModel.refreshResults()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun trashMedia(items: List<GlobalResult.Media>) {
+        if (items.isEmpty()) return
+        val request = runCatching { MediaStore.createTrashRequest(contentResolver, items.map { Uri.parse(it.uri) }, true) }.getOrNull()
+            ?: return toast(R.string.launch_failed)
+        trashRequest.launch(IntentSenderRequest.Builder(request.intentSender).build())
     }
 
     // Мініатюри фото й відео в пошуку — офіційним API сховища, у пам'яті до 200 штук.
