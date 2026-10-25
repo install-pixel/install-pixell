@@ -640,7 +640,7 @@
     <string name="mon_thermal_state">тепловий стан Android</string>
     <string name="mon_headroom_label">запас до сповільнення</string>
     <string name="mon_type">тип</string>
-    <string name="mon_speed">швидкість каналу</string>
+    <string name="mon_speed">оцінка Android: завантаження</string>
     <string name="mon_model">модель</string>
     <string name="mon_battery_title">Батарея</string>
     <string name="mon_device_title">Телефон</string>
@@ -664,7 +664,7 @@
     <string name="mon_apps_size">програми %1$s</string>
     <string name="mon_headroom_full">%1$s %2$d%%</string>
     <string name="mon_headroom_hint">Запас — скільки ще телефон може грітися, поки Android не почне сповільнювати процесор, щоб охолонути. 100% — холодний, 0% — сповільнює.</string>
-    <string name="mon_link">канал ~%1$d Мбіт/с</string>
+    <string name="mon_link">оцінка ~%1$d Мбіт/с</string>
     <string name="mon_wifi_today">Wi‑Fi сьогодні %1$s</string>
     <string name="mon_mobile_today">мобільні сьогодні %1$s</string>
     <string name="mon_unlocks">розблокувань %1$d</string>
@@ -673,9 +673,12 @@
     <string name="mon_power">потужність</string>
     <string name="mon_down">завантаження зараз</string>
     <string name="mon_up">вивантаження зараз</string>
-    <string name="mon_link_up">канал вивантаження</string>
+    <string name="mon_link_up">оцінка Android: вивантаження</string>
     <string name="mon_apps_label">програми з даними</string>
     <string name="mon_wifi_label">Wi‑Fi сьогодні</string>
     <string name="mon_mobile_label">мобільні сьогодні</string>
     <string name="mon_u_hz">%1$d Гц</string>
+    <string name="mon_wifi_link">з\'єднання %1$d Мбіт/с</string>
+    <string name="mon_wifi_rx">з\'єднання Wi‑Fi: прийом</string>
+    <string name="mon_wifi_tx">з\'єднання Wi‑Fi: передача</string>
 </resources>

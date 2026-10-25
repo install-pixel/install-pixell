@@ -51,7 +51,18 @@ data class StorageStats(val totalBytes: Long, val freeBytes: Long)
 data class ThermalStats(val status: Int?, val headroom: Float?)
 
 /** [rxBytes]/[txBytes] — усього отримано/надіслано телефоном від увімкнення: різниця між знімками — швидкість зараз. */
-data class NetworkStatsInfo(val type: NetworkType, val signalDbm: Int?, val downKbps: Int?, val upKbps: Int?, val rxBytes: Long?, val txBytes: Long?)
+data class NetworkStatsInfo(
+    val type: NetworkType,
+    val signalDbm: Int?,
+    /** Оцінка пропускної здатності від Android — груба й обережна (часто «100 Мбіт/с» на швидкому Wi‑Fi). */
+    val downKbps: Int?,
+    val upKbps: Int?,
+    val rxBytes: Long?,
+    val txBytes: Long?,
+    /** Швидкість з'єднання з роутером Wi‑Fi, Мбіт/с: прийом і передача (як у налаштуваннях Wi‑Fi). */
+    val wifiRxMbps: Int? = null,
+    val wifiTxMbps: Int? = null,
+)
 
 enum class NetworkType { NONE, WIFI, MOBILE, ETHERNET, OTHER }
 
@@ -185,7 +196,12 @@ class SystemStats(context: Context) {
             NetworkType.MOBILE -> mobileDbm()
             else -> null
         }
-        return NetworkStatsInfo(type, signal, caps.linkDownstreamBandwidthKbps.takeIf { it > 0 }, caps.linkUpstreamBandwidthKbps.takeIf { it > 0 }, rx, tx)
+        val wifi = if (type == NetworkType.WIFI) wifiInfo() else null
+        val wifiRx = wifi?.let { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) it.rxLinkSpeedMbps else it.linkSpeed }?.takeIf { it > 0 }
+        val wifiTx = wifi?.let { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) it.txLinkSpeedMbps else null }?.takeIf { it > 0 }
+        return NetworkStatsInfo(
+            type, signal, caps.linkDownstreamBandwidthKbps.takeIf { it > 0 }, caps.linkUpstreamBandwidthKbps.takeIf { it > 0 }, rx, tx, wifiRx, wifiTx,
+        )
     }
 
     /** Характеристики — читаються раз, при відкритті монітора. */
@@ -253,15 +269,16 @@ class SystemStats(context: Context) {
         max.groupingBy { it }.eachCount().map { (mhz, count) -> count to mhz }.sortedByDescending { it.second }
     }.getOrDefault(emptyList())
 
+    private fun wifiRssi(): Int? = wifiInfo()?.rssi?.takeIf { it in -127..-1 }
+
     @Suppress("DEPRECATION")
-    private fun wifiRssi(): Int? = runCatching {
+    private fun wifiInfo(): android.net.wifi.WifiInfo? = runCatching {
         val fromNetwork = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.transportInfo as? android.net.wifi.WifiInfo
         } else {
             null
         }
-        val info = fromNetwork ?: app.getSystemService(android.net.wifi.WifiManager::class.java)?.connectionInfo
-        info?.rssi?.takeIf { it in -127..-1 }
+        fromNetwork ?: app.getSystemService(android.net.wifi.WifiManager::class.java)?.connectionInfo
     }.getOrNull()
 
     @android.annotation.SuppressLint("MissingPermission")

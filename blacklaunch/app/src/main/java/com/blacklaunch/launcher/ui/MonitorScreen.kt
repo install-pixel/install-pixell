@@ -254,7 +254,9 @@ internal fun MonitorScreen(
         }
 
         if (MonitorTile.NETWORK in tiles) {
-            val linkText = s.network.downKbps?.let { stringResource(R.string.mon_link, it / 1000) }
+            // Швидкість з'єднання Wi‑Fi (як у налаштуваннях) — точніша за оцінку Android; оцінка — лише без неї.
+            val linkText = s.network.wifiRxMbps?.let { stringResource(R.string.mon_wifi_link, it) }
+                ?: s.network.downKbps?.let { stringResource(R.string.mon_link, it / 1000) }
             MetricCard(
                 stringResource(R.string.mon_row_net),
                 listOfNotNull(stringResource(s.network.type.label()), signal?.let { stringResource(R.string.mon_signal_pct, (it * 100).roundToInt()) }).joinToString(" · "),
@@ -343,6 +345,8 @@ internal fun MonitorScreen(
                     },
                     rate?.let { Plate(stringResource(R.string.mon_down), stringResource(R.string.mon_u_rate, size(it.first))) },
                     rate?.let { Plate(stringResource(R.string.mon_up), stringResource(R.string.mon_u_rate, size(it.second))) },
+                    s.network.wifiRxMbps?.let { Plate(stringResource(R.string.mon_wifi_rx), stringResource(R.string.mon_u_mbps, it)) },
+                    s.network.wifiTxMbps?.let { Plate(stringResource(R.string.mon_wifi_tx), stringResource(R.string.mon_u_mbps, it)) },
                     s.network.downKbps?.let { Plate(stringResource(R.string.mon_speed), stringResource(R.string.mon_u_mbps, it / 1000)) },
                     s.network.upKbps?.let { Plate(stringResource(R.string.mon_link_up), stringResource(R.string.mon_u_mbps, it / 1000)) },
                     usage?.wifiBytes?.let { Plate(stringResource(R.string.mon_wifi_label), size(it)) },
