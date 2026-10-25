@@ -53,6 +53,8 @@ class AppSearchEngineTest {
     @Test fun fastOnLargeAppList() {
         val labels = (1..1_000).map { "Application number $it" }.toTypedArray()
         val index = engine.index(labels.map(FakeAppSource::app))
+        // Розминка: перші виклики повільніші, поки JVM компілює код, — міряємо вже «теплий» пошук.
+        repeat(50) { index.search("number ${it % 100}") }
         val start = System.nanoTime()
         repeat(200) { index.search("number ${it % 100}") }
         val ms = (System.nanoTime() - start) / 1_000_000
