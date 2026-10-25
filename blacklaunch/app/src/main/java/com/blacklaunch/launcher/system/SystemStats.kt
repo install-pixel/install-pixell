@@ -49,6 +49,24 @@ enum class NetworkType { NONE, WIFI, MOBILE, ETHERNET, OTHER }
 /** З «Доступом до використання»: час екрана й мобільні дані сьогодні, топ програм за часом. */
 data class UsageInfo(val screenMs: Long, val mobileBytes: Long?, val top: List<Pair<String, Long>>)
 
+/** Характеристики телефона — офіційно доступне (типу пам'яті й заводської ємності батареї Android не дає). */
+data class DeviceInfo(
+    val model: String,
+    /** Чип: «Qualcomm SM8750» (Android 12+), інакше null. */
+    val soc: String?,
+    val cores: Int,
+    val android: String,
+    val securityPatch: String?,
+    val kernel: String?,
+    val screenPx: String,
+    val screenInches: Float?,
+    val refreshHz: Int?,
+    /** Камери: напрямок (true — фронтальна) і мегапікселі. */
+    val cameras: List<Pair<Boolean, Float>>,
+    val ramBytes: Long,
+    val storageBytes: Long,
+)
+
 data class SystemSnapshot(
     val battery: BatteryStats,
     val memory: MemoryStats,
@@ -138,6 +156,43 @@ class SystemStats(context: Context) {
             null
         }
         return NetworkStatsInfo(type, signal, caps.linkDownstreamBandwidthKbps.takeIf { it > 0 })
+    }
+
+    /** Характеристики — читаються раз, при відкритті монітора. */
+    fun device(): DeviceInfo {
+        val model = listOf(Build.MANUFACTURER.replaceFirstChar { it.uppercase() }, Build.MODEL).distinct().joinToString(" ")
+        val soc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            listOf(Build.SOC_MANUFACTURER, Build.SOC_MODEL).filter { it.isNotBlank() && it != Build.UNKNOWN }.joinToString(" ").ifBlank { null }
+        } else {
+            null
+        }
+        val metrics = app.resources.displayMetrics
+        val display = app.getSystemService(android.hardware.display.DisplayManager::class.java)?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        // Справжня роздільність панелі — з найбільшого режиму дисплея (вікно програми може бути меншим).
+        val mode = display?.supportedModes?.maxByOrNull { it.physicalWidth * it.physicalHeight }
+        val w = mode?.physicalWidth ?: metrics.widthPixels
+        val h = mode?.physicalHeight ?: metrics.heightPixels
+        val inches = if (metrics.xdpi > 0 && metrics.ydpi > 0) {
+            kotlin.math.sqrt((w / metrics.xdpi).let { it * it } + (h / metrics.ydpi).let { it * it })
+        } else {
+            null
+        }
+        val hz = display?.supportedModes?.maxOfOrNull { it.refreshRate }?.let { kotlin.math.round(it).toInt() }
+        val cameras = runCatching {
+            val manager = app.getSystemService(android.hardware.camera2.CameraManager::class.java)
+            manager.cameraIdList.mapNotNull { id ->
+                val c = manager.getCameraCharacteristics(id)
+                val size = c.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE) ?: return@mapNotNull null
+                val front = c.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING) == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT
+                front to size.width * size.height / 1_000_000f
+            }.distinct()
+        }.getOrDefault(emptyList())
+        val patch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Build.VERSION.SECURITY_PATCH.ifBlank { null } else null
+        return DeviceInfo(
+            model, soc, Runtime.getRuntime().availableProcessors(), Build.VERSION.RELEASE, patch,
+            System.getProperty("os.version")?.substringBefore('-'),
+            "${maxOf(w, h)}×${minOf(w, h)}", inches, hz, cameras, memory().totalBytes, storage().totalBytes,
+        )
     }
 
     /** Чи дано «Доступ до використання» (дає користувач у налаштуваннях Android). */

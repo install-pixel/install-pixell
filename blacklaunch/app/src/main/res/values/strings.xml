@@ -571,10 +571,10 @@
     <string name="mtile_current_graph">Battery current graph</string>
     <string name="mtile_memory_graph">Memory graph</string>
     <string name="mtile_usage">Screen time, data, top apps</string>
-    <string name="accent_blue">Blue</string>
-    <string name="accent_green">Green</string>
-    <string name="accent_amber">Amber</string>
-    <string name="accent_grey">Grey</string>
+    <string name="accent_blue">Ice</string>
+    <string name="accent_green">Sage</string>
+    <string name="accent_amber">Sand</string>
+    <string name="accent_grey">Silver</string>
     <string name="mon_title">MONITOR</string>
     <string name="mon_battery">BATTERY</string>
     <string name="mon_memory">MEMORY</string>
@@ -618,4 +618,12 @@
     <string name="dur_dh">%1$d d %2$d h</string>
     <string name="dur_hm">%1$d h %2$d min</string>
     <string name="dur_m">%1$d min</string>
+    <string name="mon_signal">signal</string>
+    <string name="mon_cores">%1$d cores</string>
+    <string name="mon_screen">screen</string>
+    <string name="mon_memory_total">RAM · storage</string>
+    <string name="mon_cameras">cameras (↺ front)</string>
+    <string name="mon_patch">security patch</string>
+    <string name="mon_kernel">kernel</string>
+    <string name="mtile_device">Phone specs (tap to expand)</string>
 </resources>

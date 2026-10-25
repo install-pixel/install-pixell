@@ -61,6 +61,7 @@ private fun MonitorTile.title(): Int = when (this) {
     MonitorTile.CURRENT_GRAPH -> R.string.mtile_current_graph
     MonitorTile.MEMORY_GRAPH -> R.string.mtile_memory_graph
     MonitorTile.USAGE -> R.string.mtile_usage
+    MonitorTile.DEVICE -> R.string.mtile_device
 }
 
 @StringRes

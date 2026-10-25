@@ -6,10 +6,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Плитки монітора системи — кожну можна вимкнути. */
-enum class MonitorTile { BATTERY, MEMORY, STORAGE, THERMAL, NETWORK, DETAILS, CURRENT_GRAPH, MEMORY_GRAPH, USAGE }
+enum class MonitorTile { BATTERY, MEMORY, STORAGE, THERMAL, NETWORK, DETAILS, CURRENT_GRAPH, MEMORY_GRAPH, USAGE, DEVICE }
 
-/** Колір світіння шкал. */
-enum class MonitorAccent(val argb: Long) { BLUE(0xFF4FD1E8), GREEN(0xFF9BE37A), AMBER(0xFFF2A541), GREY(0xFFC7CBD1) }
+/** Колір світіння шкал — приглушені тони, щоб не випадати з чорної скляної теми (1.1.1). */
+enum class MonitorAccent(val argb: Long) { BLUE(0xFF8FB4C9), GREEN(0xFF9DBB98), AMBER(0xFFC9A77C), GREY(0xFFB9BEC6) }
 
 data class MonitorLook(val tiles: Set<MonitorTile> = MonitorTile.entries.toSet(), val accent: MonitorAccent = MonitorAccent.BLUE)
 
@@ -27,18 +27,23 @@ class MonitorSettings(context: Context) {
         prefs.edit()
             .putStringSet(KEY_TILES, look.tiles.map { it.name }.toSet())
             .putString(KEY_ACCENT, look.accent.name)
+            .putStringSet(KEY_KNOWN, MonitorTile.entries.map { it.name }.toSet())
             .apply()
         _look.value = look
     }
 
     private fun read(): MonitorLook = MonitorLook(
-        tiles = prefs.getStringSet(KEY_TILES, null)?.mapNotNull { n -> MonitorTile.entries.firstOrNull { it.name == n } }?.toSet()
-            ?: MonitorTile.entries.toSet(),
+        // Плитки, що з'явились після збереженого вибору (наприклад, «Пристрій» з 1.1.1), — увімкнені.
+        tiles = prefs.getStringSet(KEY_TILES, null)?.let { saved ->
+            val known = prefs.getStringSet(KEY_KNOWN, null) ?: MonitorTile.entries.filter { it != MonitorTile.DEVICE }.map { it.name }.toSet()
+            MonitorTile.entries.filter { it.name in saved || it.name !in known }.toSet()
+        } ?: MonitorTile.entries.toSet(),
         accent = MonitorAccent.entries.firstOrNull { it.name == prefs.getString(KEY_ACCENT, null) } ?: MonitorAccent.BLUE,
     )
 
     private companion object {
         const val KEY_TILES = "tiles"
         const val KEY_ACCENT = "accent"
+        const val KEY_KNOWN = "known"
     }
 }

@@ -6,15 +6,18 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -34,8 +38,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -44,6 +49,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.settings.MonitorLook
 import com.blacklaunch.launcher.settings.MonitorTile
+import com.blacklaunch.launcher.system.DeviceInfo
 import com.blacklaunch.launcher.system.NetworkType
 import com.blacklaunch.launcher.system.SystemSnapshot
 import com.blacklaunch.launcher.system.SystemStats
@@ -54,15 +60,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
-private val Mono = FontFamily.Monospace
-private val Warm = Color(0xFFF2A541)
-private val Track = Color(0xFF1A1E24)
-private val Panel = Color(0xFF07090B)
-private val Line = Color(0xFF1C2026)
+/** Приглушене тепле для тепла — у тон акцентів, не яскраве. */
+private val Warm = Color(0xFFC9956A)
+private val Track = Color(0x1FFFFFFF)
+private val GlassShape = RoundedCornerShape(18.dp)
+
+/** Наш шрифт, але цифри однакової ширини — щоб значення не «стрибали» щосекунди. */
+private fun num(size: TextUnit, color: Color, weight: FontWeight = FontWeight.Normal) =
+    TextStyle(fontSize = size, color = color, fontWeight = weight, fontFeatureSettings = "tnum")
 
 /**
- * Монітор системи (етап 12b): велика шкала батареї з кільцями пам'яті й тепла, панелі, графіки, таблиця й топ програм.
- * Дані читаються раз на 2 с і лише поки екран на виду (RESUMED); використання — раз на 30 с.
+ * Монітор системи: зверху шкала батареї з кільцями пам'яті й тепла, нижче «термінал» — сегментні смуги,
+ * таблиця, графіки, топ програм і характеристики телефона. Дані — раз на 2 с і лише поки екран на виду.
  */
 @Composable
 internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (String) -> String?, modifier: Modifier = Modifier) {
@@ -70,9 +79,12 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var snap by remember { mutableStateOf<SystemSnapshot?>(null) }
     var usage by remember { mutableStateOf<UsageInfo?>(null) }
+    var device by remember { mutableStateOf<DeviceInfo?>(null) }
+    var deviceOpen by remember { mutableStateOf(false) }
     val currentHistory = remember { mutableStateListOf<Float>() }
     val memoryHistory = remember { mutableStateListOf<Float>() }
     LaunchedEffect(lifecycle, stats) {
+        if (device == null) device = withContext(Dispatchers.IO) { runCatching { stats.device() }.getOrNull() }
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var tick = 0
             while (true) {
@@ -92,109 +104,75 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
     val memUsed = 1f - s.memory.availableBytes.toFloat() / s.memory.totalBytes.coerceAtLeast(1)
     val storageUsed = 1f - s.storage.freeBytes.toFloat() / s.storage.totalBytes.coerceAtLeast(1)
     val heat = s.thermal.headroom?.coerceIn(0f, 1f) ?: ((s.thermal.status ?: 0) / 6f)
+    val tiles = look.tiles
 
-    Column(modifier.fillMaxSize().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Верхній рядок: час роботи, мережа, тепловий стан.
+    Column(modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(stringResource(R.string.mon_title), color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
             Text(
                 listOf(duration(s.uptimeMs), stringResource(s.network.type.label()), stringResource(thermalLabel(s.thermal.status))).joinToString(" · "),
-                color = Oled.TextSecondary,
-                fontSize = 11.sp,
-                fontFamily = Mono,
+                style = num(11.sp, Oled.TextSecondary),
             )
         }
 
-        if (MonitorTile.BATTERY in look.tiles) {
-            Box(Modifier.size(208.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
-                BatteryDial(s.battery.percent / 100f, memUsed, heat, accent, Modifier.fillMaxSize())
+        if (MonitorTile.BATTERY in tiles) {
+            Box(Modifier.size(176.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
+                BatteryDial(s.battery.percent / 100f, memUsed.takeIf { MonitorTile.MEMORY in tiles }, heat.takeIf { MonitorTile.THERMAL in tiles }, accent, Modifier.fillMaxSize())
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.mon_battery), color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 2.sp)
-                    Text("${s.battery.percent}%", color = Oled.TextPrimary, fontSize = 48.sp, fontWeight = FontWeight.ExtraLight, fontFamily = Mono)
-                    s.battery.currentMa?.let { Text(signed(it) + " мА", color = accent, fontSize = 13.sp, fontFamily = Mono) }
+                    Text("${s.battery.percent}%", style = num(42.sp, Oled.TextPrimary, FontWeight.ExtraLight))
+                    s.battery.currentMa?.let { Text(signed(it) + " мА", style = num(13.sp, accent)) }
                     Text(
                         listOfNotNull(
                             stringResource(if (s.battery.charging) R.string.mon_charging else R.string.mon_discharging),
                             s.battery.temperatureC?.let { "%.1f °C".format(it) },
                         ).joinToString(" · "),
-                        color = Oled.TextSecondary,
-                        fontSize = 11.sp,
-                        fontFamily = Mono,
+                        style = num(11.sp, Oled.TextSecondary),
                     )
                 }
             }
         }
 
-        // Панелі 2×2.
-        val panels = buildList {
-            if (MonitorTile.MEMORY in look.tiles) {
-                add(PanelData(R.string.mon_memory, size(s.memory.totalBytes - s.memory.availableBytes), stringResource(R.string.mon_of, size(s.memory.totalBytes)), memUsed, accent))
+        // «Термінал»: сегментні смуги, як у htop.
+        val bars = buildList {
+            if (MonitorTile.BATTERY in tiles) add(BarRow("BAT", s.battery.percent / 100f, accent, "${s.battery.percent}%"))
+            if (MonitorTile.MEMORY in tiles) add(BarRow("MEM", memUsed, accent, "${size(s.memory.totalBytes - s.memory.availableBytes)} / ${size(s.memory.totalBytes)}"))
+            if (MonitorTile.STORAGE in tiles) add(BarRow("DSK", storageUsed, accent, "${size(s.storage.totalBytes - s.storage.freeBytes)} / ${size(s.storage.totalBytes)}"))
+            if (MonitorTile.THERMAL in tiles) {
+                add(BarRow("THR", heat, Warm, s.thermal.headroom?.let { stringResource(R.string.mon_headroom, ((1f - it.coerceIn(0f, 1f)) * 100).roundToInt()) } ?: stringResource(thermalLabel(s.thermal.status))))
             }
-            if (MonitorTile.STORAGE in look.tiles) {
-                add(PanelData(R.string.mon_storage, size(s.storage.totalBytes - s.storage.freeBytes), stringResource(R.string.mon_free, size(s.storage.freeBytes)), storageUsed, accent))
-            }
-            if (MonitorTile.THERMAL in look.tiles) {
+            if (MonitorTile.NETWORK in tiles) {
                 add(
-                    PanelData(
-                        R.string.mon_thermal,
-                        stringResource(thermalLabel(s.thermal.status)),
-                        s.thermal.headroom?.let { stringResource(R.string.mon_headroom, ((1f - it.coerceIn(0f, 1f)) * 100).roundToInt()) }
-                            ?: s.battery.temperatureC?.let { "%.1f °C".format(it) }.orEmpty(),
-                        heat,
-                        Warm,
-                    ),
-                )
-            }
-            if (MonitorTile.NETWORK in look.tiles) {
-                add(
-                    PanelData(
-                        R.string.mon_network,
-                        stringResource(s.network.type.label()),
-                        listOfNotNull(s.network.signalDbm?.let { "$it дБм" }, s.network.downKbps?.let { "~${it / 1000} Мбіт/с" }).joinToString(" · "),
+                    BarRow(
+                        "NET",
                         signalLevel(s.network.signalDbm, s.network.type),
                         accent,
+                        listOfNotNull(stringResource(s.network.type.label()), s.network.downKbps?.let { "~${it / 1000} Мбіт/с" }).joinToString(" · "),
                     ),
                 )
             }
         }
-        panels.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { PanelTile(it, Modifier.weight(1f)) }
-                if (row.size == 1) Box(Modifier.weight(1f))
-            }
-        }
-
-        // Живі графіки: струм батареї й зайнята пам'ять за останні хвилини.
-        val graphs = listOfNotNull(
-            Triple(R.string.mon_current, currentHistory, s.battery.currentMa?.let { signed(it) + " мА" }.orEmpty()).takeIf { MonitorTile.CURRENT_GRAPH in look.tiles && currentHistory.size > 1 },
-            Triple(R.string.mon_memory_graph, memoryHistory, "${(memUsed * 100).roundToInt()}%").takeIf { MonitorTile.MEMORY_GRAPH in look.tiles && memoryHistory.size > 1 },
-        )
-        graphs.forEach { (label, history, value) ->
-            Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(4.dp)).border(1.dp, Line, RoundedCornerShape(4.dp)).padding(10.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(label), color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.5.sp)
-                    Text(value, color = accent, fontSize = 11.sp, fontFamily = Mono)
-                }
-                Sparkline(history, accent, Modifier.fillMaxWidth().height(36.dp))
-            }
-        }
-
-        if (MonitorTile.DETAILS in look.tiles) {
-            val facts = listOfNotNull(
+        val facts = if (MonitorTile.DETAILS in tiles) {
+            listOfNotNull(
                 s.battery.voltageMv?.let { stringResource(R.string.mon_voltage) to "%.2f В".format(it / 1000f) },
                 s.battery.cycles?.let { stringResource(R.string.mon_cycles) to "$it" },
                 stringResource(R.string.mon_health) to stringResource(healthLabel(s.battery.health)),
                 s.battery.toFullMs?.let { stringResource(R.string.mon_to_full) to duration(it) },
                 stringResource(R.string.mon_pressure) to stringResource(if (s.memory.low) R.string.mon_yes else R.string.mon_no),
-                stringResource(R.string.mon_uptime) to duration(s.uptimeMs),
+                s.network.signalDbm?.let { stringResource(R.string.mon_signal) to "$it дБм" },
             )
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        } else {
+            emptyList()
+        }
+        if (bars.isNotEmpty() || facts.isNotEmpty()) {
+            Glass {
+                bars.forEach { bar -> SegmentRow(bar) }
+                if (bars.isNotEmpty() && facts.isNotEmpty()) Box(Modifier.fillMaxWidth().height(1.dp).background(Track))
                 facts.chunked(2).forEach { row ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         row.forEach { (k, v) ->
                             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(k, color = Oled.TextSecondary, fontSize = 11.sp, fontFamily = Mono)
-                                Text(v, color = Oled.TextPrimary, fontSize = 11.sp, fontFamily = Mono)
+                                Text(k, color = Oled.TextSecondary, fontSize = 11.sp)
+                                Text(v, style = num(11.sp, Oled.TextPrimary))
                             }
                         }
                         if (row.size == 1) Box(Modifier.weight(1f))
@@ -203,20 +181,66 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
             }
         }
 
-        if (MonitorTile.USAGE in look.tiles) {
+        // Живі графіки в одній картці: струм батареї й зайнята пам'ять.
+        val showCurrent = MonitorTile.CURRENT_GRAPH in tiles && currentHistory.size > 1
+        val showMemory = MonitorTile.MEMORY_GRAPH in tiles && memoryHistory.size > 1
+        if (showCurrent || showMemory) {
+            Glass {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (showCurrent) GraphCell(R.string.mon_current, s.battery.currentMa?.let { signed(it) + " мА" }.orEmpty(), currentHistory, accent, Modifier.weight(1f))
+                    if (showMemory) GraphCell(R.string.mon_memory_graph, "${(memUsed * 100).roundToInt()}%", memoryHistory, accent.copy(alpha = 0.7f), Modifier.weight(1f))
+                }
+            }
+        }
+
+        if (MonitorTile.USAGE in tiles) {
             val u = usage
             if (u == null) {
                 Text(stringResource(R.string.mon_usage_off), color = Oled.TextSecondary, fontSize = 11.sp)
             } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.mon_screen_today, duration(u.screenMs)), color = Oled.TextPrimary, fontSize = 11.sp, fontFamily = Mono)
-                    u.mobileBytes?.let { Text(stringResource(R.string.mon_data_today, size(it)), color = Oled.TextPrimary, fontSize = 11.sp, fontFamily = Mono) }
+                Glass {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(stringResource(R.string.mon_screen_today, duration(u.screenMs)), style = num(11.sp, Oled.TextPrimary))
+                        u.mobileBytes?.let { Text(stringResource(R.string.mon_data_today, size(it)), style = num(11.sp, Oled.TextPrimary)) }
+                    }
+                    u.top.take(TOP_SHOWN).forEachIndexed { i, (name, ms) ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("${i + 1}", style = num(11.sp, Oled.TextSecondary))
+                            Text(name, color = Oled.TextPrimary, fontSize = 11.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(duration(ms), style = num(11.sp, Oled.TextSecondary))
+                        }
+                    }
                 }
-                u.top.take(TOP_SHOWN).forEachIndexed { i, (name, ms) ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("${i + 1}", color = Oled.TextSecondary, fontSize = 11.sp, fontFamily = Mono)
-                        Text(name, color = Oled.TextPrimary, fontSize = 11.sp, modifier = Modifier.weight(1f), maxLines = 1)
-                        Text(duration(ms), color = Oled.TextSecondary, fontSize = 11.sp, fontFamily = Mono)
+            }
+        }
+
+        // Характеристики: один рядок; дотик розгортає повний список.
+        val d = device
+        if (MonitorTile.DEVICE in tiles && d != null) {
+            Glass(Modifier.clickable { deviceOpen = !deviceOpen }) {
+                Text(
+                    listOfNotNull(d.model, d.soc, stringResource(R.string.mon_cores, d.cores), "Android ${d.android}").joinToString(" · "),
+                    color = Oled.TextPrimary,
+                    fontSize = 11.sp,
+                    maxLines = if (deviceOpen) 3 else 1,
+                )
+                if (deviceOpen) {
+                    val rows = listOfNotNull(
+                        stringResource(R.string.mon_screen) to listOfNotNull(d.screenPx, d.screenInches?.let { "%.1f″".format(it) }, d.refreshHz?.let { "$it Гц" }).joinToString(" · "),
+                        stringResource(R.string.mon_memory_total) to "${size(d.ramBytes)} · ${size(d.storageBytes)}",
+                        d.cameras.takeIf { it.isNotEmpty() }?.let { cams ->
+                            stringResource(R.string.mon_cameras) to cams.sortedBy { it.first }.joinToString(", ") { (front, mp) ->
+                                "%.0f".format(mp) + " Мп" + if (front) " ↺" else ""
+                            }
+                        },
+                        d.securityPatch?.let { stringResource(R.string.mon_patch) to it },
+                        d.kernel?.let { stringResource(R.string.mon_kernel) to it },
+                    )
+                    rows.forEach { (k, v) ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(k, color = Oled.TextSecondary, fontSize = 11.sp)
+                            Text(v, style = num(11.sp, Oled.TextPrimary))
+                        }
                     }
                 }
             }
@@ -224,38 +248,63 @@ internal fun MonitorScreen(look: MonitorLook, stats: SystemStats, appLabel: (Str
     }
 }
 
-private class PanelData(@StringRes val label: Int, val value: String, val detail: String, val level: Float, val color: Color)
+private class BarRow(val label: String, val level: Float, val color: Color, val value: String)
+
+/** Скляна картка, як у налаштуваннях Black Glass. */
+@Composable
+private fun Glass(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(GlassShape)
+            .background(Oled.Surface)
+            .border(1.dp, Oled.Glint, GlassShape)
+            .then(modifier)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        content = content,
+    )
+}
 
 @Composable
-private fun PanelTile(p: PanelData, modifier: Modifier) {
-    Column(
-        modifier.background(Panel, RoundedCornerShape(4.dp)).border(1.dp, Line, RoundedCornerShape(4.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(stringResource(p.label), color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.5.sp)
-        Text(p.value, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Light, fontFamily = Mono, maxLines = 1)
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Track, RoundedCornerShape(2.dp))) {
-            Box(Modifier.fillMaxWidth(p.level.coerceIn(0f, 1f)).height(3.dp).background(p.color, RoundedCornerShape(2.dp)))
+private fun SegmentRow(bar: BarRow) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(bar.label, color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.sp, modifier = Modifier.width(30.dp))
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            val lit = (bar.level.coerceIn(0f, 1f) * SEGMENTS).roundToInt()
+            repeat(SEGMENTS) { i ->
+                Box(Modifier.weight(1f).height(9.dp).background(if (i < lit) bar.color else Track, RoundedCornerShape(2.dp)))
+            }
         }
-        Text(p.detail, color = Oled.TextSecondary, fontSize = 10.sp, fontFamily = Mono, maxLines = 1)
+        Text(bar.value, style = num(11.sp, Oled.TextPrimary), maxLines = 1, modifier = Modifier.width(112.dp))
     }
 }
 
-/** Шкала з поділками (батарея) і два тонкі кільця всередині (пам'ять, тепло). */
 @Composable
-private fun BatteryDial(battery: Float, memory: Float, heat: Float, accent: Color, modifier: Modifier) {
+private fun GraphCell(@StringRes label: Int, value: String, history: List<Float>, color: Color, modifier: Modifier) {
+    Column(modifier) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(stringResource(label), color = Oled.TextSecondary, fontSize = 10.sp, letterSpacing = 1.sp)
+            Text(value, style = num(11.sp, color))
+        }
+        Sparkline(history, color, Modifier.fillMaxWidth().height(30.dp))
+    }
+}
+
+/** Шкала з поділками (батарея) і тонкі кільця всередині (пам'ять, тепло — якщо ввімкнені). */
+@Composable
+private fun BatteryDial(battery: Float, memory: Float?, heat: Float?, accent: Color, modifier: Modifier) {
     Canvas(modifier) {
         val r = size.minDimension / 2
         val c = Offset(size.width / 2, size.height / 2)
         val lit = (battery * TICKS).roundToInt()
         repeat(TICKS) { i ->
             rotate(i * 360f / TICKS, c) {
-                val long = i % 5 == 0
                 drawLine(
                     color = if (i < lit) accent else Track,
                     start = Offset(c.x, c.y - r + 2.dp.toPx()),
-                    end = Offset(c.x, c.y - r + (if (long) 16.dp else 12.dp).toPx()),
-                    strokeWidth = 3.dp.toPx(),
+                    end = Offset(c.x, c.y - r + (if (i % 5 == 0) 14.dp else 10.dp).toPx()),
+                    strokeWidth = 2.5.dp.toPx(),
                     cap = StrokeCap.Round,
                 )
             }
@@ -266,8 +315,8 @@ private fun BatteryDial(battery: Float, memory: Float, heat: Float, accent: Colo
             drawArc(Track, -90f, 360f, false, topLeft, arc, style = Stroke(2.dp.toPx()))
             drawArc(color, -90f, 360f * value.coerceIn(0f, 1f), false, topLeft, arc, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         }
-        ring(r - 26.dp.toPx(), heat, Warm)
-        ring(r - 34.dp.toPx(), memory, accent)
+        heat?.let { ring(r - 22.dp.toPx(), it, Warm) }
+        memory?.let { ring(r - 29.dp.toPx(), it, accent.copy(alpha = 0.7f)) }
     }
 }
 
@@ -347,4 +396,5 @@ private const val REFRESH_MS = 2_000L
 private const val USAGE_EVERY = 15
 private const val HISTORY = 150
 private const val TICKS = 60
+private const val SEGMENTS = 20
 private const val TOP_SHOWN = 3

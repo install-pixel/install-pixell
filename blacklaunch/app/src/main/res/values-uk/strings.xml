@@ -571,10 +571,10 @@
     <string name="mtile_current_graph">Графік струму батареї</string>
     <string name="mtile_memory_graph">Графік пам\'яті</string>
     <string name="mtile_usage">Час екрана, дані, топ програм</string>
-    <string name="accent_blue">Блакитний</string>
-    <string name="accent_green">Зелений</string>
-    <string name="accent_amber">Бурштиновий</string>
-    <string name="accent_grey">Сірий</string>
+    <string name="accent_blue">Крижаний</string>
+    <string name="accent_green">Шавлія</string>
+    <string name="accent_amber">Пісок</string>
+    <string name="accent_grey">Срібло</string>
     <string name="mon_title">МОНІТОР</string>
     <string name="mon_battery">БАТАРЕЯ</string>
     <string name="mon_memory">ПАМ\'ЯТЬ</string>
@@ -618,4 +618,12 @@
     <string name="dur_dh">%1$d д %2$d год</string>
     <string name="dur_hm">%1$d год %2$d хв</string>
     <string name="dur_m">%1$d хв</string>
+    <string name="mon_signal">сигнал</string>
+    <string name="mon_cores">%1$d ядер</string>
+    <string name="mon_screen">екран</string>
+    <string name="mon_memory_total">пам\'ять · сховище</string>
+    <string name="mon_cameras">камери (↺ фронтальна)</string>
+    <string name="mon_patch">оновлення безпеки</string>
+    <string name="mon_kernel">ядро</string>
+    <string name="mtile_device">Характеристики телефона (дотик — повністю)</string>
 </resources>

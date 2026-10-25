@@ -571,10 +571,10 @@
     <string name="mtile_current_graph">Wykres prądu baterii</string>
     <string name="mtile_memory_graph">Wykres pamięci</string>
     <string name="mtile_usage">Czas ekranu, dane, top aplikacji</string>
-    <string name="accent_blue">Niebieski</string>
-    <string name="accent_green">Zielony</string>
-    <string name="accent_amber">Bursztynowy</string>
-    <string name="accent_grey">Szary</string>
+    <string name="accent_blue">Lodowy</string>
+    <string name="accent_green">Szałwia</string>
+    <string name="accent_amber">Piasek</string>
+    <string name="accent_grey">Srebrny</string>
     <string name="mon_title">MONITOR</string>
     <string name="mon_battery">BATERIA</string>
     <string name="mon_memory">PAMIĘĆ</string>
@@ -618,4 +618,12 @@
     <string name="dur_dh">%1$d d %2$d h</string>
     <string name="dur_hm">%1$d h %2$d min</string>
     <string name="dur_m">%1$d min</string>
+    <string name="mon_signal">sygnał</string>
+    <string name="mon_cores">%1$d rdzeni</string>
+    <string name="mon_screen">ekran</string>
+    <string name="mon_memory_total">RAM · pamięć</string>
+    <string name="mon_cameras">aparaty (↺ przedni)</string>
+    <string name="mon_patch">poprawka zabezpieczeń</string>
+    <string name="mon_kernel">jądro</string>
+    <string name="mtile_device">Dane telefonu (stuknij, by rozwinąć)</string>
 </resources>
