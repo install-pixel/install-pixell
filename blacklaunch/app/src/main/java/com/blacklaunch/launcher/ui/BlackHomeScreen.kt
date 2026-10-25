@@ -311,7 +311,8 @@ private fun HomeIdle(
                     // Подвійний дотик на порожньому місці — наступний профіль (коли немає ні назви, ні свайпу).
                     onDoubleTap = { position ->
                         val justWoke = SystemClock.uptimeMillis() - shownAt.longValue < WAKE_GUARD_MS
-                        if (!justWoke && profileCount.value > 1 && iconBounds.values.none { it.contains(position) }) {
+                        // На «Пульті» подвійний дотик не перемикає профіль: випадкові дотики там часті, а профіль може вимкнути звук.
+                        if (monitor == null && !justWoke && profileCount.value > 1 && iconBounds.values.none { it.contains(position) }) {
                             haptics.tick()
                             onSwitchProfile(1)
                         }

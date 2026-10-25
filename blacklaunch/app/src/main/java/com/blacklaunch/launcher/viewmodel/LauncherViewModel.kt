@@ -556,14 +556,18 @@ class LauncherViewModel(
     private val _openMonitor = Channel<Unit>(Channel.CONFLATED)
     val openMonitor: ReceiveChannel<Unit> get() = _openMonitor
 
+    // «Пульт» (з 1.1.6) — звичайне слово, яке знає й офлайн-модель; «монітор» лишається запасним.
     private val monitorPhrases = setOf(
-        "монітор", "монітор системи", "відкрий монітор", "покажи монітор",
-        "monitor", "system monitor", "open monitor", "show monitor", "monitor systemu", "otworz monitor", "pokaz monitor",
+        "пульт", "відкрий пульт", "покажи пульт", "монітор",
+        "dashboard", "open dashboard", "show dashboard",
+        "panel", "otworz panel", "pokaz panel",
     )
 
     fun onVoiceResult(hypotheses: List<String>) {
         if (customCommands().isEmpty() || hypotheses.none { CustomCommandMatcher.exactAll(customCommands(), it).isNotEmpty() }) {
-            if (hypotheses.any { SearchNormalizer.normalize(it) in monitorPhrases }) {
+            hypotheses.firstOrNull { SearchNormalizer.normalize(it) in monitorPhrases }?.let { heard ->
+                // Як і решта голосових запитів — в історію останніх.
+                recentQueries.record(scope.value.profileId, heard)
                 _openMonitor.trySend(Unit)
                 return
             }

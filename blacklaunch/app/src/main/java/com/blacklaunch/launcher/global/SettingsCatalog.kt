@@ -69,7 +69,7 @@ object SettingsCatalog {
         Entry("auto_rotate", "android.settings.AUTO_ROTATE_SETTINGS", listOf("автоповорот", "поворот екрана", "autoobracanie", "auto rotate", "rotation")),
         Entry("settings", "android.settings.SETTINGS", listOf("налаштування", "параметри", "ustawienia", "settings")),
         // Власний екран Black Glass, не сторінка Android: відкривається в самому лаунчері.
-        Entry("monitor", MONITOR_ACTION, listOf("монітор", "монітор системи", "оперативна пам'ять", "температура телефона", "monitor", "system monitor", "monitor systemu", "ram")),
+        Entry("monitor", MONITOR_ACTION, listOf("пульт", "стан системи", "оперативна пам'ять", "температура телефона", "монітор", "dashboard", "system dashboard", "panel", "panel systemu", "ram")),
     )
 
     /** «Дія» розділу «Монітор системи» — Black Glass відкриває свій екран замість налаштувань Android. */
