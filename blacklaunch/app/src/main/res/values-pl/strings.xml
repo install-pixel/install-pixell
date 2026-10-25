@@ -413,4 +413,7 @@
     <string name="calls_restricted">Android blokuje historię połączeń dla aplikacji spoza Sklepu Play. W ustawieniach Black Glass, które się teraz otworzą, stuknij ⋮ → „Zezwól na ustawienia z ograniczonym dostępem”, a potem ponownie włącz Ostatnie połączenia.</string>
     <string name="notifications_search_access">Włącz dostęp do powiadomień dla Black Glass — wtedy treść powiadomień będzie wyszukiwana.</string>
     <string name="global_note">Źródła są przeszukiwane tylko podczas pisania i tylko za Twoją zgodą. Treść powiadomień jest tylko w pamięci (nie na dysku i nigdzie nie wysyłana): to, co usunięto z paska, znajdzie się do ponownego uruchomienia Black Glass. SMS: czaty w Google Messages (RCS) nie są dostępne dla innych aplikacji — wyszukiwane są tylko zwykłe SMS.</string>
+    <string name="private_space">Przestrzeń prywatna</string>
+    <string name="private_space_unlock">Odblokuj</string>
+    <string name="private_space_lock">Zablokuj</string>
 </resources>

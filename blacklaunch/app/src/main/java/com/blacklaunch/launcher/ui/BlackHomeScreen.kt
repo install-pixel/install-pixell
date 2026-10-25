@@ -72,6 +72,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.blacklaunch.launcher.system.PrivateSpaceState
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
@@ -135,6 +136,9 @@ fun BlackHomeScreen(
     onRemoveRecent: (String) -> Unit,
     /** Усі програми за абеткою (список A–Z у порожньому пошуку). */
     allApps: List<AppInfo>,
+    /** Приватний простір Android 15+ унизу списку A–Z; null — його немає. */
+    privateSpace: PrivateSpaceState? = null,
+    onTogglePrivate: () -> Unit = {},
     /** Біля контакту в пошуку: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -211,6 +215,8 @@ fun BlackHomeScreen(
                 onRecent = onRecent,
                 onRemoveRecent = onRemoveRecent,
                 allApps = allApps,
+                privateSpace = privateSpace,
+                onTogglePrivate = onTogglePrivate,
                 onContactAction = onContactAction,
                 iconFor = iconFor,
                 voiceState = voiceState,
@@ -419,6 +425,9 @@ private fun SearchOpen(
     onRemoveRecent: (String) -> Unit,
     /** Усі програми за абеткою (список A–Z у порожньому пошуку). */
     allApps: List<AppInfo>,
+    /** Приватний простір Android 15+ унизу списку A–Z; null — його немає. */
+    privateSpace: PrivateSpaceState? = null,
+    onTogglePrivate: () -> Unit = {},
     /** Біля контакту в пошуку: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
@@ -561,6 +570,8 @@ private fun SearchOpen(
             onRecent = onRecent,
             onRemoveRecent = onRemoveRecent,
             allApps = allApps,
+            privateSpace = privateSpace,
+            onTogglePrivate = onTogglePrivate,
             onContactAction = onContactAction,
             canCall = state.canCall,
             canMessage = state.canMessage,

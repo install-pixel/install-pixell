@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.UserHandle
@@ -51,7 +52,8 @@ class AppRepository(context: Context) : AppSource {
     fun refresh() {
         scope.launch {
             val found = mutableMapOf<String, LauncherActivityInfo>()
-            val list = userManager.userProfiles.flatMap { user ->
+            // Заблокований приватний простір — його програм не видно ніде (як у системному лаунчері).
+            val list = userManager.userProfiles.filterNot(::isLockedPrivate).flatMap { user ->
                 val serial = userManager.getSerialNumberForUser(user)
                 launcherApps.getActivityList(null, user)
                     .filter { it.applicationInfo.packageName != appContext.packageName }
@@ -69,6 +71,14 @@ class AppRepository(context: Context) : AppSource {
             activities.putAll(found)
             _apps.value = list
         }
+    }
+
+    private fun isLockedPrivate(user: UserHandle): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return false
+        return runCatching {
+            userManager.isQuietModeEnabled(user) &&
+                launcherApps.getLauncherUserInfo(user)?.userType == UserManager.USER_TYPE_PROFILE_PRIVATE
+        }.getOrDefault(false)
     }
 
     fun icon(app: AppInfo, density: Int): Drawable? =

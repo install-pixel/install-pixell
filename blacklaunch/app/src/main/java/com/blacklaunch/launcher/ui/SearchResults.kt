@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -45,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.blacklaunch.launcher.system.PrivateSpaceState
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.global.AppSettingKind
@@ -82,6 +84,8 @@ fun SearchResults(
     onRecent: (String) -> Unit = {},
     onRemoveRecent: (String) -> Unit = {},
     allApps: List<AppInfo> = emptyList(),
+    privateSpace: PrivateSpaceState? = null,
+    onTogglePrivate: () -> Unit = {},
     /** Швидкі дії біля контакту: true — подзвонити, false — написати. */
     onContactAction: (GlobalResult.Contact, Boolean) -> Unit = { _, _ -> },
     /** Які кнопки біля контакту дозволені профілем. */
@@ -90,7 +94,7 @@ fun SearchResults(
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
-        EmptySearch(suggestions, recent, allApps, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, modifier)
+        EmptySearch(suggestions, recent, allApps, privateSpace, onTogglePrivate, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, modifier)
         return
     }
     if (results.isEmpty() && groups.isEmpty() && actions.isEmpty() && custom.isEmpty()) {
@@ -142,6 +146,8 @@ private fun EmptySearch(
     suggestions: List<AppInfo>,
     recent: List<String>,
     allApps: List<AppInfo>,
+    privateSpace: PrivateSpaceState?,
+    onTogglePrivate: () -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
@@ -152,7 +158,7 @@ private fun EmptySearch(
     val haptics = LocalHaptics.current
     var showAll by remember { mutableStateOf(false) }
     if (showAll) {
-        AllAppsList(allApps, iconFor, onLaunch, onLongPress, onHide = { showAll = false }, modifier = modifier)
+        AllAppsList(allApps, privateSpace, onTogglePrivate, iconFor, onLaunch, onLongPress, onHide = { showAll = false }, modifier = modifier)
         return
     }
     LazyColumn(modifier = modifier, reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
@@ -222,7 +228,9 @@ private fun EmptySearch(
 /** Усі програми за абеткою з літерами-розділювачами (P3). */
 @Composable
 private fun AllAppsList(
-    apps: List<AppInfo>,
+    allApps: List<AppInfo>,
+    privateSpace: PrivateSpaceState?,
+    onTogglePrivate: () -> Unit,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
@@ -230,6 +238,8 @@ private fun AllAppsList(
     modifier: Modifier,
 ) {
     val haptics = LocalHaptics.current
+    // Програми приватного простору — окремим блоком унизу, як у системному лаунчері.
+    val (privateApps, apps) = remember(allApps, privateSpace) { allApps.partition { it.userSerial == privateSpace?.userSerial } }
     val sections = remember(apps) { apps.groupBy { it.label.firstOrNull()?.uppercaseChar() ?: '#' } }
     LazyColumn(modifier = modifier) {
         item(key = "all:back") {
@@ -259,6 +269,35 @@ private fun AllAppsList(
             }
             items(group, key = { "all:" + it.key }) { app ->
                 AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
+            }
+        }
+        if (privateSpace != null) {
+            item(key = "private:header") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable { haptics.tap(); onTogglePrivate() }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Text(stringResource(R.string.private_space), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(if (privateSpace.locked) R.string.private_space_unlock else R.string.private_space_lock),
+                        color = Oled.TextSecondary,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+            if (!privateSpace.locked) {
+                items(privateApps, key = { "private:" + it.key }) { app ->
+                    AppRow(app, iconFor = iconFor, onLaunch = onLaunch, onLongPress = onLongPress)
+                }
             }
         }
     }

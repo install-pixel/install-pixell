@@ -413,4 +413,7 @@
     <string name="calls_restricted">Android блокує журнал дзвінків для програм не з Play Маркету. У налаштуваннях Black Glass, що зараз відкриються, натисніть ⋮ → «Дозволити обмежені налаштування», потім знову ввімкніть «Недавні дзвінки».</string>
     <string name="notifications_search_access">Увімкніть доступ до сповіщень для Black Glass — тоді тексти сповіщень знаходитимуться в пошуку.</string>
     <string name="global_note">Джерела шукаються лише під час набору й лише з вашого дозволу. Тексти сповіщень зберігаються тільки в пам\'яті (не на диску й нікуди не передаються): змахнуте зі шторки знаходиться, доки Black Glass не перезапуститься. SMS: чати в Google Messages (RCS) іншим програмам недоступні — знаходяться лише звичайні SMS.</string>
+    <string name="private_space">Приватний простір</string>
+    <string name="private_space_unlock">Розблокувати</string>
+    <string name="private_space_lock">Заблокувати</string>
 </resources>

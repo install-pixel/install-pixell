@@ -98,8 +98,10 @@ class AndroidGlobalSearch(
                 LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
             // Android 11+: «розмовні» ярлики — останні чати месенджерів (Telegram, WhatsApp…).
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) flags = flags or LauncherApps.ShortcutQuery.FLAG_MATCH_CACHED
-            shortcutsCache = userManager.userProfiles.flatMap { user ->
-                launcherApps.getShortcuts(LauncherApps.ShortcutQuery().setQueryFlags(flags), user).orEmpty()
+            // Заблокований профіль (приватний простір, призупинена робоча) — без його ярликів.
+            shortcutsCache = userManager.userProfiles.filterNot { userManager.isQuietModeEnabled(it) }.flatMap { user ->
+                runCatching { launcherApps.getShortcuts(LauncherApps.ShortcutQuery().setQueryFlags(flags), user).orEmpty() }
+                    .getOrDefault(emptyList())
             }.filter { it.isEnabled }
             shortcutsLoadedAt = now
         }

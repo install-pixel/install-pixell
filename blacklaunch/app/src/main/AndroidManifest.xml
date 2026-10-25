@@ -43,6 +43,10 @@
     <!-- Лише перевірка, чи є мережа, щоб без неї одразу взяти офлайн-розпізнавач. Дозволу INTERNET немає. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Приватний простір Android 15+: лаунчер за замовчуванням бачить його й може заблокувати/розблокувати
+         (розблокування підтверджує сама система). -->
+    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+
     <!-- Видимість програм із меню запуску (Android 11+), без QUERY_ALL_PACKAGES. -->
     <queries>
         <intent>

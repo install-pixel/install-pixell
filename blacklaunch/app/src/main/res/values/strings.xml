@@ -413,4 +413,7 @@
     <string name="calls_restricted">Android blocks call history for apps not from Play Store. In the Black Glass settings that open now, tap ⋮ → “Allow restricted settings”, then turn on Recent calls again.</string>
     <string name="notifications_search_access">Turn on notification access for Black Glass — then notification texts can be found in search.</string>
     <string name="global_note">Sources are searched only while you type and only with your permission. Notification texts are kept in memory only (never written to storage or sent anywhere): what you swiped away is found until Black Glass restarts. SMS: Google Messages (RCS) chats are not available to other apps — only regular SMS are found.</string>
+    <string name="private_space">Private space</string>
+    <string name="private_space_unlock">Unlock</string>
+    <string name="private_space_lock">Lock</string>
 </resources>

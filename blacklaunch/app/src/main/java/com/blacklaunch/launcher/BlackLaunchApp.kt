@@ -42,6 +42,7 @@ import com.blacklaunch.launcher.search.UserAliasStore
 import com.blacklaunch.launcher.settings.AppearanceSettings
 import com.blacklaunch.launcher.settings.VoiceActionSettings
 import com.blacklaunch.launcher.settings.VoiceSettings
+import com.blacklaunch.launcher.system.PrivateSpace
 import com.blacklaunch.launcher.voice.VoiceModelStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +83,8 @@ class BlackLaunchApp : Application() {
     val learnedQueries: PrefsLearnedQueries by lazy { PrefsLearnedQueries(this) }
     val globalSearchSettings: GlobalSearchSettings by lazy { GlobalSearchSettings(this) }
     val homeLayoutStore: PrefsHomeLayoutStore by lazy { PrefsHomeLayoutStore(this) }
+    /** Приватний простір Android 15+ (якщо є); зміна стану оновлює список програм. */
+    val privateSpace: PrivateSpace by lazy { PrivateSpace(this) { appRepository.refresh() } }
     val globalSearch: AndroidGlobalSearch by lazy {
         AndroidGlobalSearch(
             context = this,

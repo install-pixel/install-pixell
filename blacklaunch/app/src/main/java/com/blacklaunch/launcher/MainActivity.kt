@@ -251,6 +251,7 @@ class MainActivity : ComponentActivity() {
             val ttsEngine by app.voiceActionSettings.ttsEngine.collectAsStateWithLifecycle()
             val customCommands by app.customCommands.commands.collectAsStateWithLifecycle()
             val allApps by viewModel.allApps.collectAsStateWithLifecycle()
+            val privateSpace by app.privateSpace.state.collectAsStateWithLifecycle()
             val ownIcons by app.ownIcons.keys.collectAsStateWithLifecycle()
             // Новий екземпляр — значки перемальовуються (свій значок, сірий режим).
             val iconFor: suspend (AppInfo) -> ImageBitmap? = remember(ownIcons, appearance.monochromeIcons) {
@@ -300,6 +301,8 @@ class MainActivity : ComponentActivity() {
                     onRecent = viewModel::useRecent,
                     onRemoveRecent = viewModel::removeRecent,
                     allApps = if (display.allAppsButton) allApps else emptyList(),
+                    privateSpace = privateSpace,
+                    onTogglePrivate = app.privateSpace::toggle,
                     onContactAction = ::contactAction,
                     iconFor = iconFor,
                     voiceState = voiceState,
@@ -984,6 +987,7 @@ class MainActivity : ComponentActivity() {
         repository.refresh()
         ensureBlackWallpaper()
         enableAwaitedKind()
+        app.privateSpace.refresh()
         wasStopped = false
         dndAccessState.value = app.profileApplier.hasDndAccess()
         notificationAccessState.value = ProfileNotificationFilter.hasAccess(this)
