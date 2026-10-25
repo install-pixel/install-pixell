@@ -547,4 +547,5 @@
     <string name="phrase_conflict_profile">A profile has this name — your command will run instead of switching to it by this phrase.</string>
     <string name="phrase_conflict_app">An app is called “%1$s” — by voice your command will run; search shows both.</string>
     <string name="phrase_conflict_builtin">This is also a built-in command — your command will run instead.</string>
+    <string name="voice_switched_offline">No internet — the offline model is listening now, say it again</string>
 </resources>

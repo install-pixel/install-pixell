@@ -547,4 +547,5 @@
     <string name="phrase_conflict_profile">Так називається профіль — за цією фразою виконуватиметься ваша команда, а не перемикання на нього.</string>
     <string name="phrase_conflict_app">Так називається програма «%1$s» — голосом виконуватиметься ваша команда, у пошуку видно обидві.</string>
     <string name="phrase_conflict_builtin">Це також вбудована команда — виконуватиметься ваша.</string>
+    <string name="voice_switched_offline">Немає інтернету — тепер слухає офлайн-модель, скажіть ще раз</string>
 </resources>

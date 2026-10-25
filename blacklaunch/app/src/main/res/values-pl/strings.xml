@@ -547,4 +547,5 @@
     <string name="phrase_conflict_profile">Tak nazywa się profil — po tej frazie wykona się Twoje polecenie, a nie przełączenie na niego.</string>
     <string name="phrase_conflict_app">Tak nazywa się aplikacja „%1$s” — głosem wykona się Twoje polecenie, w wyszukiwaniu widać obie.</string>
     <string name="phrase_conflict_builtin">To także wbudowane polecenie — wykona się Twoje.</string>
+    <string name="voice_switched_offline">Brak internetu — teraz słucha model offline, powiedz jeszcze raz</string>
 </resources>

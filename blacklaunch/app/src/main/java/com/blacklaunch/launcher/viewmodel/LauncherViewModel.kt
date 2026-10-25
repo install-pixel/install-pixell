@@ -542,6 +542,16 @@ class LauncherViewModel(
      * Розпізнавач повертає кілька варіантів. Беремо перший, що дає результат.
      * Якщо програма визначена однозначно — запускаємо одразу, інакше показуємо список.
      */
+    /**
+     * Розпізнавач дає кілька варіантів почутого. Для «відкрий …» беремо той, що найкраще збігається
+     * з програмою чи власною назвою, а не просто перший — так власні назви знаходяться надійніше.
+     */
+    private fun bestOpen(parsed: List<Pair<String, VoiceCommand>>): Pair<String, VoiceCommand>? =
+        parsed.filter { it.second is VoiceCommand.Open }
+            .maxByOrNull { (_, command) ->
+                index.value.searchScored((command as VoiceCommand.Open).query, launchCounts.value).firstOrNull()?.score ?: 0
+            }
+
     fun onVoiceResult(hypotheses: List<String>) {
         // Власна команда має перевагу: користувач сам задав цю фразу.
         hypotheses.map { text -> CustomCommandMatcher.exactAll(customCommands(), text) }.firstOrNull { it.isNotEmpty() }
@@ -551,7 +561,10 @@ class LauncherViewModel(
                 return
             }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
-        val (heard, command) = parsed.firstOrNull { it.second.isActionable() } ?: parsed.firstOrNull() ?: return
+        // Дія чи профіль — як і раніше, перший варіант, що спрацює; програма — найкращий збіг серед усіх варіантів.
+        val (heard, command) = parsed.firstOrNull { it.second !is VoiceCommand.Open && it.second.isActionable() }
+            ?: bestOpen(parsed)?.takeIf { it.second.isActionable() }
+            ?: parsed.firstOrNull() ?: return
         when (command) {
             VoiceCommand.OpenLast -> {
                 val last = lastLaunched()

@@ -302,11 +302,22 @@ class VoiceSearchManager(
         override fun onError(error: Int) {
             val failed = current
             // Мережа зникла посеред розмови — власна модель або вбудований офлайн-розпізнавач.
+            // Початок фрази вже втрачено — просимо сказати ще раз.
             if (isNetworkError(error) && failed != null && !failed.onDevice) {
                 val voskLanguage = voskLanguage().takeIf { settings.mode.value != OfflineVoiceMode.OFF }
                 when {
-                    voskLanguage != null -> { startVosk(voskLanguage); return }
-                    onDeviceAvailable() -> { attempts = emptyList(); startOffline(); return }
+                    voskLanguage != null -> { onMessage(R.string.voice_switched_offline); startVosk(voskLanguage); return }
+                    onDeviceAvailable() -> { attempts = emptyList(); onMessage(R.string.voice_switched_offline); startOffline(); return }
+                }
+            }
+            // Вбудований офлайн-розпізнавач Android не зміг (немає пакета мови) — краще власна модель, ніж англійська.
+            if (failed?.onDevice == true) {
+                val voskLanguage = voskLanguage().takeIf { settings.mode.value != OfflineVoiceMode.OFF }
+                if (voskLanguage != null) {
+                    attempts = emptyList()
+                    onMessage(R.string.voice_switched_offline)
+                    startVosk(voskLanguage)
+                    return
                 }
             }
             val next = attempts.firstOrNull()
