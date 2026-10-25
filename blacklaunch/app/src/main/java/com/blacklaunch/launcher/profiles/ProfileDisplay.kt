@@ -42,7 +42,10 @@ class PrefsProfileDisplay(context: Context, private val defaults: () -> ProfileD
 
     fun of(profileId: String?): ProfileDisplay = profileId?.let { _displays.value[it] } ?: defaults()
 
-    fun set(profileId: String, display: ProfileDisplay) = setAll(listOf(profileId), display)
+    fun set(profileId: String, display: ProfileDisplay) {
+        _displays.value = _displays.value + (profileId to display)
+        prefs.edit().putString(profileId, display.encode()).apply()
+    }
 
     /** «Застосувати до всіх» — крім швидкого перемикання: його кожен профіль зберігає свій. */
     fun setAll(profileIds: List<String>, display: ProfileDisplay) {

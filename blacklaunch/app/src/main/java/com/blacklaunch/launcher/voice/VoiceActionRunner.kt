@@ -323,8 +323,13 @@ class VoiceActionRunner(
     }
 
     private fun panelIntent(panel: SystemPanel): Intent = when (panel) {
-        SystemPanel.WIFI ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Intent(Settings.Panel.ACTION_WIFI) else Intent(Settings.ACTION_WIFI_SETTINGS)
+        // Android 12+: панель «Інтернет» — маленьке вікно з перемикачем Wi-Fi (панель Wi-Fi деякі прошивки
+        // відкривають повною сторінкою налаштувань).
+        SystemPanel.WIFI -> when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> Intent(Settings.Panel.ACTION_WIFI)
+            else -> Intent(Settings.ACTION_WIFI_SETTINGS)
+        }
         SystemPanel.INTERNET ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)

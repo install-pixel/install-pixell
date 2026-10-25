@@ -89,6 +89,9 @@ class LauncherViewModelTest {
         assertEquals(VoiceAction.Panel(SystemPanel.WIFI), vm.voiceActions.tryReceive().getOrNull())
         assertEquals(VoiceAction.Timer(300), vm.voiceActions.tryReceive().getOrNull())
         assertEquals(listOf("Telegram"), source.launched.map { it.label })
+        // Своя команда голосом не відкриває пошук за своїми словами.
+        assertFalse(vm.state.value is LauncherUiState.SearchOpen)
+        vm.openSearch()
         vm.updateQuery("я вд")
         assertEquals(listOf(custom), (vm.state.value as LauncherUiState.SearchOpen).custom)
     }

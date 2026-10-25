@@ -461,8 +461,10 @@ class LauncherViewModel(
      * (навіть вимкнені в налаштуваннях — користувач сам їх задав), профіль і програму — тут.
      */
     fun runCustom(command: CustomCommand) {
-        query.value?.let { recentQueries.record(scope.value.profileId, it) }
+        query.value?.takeIf { it.isNotBlank() }?.let { recentQueries.record(scope.value.profileId, it) }
         runSteps(command.steps)
+        // Виконано — пошук закривається, щоб не лишались результати за словами команди.
+        if (query.value != null) forgetSearch()
     }
 
     /** Кроки по черзі — «Моя команда» або решта автоматизації після дотику до сповіщення. */
@@ -517,8 +519,8 @@ class LauncherViewModel(
     fun onVoiceResult(hypotheses: List<String>) {
         // Власна команда має перевагу: користувач сам задав цю фразу.
         hypotheses.firstNotNullOfOrNull { text -> CustomCommandMatcher.exact(customCommands(), text)?.let { text to it } }
-            ?.let { (heard, custom) ->
-                showHeard(heard)
+            ?.let { (_, custom) ->
+                // Своя команда просто виконується — без результатів пошуку за цими словами.
                 runCustom(custom)
                 return
             }
