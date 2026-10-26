@@ -9,6 +9,8 @@ import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
+import android.media.AudioFocusRequest
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -222,17 +224,45 @@ class VoiceActionRunner(
                 return@OnInitListener
             }
             ready.language = Locale.getDefault()
+            // Як підказка навігатора: Android на час фрази приглушує музику й повертає гучність після.
+            ready.setAudioAttributes(speechAttributes)
+            val focus = requestDuck()
             ready.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) = Unit
-                override fun onDone(utteranceId: String?) = ready.shutdown()
+                override fun onDone(utteranceId: String?) {
+                    releaseDuck(focus)
+                    ready.shutdown()
+                }
 
                 @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) = ready.shutdown()
+                override fun onError(utteranceId: String?) {
+                    releaseDuck(focus)
+                    ready.shutdown()
+                }
             })
-            ready.speak(text, TextToSpeech.QUEUE_FLUSH, null, "answer")
+            if (ready.speak(text, TextToSpeech.QUEUE_FLUSH, null, "answer") != TextToSpeech.SUCCESS) releaseDuck(focus)
         }
         engine = ttsEngine()?.let { TextToSpeech(context, listener, it) } ?: TextToSpeech(context, listener)
         tts = engine
+    }
+
+    private val speechAttributes: AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+
+    /** Коротке слово з приглушенням інших (музика тихішає, не зупиняється). */
+    private fun requestDuck(): AudioFocusRequest? {
+        val manager = audio ?: return null
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(speechAttributes)
+            .setOnAudioFocusChangeListener { }
+            .build()
+        return if (manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) request else null
+    }
+
+    private fun releaseDuck(request: AudioFocusRequest?) {
+        request?.let { audio?.abandonAudioFocusRequest(it) }
     }
 
     // Яскравість змінюємо лише з дозволу «Зміна системних налаштувань»; без нього — відкриваємо його.
