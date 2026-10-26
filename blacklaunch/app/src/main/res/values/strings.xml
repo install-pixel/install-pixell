@@ -512,14 +512,14 @@
     <string name="glance_own_title">Own choice for this profile</string>
     <string name="glance_own_subtitle">Off — as in Settings → Home screen</string>
     <string name="condition_not_met">The command\'s conditions are not met</string>
-    <string name="condition_title">Only if</string>
+    <string name="condition_title">Only if (condition)</string>
     <string name="condition_always">Any time</string>
     <string name="condition_device">A Bluetooth device is connected</string>
     <string name="condition_device_named">Connected: %1$s</string>
     <string name="condition_charging">Charging</string>
     <string name="condition_wired">Wired headphones are plugged in</string>
     <string name="condition_only_if">Only if: %1$s</string>
-    <string name="command_auto_title">Also run by itself</string>
+    <string name="command_auto_title">When to run by itself (event)</string>
     <string name="command_auto_add">Add event</string>
     <string name="command_auto_short">By itself: %1$s</string>
     <string name="selected">Selected</string>
@@ -694,8 +694,8 @@
     <string name="condition_battery_below">Battery below…</string>
     <string name="condition_battery_above_value">battery above %1$d%%</string>
     <string name="condition_battery_below_value">battery below %1$d%%</string>
-    <string name="condition_profile">Current profile</string>
-    <string name="condition_profile_named">profile “%1$s”</string>
+    <string name="condition_profile">Current mode</string>
+    <string name="condition_profile_named">mode “%1$s”</string>
     <string name="condition_wifi">Connected to Wi‑Fi</string>
     <string name="condition_mobile">On mobile data</string>
     <string name="condition_not">NOT: %1$s</string>
@@ -737,7 +737,7 @@
     <string name="trigger_time_at_label">Time</string>
     <string name="trigger_time_daily">every day</string>
     <string name="trigger_time_text">at %1$s · %2$s</string>
-    <string name="trigger_time_note">Runs on its own at this time (even with the screen off). Add conditions like “current profile Work” so it only speaks when needed.</string>
+    <string name="trigger_time_note">Runs on its own at this time (even with the screen off). Add conditions like “current mode Work” so it only speaks when needed.</string>
     <string name="trigger_profile_on">Mode turned on</string>
     <string name="trigger_profile_off">Mode turned off</string>
     <string name="trigger_profile_pick">Which mode</string>
@@ -771,4 +771,6 @@
     <string name="not_a_player">That is not a music or video app — name a player (e.g. “play music on Symfonium”)</string>
     <string name="reply_opening_in">Opening %1$s in %2$s</string>
     <string name="reply_cant_do">%1$s can\'t do “%2$s” — here is what it can</string>
+    <string name="event_dialog_note">An event is a moment that starts the command by itself (e.g. headphones just connected, at 7:30, mode turned on).</string>
+    <string name="condition_dialog_note">A condition is a state checked at the moment the command starts (e.g. headphones are connected now). It starts nothing by itself.</string>
 </resources>

@@ -108,6 +108,7 @@ internal fun ConditionDialog(devices: DeviceAccess, profiles: List<String>, onPi
             )
         }) else null,
     ) {
+        Note(stringResource(R.string.condition_dialog_note))
         ConditionKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
         when (kind) {
             ConditionKind.BLUETOOTH_DEVICE -> DevicePicker(devices, device) { device = it }
@@ -226,6 +227,7 @@ internal fun TriggerDialog(devices: DeviceAccess, profiles: List<String>, onPick
             )
         }) else null,
     ) {
+        Note(stringResource(R.string.event_dialog_note))
         TriggerKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
         if (bluetooth) DevicePicker(devices, device) { device = it }
         if (kind == TriggerKind.TIME) {

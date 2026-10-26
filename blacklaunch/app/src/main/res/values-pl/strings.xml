@@ -512,14 +512,14 @@
     <string name="glance_own_title">Własny wybór dla tego profilu</string>
     <string name="glance_own_subtitle">Wyłączone — jak w Ustawienia → Ekran główny</string>
     <string name="condition_not_met">Warunki polecenia nie są spełnione</string>
-    <string name="condition_title">Tylko jeśli</string>
+    <string name="condition_title">Tylko jeśli (warunek)</string>
     <string name="condition_always">Zawsze</string>
     <string name="condition_device">Połączono urządzenie Bluetooth</string>
     <string name="condition_device_named">Połączono: %1$s</string>
     <string name="condition_charging">Ładuje się</string>
     <string name="condition_wired">Podłączono słuchawki przewodowe</string>
     <string name="condition_only_if">Tylko jeśli: %1$s</string>
-    <string name="command_auto_title">Uruchamiaj samo</string>
+    <string name="command_auto_title">Kiedy uruchamiać samo (zdarzenie)</string>
     <string name="command_auto_add">Dodaj zdarzenie</string>
     <string name="command_auto_short">Samo: %1$s</string>
     <string name="selected">Wybrane</string>
@@ -694,8 +694,8 @@
     <string name="condition_battery_below">Bateria poniżej…</string>
     <string name="condition_battery_above_value">bateria powyżej %1$d%%</string>
     <string name="condition_battery_below_value">bateria poniżej %1$d%%</string>
-    <string name="condition_profile">Bieżący profil</string>
-    <string name="condition_profile_named">profil „%1$s”</string>
+    <string name="condition_profile">Bieżący tryb</string>
+    <string name="condition_profile_named">tryb „%1$s”</string>
     <string name="condition_wifi">Połączono z Wi‑Fi</string>
     <string name="condition_mobile">Internet komórkowy</string>
     <string name="condition_not">NIE: %1$s</string>
@@ -737,7 +737,7 @@
     <string name="trigger_time_at_label">Godzina</string>
     <string name="trigger_time_daily">codziennie</string>
     <string name="trigger_time_text">o %1$s · %2$s</string>
-    <string name="trigger_time_note">Uruchamia się sama o tej godzinie (także przy wyłączonym ekranie). Dodaj warunki, np. „bieżący profil Praca”, by działała tylko wtedy, gdy trzeba.</string>
+    <string name="trigger_time_note">Uruchamia się sama o tej godzinie (także przy wyłączonym ekranie). Dodaj warunki, np. „bieżący tryb Praca”, by działała tylko wtedy, gdy trzeba.</string>
     <string name="trigger_profile_on">Włączono tryb</string>
     <string name="trigger_profile_off">Wyłączono tryb</string>
     <string name="trigger_profile_pick">Który tryb</string>
@@ -771,4 +771,6 @@
     <string name="not_a_player">To nie aplikacja do muzyki ani wideo — podaj odtwarzacz (np. „włącz muzykę w Symfonium”)</string>
     <string name="reply_opening_in">Otwieram %1$s w %2$s</string>
     <string name="reply_cant_do">%1$s nie potrafi „%2$s” — oto, co potrafi</string>
+    <string name="event_dialog_note">Zdarzenie to chwila, która sama uruchamia polecenie (np. właśnie podłączono słuchawki, o 7:30, włączono tryb).</string>
+    <string name="condition_dialog_note">Warunek to stan sprawdzany w chwili uruchomienia polecenia (np. słuchawki są teraz podłączone). Sam niczego nie uruchamia.</string>
 </resources>

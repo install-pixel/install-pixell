@@ -512,14 +512,14 @@
     <string name="glance_own_title">Свій вибір для цього профілю</string>
     <string name="glance_own_subtitle">Вимкнено — як у Налаштування → Головний екран</string>
     <string name="condition_not_met">Умови команди не виконані</string>
-    <string name="condition_title">Лише якщо</string>
+    <string name="condition_title">Лише якщо (умова)</string>
     <string name="condition_always">Будь-коли</string>
     <string name="condition_device">Підключено Bluetooth-пристрій</string>
     <string name="condition_device_named">Підключено: %1$s</string>
     <string name="condition_charging">Заряджається</string>
     <string name="condition_wired">Підключено дротові навушники</string>
     <string name="condition_only_if">Лише якщо: %1$s</string>
-    <string name="command_auto_title">Запускати саму</string>
+    <string name="command_auto_title">Коли запускати саму (подія)</string>
     <string name="command_auto_add">Додати подію</string>
     <string name="command_auto_short">Сама: %1$s</string>
     <string name="selected">Вибрано</string>
@@ -694,8 +694,8 @@
     <string name="condition_battery_below">Батарея нижче…</string>
     <string name="condition_battery_above_value">батарея вище %1$d%%</string>
     <string name="condition_battery_below_value">батарея нижче %1$d%%</string>
-    <string name="condition_profile">Поточний профіль</string>
-    <string name="condition_profile_named">профіль «%1$s»</string>
+    <string name="condition_profile">Поточний режим</string>
+    <string name="condition_profile_named">режим «%1$s»</string>
     <string name="condition_wifi">Підключено Wi‑Fi</string>
     <string name="condition_mobile">Мобільний інтернет</string>
     <string name="condition_not">НЕ: %1$s</string>
@@ -737,7 +737,7 @@
     <string name="trigger_time_at_label">Час</string>
     <string name="trigger_time_daily">щодня</string>
     <string name="trigger_time_text">о %1$s · %2$s</string>
-    <string name="trigger_time_note">Запускається сама в цей час (і з вимкненим екраном). Додайте умови, напр. «поточний профіль Робота», щоб спрацьовувала лише коли треба.</string>
+    <string name="trigger_time_note">Запускається сама в цей час (і з вимкненим екраном). Додайте умови, напр. «поточний режим Робота», щоб спрацьовувала лише коли треба.</string>
     <string name="trigger_profile_on">Увімкнено режим</string>
     <string name="trigger_profile_off">Вимкнено режим</string>
     <string name="trigger_profile_pick">Який режим</string>
@@ -771,4 +771,6 @@
     <string name="not_a_player">Це не програма для музики чи відео — назвіть гравець (напр. «увімкни музику в Symfonium»)</string>
     <string name="reply_opening_in">Відкриваю %1$s в %2$s</string>
     <string name="reply_cant_do">%1$s не вміє «%2$s» — ось що вона вміє</string>
+    <string name="event_dialog_note">Подія — мить, яка сама запускає команду (наприклад, щойно підключились навушники, о 7:30, увімкнено режим).</string>
+    <string name="condition_dialog_note">Умова — стан, який перевіряється в момент запуску команди (наприклад, навушники зараз підключені). Сама нічого не запускає.</string>
 </resources>
