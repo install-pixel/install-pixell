@@ -153,6 +153,9 @@ class MainActivity : ComponentActivity() {
                     scheduleSteps = { steps, seconds -> app.stepScheduler.schedule(getString(R.string.custom_commands_title), steps, seconds) },
                     previousProfileId = app.profileRepository::previousActiveId,
                     playMedia = { pkg -> com.blacklaunch.launcher.automation.MediaKeys.playIn(app, pkg) },
+                    phraseShortcuts = { text -> app.globalSearch.phraseShortcuts(text, onlyMatching = true) },
+                    phraseAppLabel = app.globalSearch::phraseAppLabel,
+                    startShortcut = app.globalSearch::startShortcut,
                     isMusicApp = { info -> com.blacklaunch.launcher.automation.MediaKeys.isPlayer(app, info.packageName, info.category) },
                     speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
                     hiddenApps = app.hiddenApps.hidden,
@@ -1395,6 +1398,8 @@ class MainActivity : ComponentActivity() {
         is VoiceReply.Opening -> getString(R.string.reply_opening, reply.label)
         is VoiceReply.Playing -> getString(R.string.reply_playing, reply.label)
         is VoiceReply.NotPlayer -> getString(R.string.reply_not_player, reply.label)
+        is VoiceReply.OpeningIn -> getString(R.string.reply_opening_in, reply.what, reply.label)
+        is VoiceReply.CantDo -> getString(R.string.reply_cant_do, reply.label, reply.what)
         VoiceReply.Choose -> getString(R.string.reply_choose)
         VoiceReply.SearchShown -> getString(R.string.reply_search)
         is VoiceReply.Profile -> getString(R.string.reply_profile, reply.name)

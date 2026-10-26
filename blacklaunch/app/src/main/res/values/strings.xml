@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">For example, “I’m home”</string>
     <string name="custom_command_steps">What to do</string>
     <string name="custom_command_steps_hint">brightness 30</string>
-    <string name="custom_command_steps_note">Anything Black Glass understands by voice: “open Maps”, “mode Road”, “previous mode”, “flashlight on”, “brightness 30”, “louder”, “play music”, “play music on Symfonium”, “pause”, “timer 10 minutes”, “alarm 7:30”, “route to work”, “call Oleg”, “send sms to Oleg saying I am late”, “write on Telegram to Oleg saying …”, “event meeting tomorrow at 10”, “what time is it”, “say …”, “wait 5 minutes”, “home screen”. Tip: “From search” shows what a step will do.</string>
+    <string name="custom_command_steps_note">Anything Black Glass understands by voice: “open Maps”, “mode Road”, “previous mode”, “flashlight on”, “brightness 30”, “louder”, “play music”, “play music on Symfonium”, “open subscriptions in YouTube”, “pause”, “timer 10 minutes”, “alarm 7:30”, “route to work”, “call Oleg”, “send sms to Oleg saying I am late”, “write on Telegram to Oleg saying …”, “event meeting tomorrow at 10”, “what time is it”, “say …”, “wait 5 minutes”, “home screen”. Tip: “From search” shows what a step will do.</string>
     <string name="custom_command_save">Save</string>
     <string name="custom_command_delete">Delete command</string>
     <string name="suggestions_title">App suggestions</string>
@@ -767,6 +767,8 @@
     <string name="command_reverse_editing_note">Created from the previous command: opposite event and opposite steps. Check it and press “Save” — then it appears in the list.</string>
     <string name="command_reverse_exists">The reverse command already exists — you will find it in the list.</string>
     <string name="reply_playing">Playing music in %1$s</string>
-    <string name="reply_not_player">%1$s is not a music app</string>
-    <string name="not_a_player">That is not a music app — name a player (e.g. “play music on Symfonium”)</string>
+    <string name="reply_not_player">%1$s is not a music or video app</string>
+    <string name="not_a_player">That is not a music or video app — name a player (e.g. “play music on Symfonium”)</string>
+    <string name="reply_opening_in">Opening %1$s in %2$s</string>
+    <string name="reply_cant_do">%1$s can\'t do “%2$s” — here is what it can</string>
 </resources>

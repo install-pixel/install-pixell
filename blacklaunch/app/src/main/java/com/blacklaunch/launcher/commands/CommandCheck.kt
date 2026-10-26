@@ -2,6 +2,7 @@ package com.blacklaunch.launcher.commands
 
 import com.blacklaunch.launcher.automation.TriggerKind
 import com.blacklaunch.launcher.search.SearchNormalizer
+import com.blacklaunch.launcher.voice.AppActionPhrase
 import com.blacklaunch.launcher.voice.PlayInApp
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceCommand
@@ -58,7 +59,11 @@ object CommandCheck {
                 StepCommand.PreviousProfile, is StepCommand.Say -> Unit
                 null -> {
                     val playApp = PlayInApp.parse(step.text)
-                    if (playApp != null) {
+                    val actionApp = AppActionPhrase.parse(step.text).firstOrNull { appExists(it.second) }
+                    if (actionApp != null) {
+                        // «Відкрий підписки в YouTube» — ярлик програми; відкриває екран.
+                        if (screenStep == 0) screenStep = n
+                    } else if (playApp != null) {
                         // «Грай музику в X»: перевіряємо саму програму; відкриває екран.
                         if (!appExists(playApp)) add(CommandProblem(CommandProblemKind.UNKNOWN_APP, n, playApp))
                         if (screenStep == 0) screenStep = n

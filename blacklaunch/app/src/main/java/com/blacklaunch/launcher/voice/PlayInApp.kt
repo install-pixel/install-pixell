@@ -8,7 +8,10 @@ import com.blacklaunch.launcher.search.SearchNormalizer
  */
 object PlayInApp {
     private val verbs = setOf("грай", "увімкни", "включи", "відтвори", "постав", "play", "start", "graj", "wlacz", "pusc", "odtworz")
-    private val music = setOf("музику", "музика", "пісні", "пісню", "music", "songs", "muzyke", "muzyka", "piosenki")
+    private val music = setOf(
+        "музику", "музика", "пісні", "пісню", "відео", "подкаст", "music", "songs", "video", "podcast",
+        "muzyke", "muzyka", "piosenki", "wideo", "podcast",
+    )
     private val prepositions = setOf("в", "у", "на", "через", "on", "in", "with", "w", "na", "przez")
 
     fun parse(text: String): String? {

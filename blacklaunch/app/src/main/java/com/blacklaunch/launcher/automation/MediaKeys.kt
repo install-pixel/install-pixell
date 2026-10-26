@@ -48,7 +48,7 @@ object MediaKeys {
      * відкриває аудіофайли або вже є серед активних гравців.
      */
     fun isPlayer(context: Context, packageName: String, category: Int): Boolean {
-        if (category == ApplicationInfo.CATEGORY_AUDIO) return true
+        if (category == ApplicationInfo.CATEGORY_AUDIO || category == ApplicationInfo.CATEGORY_VIDEO) return true
         val pm = context.packageManager
         val browser = Intent("android.media.browse.MediaBrowserService").setPackage(packageName)
         if (runCatching { pm.queryIntentServices(browser, 0) }.getOrDefault(emptyList()).isNotEmpty()) return true

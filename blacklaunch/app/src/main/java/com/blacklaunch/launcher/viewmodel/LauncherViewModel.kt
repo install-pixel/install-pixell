@@ -43,6 +43,7 @@ import com.blacklaunch.launcher.search.RecentQueries
 import com.blacklaunch.launcher.commands.CustomCommandMatcher
 import com.blacklaunch.launcher.commands.StepCommand
 import com.blacklaunch.launcher.commands.StepCommands
+import com.blacklaunch.launcher.voice.AppActionPhrase
 import com.blacklaunch.launcher.voice.PlayInApp
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
@@ -163,6 +164,11 @@ class LauncherViewModel(
     private val scheduleSteps: (List<String>, Int) -> Unit = { _, _ -> },
     /** «Відтворити» в щойно відкритій програмі з музикою (пакет) — після «увімкни музику в …». */
     private val playMedia: suspend (String) -> Unit = {},
+    /** Ярлики програми з фрази «відкрий <що> в <програма>», що підходять під «що»; null — не така фраза / немає програми. */
+    private val phraseShortcuts: (String) -> List<GlobalResult.Shortcut>? = { null },
+    /** Назва програми з такої фрази (якщо вона має ярлики) — для відповіді «не вміє». */
+    private val phraseAppLabel: (String) -> String? = { null },
+    private val startShortcut: (GlobalResult.Shortcut) -> Boolean = { false },
     /** Чи програма — гравець музики (для «увімкни музику в …»). */
     private val isMusicApp: (AppInfo) -> Boolean = { true },
     /** Фрази вголос з кроків команди; null — поточний час. */
@@ -538,6 +544,8 @@ class LauncherViewModel(
             }
             // «Грай музику в Symfonium» кроком команди.
             PlayInApp.parse(step)?.let { name -> if (playIn(name, null)) return@forEach }
+            // «Відкрий підписки в YouTube» кроком команди.
+            if (AppActionPhrase.parse(step).isNotEmpty() && openAppAction(step, speak = false)) return@forEach
             when (val parsed = VoiceCommandParser.parse(step)) {
                 // Час у команді — завжди вголос (разом з іншими фразами).
                 is VoiceCommand.Action -> if (parsed.action == VoiceAction.Time) {
@@ -642,6 +650,10 @@ class LauncherViewModel(
         hypotheses.firstNotNullOfOrNull { text -> PlayInApp.parse(text)?.let { name -> text to name } }?.let { (heard, name) ->
             if (playIn(name, heard)) return
         }
+        // «Відкрий підписки в YouTube» — ярлик програми; програма не вміє — кажемо, що вміє (ярлики в пошуку).
+        hypotheses.firstOrNull { AppActionPhrase.parse(it).isNotEmpty() }?.let { text ->
+            if (openAppAction(text, speak = true)) return
+        }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
         // Дія чи профіль — як і раніше, перший варіант, що спрацює; програма — найкращий збіг серед усіх варіантів.
         val (heard, command) = parsed.firstOrNull { it.second !is VoiceCommand.Open && it.second.isActionable() }
@@ -691,6 +703,26 @@ class LauncherViewModel(
                 }
             }
         }
+    }
+
+    /** Ярлик з фрази «відкрий <що> в <програма>»: true — оброблено (відкрито або сказано, що програма не вміє). */
+    private fun openAppAction(text: String, speak: Boolean): Boolean {
+        val found = phraseShortcuts(text)?.firstOrNull()
+        if (found != null) {
+            if (speak) {
+                showHeard(text)
+                _voiceReplies.trySend(VoiceReply.OpeningIn(found.title, found.appLabel))
+            }
+            if (!startShortcut(found)) _messages.trySend(UiMessage.LAUNCH_FAILED)
+            return true
+        }
+        val label = phraseAppLabel(text) ?: return false
+        if (speak) {
+            // У пошуку — усі ярлики цієї програми: видно, що вона вміє.
+            showHeard(text)
+            _voiceReplies.trySend(VoiceReply.CantDo(label, AppActionPhrase.parse(text).firstOrNull()?.first.orEmpty()))
+        }
+        return true
     }
 
     /**
@@ -760,6 +792,9 @@ sealed interface VoiceReply {
     data class Opening(val label: String) : VoiceReply
     data class Playing(val label: String) : VoiceReply
     data class NotPlayer(val label: String) : VoiceReply
+    data class OpeningIn(val what: String, val label: String) : VoiceReply
+    /** Програма [label] не має ярлика «[what]». */
+    data class CantDo(val label: String, val what: String) : VoiceReply
     data object Choose : VoiceReply
     data object SearchShown : VoiceReply
     data class Profile(val name: String) : VoiceReply

@@ -127,6 +127,8 @@ class AndroidGlobalSearch(
             }.filter { it.isEnabled }
             shortcutsLoadedAt = now
         }
+        // «Відкрий підписки в YouTube»: ярлики саме цієї програми — що підходить, а якщо нічого, то всі (що вона вміє).
+        phraseShortcuts(query.text)?.let { return it }
         return shortcutsCache
             .map { info ->
                 val names = listOfNotNull(info.shortLabel, info.longLabel).map { IndexedName(it.toString()) }
@@ -346,6 +348,54 @@ class AndroidGlobalSearch(
         val start = (at - SNIPPET_BEFORE).coerceAtLeast(0)
         val end = (at + query.length + SNIPPET_AFTER).coerceAtMost(flat.length)
         return (if (start > 0) "…" else "") + flat.substring(start, end) + (if (end < flat.length) "…" else "")
+    }
+
+    /**
+     * Фраза «відкрий <що> в <програма>»: програма — за назвою серед тих, що мають ярлики. Ярлики, що підходять під «що»,
+     * першими; [onlyMatching] = false — якщо таких немає, усі ярлики програми. null — це не така фраза чи програми немає.
+     */
+    fun phraseShortcuts(text: String, onlyMatching: Boolean = false): List<GlobalResult.Shortcut>? {
+        if (!launcherApps.hasShortcutHostPermission()) return null
+        val splits = com.blacklaunch.launcher.voice.AppActionPhrase.parse(text)
+        if (splits.isEmpty()) return null
+        if (shortcutsCache.isEmpty() || SystemClock.elapsedRealtime() - shortcutsLoadedAt > SHORTCUTS_TTL_MS) shortcuts(PreparedQuery(""), emptyList())
+        val byPackage = shortcutsCache.groupBy { it.`package` }
+        for ((what, appName) in splits) {
+            val wanted = com.blacklaunch.launcher.search.SearchNormalizer.normalize(appName)
+            val pkg = byPackage.keys.firstOrNull { pkg ->
+                val label = com.blacklaunch.launcher.search.SearchNormalizer.normalize(appLabel(pkg).orEmpty())
+                label.isNotEmpty() && (label == wanted || label.startsWith(wanted) || wanted.startsWith(label))
+            } ?: continue
+            val all = byPackage.getValue(pkg).sortedWith(compareBy({ !it.isDeclaredInManifest }, { it.rank }))
+            val matching = all.filter { info ->
+                listOfNotNull(info.shortLabel, info.longLabel).any { com.blacklaunch.launcher.voice.ShortcutMatch.matches(what, it.toString()) }
+            }
+            val chosen = if (matching.isNotEmpty() || onlyMatching) matching else all
+            return chosen.map { info ->
+                GlobalResult.Shortcut(
+                    packageName = info.`package`,
+                    shortcutId = info.id,
+                    userSerial = userManager.getSerialNumberForUser(info.userHandle),
+                    title = info.shortLabel?.toString().orEmpty(),
+                    appLabel = appLabel(info.`package`) ?: info.`package`,
+                )
+            }
+        }
+        return null
+    }
+
+    /** Назва програми з фрази «відкрий <що> в <програма>», якщо така програма має ярлики, — для відповіді «не вміє». */
+    fun phraseAppLabel(text: String): String? {
+        val splits = com.blacklaunch.launcher.voice.AppActionPhrase.parse(text)
+        val packages = shortcutsCache.map { it.`package` }.distinct()
+        for ((_, appName) in splits) {
+            val wanted = com.blacklaunch.launcher.search.SearchNormalizer.normalize(appName)
+            packages.firstOrNull { pkg ->
+                val label = com.blacklaunch.launcher.search.SearchNormalizer.normalize(appLabel(pkg).orEmpty())
+                label.isNotEmpty() && (label == wanted || label.startsWith(wanted) || wanted.startsWith(label))
+            }?.let { return appLabel(it) }
+        }
+        return null
     }
 
     /** Ярлики однієї програми — для її меню за довгим натисканням (до 4, як у Pixel). */

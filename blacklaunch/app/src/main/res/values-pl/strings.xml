@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">Na przykład „jestem w domu”</string>
     <string name="custom_command_steps">Co zrobić</string>
     <string name="custom_command_steps_hint">jasność 30</string>
-    <string name="custom_command_steps_note">Wszystko, co Black Glass rozumie głosem: „otwórz Mapy”, „tryb droga”, „poprzedni tryb”, „włącz latarkę”, „jasność 30”, „głośniej”, „graj muzykę”, „włącz muzykę w Symfonium”, „pauza”, „timer 10 minut”, „budzik 7:30”, „trasa do pracy”, „zadzwoń do Olega”, „napisz sms do Olega treść spóźnię się”, „napisz w telegram do Olega treść …”, „wydarzenie spotkanie jutro o 10”, „która godzina”, „powiedz …”, „czekaj 5 minut”, „ekran główny”. Wskazówka: „Z wyszukiwania” od razu pokazuje, co zrobi krok.</string>
+    <string name="custom_command_steps_note">Wszystko, co Black Glass rozumie głosem: „otwórz Mapy”, „tryb droga”, „poprzedni tryb”, „włącz latarkę”, „jasność 30”, „głośniej”, „graj muzykę”, „włącz muzykę w Symfonium”, „otwórz subskrypcje w YouTube”, „pauza”, „timer 10 minut”, „budzik 7:30”, „trasa do pracy”, „zadzwoń do Olega”, „napisz sms do Olega treść spóźnię się”, „napisz w telegram do Olega treść …”, „wydarzenie spotkanie jutro o 10”, „która godzina”, „powiedz …”, „czekaj 5 minut”, „ekran główny”. Wskazówka: „Z wyszukiwania” od razu pokazuje, co zrobi krok.</string>
     <string name="custom_command_save">Zapisz</string>
     <string name="custom_command_delete">Usuń polecenie</string>
     <string name="suggestions_title">Podpowiedzi aplikacji</string>
@@ -767,6 +767,8 @@
     <string name="command_reverse_editing_note">Utworzone z poprzedniego polecenia: odwrotne zdarzenie i przeciwne kroki. Sprawdź i naciśnij „Zapisz” — wtedy pojawi się na liście.</string>
     <string name="command_reverse_exists">Polecenie odwrotne już istnieje — jest na liście poleceń.</string>
     <string name="reply_playing">Włączam muzykę w %1$s</string>
-    <string name="reply_not_player">%1$s to nie aplikacja do muzyki</string>
-    <string name="not_a_player">To nie aplikacja do muzyki — podaj odtwarzacz (np. „włącz muzykę w Symfonium”)</string>
+    <string name="reply_not_player">%1$s to nie aplikacja do muzyki ani wideo</string>
+    <string name="not_a_player">To nie aplikacja do muzyki ani wideo — podaj odtwarzacz (np. „włącz muzykę w Symfonium”)</string>
+    <string name="reply_opening_in">Otwieram %1$s w %2$s</string>
+    <string name="reply_cant_do">%1$s nie potrafi „%2$s” — oto, co potrafi</string>
 </resources>
