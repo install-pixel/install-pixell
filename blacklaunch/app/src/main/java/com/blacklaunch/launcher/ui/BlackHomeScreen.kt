@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import kotlinx.coroutines.delay
+import androidx.compose.animation.core.Animatable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
@@ -92,6 +94,8 @@ private val SwipeThreshold = 48.dp
 
 /** Скільки після увімкнення екрана подвійний дотик не перемикає профіль (дотик «розбудити» — не команда). */
 private const val WAKE_GUARD_MS = 800L
+private const val REVEAL_DELAY_MS = 150L
+private const val REVEAL_MS = 220
 
 /** «Гумовий» опір: панель їде вниз удвічі повільніше за палець. */
 private const val RESISTANCE = 0.5f
@@ -283,9 +287,23 @@ private fun HomeIdle(
     // Екран увімкнули подвійним дотиком — цей самий дотик не має перемикати профіль.
     val lifecycleOwner = LocalLifecycleOwner.current
     val shownAt = remember { mutableLongStateOf(0L) }
+    // Повернення зі списку останніх програм: OxygenOS ще мить показує картки програм поверх нашого екрана,
+    // і світлий текст огляду просвічував крізь них. Тож головний екран з'являється плавно, коли картки вже зникли.
+    val reveal = remember { Animatable(1f) }
+    val revealScope = rememberCoroutineScope()
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) shownAt.longValue = SystemClock.uptimeMillis()
+            when (event) {
+                Lifecycle.Event.ON_STOP -> revealScope.launch { reveal.snapTo(0f) }
+                Lifecycle.Event.ON_START -> revealScope.launch {
+                    if (reveal.value < 1f) {
+                        delay(REVEAL_DELAY_MS)
+                        reveal.animateTo(1f, tween(REVEAL_MS))
+                    }
+                }
+                else -> Unit
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -298,6 +316,7 @@ private fun HomeIdle(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = reveal.value }
             .pointerInput(Unit) {
                 // Дотик більше не відкриває пошук (випадкові відкриття) — лише свайп угору.
                 // Довге натискання на значку — це перетягування, а не налаштування.
