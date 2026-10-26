@@ -208,7 +208,9 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         val intent = Intent(app, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(MainActivity.EXTRA_RUN_STEPS, steps.toTypedArray())
-        if (Settings.canDrawOverlays(app) && runCatching { app.startActivity(intent) }.isSuccess) return
+        // Black Glass уже на екрані (режим перемкнули на головному екрані) — відкриваємо одразу; інакше — з дозволом
+        // «Поверх інших вікон» або дотиком до сповіщення.
+        if ((app.homeVisible || Settings.canDrawOverlays(app)) && runCatching { app.startActivity(intent) }.isSuccess) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
