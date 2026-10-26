@@ -135,7 +135,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
     }
 
     private fun run(title: String, steps: List<String>) {
-        val runner = VoiceActionRunner(app, onMessage = {})
+        val runner = VoiceActionRunner(app, onMessage = {}, ttsEngine = { app.voiceActionSettings.ttsEngine.value })
         val later = mutableListOf<String>()
         // Фрази вголос («котра година», «скажи …») — одним мовленням, щоб наступна не обривала попередню.
         val speech = mutableListOf<String>()

@@ -56,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -103,22 +104,28 @@ internal fun CustomCommandsCard(
 ) {
     // null — список команд; порожня команда — нова.
     var editing by remember { mutableStateOf<CustomCommand?>(null) }
+    // Відкрито щойно створену зворотну команду (ще не збережену) — показуємо підпис угорі.
+    var editingReverse by remember { mutableStateOf(false) }
     val haptics = LocalHaptics.current
     val current = editing
     if (current != null) {
+        // Інша команда — редактор з нуля (інакше лишався б вміст попередньої, і «Зберегти» робило б копію).
+        key(current) {
         CommandEditor(
             command = current,
+            isNewReverse = editingReverse,
             others = commands.filter { it.id != current.id },
             apps = apps,
             profiles = profiles,
             iconFor = iconFor,
             devices = DeviceAccess(bluetoothAllowed, pairedDevices, onRequestBluetooth),
             canOpenDirectly = canOpenDirectly,
-            onSave = { onSave(it); editing = null },
-            onDelete = if (current.id.isEmpty()) null else ({ onDelete(current.id); editing = null }),
-            onCancel = { editing = null },
-            onReverse = { editing = it },
+            onSave = { onSave(it); editing = null; editingReverse = false },
+            onDelete = if (current.id.isEmpty()) null else ({ onDelete(current.id); editing = null; editingReverse = false }),
+            onCancel = { editing = null; editingReverse = false },
+            onReverse = { editing = it; editingReverse = true },
         )
+        }
         return
     }
     Card {
@@ -189,6 +196,7 @@ private fun CommandEditor(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     devices: DeviceAccess,
     canOpenDirectly: Boolean,
+    isNewReverse: Boolean,
     onSave: (CustomCommand) -> Unit,
     onDelete: (() -> Unit)?,
     onCancel: () -> Unit,
@@ -209,7 +217,8 @@ private fun CommandEditor(
     val canSave = (phrase.isNotBlank() || triggers.isNotEmpty()) && steps.isNotEmpty()
     val addStep: (String) -> Unit = { step -> steps = CustomCommand.cleanSteps(steps + CommandStep(step)); picker = null }
     Card {
-        Text(stringResource(R.string.custom_commands_title), color = Oled.TextPrimary, fontSize = 17.sp)
+        Text(stringResource(if (isNewReverse) R.string.command_reverse_editing else R.string.custom_commands_title), color = Oled.TextPrimary, fontSize = 17.sp)
+        if (isNewReverse) Note(stringResource(R.string.command_reverse_editing_note))
         OutlinedTextField(
             value = phrase,
             onValueChange = { phrase = it },
@@ -278,7 +287,11 @@ private fun CommandEditor(
         if (triggers.isNotEmpty()) {
             val texts = stepTexts()
             val reversed = CommandReverse.reverse(CustomCommand(command.id, phrase, steps, triggers, conditions), texts)
-            if (reversed != null) {
+            // Така зворотна вже є — не робимо дубль, а кажемо, що вона вже збережена.
+            val existing = reversed?.let { r -> others.firstOrNull { it.triggers == r.triggers && it.stepTexts == r.stepTexts } }
+            if (existing != null) {
+                Note(stringResource(R.string.command_reverse_exists))
+            } else if (reversed != null && !isNewReverse) {
                 ActionOption(R.string.command_reverse, Icons.Filled.Refresh) { onReverse(reversed) }
                 Note(stringResource(R.string.command_reverse_note))
             }

@@ -72,8 +72,10 @@ class CommandCheckTest {
         val music = CustomCommand("7", "", steps("грай музику"), triggers = listOf(on))
         val other = CustomCommand("8", "Маршрут", steps("маршрут до роботи"), triggers = listOf(on.copy(profile = "дорога")))
         val unrelated = CustomCommand("9", "", steps("пауза"), triggers = listOf(CommandTrigger(TriggerKind.PROFILE_OFF, profile = "Дорога")))
-        val found = CommandCheck.check(music, { true }, profiles, true, listOf(other, unrelated, music))
-        assertEquals(listOf(CommandProblem(CommandProblemKind.SAME_TRIGGER, detail = "Маршрут")), found)
+        val third = other.copy(id = "10", phrase = "Новини")
+        val found = CommandCheck.check(music, { true }, profiles, true, listOf(other, unrelated, music, third))
+        // Одне попередження з усіма командами від тієї ж події (без самої себе).
+        assertEquals(listOf(CommandProblem(CommandProblemKind.SAME_TRIGGER, detail = "Маршрут, Новини")), found)
     }
 
     @Test fun profileTriggersMatchEncodeAndReverse() {

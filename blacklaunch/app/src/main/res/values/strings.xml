@@ -264,7 +264,7 @@
     <string name="action_calendar">Calendar event</string>
     <string name="action_calendar_example">“Add event tomorrow at 3 dentist” — saved right away</string>
     <string name="speak_answers_title">Answer out loud</string>
-    <string name="speak_answers_subtitle">For example, “what time is it”</string>
+    <string name="speak_answers_subtitle">Time, calculator results, “Opening YouTube”, “Several options — choose on screen”, mode switches</string>
     <string name="assistant_title">Digital assistant</string>
     <string name="assistant_note">Choose Black Glass as the default digital assistant app — then a long press of the power button (or the assistant gesture) opens search and starts listening.</string>
     <string name="assistant_open">Open default apps</string>
@@ -757,4 +757,13 @@
     <string name="problem_wait_end">Step %1$d: a pause at the end does nothing — add steps after it or remove it.</string>
     <string name="problem_needs_screen">Step %1$d opens a screen: when the command starts on its own, it will wait for a tap on the notification (or allow “Display over other apps” below).</string>
     <string name="problem_same_trigger">Another command “%1$s” starts from the same event — both will run one after another.</string>
+    <string name="reply_result">%1$s</string>
+    <string name="reply_opening">Opening %1$s</string>
+    <string name="reply_choose">Several options — choose on the screen</string>
+    <string name="reply_search">Here is what I found</string>
+    <string name="reply_profile">Mode %1$s</string>
+    <string name="reply_profile_missing">There is no such mode</string>
+    <string name="command_reverse_editing">New reverse command</string>
+    <string name="command_reverse_editing_note">Created from the previous command: opposite event and opposite steps. Check it and press “Save” — then it appears in the list.</string>
+    <string name="command_reverse_exists">The reverse command already exists — you will find it in the list.</string>
 </resources>

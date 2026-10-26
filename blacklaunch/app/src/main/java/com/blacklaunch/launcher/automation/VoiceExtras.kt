@@ -105,7 +105,7 @@ class HourlyChime(private val app: BlackLaunchApp) {
 
     fun ring() {
         if (app.automationSettings.hourlyChime.value && Headphones.connected(app) && !Headphones.inCall(app)) {
-            val runner = VoiceActionRunner(app, onMessage = {})
+            val runner = VoiceActionRunner(app, onMessage = {}, ttsEngine = { app.voiceActionSettings.ttsEngine.value })
             runner.say(runner.timeText())
         }
         reschedule()
@@ -157,7 +157,7 @@ class MessageReader(private val app: BlackLaunchApp) {
             recent[key] = now
         }
         val text = app.getString(R.string.read_message_text, sender.ifEmpty { appLabel(sbn.packageName) }, body.take(MAX_BODY))
-        VoiceActionRunner(app, onMessage = {}).say(text)
+        VoiceActionRunner(app, onMessage = {}, ttsEngine = { app.voiceActionSettings.ttsEngine.value }).say(text)
     }
 
     /** Останнє повідомлення розмови (MessagingStyle) або звичайний текст сповіщення. */

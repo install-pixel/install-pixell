@@ -264,7 +264,7 @@
     <string name="action_calendar">Подія в календарі</string>
     <string name="action_calendar_example">«Подія завтра о 15 стоматолог» — записується одразу</string>
     <string name="speak_answers_title">Відповідати вголос</string>
-    <string name="speak_answers_subtitle">Наприклад, «котра година»</string>
+    <string name="speak_answers_subtitle">Час, результат калькулятора, «Відкриваю YouTube», «Кілька варіантів — виберіть на екрані», перемикання режиму</string>
     <string name="assistant_title">Цифровий асистент</string>
     <string name="assistant_note">Виберіть Black Glass програмою цифрового асистента за замовчуванням — тоді довге натискання кнопки живлення (або жест асистента) відкриє пошук і одразу слухатиме.</string>
     <string name="assistant_open">Відкрити програми за замовчуванням</string>
@@ -757,4 +757,13 @@
     <string name="problem_wait_end">Крок %1$d: пауза в кінці нічого не дає — додайте кроки після неї або приберіть.</string>
     <string name="problem_needs_screen">Крок %1$d відкриває екран: коли команда стартує сама, він чекатиме дотику до сповіщення (або дайте дозвіл «Поверх інших вікон» нижче).</string>
     <string name="problem_same_trigger">Від цієї ж події запускається ще команда «%1$s» — виконаються обидві, одна за одною.</string>
+    <string name="reply_result">%1$s</string>
+    <string name="reply_opening">Відкриваю %1$s</string>
+    <string name="reply_choose">Кілька варіантів — виберіть на екрані</string>
+    <string name="reply_search">Ось що знайшлося</string>
+    <string name="reply_profile">Режим %1$s</string>
+    <string name="reply_profile_missing">Такого режиму немає</string>
+    <string name="command_reverse_editing">Нова зворотна команда</string>
+    <string name="command_reverse_editing_note">Створена з попередньої команди: подія навпаки й протилежні кроки. Перевірте й натисніть «Зберегти» — тоді вона з\'явиться в списку.</string>
+    <string name="command_reverse_exists">Зворотна команда вже є — вона в списку команд.</string>
 </resources>

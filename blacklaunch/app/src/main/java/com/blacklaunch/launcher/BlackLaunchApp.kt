@@ -75,6 +75,11 @@ class BlackLaunchApp : Application() {
     val hourlyChime: com.blacklaunch.launcher.automation.HourlyChime by lazy { com.blacklaunch.launcher.automation.HourlyChime(this) }
     val messageReader: com.blacklaunch.launcher.automation.MessageReader by lazy { com.blacklaunch.launcher.automation.MessageReader(this) }
 
+    /** Голос відповідей поза екраном (не обривається, коли відкривається програма) — рушій із налаштувань голосу. */
+    val speech: com.blacklaunch.launcher.voice.VoiceActionRunner by lazy {
+        com.blacklaunch.launcher.voice.VoiceActionRunner(this, onMessage = {}, ttsEngine = { voiceActionSettings.ttsEngine.value })
+    }
+
     /** Головний екран Black Glass зараз видно (для «розумного перемикання» — чи треба виходити наперед). */
     @Volatile
     var homeVisible = false

@@ -594,6 +594,10 @@ class LauncherViewModel(
             }
 
     /** «Монітор» голосом — Black Glass відкриває свій монітор системи. */
+    /** Що сказати вголос у відповідь на голосовий запит (лише з «Відповідати голосом»). */
+    private val _voiceReplies = Channel<VoiceReply>(Channel.BUFFERED)
+    val voiceReplies: ReceiveChannel<VoiceReply> get() = _voiceReplies
+
     private val _openMonitor = Channel<Unit>(Channel.CONFLATED)
     val openMonitor: ReceiveChannel<Unit> get() = _openMonitor
 
@@ -624,6 +628,7 @@ class LauncherViewModel(
         // «Скільки буде двісті на чотири» — обчислення: показуємо в пошуку, нічого не запускаючи.
         hypotheses.firstOrNull { text -> SpokenMath.toExpression(text)?.let(Calculator::evaluate) != null }?.let { math ->
             showHeard(math)
+            SpokenMath.toExpression(math)?.let(Calculator::evaluate)?.let { _voiceReplies.trySend(VoiceReply.Result(it)) }
             return
         }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
@@ -634,15 +639,22 @@ class LauncherViewModel(
         when (command) {
             VoiceCommand.OpenLast -> {
                 val last = lastLaunched()
-                if (last != null) launch(last, null) else _messages.trySend(UiMessage.NO_HISTORY)
+                if (last != null) {
+                    _voiceReplies.trySend(VoiceReply.Opening(last.label))
+                    launch(last, null)
+                } else {
+                    _messages.trySend(UiMessage.NO_HISTORY)
+                }
             }
             is VoiceCommand.SwitchProfile -> {
                 val profile = findProfile(command.name)
                 if (profile != null) {
                     activate(profile)
                     closeSearch()
+                    _voiceReplies.trySend(VoiceReply.Profile(profile.name))
                 } else {
                     _messages.trySend(UiMessage.PROFILE_NOT_FOUND)
+                    _voiceReplies.trySend(VoiceReply.ProfileMissing)
                 }
             }
             is VoiceCommand.Action -> {
@@ -657,9 +669,14 @@ class LauncherViewModel(
                 showHeard(command.query)
                 // Одразу запускаємо лише на «відкрий X» і лише однозначну програму; просто назва —
                 // список, з якого користувач вибирає сам (розпізнавання буває неточним).
-                if (command.explicit) {
-                    val results = index.value.searchScored(command.query, launchCounts.value)
-                    SearchIndex.unambiguous(results)?.let { launch(it, command.query) }
+                val results = index.value.searchScored(command.query, launchCounts.value)
+                val single = if (command.explicit) SearchIndex.unambiguous(results) else null
+                if (single != null) {
+                    _voiceReplies.trySend(VoiceReply.Opening(single.label))
+                    launch(single, command.query)
+                } else {
+                    // Кілька програм — вибір на екрані; жодної — інші результати пошуку (контакти, налаштування…).
+                    _voiceReplies.trySend(if (results.isEmpty()) VoiceReply.SearchShown else VoiceReply.Choose)
                 }
             }
         }
@@ -694,4 +711,15 @@ class LauncherViewModel(
         /** Один ряд підказок — щоб порожній пошук не займав увесь екран (керування однією рукою). */
         private const val SUGGESTIONS = 4
     }
+}
+
+/** Відповідь голосом на голосовий запит; тексти — у ресурсах, вимовляє екран. */
+sealed interface VoiceReply {
+    /** Результат калькулятора чи конвертера. */
+    data class Result(val value: String) : VoiceReply
+    data class Opening(val label: String) : VoiceReply
+    data object Choose : VoiceReply
+    data object SearchShown : VoiceReply
+    data class Profile(val name: String) : VoiceReply
+    data object ProfileMissing : VoiceReply
 }

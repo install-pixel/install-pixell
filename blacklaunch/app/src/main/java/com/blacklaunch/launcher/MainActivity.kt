@@ -105,6 +105,7 @@ import com.blacklaunch.launcher.ui.LockedVoiceScreen
 import com.blacklaunch.launcher.ui.SettingsScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
+import com.blacklaunch.launcher.viewmodel.VoiceReply
 import com.blacklaunch.launcher.viewmodel.UiMessage
 import com.blacklaunch.launcher.voice.ModelImportActivity
 import com.blacklaunch.launcher.voice.OfflineStatus
@@ -151,7 +152,7 @@ class MainActivity : ComponentActivity() {
                     resolveCommand = app.commandConditions::resolve,
                     scheduleSteps = { steps, seconds -> app.stepScheduler.schedule(getString(R.string.custom_commands_title), steps, seconds) },
                     previousProfileId = app.profileRepository::previousActiveId,
-                    speakSteps = { parts -> actionRunner.say(parts.joinToString(". ") { it ?: actionRunner.timeText() }) },
+                    speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
                     globalModes = app.searchScopes.globalModes,
@@ -241,6 +242,12 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 for (action in viewModel.voiceActions) runVoiceAction(action)
+            }
+        }
+        // «Відповідати голосом»: калькулятор, «Відкриваю …», «Кілька варіантів…», режим.
+        lifecycleScope.launch {
+            for (reply in viewModel.voiceReplies) {
+                if (app.voiceActionSettings.speakAnswers.value) app.speech.say(replyText(reply))
             }
         }
         // «Короткий огляд» оновлюється раз на хвилину лише поки BlackLaunch на екрані.
@@ -1378,6 +1385,15 @@ class MainActivity : ComponentActivity() {
 
             override fun onDismissError() = endLockedVoice()
         })
+    }
+
+    private fun replyText(reply: VoiceReply): String = when (reply) {
+        is VoiceReply.Result -> getString(R.string.reply_result, reply.value)
+        is VoiceReply.Opening -> getString(R.string.reply_opening, reply.label)
+        VoiceReply.Choose -> getString(R.string.reply_choose)
+        VoiceReply.SearchShown -> getString(R.string.reply_search)
+        is VoiceReply.Profile -> getString(R.string.reply_profile, reply.name)
+        VoiceReply.ProfileMissing -> getString(R.string.reply_profile_missing)
     }
 
     private fun endLockedVoice() {

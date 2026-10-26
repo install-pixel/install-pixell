@@ -71,8 +71,10 @@ object CommandCheck {
             }
         }
         if (command.triggers.isNotEmpty() && !canOpenDirectly && screenStep > 0) add(CommandProblem(CommandProblemKind.NEEDS_SCREEN, screenStep))
-        others.filter { other -> other.id != command.id && other.triggers.any { theirs -> command.triggers.any { mine -> sameEvent(mine, theirs) } } }
-            .forEach { other -> add(CommandProblem(CommandProblemKind.SAME_TRIGGER, detail = other.phrase.ifBlank { other.stepTexts.firstOrNull().orEmpty() })) }
+        // Одне попередження з усіма такими командами.
+        val sameEvent = others.filter { other -> other.id != command.id && other.triggers.any { theirs -> command.triggers.any { mine -> sameEvent(mine, theirs) } } }
+            .map { other -> other.phrase.ifBlank { other.stepTexts.firstOrNull().orEmpty() } }.distinct()
+        if (sameEvent.isNotEmpty()) add(CommandProblem(CommandProblemKind.SAME_TRIGGER, detail = sameEvent.joinToString(", ")))
     }
 
     private fun needsScreen(action: VoiceAction): Boolean = when (action) {

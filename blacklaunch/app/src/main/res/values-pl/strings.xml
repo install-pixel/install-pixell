@@ -264,7 +264,7 @@
     <string name="action_calendar">Wydarzenie w kalendarzu</string>
     <string name="action_calendar_example">„Dodaj wydarzenie jutro o 15 dentysta” — zapisuje się od razu</string>
     <string name="speak_answers_title">Odpowiadaj na głos</string>
-    <string name="speak_answers_subtitle">Na przykład „która godzina”</string>
+    <string name="speak_answers_subtitle">Godzina, wynik kalkulatora, „Otwieram YouTube”, „Kilka opcji — wybierz na ekranie”, przełączenie trybu</string>
     <string name="assistant_title">Asystent cyfrowy</string>
     <string name="assistant_note">Wybierz Black Glass jako domyślną aplikację asystenta cyfrowego — wtedy długie naciśnięcie przycisku zasilania (lub gest asystenta) otworzy wyszukiwanie i od razu zacznie słuchać.</string>
     <string name="assistant_open">Otwórz aplikacje domyślne</string>
@@ -757,4 +757,13 @@
     <string name="problem_wait_end">Krok %1$d: przerwa na końcu nic nie daje — dodaj kroki po niej lub ją usuń.</string>
     <string name="problem_needs_screen">Krok %1$d otwiera ekran: gdy polecenie uruchomi się samo, zaczeka na dotknięcie powiadomienia (albo zezwól na „Wyświetlanie nad innymi aplikacjami” niżej).</string>
     <string name="problem_same_trigger">Od tego samego zdarzenia uruchamia się też polecenie „%1$s” — wykonają się oba, jedno po drugim.</string>
+    <string name="reply_result">%1$s</string>
+    <string name="reply_opening">Otwieram %1$s</string>
+    <string name="reply_choose">Kilka opcji — wybierz na ekranie</string>
+    <string name="reply_search">Oto, co znalazłem</string>
+    <string name="reply_profile">Tryb %1$s</string>
+    <string name="reply_profile_missing">Nie ma takiego trybu</string>
+    <string name="command_reverse_editing">Nowe polecenie odwrotne</string>
+    <string name="command_reverse_editing_note">Utworzone z poprzedniego polecenia: odwrotne zdarzenie i przeciwne kroki. Sprawdź i naciśnij „Zapisz” — wtedy pojawi się na liście.</string>
+    <string name="command_reverse_exists">Polecenie odwrotne już istnieje — jest na liście poleceń.</string>
 </resources>
