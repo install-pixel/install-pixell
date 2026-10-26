@@ -1,6 +1,7 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.filled.Notifications
 import com.blacklaunch.launcher.commands.StepTexts
 import com.blacklaunch.launcher.commands.StepCommands
 import com.blacklaunch.launcher.commands.StepCommand
@@ -148,7 +149,7 @@ internal fun CustomCommandsCard(
     }
 }
 
-private enum class StepPicker { MENU, SEARCH, APP, ACTION, PROFILE, ROUTE, CALL, SMS, WAIT, TEXT }
+private enum class StepPicker { MENU, SEARCH, APP, ACTION, PROFILE, ROUTE, CALL, SMS, WAIT, SAY, TEXT }
 
 /** З чим збігається фраза: інша команда без умови, програма, профіль, вбудована команда. */
 @Composable
@@ -291,6 +292,10 @@ private fun CommandEditor(
         StepPicker.CALL -> CallStepDialog(onPick = addStep, onDismiss = { picker = null })
         StepPicker.SMS -> SmsStepDialog(onPick = addStep, onDismiss = { picker = null })
         StepPicker.WAIT -> WaitStepDialog(onPick = addStep, onDismiss = { picker = null })
+        StepPicker.SAY -> SingleFieldStepDialog(
+            R.string.custom_step_say, R.string.custom_step_say_text, stringResource(R.string.cstep_say), addStep, { picker = null },
+            note = stringResource(R.string.custom_step_say_note),
+        )
         StepPicker.APP -> AppStepDialog(apps, iconFor, onPick = addStep, onDismiss = { picker = null })
         StepPicker.ACTION -> ActionStepDialog(onPick = addStep, onDismiss = { picker = null })
         StepPicker.PROFILE -> ProfileStepDialog(profiles, onPick = addStep, onDismiss = { picker = null })
@@ -310,6 +315,7 @@ private fun StepRow(number: Int, step: CommandStep, onConditions: () -> Unit, on
         is StepCommand.Wait -> Icons.Filled.Refresh
         StepCommand.Home -> Icons.Filled.Home
         StepCommand.PreviousProfile -> Icons.Filled.AccountCircle
+        is StepCommand.Say -> Icons.Filled.Notifications
         null -> when (val parsed = VoiceCommandParser.parse(step.text)) {
             is VoiceCommand.Open, VoiceCommand.OpenLast -> Icons.Filled.PlayArrow
             is VoiceCommand.SwitchProfile -> Icons.Filled.AccountCircle
@@ -400,6 +406,7 @@ private fun StepMenu(onPick: (StepPicker) -> Unit, onHome: (String) -> Unit, onD
             ActionOption(R.string.custom_step_call, Icons.Filled.Call) { onPick(StepPicker.CALL) }
             ActionOption(R.string.custom_step_sms, Icons.Filled.Send) { onPick(StepPicker.SMS) }
             ActionOption(R.string.custom_step_wait, Icons.Filled.Refresh) { onPick(StepPicker.WAIT) }
+            ActionOption(R.string.custom_step_say, Icons.Filled.Notifications) { onPick(StepPicker.SAY) }
             ActionOption(R.string.custom_step_home, Icons.Filled.Home) { onHome(home) }
             ActionOption(R.string.custom_step_text, Icons.Filled.Edit) { onPick(StepPicker.TEXT) }
         }
@@ -426,6 +433,7 @@ private fun SearchStepDialog(apps: List<AppInfo>, profiles: List<String>, onPick
             is StepCommand.Wait -> add(Triple(text, stepCommandTitle(own), Icons.Filled.Refresh))
             StepCommand.Home -> add(Triple(text, stringResource(R.string.custom_step_home), Icons.Filled.Home))
             StepCommand.PreviousProfile -> add(Triple(text, stringResource(R.string.cstep_previous_profile), Icons.Filled.AccountCircle))
+            is StepCommand.Say -> add(Triple(text, stringResource(R.string.custom_step_say_preview, own.text), Icons.Filled.Notifications))
             null -> when (val parsed = VoiceCommandParser.parse(text)) {
                 is VoiceCommand.Action -> add(Triple(text, parsed.action.title(), parsed.action.icon()))
                 is VoiceCommand.SwitchProfile -> add(Triple(text, profileTemplate.format(parsed.name), Icons.Filled.AccountCircle))

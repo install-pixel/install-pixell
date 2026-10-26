@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">For example, “I’m home”</string>
     <string name="custom_command_steps">What to do</string>
     <string name="custom_command_steps_hint">brightness 30</string>
-    <string name="custom_command_steps_note">A command the way you say it — for anything not in the lists. Steps run in order; an app is best placed last.</string>
+    <string name="custom_command_steps_note">Anything Black Glass understands by voice: “open Maps”, “mode Road”, “previous mode”, “flashlight on”, “brightness 30”, “louder”, “play music”, “pause”, “timer 10 minutes”, “alarm 7:30”, “route to work”, “call Oleg”, “send sms to Oleg saying I am late”, “write on Telegram to Oleg saying …”, “event meeting tomorrow at 10”, “what time is it”, “say …”, “wait 5 minutes”, “home screen”. Tip: “From search” shows what a step will do.</string>
     <string name="custom_command_save">Save</string>
     <string name="custom_command_delete">Delete command</string>
     <string name="suggestions_title">App suggestions</string>
@@ -728,4 +728,9 @@
     <string name="custom_step_search_hint">e.g. “route to work”, “timer 5 minutes”, an app name</string>
     <string name="command_reverse">Create reverse command</string>
     <string name="command_reverse_note">Opposite event and opposite steps (music → pause, mode → previous mode, app → home screen). Check and save it.</string>
+    <string name="cstep_say">say %1$s</string>
+    <string name="custom_step_say">Say aloud</string>
+    <string name="custom_step_say_text">What to say</string>
+    <string name="custom_step_say_preview">Say: “%1$s”</string>
+    <string name="custom_step_say_note">Spoken with the voice from the voice settings; with headphones connected — into the headphones. Add the step condition “headphones connected” so it does not speak out loud.</string>
 </resources>

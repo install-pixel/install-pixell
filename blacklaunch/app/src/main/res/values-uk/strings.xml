@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">Наприклад, «я вдома»</string>
     <string name="custom_command_steps">Що зробити</string>
     <string name="custom_command_steps_hint">яскравість 30</string>
-    <string name="custom_command_steps_note">Команда так, як ви її кажете, — для того, чого немає в списках. Кроки виконуються по черзі; програму краще ставити останньою.</string>
+    <string name="custom_command_steps_note">Усе, що Black Glass розуміє голосом: «відкрий Карти», «режим дорога», «попередній режим», «увімкни ліхтарик», «яскравість 30», «гучніше», «грай музику», «пауза», «таймер 10 хвилин», «будильник 7:30», «маршрут до роботи», «подзвони Олегу», «напиши смс Олегу текст запізнююсь», «напиши в телеграм Олегу текст …», «подія зустріч завтра о 10», «котра година», «скажи …», «зачекай 5 хвилин», «головний екран». Порада: «З пошуку» одразу показує, що зробить крок.</string>
     <string name="custom_command_save">Зберегти</string>
     <string name="custom_command_delete">Видалити команду</string>
     <string name="suggestions_title">Підказки програм</string>
@@ -728,4 +728,9 @@
     <string name="custom_step_search_hint">Напр. «маршрут до роботи», «таймер 5 хвилин», назва програми</string>
     <string name="command_reverse">Створити зворотну команду</string>
     <string name="command_reverse_note">Подія навпаки й протилежні кроки (музика → пауза, режим → попередній режим, програма → головний екран). Перевірте й збережіть.</string>
+    <string name="cstep_say">скажи %1$s</string>
+    <string name="custom_step_say">Сказати вголос</string>
+    <string name="custom_step_say_text">Що сказати</string>
+    <string name="custom_step_say_preview">Сказати: «%1$s»</string>
+    <string name="custom_step_say_note">Голосом із налаштувань голосу; якщо підключені навушники — у навушники. Додайте кроку умову «підключено навушники», щоб не говорив уголос при всіх.</string>
 </resources>

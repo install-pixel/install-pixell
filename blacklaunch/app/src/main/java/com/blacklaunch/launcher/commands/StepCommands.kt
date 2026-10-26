@@ -2,12 +2,18 @@ package com.blacklaunch.launcher.commands
 
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.voice.NumberWords
+import com.blacklaunch.launcher.voice.VoiceActionParser
+import com.blacklaunch.launcher.voice.VoiceCommand
+import com.blacklaunch.launcher.voice.VoiceCommandParser
 
 /** Кроки, які є лише в «Моїх командах» (не голосові дії): пауза між кроками, головний екран, попередній режим. */
 sealed interface StepCommand {
     data class Wait(val seconds: Int) : StepCommand
     data object Home : StepCommand
     data object PreviousProfile : StepCommand
+
+    /** Сказати вголос будь-яку фразу. */
+    data class Say(val text: String) : StepCommand
 }
 
 /** Розбір цих кроків трьома мовами — так само текстом, як і решта кроків. */
@@ -20,11 +26,18 @@ object StepCommands {
         "попередній режим", "попередній профіль", "previous mode", "previous profile", "poprzedni tryb", "poprzedni profil",
     )
 
+    private val sayWords = setOf("скажи", "промов", "озвуч", "say", "speak", "powiedz")
+
     fun parse(text: String): StepCommand? {
         val normalized = SearchNormalizer.normalize(text)
         if (normalized in homePhrases) return StepCommand.Home
         if (normalized in previousPhrases) return StepCommand.PreviousProfile
         val words = SearchNormalizer.words(normalized)
+        // «Скажи котра година» лишається запитом часу; решта після «скажи» — фраза як написана.
+        if (words.size > 1 && words.first() in sayWords && VoiceCommandParser.parse(text) !is VoiceCommand.Action) {
+            val phrase = VoiceActionParser.originalTail(text, words.size - 1).trim('«', '»', '"', '“', '”', ' ')
+            if (phrase.isNotEmpty()) return StepCommand.Say(phrase)
+        }
         if (words.isEmpty() || words.first() !in waitWords) return null
         var total = 0
         var pending: Int? = null

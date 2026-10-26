@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity() {
                     resolveCommand = app.commandConditions::resolve,
                     scheduleSteps = { steps, seconds -> app.stepScheduler.schedule(getString(R.string.custom_commands_title), steps, seconds) },
                     previousProfileId = app.profileRepository::previousActiveId,
+                    speakSteps = { parts -> actionRunner.say(parts.joinToString(". ") { it ?: actionRunner.timeText() }) },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
                     globalModes = app.searchScopes.globalModes,

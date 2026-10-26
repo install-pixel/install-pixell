@@ -131,8 +131,14 @@ class AutomationRunner(private val app: BlackLaunchApp) {
     private fun run(title: String, steps: List<String>) {
         val runner = VoiceActionRunner(app, onMessage = {})
         val later = mutableListOf<String>()
+        // Фрази вголос («котра година», «скажи …») — одним мовленням, щоб наступна не обривала попередню.
+        val speech = mutableListOf<String>()
         steps.forEach { step ->
-            when (StepCommands.parse(step)) {
+            when (val own = StepCommands.parse(step)) {
+                is StepCommand.Say -> {
+                    speech += own.text
+                    return@forEach
+                }
                 // Головний екран потрібен на екрані — Black Glass виходить наперед.
                 StepCommand.Home -> {
                     later += step
@@ -145,6 +151,11 @@ class AutomationRunner(private val app: BlackLaunchApp) {
                 is StepCommand.Wait, null -> Unit
             }
             val parsed = VoiceCommandParser.parse(step)
+            // Час у команді — вголос і без екрана.
+            if (parsed is VoiceCommand.Action && parsed.action == VoiceAction.Time) {
+                speech += runner.timeText()
+                return@forEach
+            }
             if (!BackgroundSteps.canRunHidden(parsed)) {
                 later += step
                 return@forEach
@@ -161,6 +172,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
                 else -> Unit
             }
         }
+        if (speech.isNotEmpty()) runner.say(speech.joinToString(". "))
         if (later.isNotEmpty()) finishInBlackGlass(title, later)
     }
 

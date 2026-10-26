@@ -44,7 +44,7 @@ object CommandReverse {
 
     private fun opposite(step: String, texts: StepTexts): String? {
         when (StepCommands.parse(step)) {
-            is StepCommand.Wait, StepCommand.Home, StepCommand.PreviousProfile -> return null
+            is StepCommand.Wait, StepCommand.Home, StepCommand.PreviousProfile, is StepCommand.Say -> return null
             null -> Unit
         }
         return when (val parsed = VoiceCommandParser.parse(step)) {

@@ -159,6 +159,8 @@ class LauncherViewModel(
     /** «Лише якщо» команди: чи підключено вибрані навушники, зарядку… (перевірка в момент запуску). */
     /** Крок «зачекати»: решта кроків пізніше (коротко — у Black Glass, довго — системним будильником). */
     private val scheduleSteps: (List<String>, Int) -> Unit = { _, _ -> },
+    /** Фрази вголос з кроків команди; null — поточний час. */
+    private val speakSteps: (List<String?>) -> Unit = {},
     /** Профіль, що був до останнього перемикання, — для кроку «попередній режим». */
     private val previousProfileId: () -> String? = { null },
     /** Кроки команди з урахуванням умов (null — умови команди не виконані). */
@@ -503,8 +505,13 @@ class LauncherViewModel(
     fun runSteps(steps: List<String>) {
         val (now, wait, rest) = StepCommands.splitAtWait(steps)
         if (wait != null && rest.isNotEmpty()) scheduleSteps(rest, wait)
+        val speech = mutableListOf<String?>()
         now.forEach { step ->
-            when (StepCommands.parse(step)) {
+            when (val own = StepCommands.parse(step)) {
+                is StepCommand.Say -> {
+                    speech.add(own.text)
+                    return@forEach
+                }
                 StepCommand.Home -> {
                     forgetSearch()
                     return@forEach
@@ -516,13 +523,19 @@ class LauncherViewModel(
                 is StepCommand.Wait, null -> Unit
             }
             when (val parsed = VoiceCommandParser.parse(step)) {
-                is VoiceCommand.Action -> _voiceActions.trySend(parsed.action)
+                // Час у команді — завжди вголос (разом з іншими фразами).
+                is VoiceCommand.Action -> if (parsed.action == VoiceAction.Time) {
+                    speech.add(null)
+                } else {
+                    _voiceActions.trySend(parsed.action)
+                }
                 is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let(::activate)
                 VoiceCommand.OpenLast -> lastLaunched()?.let { launch(it, null) }
                 is VoiceCommand.Open -> index.value.search(parsed.query, launchCounts.value).firstOrNull()?.let { launch(it, null) }
                 null -> Unit
             }
         }
+        if (speech.isNotEmpty()) speakSteps(speech)
     }
 
     /** Команду вибрали в результатах пошуку — виконує екран, як голосову. */

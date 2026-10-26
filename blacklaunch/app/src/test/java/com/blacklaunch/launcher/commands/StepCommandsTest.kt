@@ -18,7 +18,9 @@ class StepCommandsTest {
             assertEquals(folder, StepCommand.Wait(300), StepCommands.parse(string(folder, "cstep_wait_minutes").format(5)))
             assertEquals(folder, StepCommand.Home, StepCommands.parse(string(folder, "cstep_home")))
             assertEquals(folder, StepCommand.PreviousProfile, StepCommands.parse(string(folder, "cstep_previous_profile")))
+            assertEquals(folder, StepCommand.Say("Поспіши, бо запізнишся"), StepCommands.parse(string(folder, "cstep_say").format("Поспіши, бо запізнишся")))
         }
+        assertEquals(StepCommand.Say("Час іти"), StepCommands.parse("скажи «Час іти»"))
         assertEquals(StepCommand.Wait(10), StepCommands.parse("зачекай 10"))
         assertEquals(StepCommand.Wait(90), StepCommands.parse("wait 1 minute 30 seconds"))
         assertNull(StepCommands.parse("пауза"))

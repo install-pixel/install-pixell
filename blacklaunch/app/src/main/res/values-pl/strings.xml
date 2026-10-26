@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">Na przykład „jestem w domu”</string>
     <string name="custom_command_steps">Co zrobić</string>
     <string name="custom_command_steps_hint">jasność 30</string>
-    <string name="custom_command_steps_note">Polecenie tak, jak je mówisz — dla tego, czego nie ma na listach. Kroki wykonują się po kolei; aplikację najlepiej dać na koniec.</string>
+    <string name="custom_command_steps_note">Wszystko, co Black Glass rozumie głosem: „otwórz Mapy”, „tryb droga”, „poprzedni tryb”, „włącz latarkę”, „jasność 30”, „głośniej”, „graj muzykę”, „pauza”, „timer 10 minut”, „budzik 7:30”, „trasa do pracy”, „zadzwoń do Olega”, „napisz sms do Olega treść spóźnię się”, „napisz w telegram do Olega treść …”, „wydarzenie spotkanie jutro o 10”, „która godzina”, „powiedz …”, „czekaj 5 minut”, „ekran główny”. Wskazówka: „Z wyszukiwania” od razu pokazuje, co zrobi krok.</string>
     <string name="custom_command_save">Zapisz</string>
     <string name="custom_command_delete">Usuń polecenie</string>
     <string name="suggestions_title">Podpowiedzi aplikacji</string>
@@ -728,4 +728,9 @@
     <string name="custom_step_search_hint">Np. „trasa do pracy”, „timer 5 minut”, nazwa aplikacji</string>
     <string name="command_reverse">Utwórz polecenie odwrotne</string>
     <string name="command_reverse_note">Odwrotne zdarzenie i przeciwne kroki (muzyka → pauza, tryb → poprzedni tryb, aplikacja → ekran główny). Sprawdź i zapisz.</string>
+    <string name="cstep_say">powiedz %1$s</string>
+    <string name="custom_step_say">Powiedz na głos</string>
+    <string name="custom_step_say_text">Co powiedzieć</string>
+    <string name="custom_step_say_preview">Powiedz: „%1$s”</string>
+    <string name="custom_step_say_note">Głosem z ustawień głosu; ze słuchawkami — w słuchawki. Dodaj krokowi warunek „podłączone słuchawki”, by nie mówił na głos przy wszystkich.</string>
 </resources>
