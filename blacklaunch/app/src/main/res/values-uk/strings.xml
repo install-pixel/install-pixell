@@ -511,7 +511,7 @@
     <string name="show_apps_subtitle">Вимкнено — значків профілю не видно, але його програми й далі визначають пошук, фільтр сповіщень і глобальний пошук</string>
     <string name="glance_own_title">Свій вибір для цього профілю</string>
     <string name="glance_own_subtitle">Вимкнено — як у Налаштування → Головний екран</string>
-    <string name="condition_not_met">Умова команди не виконана (наприклад, навушники не підключені)</string>
+    <string name="condition_not_met">Умови команди не виконані</string>
     <string name="condition_title">Лише якщо</string>
     <string name="condition_always">Будь-коли</string>
     <string name="condition_device">Підключено Bluetooth-пристрій</string>
@@ -680,4 +680,27 @@
     <string name="mon_wifi_tx">з\'єднання Wi‑Fi: передача</string>
     <string name="mon_net_now">↓ отримує %1$s · ↑ надсилає %2$s</string>
     <string name="mon_net_graph">графік — отримання за 5 хв</string>
+    <string name="condition_add">Додати умову</string>
+    <string name="condition_time">Час і дні тижня</string>
+    <string name="condition_from">з</string>
+    <string name="condition_to">до</string>
+    <string name="condition_time_note">Через північ теж можна: з 22:00 до 06:00. Без часу — лише вибрані дні.</string>
+    <string name="condition_days">Дні (нічого не вибрано — щодня)</string>
+    <string name="condition_percent">%1$d%%</string>
+    <string name="condition_negate">Навпаки</string>
+    <string name="condition_negate_note">Коли умова НЕ виконується (наприклад, навушники не підключені)</string>
+    <string name="condition_time_range">%1$s–%2$s</string>
+    <string name="condition_battery_above">Батарея вище…</string>
+    <string name="condition_battery_below">Батарея нижче…</string>
+    <string name="condition_battery_above_value">батарея вище %1$d%%</string>
+    <string name="condition_battery_below_value">батарея нижче %1$d%%</string>
+    <string name="condition_profile">Поточний профіль</string>
+    <string name="condition_profile_named">профіль «%1$s»</string>
+    <string name="condition_wifi">Підключено Wi‑Fi</string>
+    <string name="condition_mobile">Мобільний інтернет</string>
+    <string name="condition_not">НЕ: %1$s</string>
+    <string name="condition_and">" і "</string>
+    <string name="stepcond_only_if">лише якщо %1$s</string>
+    <string name="stepcond_title">Умови кроку</string>
+    <string name="stepcond_note">Крок виконується, лише якщо всі ці умови виконані; інакше пропускається, а наступні кроки йдуть далі.</string>
 </resources>

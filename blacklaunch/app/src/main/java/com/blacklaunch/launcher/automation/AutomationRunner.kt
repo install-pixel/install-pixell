@@ -92,9 +92,10 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         if (matching.isEmpty()) return null
         return app.appScope.launch {
             matching.forEach { command ->
-                // «Лише якщо» діє й для автоматичного запуску.
-                if (command.condition?.let { app.commandConditions.met(it) } != false) {
-                    withContext(Dispatchers.Main) { run(command.phrase.ifBlank { app.getString(R.string.custom_commands_title) }, command.steps) }
+                // «Лише якщо» діє й для автоматичного запуску — і для команди, і для окремих кроків.
+                val steps = app.commandConditions.resolve(command)
+                if (!steps.isNullOrEmpty()) {
+                    withContext(Dispatchers.Main) { run(command.phrase.ifBlank { app.getString(R.string.custom_commands_title) }, steps) }
                 }
             }
         }

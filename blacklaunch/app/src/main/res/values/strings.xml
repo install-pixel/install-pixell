@@ -511,7 +511,7 @@
     <string name="show_apps_subtitle">Off — the profile’s icons are hidden, but its apps still define search, the notification filter and global search</string>
     <string name="glance_own_title">Own choice for this profile</string>
     <string name="glance_own_subtitle">Off — as in Settings → Home screen</string>
-    <string name="condition_not_met">The command’s condition isn’t met (for example, the headphones aren’t connected)</string>
+    <string name="condition_not_met">The command\'s conditions are not met</string>
     <string name="condition_title">Only if</string>
     <string name="condition_always">Any time</string>
     <string name="condition_device">A Bluetooth device is connected</string>
@@ -680,4 +680,27 @@
     <string name="mon_wifi_tx">Wi‑Fi connection: send</string>
     <string name="mon_net_now">↓ receiving %1$s · ↑ sending %2$s</string>
     <string name="mon_net_graph">graph — receiving, last 5 min</string>
+    <string name="condition_add">Add condition</string>
+    <string name="condition_time">Time and days of week</string>
+    <string name="condition_from">from</string>
+    <string name="condition_to">until</string>
+    <string name="condition_time_note">Past midnight works too: from 22:00 until 06:00. Without time — only the chosen days.</string>
+    <string name="condition_days">Days (none chosen — every day)</string>
+    <string name="condition_percent">%1$d%%</string>
+    <string name="condition_negate">Opposite</string>
+    <string name="condition_negate_note">When the condition is NOT met (e.g. headphones not connected)</string>
+    <string name="condition_time_range">%1$s–%2$s</string>
+    <string name="condition_battery_above">Battery above…</string>
+    <string name="condition_battery_below">Battery below…</string>
+    <string name="condition_battery_above_value">battery above %1$d%%</string>
+    <string name="condition_battery_below_value">battery below %1$d%%</string>
+    <string name="condition_profile">Current profile</string>
+    <string name="condition_profile_named">profile “%1$s”</string>
+    <string name="condition_wifi">Connected to Wi‑Fi</string>
+    <string name="condition_mobile">On mobile data</string>
+    <string name="condition_not">NOT: %1$s</string>
+    <string name="condition_and">" and "</string>
+    <string name="stepcond_only_if">only if %1$s</string>
+    <string name="stepcond_title">Step conditions</string>
+    <string name="stepcond_note">The step runs only if all of these are met; otherwise it is skipped and the next steps go on.</string>
 </resources>

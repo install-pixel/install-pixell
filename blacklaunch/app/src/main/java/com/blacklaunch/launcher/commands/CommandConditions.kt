@@ -10,13 +10,20 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.BatteryManager
 import android.os.Build
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.core.content.ContextCompat
+import com.blacklaunch.launcher.search.SearchNormalizer
+import java.util.Calendar
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
-/** Перевірка «Лише якщо» в момент запуску команди — офіційними API, без стеження у фоні. */
-class CommandConditions(context: Context) {
+/**
+ * Перевірка «Лише якщо» в момент запуску команди — офіційними API, без стеження у фоні.
+ * [activeProfile] — назва поточного профілю.
+ */
+class CommandConditions(context: Context, private val activeProfile: suspend () -> String? = { null }) {
     private val appContext = context.applicationContext
 
     /**
@@ -30,13 +37,45 @@ class CommandConditions(context: Context) {
         if (connected) justConnected.add(key) else justConnected.remove(key)
     }
 
-    suspend fun met(condition: CommandCondition): Boolean = when (condition.kind) {
+    /** Кроки, які треба виконати: null — умови самої команди не виконані; кроки з невиконаними умовами пропускаються. */
+    suspend fun resolve(command: CustomCommand): List<String>? {
+        if (!allMet(command.conditions)) return null
+        return command.steps.filter { allMet(it.conditions) }.map { it.text }
+    }
+
+    suspend fun allMet(conditions: List<CommandCondition>): Boolean = conditions.all { met(it) }
+
+    suspend fun met(condition: CommandCondition): Boolean = raw(condition) != condition.negate
+
+    private suspend fun raw(condition: CommandCondition): Boolean = when (condition.kind) {
         ConditionKind.CHARGING -> appContext.getSystemService(BatteryManager::class.java)?.isCharging == true
         ConditionKind.WIRED_HEADSET -> wiredHeadset()
         ConditionKind.BLUETOOTH_DEVICE -> condition.deviceAddress?.let { address ->
             address.uppercase() in justConnected || connectedBluetooth().any { it.equals(address, ignoreCase = true) }
         } ?: false
+        ConditionKind.TIME -> {
+            val now = Calendar.getInstance()
+            // Calendar: неділя = 1 … субота = 7 → ISO: понеділок = 1 … неділя = 7.
+            val isoDay = (now.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
+            ConditionRules.timeMatches(condition, now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE), isoDay)
+        }
+        ConditionKind.BATTERY_ABOVE -> battery()?.let { level -> condition.percent?.let { level > it } } ?: false
+        ConditionKind.BATTERY_BELOW -> battery()?.let { level -> condition.percent?.let { level < it } } ?: false
+        ConditionKind.PROFILE -> condition.profile?.let { wanted ->
+            activeProfile()?.let { SearchNormalizer.normalize(it) == SearchNormalizer.normalize(wanted) }
+        } ?: false
+        ConditionKind.WIFI -> transport(NetworkCapabilities.TRANSPORT_WIFI)
+        ConditionKind.MOBILE_DATA -> transport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
+
+    private fun battery(): Int? =
+        appContext.getSystemService(BatteryManager::class.java)?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)?.takeIf { it in 0..100 }
+
+    /** Активна мережа зараз — Wi‑Fi чи мобільна (без назви мережі: для неї потрібне місцезнаходження). */
+    private fun transport(type: Int): Boolean = runCatching {
+        val connectivity = appContext.getSystemService(ConnectivityManager::class.java)
+        connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.hasTransport(type) == true
+    }.getOrDefault(false)
 
     private fun wiredHeadset(): Boolean {
         val audio = appContext.getSystemService(AudioManager::class.java) ?: return false

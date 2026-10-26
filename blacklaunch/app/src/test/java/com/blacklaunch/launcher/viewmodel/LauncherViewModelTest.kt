@@ -83,7 +83,7 @@ class LauncherViewModelTest {
 
     @Test
     fun customCommandRunsItsStepsInOrder() {
-        val custom = CustomCommand("1", "Я вдома", listOf("вайфай", "таймер 5 хвилин", "відкрий телеграм"))
+        val custom = CustomCommand.create("Я вдома", listOf("вайфай", "таймер 5 хвилин", "відкрий телеграм")).copy(id = "1")
         val vm = LauncherViewModel(source, history = history, now = { ++clock }, computeDispatcher = Dispatchers.Main, customCommands = { listOf(custom) })
         vm.onVoiceResult(listOf("я вдома"))
         assertEquals(VoiceAction.Panel(SystemPanel.WIFI), vm.voiceActions.tryReceive().getOrNull())

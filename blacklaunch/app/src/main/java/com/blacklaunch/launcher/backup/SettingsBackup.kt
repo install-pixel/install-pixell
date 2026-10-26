@@ -4,6 +4,7 @@ import com.blacklaunch.launcher.BlackLaunchApp
 import com.blacklaunch.launcher.automation.InMemoryAutomationStore
 import com.blacklaunch.launcher.automation.TriggerKind
 import com.blacklaunch.launcher.commands.CommandCondition
+import com.blacklaunch.launcher.commands.CommandStep
 import com.blacklaunch.launcher.commands.CommandTrigger
 import com.blacklaunch.launcher.commands.ConditionKind
 import com.blacklaunch.launcher.commands.CustomCommand
@@ -57,11 +58,13 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             }))
             put("aliases", JSONObject(app.userAliasStore.aliases.value.mapValues { JSONArray(it.value.toList()) }))
             put("commands", JSONArray(app.customCommands.commands.value.map { c ->
-                JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.steps)).apply {
+                JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.stepTexts)).apply {
                     put("triggers", JSONArray(c.triggers.map { t ->
                         JSONObject().put("kind", t.kind.name).putOpt("address", t.deviceAddress).putOpt("name", t.deviceName)
                     }))
-                    c.condition?.let { put("condition", JSONObject().put("kind", it.kind.name).putOpt("address", it.deviceAddress).putOpt("name", it.deviceName)) }
+                    put("conditions", JSONArray(c.conditions.map(::conditionJson)))
+                    // Умови кроків — окремим масивом поруч із текстами (тексти лишаються читабельними й для старих версій).
+                    put("stepConditions", JSONArray(c.steps.map { step -> JSONArray(step.conditions.map(::conditionJson)) }))
                 }
             }))
             put("hidden", JSONArray(app.hiddenApps.hidden.value.toList()))
@@ -138,13 +141,14 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                     TriggerKind.entries.firstOrNull { it.name == t.optString("kind") }
                         ?.let { CommandTrigger(it, t.optString("address").ifEmpty { null }, t.optString("name").ifEmpty { null }) }
                 }
-                val condition = c.optJSONObject("condition")?.let { o ->
-                    ConditionKind.entries.firstOrNull { it.name == o.optString("kind") }
-                        ?.let { CommandCondition(it, o.optString("address").ifEmpty { null }, o.optString("name").ifEmpty { null }) }
+                // До 1.2.0 — одна умова «condition».
+                val conditions = c.optJSONArray("conditions")?.objects()?.mapNotNull(::conditionFrom)
+                    ?: listOfNotNull(c.optJSONObject("condition")?.let(::conditionFrom))
+                val stepConditions = c.optJSONArray("stepConditions")
+                val steps = c.getJSONArray("steps").strings().mapIndexed { i, text ->
+                    CommandStep(text, stepConditions?.optJSONArray(i)?.objects()?.mapNotNull(::conditionFrom).orEmpty())
                 }
-                app.customCommands.save(
-                    CustomCommand(c.getString("id"), c.getString("phrase"), c.getJSONArray("steps").strings(), triggers, condition),
-                )
+                app.customCommands.save(CustomCommand(c.getString("id"), c.getString("phrase"), steps, triggers, conditions))
             }
         }
         root.optJSONArray("hidden")?.let { hidden ->
@@ -195,6 +199,19 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             app.automationRunner.migrateOldAutomations()
         }
         return RestoreResult(imported.size, remap.waiting)
+    }
+
+    private fun conditionJson(c: CommandCondition): JSONObject = JSONObject().put("kind", c.kind.name)
+        .putOpt("address", c.deviceAddress).putOpt("name", c.deviceName).putOpt("from", c.from).putOpt("to", c.to)
+        .put("days", c.days).putOpt("percent", c.percent).putOpt("profile", c.profile).put("negate", c.negate)
+
+    private fun conditionFrom(o: JSONObject): CommandCondition? {
+        val kind = ConditionKind.entries.firstOrNull { it.name == o.optString("kind") } ?: return null
+        fun int(key: String) = if (o.has(key)) o.optInt(key) else null
+        return CommandCondition(
+            kind, o.optString("address").ifEmpty { null }, o.optString("name").ifEmpty { null }, int("from"), int("to"),
+            o.optInt("days", 0), int("percent"), o.optString("profile").ifEmpty { null }, o.optBoolean("negate", false),
+        )
     }
 
     private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }

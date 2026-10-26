@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher
 
+import kotlinx.coroutines.flow.first
 import android.app.Application
 import android.os.Build
 import android.widget.Toast
@@ -67,7 +68,7 @@ class BlackLaunchApp : Application() {
     val customCommands: PrefsCustomCommandStore by lazy { PrefsCustomCommandStore(this) }
     val automations: PrefsAutomationStore by lazy { PrefsAutomationStore(this) }
     val automationRunner: AutomationRunner by lazy { AutomationRunner(this) }
-    val commandConditions: CommandConditions by lazy { CommandConditions(this) }
+    val commandConditions: CommandConditions by lazy { CommandConditions(this) { profileRepository.activeProfile.first()?.name } }
     val systemStats: SystemStats by lazy { SystemStats(this) }
     val monitorSettings: MonitorSettings by lazy { MonitorSettings(this) }
     val recentQueries: PrefsRecentQueries by lazy { PrefsRecentQueries(this) }

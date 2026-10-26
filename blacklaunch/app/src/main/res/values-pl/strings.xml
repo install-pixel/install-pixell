@@ -511,7 +511,7 @@
     <string name="show_apps_subtitle">Wyłączone — ikon profilu nie widać, ale jego aplikacje nadal określają wyszukiwanie, filtr powiadomień i wyszukiwanie globalne</string>
     <string name="glance_own_title">Własny wybór dla tego profilu</string>
     <string name="glance_own_subtitle">Wyłączone — jak w Ustawienia → Ekran główny</string>
-    <string name="condition_not_met">Warunek polecenia nie jest spełniony (na przykład słuchawki nie są połączone)</string>
+    <string name="condition_not_met">Warunki polecenia nie są spełnione</string>
     <string name="condition_title">Tylko jeśli</string>
     <string name="condition_always">Zawsze</string>
     <string name="condition_device">Połączono urządzenie Bluetooth</string>
@@ -680,4 +680,27 @@
     <string name="mon_wifi_tx">połączenie Wi‑Fi: wysyłanie</string>
     <string name="mon_net_now">↓ odbiera %1$s · ↑ wysyła %2$s</string>
     <string name="mon_net_graph">wykres — odbiór, ostatnie 5 min</string>
+    <string name="condition_add">Dodaj warunek</string>
+    <string name="condition_time">Godzina i dni tygodnia</string>
+    <string name="condition_from">od</string>
+    <string name="condition_to">do</string>
+    <string name="condition_time_note">Przez północ też można: od 22:00 do 06:00. Bez godziny — tylko wybrane dni.</string>
+    <string name="condition_days">Dni (nic nie wybrano — codziennie)</string>
+    <string name="condition_percent">%1$d%%</string>
+    <string name="condition_negate">Odwrotnie</string>
+    <string name="condition_negate_note">Gdy warunek NIE jest spełniony (np. słuchawki niepodłączone)</string>
+    <string name="condition_time_range">%1$s–%2$s</string>
+    <string name="condition_battery_above">Bateria powyżej…</string>
+    <string name="condition_battery_below">Bateria poniżej…</string>
+    <string name="condition_battery_above_value">bateria powyżej %1$d%%</string>
+    <string name="condition_battery_below_value">bateria poniżej %1$d%%</string>
+    <string name="condition_profile">Bieżący profil</string>
+    <string name="condition_profile_named">profil „%1$s”</string>
+    <string name="condition_wifi">Połączono z Wi‑Fi</string>
+    <string name="condition_mobile">Internet komórkowy</string>
+    <string name="condition_not">NIE: %1$s</string>
+    <string name="condition_and">" i "</string>
+    <string name="stepcond_only_if">tylko gdy %1$s</string>
+    <string name="stepcond_title">Warunki kroku</string>
+    <string name="stepcond_note">Krok wykona się tylko, gdy wszystkie warunki są spełnione; inaczej zostanie pominięty, a kolejne kroki pójdą dalej.</string>
 </resources>

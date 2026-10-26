@@ -60,6 +60,7 @@ import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.commands.CommandCondition
+import com.blacklaunch.launcher.commands.CommandStep
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.AppSearchEngine
 import com.blacklaunch.launcher.ui.theme.Oled
@@ -116,14 +117,14 @@ internal fun CustomCommandsCard(
                 Text(title, color = Oled.TextPrimary, fontSize = 16.sp)
                 // Умова й події — одним рядком, щоб було видно, коли команда спрацює.
                 val details = listOfNotNull(
-                    command.condition?.let { stringResource(R.string.condition_only_if, conditionText(it)) },
+                    command.conditions.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.condition_only_if, conditionsText(it)) },
                     command.triggers.takeIf { it.isNotEmpty() && command.phrase.isNotBlank() }?.let { list ->
                         stringResource(R.string.command_auto_short, list.map { triggerText(it) }.joinToString(", "))
                     },
                 )
                 details.forEach { Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 Text(
-                    command.steps.joinToString(" → "),
+                    command.stepTexts.joinToString(" → "),
                     color = Oled.TextSecondary,
                     fontSize = 13.sp,
                     maxLines = 2,
@@ -141,16 +142,16 @@ private enum class StepPicker { MENU, APP, ACTION, PROFILE, TEXT }
 @Composable
 private fun phraseConflict(
     phrase: String,
-    condition: CommandCondition?,
+    conditions: List<CommandCondition>,
     others: List<CustomCommand>,
     apps: List<AppInfo>,
     profiles: List<String>,
 ): String? {
     val q = SearchNormalizer.normalize(phrase)
     if (q.isEmpty()) return null
-    val twin = others.firstOrNull { SearchNormalizer.normalize(it.phrase) == q && it.condition == null }
+    val twin = others.firstOrNull { SearchNormalizer.normalize(it.phrase) == q && it.conditions.isEmpty() }
     return when {
-        twin != null && condition == null -> stringResource(R.string.phrase_conflict_command)
+        twin != null && conditions.isEmpty() -> stringResource(R.string.phrase_conflict_command)
         profiles.any { SearchNormalizer.normalize(it) == q } -> stringResource(R.string.phrase_conflict_profile)
         apps.firstOrNull { SearchNormalizer.normalize(it.label) == q } != null ->
             stringResource(R.string.phrase_conflict_app, apps.first { SearchNormalizer.normalize(it.label) == q }.label)
@@ -175,13 +176,15 @@ private fun CommandEditor(
     var phrase by remember { mutableStateOf(command.phrase) }
     var steps by remember { mutableStateOf(command.steps) }
     var triggers by remember { mutableStateOf(command.triggers) }
-    var condition by remember { mutableStateOf(command.condition) }
+    var conditions by remember { mutableStateOf(command.conditions) }
     var picker by remember { mutableStateOf<StepPicker?>(null) }
     var pickingCondition by remember { mutableStateOf(false) }
+    // Крок, для якого відкрито «Умови кроку».
+    var stepConditionsFor by remember { mutableStateOf<Int?>(null) }
     var addingTrigger by remember { mutableStateOf(false) }
     // Без фрази команда можлива, лише якщо вона запускається сама.
     val canSave = (phrase.isNotBlank() || triggers.isNotEmpty()) && steps.isNotEmpty()
-    val addStep: (String) -> Unit = { step -> steps = CustomCommand.clean(steps + step); picker = null }
+    val addStep: (String) -> Unit = { step -> steps = CustomCommand.cleanSteps(steps + CommandStep(step)); picker = null }
     Card {
         Text(stringResource(R.string.custom_commands_title), color = Oled.TextPrimary, fontSize = 17.sp)
         OutlinedTextField(
@@ -194,11 +197,19 @@ private fun CommandEditor(
             colors = fieldColors(),
         )
         // Фраза, що збігається з чимось іншим, — попереджаємо, щоб жодна команда не «зникала» мовчки.
-        phraseConflict(phrase, condition, others, apps, profiles)?.let { Note(it) }
+        phraseConflict(phrase, conditions, others, apps, profiles)?.let { Note(it) }
+        // «Лише якщо»: усі умови мають виконуватись; без умов — будь-коли.
         Text(stringResource(R.string.condition_title), color = Oled.TextSecondary, fontSize = 13.sp)
-        ActionOption(condition?.let { conditionText(it) } ?: stringResource(R.string.condition_always), Icons.Filled.Lock) {
-            pickingCondition = true
+        if (conditions.isEmpty()) Note(stringResource(R.string.condition_always))
+        conditions.forEach { condition ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(conditionText(condition), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                SmallButton(Icons.Filled.Close, R.string.custom_step_remove) { conditions = conditions - condition }
+            }
         }
+        ActionOption(R.string.condition_add, Icons.Filled.Add) { pickingCondition = true }
         Text(stringResource(R.string.command_auto_title), color = Oled.TextSecondary, fontSize = 13.sp)
         triggers.forEach { trigger ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -215,6 +226,7 @@ private fun CommandEditor(
             StepRow(
                 number = index + 1,
                 step = step,
+                onConditions = { stepConditionsFor = index },
                 onUp = if (index > 0) ({ steps = steps.swap(index, index - 1) }) else null,
                 onDown = if (index < steps.lastIndex) ({ steps = steps.swap(index, index + 1) }) else null,
                 onRemove = { steps = steps.filterIndexed { i, _ -> i != index } },
@@ -224,8 +236,8 @@ private fun CommandEditor(
         // Кнопки — у тому ж вигляді, що й пункти меню налаштувань.
         if (canSave) {
             ActionOption(R.string.custom_command_save, Icons.Filled.Done) {
-                val id = command.id.ifEmpty { CustomCommand.create(phrase, steps).id }
-                onSave(CustomCommand(id, phrase.trim(), steps, triggers, condition))
+                val id = command.id.ifEmpty { CustomCommand.create(phrase, emptyList()).id }
+                onSave(CustomCommand(id, phrase.trim(), steps, triggers, conditions))
             }
         } else {
             Note(stringResource(R.string.custom_command_save_hint))
@@ -234,7 +246,18 @@ private fun CommandEditor(
         if (onDelete != null) ActionOption(R.string.custom_command_delete, Icons.Filled.Delete, onDelete)
     }
     if (pickingCondition) {
-        ConditionDialog(condition, devices, onPick = { condition = it; pickingCondition = false }, onDismiss = { pickingCondition = false })
+        ConditionDialog(devices, profiles, onPick = { conditions = (conditions + it).distinct(); pickingCondition = false }, onDismiss = { pickingCondition = false })
+    }
+    stepConditionsFor?.let { index ->
+        steps.getOrNull(index)?.let { step ->
+            StepConditionsDialog(
+                step = step,
+                devices = devices,
+                profiles = profiles,
+                onChange = { updated -> steps = steps.mapIndexed { i, s -> if (i == index) s.copy(conditions = updated) else s } },
+                onDismiss = { stepConditionsFor = null },
+            )
+        }
     }
     if (addingTrigger) {
         TriggerDialog(devices, onPick = { triggers = (triggers + it).distinct(); addingTrigger = false }, onDismiss = { addingTrigger = false })
@@ -251,10 +274,10 @@ private fun CommandEditor(
 
 private fun <T> List<T>.swap(a: Int, b: Int): List<T> = toMutableList().also { val t = it[a]; it[a] = it[b]; it[b] = t }
 
-/** Крок: номер, значок за видом (програма / режим / дія / текст), текст і кнопки порядку. */
+/** Крок: номер, значок за видом (програма / режим / дія / текст), текст, умови кроку й кнопки порядку. */
 @Composable
-private fun StepRow(number: Int, step: String, onUp: (() -> Unit)?, onDown: (() -> Unit)?, onRemove: () -> Unit) {
-    val icon = when (VoiceCommandParser.parse(step)) {
+private fun StepRow(number: Int, step: CommandStep, onConditions: () -> Unit, onUp: (() -> Unit)?, onDown: (() -> Unit)?, onRemove: () -> Unit) {
+    val icon = when (VoiceCommandParser.parse(step.text)) {
         is VoiceCommand.Open, VoiceCommand.OpenLast -> Icons.Filled.PlayArrow
         is VoiceCommand.SwitchProfile -> Icons.Filled.AccountCircle
         is VoiceCommand.Action -> Icons.Filled.Settings
@@ -264,21 +287,67 @@ private fun StepRow(number: Int, step: String, onUp: (() -> Unit)?, onDown: (() 
         Text("$number", color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.width(18.dp))
         Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
-        Text(step, color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.weight(1f)) {
+            Text(step.text, color = Oled.TextPrimary, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (step.conditions.isNotEmpty()) {
+                Text(stringResource(R.string.stepcond_only_if, conditionsText(step.conditions)), color = Oled.TextSecondary, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        // Замок — умови саме цього кроку (світліший, якщо вони є).
+        SmallButton(Icons.Filled.Lock, R.string.stepcond_title, onConditions, highlighted = step.conditions.isNotEmpty())
         SmallButton(Icons.Filled.KeyboardArrowUp, R.string.custom_step_up, onUp)
         SmallButton(Icons.Filled.KeyboardArrowDown, R.string.custom_step_down, onDown)
         SmallButton(Icons.Filled.Close, R.string.custom_step_remove, onRemove)
     }
 }
 
+/** «Умови кроку»: крок виконується, лише якщо всі ці умови виконані (інакше пропускається, решта йде далі). */
 @Composable
-private fun SmallButton(icon: ImageVector, @StringRes description: Int, onClick: (() -> Unit)?) {
+private fun StepConditionsDialog(
+    step: CommandStep,
+    devices: DeviceAccess,
+    profiles: List<String>,
+    onChange: (List<CommandCondition>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var adding by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF141414),
+        title = { Text(stringResource(R.string.stepcond_title), color = Oled.TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(step.text, color = Oled.TextPrimary, fontSize = 15.sp)
+                Note(stringResource(R.string.stepcond_note))
+                if (step.conditions.isEmpty()) Note(stringResource(R.string.condition_always))
+                step.conditions.forEach { condition ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(conditionText(condition), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        SmallButton(Icons.Filled.Close, R.string.custom_step_remove) { onChange(step.conditions - condition) }
+                    }
+                }
+                ActionOption(R.string.condition_add, Icons.Filled.Add) { adding = true }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close), color = Oled.TextPrimary) } },
+    )
+    if (adding) {
+        ConditionDialog(devices, profiles, onPick = { onChange((step.conditions + it).distinct()); adding = false }, onDismiss = { adding = false })
+    }
+}
+
+@Composable
+private fun SmallButton(icon: ImageVector, @StringRes description: Int, onClick: (() -> Unit)?, highlighted: Boolean = false) {
     val haptics = LocalHaptics.current
     IconButton(onClick = { haptics.tap(); onClick?.invoke() }, enabled = onClick != null, modifier = Modifier.size(36.dp)) {
         Icon(
             icon,
             contentDescription = stringResource(description),
-            tint = if (onClick != null) Oled.TextSecondary else Oled.TextSecondary.copy(alpha = 0.3f),
+            tint = when {
+                onClick == null -> Oled.TextSecondary.copy(alpha = 0.3f)
+                highlighted -> Oled.TextPrimary
+                else -> Oled.TextSecondary
+            },
             modifier = Modifier.size(20.dp),
         )
     }

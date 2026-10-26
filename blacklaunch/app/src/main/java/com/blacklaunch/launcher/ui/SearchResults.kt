@@ -155,7 +155,7 @@ fun SearchResults(
         }
         // Команди (як голосом) — одразу над полем пошуку.
         items(custom, key = { "custom:${it.id}" }) { command ->
-            CommandRow(Icons.Filled.PlayArrow, command.phrase, command.steps.joinToString(" → ")) { onCustom(command) }
+            CommandRow(Icons.Filled.PlayArrow, command.phrase, command.stepTexts.joinToString(" → ")) { onCustom(command) }
         }
         items(actions.distinct(), key = { "action:$it" }) { action ->
             CommandRow(action.icon(), action.title(), action.subtitle()) { onAction(action) }

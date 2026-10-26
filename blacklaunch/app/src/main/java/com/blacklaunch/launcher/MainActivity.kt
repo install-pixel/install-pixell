@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
                     showSuggestions = { activeDisplay().suggestions },
                     showRecent = { activeDisplay().recentQueries },
                     inQuickSwitch = { app.profileDisplay.of(it).quickSwitch },
-                    conditionMet = app.commandConditions::met,
+                    resolveCommand = app.commandConditions::resolve,
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
                     globalModes = app.searchScopes.globalModes,

@@ -30,7 +30,6 @@ import com.blacklaunch.launcher.search.LearnedQueries
 import com.blacklaunch.launcher.search.Phonetic
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.search.SearchIndex
-import com.blacklaunch.launcher.commands.CommandCondition
 import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.profiles.GlobalAccess
@@ -156,7 +155,8 @@ class LauncherViewModel(
     /** Чи профіль у швидкому перемиканні (свайпи, подвійний дотик, назва профілю). */
     private val inQuickSwitch: (String) -> Boolean = { true },
     /** «Лише якщо» команди: чи підключено вибрані навушники, зарядку… (перевірка в момент запуску). */
-    private val conditionMet: suspend (CommandCondition) -> Boolean = { true },
+    /** Кроки команди з урахуванням умов (null — умови команди не виконані). */
+    private val resolveCommand: suspend (CustomCommand) -> List<String>? = { it.stepTexts },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -482,14 +482,14 @@ class LauncherViewModel(
         query.value?.takeIf { it.isNotBlank() }?.let { recentQueries.record(scope.value.profileId, it) }
         // Виконано — пошук закривається, щоб не лишались результати за словами команди.
         if (query.value != null) forgetSearch()
-        val first = commands.firstOrNull() ?: return
-        if (first.condition == null) {
-            runSteps(first.steps)
-            return
-        }
+        if (commands.isEmpty()) return
         viewModelScope.launch {
-            val chosen = commands.firstOrNull { command -> command.condition?.let { conditionMet(it) } ?: true }
-            if (chosen != null) runSteps(chosen.steps) else _messages.trySend(UiMessage.CONDITION_NOT_MET)
+            for (command in commands) {
+                val steps = resolveCommand(command) ?: continue
+                runSteps(steps)
+                return@launch
+            }
+            _messages.trySend(UiMessage.CONDITION_NOT_MET)
         }
     }
 

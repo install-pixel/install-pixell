@@ -15,27 +15,62 @@ data class CommandTrigger(val kind: TriggerKind, val deviceAddress: String? = nu
         kind == event && (!isBluetooth || deviceAddress == null || deviceAddress.equals(address, ignoreCase = true))
 }
 
-/** «Лише якщо»: що має бути підключено, щоб команда виконалась. */
-enum class ConditionKind { BLUETOOTH_DEVICE, CHARGING, WIRED_HEADSET }
+/** «Лише якщо»: що має бути (або, з [CommandCondition.negate], не бути), щоб команда чи крок виконались. */
+enum class ConditionKind { BLUETOOTH_DEVICE, CHARGING, WIRED_HEADSET, TIME, BATTERY_ABOVE, BATTERY_BELOW, PROFILE, WIFI, MOBILE_DATA }
 
-data class CommandCondition(val kind: ConditionKind, val deviceAddress: String? = null, val deviceName: String? = null)
+/**
+ * Умова. Для Bluetooth — пристрій; для часу — [from]…[to] (хвилини від півночі; через північ теж) і [days]
+ * (біти пн=1 … нд=64, 0 — щодня); для батареї — [percent]; для профілю — [profile]. [negate] — «навпаки».
+ */
+data class CommandCondition(
+    val kind: ConditionKind,
+    val deviceAddress: String? = null,
+    val deviceName: String? = null,
+    val from: Int? = null,
+    val to: Int? = null,
+    val days: Int = 0,
+    val percent: Int? = null,
+    val profile: String? = null,
+    val negate: Boolean = false,
+)
+
+/** Крок команди: [text] — як сказана команда («режим дорога»), [conditions] — лише якщо (усі). */
+data class CommandStep(val text: String, val conditions: List<CommandCondition> = emptyList())
+
+/** Перевірки, які не залежать від Android — час і дні тижня. */
+object ConditionRules {
+    /** [minute] — хвилина від півночі, [isoDay] — 1 (пн) … 7 (нд). */
+    fun timeMatches(condition: CommandCondition, minute: Int, isoDay: Int): Boolean {
+        val dayOk = condition.days == 0 || (condition.days shr (isoDay - 1)) and 1 == 1
+        val from = condition.from
+        val to = condition.to
+        if (from == null || to == null || from == to) return dayOk
+        val inside = if (from < to) minute in from until to else minute >= from || minute < to
+        return dayOk && inside
+    }
+}
 
 /**
  * Власна команда: [phrase] (голосом чи текстом; може бути порожньою, якщо команда запускається сама) →
  * кроки по черзі. Кожен крок — звичайна команда, як її кажуть: «вайфай», «яскравість 30», «режим дім».
- * [triggers] — події, від яких команда запускається сама; [condition] — виконується лише якщо щось підключено.
+ * [triggers] — події, від яких команда запускається сама; [conditions] — виконується лише якщо всі виконані.
  */
 data class CustomCommand(
     val id: String,
     val phrase: String,
-    val steps: List<String>,
+    val steps: List<CommandStep>,
     val triggers: List<CommandTrigger> = emptyList(),
-    val condition: CommandCondition? = null,
+    val conditions: List<CommandCondition> = emptyList(),
 ) {
+    /** Тексти кроків — для показу. */
+    val stepTexts: List<String> get() = steps.map { it.text }
+
     companion object {
-        fun create(phrase: String, steps: List<String>) = CustomCommand(UUID.randomUUID().toString(), phrase.trim(), clean(steps))
+        fun create(phrase: String, steps: List<String>) = CustomCommand(UUID.randomUUID().toString(), phrase.trim(), clean(steps).map(::CommandStep))
 
         fun clean(steps: List<String>) = steps.map { it.trim() }.filter { it.isNotEmpty() }
+
+        fun cleanSteps(steps: List<CommandStep>) = steps.map { it.copy(text = it.text.trim()) }.filter { it.text.isNotEmpty() }
     }
 }
 
@@ -51,7 +86,7 @@ object CustomCommandMatcher {
         val q = SearchNormalizer.normalize(text)
         if (q.isEmpty()) return emptyList()
         return commands.filter { it.phrase.isNotBlank() && SearchNormalizer.normalize(it.phrase) == q }
-            .sortedBy { if (it.condition != null) 0 else 1 }
+            .sortedBy { if (it.conditions.isNotEmpty()) 0 else 1 }
     }
 
     /** Для пошуку: збіг або початок фрази (від 3 літер); одна фраза — один рядок. */
@@ -93,33 +128,64 @@ class InMemoryCustomCommandStore(initial: List<CustomCommand> = emptyList()) : C
         private const val STEP = '\u001F'
         private const val ITEM = '\u001E'
         private const val PART = '\u001D'
+        private const val STEP_CONDITIONS = '\u001C'
 
-        private fun String.safe() = replace(FIELD, ' ').replace(STEP, ' ').replace(ITEM, ' ').replace(PART, ' ')
+        private fun String.safe() = replace(FIELD, ' ').replace(STEP, ' ').replace(ITEM, ' ').replace(PART, ' ').replace(STEP_CONDITIONS, ' ')
 
-        /** Рядок на команду: id, фраза, кроки, події, умова (останні два — з 0.32.0). */
+        private fun encodeCondition(c: CommandCondition) = listOf(
+            c.kind.name, c.deviceAddress.orEmpty(), c.deviceName.orEmpty().safe(), c.from?.toString().orEmpty(), c.to?.toString().orEmpty(),
+            c.days.toString(), c.percent?.toString().orEmpty(), c.profile.orEmpty().safe(), if (c.negate) "1" else "0",
+        ).joinToString(PART.toString())
+
+        /** До 1.2.0 умова мала три частини (вид, адреса, назва) — решта за замовчуванням. */
+        private fun decodeCondition(item: String): CommandCondition? {
+            val p = item.split(PART)
+            val kind = ConditionKind.entries.firstOrNull { it.name == p[0] } ?: return null
+            return CommandCondition(
+                kind,
+                p.getOrNull(1)?.ifEmpty { null },
+                p.getOrNull(2)?.ifEmpty { null },
+                p.getOrNull(3)?.toIntOrNull(),
+                p.getOrNull(4)?.toIntOrNull(),
+                p.getOrNull(5)?.toIntOrNull() ?: 0,
+                p.getOrNull(6)?.toIntOrNull(),
+                p.getOrNull(7)?.ifEmpty { null },
+                p.getOrNull(8) == "1",
+            )
+        }
+
+        private fun encodeConditions(list: List<CommandCondition>) = list.joinToString(ITEM.toString(), transform = ::encodeCondition)
+
+        private fun decodeConditions(text: String) = if (text.isEmpty()) emptyList() else text.split(ITEM).mapNotNull(::decodeCondition)
+
+        /** Рядок на команду: id, фраза, кроки (з умовами кроку з 1.2.0), події, умови (останні два — з 0.32.0). */
         fun encode(commands: List<CustomCommand>): String = commands.joinToString("\n") { c ->
             val triggers = c.triggers.joinToString(ITEM.toString()) { t ->
                 listOf(t.kind.name, t.deviceAddress.orEmpty(), t.deviceName.orEmpty().safe()).joinToString(PART.toString())
             }
-            val condition = c.condition?.let { listOf(it.kind.name, it.deviceAddress.orEmpty(), it.deviceName.orEmpty().safe()).joinToString(PART.toString()) }
-            listOf(c.id, c.phrase.safe(), c.steps.joinToString(STEP.toString()) { it.safe() }, triggers, condition.orEmpty())
-                .joinToString(FIELD.toString())
+            val steps = c.steps.joinToString(STEP.toString()) { step ->
+                if (step.conditions.isEmpty()) step.text.safe() else step.text.safe() + STEP_CONDITIONS + encodeConditions(step.conditions)
+            }
+            listOf(c.id, c.phrase.safe(), steps, triggers, encodeConditions(c.conditions)).joinToString(FIELD.toString())
         }
 
         fun decode(text: String?): List<CustomCommand> = text.orEmpty().lineSequence().mapNotNull { line ->
             val parts = line.split(FIELD)
             if (parts.size != 3 && parts.size != 5) return@mapNotNull null
-            val steps = CustomCommand.clean(parts[2].split(STEP))
+            val steps = CustomCommand.cleanSteps(
+                parts[2].split(STEP).map { raw ->
+                    val pieces = raw.split(STEP_CONDITIONS, limit = 2)
+                    CommandStep(pieces[0], decodeConditions(pieces.getOrNull(1).orEmpty()))
+                },
+            )
             val triggers = parts.getOrNull(3).orEmpty().split(ITEM).mapNotNull { item ->
                 val p = item.split(PART)
                 val kind = TriggerKind.entries.firstOrNull { it.name == p[0] } ?: return@mapNotNull null
                 CommandTrigger(kind, p.getOrNull(1)?.ifEmpty { null }, p.getOrNull(2)?.ifEmpty { null })
             }
-            val condition = parts.getOrNull(4).orEmpty().split(PART).let { p ->
-                ConditionKind.entries.firstOrNull { it.name == p[0] }?.let { CommandCondition(it, p.getOrNull(1)?.ifEmpty { null }, p.getOrNull(2)?.ifEmpty { null }) }
-            }
+            val conditions = decodeConditions(parts.getOrNull(4).orEmpty())
             if (parts[1].isBlank() && triggers.isEmpty()) return@mapNotNull null
-            CustomCommand(parts[0], parts[1], steps, triggers, condition)
+            CustomCommand(parts[0], parts[1], steps, triggers, conditions)
         }.toList()
     }
 }

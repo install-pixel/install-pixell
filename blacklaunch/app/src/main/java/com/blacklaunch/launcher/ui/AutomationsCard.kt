@@ -1,7 +1,16 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.ui.text.input.KeyboardType
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,21 +66,134 @@ internal fun OpenDirectlyCard(canOpenDirectly: Boolean, lastSeen: String?, onOpe
     }
 }
 
-/** «Лише якщо»: будь-коли, вибраний Bluetooth-пристрій, зарядка чи дротові навушники. */
+/**
+ * Нова умова «Лише якщо»: що підключено, час і дні, батарея, профіль, мережа; «навпаки» — коли НЕ виконується.
+ * Усе перевіряється лише в момент запуску команди.
+ */
 @Composable
-internal fun ConditionDialog(current: CommandCondition?, devices: DeviceAccess, onPick: (CommandCondition?) -> Unit, onDismiss: () -> Unit) {
-    var kind by remember { mutableStateOf(current?.kind) }
-    var device by remember { mutableStateOf(current?.deviceAddress?.let { PairedDevice(current.deviceName.orEmpty(), it) }) }
-    val canSave = kind != ConditionKind.BLUETOOTH_DEVICE || device != null
-    PickDialog(
-        title = R.string.condition_title,
-        onDismiss = onDismiss,
-        confirm = if (canSave) ({ onPick(kind?.let { CommandCondition(it, device?.address.takeIf { _ -> it == ConditionKind.BLUETOOTH_DEVICE }, device?.name.takeIf { _ -> it == ConditionKind.BLUETOOTH_DEVICE }) }) }) else null,
-    ) {
-        Choice(stringResource(R.string.condition_always), selected = kind == null) { kind = null }
-        ConditionKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
-        if (kind == ConditionKind.BLUETOOTH_DEVICE) DevicePicker(devices, device) { device = it }
+internal fun ConditionDialog(devices: DeviceAccess, profiles: List<String>, onPick: (CommandCondition) -> Unit, onDismiss: () -> Unit) {
+    var kind by remember { mutableStateOf(ConditionKind.BLUETOOTH_DEVICE) }
+    var device by remember { mutableStateOf<PairedDevice?>(null) }
+    var from by remember { mutableStateOf("") }
+    var to by remember { mutableStateOf("") }
+    var days by remember { mutableStateOf(0) }
+    var percent by remember { mutableStateOf(50f) }
+    var profile by remember { mutableStateOf<String?>(null) }
+    var negate by remember { mutableStateOf(false) }
+    val fromMin = parseTime(from)
+    val toMin = parseTime(to)
+    val canSave = when (kind) {
+        ConditionKind.BLUETOOTH_DEVICE -> device != null
+        // Час: або обидві межі, або жодної (тоді — лише дні тижня).
+        ConditionKind.TIME -> (fromMin != null && toMin != null && fromMin != toMin) || (from.isBlank() && to.isBlank() && days != 0)
+        ConditionKind.PROFILE -> profile != null
+        else -> true
     }
+    PickDialog(
+        title = R.string.condition_add,
+        onDismiss = onDismiss,
+        confirm = if (canSave) ({
+            onPick(
+                CommandCondition(
+                    kind,
+                    deviceAddress = device?.address.takeIf { kind == ConditionKind.BLUETOOTH_DEVICE },
+                    deviceName = device?.name.takeIf { kind == ConditionKind.BLUETOOTH_DEVICE },
+                    from = fromMin.takeIf { kind == ConditionKind.TIME },
+                    to = toMin.takeIf { kind == ConditionKind.TIME },
+                    days = if (kind == ConditionKind.TIME) days else 0,
+                    percent = percent.roundToInt().takeIf { kind == ConditionKind.BATTERY_ABOVE || kind == ConditionKind.BATTERY_BELOW },
+                    profile = profile.takeIf { kind == ConditionKind.PROFILE },
+                    negate = negate,
+                ),
+            )
+        }) else null,
+    ) {
+        ConditionKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
+        when (kind) {
+            ConditionKind.BLUETOOTH_DEVICE -> DevicePicker(devices, device) { device = it }
+            ConditionKind.TIME -> {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimeField(R.string.condition_from, from, Modifier.weight(1f)) { from = it }
+                    TimeField(R.string.condition_to, to, Modifier.weight(1f)) { to = it }
+                }
+                Note(stringResource(R.string.condition_time_note))
+                Text(stringResource(R.string.condition_days), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                DayChips(days) { days = it }
+            }
+            ConditionKind.BATTERY_ABOVE, ConditionKind.BATTERY_BELOW -> {
+                Text(stringResource(R.string.condition_percent, percent.roundToInt()), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
+                Slider(
+                    value = percent,
+                    onValueChange = { percent = it },
+                    valueRange = 5f..95f,
+                    steps = 17,
+                    colors = SliderDefaults.colors(thumbColor = Oled.TextPrimary, activeTrackColor = Oled.Accent, inactiveTrackColor = Color(0xFF3A3A3A)),
+                )
+            }
+            ConditionKind.PROFILE -> profiles.forEach { name -> Choice(name, selected = profile == name) { profile = name } }
+            else -> Unit
+        }
+        SwitchRow(stringResource(R.string.condition_negate), stringResource(R.string.condition_negate_note), negate) { negate = it }
+    }
+}
+
+/** «07:30» → хвилини від півночі; також «7», «730», «7.30». */
+internal fun parseTime(text: String): Int? {
+    val digits = text.filter(Char::isDigit)
+    if (digits.isEmpty() || digits.length > 4) return null
+    val (h, m) = if (digits.length <= 2) digits.toInt() to 0 else digits.dropLast(2).toInt() to digits.takeLast(2).toInt()
+    return if (h in 0..23 && m in 0..59) h * 60 + m else null
+}
+
+private fun formatTime(minutes: Int) = "%02d:%02d".format(minutes / 60, minutes % 60)
+
+@Composable
+private fun TimeField(@StringRes label: Int, value: String, modifier: Modifier, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { text -> onChange(text.filter { it.isDigit() || it == ':' || it == '.' }.take(5)) },
+        singleLine = true,
+        label = { Text(stringResource(label)) },
+        placeholder = { Text("07:00", color = Oled.TextSecondary) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Oled.TextPrimary, unfocusedTextColor = Oled.TextPrimary, cursorColor = Oled.Accent,
+            focusedBorderColor = Color(0xFF5A5A5A), unfocusedBorderColor = Color(0xFF3A3A3A),
+            focusedLabelColor = Oled.TextSecondary, unfocusedLabelColor = Oled.TextSecondary,
+        ),
+    )
+}
+
+/** Дні тижня мовою телефону, з понеділка; нічого не вибрано — щодня. */
+@Composable
+private fun DayChips(days: Int, onChange: (Int) -> Unit) {
+    val haptics = LocalHaptics.current
+    val names = weekdayNames()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        names.forEachIndexed { i, name ->
+            val bit = 1 shl i
+            val on = days and bit != 0
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (on) Color(0xFF3A3A3A) else Color(0xFF1C1C1C))
+                    .clickable { haptics.tap(); onChange(days xor bit) }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(name, color = if (on) Oled.TextPrimary else Oled.TextSecondary, fontSize = 12.sp, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** Короткі назви днів (пн … нд) мовою телефону. */
+private fun weekdayNames(): List<String> {
+    val symbols = java.text.DateFormatSymbols.getInstance().shortWeekdays
+    // Calendar: SUNDAY = 1 … SATURDAY = 7.
+    return listOf(2, 3, 4, 5, 6, 7, 1).map { symbols[it].trimEnd('.') }
 }
 
 /** «Запускати саму»: подія, від якої команда стартує без фрази. */
@@ -145,12 +267,32 @@ internal fun triggerText(trigger: CommandTrigger): String =
     listOfNotNull(stringResource(trigger.kind.label()), trigger.deviceName).joinToString(" · ")
 
 @Composable
-internal fun conditionText(condition: CommandCondition): String =
-    if (condition.kind == ConditionKind.BLUETOOTH_DEVICE) {
-        stringResource(R.string.condition_device_named, condition.deviceName ?: condition.deviceAddress.orEmpty())
-    } else {
-        stringResource(condition.kind.label())
+internal fun conditionText(condition: CommandCondition): String {
+    val base = when (condition.kind) {
+        ConditionKind.BLUETOOTH_DEVICE -> stringResource(R.string.condition_device_named, condition.deviceName ?: condition.deviceAddress.orEmpty())
+        ConditionKind.TIME -> {
+            val names = weekdayNames()
+            listOfNotNull(
+                if (condition.from != null && condition.to != null) {
+                    stringResource(R.string.condition_time_range, formatTime(condition.from), formatTime(condition.to))
+                } else {
+                    null
+                },
+                condition.days.takeIf { it != 0 }?.let { bits -> names.filterIndexed { i, _ -> bits and (1 shl i) != 0 }.joinToString(", ") },
+            ).joinToString(" · ")
+        }
+        ConditionKind.BATTERY_ABOVE -> stringResource(R.string.condition_battery_above_value, condition.percent ?: 0)
+        ConditionKind.BATTERY_BELOW -> stringResource(R.string.condition_battery_below_value, condition.percent ?: 0)
+        ConditionKind.PROFILE -> stringResource(R.string.condition_profile_named, condition.profile.orEmpty())
+        else -> stringResource(condition.kind.label())
     }
+    return if (condition.negate) stringResource(R.string.condition_not, base) else base
+}
+
+/** Кілька умов — «… і …». */
+@Composable
+internal fun conditionsText(conditions: List<CommandCondition>): String =
+    conditions.map { conditionText(it) }.joinToString(stringResource(R.string.condition_and))
 
 @StringRes
 private fun TriggerKind.label(): Int = when (this) {
@@ -167,4 +309,10 @@ private fun ConditionKind.label(): Int = when (this) {
     ConditionKind.BLUETOOTH_DEVICE -> R.string.condition_device
     ConditionKind.CHARGING -> R.string.condition_charging
     ConditionKind.WIRED_HEADSET -> R.string.condition_wired
+    ConditionKind.TIME -> R.string.condition_time
+    ConditionKind.BATTERY_ABOVE -> R.string.condition_battery_above
+    ConditionKind.BATTERY_BELOW -> R.string.condition_battery_below
+    ConditionKind.PROFILE -> R.string.condition_profile
+    ConditionKind.WIFI -> R.string.condition_wifi
+    ConditionKind.MOBILE_DATA -> R.string.condition_mobile
 }
