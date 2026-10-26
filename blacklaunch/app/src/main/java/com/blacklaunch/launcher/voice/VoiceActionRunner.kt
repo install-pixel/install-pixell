@@ -211,7 +211,10 @@ class VoiceActionRunner(
     fun say(text: String) = speak(text)
 
     /** «Котра година» як крок команди: текст відповіді (вимовляється разом з іншими фразами команди). */
-    fun timeText(): String = context.getString(R.string.voice_time, DateFormat.getTimeFormat(context).format(Date()))
+    fun timeText(): String = timeText(System.currentTimeMillis())
+
+    /** «Зараз 13:00» для заданої миті (час щогодини — та година, на яку стояв будильник). */
+    fun timeText(millis: Long): String = context.getString(R.string.voice_time, DateFormat.getTimeFormat(context).format(Date(millis)))
 
     // Озвучити відповідь: голос створюється лише на цей раз і закривається після мовлення.
     private fun speak(text: String) {

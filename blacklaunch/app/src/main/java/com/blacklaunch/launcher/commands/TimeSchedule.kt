@@ -32,3 +32,36 @@ object TimeSchedule {
 
     private const val DAYS_IN_WEEK = 7
 }
+
+/** Повні години — чиста логіка. */
+object HourMath {
+    private const val HOUR_MS = 3_600_000L
+
+    /**
+     * Перша повна година строго після [after] + [grace] (після сказаної години — запас 30 с, щоб будильник
+     * «на мить раніше» не поставив ту саму годину знову).
+     */
+    fun nextFullHour(after: Long, grace: Long = 0L, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): Long {
+        val c = Calendar.getInstance(zone).apply {
+            timeInMillis = after + grace
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.HOUR_OF_DAY, 1)
+        }
+        return c.timeInMillis
+    }
+
+    /** Найближча повна година до [now] (12:59:59 → 13:00). */
+    fun nearestFullHour(now: Long, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): Long {
+        val c = Calendar.getInstance(zone).apply {
+            timeInMillis = now + HOUR_MS / 2
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return c.timeInMillis
+    }
+
+    const val GRACE_MS = 30_000L
+}

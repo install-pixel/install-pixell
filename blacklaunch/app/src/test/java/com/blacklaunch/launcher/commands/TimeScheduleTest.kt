@@ -39,3 +39,23 @@ class TimeScheduleTest {
         assertEquals(listOf(command), InMemoryCustomCommandStore.decode(InMemoryCustomCommandStore.encode(listOf(command))))
     }
 }
+
+class HourMathTest {
+    private val zone = TimeZone.getTimeZone("Europe/Kyiv")
+
+    private fun at(hour: Int, minute: Int, second: Int, ms: Int = 0): Long = Calendar.getInstance(zone).apply {
+        clear()
+        set(2026, 9, 27, hour, minute, second)
+        set(Calendar.MILLISECOND, ms)
+    }.timeInMillis
+
+    @Test fun earlyAlarmStillMeansThatHourAndNextIsTheFollowingOne() {
+        // Будильник на 13:00 прийшов о 12:59:59.900: це 13:00, а наступна — 14:00, не знову 13:00.
+        val early = at(12, 59, 59, 900)
+        assertEquals(at(13, 0, 0), HourMath.nearestFullHour(early, zone))
+        assertEquals(at(14, 0, 0), HourMath.nextFullHour(maxOf(early, at(13, 0, 0)), HourMath.GRACE_MS, zone))
+        // Без запасу (увімкнули о 12:59:50) — найближча 13:00.
+        assertEquals(at(13, 0, 0), HourMath.nextFullHour(at(12, 59, 50), zone = zone))
+        assertEquals(at(14, 0, 0), HourMath.nextFullHour(at(13, 0, 0), zone = zone))
+    }
+}

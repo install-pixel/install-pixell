@@ -16,9 +16,9 @@ import android.service.notification.StatusBarNotification
 import android.view.KeyEvent
 import com.blacklaunch.launcher.BlackLaunchApp
 import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.commands.HourMath
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.voice.VoiceActionRunner
-import java.util.Calendar
 
 /** Навушники зараз: Bluetooth-аудіо (звичайне чи LE) або дротові/USB — за виходами звуку, без дозволів. */
 object Headphones {
@@ -82,48 +82,55 @@ class SmartProfiles(private val app: BlackLaunchApp) {
     }
 }
 
-/** «Час щогодини в навушники»: будильник на кожну повну годину; говорить лише коли підключені навушники. */
+/**
+ * «Час щогодини в навушники»: будильник на кожну повну годину; говорить лише коли підключені навушники.
+ * Android може розбудити на мить раніше (12:59:59) — тож називаємо саме ту годину, на яку стояв будильник,
+ * кожну годину — лише раз, а наступну рахуємо від неї, а не від «зараз».
+ */
 class HourlyChime(private val app: BlackLaunchApp) {
     private val alarms get() = app.getSystemService(AlarmManager::class.java)
+    private val prefs = app.getSharedPreferences("hourly_chime", Context.MODE_PRIVATE)
 
-    fun reschedule() {
+    /** [after] — після якої миті шукати наступну повну годину; [grace] — запас після щойно сказаної години. */
+    fun reschedule(after: Long = System.currentTimeMillis(), grace: Long = 0L) {
         val manager = alarms ?: return
-        val pending = pending()
         if (!app.automationSettings.hourlyChime.value) {
-            manager.cancel(pending)
+            manager.cancel(pending(0))
             return
         }
-        val next = Calendar.getInstance().apply {
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            add(Calendar.HOUR_OF_DAY, 1)
-        }.timeInMillis
+        val next = HourMath.nextFullHour(after, grace)
+        val pending = pending(next)
         val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
         if (exact) manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pending) else manager.setWindow(AlarmManager.RTC_WAKEUP, next, WINDOW_MS, pending)
     }
 
-    fun ring() {
-        if (app.automationSettings.hourlyChime.value && Headphones.connected(app) && !Headphones.inCall(app)) {
-            val runner = VoiceActionRunner(app, onMessage = {}, ttsEngine = { app.voiceActionSettings.ttsEngine.value })
-            runner.say(runner.timeText())
+    fun ring(at: Long) {
+        val hour = if (at > 0) at else HourMath.nearestFullHour(System.currentTimeMillis())
+        val alreadySpoken = prefs.getLong(KEY_LAST, 0L) == hour
+        if (!alreadySpoken && app.automationSettings.hourlyChime.value && Headphones.connected(app) && !Headphones.inCall(app)) {
+            app.speech.say(app.speech.timeText(hour))
         }
-        reschedule()
+        prefs.edit().putLong(KEY_LAST, hour).apply()
+        reschedule(after = maxOf(System.currentTimeMillis(), hour), grace = HourMath.GRACE_MS)
     }
 
-    private fun pending(): PendingIntent = PendingIntent.getBroadcast(
-        app, REQUEST, Intent(app, HourlyChimeReceiver::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    // Той самий запит (код) — новий будильник замінює попередній, двох не буває.
+    private fun pending(at: Long): PendingIntent = PendingIntent.getBroadcast(
+        app, REQUEST, Intent(app, HourlyChimeReceiver::class.java).putExtra(EXTRA_AT, at),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    private companion object {
-        const val REQUEST = 4_201
-        const val WINDOW_MS = 60_000L
+    companion object {
+        const val EXTRA_AT = "at"
+        private const val REQUEST = 4_201
+        private const val WINDOW_MS = 60_000L
+        private const val KEY_LAST = "last_hour"
     }
 }
 
 class HourlyChimeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        (context.applicationContext as? BlackLaunchApp)?.hourlyChime?.ring()
+        (context.applicationContext as? BlackLaunchApp)?.hourlyChime?.ring(intent.getLongExtra(HourlyChime.EXTRA_AT, 0L))
     }
 }
 
