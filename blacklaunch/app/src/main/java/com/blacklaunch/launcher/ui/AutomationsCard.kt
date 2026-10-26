@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
@@ -78,7 +80,7 @@ internal fun ConditionDialog(devices: DeviceAccess, profiles: List<String>, onPi
     var to by remember { mutableStateOf("") }
     var days by remember { mutableStateOf(0) }
     var percent by remember { mutableStateOf(50f) }
-    var profile by remember { mutableStateOf<String?>(null) }
+    var chosenProfiles by remember { mutableStateOf(emptySet<String>()) }
     var negate by remember { mutableStateOf(false) }
     val fromMin = parseTime(from)
     val toMin = parseTime(to)
@@ -86,7 +88,7 @@ internal fun ConditionDialog(devices: DeviceAccess, profiles: List<String>, onPi
         ConditionKind.BLUETOOTH_DEVICE -> device != null
         // Час: або обидві межі, або жодної (тоді — лише дні тижня).
         ConditionKind.TIME -> (fromMin != null && toMin != null && fromMin != toMin) || (from.isBlank() && to.isBlank() && days != 0)
-        ConditionKind.PROFILE -> profile != null
+        ConditionKind.PROFILE -> chosenProfiles.isNotEmpty()
         else -> true
     }
     PickDialog(
@@ -102,7 +104,9 @@ internal fun ConditionDialog(devices: DeviceAccess, profiles: List<String>, onPi
                     to = toMin.takeIf { kind == ConditionKind.TIME },
                     days = if (kind == ConditionKind.TIME) days else 0,
                     percent = percent.roundToInt().takeIf { kind == ConditionKind.BATTERY_ABOVE || kind == ConditionKind.BATTERY_BELOW },
-                    profile = profile.takeIf { kind == ConditionKind.PROFILE },
+                    // У порядку списку режимів; кілька — будь-який з них.
+                    profile = profiles.filter { it in chosenProfiles }.joinToString(CommandCondition.PROFILE_SEPARATOR)
+                        .takeIf { kind == ConditionKind.PROFILE && it.isNotEmpty() },
                     negate = negate,
                 ),
             )
@@ -131,7 +135,12 @@ internal fun ConditionDialog(devices: DeviceAccess, profiles: List<String>, onPi
                     colors = SliderDefaults.colors(thumbColor = Oled.TextPrimary, activeTrackColor = Oled.Accent, inactiveTrackColor = Color(0xFF3A3A3A)),
                 )
             }
-            ConditionKind.PROFILE -> profiles.forEach { name -> Choice(name, selected = profile == name) { profile = name } }
+            ConditionKind.PROFILE -> {
+                Note(stringResource(R.string.condition_profiles_note))
+                profiles.forEach { name ->
+                    CheckChoice(name, checked = name in chosenProfiles) { chosenProfiles = if (name in chosenProfiles) chosenProfiles - name else chosenProfiles + name }
+                }
+            }
             else -> Unit
         }
         SwitchRow(stringResource(R.string.condition_negate), stringResource(R.string.condition_negate_note), negate) { negate = it }
@@ -300,6 +309,26 @@ private fun PickDialog(@StringRes title: Int, onDismiss: () -> Unit, confirm: ((
     )
 }
 
+/** Позначка для вибору кількох (режими умови). */
+@Composable
+private fun CheckChoice(label: String, checked: Boolean, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { haptics.tap(); onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = { haptics.tap(); onClick() },
+            colors = CheckboxDefaults.colors(checkedColor = Oled.TextPrimary, uncheckedColor = Oled.TextSecondary, checkmarkColor = Color.Black),
+        )
+        Text(label, color = Oled.TextPrimary, fontSize = 15.sp)
+    }
+}
+
 @Composable
 private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
@@ -354,7 +383,9 @@ internal fun conditionText(condition: CommandCondition): String {
         }
         ConditionKind.BATTERY_ABOVE -> stringResource(R.string.condition_battery_above_value, condition.percent ?: 0)
         ConditionKind.BATTERY_BELOW -> stringResource(R.string.condition_battery_below_value, condition.percent ?: 0)
-        ConditionKind.PROFILE -> stringResource(R.string.condition_profile_named, condition.profile.orEmpty())
+        ConditionKind.PROFILE -> condition.profileNames.let { names ->
+            if (names.size == 1) stringResource(R.string.condition_profile_named, names.first()) else stringResource(R.string.condition_profiles_named, names.joinToString(", "))
+        }
         else -> stringResource(condition.kind.label())
     }
     return if (condition.negate) stringResource(R.string.condition_not, base) else base

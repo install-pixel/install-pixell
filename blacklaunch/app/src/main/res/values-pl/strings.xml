@@ -776,4 +776,6 @@
     <string name="teach_voice">Naucz głosem</string>
     <string name="teach_voice_prompt">Powiedz „%1$s” tak, jak wymawiasz</string>
     <string name="teach_voice_saved">Zapamiętałem: „%1$s” → %2$s</string>
+    <string name="condition_profiles_named">tryby: %1$s</string>
+    <string name="condition_profiles_note">Zaznacz jeden lub kilka trybów — polecenie działa w każdym z nich.</string>
 </resources>

@@ -776,4 +776,6 @@
     <string name="teach_voice">Навчити голосом</string>
     <string name="teach_voice_prompt">Скажіть «%1$s» так, як вимовляєте</string>
     <string name="teach_voice_saved">Запам\'ятав: «%1$s» → %2$s</string>
+    <string name="condition_profiles_named">режими: %1$s</string>
+    <string name="condition_profiles_note">Позначте один чи кілька режимів — команда працює в будь-якому з них.</string>
 </resources>

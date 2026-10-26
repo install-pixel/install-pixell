@@ -67,6 +67,22 @@ class CommandCheckTest {
         assertEquals(listOf(CommandProblemKind.NEVER to 0), kinds(phrase.copy(phrase = "")))
     }
 
+    @Test fun severalModesInOneCondition() {
+        val roadOrHome = CommandCondition(ConditionKind.PROFILE, profile = "Дорога|Дім")
+        assertEquals(listOf("Дорога", "Дім"), roadOrHome.profileNames)
+        // Спільний режим є — не суперечать; немає — суперечать.
+        assertFalse(CommandCheck.contradicts(listOf(roadOrHome, CommandCondition(ConditionKind.PROFILE, profile = "Дім|Робота"))))
+        assertTrue(CommandCheck.contradicts(listOf(roadOrHome, CommandCondition(ConditionKind.PROFILE, profile = "Робота"))))
+        // Увімкнено «Дім», дозволено «Дорога|Дім» — норм; увімкнено «Робота» — ніколи.
+        assertFalse(CommandCheck.contradicts(listOf(roadOrHome), listOf(CommandTrigger(TriggerKind.PROFILE_ON, profile = "Дім"))))
+        assertTrue(CommandCheck.contradicts(listOf(roadOrHome), listOf(CommandTrigger(TriggerKind.PROFILE_ON, profile = "Робота"))))
+        // Вийшли з «Дорога» — може бути «Дім», тож не «ніколи»; лише «Дорога» — ніколи.
+        assertFalse(CommandCheck.contradicts(listOf(roadOrHome), listOf(CommandTrigger(TriggerKind.PROFILE_OFF, profile = "Дорога"))))
+        assertTrue(CommandCheck.contradicts(listOf(CommandCondition(ConditionKind.PROFILE, profile = "Дорога")), listOf(CommandTrigger(TriggerKind.PROFILE_OFF, profile = "Дорога"))))
+        val command = CustomCommand("11", "Музика", steps("грай музику"), conditions = listOf(roadOrHome))
+        assertEquals(listOf(command), InMemoryCustomCommandStore.decode(InMemoryCustomCommandStore.encode(listOf(command))))
+    }
+
     @Test fun sameTriggerInAnotherCommand() {
         val on = CommandTrigger(TriggerKind.PROFILE_ON, profile = "Дорога")
         val music = CustomCommand("7", "", steps("грай музику"), triggers = listOf(on))

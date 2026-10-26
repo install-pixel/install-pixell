@@ -776,4 +776,6 @@
     <string name="teach_voice">Teach by voice</string>
     <string name="teach_voice_prompt">Say “%1$s” the way you pronounce it</string>
     <string name="teach_voice_saved">Remembered: “%1$s” → %2$s</string>
+    <string name="condition_profiles_named">modes: %1$s</string>
+    <string name="condition_profiles_note">Tick one or more modes — the command works in any of them.</string>
 </resources>

@@ -47,7 +47,14 @@ data class CommandCondition(
     val percent: Int? = null,
     val profile: String? = null,
     val negate: Boolean = false,
-)
+) {
+    /** Режими умови «Поточний режим» (можна кілька — будь-який з них): «Дорога|Дім». */
+    val profileNames: List<String> get() = profile?.split(PROFILE_SEPARATOR)?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+
+    companion object {
+        const val PROFILE_SEPARATOR = "|"
+    }
+}
 
 /** Крок команди: [text] — як сказана команда («режим дорога»), [conditions] — лише якщо (усі). */
 data class CommandStep(val text: String, val conditions: List<CommandCondition> = emptyList())

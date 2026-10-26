@@ -61,8 +61,9 @@ class CommandConditions(context: Context, private val activeProfile: suspend () 
         }
         ConditionKind.BATTERY_ABOVE -> battery()?.let { level -> condition.percent?.let { level > it } } ?: false
         ConditionKind.BATTERY_BELOW -> battery()?.let { level -> condition.percent?.let { level < it } } ?: false
-        ConditionKind.PROFILE -> condition.profile?.let { wanted ->
-            activeProfile()?.let { SearchNormalizer.normalize(it) == SearchNormalizer.normalize(wanted) }
+        // Будь-який з вибраних режимів.
+        ConditionKind.PROFILE -> activeProfile()?.let { active ->
+            condition.profileNames.any { SearchNormalizer.normalize(it) == SearchNormalizer.normalize(active) }
         } ?: false
         ConditionKind.WIFI -> transport(NetworkCapabilities.TRANSPORT_WIFI)
         ConditionKind.MOBILE_DATA -> transport(NetworkCapabilities.TRANSPORT_CELLULAR)

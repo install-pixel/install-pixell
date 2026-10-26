@@ -107,8 +107,9 @@ object CommandCheck {
         val positive = conditions.filter { !it.negate }
         // Те саме «так» і «навпаки».
         if (conditions.any { c -> conditions.any { o -> o.negate != c.negate && o.copy(negate = c.negate) == c } }) return true
-        val profilesWanted = positive.filter { it.kind == ConditionKind.PROFILE }.mapNotNull { it.profile?.let(SearchNormalizer::normalize) }.toSet()
-        if (profilesWanted.size > 1) return true
+        // Кілька умов «режим»: має бути спільний режим (кожна умова — «будь-який з її режимів»).
+        val profileSets = positive.filter { it.kind == ConditionKind.PROFILE }.map { c -> c.profileNames.map(SearchNormalizer::normalize).toSet() }
+        if (profileSets.size > 1 && profileSets.reduce { a, b -> a intersect b }.isEmpty()) return true
         val above = positive.filter { it.kind == ConditionKind.BATTERY_ABOVE }.mapNotNull { it.percent }.maxOrNull()
         val below = positive.filter { it.kind == ConditionKind.BATTERY_BELOW }.mapNotNull { it.percent }.minOrNull()
         if (above != null && below != null && above >= below - 1) return true
@@ -141,7 +142,8 @@ object CommandCheck {
             TriggerKind.BLUETOOTH_CONNECTED -> c.kind == ConditionKind.BLUETOOTH_DEVICE && c.negate && sameDevice(t, c)
             TriggerKind.BLUETOOTH_DISCONNECTED -> c.kind == ConditionKind.BLUETOOTH_DEVICE && !c.negate && sameDevice(t, c)
             TriggerKind.PROFILE_ON -> c.kind == ConditionKind.PROFILE && sameProfile(t, c) == c.negate
-            TriggerKind.PROFILE_OFF -> c.kind == ConditionKind.PROFILE && !c.negate && sameProfile(t, c)
+            // Вийшли з X, а дозволено лише X — тепер активний інший режим.
+            TriggerKind.PROFILE_OFF -> c.kind == ConditionKind.PROFILE && !c.negate && sameProfile(t, c) && c.profileNames.size == 1
             TriggerKind.TIME -> false
         }
     }
@@ -157,6 +159,7 @@ object CommandCheck {
     private fun sameDevice(t: CommandTrigger, c: CommandCondition) =
         t.deviceAddress != null && t.deviceAddress.equals(c.deviceAddress, ignoreCase = true)
 
+    /** Режим події — серед режимів умови. */
     private fun sameProfile(t: CommandTrigger, c: CommandCondition) =
-        t.profile != null && c.profile != null && SearchNormalizer.normalize(t.profile) == SearchNormalizer.normalize(c.profile)
+        t.profile != null && c.profileNames.any { SearchNormalizer.normalize(it) == SearchNormalizer.normalize(t.profile) }
 }

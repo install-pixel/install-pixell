@@ -715,7 +715,9 @@ class LauncherViewModel(
 
     /** Ярлик з фрази «відкрий <що> в <програма>»: true — оброблено (відкрито або сказано, що програма не вміє). */
     private fun openAppAction(text: String, speak: Boolean): Boolean {
-        val found = phraseShortcuts(text)?.firstOrNull()
+        // «Лише програми профілю» — ярлики лише програм цього режиму.
+        val visible = visibleApps.value.mapTo(HashSet()) { it.packageName }
+        val found = phraseShortcuts(text)?.firstOrNull { it.packageName in visible }
         if (found != null) {
             if (speak) {
                 showHeard(text)
@@ -724,7 +726,7 @@ class LauncherViewModel(
             if (!startShortcut(found)) _messages.trySend(UiMessage.LAUNCH_FAILED)
             return true
         }
-        val label = phraseAppLabel(text) ?: return false
+        val label = phraseAppLabel(text)?.takeIf { name -> visibleApps.value.any { it.label == name } } ?: return false
         if (speak) {
             // У пошуку — усі ярлики цієї програми: видно, що вона вміє.
             showHeard(text)
