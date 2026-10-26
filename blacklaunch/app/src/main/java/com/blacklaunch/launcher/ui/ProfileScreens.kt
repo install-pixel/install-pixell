@@ -283,8 +283,11 @@ fun ProfileEditScreen(
             SwitchRow(stringResource(R.string.monitor_profile_title), stringResource(R.string.monitor_profile_subtitle), display.monitor) {
                 onDisplayChange(display.copy(monitor = it))
             }
-            SwitchRow(stringResource(R.string.show_apps_title), stringResource(R.string.show_apps_subtitle), display.showApps) {
-                onDisplayChange(display.copy(showApps = it))
+            // З моніторингом значків на екрані й так немає — перемикач лише заплутав би.
+            if (!display.monitor) {
+                SwitchRow(stringResource(R.string.show_apps_title), stringResource(R.string.show_apps_subtitle), display.showApps) {
+                    onDisplayChange(display.copy(showApps = it))
+                }
             }
             SwitchRow(stringResource(R.string.quick_switch_title), stringResource(R.string.quick_switch_subtitle), display.quickSwitch) {
                 onDisplayChange(display.copy(quickSwitch = it))

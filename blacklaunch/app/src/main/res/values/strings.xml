@@ -192,7 +192,7 @@
     <string name="profile_swipe_title">Switch profiles by swiping</string>
     <string name="profile_swipe_subtitle">Swipe left or right on the home screen</string>
     <string name="profile_label_title">Profile name on the home screen</string>
-    <string name="profile_label_subtitle">A small label at the top; tap it to switch. Off — a fully black screen</string>
+    <string name="profile_label_subtitle">A small label at the top; tap it to switch. Off — no label</string>
     <string name="crash_log_title">Error log</string>
     <string name="crash_log_empty">No errors so far.</string>
     <string name="crash_log_hint">Last Black Glass crash. Stored only on this phone — copy it and paste into the chat with the developer.</string>
@@ -324,7 +324,7 @@
     <string name="search_scope_all">All apps</string>
     <string name="search_scope_first">Profile apps first</string>
     <string name="search_scope_only">Only profile apps</string>
-    <string name="search_scope_note">“Only profile apps” also applies to suggestions, All apps and voice “open”. Contacts, settings and the calculator stay. Recent searches are kept per profile.</string>
+    <string name="search_scope_note">“Only profile apps” also applies to suggestions, All apps, voice “open”, “open the last one” and command steps. What else is found (contacts, settings…) is chosen in “Global search” below. Recent searches are kept per profile.</string>
     <string name="profile_global_title">Global search</string>
     <string name="profile_global_subtitle">Contacts, messages, calendar, settings and app shortcuts in this profile. The calculator and profiles always stay</string>
     <string name="pick_apps_add">Add (%1$d)</string>
@@ -347,8 +347,8 @@
     <string name="display_title">Screen and search</string>
     <string name="display_apply_all">Apply to all profiles</string>
     <string name="display_applied">Applied to all profiles</string>
-    <string name="display_moved_home">At a glance, profile name and the fully black screen are now set in each profile.</string>
-    <string name="display_moved_search">App suggestions, recent searches and the “All apps” button are now set in each profile.</string>
+    <string name="display_moved_home">At a glance, profile name and the fully black screen are set separately in each profile.</string>
+    <string name="display_moved_search">App suggestions, recent searches and the “All apps” button are set separately in each profile.</string>
     <string name="double_tap_hint">Double tap on an empty spot of the home screen — next profile (works even without the profile name and swipe).</string>
     <string name="backup_title">Backup</string>
     <string name="backup_note">Profiles with their apps, layout, sound, screen and search, your app names, “My commands”, hidden apps, own icons, appearance and voice actions — in one file. Search history is not saved. Apps missing on the phone are remembered and appear in their places once you install them.</string>
@@ -779,6 +779,6 @@
     <string name="condition_profiles_named">modes: %1$s</string>
     <string name="condition_profiles_note">Tick one or more modes — the command works in any of them.</string>
     <string name="extras_mode_apps">Commands — only the mode\'s apps</string>
-    <string name="extras_mode_apps_note">Command steps (also automatic ones, e.g. on headphones) open or start music only in apps that are in the current mode (on its home screen); others are skipped. What you say or type yourself still works.</string>
+    <string name="extras_mode_apps_note">Command steps (also automatic ones, e.g. on headphones) open or start music only in apps that are in the current mode (on its home screen); others are skipped. What you say or type yourself still works. In a mode with “Only profile apps” search this always applies.</string>
     <string name="cmd_not_in_mode">That app is not in this mode — step skipped</string>
 </resources>

@@ -597,7 +597,8 @@ class LauncherViewModel(
 
     /** Остання запущена через BlackLaunch програма, яка досі встановлена. */
     fun lastLaunched(): AppInfo? {
-        val installed = appSource.apps.value.associateBy { it.key }
+        // Лише видимі в профілі: «відкрий останню» не виводить за межі «Лише програми профілю».
+        val installed = visibleApps.value.associateBy { it.key }
         return history.records.value.asReversed().firstNotNullOfOrNull { installed[it.appKey] }
     }
 

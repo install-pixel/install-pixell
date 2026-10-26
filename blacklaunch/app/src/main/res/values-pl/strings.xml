@@ -192,7 +192,7 @@
     <string name="profile_swipe_title">Przełączaj profile przesunięciem</string>
     <string name="profile_swipe_subtitle">Przesuń w lewo lub w prawo na ekranie głównym</string>
     <string name="profile_label_title">Nazwa profilu na ekranie</string>
-    <string name="profile_label_subtitle">Mała etykieta u góry; dotknięcie — następny profil. Wyłączone — całkowicie czarny ekran</string>
+    <string name="profile_label_subtitle">Mała etykieta u góry; dotknięcie — następny profil. Wyłączone — bez etykiety</string>
     <string name="crash_log_title">Dziennik błędów</string>
     <string name="crash_log_empty">Na razie bez błędów.</string>
     <string name="crash_log_hint">Ostatnia awaria Black Glass. Zapisana tylko na tym telefonie — skopiuj i wklej do czatu z twórcą.</string>
@@ -324,7 +324,7 @@
     <string name="search_scope_all">Wszystkie aplikacje</string>
     <string name="search_scope_first">Najpierw aplikacje profilu</string>
     <string name="search_scope_only">Tylko aplikacje profilu</string>
-    <string name="search_scope_note">„Tylko aplikacje profilu” dotyczy też podpowiedzi, „Wszystkich aplikacji” i głosowego „otwórz”. Kontakty, ustawienia i kalkulator zostają. Ostatnie wyszukiwania są osobne dla każdego profilu.</string>
+    <string name="search_scope_note">„Tylko aplikacje profilu” dotyczy też podpowiedzi, „Wszystkich aplikacji”, głosowego „otwórz”, „otwórz ostatnią” i kroków poleceń. Co jeszcze się znajduje (kontakty, ustawienia…) — wybierasz niżej w „Wyszukiwaniu globalnym”. Ostatnie wyszukiwania są osobne dla każdego profilu.</string>
     <string name="profile_global_title">Wyszukiwanie globalne</string>
     <string name="profile_global_subtitle">Kontakty, SMS, kalendarz, ustawienia i skróty aplikacji w tym profilu. Kalkulator i profile zostają zawsze</string>
     <string name="pick_apps_add">Dodaj (%1$d)</string>
@@ -347,8 +347,8 @@
     <string name="display_title">Ekran i wyszukiwanie</string>
     <string name="display_apply_all">Zastosuj do wszystkich profili</string>
     <string name="display_applied">Zastosowano do wszystkich profili</string>
-    <string name="display_moved_home">„W skrócie”, nazwę profilu i całkowicie czarny ekran ustawia się teraz w każdym profilu.</string>
-    <string name="display_moved_search">Podpowiedzi aplikacji, ostatnie wyszukiwania i przycisk „Wszystkie aplikacje” ustawia się teraz w każdym profilu.</string>
+    <string name="display_moved_home">„W skrócie”, nazwę profilu i całkowicie czarny ekran ustawia się osobno w każdym profilu.</string>
+    <string name="display_moved_search">Podpowiedzi aplikacji, ostatnie wyszukiwania i przycisk „Wszystkie aplikacje” ustawia się osobno w każdym profilu.</string>
     <string name="double_tap_hint">Podwójne dotknięcie w pustym miejscu ekranu głównego — następny profil (działa też bez nazwy profilu i przesunięcia).</string>
     <string name="backup_title">Kopia zapasowa</string>
     <string name="backup_note">Profile z aplikacjami, układem, dźwiękiem, ekranem i wyszukiwaniem, Twoje nazwy aplikacji, „Moje polecenia”, ukryte aplikacje, własne ikony, wygląd i polecenia głosowe — w jednym pliku. Historia wyszukiwania nie jest zapisywana. Aplikacje, których jeszcze nie ma na telefonie, są zapamiętywane i pojawią się na swoich miejscach po instalacji.</string>
@@ -779,6 +779,6 @@
     <string name="condition_profiles_named">tryby: %1$s</string>
     <string name="condition_profiles_note">Zaznacz jeden lub kilka trybów — polecenie działa w każdym z nich.</string>
     <string name="extras_mode_apps">Polecenia — tylko aplikacje trybu</string>
-    <string name="extras_mode_apps_note">Kroki poleceń (także uruchamianych samych, np. od słuchawek) otwierają aplikacje lub włączają w nich muzykę tylko, gdy aplikacja jest w bieżącym trybie (na jego ekranie głównym); inne są pomijane. To, co mówisz lub piszesz sam, działa jak zawsze.</string>
+    <string name="extras_mode_apps_note">Kroki poleceń (także uruchamianych samych, np. od słuchawek) otwierają aplikacje lub włączają w nich muzykę tylko, gdy aplikacja jest w bieżącym trybie (na jego ekranie głównym); inne są pomijane. To, co mówisz lub piszesz sam, działa jak zawsze. W trybie z wyszukiwaniem „Tylko aplikacje profilu” działa to zawsze.</string>
     <string name="cmd_not_in_mode">Tej aplikacji nie ma w trybie — krok pominięty</string>
 </resources>

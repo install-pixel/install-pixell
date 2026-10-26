@@ -5,6 +5,7 @@ import android.app.Application
 import android.os.Build
 import android.widget.Toast
 import com.blacklaunch.launcher.profiles.PrefsSearchScopes
+import com.blacklaunch.launcher.profiles.SearchScope
 import com.blacklaunch.launcher.profiles.ProfileApplier
 import com.blacklaunch.launcher.profiles.PrefsProfileDisplay
 import com.blacklaunch.launcher.profiles.ProfileDisplay
@@ -85,8 +86,11 @@ class BlackLaunchApp : Application() {
      * лише якщо вона серед програм поточного режиму. Вимкнено — завжди так.
      */
     fun allowedInMode(pkg: String): Boolean {
-        if (!automationSettings.modeAppsOnly.value || pkg == packageName) return true
+        if (pkg == packageName) return true
         val profile = activeProfile.value ?: return true
+        // «Лише програми профілю» в пошуку режиму обмежує й команди — без окремого перемикача.
+        val profileOnly = searchScopes.scopes.value[profile.id] == SearchScope.PROFILE_ONLY
+        if (!automationSettings.modeAppsOnly.value && !profileOnly) return true
         return profile.pinnedAppKeys.any { it.substringBefore('/') == pkg }
     }
 
