@@ -761,7 +761,7 @@
     <string name="reply_opening">Opening %1$s</string>
     <string name="reply_choose">Several options — choose on the screen</string>
     <string name="reply_search">Here is what I found</string>
-    <string name="reply_profile">Switching to %1$s mode</string>
+    <string name="reply_profile">Switching to mode, %1$s</string>
     <string name="reply_profile_missing">There is no such mode</string>
     <string name="command_reverse_editing">New reverse command</string>
     <string name="command_reverse_editing_note">Created from the previous command: opposite event and opposite steps. Check it and press “Save” — then it appears in the list.</string>

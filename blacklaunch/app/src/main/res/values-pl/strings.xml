@@ -761,7 +761,7 @@
     <string name="reply_opening">Otwieram %1$s</string>
     <string name="reply_choose">Kilka opcji — wybierz na ekranie</string>
     <string name="reply_search">Oto, co znalazłem</string>
-    <string name="reply_profile">Włączam tryb %1$s</string>
+    <string name="reply_profile">Włączam tryb, %1$s</string>
     <string name="reply_profile_missing">Nie ma takiego trybu</string>
     <string name="command_reverse_editing">Nowe polecenie odwrotne</string>
     <string name="command_reverse_editing_note">Utworzone z poprzedniego polecenia: odwrotne zdarzenie i przeciwne kroki. Sprawdź i naciśnij „Zapisz” — wtedy pojawi się na liście.</string>

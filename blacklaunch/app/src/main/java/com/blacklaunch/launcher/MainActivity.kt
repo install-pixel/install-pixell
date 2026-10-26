@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
                     resolveCommand = app.commandConditions::resolve,
                     scheduleSteps = { steps, seconds -> app.stepScheduler.schedule(getString(R.string.custom_commands_title), steps, seconds) },
                     previousProfileId = app.profileRepository::previousActiveId,
-                    playMedia = { com.blacklaunch.launcher.automation.MediaKeys.play(app) },
+                    playMedia = { pkg -> com.blacklaunch.launcher.automation.MediaKeys.playIn(app, pkg) },
                     speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,

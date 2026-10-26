@@ -761,7 +761,7 @@
     <string name="reply_opening">Відкриваю %1$s</string>
     <string name="reply_choose">Кілька варіантів — виберіть на екрані</string>
     <string name="reply_search">Ось що знайшлося</string>
-    <string name="reply_profile">Вмикаю режим %1$s</string>
+    <string name="reply_profile">Вмикаю режим, %1$s</string>
     <string name="reply_profile_missing">Такого режиму немає</string>
     <string name="command_reverse_editing">Нова зворотна команда</string>
     <string name="command_reverse_editing_note">Створена з попередньої команди: подія навпаки й протилежні кроки. Перевірте й натисніть «Зберегти» — тоді вона з\'явиться в списку.</string>

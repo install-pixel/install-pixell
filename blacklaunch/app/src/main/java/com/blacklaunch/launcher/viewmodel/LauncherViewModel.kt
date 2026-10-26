@@ -161,8 +161,8 @@ class LauncherViewModel(
     /** «Лише якщо» команди: чи підключено вибрані навушники, зарядку… (перевірка в момент запуску). */
     /** Крок «зачекати»: решта кроків пізніше (коротко — у Black Glass, довго — системним будильником). */
     private val scheduleSteps: (List<String>, Int) -> Unit = { _, _ -> },
-    /** «Відтворити» для програми з музикою (після «увімкни музику в …»). */
-    private val playMedia: () -> Unit = {},
+    /** «Відтворити» в щойно відкритій програмі з музикою (пакет) — після «увімкни музику в …». */
+    private val playMedia: suspend (String) -> Unit = {},
     /** Фрази вголос з кроків команди; null — поточний час. */
     private val speakSteps: (List<String?>) -> Unit = {},
     /** Профіль, що був до останнього перемикання, — для кроку «попередній режим». */
@@ -702,7 +702,7 @@ class LauncherViewModel(
         if (!launch(app, null)) return true
         viewModelScope.launch {
             delay(PLAY_AFTER_LAUNCH_MS)
-            playMedia()
+            playMedia(app.packageName)
         }
         return true
     }
@@ -728,8 +728,8 @@ class LauncherViewModel(
     companion object {
         private const val PROFILE_MATCH = 0.75
 
-        /** Скільки чекати після відкриття гравця, перш ніж натиснути «відтворити». */
-        private const val PLAY_AFTER_LAUNCH_MS = 1_500L
+        /** Скільки чекати після відкриття гравця, перш ніж шукати його й натискати «відтворити». */
+        private const val PLAY_AFTER_LAUNCH_MS = 700L
 
         /** Скільки часу після закриття пошуку повертається останній запит. */
         const val RESTORE_QUERY_MS = 60 * 1000L
