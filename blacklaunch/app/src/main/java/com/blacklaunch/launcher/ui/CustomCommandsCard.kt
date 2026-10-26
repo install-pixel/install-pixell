@@ -262,6 +262,7 @@ private fun CommandEditor(
             appExists = { query -> appIndex.search(query).isNotEmpty() },
             profiles = profiles,
             canOpenDirectly = canOpenDirectly,
+            others = others,
         )
         problems.forEach { problem -> Warning(problemText(problem)) }
         // Кнопки — у тому ж вигляді, що й пункти меню налаштувань.
@@ -502,6 +503,7 @@ private fun problemText(problem: CommandProblem): String = when (problem.kind) {
     CommandProblemKind.STEP_NEVER -> stringResource(R.string.problem_step_never, problem.step)
     CommandProblemKind.WAIT_AT_END -> stringResource(R.string.problem_wait_end, problem.step)
     CommandProblemKind.NEEDS_SCREEN -> stringResource(R.string.problem_needs_screen, problem.step)
+    CommandProblemKind.SAME_TRIGGER -> stringResource(R.string.problem_same_trigger, problem.detail)
 }
 
 /** Тексти кроків для зворотної команди — мовою телефону. */

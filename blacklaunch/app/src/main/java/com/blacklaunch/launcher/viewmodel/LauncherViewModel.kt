@@ -8,6 +8,7 @@ import com.blacklaunch.launcher.apps.InMemoryLaunchHistory
 import com.blacklaunch.launcher.apps.LaunchHistory
 import com.blacklaunch.launcher.global.AppSettingsParser
 import com.blacklaunch.launcher.global.Calculator
+import com.blacklaunch.launcher.global.SpokenMath
 import com.blacklaunch.launcher.global.UnitConverter
 import com.blacklaunch.launcher.global.DEFAULT_GLOBAL_KINDS
 import com.blacklaunch.launcher.global.GlobalResult
@@ -271,7 +272,15 @@ class LauncherViewModel(
                 if (query.isBlank()) return@mapLatest emptyList()
                 buildList {
                     if (GroupKind.CALCULATOR in kinds) {
-                        Calculator.evaluate(query)?.let { add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(query.trim(), it)))) }
+                        val typed = Calculator.evaluate(query)
+                        if (typed != null) {
+                            add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(query.trim(), typed))))
+                        } else {
+                            // Сказане словами: «двісті помножити на чотири» → 200*4.
+                            SpokenMath.toExpression(query)?.let { expression ->
+                                Calculator.evaluate(expression)?.let { add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(expression, it)))) }
+                            }
+                        }
                     }
                     // Конвертер одиниць — завжди: «10 км в милі», «30 c в f».
                     UnitConverter.convert(query)?.let { add(ResultGroup(GroupKind.CALCULATOR, listOf(GlobalResult.Calculation(query.trim(), it)))) }
@@ -612,6 +621,11 @@ class LauncherViewModel(
                 runMatching(matching)
                 return
             }
+        // «Скільки буде двісті на чотири» — обчислення: показуємо в пошуку, нічого не запускаючи.
+        hypotheses.firstOrNull { text -> SpokenMath.toExpression(text)?.let(Calculator::evaluate) != null }?.let { math ->
+            showHeard(math)
+            return
+        }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
         // Дія чи профіль — як і раніше, перший варіант, що спрацює; програма — найкращий збіг серед усіх варіантів.
         val (heard, command) = parsed.firstOrNull { it.second !is VoiceCommand.Open && it.second.isActionable() }

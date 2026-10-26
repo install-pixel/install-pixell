@@ -756,4 +756,5 @@
     <string name="problem_step_never">Step %1$d: its conditions contradict the command\'s — it will always be skipped.</string>
     <string name="problem_wait_end">Step %1$d: a pause at the end does nothing — add steps after it or remove it.</string>
     <string name="problem_needs_screen">Step %1$d opens a screen: when the command starts on its own, it will wait for a tap on the notification (or allow “Display over other apps” below).</string>
+    <string name="problem_same_trigger">Another command “%1$s” starts from the same event — both will run one after another.</string>
 </resources>

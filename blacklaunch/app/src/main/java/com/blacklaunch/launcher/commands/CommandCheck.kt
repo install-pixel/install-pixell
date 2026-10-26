@@ -25,6 +25,9 @@ enum class CommandProblemKind {
 
     /** Команда запускається сама, а крок відкриває екран — без дозволу «Поверх інших вікон» лише дотиком до сповіщення. */
     NEEDS_SCREEN,
+
+    /** Від тієї ж події запускається ще інша команда — виконаються обидві. */
+    SAME_TRIGGER,
 }
 
 /** [step] — номер кроку (з 1) або 0 для всієї команди; [detail] — назва програми, режиму тощо. */
@@ -36,6 +39,7 @@ object CommandCheck {
         appExists: (String) -> Boolean,
         profiles: List<String>,
         canOpenDirectly: Boolean,
+        others: List<CustomCommand> = emptyList(),
     ): List<CommandProblem> = buildList {
         val profileKeys = profiles.map(SearchNormalizer::normalize)
         // З фразою команду можна запустити й голосом — тоді події не обмежують умови.
@@ -67,6 +71,8 @@ object CommandCheck {
             }
         }
         if (command.triggers.isNotEmpty() && !canOpenDirectly && screenStep > 0) add(CommandProblem(CommandProblemKind.NEEDS_SCREEN, screenStep))
+        others.filter { other -> other.id != command.id && other.triggers.any { theirs -> command.triggers.any { mine -> sameEvent(mine, theirs) } } }
+            .forEach { other -> add(CommandProblem(CommandProblemKind.SAME_TRIGGER, detail = other.phrase.ifBlank { other.stepTexts.firstOrNull().orEmpty() })) }
     }
 
     private fun needsScreen(action: VoiceAction): Boolean = when (action) {
@@ -121,6 +127,14 @@ object CommandCheck {
             TriggerKind.PROFILE_OFF -> c.kind == ConditionKind.PROFILE && !c.negate && sameProfile(t, c)
             TriggerKind.TIME -> false
         }
+    }
+
+    /** Та сама подія: вид і (для Bluetooth — пристрій, для режиму — назва, для часу — хвилина й дні). */
+    private fun sameEvent(it1: CommandTrigger, it2: CommandTrigger): Boolean = it1.kind == it2.kind && when {
+        it1.isBluetooth -> it1.deviceAddress.equals(it2.deviceAddress, ignoreCase = true)
+        it1.isProfile -> it1.profile != null && it2.profile != null && SearchNormalizer.normalize(it1.profile) == SearchNormalizer.normalize(it2.profile)
+        it1.kind == TriggerKind.TIME -> it1.minute == it2.minute && (it1.days == 0 || it2.days == 0 || it1.days and it2.days != 0)
+        else -> true
     }
 
     private fun sameDevice(t: CommandTrigger, c: CommandCondition) =

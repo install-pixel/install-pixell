@@ -756,4 +756,5 @@
     <string name="problem_step_never">Krok %1$d: jego warunki przeczą warunkom polecenia — zawsze zostanie pominięty.</string>
     <string name="problem_wait_end">Krok %1$d: przerwa na końcu nic nie daje — dodaj kroki po niej lub ją usuń.</string>
     <string name="problem_needs_screen">Krok %1$d otwiera ekran: gdy polecenie uruchomi się samo, zaczeka na dotknięcie powiadomienia (albo zezwól na „Wyświetlanie nad innymi aplikacjami” niżej).</string>
+    <string name="problem_same_trigger">Od tego samego zdarzenia uruchamia się też polecenie „%1$s” — wykonają się oba, jedno po drugim.</string>
 </resources>
