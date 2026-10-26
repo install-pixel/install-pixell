@@ -324,6 +324,10 @@ class VoiceActionRunner(
 
     private fun mediaKey(code: Int) {
         val manager = audio ?: return
+        // Запобіжник для гравців, що «відтворити» обробляють як перемикач: уже грає — не тиснемо «відтворити»,
+        // уже тиша — не тиснемо «паузу». Так повторні команди («грай» двічі) ніколи не поставлять на паузу.
+        if (code == KeyEvent.KEYCODE_MEDIA_PLAY && manager.isMusicActive) return
+        if (code == KeyEvent.KEYCODE_MEDIA_PAUSE && !manager.isMusicActive) return
         manager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         manager.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
     }

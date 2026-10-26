@@ -71,6 +71,7 @@ class SmartProfiles(private val app: BlackLaunchApp) {
     }
 
     private fun mediaKey(audio: AudioManager, code: Int) {
+        if (code == KeyEvent.KEYCODE_MEDIA_PLAY && audio.isMusicActive) return
         val time = SystemClock.uptimeMillis()
         audio.dispatchMediaKeyEvent(KeyEvent(time, time, KeyEvent.ACTION_DOWN, code, 0))
         audio.dispatchMediaKeyEvent(KeyEvent(time, time, KeyEvent.ACTION_UP, code, 0))
