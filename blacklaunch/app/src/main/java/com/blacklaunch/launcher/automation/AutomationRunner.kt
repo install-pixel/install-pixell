@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.first
 import java.util.Date
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -99,6 +100,16 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         val matching = app.customCommands.commands.value.filter { command -> command.triggers.any { it.matches(event, address) } }
         if (matching.isEmpty()) return null
         return app.appScope.launch {
+            // Bluetooth уже з'єднався, а звуковий канал до навушників ще налаштовується: чекаємо, поки вони стануть
+            // виходом звуку (до 5 с), і ще трохи — інакше перші миті музика йде в динамік.
+            if (event == TriggerKind.BLUETOOTH_CONNECTED || event == TriggerKind.HEADSET_PLUGGED) {
+                var waited = 0L
+                while (!Headphones.connected(app) && waited < AUDIO_ROUTE_WAIT_MS) {
+                    delay(AUDIO_ROUTE_POLL_MS)
+                    waited += AUDIO_ROUTE_POLL_MS
+                }
+                delay(AUDIO_ROUTE_SETTLE_MS)
+            }
             matching.forEach { command ->
                 // «Лише якщо» діє й для автоматичного запуску — і для команди, і для окремих кроків.
                 val steps = app.commandConditions.resolve(command)
@@ -276,6 +287,9 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         const val KEY_LAST = "last_event"
         const val CHANNEL = "automations"
         const val DEBOUNCE_MS = 5_000L
+        const val AUDIO_ROUTE_WAIT_MS = 5_000L
+        const val AUDIO_ROUTE_POLL_MS = 200L
+        const val AUDIO_ROUTE_SETTLE_MS = 400L
     }
 }
 
