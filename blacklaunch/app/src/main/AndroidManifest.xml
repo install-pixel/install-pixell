@@ -198,6 +198,10 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+        <!-- «Час щогодини в навушники»: будильник повної години (лише для Black Glass). -->
+        <receiver
+            android:name=".automation.HourlyChimeReceiver"
+            android:exported="false" />
         <!-- Крок «зачекати»: решта кроків команди після паузи (системний будильник, лише для Black Glass). -->
         <receiver
             android:name=".automation.StepAlarmReceiver"

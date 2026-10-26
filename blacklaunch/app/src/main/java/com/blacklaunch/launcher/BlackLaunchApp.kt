@@ -70,6 +70,14 @@ class BlackLaunchApp : Application() {
     val automationRunner: AutomationRunner by lazy { AutomationRunner(this) }
     val stepScheduler: com.blacklaunch.launcher.automation.StepScheduler by lazy { com.blacklaunch.launcher.automation.StepScheduler(this) }
     val timeTriggers: com.blacklaunch.launcher.automation.TimeTriggers by lazy { com.blacklaunch.launcher.automation.TimeTriggers(this) }
+    val automationSettings: com.blacklaunch.launcher.settings.AutomationSettings by lazy { com.blacklaunch.launcher.settings.AutomationSettings(this) }
+    val smartProfiles: com.blacklaunch.launcher.automation.SmartProfiles by lazy { com.blacklaunch.launcher.automation.SmartProfiles(this) }
+    val hourlyChime: com.blacklaunch.launcher.automation.HourlyChime by lazy { com.blacklaunch.launcher.automation.HourlyChime(this) }
+    val messageReader: com.blacklaunch.launcher.automation.MessageReader by lazy { com.blacklaunch.launcher.automation.MessageReader(this) }
+
+    /** Головний екран Black Glass зараз видно (для «розумного перемикання» — чи треба виходити наперед). */
+    @Volatile
+    var homeVisible = false
     val commandConditions: CommandConditions by lazy { CommandConditions(this) { profileRepository.activeProfile.first()?.name } }
     val systemStats: SystemStats by lazy { SystemStats(this) }
     val monitorSettings: MonitorSettings by lazy { MonitorSettings(this) }
@@ -139,6 +147,8 @@ class BlackLaunchApp : Application() {
         automationRunner.migrateOldAutomations()
         // Події «за часом»: будильники заново після кожної зміни команд (і при запуску).
         appScope.launch { customCommands.commands.collect { timeTriggers.rescheduleAll() } }
+        appScope.launch { automationSettings.hourlyChime.collect { hourlyChime.reschedule() } }
+        appScope.launch { watchProfileSwitches() }
         appScope.launch { applyProfileOnSwitch() }
         // Змінився профіль, його програми чи фільтр — перевірити сповіщення ще раз.
         appScope.launch {
@@ -179,5 +189,27 @@ class BlackLaunchApp : Application() {
                     }
                 }
             }
+    }
+
+    /**
+     * Перемкнули режим (будь-де: екран, плитка, голос, команда): події «Увімкнено/Вимкнено режим» і «розумне перемикання».
+     * Перший стан після запуску — не перемикання.
+     */
+    private suspend fun watchProfileSwitches() {
+        var previous: LauncherProfile? = null
+        var started = false
+        profileRepository.activeProfile.collect { profile ->
+            if (profile == null) return@collect
+            val from = previous
+            if (started && from?.id != profile.id) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    smartProfiles.onSwitch(from, profile)
+                    from?.let { automationRunner.fire(com.blacklaunch.launcher.automation.TriggerKind.PROFILE_OFF, it.name) }
+                    automationRunner.fire(com.blacklaunch.launcher.automation.TriggerKind.PROFILE_ON, profile.name)
+                }
+            }
+            started = true
+            previous = profile
+        }
     }
 }

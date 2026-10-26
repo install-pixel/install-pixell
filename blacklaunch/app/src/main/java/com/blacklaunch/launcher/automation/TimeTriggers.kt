@@ -90,6 +90,7 @@ class TimeTriggerReceiver : BroadcastReceiver() {
         } else {
             // Перезавантаження, оновлення, зміна часу чи поясу, дозвіл на точні будильники.
             app.timeTriggers.rescheduleAll()
+            app.hourlyChime.reschedule()
         }
     }
 }

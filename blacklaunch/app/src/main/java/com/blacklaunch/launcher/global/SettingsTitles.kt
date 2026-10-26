@@ -60,6 +60,7 @@ object SettingsTitles {
         "auto_rotate" -> R.string.setting_auto_rotate
         "settings" -> R.string.setting_settings
         "monitor" -> R.string.setting_monitor
+        "commands" -> R.string.custom_commands_title
         else -> R.string.group_settings
     }
 }

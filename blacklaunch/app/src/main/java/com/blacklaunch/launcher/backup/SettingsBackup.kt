@@ -61,13 +61,17 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                 JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.stepTexts)).apply {
                     put("triggers", JSONArray(c.triggers.map { t ->
                         JSONObject().put("kind", t.kind.name).putOpt("address", t.deviceAddress).putOpt("name", t.deviceName)
-                            .putOpt("minute", t.minute).put("days", t.days)
+                            .putOpt("minute", t.minute).put("days", t.days).putOpt("profile", t.profile)
                     }))
                     put("conditions", JSONArray(c.conditions.map(::conditionJson)))
                     // Умови кроків — окремим масивом поруч із текстами (тексти лишаються читабельними й для старих версій).
                     put("stepConditions", JSONArray(c.steps.map { step -> JSONArray(step.conditions.map(::conditionJson)) }))
                 }
             }))
+            put("voiceAndModes", JSONObject()
+                .put("smartProfiles", app.automationSettings.smartProfiles.value)
+                .put("hourlyChime", app.automationSettings.hourlyChime.value)
+                .put("readMessages", app.automationSettings.readMessages.value))
             put("hidden", JSONArray(app.hiddenApps.hidden.value.toList()))
             put("ownIcons", JSONArray(app.ownIcons.keys.value.toList()))
             val look = app.appearanceSettings.appearance.value
@@ -143,7 +147,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                         ?.let {
                             CommandTrigger(
                                 it, t.optString("address").ifEmpty { null }, t.optString("name").ifEmpty { null },
-                                if (t.has("minute")) t.optInt("minute") else null, t.optInt("days", 0),
+                                if (t.has("minute")) t.optInt("minute") else null, t.optInt("days", 0), t.optString("profile").ifEmpty { null },
                             )
                         }
                 }
@@ -156,6 +160,11 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                 }
                 app.customCommands.save(CustomCommand(c.getString("id"), c.getString("phrase"), steps, triggers, conditions))
             }
+        }
+        root.optJSONObject("voiceAndModes")?.let { o ->
+            app.automationSettings.setSmartProfiles(o.optBoolean("smartProfiles", false))
+            app.automationSettings.setHourlyChime(o.optBoolean("hourlyChime", false))
+            app.automationSettings.setReadMessages(o.optBoolean("readMessages", false))
         }
         root.optJSONArray("hidden")?.let { hidden ->
             app.hiddenApps.hidden.value.forEach(app.hiddenApps::show)

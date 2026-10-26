@@ -738,4 +738,22 @@
     <string name="trigger_time_daily">codziennie</string>
     <string name="trigger_time_text">o %1$s · %2$s</string>
     <string name="trigger_time_note">Uruchamia się sama o tej godzinie (także przy wyłączonym ekranie). Dodaj warunki, np. „bieżący profil Praca”, by działała tylko wtedy, gdy trzeba.</string>
+    <string name="trigger_profile_on">Włączono tryb</string>
+    <string name="trigger_profile_off">Wyłączono tryb</string>
+    <string name="trigger_profile_pick">Który tryb</string>
+    <string name="extras_title">Głos i tryby</string>
+    <string name="extras_smart">Inteligentne przełączanie trybów</string>
+    <string name="extras_smart_note">Wychodzisz z trybu, w którym gra muzyka — zostaje wstrzymana, a aplikacja się chowa (zostaje w tle — Android nie pozwala zamykać cudzych aplikacji); wracasz do tego trybu — muzyka gra dalej.</string>
+    <string name="extras_hourly">Godzina co godzinę w słuchawkach</string>
+    <string name="extras_hourly_note">O każdej pełnej godzinie mówi godzinę — tylko gdy podłączone są słuchawki i nie trwa rozmowa.</string>
+    <string name="extras_read">Czytaj wiadomości na głos</string>
+    <string name="extras_read_note">Nowe wiadomości z komunikatorów i SMS: „Wiadomość od Olega: …” — tylko ze słuchawkami i nie podczas rozmowy; ukryte filtrem profilu nie są czytane.</string>
+    <string name="extras_read_access">Potrzebny „Dostęp do powiadomień” — bez niego Android nie przekazuje powiadomień do Black Glass.</string>
+    <string name="read_message_text">Wiadomość od %1$s: %2$s</string>
+    <string name="problem_unknown_app">Krok %1$d: nie znaleziono aplikacji ani polecenia „%2$s” — krok nic nie zrobi.</string>
+    <string name="problem_unknown_profile">Krok %1$d: nie ma trybu „%2$s”.</string>
+    <string name="problem_never">Warunki przeczą sobie (lub zdarzeniu) — polecenie nigdy się nie wykona.</string>
+    <string name="problem_step_never">Krok %1$d: jego warunki przeczą warunkom polecenia — zawsze zostanie pominięty.</string>
+    <string name="problem_wait_end">Krok %1$d: przerwa na końcu nic nie daje — dodaj kroki po niej lub ją usuń.</string>
+    <string name="problem_needs_screen">Krok %1$d otwiera ekran: gdy polecenie uruchomi się samo, zaczeka na dotknięcie powiadomienia (albo zezwól na „Wyświetlanie nad innymi aplikacjami” niżej).</string>
 </resources>

@@ -28,6 +28,7 @@ import com.blacklaunch.launcher.ui.PermissionsScreen
 import com.blacklaunch.launcher.ui.PairedDevice
 import com.blacklaunch.launcher.ui.CustomCommandsCard
 import com.blacklaunch.launcher.ui.OpenDirectlyCard
+import com.blacklaunch.launcher.ui.VoiceExtrasCard
 import android.bluetooth.BluetoothManager
 import android.annotation.SuppressLint
 import androidx.compose.ui.graphics.asImageBitmap
@@ -377,8 +378,9 @@ class MainActivity : ComponentActivity() {
                     iconFor = iconFor,
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
+                    settingsRequest = settingsRequest.collectAsStateWithLifecycle().value,
                     settingsScreen = { dismiss ->
-                        var page by remember { mutableStateOf<SettingsNav>(SettingsNav.Main) }
+                        var page by remember { mutableStateOf(requestedSettingsPage?.also { requestedSettingsPage = null } ?: SettingsNav.Main) }
                         when (val current = page) {
                             SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
                             SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Recognition, SettingsNav.CustomCommands, SettingsNav.Monitor, SettingsNav.Battery, SettingsNav.About,
@@ -443,6 +445,21 @@ class MainActivity : ComponentActivity() {
                                         onRequestBluetooth = ::requestBluetooth,
                                         onSave = ::saveCommand,
                                         onDelete = app.customCommands::delete,
+                                        canOpenDirectly = canOpenDirectly,
+                                    )
+                                    val smart by app.automationSettings.smartProfiles.collectAsStateWithLifecycle()
+                                    val hourly by app.automationSettings.hourlyChime.collectAsStateWithLifecycle()
+                                    val readAloud by app.automationSettings.readMessages.collectAsStateWithLifecycle()
+                                    val access by notificationAccessState.collectAsStateWithLifecycle()
+                                    VoiceExtrasCard(
+                                        smartProfiles = smart,
+                                        hourlyChime = hourly,
+                                        readMessages = readAloud,
+                                        notificationAccess = access,
+                                        onSmartProfiles = app.automationSettings::setSmartProfiles,
+                                        onHourlyChime = app.automationSettings::setHourlyChime,
+                                        onReadMessages = app.automationSettings::setReadMessages,
+                                        onOpenNotificationAccess = ::openNotificationAccess,
                                     )
                                     val lastSeen by app.automationRunner.lastSeen.collectAsStateWithLifecycle()
                                     OpenDirectlyCard(canOpenDirectly, lastSeen) {
@@ -742,6 +759,11 @@ class MainActivity : ComponentActivity() {
             is GlobalResult.Profile -> viewModel.activateProfile(result.profileId)
             is GlobalResult.Setting -> if (result.action == SettingsCatalog.MONITOR_ACTION) {
                 openMonitor()
+            } else if (result.action == SettingsCatalog.COMMANDS_ACTION) {
+                // Власна сторінка Black Glass — налаштування лаунчера одразу на «Моїх командах».
+                requestedSettingsPage = SettingsNav.CustomCommands
+                viewModel.forgetSearch()
+                settingsRequest.value++
             } else {
                 startOrToast(Intent(result.action), fallback = Intent(Settings.ACTION_SETTINGS))
             }
@@ -1371,6 +1393,7 @@ class MainActivity : ComponentActivity() {
     // (клавіатуру ховає сам екран пошуку). Повернулись протягом хвилини — усе на місці.
     override fun onStop() {
         super.onStop()
+        app.homeVisible = false
         // Поверх блокування вікно живе лише поки на екрані.
         if (!awaitingUnlock) endLockedVoice()
         if (!isChangingConfigurations) {
@@ -1385,6 +1408,7 @@ class MainActivity : ComponentActivity() {
     // Не було довше хвилини — повертаємось на чистий чорний екран, без анімації.
     override fun onStart() {
         super.onStart()
+        app.homeVisible = true
         actionRunner.onStart()
         if (wasStopped && SystemClock.elapsedRealtime() - stoppedAt > LauncherViewModel.RESTORE_QUERY_MS) {
             instantSearchClose = true
@@ -1407,6 +1431,10 @@ class MainActivity : ComponentActivity() {
     private val glance = MutableStateFlow<GlanceInfo?>(null)
     private val dndAccessState = MutableStateFlow(false)
     private val notificationAccessState = MutableStateFlow(false)
+
+    /** Відкрити налаштування лаунчера з пошуку: сторінка й лічильник запитів. */
+    private var requestedSettingsPage: SettingsNav? = null
+    private val settingsRequest = MutableStateFlow(0)
 
     /** Чорний головний екран без відкритого пошуку чи налаштувань. */
     private var homeIdle = true

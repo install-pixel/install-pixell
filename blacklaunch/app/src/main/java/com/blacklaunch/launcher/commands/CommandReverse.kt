@@ -41,6 +41,8 @@ object CommandReverse {
         TriggerKind.HEADSET_PLUGGED -> TriggerKind.HEADSET_UNPLUGGED
         TriggerKind.HEADSET_UNPLUGGED -> TriggerKind.HEADSET_PLUGGED
         TriggerKind.TIME -> null
+        TriggerKind.PROFILE_ON -> TriggerKind.PROFILE_OFF
+        TriggerKind.PROFILE_OFF -> TriggerKind.PROFILE_ON
     }
 
     private fun opposite(step: String, texts: StepTexts): String? {

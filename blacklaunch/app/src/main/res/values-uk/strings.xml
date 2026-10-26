@@ -738,4 +738,22 @@
     <string name="trigger_time_daily">щодня</string>
     <string name="trigger_time_text">о %1$s · %2$s</string>
     <string name="trigger_time_note">Запускається сама в цей час (і з вимкненим екраном). Додайте умови, напр. «поточний профіль Робота», щоб спрацьовувала лише коли треба.</string>
+    <string name="trigger_profile_on">Увімкнено режим</string>
+    <string name="trigger_profile_off">Вимкнено режим</string>
+    <string name="trigger_profile_pick">Який режим</string>
+    <string name="extras_title">Голос і режими</string>
+    <string name="extras_smart">Розумне перемикання режимів</string>
+    <string name="extras_smart_note">Виходите з режиму, де грає музика, — вона стає на паузу, а програма ховається (лишається у фоні — закривати чужі програми Android не дозволяє); повертаєтесь у цей режим — музика грає далі.</string>
+    <string name="extras_hourly">Час щогодини в навушники</string>
+    <string name="extras_hourly_note">Щоповної години каже час — лише коли підключені навушники і не йде розмова.</string>
+    <string name="extras_read">Читати повідомлення вголос</string>
+    <string name="extras_read_note">Нові повідомлення з месенджерів і SMS: «Повідомлення від Олега: …» — лише з навушниками й не під час розмови; приховані фільтром профілю не читаються.</string>
+    <string name="extras_read_access">Потрібен «Доступ до сповіщень» — без нього Android не передає сповіщення Black Glass.</string>
+    <string name="read_message_text">Повідомлення від %1$s: %2$s</string>
+    <string name="problem_unknown_app">Крок %1$d: програму чи команду «%2$s» не знайдено — крок нічого не зробить.</string>
+    <string name="problem_unknown_profile">Крок %1$d: режиму «%2$s» немає.</string>
+    <string name="problem_never">Умови суперечать одна одній (або події) — команда ніколи не виконається.</string>
+    <string name="problem_step_never">Крок %1$d: його умови суперечать умовам команди — він завжди пропускатиметься.</string>
+    <string name="problem_wait_end">Крок %1$d: пауза в кінці нічого не дає — додайте кроки після неї або приберіть.</string>
+    <string name="problem_needs_screen">Крок %1$d відкриває екран: коли команда стартує сама, він чекатиме дотику до сповіщення (або дайте дозвіл «Поверх інших вікон» нижче).</string>
 </resources>

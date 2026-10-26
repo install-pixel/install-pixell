@@ -69,11 +69,22 @@ object SettingsCatalog {
         Entry("auto_rotate", "android.settings.AUTO_ROTATE_SETTINGS", listOf("автоповорот", "поворот екрана", "autoobracanie", "auto rotate", "rotation")),
         Entry("settings", "android.settings.SETTINGS", listOf("налаштування", "параметри", "ustawienia", "settings")),
         // Власний екран Black Glass, не сторінка Android: відкривається в самому лаунчері.
+        Entry(
+            "commands", COMMANDS_ACTION,
+            listOf(
+                "мої команди", "автоматизації", "розумне перемикання режимів", "час щогодини", "читати повідомлення вголос", "голос у навушниках",
+                "moje polecenia", "automatyzacje", "inteligentne przełączanie trybów", "godzina co godzinę", "czytaj wiadomości na głos",
+                "my commands", "automations", "smart mode switching", "hourly time", "read messages aloud",
+            ),
+        ),
         Entry("monitor", MONITOR_ACTION, listOf("моніторинг", "monitoring", "стан системи", "оперативна пам'ять", "температура телефона", "монітор", "dashboard", "system dashboard", "panel", "panel systemu", "ram")),
     )
 
     /** «Дія» розділу «Монітор системи» — Black Glass відкриває свій екран замість налаштувань Android. */
     const val MONITOR_ACTION = "com.blacklaunch.launcher.MONITOR"
+
+    /** «Мої команди» Black Glass (автоматизації, голос і режими) — сторінка налаштувань лаунчера. */
+    const val COMMANDS_ACTION = "com.blacklaunch.launcher.COMMANDS"
 
     /** Розділи, що підходять до запиту; лише впевнені збіги (не менше «початку слова»). */
     fun search(query: PreparedQuery, limit: Int = 4): List<GlobalResult.Setting> {

@@ -69,7 +69,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
     val lastSeen: StateFlow<String?> = _lastSeen.asStateFlow()
 
     private fun noteSeen(event: TriggerKind, address: String?) {
-        val device = address?.let { a -> deviceName(a) ?: a }
+        val device = address?.let { a -> if (event == TriggerKind.PROFILE_ON || event == TriggerKind.PROFILE_OFF) a else deviceName(a) ?: a }
         val time = DateFormat.getTimeFormat(app).format(Date())
         val text = listOfNotNull(app.getString(event.label()), device).joinToString(" · ") + " — " + time
         _lastSeen.value = text
@@ -90,8 +90,11 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         // Android інколи надсилає ту саму подію двічі поспіль.
         val key = "$event/$address"
         val now = SystemClock.elapsedRealtime()
-        lastEvent?.let { (previous, at) -> if (previous == key && now - at < DEBOUNCE_MS) return null }
-        lastEvent = key to now
+        // Режими користувач перемикає сам — їх не відсіюємо (туди-назад за кілька секунд — дві різні дії).
+        if (event != TriggerKind.PROFILE_ON && event != TriggerKind.PROFILE_OFF) {
+            lastEvent?.let { (previous, at) -> if (previous == key && now - at < DEBOUNCE_MS) return null }
+            lastEvent = key to now
+        }
         noteSeen(event, address)
         val matching = app.customCommands.commands.value.filter { command -> command.triggers.any { it.matches(event, address) } }
         if (matching.isEmpty()) return null
@@ -265,6 +268,8 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         TriggerKind.HEADSET_PLUGGED -> R.string.trigger_headset_on
         TriggerKind.HEADSET_UNPLUGGED -> R.string.trigger_headset_off
         TriggerKind.TIME -> R.string.trigger_time
+        TriggerKind.PROFILE_ON -> R.string.trigger_profile_on
+        TriggerKind.PROFILE_OFF -> R.string.trigger_profile_off
     }
 
     private companion object {

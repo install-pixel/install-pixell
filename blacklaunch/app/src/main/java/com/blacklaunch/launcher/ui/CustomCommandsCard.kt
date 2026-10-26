@@ -1,6 +1,9 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.annotation.StringRes
+import com.blacklaunch.launcher.commands.CommandProblemKind
+import com.blacklaunch.launcher.commands.CommandProblem
+import com.blacklaunch.launcher.commands.CommandCheck
 import androidx.compose.material.icons.filled.Notifications
 import com.blacklaunch.launcher.commands.StepTexts
 import com.blacklaunch.launcher.commands.StepCommands
@@ -95,6 +98,8 @@ internal fun CustomCommandsCard(
     onRequestBluetooth: () -> Unit,
     onSave: (CustomCommand) -> Unit,
     onDelete: (String) -> Unit,
+    /** Дозвіл «Поверх інших вікон»: без нього команда, що стартує сама, відкриває екран лише дотиком до сповіщення. */
+    canOpenDirectly: Boolean = true,
 ) {
     // null — список команд; порожня команда — нова.
     var editing by remember { mutableStateOf<CustomCommand?>(null) }
@@ -108,6 +113,7 @@ internal fun CustomCommandsCard(
             profiles = profiles,
             iconFor = iconFor,
             devices = DeviceAccess(bluetoothAllowed, pairedDevices, onRequestBluetooth),
+            canOpenDirectly = canOpenDirectly,
             onSave = { onSave(it); editing = null },
             onDelete = if (current.id.isEmpty()) null else ({ onDelete(current.id); editing = null }),
             onCancel = { editing = null },
@@ -182,11 +188,14 @@ private fun CommandEditor(
     profiles: List<String>,
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     devices: DeviceAccess,
+    canOpenDirectly: Boolean,
     onSave: (CustomCommand) -> Unit,
     onDelete: (() -> Unit)?,
     onCancel: () -> Unit,
     onReverse: (CustomCommand) -> Unit,
 ) {
+    val searchEngine = remember { AppSearchEngine() }
+    val appIndex = remember(apps) { searchEngine.index(apps) }
     var phrase by remember { mutableStateOf(command.phrase) }
     var steps by remember { mutableStateOf(command.steps) }
     var triggers by remember { mutableStateOf(command.triggers) }
@@ -247,6 +256,14 @@ private fun CommandEditor(
             )
         }
         ActionOption(R.string.custom_step_add, Icons.Filled.Add) { picker = StepPicker.MENU }
+        // Що не спрацює — одразу, до збереження.
+        val problems = CommandCheck.check(
+            CustomCommand(command.id, phrase, steps, triggers, conditions),
+            appExists = { query -> appIndex.search(query).isNotEmpty() },
+            profiles = profiles,
+            canOpenDirectly = canOpenDirectly,
+        )
+        problems.forEach { problem -> Warning(problemText(problem)) }
         // Кнопки — у тому ж вигляді, що й пункти меню налаштувань.
         if (canSave) {
             ActionOption(R.string.custom_command_save, Icons.Filled.Done) {
@@ -283,7 +300,7 @@ private fun CommandEditor(
         }
     }
     if (addingTrigger) {
-        TriggerDialog(devices, onPick = { triggers = (triggers + it).distinct(); addingTrigger = false }, onDismiss = { addingTrigger = false })
+        TriggerDialog(devices, profiles, onPick = { triggers = (triggers + it).distinct(); addingTrigger = false }, onDismiss = { addingTrigger = false })
     }
     when (picker) {
         StepPicker.MENU -> StepMenu(onPick = { picker = it }, onHome = addStep, onDismiss = { picker = null })
@@ -463,6 +480,28 @@ private fun SearchStepDialog(apps: List<AppInfo>, profiles: List<String>, onPick
             }
         }
     }
+}
+
+@Composable
+private fun Warning(text: String) {
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text("⚠", color = WarningColor, fontSize = 14.sp)
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = WarningColor, fontSize = 13.sp)
+    }
+}
+
+/** Приглушений бурштиновий — помітно, але в тоні чорної теми. */
+private val WarningColor = Color(0xFFD6B47A)
+
+@Composable
+private fun problemText(problem: CommandProblem): String = when (problem.kind) {
+    CommandProblemKind.UNKNOWN_APP -> stringResource(R.string.problem_unknown_app, problem.step, problem.detail)
+    CommandProblemKind.UNKNOWN_PROFILE -> stringResource(R.string.problem_unknown_profile, problem.step, problem.detail)
+    CommandProblemKind.NEVER -> stringResource(R.string.problem_never)
+    CommandProblemKind.STEP_NEVER -> stringResource(R.string.problem_step_never, problem.step)
+    CommandProblemKind.WAIT_AT_END -> stringResource(R.string.problem_wait_end, problem.step)
+    CommandProblemKind.NEEDS_SCREEN -> stringResource(R.string.problem_needs_screen, problem.step)
 }
 
 /** Тексти кроків для зворотної команди — мовою телефону. */

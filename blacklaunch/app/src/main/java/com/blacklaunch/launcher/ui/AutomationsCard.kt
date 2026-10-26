@@ -198,16 +198,19 @@ private fun weekdayNames(): List<String> {
 
 /** «Запускати саму»: подія, від якої команда стартує без фрази (Bluetooth, зарядка, навушники, час). */
 @Composable
-internal fun TriggerDialog(devices: DeviceAccess, onPick: (CommandTrigger) -> Unit, onDismiss: () -> Unit) {
+internal fun TriggerDialog(devices: DeviceAccess, profiles: List<String>, onPick: (CommandTrigger) -> Unit, onDismiss: () -> Unit) {
     var kind by remember { mutableStateOf(TriggerKind.BLUETOOTH_CONNECTED) }
     var device by remember { mutableStateOf<PairedDevice?>(null) }
+    var profile by remember { mutableStateOf<String?>(null) }
     var time by remember { mutableStateOf("") }
     var days by remember { mutableStateOf(0) }
     val bluetooth = kind == TriggerKind.BLUETOOTH_CONNECTED || kind == TriggerKind.BLUETOOTH_DISCONNECTED
     val minute = parseTime(time)
+    val forProfile = kind == TriggerKind.PROFILE_ON || kind == TriggerKind.PROFILE_OFF
     val canSave = when {
         bluetooth -> device != null
         kind == TriggerKind.TIME -> minute != null
+        forProfile -> profile != null
         else -> true
     }
     PickDialog(
@@ -218,6 +221,7 @@ internal fun TriggerDialog(devices: DeviceAccess, onPick: (CommandTrigger) -> Un
                 CommandTrigger(
                     kind, device?.address.takeIf { bluetooth }, device?.name.takeIf { bluetooth },
                     minute = minute.takeIf { kind == TriggerKind.TIME }, days = if (kind == TriggerKind.TIME) days else 0,
+                    profile = profile.takeIf { forProfile },
                 ),
             )
         }) else null,
@@ -229,6 +233,38 @@ internal fun TriggerDialog(devices: DeviceAccess, onPick: (CommandTrigger) -> Un
             Text(stringResource(R.string.condition_days), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             DayChips(days) { days = it }
             Note(stringResource(R.string.trigger_time_note))
+        }
+        if (forProfile) {
+            Text(stringResource(R.string.trigger_profile_pick), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            profiles.forEach { name -> Choice(name, selected = profile == name) { profile = name } }
+        }
+    }
+}
+
+/**
+ * «Голос і режими»: розумне перемикання режимів, час щогодини й читання повідомлень у навушники.
+ * Кожне — окремим перемикачем, усе вимкнено за замовчуванням.
+ */
+@Composable
+internal fun VoiceExtrasCard(
+    smartProfiles: Boolean,
+    hourlyChime: Boolean,
+    readMessages: Boolean,
+    notificationAccess: Boolean,
+    onSmartProfiles: (Boolean) -> Unit,
+    onHourlyChime: (Boolean) -> Unit,
+    onReadMessages: (Boolean) -> Unit,
+    onOpenNotificationAccess: () -> Unit,
+) {
+    Card {
+        Text(stringResource(R.string.extras_title), color = Oled.TextPrimary, fontSize = 17.sp)
+        SwitchRow(stringResource(R.string.extras_smart), stringResource(R.string.extras_smart_note), smartProfiles, onSmartProfiles)
+        SwitchRow(stringResource(R.string.extras_hourly), stringResource(R.string.extras_hourly_note), hourlyChime, onHourlyChime)
+        SwitchRow(stringResource(R.string.extras_read), stringResource(R.string.extras_read_note), readMessages, onReadMessages)
+        // Без доступу до сповіщень Android їх Black Glass не передає — читати нічого.
+        if (readMessages && !notificationAccess) {
+            Note(stringResource(R.string.extras_read_access))
+            ActionOption(R.string.perm_notification_access, Icons.Filled.Lock, onOpenNotificationAccess)
         }
     }
 }
@@ -293,6 +329,9 @@ internal fun triggerText(trigger: CommandTrigger): String {
         }
         return stringResource(R.string.trigger_time_text, formatTime(trigger.minute), days)
     }
+    if (trigger.kind == TriggerKind.PROFILE_ON || trigger.kind == TriggerKind.PROFILE_OFF) {
+        return listOfNotNull(stringResource(trigger.kind.label()), trigger.profile).joinToString(" · ")
+    }
     return listOfNotNull(stringResource(trigger.kind.label()), trigger.deviceName).joinToString(" · ")
 }
 
@@ -333,6 +372,8 @@ private fun TriggerKind.label(): Int = when (this) {
     TriggerKind.HEADSET_PLUGGED -> R.string.trigger_headset_on
     TriggerKind.HEADSET_UNPLUGGED -> R.string.trigger_headset_off
     TriggerKind.TIME -> R.string.trigger_time
+    TriggerKind.PROFILE_ON -> R.string.trigger_profile_on
+    TriggerKind.PROFILE_OFF -> R.string.trigger_profile_off
 }
 
 @StringRes

@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 /** Подія, від якої запускається «Моя команда». */
-enum class TriggerKind { BLUETOOTH_CONNECTED, BLUETOOTH_DISCONNECTED, POWER_CONNECTED, POWER_DISCONNECTED, HEADSET_PLUGGED, HEADSET_UNPLUGGED, TIME }
+enum class TriggerKind { BLUETOOTH_CONNECTED, BLUETOOTH_DISCONNECTED, POWER_CONNECTED, POWER_DISCONNECTED, HEADSET_PLUGGED, HEADSET_UNPLUGGED, TIME, PROFILE_ON, PROFILE_OFF }
 
 /**
  * Автоматизація «Коли → Що»: [kind] (для Bluetooth — конкретний пристрій [deviceAddress]) запускає

@@ -29,7 +29,12 @@ class ProfileNotificationFilter : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val app = application as? BlackLaunchApp
         if (app != null && GroupKind.NOTIFICATIONS in app.globalSearchSettings.enabled.value) NotificationTexts.record(sbn, packageName)
-        if (shouldHide(sbn)) runCatching { snoozeNotification(sbn.key, HIDE_MS) }
+        if (shouldHide(sbn)) {
+            runCatching { snoozeNotification(sbn.key, HIDE_MS) }
+        } else {
+            // Приховане фільтром профілю не читаємо — інакше фільтр втрачає сенс.
+            app?.messageReader?.onPosted(sbn, packageName)
+        }
     }
 
     /** Профіль змінився: відкладаємо чуже й повертаємо те, що тепер дозволено. */

@@ -172,12 +172,15 @@ fun BlackHomeScreen(
     onMicClick: () -> Unit,
     /** Налаштування на весь екран (довге натискання на чорному екрані). */
     settingsScreen: @Composable (onDismiss: () -> Unit) -> Unit,
+    /** Відкрити налаштування ззовні (з результату пошуку): кожне збільшення — відкрити. */
+    settingsRequest: Int = 0,
     /** Власні назви програми (з меню програми). */
     aliasDialog: @Composable (app: AppInfo, onDismiss: () -> Unit) -> Unit,
     /** Меню програми (довге натискання на результат пошуку). */
     appActions: @Composable (app: AppInfo, onNames: () -> Unit, onDismiss: () -> Unit) -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(settingsRequest) { if (settingsRequest > 0) showSettings = true }
     // Повністю чорний екран: рядок стану ховається, поки нічого не відкрито.
     val idle = state is LauncherUiState.HomeIdle && !showSettings
     LaunchedEffect(idle) { onIdleChange(idle) }

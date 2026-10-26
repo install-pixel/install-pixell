@@ -738,4 +738,22 @@
     <string name="trigger_time_daily">every day</string>
     <string name="trigger_time_text">at %1$s · %2$s</string>
     <string name="trigger_time_note">Runs on its own at this time (even with the screen off). Add conditions like “current profile Work” so it only speaks when needed.</string>
+    <string name="trigger_profile_on">Mode turned on</string>
+    <string name="trigger_profile_off">Mode turned off</string>
+    <string name="trigger_profile_pick">Which mode</string>
+    <string name="extras_title">Voice and modes</string>
+    <string name="extras_smart">Smart mode switching</string>
+    <string name="extras_smart_note">Leaving a mode where music is playing pauses it and hides the app (it stays in the background — Android does not allow closing other apps); coming back to that mode resumes the music.</string>
+    <string name="extras_hourly">Time every hour in headphones</string>
+    <string name="extras_hourly_note">On every full hour says the time — only when headphones are connected and you are not on a call.</string>
+    <string name="extras_read">Read messages aloud</string>
+    <string name="extras_read_note">New messages from messengers and SMS: “Message from Oleg: …” — only with headphones connected, not during a call; messages hidden by the profile filter are not read.</string>
+    <string name="extras_read_access">Needs “Notification access” — without it Android does not pass notifications to Black Glass.</string>
+    <string name="read_message_text">Message from %1$s: %2$s</string>
+    <string name="problem_unknown_app">Step %1$d: app or command “%2$s” not found — the step will do nothing.</string>
+    <string name="problem_unknown_profile">Step %1$d: there is no mode “%2$s”.</string>
+    <string name="problem_never">The conditions contradict each other (or the event) — the command will never run.</string>
+    <string name="problem_step_never">Step %1$d: its conditions contradict the command\'s — it will always be skipped.</string>
+    <string name="problem_wait_end">Step %1$d: a pause at the end does nothing — add steps after it or remove it.</string>
+    <string name="problem_needs_screen">Step %1$d opens a screen: when the command starts on its own, it will wait for a tap on the notification (or allow “Display over other apps” below).</string>
 </resources>
