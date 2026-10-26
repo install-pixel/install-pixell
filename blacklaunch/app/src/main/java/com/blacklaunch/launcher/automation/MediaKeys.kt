@@ -63,6 +63,12 @@ object MediaKeys {
         true
     }.getOrDefault(false)
 
+    /** Програма, якій піде «відтворити» без назви: перша серед активних гравців (з «Доступом до сповіщень»). */
+    fun lastPlayerPackage(context: Context): String? = runCatching {
+        context.getSystemService(MediaSessionManager::class.java)
+            ?.getActiveSessions(ComponentName(context, ProfileNotificationFilter::class.java))?.firstOrNull()?.packageName
+    }.getOrNull()
+
     private fun controllerFor(context: Context, packageName: String): MediaController? = runCatching {
         val manager = context.getSystemService(MediaSessionManager::class.java)
         manager?.getActiveSessions(ComponentName(context, ProfileNotificationFilter::class.java))?.firstOrNull { it.packageName == packageName }

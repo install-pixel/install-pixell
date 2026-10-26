@@ -156,6 +156,8 @@ class MainActivity : ComponentActivity() {
                     phraseShortcuts = { text -> app.globalSearch.phraseShortcuts(text, onlyMatching = true) },
                     phraseAppLabel = app.globalSearch::phraseAppLabel,
                     startShortcut = app.globalSearch::startShortcut,
+                    stepPackageAllowed = app::allowedInMode,
+                    lastPlayerPackage = { com.blacklaunch.launcher.automation.MediaKeys.lastPlayerPackage(app) },
                     isMusicApp = { info -> com.blacklaunch.launcher.automation.MediaKeys.isPlayer(app, info.packageName, info.category) },
                     speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
                     hiddenApps = app.hiddenApps.hidden,
@@ -477,7 +479,10 @@ class MainActivity : ComponentActivity() {
                                     val hourly by app.automationSettings.hourlyChime.collectAsStateWithLifecycle()
                                     val readAloud by app.automationSettings.readMessages.collectAsStateWithLifecycle()
                                     val access by notificationAccessState.collectAsStateWithLifecycle()
+                                    val modeApps by app.automationSettings.modeAppsOnly.collectAsStateWithLifecycle()
                                     VoiceExtrasCard(
+                                        modeAppsOnly = modeApps,
+                                        onModeAppsOnly = app.automationSettings::setModeAppsOnly,
                                         smartProfiles = smart,
                                         hourlyChime = hourly,
                                         readMessages = readAloud,
@@ -1320,6 +1325,7 @@ class MainActivity : ComponentActivity() {
         UiMessage.PROFILE_NOT_FOUND -> R.string.profile_not_found
         UiMessage.CONDITION_NOT_MET -> R.string.condition_not_met
         UiMessage.NOT_A_PLAYER -> R.string.not_a_player
+        UiMessage.NOT_IN_MODE -> R.string.step_not_in_mode
     }
 
     private fun toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()

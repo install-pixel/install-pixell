@@ -71,7 +71,8 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             put("voiceAndModes", JSONObject()
                 .put("smartProfiles", app.automationSettings.smartProfiles.value)
                 .put("hourlyChime", app.automationSettings.hourlyChime.value)
-                .put("readMessages", app.automationSettings.readMessages.value))
+                .put("readMessages", app.automationSettings.readMessages.value)
+                .put("modeAppsOnly", app.automationSettings.modeAppsOnly.value))
             put("hidden", JSONArray(app.hiddenApps.hidden.value.toList()))
             put("ownIcons", JSONArray(app.ownIcons.keys.value.toList()))
             val look = app.appearanceSettings.appearance.value
@@ -165,6 +166,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             app.automationSettings.setSmartProfiles(o.optBoolean("smartProfiles", false))
             app.automationSettings.setHourlyChime(o.optBoolean("hourlyChime", false))
             app.automationSettings.setReadMessages(o.optBoolean("readMessages", false))
+            app.automationSettings.setModeAppsOnly(o.optBoolean("modeAppsOnly", false))
         }
         root.optJSONArray("hidden")?.let { hidden ->
             app.hiddenApps.hidden.value.forEach(app.hiddenApps::show)

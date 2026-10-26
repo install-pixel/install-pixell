@@ -258,6 +258,8 @@ internal fun TriggerDialog(devices: DeviceAccess, profiles: List<String>, onPick
  */
 @Composable
 internal fun VoiceExtrasCard(
+    modeAppsOnly: Boolean,
+    onModeAppsOnly: (Boolean) -> Unit,
     smartProfiles: Boolean,
     hourlyChime: Boolean,
     readMessages: Boolean,
@@ -269,6 +271,7 @@ internal fun VoiceExtrasCard(
 ) {
     Card {
         Text(stringResource(R.string.extras_title), color = Oled.TextPrimary, fontSize = 17.sp)
+        SwitchRow(stringResource(R.string.extras_mode_apps), stringResource(R.string.extras_mode_apps_note), modeAppsOnly, onModeAppsOnly)
         SwitchRow(stringResource(R.string.extras_smart), stringResource(R.string.extras_smart_note), smartProfiles, onSmartProfiles)
         SwitchRow(stringResource(R.string.extras_hourly), stringResource(R.string.extras_hourly_note), hourlyChime, onHourlyChime)
         SwitchRow(stringResource(R.string.extras_read), stringResource(R.string.extras_read_note), readMessages, onReadMessages)

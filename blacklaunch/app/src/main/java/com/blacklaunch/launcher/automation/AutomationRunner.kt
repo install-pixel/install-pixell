@@ -27,6 +27,7 @@ import com.blacklaunch.launcher.commands.StepCommand
 import com.blacklaunch.launcher.commands.StepCommands
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.timer.BlackTimer
+import com.blacklaunch.launcher.voice.MediaCommand
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionRunner
 import com.blacklaunch.launcher.voice.VoiceCommand
@@ -180,6 +181,14 @@ class AutomationRunner(private val app: BlackLaunchApp) {
             when (parsed) {
                 is VoiceCommand.SwitchProfile -> switchProfile(parsed.name)
                 is VoiceCommand.Action -> when (val action = parsed.action) {
+                    // «Грай музику» без назви: гравець, якого немає в режимі, не вмикаємо.
+                    is VoiceAction.Media -> if (action.command == MediaCommand.PLAY &&
+                        MediaKeys.lastPlayerPackage(app)?.let { !app.allowedInMode(it) } == true
+                    ) {
+                        notInMode()
+                    } else {
+                        runner.run(action)
+                    }
                     is VoiceAction.Timer -> if (!(BlackTimer.canRun(app) && BlackTimer.start(app, action.seconds))) later += step
                     // Яскравість без дозволу «Зміна системних налаштувань» не змінити — лишаємо на потім.
                     is VoiceAction.BrightnessLevel, is VoiceAction.BrightnessStep ->
@@ -191,6 +200,10 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         }
         if (speech.isNotEmpty()) runner.say(speech.joinToString(". "))
         if (later.isNotEmpty()) finishInBlackGlass(title, later)
+    }
+
+    private fun notInMode() {
+        android.widget.Toast.makeText(app, R.string.step_not_in_mode, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun switchProfile(name: String) {

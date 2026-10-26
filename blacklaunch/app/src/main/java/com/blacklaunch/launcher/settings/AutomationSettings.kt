@@ -18,6 +18,12 @@ class AutomationSettings(context: Context) {
     private val _readMessages = MutableStateFlow(prefs.getBoolean(KEY_READ, false))
     val readMessages: StateFlow<Boolean> = _readMessages.asStateFlow()
 
+    private val _modeAppsOnly = MutableStateFlow(prefs.getBoolean(KEY_MODE_APPS, false))
+    /** Кроки команд відкривають лише програми поточного режиму (програми на його головному екрані). */
+    val modeAppsOnly: StateFlow<Boolean> = _modeAppsOnly.asStateFlow()
+
+    fun setModeAppsOnly(on: Boolean) = save(KEY_MODE_APPS, on, _modeAppsOnly)
+
     fun setSmartProfiles(on: Boolean) = save(KEY_SMART, on, _smartProfiles)
 
     fun setHourlyChime(on: Boolean) = save(KEY_HOURLY, on, _hourlyChime)
@@ -33,5 +39,6 @@ class AutomationSettings(context: Context) {
         const val KEY_SMART = "smart_profiles"
         const val KEY_HOURLY = "hourly_chime"
         const val KEY_READ = "read_messages"
+        const val KEY_MODE_APPS = "mode_apps_only"
     }
 }

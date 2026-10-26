@@ -44,6 +44,7 @@ import com.blacklaunch.launcher.commands.CustomCommandMatcher
 import com.blacklaunch.launcher.commands.StepCommand
 import com.blacklaunch.launcher.commands.StepCommands
 import com.blacklaunch.launcher.voice.AppActionPhrase
+import com.blacklaunch.launcher.voice.MediaCommand
 import com.blacklaunch.launcher.voice.PlayInApp
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
@@ -99,7 +100,7 @@ private data class ProfileScope(val profileId: String, val scope: SearchScope, v
 }
 
 /** Одноразові повідомлення для користувача. */
-enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND, CONDITION_NOT_MET, NOT_A_PLAYER }
+enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND, CONDITION_NOT_MET, NOT_A_PLAYER, NOT_IN_MODE }
 
 /** Головний екран: активний профіль і його закріплені програми, які справді встановлені. */
 data class HomeState(
@@ -169,6 +170,10 @@ class LauncherViewModel(
     /** Назва програми з такої фрази (якщо вона має ярлики) — для відповіді «не вміє». */
     private val phraseAppLabel: (String) -> String? = { null },
     private val startShortcut: (GlobalResult.Shortcut) -> Boolean = { false },
+    /** «Команди — лише програми режиму»: чи може крок команди відкрити програму з цим пакетом зараз. */
+    private val stepPackageAllowed: (String) -> Boolean = { true },
+    /** Гравець, якому піде «відтворити» без назви (щоб перевірити режим). */
+    private val lastPlayerPackage: () -> String? = { null },
     /** Чи програма — гравець музики (для «увімкни музику в …»). */
     private val isMusicApp: (AppInfo) -> Boolean = { true },
     /** Фрази вголос з кроків команди; null — поточний час. */
@@ -548,14 +553,16 @@ class LauncherViewModel(
             if (AppActionPhrase.parse(step).isNotEmpty() && openAppAction(step, speak = false)) return@forEach
             when (val parsed = VoiceCommandParser.parse(step)) {
                 // Час у команді — завжди вголос (разом з іншими фразами).
-                is VoiceCommand.Action -> if (parsed.action == VoiceAction.Time) {
-                    speech.add(null)
-                } else {
-                    _voiceActions.trySend(parsed.action)
+                is VoiceCommand.Action -> when {
+                    parsed.action == VoiceAction.Time -> speech.add(null)
+                    // «Грай музику» без назви: гравець, якого немає в режимі, не вмикаємо.
+                    parsed.action == VoiceAction.Media(MediaCommand.PLAY) && lastPlayerPackage()?.let { !stepPackageAllowed(it) } == true ->
+                        _messages.trySend(UiMessage.NOT_IN_MODE)
+                    else -> _voiceActions.trySend(parsed.action)
                 }
                 is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let(::activate)
-                VoiceCommand.OpenLast -> lastLaunched()?.let { launch(it, null) }
-                is VoiceCommand.Open -> index.value.search(parsed.query, launchCounts.value).firstOrNull()?.let { launch(it, null) }
+                VoiceCommand.OpenLast -> lastLaunched()?.let(::launchStep)
+                is VoiceCommand.Open -> index.value.search(parsed.query, launchCounts.value).firstOrNull()?.let(::launchStep)
                 null -> Unit
             }
         }
@@ -713,12 +720,22 @@ class LauncherViewModel(
         }
     }
 
+    /** Програма з кроку команди — лише якщо дозволена в режимі («Команди — лише програми режиму»). */
+    private fun launchStep(app: AppInfo) {
+        if (stepPackageAllowed(app.packageName)) launch(app, null) else _messages.trySend(UiMessage.NOT_IN_MODE)
+    }
+
     /** Ярлик з фрази «відкрий <що> в <програма>»: true — оброблено (відкрито або сказано, що програма не вміє). */
     private fun openAppAction(text: String, speak: Boolean): Boolean {
         // «Лише програми профілю» — ярлики лише програм цього режиму.
         val visible = visibleApps.value.mapTo(HashSet()) { it.packageName }
         val found = phraseShortcuts(text)?.firstOrNull { it.packageName in visible }
         if (found != null) {
+            // Крок команди — лише програма режиму; сказане самим користувачем — завжди.
+            if (!speak && !stepPackageAllowed(found.packageName)) {
+                _messages.trySend(UiMessage.NOT_IN_MODE)
+                return true
+            }
             if (speak) {
                 showHeard(text)
                 _voiceReplies.trySend(VoiceReply.OpeningIn(found.title, found.appLabel))
@@ -751,6 +768,10 @@ class LauncherViewModel(
                 showHeard(heard)
                 _voiceReplies.trySend(VoiceReply.NotPlayer(named.label))
             }
+            return true
+        }
+        if (heard == null && !stepPackageAllowed(app.packageName)) {
+            _messages.trySend(UiMessage.NOT_IN_MODE)
             return true
         }
         if (heard != null) _voiceReplies.trySend(VoiceReply.Playing(app.label))

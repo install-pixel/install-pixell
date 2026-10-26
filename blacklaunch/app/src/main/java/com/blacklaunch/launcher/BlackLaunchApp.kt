@@ -80,6 +80,16 @@ class BlackLaunchApp : Application() {
         com.blacklaunch.launcher.voice.VoiceActionRunner(this, onMessage = {}, ttsEngine = { voiceActionSettings.ttsEngine.value })
     }
 
+    /**
+     * «Команди — лише програми режиму»: чи може крок команди відкрити (чи ввімкнути музику в) програму [pkg] зараз —
+     * лише якщо вона серед програм поточного режиму. Вимкнено — завжди так.
+     */
+    fun allowedInMode(pkg: String): Boolean {
+        if (!automationSettings.modeAppsOnly.value || pkg == packageName) return true
+        val profile = activeProfile.value ?: return true
+        return profile.pinnedAppKeys.any { it.substringBefore('/') == pkg }
+    }
+
     /** Головний екран Black Glass зараз видно (для «розумного перемикання» — чи треба виходити наперед). */
     @Volatile
     var homeVisible = false
