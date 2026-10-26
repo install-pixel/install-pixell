@@ -203,7 +203,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
     }
 
     private fun notInMode() {
-        android.widget.Toast.makeText(app, R.string.step_not_in_mode, android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(app, R.string.cmd_not_in_mode, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun switchProfile(name: String) {

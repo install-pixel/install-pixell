@@ -780,5 +780,5 @@
     <string name="condition_profiles_note">Tick one or more modes — the command works in any of them.</string>
     <string name="extras_mode_apps">Commands — only the mode\'s apps</string>
     <string name="extras_mode_apps_note">Command steps (also automatic ones, e.g. on headphones) open or start music only in apps that are in the current mode (on its home screen); others are skipped. What you say or type yourself still works.</string>
-    <string name="step_not_in_mode">That app is not in this mode — step skipped</string>
+    <string name="cmd_not_in_mode">That app is not in this mode — step skipped</string>
 </resources>

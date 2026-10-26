@@ -1325,7 +1325,7 @@ class MainActivity : ComponentActivity() {
         UiMessage.PROFILE_NOT_FOUND -> R.string.profile_not_found
         UiMessage.CONDITION_NOT_MET -> R.string.condition_not_met
         UiMessage.NOT_A_PLAYER -> R.string.not_a_player
-        UiMessage.NOT_IN_MODE -> R.string.step_not_in_mode
+        UiMessage.NOT_IN_MODE -> R.string.cmd_not_in_mode
     }
 
     private fun toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
