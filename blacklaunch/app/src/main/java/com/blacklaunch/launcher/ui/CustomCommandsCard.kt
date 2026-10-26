@@ -206,7 +206,7 @@ private fun CommandEditor(
                 Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(conditionText(condition), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                SmallButton(Icons.Filled.Close, R.string.custom_step_remove) { conditions = conditions - condition }
+                SmallButton(Icons.Filled.Close, R.string.custom_step_remove, onClick = { conditions = conditions - condition })
             }
         }
         ActionOption(R.string.condition_add, Icons.Filled.Add) { pickingCondition = true }
@@ -216,7 +216,7 @@ private fun CommandEditor(
                 Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(triggerText(trigger), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                SmallButton(Icons.Filled.Close, R.string.custom_step_remove) { triggers = triggers - trigger }
+                SmallButton(Icons.Filled.Close, R.string.custom_step_remove, onClick = { triggers = triggers - trigger })
             }
         }
         ActionOption(R.string.command_auto_add, Icons.Filled.Add) { addingTrigger = true }
@@ -323,7 +323,7 @@ private fun StepConditionsDialog(
                 step.conditions.forEach { condition ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text(conditionText(condition), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                        SmallButton(Icons.Filled.Close, R.string.custom_step_remove) { onChange(step.conditions - condition) }
+                        SmallButton(Icons.Filled.Close, R.string.custom_step_remove, onClick = { onChange(step.conditions - condition) })
                     }
                 }
                 ActionOption(R.string.condition_add, Icons.Filled.Add) { adding = true }
