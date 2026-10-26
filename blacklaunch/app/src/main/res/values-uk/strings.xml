@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">Наприклад, «я вдома»</string>
     <string name="custom_command_steps">Що зробити</string>
     <string name="custom_command_steps_hint">яскравість 30</string>
-    <string name="custom_command_steps_note">Усе, що Black Glass розуміє голосом: «відкрий Карти», «режим дорога», «попередній режим», «увімкни ліхтарик», «яскравість 30», «гучніше», «грай музику», «пауза», «таймер 10 хвилин», «будильник 7:30», «маршрут до роботи», «подзвони Олегу», «напиши смс Олегу текст запізнююсь», «напиши в телеграм Олегу текст …», «подія зустріч завтра о 10», «котра година», «скажи …», «зачекай 5 хвилин», «головний екран». Порада: «З пошуку» одразу показує, що зробить крок.</string>
+    <string name="custom_command_steps_note">Усе, що Black Glass розуміє голосом: «відкрий Карти», «режим дорога», «попередній режим», «увімкни ліхтарик», «яскравість 30», «гучніше», «грай музику», «увімкни музику в Symfonium», «пауза», «таймер 10 хвилин», «будильник 7:30», «маршрут до роботи», «подзвони Олегу», «напиши смс Олегу текст запізнююсь», «напиши в телеграм Олегу текст …», «подія зустріч завтра о 10», «котра година», «скажи …», «зачекай 5 хвилин», «головний екран». Порада: «З пошуку» одразу показує, що зробить крок.</string>
     <string name="custom_command_save">Зберегти</string>
     <string name="custom_command_delete">Видалити команду</string>
     <string name="suggestions_title">Підказки програм</string>
@@ -757,13 +757,14 @@
     <string name="problem_wait_end">Крок %1$d: пауза в кінці нічого не дає — додайте кроки після неї або приберіть.</string>
     <string name="problem_needs_screen">Крок %1$d відкриває екран: коли команда стартує сама, він чекатиме дотику до сповіщення (або дайте дозвіл «Поверх інших вікон» нижче).</string>
     <string name="problem_same_trigger">Від цієї ж події запускається ще команда «%1$s» — виконаються обидві, одна за одною.</string>
-    <string name="reply_result">%1$s</string>
+    <string name="reply_result">Буде %1$s</string>
     <string name="reply_opening">Відкриваю %1$s</string>
     <string name="reply_choose">Кілька варіантів — виберіть на екрані</string>
     <string name="reply_search">Ось що знайшлося</string>
-    <string name="reply_profile">Режим %1$s</string>
+    <string name="reply_profile">Вмикаю режим %1$s</string>
     <string name="reply_profile_missing">Такого режиму немає</string>
     <string name="command_reverse_editing">Нова зворотна команда</string>
     <string name="command_reverse_editing_note">Створена з попередньої команди: подія навпаки й протилежні кроки. Перевірте й натисніть «Зберегти» — тоді вона з\'явиться в списку.</string>
     <string name="command_reverse_exists">Зворотна команда вже є — вона в списку команд.</string>
+    <string name="reply_playing">Вмикаю музику в %1$s</string>
 </resources>

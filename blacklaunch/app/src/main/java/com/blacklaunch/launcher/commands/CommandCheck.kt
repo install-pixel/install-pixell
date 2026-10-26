@@ -2,6 +2,7 @@ package com.blacklaunch.launcher.commands
 
 import com.blacklaunch.launcher.automation.TriggerKind
 import com.blacklaunch.launcher.search.SearchNormalizer
+import com.blacklaunch.launcher.voice.PlayInApp
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceCommand
 import com.blacklaunch.launcher.voice.VoiceCommandParser
@@ -55,18 +56,27 @@ object CommandCheck {
                 is StepCommand.Wait -> if (i == command.steps.lastIndex) add(CommandProblem(CommandProblemKind.WAIT_AT_END, n))
                 StepCommand.Home -> if (screenStep == 0) screenStep = n
                 StepCommand.PreviousProfile, is StepCommand.Say -> Unit
-                null -> when (val parsed = VoiceCommandParser.parse(step.text)) {
-                    is VoiceCommand.Open -> {
-                        if (!appExists(parsed.query)) add(CommandProblem(CommandProblemKind.UNKNOWN_APP, n, parsed.query))
+                null -> {
+                    val playApp = PlayInApp.parse(step.text)
+                    if (playApp != null) {
+                        // «Грай музику в X»: перевіряємо саму програму; відкриває екран.
+                        if (!appExists(playApp)) add(CommandProblem(CommandProblemKind.UNKNOWN_APP, n, playApp))
                         if (screenStep == 0) screenStep = n
+                    } else {
+                        when (val parsed = VoiceCommandParser.parse(step.text)) {
+                            is VoiceCommand.Open -> {
+                                if (!appExists(parsed.query)) add(CommandProblem(CommandProblemKind.UNKNOWN_APP, n, parsed.query))
+                                if (screenStep == 0) screenStep = n
+                            }
+                            VoiceCommand.OpenLast -> if (screenStep == 0) screenStep = n
+                            is VoiceCommand.SwitchProfile -> {
+                                val key = SearchNormalizer.normalize(parsed.name)
+                                if (profileKeys.none { it == key || it.startsWith(key) }) add(CommandProblem(CommandProblemKind.UNKNOWN_PROFILE, n, parsed.name))
+                            }
+                            is VoiceCommand.Action -> if (needsScreen(parsed.action) && screenStep == 0) screenStep = n
+                            null -> add(CommandProblem(CommandProblemKind.UNKNOWN_APP, n, step.text))
+                        }
                     }
-                    VoiceCommand.OpenLast -> if (screenStep == 0) screenStep = n
-                    is VoiceCommand.SwitchProfile -> {
-                        val key = SearchNormalizer.normalize(parsed.name)
-                        if (profileKeys.none { it == key || it.startsWith(key) }) add(CommandProblem(CommandProblemKind.UNKNOWN_PROFILE, n, parsed.name))
-                    }
-                    is VoiceCommand.Action -> if (needsScreen(parsed.action) && screenStep == 0) screenStep = n
-                    null -> add(CommandProblem(CommandProblemKind.UNKNOWN_APP, n, step.text))
                 }
             }
         }

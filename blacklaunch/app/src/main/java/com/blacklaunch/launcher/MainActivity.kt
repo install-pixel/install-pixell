@@ -152,6 +152,7 @@ class MainActivity : ComponentActivity() {
                     resolveCommand = app.commandConditions::resolve,
                     scheduleSteps = { steps, seconds -> app.stepScheduler.schedule(getString(R.string.custom_commands_title), steps, seconds) },
                     previousProfileId = app.profileRepository::previousActiveId,
+                    playMedia = { com.blacklaunch.launcher.automation.MediaKeys.play(app) },
                     speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
                     hiddenApps = app.hiddenApps.hidden,
                     searchScopes = app.searchScopes.scopes,
@@ -1390,6 +1391,7 @@ class MainActivity : ComponentActivity() {
     private fun replyText(reply: VoiceReply): String = when (reply) {
         is VoiceReply.Result -> getString(R.string.reply_result, reply.value)
         is VoiceReply.Opening -> getString(R.string.reply_opening, reply.label)
+        is VoiceReply.Playing -> getString(R.string.reply_playing, reply.label)
         VoiceReply.Choose -> getString(R.string.reply_choose)
         VoiceReply.SearchShown -> getString(R.string.reply_search)
         is VoiceReply.Profile -> getString(R.string.reply_profile, reply.name)

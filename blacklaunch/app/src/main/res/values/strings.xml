@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">For example, “I’m home”</string>
     <string name="custom_command_steps">What to do</string>
     <string name="custom_command_steps_hint">brightness 30</string>
-    <string name="custom_command_steps_note">Anything Black Glass understands by voice: “open Maps”, “mode Road”, “previous mode”, “flashlight on”, “brightness 30”, “louder”, “play music”, “pause”, “timer 10 minutes”, “alarm 7:30”, “route to work”, “call Oleg”, “send sms to Oleg saying I am late”, “write on Telegram to Oleg saying …”, “event meeting tomorrow at 10”, “what time is it”, “say …”, “wait 5 minutes”, “home screen”. Tip: “From search” shows what a step will do.</string>
+    <string name="custom_command_steps_note">Anything Black Glass understands by voice: “open Maps”, “mode Road”, “previous mode”, “flashlight on”, “brightness 30”, “louder”, “play music”, “play music on Symfonium”, “pause”, “timer 10 minutes”, “alarm 7:30”, “route to work”, “call Oleg”, “send sms to Oleg saying I am late”, “write on Telegram to Oleg saying …”, “event meeting tomorrow at 10”, “what time is it”, “say …”, “wait 5 minutes”, “home screen”. Tip: “From search” shows what a step will do.</string>
     <string name="custom_command_save">Save</string>
     <string name="custom_command_delete">Delete command</string>
     <string name="suggestions_title">App suggestions</string>
@@ -757,13 +757,14 @@
     <string name="problem_wait_end">Step %1$d: a pause at the end does nothing — add steps after it or remove it.</string>
     <string name="problem_needs_screen">Step %1$d opens a screen: when the command starts on its own, it will wait for a tap on the notification (or allow “Display over other apps” below).</string>
     <string name="problem_same_trigger">Another command “%1$s” starts from the same event — both will run one after another.</string>
-    <string name="reply_result">%1$s</string>
+    <string name="reply_result">That\'s %1$s</string>
     <string name="reply_opening">Opening %1$s</string>
     <string name="reply_choose">Several options — choose on the screen</string>
     <string name="reply_search">Here is what I found</string>
-    <string name="reply_profile">Mode %1$s</string>
+    <string name="reply_profile">Switching to %1$s mode</string>
     <string name="reply_profile_missing">There is no such mode</string>
     <string name="command_reverse_editing">New reverse command</string>
     <string name="command_reverse_editing_note">Created from the previous command: opposite event and opposite steps. Check it and press “Save” — then it appears in the list.</string>
     <string name="command_reverse_exists">The reverse command already exists — you will find it in the list.</string>
+    <string name="reply_playing">Playing music in %1$s</string>
 </resources>

@@ -43,6 +43,7 @@ import com.blacklaunch.launcher.search.RecentQueries
 import com.blacklaunch.launcher.commands.CustomCommandMatcher
 import com.blacklaunch.launcher.commands.StepCommand
 import com.blacklaunch.launcher.commands.StepCommands
+import com.blacklaunch.launcher.voice.PlayInApp
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
 import com.blacklaunch.launcher.voice.VoiceActionParser
@@ -160,6 +161,8 @@ class LauncherViewModel(
     /** «Лише якщо» команди: чи підключено вибрані навушники, зарядку… (перевірка в момент запуску). */
     /** Крок «зачекати»: решта кроків пізніше (коротко — у Black Glass, довго — системним будильником). */
     private val scheduleSteps: (List<String>, Int) -> Unit = { _, _ -> },
+    /** «Відтворити» для програми з музикою (після «увімкни музику в …»). */
+    private val playMedia: () -> Unit = {},
     /** Фрази вголос з кроків команди; null — поточний час. */
     private val speakSteps: (List<String?>) -> Unit = {},
     /** Профіль, що був до останнього перемикання, — для кроку «попередній режим». */
@@ -531,6 +534,8 @@ class LauncherViewModel(
                 }
                 is StepCommand.Wait, null -> Unit
             }
+            // «Грай музику в Symfonium» кроком команди.
+            PlayInApp.parse(step)?.let { name -> if (playIn(name, null)) return@forEach }
             when (val parsed = VoiceCommandParser.parse(step)) {
                 // Час у команді — завжди вголос (разом з іншими фразами).
                 is VoiceCommand.Action -> if (parsed.action == VoiceAction.Time) {
@@ -631,6 +636,10 @@ class LauncherViewModel(
             SpokenMath.toExpression(math)?.let(Calculator::evaluate)?.let { _voiceReplies.trySend(VoiceReply.Result(it)) }
             return
         }
+        // «Увімкни музику на Symfonium» — відкрити програму й увімкнути відтворення.
+        hypotheses.firstNotNullOfOrNull { text -> PlayInApp.parse(text)?.let { name -> text to name } }?.let { (heard, name) ->
+            if (playIn(name, heard)) return
+        }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
         // Дія чи профіль — як і раніше, перший варіант, що спрацює; програма — найкращий збіг серед усіх варіантів.
         val (heard, command) = parsed.firstOrNull { it.second !is VoiceCommand.Open && it.second.isActionable() }
@@ -682,6 +691,22 @@ class LauncherViewModel(
         }
     }
 
+    /**
+     * Відкрити програму з музикою й за мить натиснути «відтворити» (гравцю треба запуститися). Програму не знайдено
+     * однозначно — false, тоді фраза йде звичайним шляхом.
+     */
+    private fun playIn(name: String, heard: String?): Boolean {
+        val results = index.value.searchScored(name, launchCounts.value)
+        val app = SearchIndex.unambiguous(results) ?: results.firstOrNull()?.app?.takeIf { results.size == 1 } ?: return false
+        if (heard != null) _voiceReplies.trySend(VoiceReply.Playing(app.label))
+        if (!launch(app, null)) return true
+        viewModelScope.launch {
+            delay(PLAY_AFTER_LAUNCH_MS)
+            playMedia()
+        }
+        return true
+    }
+
     private fun contactActionAllowed(action: VoiceAction): Boolean {
         val current = scope.value
         if (current.globalMode != GlobalMode.BY_APPS) return true
@@ -703,6 +728,9 @@ class LauncherViewModel(
     companion object {
         private const val PROFILE_MATCH = 0.75
 
+        /** Скільки чекати після відкриття гравця, перш ніж натиснути «відтворити». */
+        private const val PLAY_AFTER_LAUNCH_MS = 1_500L
+
         /** Скільки часу після закриття пошуку повертається останній запит. */
         const val RESTORE_QUERY_MS = 60 * 1000L
 
@@ -718,6 +746,7 @@ sealed interface VoiceReply {
     /** Результат калькулятора чи конвертера. */
     data class Result(val value: String) : VoiceReply
     data class Opening(val label: String) : VoiceReply
+    data class Playing(val label: String) : VoiceReply
     data object Choose : VoiceReply
     data object SearchShown : VoiceReply
     data class Profile(val name: String) : VoiceReply

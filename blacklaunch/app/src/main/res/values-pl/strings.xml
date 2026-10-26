@@ -293,7 +293,7 @@
     <string name="custom_command_phrase_hint">Na przykład „jestem w domu”</string>
     <string name="custom_command_steps">Co zrobić</string>
     <string name="custom_command_steps_hint">jasność 30</string>
-    <string name="custom_command_steps_note">Wszystko, co Black Glass rozumie głosem: „otwórz Mapy”, „tryb droga”, „poprzedni tryb”, „włącz latarkę”, „jasność 30”, „głośniej”, „graj muzykę”, „pauza”, „timer 10 minut”, „budzik 7:30”, „trasa do pracy”, „zadzwoń do Olega”, „napisz sms do Olega treść spóźnię się”, „napisz w telegram do Olega treść …”, „wydarzenie spotkanie jutro o 10”, „która godzina”, „powiedz …”, „czekaj 5 minut”, „ekran główny”. Wskazówka: „Z wyszukiwania” od razu pokazuje, co zrobi krok.</string>
+    <string name="custom_command_steps_note">Wszystko, co Black Glass rozumie głosem: „otwórz Mapy”, „tryb droga”, „poprzedni tryb”, „włącz latarkę”, „jasność 30”, „głośniej”, „graj muzykę”, „włącz muzykę w Symfonium”, „pauza”, „timer 10 minut”, „budzik 7:30”, „trasa do pracy”, „zadzwoń do Olega”, „napisz sms do Olega treść spóźnię się”, „napisz w telegram do Olega treść …”, „wydarzenie spotkanie jutro o 10”, „która godzina”, „powiedz …”, „czekaj 5 minut”, „ekran główny”. Wskazówka: „Z wyszukiwania” od razu pokazuje, co zrobi krok.</string>
     <string name="custom_command_save">Zapisz</string>
     <string name="custom_command_delete">Usuń polecenie</string>
     <string name="suggestions_title">Podpowiedzi aplikacji</string>
@@ -757,13 +757,14 @@
     <string name="problem_wait_end">Krok %1$d: przerwa na końcu nic nie daje — dodaj kroki po niej lub ją usuń.</string>
     <string name="problem_needs_screen">Krok %1$d otwiera ekran: gdy polecenie uruchomi się samo, zaczeka na dotknięcie powiadomienia (albo zezwól na „Wyświetlanie nad innymi aplikacjami” niżej).</string>
     <string name="problem_same_trigger">Od tego samego zdarzenia uruchamia się też polecenie „%1$s” — wykonają się oba, jedno po drugim.</string>
-    <string name="reply_result">%1$s</string>
+    <string name="reply_result">To będzie %1$s</string>
     <string name="reply_opening">Otwieram %1$s</string>
     <string name="reply_choose">Kilka opcji — wybierz na ekranie</string>
     <string name="reply_search">Oto, co znalazłem</string>
-    <string name="reply_profile">Tryb %1$s</string>
+    <string name="reply_profile">Włączam tryb %1$s</string>
     <string name="reply_profile_missing">Nie ma takiego trybu</string>
     <string name="command_reverse_editing">Nowe polecenie odwrotne</string>
     <string name="command_reverse_editing_note">Utworzone z poprzedniego polecenia: odwrotne zdarzenie i przeciwne kroki. Sprawdź i naciśnij „Zapisz” — wtedy pojawi się na liście.</string>
     <string name="command_reverse_exists">Polecenie odwrotne już istnieje — jest na liście poleceń.</string>
+    <string name="reply_playing">Włączam muzykę w %1$s</string>
 </resources>
