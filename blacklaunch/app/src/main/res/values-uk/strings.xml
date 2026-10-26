@@ -773,4 +773,7 @@
     <string name="reply_cant_do">%1$s не вміє «%2$s» — ось що вона вміє</string>
     <string name="event_dialog_note">Подія — мить, яка сама запускає команду (наприклад, щойно підключились навушники, о 7:30, увімкнено режим).</string>
     <string name="condition_dialog_note">Умова — стан, який перевіряється в момент запуску команди (наприклад, навушники зараз підключені). Сама нічого не запускає.</string>
+    <string name="teach_voice">Навчити голосом</string>
+    <string name="teach_voice_prompt">Скажіть «%1$s» так, як вимовляєте</string>
+    <string name="teach_voice_saved">Запам\'ятав: «%1$s» → %2$s</string>
 </resources>

@@ -773,4 +773,7 @@
     <string name="reply_cant_do">%1$s nie potrafi „%2$s” — oto, co potrafi</string>
     <string name="event_dialog_note">Zdarzenie to chwila, która sama uruchamia polecenie (np. właśnie podłączono słuchawki, o 7:30, włączono tryb).</string>
     <string name="condition_dialog_note">Warunek to stan sprawdzany w chwili uruchomienia polecenia (np. słuchawki są teraz podłączone). Sam niczego nie uruchamia.</string>
+    <string name="teach_voice">Naucz głosem</string>
+    <string name="teach_voice_prompt">Powiedz „%1$s” tak, jak wymawiasz</string>
+    <string name="teach_voice_saved">Zapamiętałem: „%1$s” → %2$s</string>
 </resources>

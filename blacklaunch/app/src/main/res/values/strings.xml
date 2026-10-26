@@ -773,4 +773,7 @@
     <string name="reply_cant_do">%1$s can\'t do “%2$s” — here is what it can</string>
     <string name="event_dialog_note">An event is a moment that starts the command by itself (e.g. headphones just connected, at 7:30, mode turned on).</string>
     <string name="condition_dialog_note">A condition is a state checked at the moment the command starts (e.g. headphones are connected now). It starts nothing by itself.</string>
+    <string name="teach_voice">Teach by voice</string>
+    <string name="teach_voice_prompt">Say “%1$s” the way you pronounce it</string>
+    <string name="teach_voice_saved">Remembered: “%1$s” → %2$s</string>
 </resources>

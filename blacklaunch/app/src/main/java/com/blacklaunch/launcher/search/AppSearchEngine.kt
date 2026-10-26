@@ -81,6 +81,9 @@ class SearchIndex(
             )
     }
 
+    /** Голосом: програма, чия назва (чи власна назва) найближча за звучанням до почутого; лише впевнений збіг. */
+    fun soundsLike(heard: String): AppInfo? = VoiceMatch.best(heard, entries) { entry -> entry.names.map { it.text } }?.app
+
     companion object {
         private const val TOPIC = 35
         private const val LEARNED = 90

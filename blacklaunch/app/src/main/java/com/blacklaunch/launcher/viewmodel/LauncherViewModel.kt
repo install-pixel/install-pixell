@@ -655,6 +655,14 @@ class LauncherViewModel(
             if (openAppAction(text, speak = true)) return
         }
         val parsed = hypotheses.mapNotNull { text -> VoiceCommandParser.parse(text)?.let { text to it } }
+            .map { (text, command) ->
+                // Офлайн-модель не знає «Spotify» і чує «спорт фай»: нічого не знайдено — шукаємо за звучанням.
+                if (command is VoiceCommand.Open && index.value.search(command.query).isEmpty()) {
+                    index.value.soundsLike(command.query)?.let { text to command.copy(query = it.label) } ?: (text to command)
+                } else {
+                    text to command
+                }
+            }
         // Дія чи профіль — як і раніше, перший варіант, що спрацює; програма — найкращий збіг серед усіх варіантів.
         val (heard, command) = parsed.firstOrNull { it.second !is VoiceCommand.Open && it.second.isActionable() }
             ?: bestOpen(parsed)?.takeIf { it.second.isActionable() }
@@ -731,7 +739,8 @@ class LauncherViewModel(
      */
     private fun playIn(name: String, heard: String?): Boolean {
         val results = index.value.searchScored(name, launchCounts.value)
-        val named = SearchIndex.unambiguous(results) ?: results.firstOrNull()?.app?.takeIf { results.size == 1 } ?: return false
+        val named = SearchIndex.unambiguous(results) ?: results.firstOrNull()?.app?.takeIf { results.size == 1 }
+            ?: index.value.soundsLike(name).takeIf { results.isEmpty() } ?: return false
         // Назвали не гравець («музику в Claude») — нічого не відкриваємо: інакше заграв би інший гравець.
         val app = named.takeIf(isMusicApp) ?: results.map { it.app }.firstOrNull { it.label == named.label && isMusicApp(it) }
         if (app == null) {

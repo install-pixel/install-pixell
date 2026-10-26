@@ -38,6 +38,8 @@ fun AppActionsDialog(
     onToggleOwnIcon: () -> Unit = {},
     /** Ярлики програми (до 4): назва → запуск. */
     shortcuts: List<Pair<String, () -> Unit>> = emptyList(),
+    /** «Навчити голосом»: сказати назву — почуте стане власною назвою програми (для офлайн-розпізнавання). */
+    onTeachVoice: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -55,6 +57,7 @@ fun AppActionsDialog(
                     ActionOption(R.string.add_to_home, Icons.Filled.Add) { onTogglePin(); onDismiss() }
                 }
                 ActionOption(R.string.alias_menu, Icons.Filled.Edit, onNames)
+                onTeachVoice?.let { teach -> ActionOption(R.string.teach_voice, Icons.Filled.Edit) { teach(); onDismiss() } }
                 ActionOption(if (ownIcon) R.string.icon_original else R.string.icon_own, Icons.Filled.Face) { onToggleOwnIcon(); onDismiss() }
                 ActionOption(R.string.hide_from_search, Icons.Filled.Lock) { onHide(); onDismiss() }
                 ActionOption(R.string.app_info, Icons.Filled.Info) { onAppInfo(); onDismiss() }

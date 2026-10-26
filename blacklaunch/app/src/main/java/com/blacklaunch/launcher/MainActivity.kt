@@ -224,6 +224,20 @@ class MainActivity : ComponentActivity() {
             onResult = ::onVoiceResult,
             onMessage = ::toast,
         )
+        // «Навчити голосом» без результату (не почуло) — скасовуємо, щоб наступний запит не став назвою програми.
+        lifecycleScope.launch {
+            var active = false
+            voice.state.collect { state ->
+                if (teachTarget == null) return@collect
+                if (state != VoiceState.Idle) {
+                    active = true
+                } else if (active) {
+                    active = false
+                    delay(LOCKED_RESULT_GRACE_MS)
+                    teachTarget = null
+                }
+            }
+        }
         // Голос поверх блокування закінчився без результату — ховаємо вікно (екран блокування знову зверху).
         lifecycleScope.launch {
             var active = false
@@ -519,6 +533,7 @@ class MainActivity : ComponentActivity() {
                             onHide = { app.hiddenApps.hide(target.key) },
                             ownIcon = target.key in ownIcons,
                             onToggleOwnIcon = { app.ownIcons.set(target.key, target.key !in ownIcons) },
+                            onTeachVoice = { teachVoice(target) },
                             shortcuts = remember(target.key) {
                                 app.globalSearch.shortcutsFor(target.packageName, target.userSerial).map { shortcut ->
                                     shortcut.title to { openGlobalResult(shortcut) }
@@ -1309,6 +1324,8 @@ class MainActivity : ComponentActivity() {
 
     private fun toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
+    private fun toastText(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
     override fun onResume() {
         super.onResume()
         repository.refresh()
@@ -1368,8 +1385,29 @@ class MainActivity : ComponentActivity() {
     /** Почуте вже є — чекаємо, поки людина розблокує телефон. */
     private var awaitingUnlock = false
 
+    /** «Навчити голосом»: програма, для якої наступне почуте стане власною назвою. */
+    private var teachTarget: AppInfo? = null
+
+    private fun teachVoice(target: AppInfo) {
+        teachTarget = target
+        toastText(getString(R.string.teach_voice_prompt, target.label))
+        if (voice.state.value == VoiceState.Idle) onMicClick()
+    }
+
     /** Почуте з-під блокування виконуємо лише після розблокування (відбиток, PIN) — інакше нічого. */
     private fun onVoiceResult(texts: List<String>) {
+        teachTarget?.let { target ->
+            teachTarget = null
+            // Те, що модель почула (наприклад, «спорт фай»), — власна назва програми: далі офлайн знайде її точно.
+            val heard = texts.firstOrNull()?.trim()?.lowercase().orEmpty()
+            if (heard.isNotEmpty()) {
+                app.userAliasStore.add(target.packageName, heard)
+                val saved = getString(R.string.teach_voice_saved, heard, target.label)
+                toastText(saved)
+                if (app.voiceActionSettings.speakAnswers.value) app.speech.say(saved)
+            }
+            return
+        }
         val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
         if ((!lockedVoice.value && !locked) || Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) {
             viewModel.onVoiceResult(texts)
