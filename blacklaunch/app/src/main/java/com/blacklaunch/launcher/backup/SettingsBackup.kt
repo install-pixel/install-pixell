@@ -61,6 +61,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                 JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.stepTexts)).apply {
                     put("triggers", JSONArray(c.triggers.map { t ->
                         JSONObject().put("kind", t.kind.name).putOpt("address", t.deviceAddress).putOpt("name", t.deviceName)
+                            .putOpt("minute", t.minute).put("days", t.days)
                     }))
                     put("conditions", JSONArray(c.conditions.map(::conditionJson)))
                     // Умови кроків — окремим масивом поруч із текстами (тексти лишаються читабельними й для старих версій).
@@ -139,7 +140,12 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             commands.objects().forEach { c ->
                 val triggers = c.optJSONArray("triggers")?.objects().orEmpty().mapNotNull { t ->
                     TriggerKind.entries.firstOrNull { it.name == t.optString("kind") }
-                        ?.let { CommandTrigger(it, t.optString("address").ifEmpty { null }, t.optString("name").ifEmpty { null }) }
+                        ?.let {
+                            CommandTrigger(
+                                it, t.optString("address").ifEmpty { null }, t.optString("name").ifEmpty { null },
+                                if (t.has("minute")) t.optInt("minute") else null, t.optInt("days", 0),
+                            )
+                        }
                 }
                 // До 1.2.0 — одна умова «condition».
                 val conditions = c.optJSONArray("conditions")?.objects()?.mapNotNull(::conditionFrom)

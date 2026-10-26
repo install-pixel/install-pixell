@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Події «за часом»: відновлення будильників після перезавантаження (точні будильники — USE_EXACT_ALARM нижче). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Звичайний дозвіл, надається автоматично; використовується лише після підтвердження. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
@@ -184,6 +186,18 @@
         <!-- Автоматизації: Android будить лише в момент підключення/відключення Bluetooth-пристрою.
              Подію надсилає системна програма Bluetooth (не сама система), тому приймач відкритий,
              але лише для відправника з дозволом Bluetooth. -->
+        <!-- Подія «за часом»: будильник команди та системні події, після яких будильники ставимо знову. -->
+        <receiver
+            android:name=".automation.TimeTriggerReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
         <!-- Крок «зачекати»: решта кроків команди після паузи (системний будильник, лише для Black Glass). -->
         <receiver
             android:name=".automation.StepAlarmReceiver"

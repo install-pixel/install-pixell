@@ -40,6 +40,7 @@ object CommandReverse {
         TriggerKind.POWER_DISCONNECTED -> TriggerKind.POWER_CONNECTED
         TriggerKind.HEADSET_PLUGGED -> TriggerKind.HEADSET_UNPLUGGED
         TriggerKind.HEADSET_UNPLUGGED -> TriggerKind.HEADSET_PLUGGED
+        TriggerKind.TIME -> null
     }
 
     private fun opposite(step: String, texts: StepTexts): String? {

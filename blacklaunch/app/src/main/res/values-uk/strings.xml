@@ -733,4 +733,9 @@
     <string name="custom_step_say_text">Що сказати</string>
     <string name="custom_step_say_preview">Сказати: «%1$s»</string>
     <string name="custom_step_say_note">Голосом із налаштувань голосу; якщо підключені навушники — у навушники. Додайте кроку умову «підключено навушники», щоб не говорив уголос при всіх.</string>
+    <string name="trigger_time">За часом</string>
+    <string name="trigger_time_at_label">Час</string>
+    <string name="trigger_time_daily">щодня</string>
+    <string name="trigger_time_text">о %1$s · %2$s</string>
+    <string name="trigger_time_note">Запускається сама в цей час (і з вимкненим екраном). Додайте умови, напр. «поточний профіль Робота», щоб спрацьовувала лише коли треба.</string>
 </resources>

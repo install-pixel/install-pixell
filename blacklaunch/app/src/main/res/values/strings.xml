@@ -733,4 +733,9 @@
     <string name="custom_step_say_text">What to say</string>
     <string name="custom_step_say_preview">Say: “%1$s”</string>
     <string name="custom_step_say_note">Spoken with the voice from the voice settings; with headphones connected — into the headphones. Add the step condition “headphones connected” so it does not speak out loud.</string>
+    <string name="trigger_time">At a time</string>
+    <string name="trigger_time_at_label">Time</string>
+    <string name="trigger_time_daily">every day</string>
+    <string name="trigger_time_text">at %1$s · %2$s</string>
+    <string name="trigger_time_note">Runs on its own at this time (even with the screen off). Add conditions like “current profile Work” so it only speaks when needed.</string>
 </resources>

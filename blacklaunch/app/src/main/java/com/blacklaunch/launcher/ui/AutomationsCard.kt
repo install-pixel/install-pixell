@@ -196,20 +196,40 @@ private fun weekdayNames(): List<String> {
     return listOf(2, 3, 4, 5, 6, 7, 1).map { symbols[it].trimEnd('.') }
 }
 
-/** «Запускати саму»: подія, від якої команда стартує без фрази. */
+/** «Запускати саму»: подія, від якої команда стартує без фрази (Bluetooth, зарядка, навушники, час). */
 @Composable
 internal fun TriggerDialog(devices: DeviceAccess, onPick: (CommandTrigger) -> Unit, onDismiss: () -> Unit) {
     var kind by remember { mutableStateOf(TriggerKind.BLUETOOTH_CONNECTED) }
     var device by remember { mutableStateOf<PairedDevice?>(null) }
+    var time by remember { mutableStateOf("") }
+    var days by remember { mutableStateOf(0) }
     val bluetooth = kind == TriggerKind.BLUETOOTH_CONNECTED || kind == TriggerKind.BLUETOOTH_DISCONNECTED
-    val canSave = !bluetooth || device != null
+    val minute = parseTime(time)
+    val canSave = when {
+        bluetooth -> device != null
+        kind == TriggerKind.TIME -> minute != null
+        else -> true
+    }
     PickDialog(
         title = R.string.command_auto_add,
         onDismiss = onDismiss,
-        confirm = if (canSave) ({ onPick(CommandTrigger(kind, device?.address.takeIf { bluetooth }, device?.name.takeIf { bluetooth })) }) else null,
+        confirm = if (canSave) ({
+            onPick(
+                CommandTrigger(
+                    kind, device?.address.takeIf { bluetooth }, device?.name.takeIf { bluetooth },
+                    minute = minute.takeIf { kind == TriggerKind.TIME }, days = if (kind == TriggerKind.TIME) days else 0,
+                ),
+            )
+        }) else null,
     ) {
         TriggerKind.entries.forEach { option -> Choice(stringResource(option.label()), selected = kind == option) { kind = option } }
         if (bluetooth) DevicePicker(devices, device) { device = it }
+        if (kind == TriggerKind.TIME) {
+            TimeField(R.string.trigger_time_at_label, time, Modifier.fillMaxWidth()) { time = it }
+            Text(stringResource(R.string.condition_days), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            DayChips(days) { days = it }
+            Note(stringResource(R.string.trigger_time_note))
+        }
     }
 }
 
@@ -263,8 +283,18 @@ private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
 
 /** «Підключено Bluetooth-пристрій · Мої навушники». */
 @Composable
-internal fun triggerText(trigger: CommandTrigger): String =
-    listOfNotNull(stringResource(trigger.kind.label()), trigger.deviceName).joinToString(" · ")
+internal fun triggerText(trigger: CommandTrigger): String {
+    if (trigger.kind == TriggerKind.TIME && trigger.minute != null) {
+        val names = weekdayNames()
+        val days = if (trigger.days == 0) {
+            stringResource(R.string.trigger_time_daily)
+        } else {
+            names.filterIndexed { i, _ -> trigger.days and (1 shl i) != 0 }.joinToString(", ")
+        }
+        return stringResource(R.string.trigger_time_text, formatTime(trigger.minute), days)
+    }
+    return listOfNotNull(stringResource(trigger.kind.label()), trigger.deviceName).joinToString(" · ")
+}
 
 @Composable
 internal fun conditionText(condition: CommandCondition): String {
@@ -302,6 +332,7 @@ private fun TriggerKind.label(): Int = when (this) {
     TriggerKind.POWER_DISCONNECTED -> R.string.trigger_power_off
     TriggerKind.HEADSET_PLUGGED -> R.string.trigger_headset_on
     TriggerKind.HEADSET_UNPLUGGED -> R.string.trigger_headset_off
+    TriggerKind.TIME -> R.string.trigger_time
 }
 
 @StringRes

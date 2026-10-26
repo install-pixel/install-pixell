@@ -7,8 +7,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-/** Подія, від якої команда запускається сама; для Bluetooth — конкретний пристрій. */
-data class CommandTrigger(val kind: TriggerKind, val deviceAddress: String? = null, val deviceName: String? = null) {
+/**
+ * Подія, від якої команда запускається сама; для Bluetooth — конкретний пристрій; для часу — [minute] (від півночі)
+ * і [days] (біти пн=1 … нд=64, 0 — щодня).
+ */
+data class CommandTrigger(
+    val kind: TriggerKind,
+    val deviceAddress: String? = null,
+    val deviceName: String? = null,
+    val minute: Int? = null,
+    val days: Int = 0,
+) {
     val isBluetooth get() = kind == TriggerKind.BLUETOOTH_CONNECTED || kind == TriggerKind.BLUETOOTH_DISCONNECTED
 
     fun matches(event: TriggerKind, address: String?): Boolean =
@@ -161,7 +170,8 @@ class InMemoryCustomCommandStore(initial: List<CustomCommand> = emptyList()) : C
         /** Рядок на команду: id, фраза, кроки (з умовами кроку з 1.2.0), події, умови (останні два — з 0.32.0). */
         fun encode(commands: List<CustomCommand>): String = commands.joinToString("\n") { c ->
             val triggers = c.triggers.joinToString(ITEM.toString()) { t ->
-                listOf(t.kind.name, t.deviceAddress.orEmpty(), t.deviceName.orEmpty().safe()).joinToString(PART.toString())
+                listOf(t.kind.name, t.deviceAddress.orEmpty(), t.deviceName.orEmpty().safe(), t.minute?.toString().orEmpty(), t.days.toString())
+                    .joinToString(PART.toString())
             }
             val steps = c.steps.joinToString(STEP.toString()) { step ->
                 if (step.conditions.isEmpty()) step.text.safe() else step.text.safe() + STEP_CONDITIONS + encodeConditions(step.conditions)
@@ -181,7 +191,7 @@ class InMemoryCustomCommandStore(initial: List<CustomCommand> = emptyList()) : C
             val triggers = parts.getOrNull(3).orEmpty().split(ITEM).mapNotNull { item ->
                 val p = item.split(PART)
                 val kind = TriggerKind.entries.firstOrNull { it.name == p[0] } ?: return@mapNotNull null
-                CommandTrigger(kind, p.getOrNull(1)?.ifEmpty { null }, p.getOrNull(2)?.ifEmpty { null })
+                CommandTrigger(kind, p.getOrNull(1)?.ifEmpty { null }, p.getOrNull(2)?.ifEmpty { null }, p.getOrNull(3)?.toIntOrNull(), p.getOrNull(4)?.toIntOrNull() ?: 0)
             }
             val conditions = decodeConditions(parts.getOrNull(4).orEmpty())
             if (parts[1].isBlank() && triggers.isEmpty()) return@mapNotNull null

@@ -69,6 +69,7 @@ class BlackLaunchApp : Application() {
     val automations: PrefsAutomationStore by lazy { PrefsAutomationStore(this) }
     val automationRunner: AutomationRunner by lazy { AutomationRunner(this) }
     val stepScheduler: com.blacklaunch.launcher.automation.StepScheduler by lazy { com.blacklaunch.launcher.automation.StepScheduler(this) }
+    val timeTriggers: com.blacklaunch.launcher.automation.TimeTriggers by lazy { com.blacklaunch.launcher.automation.TimeTriggers(this) }
     val commandConditions: CommandConditions by lazy { CommandConditions(this) { profileRepository.activeProfile.first()?.name } }
     val systemStats: SystemStats by lazy { SystemStats(this) }
     val monitorSettings: MonitorSettings by lazy { MonitorSettings(this) }
@@ -136,6 +137,8 @@ class BlackLaunchApp : Application() {
         crashLog.install()
         automationRunner.registerLiveEvents()
         automationRunner.migrateOldAutomations()
+        // Події «за часом»: будильники заново після кожної зміни команд (і при запуску).
+        appScope.launch { customCommands.commands.collect { timeTriggers.rescheduleAll() } }
         appScope.launch { applyProfileOnSwitch() }
         // Змінився профіль, його програми чи фільтр — перевірити сповіщення ще раз.
         appScope.launch {

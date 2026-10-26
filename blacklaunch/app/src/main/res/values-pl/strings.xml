@@ -733,4 +733,9 @@
     <string name="custom_step_say_text">Co powiedzieć</string>
     <string name="custom_step_say_preview">Powiedz: „%1$s”</string>
     <string name="custom_step_say_note">Głosem z ustawień głosu; ze słuchawkami — w słuchawki. Dodaj krokowi warunek „podłączone słuchawki”, by nie mówił na głos przy wszystkich.</string>
+    <string name="trigger_time">O godzinie</string>
+    <string name="trigger_time_at_label">Godzina</string>
+    <string name="trigger_time_daily">codziennie</string>
+    <string name="trigger_time_text">o %1$s · %2$s</string>
+    <string name="trigger_time_note">Uruchamia się sama o tej godzinie (także przy wyłączonym ekranie). Dodaj warunki, np. „bieżący profil Praca”, by działała tylko wtedy, gdy trzeba.</string>
 </resources>

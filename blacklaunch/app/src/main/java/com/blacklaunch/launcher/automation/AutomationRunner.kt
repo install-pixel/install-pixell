@@ -76,6 +76,9 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         prefs.edit().putString(KEY_LAST, text).apply()
     }
 
+    /** Спрацювала подія «за часом» — видно в «Остання подія». */
+    fun noteTime() = noteSeen(TriggerKind.TIME, null)
+
     @SuppressLint("MissingPermission")
     private fun deviceName(address: String): String? = runCatching {
         app.getSystemService(BluetoothManager::class.java)?.adapter?.getRemoteDevice(address)?.name
@@ -261,6 +264,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         TriggerKind.POWER_DISCONNECTED -> R.string.trigger_power_off
         TriggerKind.HEADSET_PLUGGED -> R.string.trigger_headset_on
         TriggerKind.HEADSET_UNPLUGGED -> R.string.trigger_headset_off
+        TriggerKind.TIME -> R.string.trigger_time
     }
 
     private companion object {
