@@ -767,4 +767,6 @@
     <string name="command_reverse_editing_note">Створена з попередньої команди: подія навпаки й протилежні кроки. Перевірте й натисніть «Зберегти» — тоді вона з\'явиться в списку.</string>
     <string name="command_reverse_exists">Зворотна команда вже є — вона в списку команд.</string>
     <string name="reply_playing">Вмикаю музику в %1$s</string>
+    <string name="reply_not_player">%1$s — не програма для музики</string>
+    <string name="not_a_player">Це не програма для музики — назвіть гравець (напр. «увімкни музику в Symfonium»)</string>
 </resources>

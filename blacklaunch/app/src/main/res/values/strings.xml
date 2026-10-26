@@ -767,4 +767,6 @@
     <string name="command_reverse_editing_note">Created from the previous command: opposite event and opposite steps. Check it and press “Save” — then it appears in the list.</string>
     <string name="command_reverse_exists">The reverse command already exists — you will find it in the list.</string>
     <string name="reply_playing">Playing music in %1$s</string>
+    <string name="reply_not_player">%1$s is not a music app</string>
+    <string name="not_a_player">That is not a music app — name a player (e.g. “play music on Symfonium”)</string>
 </resources>

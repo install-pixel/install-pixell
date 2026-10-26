@@ -767,4 +767,6 @@
     <string name="command_reverse_editing_note">Utworzone z poprzedniego polecenia: odwrotne zdarzenie i przeciwne kroki. Sprawdź i naciśnij „Zapisz” — wtedy pojawi się na liście.</string>
     <string name="command_reverse_exists">Polecenie odwrotne już istnieje — jest na liście poleceń.</string>
     <string name="reply_playing">Włączam muzykę w %1$s</string>
+    <string name="reply_not_player">%1$s to nie aplikacja do muzyki</string>
+    <string name="not_a_player">To nie aplikacja do muzyki — podaj odtwarzacz (np. „włącz muzykę w Symfonium”)</string>
 </resources>

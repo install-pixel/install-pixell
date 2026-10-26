@@ -2,6 +2,9 @@ package com.blacklaunch.launcher.automation
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.net.Uri
 import android.media.AudioManager
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -36,8 +39,29 @@ object MediaKeys {
             }
             delay(STEP_MS)
         }
-        play(context)
+        // Загальна кнопка ввімкнула б інший гравець — лише коли гравців узагалі не видно (немає «Доступу до сповіщень»).
+        if (!canSeeSessions(context)) play(context)
     }
+
+    /**
+     * Чи програма — гравець: позначена як «аудіо», має сервіс медіабібліотеки (для Android Auto, годинників),
+     * відкриває аудіофайли або вже є серед активних гравців.
+     */
+    fun isPlayer(context: Context, packageName: String, category: Int): Boolean {
+        if (category == ApplicationInfo.CATEGORY_AUDIO) return true
+        val pm = context.packageManager
+        val browser = Intent("android.media.browse.MediaBrowserService").setPackage(packageName)
+        if (runCatching { pm.queryIntentServices(browser, 0) }.getOrDefault(emptyList()).isNotEmpty()) return true
+        val audio = Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse("file:///x.mp3"), "audio/*").setPackage(packageName)
+        if (runCatching { pm.queryIntentActivities(audio, 0) }.getOrDefault(emptyList()).isNotEmpty()) return true
+        return controllerFor(context, packageName) != null
+    }
+
+    private fun canSeeSessions(context: Context): Boolean = runCatching {
+        context.getSystemService(MediaSessionManager::class.java)
+            ?.getActiveSessions(ComponentName(context, ProfileNotificationFilter::class.java))
+        true
+    }.getOrDefault(false)
 
     private fun controllerFor(context: Context, packageName: String): MediaController? = runCatching {
         val manager = context.getSystemService(MediaSessionManager::class.java)

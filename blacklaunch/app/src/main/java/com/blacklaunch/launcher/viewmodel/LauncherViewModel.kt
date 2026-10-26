@@ -98,7 +98,7 @@ private data class ProfileScope(val profileId: String, val scope: SearchScope, v
 }
 
 /** Одноразові повідомлення для користувача. */
-enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND, CONDITION_NOT_MET }
+enum class UiMessage { LAUNCH_FAILED, NO_HISTORY, PROFILE_NOT_FOUND, CONDITION_NOT_MET, NOT_A_PLAYER }
 
 /** Головний екран: активний профіль і його закріплені програми, які справді встановлені. */
 data class HomeState(
@@ -163,6 +163,8 @@ class LauncherViewModel(
     private val scheduleSteps: (List<String>, Int) -> Unit = { _, _ -> },
     /** «Відтворити» в щойно відкритій програмі з музикою (пакет) — після «увімкни музику в …». */
     private val playMedia: suspend (String) -> Unit = {},
+    /** Чи програма — гравець музики (для «увімкни музику в …»). */
+    private val isMusicApp: (AppInfo) -> Boolean = { true },
     /** Фрази вголос з кроків команди; null — поточний час. */
     private val speakSteps: (List<String?>) -> Unit = {},
     /** Профіль, що був до останнього перемикання, — для кроку «попередній режим». */
@@ -697,7 +699,17 @@ class LauncherViewModel(
      */
     private fun playIn(name: String, heard: String?): Boolean {
         val results = index.value.searchScored(name, launchCounts.value)
-        val app = SearchIndex.unambiguous(results) ?: results.firstOrNull()?.app?.takeIf { results.size == 1 } ?: return false
+        val named = SearchIndex.unambiguous(results) ?: results.firstOrNull()?.app?.takeIf { results.size == 1 } ?: return false
+        // Назвали не гравець («музику в Claude») — нічого не відкриваємо: інакше заграв би інший гравець.
+        val app = named.takeIf(isMusicApp) ?: results.map { it.app }.firstOrNull { it.label == named.label && isMusicApp(it) }
+        if (app == null) {
+            _messages.trySend(UiMessage.NOT_A_PLAYER)
+            if (heard != null) {
+                showHeard(heard)
+                _voiceReplies.trySend(VoiceReply.NotPlayer(named.label))
+            }
+            return true
+        }
         if (heard != null) _voiceReplies.trySend(VoiceReply.Playing(app.label))
         if (!launch(app, null)) return true
         viewModelScope.launch {
@@ -747,6 +759,7 @@ sealed interface VoiceReply {
     data class Result(val value: String) : VoiceReply
     data class Opening(val label: String) : VoiceReply
     data class Playing(val label: String) : VoiceReply
+    data class NotPlayer(val label: String) : VoiceReply
     data object Choose : VoiceReply
     data object SearchShown : VoiceReply
     data class Profile(val name: String) : VoiceReply
