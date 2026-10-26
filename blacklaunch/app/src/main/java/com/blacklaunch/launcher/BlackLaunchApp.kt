@@ -74,6 +74,8 @@ class BlackLaunchApp : Application() {
     val automationSettings: com.blacklaunch.launcher.settings.AutomationSettings by lazy { com.blacklaunch.launcher.settings.AutomationSettings(this) }
     val smartProfiles: com.blacklaunch.launcher.automation.SmartProfiles by lazy { com.blacklaunch.launcher.automation.SmartProfiles(this) }
     val hourlyChime: com.blacklaunch.launcher.automation.HourlyChime by lazy { com.blacklaunch.launcher.automation.HourlyChime(this) }
+    /** «Зосередження»: «Важкий вихід» режимів і фокус-таймер (етап 16). */
+    val focus: com.blacklaunch.launcher.profiles.FocusMode by lazy { com.blacklaunch.launcher.profiles.FocusMode(this) }
     val messageReader: com.blacklaunch.launcher.automation.MessageReader by lazy { com.blacklaunch.launcher.automation.MessageReader(this) }
 
     /** Голос відповідей поза екраном (не обривається, коли відкривається програма) — рушій із налаштувань голосу. */
@@ -168,6 +170,8 @@ class BlackLaunchApp : Application() {
         appScope.launch { customCommands.commands.collect { timeTriggers.rescheduleAll() } }
         appScope.launch { automationSettings.hourlyChime.collect { hourlyChime.reschedule() } }
         appScope.launch { watchProfileSwitches() }
+        // Фокус-таймер пережив перезапуск: минув — завершуємо (назад у попередній режим), інакше — будильник знову.
+        focus.restore()
         appScope.launch { applyProfileOnSwitch() }
         // Змінився профіль, його програми чи фільтр — перевірити сповіщення ще раз.
         appScope.launch {

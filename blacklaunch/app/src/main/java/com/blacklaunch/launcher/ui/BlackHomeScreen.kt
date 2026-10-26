@@ -174,6 +174,10 @@ fun BlackHomeScreen(
     settingsScreen: @Composable (onDismiss: () -> Unit) -> Unit,
     /** Відкрити налаштування ззовні (з результату пошуку): кожне збільшення — відкрити. */
     settingsRequest: Int = 0,
+    /** Збільшується, коли налаштування треба закрити (почався фокус-таймер). */
+    settingsClose: Int = 0,
+    /** Відкрити налаштування — через «Зосередження» (таймер, «Важкий вихід»). */
+    onSettingsRequest: (open: () -> Unit) -> Unit = { it() },
     /** Власні назви програми (з меню програми). */
     aliasDialog: @Composable (app: AppInfo, onDismiss: () -> Unit) -> Unit,
     /** Меню програми (довге натискання на результат пошуку). */
@@ -181,6 +185,7 @@ fun BlackHomeScreen(
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(settingsRequest) { if (settingsRequest > 0) showSettings = true }
+    LaunchedEffect(settingsClose) { if (settingsClose > 0) showSettings = false }
     // Повністю чорний екран: рядок стану ховається, поки нічого не відкрито.
     val idle = state is LauncherUiState.HomeIdle && !showSettings
     LaunchedEffect(idle) { onIdleChange(idle) }
@@ -211,7 +216,7 @@ fun BlackHomeScreen(
             iconFor = iconFor,
             onLaunch = onLaunch,
             onOpenSearch = onOpenSearch,
-            onLongPress = { showSettings = true },
+            onLongPress = { onSettingsRequest { showSettings = true } },
             onSwitchProfile = onSwitchProfile,
             onMoveApp = onMoveApp,
             onRemoveApp = onRemoveApp,

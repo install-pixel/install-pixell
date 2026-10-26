@@ -61,6 +61,7 @@ object SettingsTitles {
         "settings" -> R.string.setting_settings
         "monitor" -> R.string.setting_monitor
         "commands" -> R.string.custom_commands_title
+        "focus" -> R.string.focus_timer_title
         else -> R.string.group_settings
     }
 }

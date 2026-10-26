@@ -41,6 +41,14 @@ class ProfileViewModel(
         }
     }
 
+    fun createFrom(template: (String) -> LauncherProfile, onCreated: (String) -> Unit) {
+        viewModelScope.launch {
+            repository.createFrom(template)
+                .onSuccess(onCreated)
+                .onFailure { _messages.trySend(Message.SAVE_FAILED) }
+        }
+    }
+
     fun update(profile: LauncherProfile) {
         val position = profiles.value.indexOfFirst { it.id == profile.id }.takeIf { it >= 0 } ?: profiles.value.size
         viewModelScope.launch {

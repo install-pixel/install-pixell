@@ -77,11 +77,22 @@ object SettingsCatalog {
                 "my commands", "automations", "smart mode switching", "hourly time", "read messages aloud",
             ),
         ),
+        Entry(
+            "focus", FOCUS_ACTION,
+            listOf(
+                "зосередження", "фокус-таймер", "фокус", "не відволікатися", "режим концентрації",
+                "skupienie", "minutnik skupienia", "nie rozpraszać się",
+                "focus", "focus timer", "concentration", "no distractions",
+            ),
+        ),
         Entry("monitor", MONITOR_ACTION, listOf("моніторинг", "monitoring", "стан системи", "оперативна пам'ять", "температура телефона", "монітор", "dashboard", "system dashboard", "panel", "panel systemu", "ram")),
     )
 
     /** «Дія» розділу «Монітор системи» — Black Glass відкриває свій екран замість налаштувань Android. */
     const val MONITOR_ACTION = "com.blacklaunch.launcher.MONITOR"
+
+    /** «Зосередження»: сторінка профілів Black Glass (фокус-таймер, шаблон). */
+    const val FOCUS_ACTION = "com.blacklaunch.launcher.FOCUS"
 
     /** «Мої команди» Black Glass (автоматизації, голос і режими) — сторінка налаштувань лаунчера. */
     const val COMMANDS_ACTION = "com.blacklaunch.launcher.COMMANDS"

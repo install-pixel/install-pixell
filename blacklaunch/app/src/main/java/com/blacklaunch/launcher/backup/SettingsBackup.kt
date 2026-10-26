@@ -54,6 +54,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                     scopes.globalModes.value[p.id]?.let { put("globalMode", it.name) }
                     put("notificationFilter", p.id in scopes.notificationFilter.value)
                     put("notificationExtras", JSONArray(scopes.notificationExtras.value[p.id].orEmpty().toList()))
+                    put("exitDelay", app.focus.exitDelay(p.id))
                 }
             }))
             put("aliases", JSONObject(app.userAliasStore.aliases.value.mapValues { JSONArray(it.value.toList()) }))
@@ -130,6 +131,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
             p.optString("globalMode").takeIf { it.isNotEmpty() }?.let { scopes.setGlobalMode(id, enumOr(it, GlobalMode.ON)) }
             scopes.setNotificationFilter(id, p.optBoolean("notificationFilter"))
             scopes.setNotificationExtras(id, p.optJSONArray("notificationExtras")?.strings().orEmpty().toSet())
+            app.focus.setExitDelay(id, p.optInt("exitDelay"))
         }
         // Профілі, яких немає в копії, прибираємо — після збереження нових, тож останній не зникне.
         val keep = imported.map { it.getString("id") }.toSet()

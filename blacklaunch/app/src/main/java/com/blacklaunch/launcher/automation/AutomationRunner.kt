@@ -163,7 +163,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
                     return@forEach
                 }
                 StepCommand.PreviousProfile -> {
-                    app.profileRepository.previousActiveId()?.let { app.profileRepository.setActive(it) }
+                    app.profileRepository.previousActiveId()?.let(::setProfile)
                     return@forEach
                 }
                 is StepCommand.Wait, null -> Unit
@@ -212,7 +212,18 @@ class AutomationRunner(private val app: BlackLaunchApp) {
             val profiles = app.profileRepository.profiles.first()
             val profile = profiles.firstOrNull { SearchNormalizer.normalize(it.name) == q }
                 ?: profiles.firstOrNull { SearchNormalizer.normalize(it.name).startsWith(q) }
-            profile?.let { app.profileRepository.setActive(it.id) }
+            profile?.let { setProfile(it.id) }
+        }
+    }
+
+    /** Фокус-таймер не дає автоматизаціям вивести з режиму до кінця; «Важкий вихід» — дає (ви налаштували їх наперед). */
+    private fun setProfile(id: String) {
+        if (app.focus.automationMaySwitch(id)) {
+            app.profileRepository.setActive(id)
+        } else {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(app, R.string.focus_automation_skipped, android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

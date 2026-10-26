@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.profiles.FocusRules
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.NotificationMode
 import com.blacklaunch.launcher.profiles.PinnedEdits
@@ -114,6 +116,10 @@ fun ProfilesScreen(
     onSetActive: (String) -> Unit,
     onEdit: (String) -> Unit,
     onCreate: (String) -> Unit,
+    /** Новий режим за шаблоном «Зосередження» (етап 16d). */
+    onCreateFocus: () -> Unit = {},
+    /** Фокус-таймер: вибір режиму й тривалості. */
+    onStartFocus: () -> Unit = {},
 ) {
     var creating by rememberSaveable { mutableStateOf(false) }
     SettingsPage(stringResource(R.string.profiles_title), onBack) {
@@ -127,8 +133,14 @@ fun ProfilesScreen(
                 )
             }
             ActionOption(R.string.profile_new, Icons.Filled.Add) { creating = true }
+            ActionOption(R.string.focus_template_new, Icons.Filled.Star, onCreateFocus)
         }
         Note(stringResource(R.string.profiles_note))
+        Card {
+            Text(stringResource(R.string.focus_timer_title), color = Oled.TextPrimary, fontSize = 17.sp)
+            Note(stringResource(R.string.focus_timer_note))
+            ActionOption(R.string.focus_start_action, Icons.Filled.Lock, onStartFocus)
+        }
     }
     if (creating) {
         NameDialog(
@@ -217,6 +229,10 @@ fun ProfileEditScreen(
     notificationExtras: List<AppInfo> = emptyList(),
     onAddNotificationExtras: () -> Unit = {},
     onRemoveNotificationExtra: (AppInfo) -> Unit = {},
+    /** «Важкий вихід»: секунди відліку перед виходом з режиму (0 — одразу). */
+    exitDelay: Int = 0,
+    onExitDelayChange: (Int) -> Unit = {},
+    onStartFocus: () -> Unit = {},
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -293,6 +309,16 @@ fun ProfileEditScreen(
                 onDisplayChange(display.copy(quickSwitch = it))
             }
             ActionOption(R.string.display_apply_all, Icons.Filled.Done, onApplyDisplayToAll)
+        }
+
+        Card {
+            Text(stringResource(R.string.focus_exit_delay_title), color = Oled.TextPrimary, fontSize = 17.sp)
+            FocusRules.EXIT_DELAYS.forEach { seconds ->
+                val label = if (seconds == 0) stringResource(R.string.focus_exit_now) else stringResource(R.string.focus_exit_after, seconds)
+                TargetOption(label, exitDelay == seconds) { onExitDelayChange(seconds) }
+            }
+            Note(stringResource(R.string.focus_exit_delay_note))
+            ActionOption(R.string.focus_start_here, Icons.Filled.Lock, onStartFocus)
         }
 
         Card {

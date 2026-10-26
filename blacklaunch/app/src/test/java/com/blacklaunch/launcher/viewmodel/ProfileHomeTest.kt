@@ -1,6 +1,7 @@
 package com.blacklaunch.launcher.viewmodel
 
 import com.blacklaunch.launcher.apps.FakeAppSource
+import com.blacklaunch.launcher.profiles.FocusGate
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
 import kotlinx.coroutines.Dispatchers
@@ -143,5 +144,21 @@ class ProfileHomeTest {
         assertEquals(listOf("Scanner", "Sklado", "Telegram"), viewModel.home.value.pinned.map { it.label })
         viewModel.setPinned(telegram, false)
         assertEquals(listOf("Scanner", "Sklado"), viewModel.home.value.pinned.map { it.label })
+    }
+
+    @Test fun focusTimerBlocksSwitchAndAsksScreen() {
+        val vm = LauncherViewModel(apps, profileSource = profiles, computeDispatcher = Dispatchers.Main, focusGate = { FocusGate.Locked(60_000L) })
+        vm.switchProfile(+1)
+        assertEquals("work", vm.home.value.profileId)
+        assertEquals(FocusPrompt.Locked(60_000L), vm.focusPrompts.tryReceive().getOrNull())
+    }
+
+    @Test fun exitDelaySwitchesOnlyAfterConfirmation() {
+        val vm = LauncherViewModel(apps, profileSource = profiles, computeDispatcher = Dispatchers.Main, focusGate = { FocusGate.Delay(30) })
+        vm.activateProfile("rest")
+        assertEquals("work", vm.home.value.profileId)
+        assertEquals(FocusPrompt.Exit("rest", "Відпочинок", 30), vm.focusPrompts.tryReceive().getOrNull())
+        vm.activateConfirmed("rest")
+        assertEquals("rest", vm.home.value.profileId)
     }
 }

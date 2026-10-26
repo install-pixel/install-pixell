@@ -19,6 +19,8 @@ import com.blacklaunch.launcher.global.ResultGroup
 import com.blacklaunch.launcher.profiles.HomeGrid
 import com.blacklaunch.launcher.profiles.HomeLayoutStore
 import com.blacklaunch.launcher.profiles.InMemoryHomeLayoutStore
+import com.blacklaunch.launcher.profiles.FocusGate
+import com.blacklaunch.launcher.profiles.FocusRules
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
 import com.blacklaunch.launcher.profiles.quickNeighbour
@@ -182,6 +184,8 @@ class LauncherViewModel(
     private val previousProfileId: () -> String? = { null },
     /** Кроки команди з урахуванням умов (null — умови команди не виконані). */
     private val resolveCommand: suspend (CustomCommand) -> List<String>? = { it.stepTexts },
+    /** «Зосередження»: чи можна зараз перейти в режим (id) — фокус-таймер і «Важкий вихід». */
+    private val focusGate: (String) -> FocusGate = { FocusGate.Allowed },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -252,6 +256,11 @@ class LauncherViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeState())
 
     /** Назва профілю, на який щойно перемкнули, — показується на мить. */
+    private val _focusPrompts = Channel<FocusPrompt>(Channel.CONFLATED)
+
+    /** Перемикання затримане «Зосередженням»: екран показує відлік чи «ще 23 хв». */
+    val focusPrompts: ReceiveChannel<FocusPrompt> get() = _focusPrompts
+
     private val _profileSwitched = Channel<String>(Channel.CONFLATED)
     val profileSwitched: ReceiveChannel<String> get() = _profileSwitched
 
@@ -476,7 +485,28 @@ class LauncherViewModel(
         closeSearch()
     }
 
-    private fun activate(profile: LauncherProfile) {
+    /** Перемикання, яке робить користувач: спершу «Зосередження». true — перемкнуто одразу. */
+    private fun activate(profile: LauncherProfile): Boolean = when (val gate = focusGate(profile.id)) {
+        FocusGate.Allowed -> {
+            switchTo(profile)
+            true
+        }
+        is FocusGate.Locked -> {
+            _focusPrompts.trySend(FocusPrompt.Locked(gate.remainingMs))
+            false
+        }
+        is FocusGate.Delay -> {
+            _focusPrompts.trySend(FocusPrompt.Exit(profile.id, profile.name, gate.seconds))
+            false
+        }
+    }
+
+    /** Відлік «Важкого виходу» минув і вихід підтверджено. */
+    fun activateConfirmed(id: String) {
+        profiles.value.firstOrNull { it.id == id }?.let(::switchTo)
+    }
+
+    private fun switchTo(profile: LauncherProfile) {
         profileSource.setActive(profile.id)
         _profileSwitched.trySend(profile.name)
     }
@@ -688,9 +718,15 @@ class LauncherViewModel(
             is VoiceCommand.SwitchProfile -> {
                 val profile = findProfile(command.name)
                 if (profile != null) {
+                    val gate = focusGate(profile.id)
                     activate(profile)
                     closeSearch()
-                    _voiceReplies.trySend(VoiceReply.Profile(profile.name))
+                    when (gate) {
+                        FocusGate.Allowed -> _voiceReplies.trySend(VoiceReply.Profile(profile.name))
+                        is FocusGate.Locked -> _voiceReplies.trySend(VoiceReply.FocusLocked(FocusRules.minutesLeft(gate.remainingMs)))
+                        // Відлік на екрані — відповідь не потрібна.
+                        is FocusGate.Delay -> Unit
+                    }
                 } else {
                     _messages.trySend(UiMessage.PROFILE_NOT_FOUND)
                     _voiceReplies.trySend(VoiceReply.ProfileMissing)
@@ -832,4 +868,13 @@ sealed interface VoiceReply {
     data object SearchShown : VoiceReply
     data class Profile(val name: String) : VoiceReply
     data object ProfileMissing : VoiceReply
+
+    /** Фокус-таймер: режим не змінено, лишилось [minutes] хв. */
+    data class FocusLocked(val minutes: Int) : VoiceReply
+}
+
+/** Перемикання, затримане «Зосередженням». */
+sealed interface FocusPrompt {
+    data class Locked(val remainingMs: Long) : FocusPrompt
+    data class Exit(val profileId: String, val profileName: String, val seconds: Int) : FocusPrompt
 }

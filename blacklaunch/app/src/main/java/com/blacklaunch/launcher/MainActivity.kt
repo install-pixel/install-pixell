@@ -56,9 +56,22 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
+import com.blacklaunch.launcher.profiles.FocusGate
+import com.blacklaunch.launcher.profiles.FocusRules
+import com.blacklaunch.launcher.profiles.FocusSession
+import com.blacklaunch.launcher.viewmodel.FocusPrompt
+import com.blacklaunch.launcher.ui.ExitDelayDialog
+import com.blacklaunch.launcher.ui.FocusLockedDialog
+import com.blacklaunch.launcher.ui.FocusStartDialog
+import com.blacklaunch.launcher.ui.FocusSummaryDialog
+import com.blacklaunch.launcher.ui.tickingNow
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.backup.SettingsBackup
 import com.blacklaunch.launcher.profiles.SearchScope
+import com.blacklaunch.launcher.profiles.GlobalMode
+import com.blacklaunch.launcher.profiles.LauncherProfile
+import com.blacklaunch.launcher.profiles.ProfileDisplay
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.blacklaunch.launcher.profiles.ProfileNotificationFilter
 import com.blacklaunch.launcher.voice.VoiceActionRunner
 import com.blacklaunch.launcher.timer.BlackTimer
@@ -157,6 +170,7 @@ class MainActivity : ComponentActivity() {
                     phraseAppLabel = app.globalSearch::phraseAppLabel,
                     startShortcut = app.globalSearch::startShortcut,
                     stepPackageAllowed = app::allowedInMode,
+                    focusGate = app.focus::switchGate,
                     lastPlayerPackage = { com.blacklaunch.launcher.automation.MediaKeys.lastPlayerPackage(app) },
                     isMusicApp = { info -> com.blacklaunch.launcher.automation.MediaKeys.isPlayer(app, info.packageName, info.category) },
                     speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
@@ -310,8 +324,22 @@ class MainActivity : ComponentActivity() {
                 for (unused in viewModel.openMonitor) openMonitor()
             }
         }
+        // «Зосередження» затримало перемикання: «ще 23 хв» або відлік «Важкого виходу».
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                for (prompt in viewModel.focusPrompts) {
+                    focusUi.value = when (prompt) {
+                        is FocusPrompt.Locked -> {
+                            app.focus.noteAttempt()
+                            FocusUi.Locked
+                        }
+                        is FocusPrompt.Exit -> FocusUi.Exit(prompt.profileId, prompt.profileName, prompt.seconds)
+                    }
+                }
+            }
+        }
         // Запущено як «цифровий асистент» — одразу пошук і мікрофон.
-        if (savedInstanceState == null && !handleAssist(intent)) handleRunSteps(intent)
+        if (savedInstanceState == null && !handleAssist(intent) && !handleRunSteps(intent)) handleSwitchNext(intent)
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
             val home by viewModel.home.collectAsStateWithLifecycle()
@@ -357,10 +385,23 @@ class MainActivity : ComponentActivity() {
             BackHandler(enabled = monitorShown) { monitorOpen.value = false }
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
+                val focusSession by app.focus.session.collectAsStateWithLifecycle()
+                val focusEndsAt = focusSession?.endsAt
+                // Фокус-таймер: на плашці — скільки ще лишилось (оновлюється, лише поки таймер іде).
+                val focusLeft = if (focusEndsAt != null) {
+                    // Хвилини на плашці — досить оновлювати раз на 15 с, а не перемальовувати екран щосекунди.
+                    val now = tickingNow(FOCUS_LABEL_TICK_MS)
+                    (focusEndsAt - now).takeIf { it > 0 }
+                } else {
+                    null
+                }
+                val shownHome = (if (display.showApps) home else home.copy(pinned = emptyList())).let { shown ->
+                    if (focusLeft != null) shown.copy(profileName = getString(R.string.focus_left, home.profileName, FocusRules.minutesLeft(focusLeft))) else shown
+                }
                 BlackHomeScreen(
                     state = state,
                     // «Показувати програми на екрані» вимкнено — значків не видно, профіль працює як раніше.
-                    home = if (display.showApps) home else home.copy(pinned = emptyList()),
+                    home = shownHome,
                     profileBanner = banner,
                     monitor = if (display.monitor || monitorShown) {
                         { modifier ->
@@ -374,7 +415,8 @@ class MainActivity : ComponentActivity() {
                     onMoveApp = viewModel::moveApp,
                     onRemoveApp = viewModel::unpin,
                     profileSwipe = appearance.profileSwipe,
-                    showProfileLabel = display.profileLabel,
+                    // Під час таймера плашка видна завжди: натискання — скільки лишилось і «достроково».
+                    showProfileLabel = display.profileLabel || focusLeft != null,
                     glance = if (display.glance) glanceInfo else null,
                     onIdleChange = { idle ->
                         homeIdle = idle
@@ -407,6 +449,8 @@ class MainActivity : ComponentActivity() {
                     voiceState = voiceState,
                     onMicClick = ::onMicClick,
                     settingsRequest = settingsRequest.collectAsStateWithLifecycle().value,
+                    settingsClose = settingsClose.collectAsStateWithLifecycle().value,
+                    onSettingsRequest = ::requestSettings,
                     settingsScreen = { dismiss ->
                         var page by remember { mutableStateOf(requestedSettingsPage?.also { requestedSettingsPage = null } ?: SettingsNav.Main) }
                         when (val current = page) {
@@ -567,6 +611,7 @@ class MainActivity : ComponentActivity() {
                         onCancel = { pendingCall = null },
                     )
                 }
+                FocusDialogs(home.profileName, focusSession)
             }
             // Голос поверх заблокованого екрана: лише чорний екран із мікрофоном — нічого з телефона не видно.
             val lockedShown by lockedVoice.collectAsStateWithLifecycle()
@@ -791,11 +836,19 @@ class MainActivity : ComponentActivity() {
             is GlobalResult.Profile -> viewModel.activateProfile(result.profileId)
             is GlobalResult.Setting -> if (result.action == SettingsCatalog.MONITOR_ACTION) {
                 openMonitor()
+            } else if (result.action == SettingsCatalog.FOCUS_ACTION) {
+                viewModel.forgetSearch()
+                requestSettings {
+                    requestedSettingsPage = SettingsNav.Profiles
+                    settingsRequest.value++
+                }
             } else if (result.action == SettingsCatalog.COMMANDS_ACTION) {
                 // Власна сторінка Black Glass — налаштування лаунчера одразу на «Моїх командах».
-                requestedSettingsPage = SettingsNav.CustomCommands
                 viewModel.forgetSearch()
-                settingsRequest.value++
+                requestSettings {
+                    requestedSettingsPage = SettingsNav.CustomCommands
+                    settingsRequest.value++
+                }
             } else {
                 startOrToast(Intent(result.action), fallback = Intent(Settings.ACTION_SETTINGS))
             }
@@ -1150,6 +1203,20 @@ class MainActivity : ComponentActivity() {
         val notificationAccess by notificationAccessState.collectAsStateWithLifecycle()
         // Доступ «Не турбувати» перевіряємо щоразу при поверненні з налаштувань Android.
         val dndAccess by dndAccessState.collectAsStateWithLifecycle()
+        val exitDelays by app.focus.exitDelays.collectAsStateWithLifecycle()
+        // Фокус-таймер: з якого режиму відкрили вибір (null — вікно закрите, "" — без попереднього вибору).
+        var focusStartFor by rememberSaveable { mutableStateOf<String?>(null) }
+        focusStartFor?.let { initial ->
+            FocusStartDialog(
+                profiles = profiles,
+                initialId = initial.ifEmpty { activeId },
+                onStart = { id, minutes, strict ->
+                    focusStartFor = null
+                    startFocus(id, minutes, strict)
+                },
+                onDismiss = { focusStartFor = null },
+            )
+        }
         when (page) {
             SettingsNav.BatteryApps -> AppListScreen(
                 title = stringResource(R.string.battery_apps_open),
@@ -1166,6 +1233,8 @@ class MainActivity : ComponentActivity() {
                 onSetActive = profileViewModel::setActive,
                 onEdit = { onNavigate(SettingsNav.Edit(it)) },
                 onCreate = { name -> profileViewModel.create(name) { id -> onNavigate(SettingsNav.Edit(id)) } },
+                onCreateFocus = { createFocusProfile(profiles) { id -> onNavigate(SettingsNav.Edit(id)) } },
+                onStartFocus = { focusStartFor = "" },
             )
             is SettingsNav.Edit -> {
                 // Щойно створений профіль може ще не встигнути прийти з бази — чекаємо мить.
@@ -1203,6 +1272,9 @@ class MainActivity : ComponentActivity() {
                     onRemoveNotificationExtra = { removed ->
                         app.searchScopes.setNotificationExtras(profile.id, notifExtras[profile.id].orEmpty() - removed.packageName)
                     },
+                    exitDelay = exitDelays[profile.id] ?: 0,
+                    onExitDelayChange = { app.focus.setExitDelay(profile.id, it) },
+                    onStartFocus = { focusStartFor = profile.id },
                 )
             }
             is SettingsNav.PickApp -> {
@@ -1243,6 +1315,52 @@ class MainActivity : ComponentActivity() {
             // Невідома сторінка не лишає порожній чорний екран без «Назад» — повертаємось на головну налаштувань.
             else -> LaunchedEffect(page) { onNavigate(SettingsNav.Main) }
         }
+    }
+
+    /**
+     * Шаблон «Зосередження» (етап 16d): лише свої програми (спершу телефон і контакти — дзвінки завжди), глобальний
+     * пошук «за програмами», сповіщення лише від своїх, «Не турбувати» й вібрація, без підказок і останніх запитів,
+     * не в швидкому перемиканні, «Важкий вихід» 30 с. Далі — сторінка режиму, щоб додати свої програми.
+     */
+    private fun createFocusProfile(existing: List<LauncherProfile>, onCreated: (String) -> Unit) {
+        val base = getString(R.string.focus_template_name)
+        val names = existing.map { it.name }.toSet()
+        val name = generateSequence(1) { it + 1 }.map { if (it == 1) base else "$base $it" }.first { it !in names }
+        val roles = rolePackages()
+        val phoneApps = app.appRepository.apps.value
+            .filter { it.packageName in roles.dialer || it.packageName in roles.contacts }
+            .distinctBy { it.packageName }
+            .map { it.key }
+        profileViewModel.createFrom(
+            template = { id ->
+                LauncherProfile(
+                    id = id,
+                    name = name,
+                    pinnedAppKeys = phoneApps,
+                    soundMode = SoundMode.VIBRATE,
+                    notificationMode = NotificationMode.DO_NOT_DISTURB,
+                )
+            },
+            onCreated = { id ->
+                app.searchScopes.set(id, SearchScope.PROFILE_ONLY)
+                app.searchScopes.setGlobalMode(id, GlobalMode.BY_APPS)
+                app.searchScopes.setNotificationFilter(id, true)
+                app.profileDisplay.set(
+                    id,
+                    ProfileDisplay(
+                        glance = false,
+                        profileLabel = true,
+                        hideStatusBar = true,
+                        suggestions = false,
+                        recentQueries = false,
+                        allAppsButton = false,
+                        quickSwitch = false,
+                    ),
+                )
+                app.focus.setExitDelay(id, FOCUS_TEMPLATE_DELAY_S)
+                onCreated(id)
+            },
+        )
     }
 
     /** Завантаження — браузером: у BlackLaunch немає дозволу INTERNET. */
@@ -1353,9 +1471,88 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (handleAssist(intent)) return
         if (handleRunSteps(intent)) return
+        if (handleSwitchNext(intent)) return
         monitorOpen.value = false
         voice.cancel()
         if (!wasStopped) viewModel.forgetSearch()
+    }
+
+    /** Плитка в шторці під час «Зосередження»: перемикання йде через екран (відлік чи «ще 23 хв»). */
+    private fun handleSwitchNext(intent: Intent?): Boolean {
+        if (intent?.getBooleanExtra(EXTRA_SWITCH_NEXT, false) != true) return false
+        intent.removeExtra(EXTRA_SWITCH_NEXT)
+        viewModel.switchProfile(1)
+        return true
+    }
+
+    /** Налаштування Black Glass — через «Зосередження»: під час таймера ні, у режимі з «Важким виходом» — після відліку. */
+    private fun requestSettings(open: () -> Unit) {
+        when (val gate = app.focus.settingsGate()) {
+            FocusGate.Allowed -> open()
+            is FocusGate.Locked -> {
+                app.focus.noteAttempt()
+                focusUi.value = FocusUi.Locked
+            }
+            is FocusGate.Delay -> focusUi.value = FocusUi.OpenSettings(gate.seconds, open)
+        }
+    }
+
+    /** Фокус-таймер: налаштування закриваються (інакше в них можна було б усе вимкнути), «Суворо» — окреме вікно. */
+    private fun startFocus(profileId: String, minutes: Int, strict: Boolean) {
+        app.focus.start(profileId, minutes, strict)
+        viewModel.forgetSearch()
+        settingsClose.value++
+        if (strict) startActivity(Intent(this, FocusActivity::class.java))
+    }
+
+    @Composable
+    private fun FocusDialogs(activeName: String, session: FocusSession?) {
+        val ui by focusUi.collectAsStateWithLifecycle()
+        val summary by app.focus.summary.collectAsStateWithLifecycle()
+        val profiles by profileViewModel.profiles.collectAsStateWithLifecycle()
+        val dismiss = { focusUi.value = null }
+        when (val current = ui) {
+            is FocusUi.Exit -> ExitDelayDialog(
+                title = stringResource(R.string.focus_exit_title, activeName),
+                seconds = current.seconds,
+                confirm = stringResource(R.string.focus_exit_confirm, current.profileName),
+                onConfirm = {
+                    dismiss()
+                    viewModel.activateConfirmed(current.profileId)
+                },
+                onDismiss = dismiss,
+            )
+            is FocusUi.OpenSettings -> ExitDelayDialog(
+                title = stringResource(R.string.focus_settings_title),
+                seconds = current.seconds,
+                confirm = stringResource(R.string.focus_settings_confirm),
+                onConfirm = {
+                    dismiss()
+                    current.open()
+                },
+                onDismiss = dismiss,
+            )
+            FocusUi.Locked -> if (session != null && app.focus.running()) {
+                FocusLockedDialog(
+                    profileName = profiles.firstOrNull { it.id == session.profileId }?.name.orEmpty(),
+                    endsAt = session.endsAt,
+                    strict = session.strict,
+                    onEarlyExit = {
+                        dismiss()
+                        app.focus.endEarly()
+                    },
+                    onOpenStrict = {
+                        dismiss()
+                        startActivity(Intent(this, FocusActivity::class.java))
+                    },
+                    onDismiss = dismiss,
+                )
+            } else {
+                LaunchedEffect(Unit) { dismiss() }
+            }
+            null -> Unit
+        }
+        if (ui == null) summary?.let { FocusSummaryDialog(it, onDismiss = app.focus::clearSummary) }
     }
 
     /** Автоматизація: кроки, яким потрібен екран, — після дотику до сповіщення чи одразу. */
@@ -1448,6 +1645,7 @@ class MainActivity : ComponentActivity() {
         VoiceReply.SearchShown -> getString(R.string.reply_search)
         is VoiceReply.Profile -> getString(R.string.reply_profile, reply.name)
         VoiceReply.ProfileMissing -> getString(R.string.reply_profile_missing)
+        is VoiceReply.FocusLocked -> resources.getQuantityString(R.plurals.reply_focus_locked, reply.minutes, reply.minutes)
     }
 
     private fun endLockedVoice() {
@@ -1506,6 +1704,18 @@ class MainActivity : ComponentActivity() {
     private var requestedSettingsPage: SettingsNav? = null
     private val settingsRequest = MutableStateFlow(0)
 
+    /** Закрити налаштування (почався фокус-таймер). */
+    private val settingsClose = MutableStateFlow(0)
+
+    /** Вікно «Зосередження» на екрані. */
+    private val focusUi = MutableStateFlow<FocusUi?>(null)
+
+    private sealed interface FocusUi {
+        data object Locked : FocusUi
+        data class Exit(val profileId: String, val profileName: String, val seconds: Int) : FocusUi
+        data class OpenSettings(val seconds: Int, val open: () -> Unit) : FocusUi
+    }
+
     /** Чорний головний екран без відкритого пошуку чи налаштувань. */
     private var homeIdle = true
 
@@ -1539,7 +1749,12 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Кроки автоматизації, яким потрібен екран (відкрити програму тощо). */
         const val EXTRA_RUN_STEPS = "com.blacklaunch.launcher.RUN_STEPS"
+
+        /** Плитка: «наступний режим», коли його затримує «Зосередження». */
+        const val EXTRA_SWITCH_NEXT = "com.blacklaunch.launcher.SWITCH_NEXT"
         private const val PROFILE_BANNER_MS = 1_500L
+        private const val FOCUS_LABEL_TICK_MS = 15_000L
+        private const val FOCUS_TEMPLATE_DELAY_S = 30
         private const val THUMB_CACHE = 200
         private const val THUMB_PX = 256
         private const val LOCKED_RESULT_GRACE_MS = 400L

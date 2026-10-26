@@ -165,6 +165,19 @@
             </intent-filter>
         </activity>
 
+        <!-- Фокус-таймер «Суворо»: окреме вікно з відліком, яке закріплює системне «Закріплення програми». -->
+        <activity
+            android:name=".FocusActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.blacklaunch.launcher.focus"
+            android:autoRemoveFromRecents="true"
+            android:theme="@style/Theme.BlackLaunch" />
+        <!-- Кінець фокус-таймера: один будильник, лише для Black Glass. -->
+        <receiver
+            android:name=".profiles.FocusReceiver"
+            android:exported="false" />
+
         <!-- Плитка в шторці: перемикання профілю з будь-якої програми. -->
         <!-- «Сповіщення лише від програм профілю»: працює лише після «Доступу до сповіщень» від користувача. -->
         <service

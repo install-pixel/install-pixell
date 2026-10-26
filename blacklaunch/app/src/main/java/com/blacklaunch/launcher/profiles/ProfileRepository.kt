@@ -65,6 +65,17 @@ class ProfileRepository(
         id
     }.logFailure("create")
 
+    /** Новий профіль одразу з програмами, звуком і сповіщеннями (шаблон «Зосередження»). */
+    suspend fun createFrom(template: (String) -> LauncherProfile): Result<String> = runCatching {
+        val id = UUID.randomUUID().toString()
+        val profile = template(id)
+        transaction {
+            dao.upsert(profile.toEntity(dao.maxPosition() + 1))
+            dao.insertPinned(profile.pinnedAppKeys.distinct().mapIndexed { index, key -> PinnedAppEntity(id, key, index) })
+        }
+        id
+    }.logFailure("createFrom")
+
     /** Зберігає профіль повністю: властивості, закріплені програми (з порядком) і правила. */
     suspend fun save(profile: LauncherProfile, position: Int): Result<Unit> = runCatching {
         transaction {
