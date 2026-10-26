@@ -38,6 +38,9 @@ class StepTemplatesTest {
         "step_bluetooth" to (emptyList<Any>() to VoiceCommand.Action(VoiceAction.Panel(SystemPanel.BLUETOOTH))),
         "step_mobile_data" to (emptyList<Any>() to VoiceCommand.Action(VoiceAction.Panel(SystemPanel.INTERNET))),
         "step_time" to (emptyList<Any>() to VoiceCommand.Action(VoiceAction.Time)),
+        "step_route" to (listOf<Any>("Робота") to VoiceCommand.Action(VoiceAction.Navigate("Робота"))),
+        "step_call" to (listOf<Any>("Олег") to VoiceCommand.Action(VoiceAction.Call("олег"))),
+        "step_sms" to (listOf<Any>("Олег", "Буду пізніше") to VoiceCommand.Action(VoiceAction.Sms("олег", "Буду пізніше"))),
     )
 
     @Test fun everyTemplateParsesInEveryLanguage() {

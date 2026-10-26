@@ -706,4 +706,26 @@
     <string name="voice_locked_listening">Słucham…</string>
     <string name="voice_locked_wait">Chwileczkę…</string>
     <string name="voice_locked_hint">Mów. Przed wykonaniem telefon poprosi o odblokowanie. Dotknij w dowolnym miejscu, by anulować.</string>
+    <string name="step_route">trasa do %1$s</string>
+    <string name="step_call">zadzwoń do %1$s</string>
+    <string name="step_sms">napisz sms do %1$s treść %2$s</string>
+    <string name="cstep_wait_seconds">czekaj %1$d sekund</string>
+    <string name="cstep_wait_minutes">czekaj %1$d minut</string>
+    <string name="cstep_home">ekran główny</string>
+    <string name="cstep_previous_profile">poprzedni tryb</string>
+    <string name="custom_step_from_search">Z wyszukiwania</string>
+    <string name="custom_step_route">Trasa do…</string>
+    <string name="custom_step_call">Zadzwoń</string>
+    <string name="custom_step_sms">SMS</string>
+    <string name="custom_step_wait">Czekaj</string>
+    <string name="custom_step_home">Na ekran główny</string>
+    <string name="custom_step_place">Dokąd</string>
+    <string name="custom_step_contact">Do kogo (imię z kontaktów)</string>
+    <string name="custom_step_sms_text">Treść</string>
+    <string name="custom_step_sms_note">Wiadomość otworzy się gotowa — „Wyślij” naciskasz Ty.</string>
+    <string name="custom_wait_in_minutes">W minutach</string>
+    <string name="custom_step_wait_note">Kroki po przerwie wykonają się później. Długą przerwę odmierza budzik systemu — nic nie działa w tle; w głębokim uśpieniu Android może ją przesunąć o kilka minut.</string>
+    <string name="custom_step_search_hint">Np. „trasa do pracy”, „timer 5 minut”, nazwa aplikacji</string>
+    <string name="command_reverse">Utwórz polecenie odwrotne</string>
+    <string name="command_reverse_note">Odwrotne zdarzenie i przeciwne kroki (muzyka → pauza, tryb → poprzedni tryb, aplikacja → ekran główny). Sprawdź i zapisz.</string>
 </resources>

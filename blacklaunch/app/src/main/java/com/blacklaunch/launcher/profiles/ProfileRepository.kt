@@ -15,6 +15,9 @@ import java.util.UUID
 interface ActiveProfileStore {
     val activeId: Flow<String?>
     fun setActive(id: String)
+
+    /** Профіль, що був активним до останнього перемикання (для кроку «попередній режим»). */
+    val previousId: String? get() = null
 }
 
 class ProfileRepository(
@@ -53,6 +56,8 @@ class ProfileRepository(
     }.logFailure("ensureDefaults")
 
     override fun setActive(id: String) = activeStore.setActive(id)
+
+    fun previousActiveId(): String? = activeStore.previousId
 
     suspend fun create(name: String): Result<String> = runCatching {
         val id = UUID.randomUUID().toString()

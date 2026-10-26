@@ -184,6 +184,10 @@
         <!-- Автоматизації: Android будить лише в момент підключення/відключення Bluetooth-пристрою.
              Подію надсилає системна програма Bluetooth (не сама система), тому приймач відкритий,
              але лише для відправника з дозволом Bluetooth. -->
+        <!-- Крок «зачекати»: решта кроків команди після паузи (системний будильник, лише для Black Glass). -->
+        <receiver
+            android:name=".automation.StepAlarmReceiver"
+            android:exported="false" />
         <receiver
             android:name=".automation.BluetoothAutomationReceiver"
             android:exported="true"

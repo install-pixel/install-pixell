@@ -14,12 +14,18 @@ class PrefsActiveProfileStore(context: Context) : ActiveProfileStore {
     private val _activeId = MutableStateFlow(prefs.getString(KEY_ACTIVE, null))
     override val activeId: StateFlow<String?> = _activeId.asStateFlow()
 
+    override val previousId: String? get() = prefs.getString(KEY_PREVIOUS, null)
+
     override fun setActive(id: String) {
-        prefs.edit().putString(KEY_ACTIVE, id).apply()
+        val current = _activeId.value
+        prefs.edit().putString(KEY_ACTIVE, id).apply {
+            if (current != null && current != id) putString(KEY_PREVIOUS, current)
+        }.apply()
         _activeId.value = id
     }
 
     private companion object {
         const val KEY_ACTIVE = "active_profile"
+        const val KEY_PREVIOUS = "previous_profile"
     }
 }

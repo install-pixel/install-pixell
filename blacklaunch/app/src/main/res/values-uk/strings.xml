@@ -706,4 +706,26 @@
     <string name="voice_locked_listening">Слухаю…</string>
     <string name="voice_locked_wait">Хвилинку…</string>
     <string name="voice_locked_hint">Говоріть. Перед виконанням телефон попросить розблокувати. Дотик будь-де — скасувати.</string>
+    <string name="step_route">маршрут до %1$s</string>
+    <string name="step_call">подзвони %1$s</string>
+    <string name="step_sms">напиши смс %1$s текст %2$s</string>
+    <string name="cstep_wait_seconds">зачекай %1$d секунд</string>
+    <string name="cstep_wait_minutes">зачекай %1$d хвилин</string>
+    <string name="cstep_home">головний екран</string>
+    <string name="cstep_previous_profile">попередній режим</string>
+    <string name="custom_step_from_search">З пошуку</string>
+    <string name="custom_step_route">Маршрут до…</string>
+    <string name="custom_step_call">Подзвонити</string>
+    <string name="custom_step_sms">SMS</string>
+    <string name="custom_step_wait">Зачекати</string>
+    <string name="custom_step_home">На головний екран</string>
+    <string name="custom_step_place">Куди</string>
+    <string name="custom_step_contact">Кому (ім\'я з контактів)</string>
+    <string name="custom_step_sms_text">Текст</string>
+    <string name="custom_step_sms_note">Повідомлення відкриється готовим — «Надіслати» натискаєте ви.</string>
+    <string name="custom_wait_in_minutes">У хвилинах</string>
+    <string name="custom_step_wait_note">Кроки після паузи виконаються пізніше. Довгу паузу витримує системний будильник — у фоні нічого не працює; у глибокому сні Android може зсунути її на кілька хвилин.</string>
+    <string name="custom_step_search_hint">Напр. «маршрут до роботи», «таймер 5 хвилин», назва програми</string>
+    <string name="command_reverse">Створити зворотну команду</string>
+    <string name="command_reverse_note">Подія навпаки й протилежні кроки (музика → пауза, режим → попередній режим, програма → головний екран). Перевірте й збережіть.</string>
 </resources>

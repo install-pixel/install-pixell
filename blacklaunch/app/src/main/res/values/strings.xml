@@ -706,4 +706,26 @@
     <string name="voice_locked_listening">Listening…</string>
     <string name="voice_locked_wait">One moment…</string>
     <string name="voice_locked_hint">Speak. Before doing anything the phone will ask you to unlock it. Tap anywhere to cancel.</string>
+    <string name="step_route">route to %1$s</string>
+    <string name="step_call">call %1$s</string>
+    <string name="step_sms">send sms to %1$s saying %2$s</string>
+    <string name="cstep_wait_seconds">wait %1$d seconds</string>
+    <string name="cstep_wait_minutes">wait %1$d minutes</string>
+    <string name="cstep_home">home screen</string>
+    <string name="cstep_previous_profile">previous mode</string>
+    <string name="custom_step_from_search">From search</string>
+    <string name="custom_step_route">Route to…</string>
+    <string name="custom_step_call">Call</string>
+    <string name="custom_step_sms">SMS</string>
+    <string name="custom_step_wait">Wait</string>
+    <string name="custom_step_home">To the home screen</string>
+    <string name="custom_step_place">Where to</string>
+    <string name="custom_step_contact">Who (name from contacts)</string>
+    <string name="custom_step_sms_text">Text</string>
+    <string name="custom_step_sms_note">The message opens ready — you press Send.</string>
+    <string name="custom_wait_in_minutes">In minutes</string>
+    <string name="custom_step_wait_note">Steps after the pause run later. Long pauses use the system alarm — nothing runs in the background; in deep sleep Android may shift it by a few minutes.</string>
+    <string name="custom_step_search_hint">e.g. “route to work”, “timer 5 minutes”, an app name</string>
+    <string name="command_reverse">Create reverse command</string>
+    <string name="command_reverse_note">Opposite event and opposite steps (music → pause, mode → previous mode, app → home screen). Check and save it.</string>
 </resources>

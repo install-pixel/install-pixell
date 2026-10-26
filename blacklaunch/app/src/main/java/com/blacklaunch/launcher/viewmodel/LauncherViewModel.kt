@@ -40,6 +40,8 @@ import com.blacklaunch.launcher.search.AppSuggestions
 import com.blacklaunch.launcher.search.InMemoryRecentQueries
 import com.blacklaunch.launcher.search.RecentQueries
 import com.blacklaunch.launcher.commands.CustomCommandMatcher
+import com.blacklaunch.launcher.commands.StepCommand
+import com.blacklaunch.launcher.commands.StepCommands
 import com.blacklaunch.launcher.voice.VoiceAction
 import com.blacklaunch.launcher.voice.VoiceActionKind
 import com.blacklaunch.launcher.voice.VoiceActionParser
@@ -155,6 +157,10 @@ class LauncherViewModel(
     /** Чи профіль у швидкому перемиканні (свайпи, подвійний дотик, назва профілю). */
     private val inQuickSwitch: (String) -> Boolean = { true },
     /** «Лише якщо» команди: чи підключено вибрані навушники, зарядку… (перевірка в момент запуску). */
+    /** Крок «зачекати»: решта кроків пізніше (коротко — у Black Glass, довго — системним будильником). */
+    private val scheduleSteps: (List<String>, Int) -> Unit = { _, _ -> },
+    /** Профіль, що був до останнього перемикання, — для кроку «попередній режим». */
+    private val previousProfileId: () -> String? = { null },
     /** Кроки команди з урахуванням умов (null — умови команди не виконані). */
     private val resolveCommand: suspend (CustomCommand) -> List<String>? = { it.stepTexts },
 ) : ViewModel() {
@@ -495,7 +501,20 @@ class LauncherViewModel(
 
     /** Кроки по черзі — «Моя команда» або решта автоматизації після дотику до сповіщення. */
     fun runSteps(steps: List<String>) {
-        steps.forEach { step ->
+        val (now, wait, rest) = StepCommands.splitAtWait(steps)
+        if (wait != null && rest.isNotEmpty()) scheduleSteps(rest, wait)
+        now.forEach { step ->
+            when (StepCommands.parse(step)) {
+                StepCommand.Home -> {
+                    forgetSearch()
+                    return@forEach
+                }
+                StepCommand.PreviousProfile -> {
+                    previousProfileId()?.let { id -> profiles.value.firstOrNull { it.id == id } }?.let(::activate)
+                    return@forEach
+                }
+                is StepCommand.Wait, null -> Unit
+            }
             when (val parsed = VoiceCommandParser.parse(step)) {
                 is VoiceCommand.Action -> _voiceActions.trySend(parsed.action)
                 is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let(::activate)

@@ -1,6 +1,17 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.annotation.StringRes
+import com.blacklaunch.launcher.commands.StepTexts
+import com.blacklaunch.launcher.commands.StepCommands
+import com.blacklaunch.launcher.commands.StepCommand
+import com.blacklaunch.launcher.commands.CommandReverse
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -99,6 +110,7 @@ internal fun CustomCommandsCard(
             onSave = { onSave(it); editing = null },
             onDelete = if (current.id.isEmpty()) null else ({ onDelete(current.id); editing = null }),
             onCancel = { editing = null },
+            onReverse = { editing = it },
         )
         return
     }
@@ -136,7 +148,7 @@ internal fun CustomCommandsCard(
     }
 }
 
-private enum class StepPicker { MENU, APP, ACTION, PROFILE, TEXT }
+private enum class StepPicker { MENU, SEARCH, APP, ACTION, PROFILE, ROUTE, CALL, SMS, WAIT, TEXT }
 
 /** З чим збігається фраза: інша команда без умови, програма, профіль, вбудована команда. */
 @Composable
@@ -172,6 +184,7 @@ private fun CommandEditor(
     onSave: (CustomCommand) -> Unit,
     onDelete: (() -> Unit)?,
     onCancel: () -> Unit,
+    onReverse: (CustomCommand) -> Unit,
 ) {
     var phrase by remember { mutableStateOf(command.phrase) }
     var steps by remember { mutableStateOf(command.steps) }
@@ -242,6 +255,15 @@ private fun CommandEditor(
         } else {
             Note(stringResource(R.string.custom_command_save_hint))
         }
+        // Зворотна команда: подія навпаки й протилежні кроки — відкривається новою, щоб перевірити й зберегти.
+        if (triggers.isNotEmpty()) {
+            val texts = stepTexts()
+            val reversed = CommandReverse.reverse(CustomCommand(command.id, phrase, steps, triggers, conditions), texts)
+            if (reversed != null) {
+                ActionOption(R.string.command_reverse, Icons.Filled.Refresh) { onReverse(reversed) }
+                Note(stringResource(R.string.command_reverse_note))
+            }
+        }
         ActionOption(R.string.cancel, Icons.Filled.Close, onCancel)
         if (onDelete != null) ActionOption(R.string.custom_command_delete, Icons.Filled.Delete, onDelete)
     }
@@ -263,7 +285,12 @@ private fun CommandEditor(
         TriggerDialog(devices, onPick = { triggers = (triggers + it).distinct(); addingTrigger = false }, onDismiss = { addingTrigger = false })
     }
     when (picker) {
-        StepPicker.MENU -> StepMenu(onPick = { picker = it }, onDismiss = { picker = null })
+        StepPicker.MENU -> StepMenu(onPick = { picker = it }, onHome = addStep, onDismiss = { picker = null })
+        StepPicker.SEARCH -> SearchStepDialog(apps, profiles, onPick = addStep, onDismiss = { picker = null })
+        StepPicker.ROUTE -> RouteStepDialog(onPick = addStep, onDismiss = { picker = null })
+        StepPicker.CALL -> CallStepDialog(onPick = addStep, onDismiss = { picker = null })
+        StepPicker.SMS -> SmsStepDialog(onPick = addStep, onDismiss = { picker = null })
+        StepPicker.WAIT -> WaitStepDialog(onPick = addStep, onDismiss = { picker = null })
         StepPicker.APP -> AppStepDialog(apps, iconFor, onPick = addStep, onDismiss = { picker = null })
         StepPicker.ACTION -> ActionStepDialog(onPick = addStep, onDismiss = { picker = null })
         StepPicker.PROFILE -> ProfileStepDialog(profiles, onPick = addStep, onDismiss = { picker = null })
@@ -272,16 +299,23 @@ private fun CommandEditor(
     }
 }
 
+private const val MAX_APPS_IN_SEARCH = 3
+
 private fun <T> List<T>.swap(a: Int, b: Int): List<T> = toMutableList().also { val t = it[a]; it[a] = it[b]; it[b] = t }
 
 /** Крок: номер, значок за видом (програма / режим / дія / текст), текст, умови кроку й кнопки порядку. */
 @Composable
 private fun StepRow(number: Int, step: CommandStep, onConditions: () -> Unit, onUp: (() -> Unit)?, onDown: (() -> Unit)?, onRemove: () -> Unit) {
-    val icon = when (VoiceCommandParser.parse(step.text)) {
-        is VoiceCommand.Open, VoiceCommand.OpenLast -> Icons.Filled.PlayArrow
-        is VoiceCommand.SwitchProfile -> Icons.Filled.AccountCircle
-        is VoiceCommand.Action -> Icons.Filled.Settings
-        null -> Icons.Filled.Edit
+    val icon = when (StepCommands.parse(step.text)) {
+        is StepCommand.Wait -> Icons.Filled.Refresh
+        StepCommand.Home -> Icons.Filled.Home
+        StepCommand.PreviousProfile -> Icons.Filled.AccountCircle
+        null -> when (val parsed = VoiceCommandParser.parse(step.text)) {
+            is VoiceCommand.Open, VoiceCommand.OpenLast -> Icons.Filled.PlayArrow
+            is VoiceCommand.SwitchProfile -> Icons.Filled.AccountCircle
+            is VoiceCommand.Action -> parsed.action.icon()
+            null -> Icons.Filled.Edit
+        }
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text("$number", color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.width(18.dp))
@@ -354,13 +388,153 @@ private fun SmallButton(icon: ImageVector, @StringRes description: Int, onClick:
 }
 
 @Composable
-private fun StepMenu(onPick: (StepPicker) -> Unit, onDismiss: () -> Unit) {
+private fun StepMenu(onPick: (StepPicker) -> Unit, onHome: (String) -> Unit, onDismiss: () -> Unit) {
+    val home = stringResource(R.string.cstep_home)
     PickerDialog(R.string.custom_step_add, onDismiss) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ActionOption(R.string.custom_step_from_search, Icons.Filled.Search) { onPick(StepPicker.SEARCH) }
             ActionOption(R.string.custom_step_app, Icons.Filled.PlayArrow) { onPick(StepPicker.APP) }
             ActionOption(R.string.custom_step_action, Icons.Filled.Settings) { onPick(StepPicker.ACTION) }
             ActionOption(R.string.custom_step_profile, Icons.Filled.AccountCircle) { onPick(StepPicker.PROFILE) }
+            ActionOption(R.string.custom_step_route, Icons.Filled.Place) { onPick(StepPicker.ROUTE) }
+            ActionOption(R.string.custom_step_call, Icons.Filled.Call) { onPick(StepPicker.CALL) }
+            ActionOption(R.string.custom_step_sms, Icons.Filled.Send) { onPick(StepPicker.SMS) }
+            ActionOption(R.string.custom_step_wait, Icons.Filled.Refresh) { onPick(StepPicker.WAIT) }
+            ActionOption(R.string.custom_step_home, Icons.Filled.Home) { onHome(home) }
             ActionOption(R.string.custom_step_text, Icons.Filled.Edit) { onPick(StepPicker.TEXT) }
+        }
+    }
+}
+
+/**
+ * «З пошуку»: пишете, як у пошуку, — і бачите, що саме зробить крок: дія, маршрут, програма, режим.
+ * Вибраний варіант зберігається звичайною командою мовою телефону.
+ */
+@Composable
+private fun SearchStepDialog(apps: List<AppInfo>, profiles: List<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val engine = remember { AppSearchEngine() }
+    val index = remember(apps) { engine.index(apps) }
+    val openTemplate = stringResource(R.string.step_open)
+    val profileTemplate = stringResource(R.string.step_profile)
+    val routeTemplate = stringResource(R.string.step_route)
+    val text = query.trim()
+    // (крок, опис, значок)
+    val candidates = buildList<Triple<String, String, ImageVector>> {
+        if (text.isEmpty()) return@buildList
+        when (val own = StepCommands.parse(text)) {
+            is StepCommand.Wait -> add(Triple(text, stepCommandTitle(own), Icons.Filled.Refresh))
+            StepCommand.Home -> add(Triple(text, stringResource(R.string.custom_step_home), Icons.Filled.Home))
+            StepCommand.PreviousProfile -> add(Triple(text, stringResource(R.string.cstep_previous_profile), Icons.Filled.AccountCircle))
+            null -> when (val parsed = VoiceCommandParser.parse(text)) {
+                is VoiceCommand.Action -> add(Triple(text, parsed.action.title(), parsed.action.icon()))
+                is VoiceCommand.SwitchProfile -> add(Triple(text, profileTemplate.format(parsed.name), Icons.Filled.AccountCircle))
+                else -> Unit
+            }
+        }
+        profiles.filter { SearchNormalizer.normalize(it).startsWith(SearchNormalizer.normalize(text)) }.take(2)
+            .forEach { add(Triple(profileTemplate.format(it), profileTemplate.format(it), Icons.Filled.AccountCircle)) }
+        index.search(text).take(MAX_APPS_IN_SEARCH).forEach { add(Triple(openTemplate.format(it.label), openTemplate.format(it.label), Icons.Filled.PlayArrow)) }
+        // Як «Знайти шлях» у глобальному пошуку: будь-яка назва місця — маршрут туди.
+        add(Triple(routeTemplate.format(text), routeTemplate.format(text), Icons.Filled.Place))
+    }.distinctBy { it.first }
+    PickerDialog(R.string.custom_step_from_search, onDismiss) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.custom_step_search_hint), color = Oled.TextSecondary) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = fieldColors(),
+            )
+            LazyColumn(Modifier.fillMaxWidth().height(300.dp)) {
+                items(candidates, key = { it.first }) { (step, title, icon) ->
+                    ActionOption(title, icon) { onPick(step) }
+                }
+            }
+        }
+    }
+}
+
+/** Тексти кроків для зворотної команди — мовою телефону. */
+@Composable
+private fun stepTexts() = StepTexts(
+    flashlightOn = stringResource(R.string.step_flashlight_on),
+    flashlightOff = stringResource(R.string.step_flashlight_off),
+    play = stringResource(R.string.step_play),
+    pause = stringResource(R.string.step_pause),
+    louder = stringResource(R.string.step_volume_up),
+    quieter = stringResource(R.string.step_volume_down),
+    home = stringResource(R.string.cstep_home),
+    previousProfile = stringResource(R.string.cstep_previous_profile),
+)
+
+@Composable
+private fun stepCommandTitle(wait: StepCommand.Wait): String =
+    if (wait.seconds % 60 == 0) stringResource(R.string.cstep_wait_minutes, wait.seconds / 60) else stringResource(R.string.cstep_wait_seconds, wait.seconds)
+
+/** Одне поле — один крок за шаблоном (маршрут, дзвінок). */
+@Composable
+private fun SingleFieldStepDialog(@StringRes title: Int, @StringRes label: Int, template: String, onPick: (String) -> Unit, onDismiss: () -> Unit, note: String? = null) {
+    var value by remember { mutableStateOf("") }
+    PickerDialog(title, onDismiss, confirm = if (value.isNotBlank()) ({ onPick(template.format(value.trim())) }) else null) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                label = { Text(stringResource(label)) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = fieldColors(),
+            )
+            note?.let { Note(it) }
+        }
+    }
+}
+
+@Composable
+private fun RouteStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) =
+    SingleFieldStepDialog(R.string.custom_step_route, R.string.custom_step_place, stringResource(R.string.step_route), onPick, onDismiss)
+
+@Composable
+private fun CallStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) =
+    SingleFieldStepDialog(R.string.custom_step_call, R.string.custom_step_contact, stringResource(R.string.step_call), onPick, onDismiss)
+
+/** SMS: кому й текст; відкривається готовим повідомленням — надсилаєте ви. */
+@Composable
+private fun SmsStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    val template = stringResource(R.string.step_sms)
+    PickerDialog(R.string.custom_step_sms, onDismiss, confirm = if (name.isNotBlank() && body.isNotBlank()) ({ onPick(template.format(name.trim(), body.trim())) }) else null) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text(stringResource(R.string.custom_step_contact)) }, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
+            OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text(stringResource(R.string.custom_step_sms_text)) }, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
+            Note(stringResource(R.string.custom_step_sms_note))
+        }
+    }
+}
+
+/** «Зачекати»: секунди чи хвилини; довгі паузи витримує системний будильник. */
+@Composable
+private fun WaitStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    var amount by remember { mutableStateOf("10") }
+    var minutes by remember { mutableStateOf(false) }
+    val n = amount.toIntOrNull()?.takeIf { it in 1..(if (minutes) 1440 else 3600) }
+    val template = stringResource(if (minutes) R.string.cstep_wait_minutes else R.string.cstep_wait_seconds)
+    PickerDialog(R.string.custom_step_wait, onDismiss, confirm = if (n != null) ({ onPick(template.format(n)) }) else null) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it.filter(Char::isDigit).take(4) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                colors = fieldColors(),
+            )
+            SwitchRow(stringResource(R.string.custom_wait_in_minutes), "", minutes) { minutes = it }
+            Note(stringResource(R.string.custom_step_wait_note))
         }
     }
 }
@@ -501,8 +675,11 @@ private fun AlarmDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
 @Composable
 private fun ProfileStepDialog(profiles: List<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val template = stringResource(R.string.step_profile)
+    val previous = stringResource(R.string.cstep_previous_profile)
     PickerDialog(R.string.custom_step_profile, onDismiss) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // «Попередній режим» — той, що був до останнього перемикання (зручно у зворотних командах).
+            ActionOption(previous, Icons.Filled.Refresh) { onPick(previous) }
             profiles.forEach { name -> ActionOption(name, Icons.Filled.AccountCircle) { onPick(template.format(name)) } }
         }
     }

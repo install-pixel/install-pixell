@@ -68,6 +68,7 @@ class BlackLaunchApp : Application() {
     val customCommands: PrefsCustomCommandStore by lazy { PrefsCustomCommandStore(this) }
     val automations: PrefsAutomationStore by lazy { PrefsAutomationStore(this) }
     val automationRunner: AutomationRunner by lazy { AutomationRunner(this) }
+    val stepScheduler: com.blacklaunch.launcher.automation.StepScheduler by lazy { com.blacklaunch.launcher.automation.StepScheduler(this) }
     val commandConditions: CommandConditions by lazy { CommandConditions(this) { profileRepository.activeProfile.first()?.name } }
     val systemStats: SystemStats by lazy { SystemStats(this) }
     val monitorSettings: MonitorSettings by lazy { MonitorSettings(this) }

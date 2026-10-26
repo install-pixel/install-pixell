@@ -23,6 +23,8 @@ import com.blacklaunch.launcher.BlackLaunchApp
 import com.blacklaunch.launcher.MainActivity
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.commands.CommandTrigger
+import com.blacklaunch.launcher.commands.StepCommand
+import com.blacklaunch.launcher.commands.StepCommands
 import com.blacklaunch.launcher.search.SearchNormalizer
 import com.blacklaunch.launcher.timer.BlackTimer
 import com.blacklaunch.launcher.voice.VoiceAction
@@ -95,7 +97,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
                 // «Лише якщо» діє й для автоматичного запуску — і для команди, і для окремих кроків.
                 val steps = app.commandConditions.resolve(command)
                 if (!steps.isNullOrEmpty()) {
-                    withContext(Dispatchers.Main) { run(command.phrase.ifBlank { app.getString(R.string.custom_commands_title) }, steps) }
+                    withContext(Dispatchers.Main) { runSteps(command.phrase.ifBlank { app.getString(R.string.custom_commands_title) }, steps) }
                 }
             }
         }
@@ -116,10 +118,32 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         old.forEach { app.automations.delete(it.id) }
     }
 
+    /**
+     * Кроки без екрана: що можна — одразу, решту — дотиком до сповіщення чи поверх інших вікон.
+     * «Зачекати» ділить команду: кроки після паузи виконаються пізніше ([StepScheduler]).
+     */
+    fun runSteps(title: String, steps: List<String>) {
+        val (now, wait, rest) = StepCommands.splitAtWait(steps)
+        run(title, now)
+        if (wait != null && rest.isNotEmpty()) app.stepScheduler.schedule(title, rest, wait)
+    }
+
     private fun run(title: String, steps: List<String>) {
         val runner = VoiceActionRunner(app, onMessage = {})
         val later = mutableListOf<String>()
         steps.forEach { step ->
+            when (StepCommands.parse(step)) {
+                // Головний екран потрібен на екрані — Black Glass виходить наперед.
+                StepCommand.Home -> {
+                    later += step
+                    return@forEach
+                }
+                StepCommand.PreviousProfile -> {
+                    app.profileRepository.previousActiveId()?.let { app.profileRepository.setActive(it) }
+                    return@forEach
+                }
+                is StepCommand.Wait, null -> Unit
+            }
             val parsed = VoiceCommandParser.parse(step)
             if (!BackgroundSteps.canRunHidden(parsed)) {
                 later += step
