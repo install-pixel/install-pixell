@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.app.KeyguardManager
 import android.content.Intent
 import android.content.ComponentName
 import android.content.ContentUris
@@ -209,9 +210,24 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             models = app.voiceModelStore,
             settings = app.voiceSettings,
-            onResult = viewModel::onVoiceResult,
+            onResult = ::onVoiceResult,
             onMessage = ::toast,
         )
+        // Голос поверх блокування закінчився без результату — ховаємо вікно (екран блокування знову зверху).
+        lifecycleScope.launch {
+            var active = false
+            voice.state.collect { state ->
+                if (!lockedVoice.value) return@collect
+                if (state != VoiceState.Idle) {
+                    active = true
+                } else if (active) {
+                    active = false
+                    // Результат приходить одразу після «Idle» — даємо йому мить, щоб не закрити вікно раніше.
+                    delay(LOCKED_RESULT_GRACE_MS)
+                    if (!awaitingUnlock) endLockedVoice()
+                }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 for (message in viewModel.messages) toast(message.text())
@@ -499,6 +515,9 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+            // Голос поверх заблокованого екрана: лише чорний екран із мікрофоном — нічого з телефона не видно.
+            val lockedShown by lockedVoice.collectAsStateWithLifecycle()
+            if (lockedShown) LockedVoiceScreen(voiceState, onCancel = ::endLockedVoice)
             }
         }
     }
@@ -1293,14 +1312,63 @@ class MainActivity : ComponentActivity() {
         if (intent?.action != Intent.ACTION_ASSIST && intent?.action != Intent.ACTION_VOICE_COMMAND) return false
         viewModel.forgetSearch()
         viewModel.openSearch()
+        if (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
+            // Екран заблоковано: показуємо лише мікрофон поверх блокування (Android 8.1+), а виконуємо — після розблокування.
+            // Старіші Android так не вміють — тоді мовчимо, а не пікаємо марно.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return true
+            setShowWhenLocked(true)
+            lockedVoice.value = true
+        }
         if (voice.state.value == VoiceState.Idle) onMicClick()
         return true
+    }
+
+    /** Голос поверх заблокованого екрана: зараз показано (лише чорний екран із мікрофоном). */
+    private val lockedVoice = MutableStateFlow(false)
+
+    /** Почуте вже є — чекаємо, поки людина розблокує телефон. */
+    private var awaitingUnlock = false
+
+    /** Почуте з-під блокування виконуємо лише після розблокування (відбиток, PIN) — інакше нічого. */
+    private fun onVoiceResult(texts: List<String>) {
+        val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+        if ((!lockedVoice.value && !locked) || Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) {
+            viewModel.onVoiceResult(texts)
+            return
+        }
+        // Телефон заблоковано — жодної дії без розблокування.
+        setShowWhenLocked(true)
+        lockedVoice.value = true
+        awaitingUnlock = true
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        keyguard.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+            override fun onDismissSucceeded() {
+                endLockedVoice()
+                viewModel.openSearch()
+                viewModel.onVoiceResult(texts)
+            }
+
+            override fun onDismissCancelled() = endLockedVoice()
+
+            override fun onDismissError() = endLockedVoice()
+        })
+    }
+
+    private fun endLockedVoice() {
+        awaitingUnlock = false
+        if (!lockedVoice.value) return
+        lockedVoice.value = false
+        if (voice.state.value != VoiceState.Idle) voice.cancel()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) setShowWhenLocked(false)
+        viewModel.forgetSearch()
     }
 
     // Перейшли в іншу програму — пошук лишається відкритим з тими самими результатами
     // (клавіатуру ховає сам екран пошуку). Повернулись протягом хвилини — усе на місці.
     override fun onStop() {
         super.onStop()
+        // Поверх блокування вікно живе лише поки на екрані.
+        if (!awaitingUnlock) endLockedVoice()
         if (!isChangingConfigurations) {
             voice.cancel()
             actionRunner.onStop()
@@ -1372,5 +1440,6 @@ class MainActivity : ComponentActivity() {
         private const val PROFILE_BANNER_MS = 1_500L
         private const val THUMB_CACHE = 200
         private const val THUMB_PX = 256
+        private const val LOCKED_RESULT_GRACE_MS = 400L
     }
 }

@@ -703,4 +703,7 @@
     <string name="stepcond_only_if">tylko gdy %1$s</string>
     <string name="stepcond_title">Warunki kroku</string>
     <string name="stepcond_note">Krok wykona się tylko, gdy wszystkie warunki są spełnione; inaczej zostanie pominięty, a kolejne kroki pójdą dalej.</string>
+    <string name="voice_locked_listening">Słucham…</string>
+    <string name="voice_locked_wait">Chwileczkę…</string>
+    <string name="voice_locked_hint">Mów. Przed wykonaniem telefon poprosi o odblokowanie. Dotknij w dowolnym miejscu, by anulować.</string>
 </resources>

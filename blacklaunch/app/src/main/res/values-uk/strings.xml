@@ -703,4 +703,7 @@
     <string name="stepcond_only_if">лише якщо %1$s</string>
     <string name="stepcond_title">Умови кроку</string>
     <string name="stepcond_note">Крок виконується, лише якщо всі ці умови виконані; інакше пропускається, а наступні кроки йдуть далі.</string>
+    <string name="voice_locked_listening">Слухаю…</string>
+    <string name="voice_locked_wait">Хвилинку…</string>
+    <string name="voice_locked_hint">Говоріть. Перед виконанням телефон попросить розблокувати. Дотик будь-де — скасувати.</string>
 </resources>

@@ -703,4 +703,7 @@
     <string name="stepcond_only_if">only if %1$s</string>
     <string name="stepcond_title">Step conditions</string>
     <string name="stepcond_note">The step runs only if all of these are met; otherwise it is skipped and the next steps go on.</string>
+    <string name="voice_locked_listening">Listening…</string>
+    <string name="voice_locked_wait">One moment…</string>
+    <string name="voice_locked_hint">Speak. Before doing anything the phone will ask you to unlock it. Tap anywhere to cancel.</string>
 </resources>
