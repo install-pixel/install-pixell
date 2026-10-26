@@ -100,6 +100,7 @@ import com.blacklaunch.launcher.ui.ProfileEditScreen
 import com.blacklaunch.launcher.ui.ProfilesScreen
 import com.blacklaunch.launcher.ui.SettingsNav
 import com.blacklaunch.launcher.ui.BlackHomeScreen
+import com.blacklaunch.launcher.ui.LockedVoiceScreen
 import com.blacklaunch.launcher.ui.SettingsScreen
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import com.blacklaunch.launcher.viewmodel.LauncherViewModel
