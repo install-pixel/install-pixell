@@ -103,6 +103,8 @@ fun SettingsScreen(
     onClearHistory: () -> Unit = {},
     onClearCrashLog: () -> Unit,
     onDismiss: () -> Unit,
+    /** «Головний екран»: крапки сповіщень і «Що грає» (свої налаштування — окремо від оформлення). */
+    homeExtras: @Composable () -> Unit = {},
 ) {
     val toMain = { onNavigate(SettingsNav.Main) }
     when (page) {
@@ -128,6 +130,7 @@ fun SettingsScreen(
                 Note(stringResource(R.string.display_moved_home))
                 ActionOption(R.string.settings_profiles, Icons.Filled.Person) { onNavigate(SettingsNav.Profiles) }
             }
+            Card { homeExtras() }
             Card {
                 Note(stringResource(R.string.grid_hint))
             }
@@ -411,6 +414,7 @@ fun SettingsScreen(
             Card {
                 MenuRow(Icons.Filled.Home, R.string.section_home, R.string.section_home_hint) { onNavigate(SettingsNav.HomeScreen) }
                 MenuRow(Icons.Filled.Person, R.string.settings_profiles, R.string.section_profiles_hint) { onNavigate(SettingsNav.Profiles) }
+                MenuRow(painterResource(R.drawable.ic_timer), R.string.wb_title, R.string.wb_menu_hint) { onNavigate(SettingsNav.Wellbeing) }
                 MenuRow(painterResource(R.drawable.ic_palette), R.string.section_appearance, R.string.section_appearance_hint) {
                     onNavigate(SettingsNav.Appearance)
                 }

@@ -85,6 +85,14 @@ object SettingsCatalog {
                 "focus", "focus timer", "concentration", "no distractions",
             ),
         ),
+        Entry(
+            "wellbeing", WELLBEING_ACTION,
+            listOf(
+                "звички", "екранний час", "пауза перед програмою", "ліміт часу", "тижневий підсумок",
+                "nawyki", "czas przed ekranem", "pauza przed aplikacją", "limit czasu",
+                "habits", "screen time", "app pause", "time limit", "weekly summary",
+            ),
+        ),
         Entry("monitor", MONITOR_ACTION, listOf("моніторинг", "monitoring", "стан системи", "оперативна пам'ять", "температура телефона", "монітор", "dashboard", "system dashboard", "panel", "panel systemu", "ram")),
     )
 
@@ -93,6 +101,9 @@ object SettingsCatalog {
 
     /** «Зосередження»: сторінка профілів Black Glass (фокус-таймер, шаблон). */
     const val FOCUS_ACTION = "com.blacklaunch.launcher.FOCUS"
+
+    /** «Звички й екранний час» Black Glass. */
+    const val WELLBEING_ACTION = "com.blacklaunch.launcher.WELLBEING"
 
     /** «Мої команди» Black Glass (автоматизації, голос і режими) — сторінка налаштувань лаунчера. */
     const val COMMANDS_ACTION = "com.blacklaunch.launcher.COMMANDS"

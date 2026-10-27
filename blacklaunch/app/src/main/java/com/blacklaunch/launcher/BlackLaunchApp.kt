@@ -74,6 +74,23 @@ class BlackLaunchApp : Application() {
     val automationSettings: com.blacklaunch.launcher.settings.AutomationSettings by lazy { com.blacklaunch.launcher.settings.AutomationSettings(this) }
     val smartProfiles: com.blacklaunch.launcher.automation.SmartProfiles by lazy { com.blacklaunch.launcher.automation.SmartProfiles(this) }
     val hourlyChime: com.blacklaunch.launcher.automation.HourlyChime by lazy { com.blacklaunch.launcher.automation.HourlyChime(this) }
+    val wellbeing: com.blacklaunch.launcher.wellbeing.WellbeingSettings by lazy { com.blacklaunch.launcher.wellbeing.WellbeingSettings(this) }
+    val usageReader: com.blacklaunch.launcher.wellbeing.UsageReader by lazy { com.blacklaunch.launcher.wellbeing.UsageReader(this) }
+    val nowPlaying: com.blacklaunch.launcher.wellbeing.NowPlaying by lazy { com.blacklaunch.launcher.wellbeing.NowPlaying(this) }
+
+    /** Пауза перед програмою, якщо вона в списку «Звичок» (з часом сьогодні й лімітом). */
+    fun launchPause(info: com.blacklaunch.launcher.apps.AppInfo): com.blacklaunch.launcher.wellbeing.LaunchPause? {
+        val apps = wellbeing.pauseApps.value
+        if (info.packageName !in apps) return null
+        return com.blacklaunch.launcher.wellbeing.PauseRules.pause(
+            pkg = info.packageName,
+            pauseApps = apps,
+            seconds = wellbeing.pauseSeconds.value,
+            limitMinutes = wellbeing.limits.value[info.packageName],
+            usedMs = usageReader.todayMs(info.packageName),
+        )
+    }
+
     /** «Зосередження»: «Важкий вихід» режимів і фокус-таймер (етап 16). */
     val focus: com.blacklaunch.launcher.profiles.FocusMode by lazy { com.blacklaunch.launcher.profiles.FocusMode(this) }
     val messageReader: com.blacklaunch.launcher.automation.MessageReader by lazy { com.blacklaunch.launcher.automation.MessageReader(this) }

@@ -16,6 +16,8 @@ sealed interface SettingsNav {
     data object Permissions : SettingsNav
     data object Monitor : SettingsNav
     data object Profiles : SettingsNav
+    data object Wellbeing : SettingsNav
+    data object PickPauseApps : SettingsNav
     data class Edit(val profileId: String) : SettingsNav
     data class PickApp(val profileId: String) : SettingsNav
     data class PickNotificationApps(val profileId: String) : SettingsNav

@@ -20,6 +20,7 @@ import com.blacklaunch.launcher.profiles.HomeGrid
 import com.blacklaunch.launcher.profiles.HomeLayoutStore
 import com.blacklaunch.launcher.profiles.InMemoryHomeLayoutStore
 import com.blacklaunch.launcher.profiles.FocusGate
+import com.blacklaunch.launcher.wellbeing.LaunchPause
 import com.blacklaunch.launcher.profiles.FocusRules
 import com.blacklaunch.launcher.profiles.LauncherProfile
 import com.blacklaunch.launcher.profiles.ProfileSource
@@ -186,6 +187,8 @@ class LauncherViewModel(
     private val resolveCommand: suspend (CustomCommand) -> List<String>? = { it.stepTexts },
     /** «Зосередження»: чи можна зараз перейти в режим (id) — фокус-таймер і «Важкий вихід». */
     private val focusGate: (String) -> FocusGate = { FocusGate.Allowed },
+    /** Пауза перед відволікальною програмою (null — відкривати одразу). */
+    private val launchPause: (AppInfo) -> LaunchPause? = { null },
 ) : ViewModel() {
     // null — пошук закритий.
     private val query = MutableStateFlow<String?>(null)
@@ -256,6 +259,11 @@ class LauncherViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeState())
 
     /** Назва профілю, на який щойно перемкнули, — показується на мить. */
+    private val _launchPauses = Channel<LaunchPrompt>(Channel.CONFLATED)
+
+    /** Запуск відкладено паузою: екран показує «вдих… справді відкрити?». */
+    val launchPauses: ReceiveChannel<LaunchPrompt> get() = _launchPauses
+
     private val _focusPrompts = Channel<FocusPrompt>(Channel.CONFLATED)
 
     /** Перемикання затримане «Зосередженням»: екран показує відлік чи «ще 23 хв». */
@@ -610,8 +618,19 @@ class LauncherViewModel(
 
     fun removeRecent(text: String) = recentQueries.remove(scope.value.profileId, text)
 
+    /** Пауза минула й «Відкрити» натиснуто. */
+    fun launchConfirmed(prompt: LaunchPrompt) {
+        launch(prompt.app, prompt.query, paused = true)
+    }
+
     /** [searchQuery] — з якого запиту відкрили: наступного разу ця програма буде першою. */
-    private fun launch(app: AppInfo, searchQuery: String?): Boolean {
+    private fun launch(app: AppInfo, searchQuery: String?, paused: Boolean = false): Boolean {
+        if (!paused) {
+            launchPause(app)?.let { pause ->
+                _launchPauses.trySend(LaunchPrompt(app, searchQuery, pause))
+                return false
+            }
+        }
         val ok = appSource.launch(app)
         if (ok) {
             history.record(app, now())
@@ -872,6 +891,9 @@ sealed interface VoiceReply {
     /** Фокус-таймер: режим не змінено, лишилось [minutes] хв. */
     data class FocusLocked(val minutes: Int) : VoiceReply
 }
+
+/** Запуск, відкладений паузою перед відволікальною програмою. */
+data class LaunchPrompt(val app: AppInfo, val query: String?, val pause: LaunchPause)
 
 /** Перемикання, затримане «Зосередженням». */
 sealed interface FocusPrompt {

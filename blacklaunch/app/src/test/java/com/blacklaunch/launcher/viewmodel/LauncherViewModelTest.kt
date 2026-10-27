@@ -300,4 +300,22 @@ class LauncherViewModelTest {
         viewModel.updateQuery("фотик")
         assertEquals(listOf("Camera B"), search().results.map { it.label })
     }
+
+    @Test fun pausedAppOpensOnlyAfterConfirmation() {
+        val pause = com.blacklaunch.launcher.wellbeing.LaunchPause(5, 12, null, false)
+        val vm = LauncherViewModel(
+            source, history = history, now = { ++clock }, computeDispatcher = Dispatchers.Main,
+            launchPause = { if (it.label == "YouTube") pause else null },
+        )
+        val youtube = source.apps.value.first { it.label == "YouTube" }
+        assertFalse(vm.launch(youtube))
+        assertEquals(emptyList<Any>(), source.launched)
+        val prompt = vm.launchPauses.tryReceive().getOrNull()!!
+        assertEquals(pause, prompt.pause)
+        vm.launchConfirmed(prompt)
+        assertEquals(listOf("YouTube"), source.launched.map { it.label })
+        // Програми без паузи — одразу.
+        vm.launch(source.apps.value.first { it.label == "Telegram" })
+        assertEquals(listOf("YouTube", "Telegram"), source.launched.map { it.label })
+    }
 }

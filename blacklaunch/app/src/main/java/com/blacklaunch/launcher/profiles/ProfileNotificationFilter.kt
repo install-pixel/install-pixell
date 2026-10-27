@@ -20,10 +20,23 @@ class ProfileNotificationFilter : NotificationListenerService() {
     override fun onListenerConnected() {
         connected = this
         refresh()
+        updateDots()
     }
 
     override fun onListenerDisconnected() {
         if (connected === this) connected = null
+        dotsState.value = emptySet()
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) = updateDots()
+
+    /** Крапки біля програм: у кого зараз є звичайні (не постійні) сповіщення в шторці. */
+    private fun updateDots() {
+        dotsState.value = runCatching {
+            activeNotifications.orEmpty()
+                .filter { it.packageName != packageName && !it.isOngoing && it.isClearable }
+                .mapTo(HashSet()) { it.packageName }
+        }.getOrDefault(emptySet())
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -35,6 +48,7 @@ class ProfileNotificationFilter : NotificationListenerService() {
             // Приховане фільтром профілю не читаємо — інакше фільтр втрачає сенс.
             app?.messageReader?.onPosted(sbn, packageName)
         }
+        updateDots()
     }
 
     /** Профіль змінився: відкладаємо чуже й повертаємо те, що тепер дозволено. */
@@ -67,6 +81,11 @@ class ProfileNotificationFilter : NotificationListenerService() {
 
         @Volatile
         private var connected: ProfileNotificationFilter? = null
+
+        private val dotsState = kotlinx.coroutines.flow.MutableStateFlow<Set<String>>(emptySet())
+
+        /** Пакети програм зі сповіщеннями в шторці (для крапок на головному екрані). */
+        val dots: kotlinx.coroutines.flow.StateFlow<Set<String>> get() = dotsState
 
         /** Сповіщення в шторці й відкладені фільтром профілю — для пошуку за текстом. */
         fun current(): List<StatusBarNotification> {

@@ -57,6 +57,14 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                     put("exitDelay", app.focus.exitDelay(p.id))
                 }
             }))
+            put("wellbeing", JSONObject().apply {
+                val w = app.wellbeing
+                put("pauseApps", JSONArray(w.pauseApps.value.toList()))
+                put("pauseSeconds", w.pauseSeconds.value)
+                put("limits", JSONObject(w.limits.value))
+                put("dots", w.dots.value)
+                put("nowPlaying", w.nowPlaying.value)
+            })
             put("aliases", JSONObject(app.userAliasStore.aliases.value.mapValues { JSONArray(it.value.toList()) }))
             put("commands", JSONArray(app.customCommands.commands.value.map { c ->
                 JSONObject().put("id", c.id).put("phrase", c.phrase).put("steps", JSONArray(c.stepTexts)).apply {
@@ -177,6 +185,14 @@ class SettingsBackup(private val app: BlackLaunchApp) {
         root.optJSONArray("ownIcons")?.let { icons ->
             app.ownIcons.keys.value.forEach { app.ownIcons.set(it, false) }
             remap.mapAllOrKeep(icons.strings()).forEach { app.ownIcons.set(it, true) }
+        }
+        root.optJSONObject("wellbeing")?.let { w ->
+            val settings = app.wellbeing
+            settings.setPauseApps(w.optJSONArray("pauseApps")?.strings().orEmpty().toSet())
+            settings.setPauseSeconds(w.optInt("pauseSeconds", settings.pauseSeconds.value))
+            w.optJSONObject("limits")?.let { limits -> limits.keys().forEach { pkg -> settings.setLimit(pkg, limits.optInt(pkg)) } }
+            settings.setDots(w.optBoolean("dots", settings.dots.value))
+            settings.setNowPlaying(w.optBoolean("nowPlaying", settings.nowPlaying.value))
         }
         root.optJSONObject("appearance")?.let { a ->
             app.appearanceSettings.update {

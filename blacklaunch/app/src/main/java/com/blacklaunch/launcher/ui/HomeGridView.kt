@@ -2,6 +2,7 @@ package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
@@ -78,6 +79,8 @@ fun HomeGridView(
     reservedBottom: Dp = 0.dp,
     /** Почалось/закінчилось перетягування — щоб сховати плашку профілю під зоною «Прибрати». */
     onDraggingChange: (Boolean) -> Unit = {},
+    /** Пакети програм зі сповіщеннями — крапка біля значка. */
+    dots: Set<String> = emptySet(),
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHaptics.current
@@ -170,7 +173,7 @@ fun HomeGridView(
                     .clickable { haptics.tap(); onLaunch(app) },
                 contentAlignment = Alignment.Center,
             ) {
-                GridIcon(app, iconFor)
+                GridIcon(app, iconFor, dot = app.packageName in dots)
             }
         }
     }
@@ -195,11 +198,24 @@ private fun RemoveZone(highlighted: Boolean, modifier: Modifier) {
 }
 
 @Composable
-private fun GridIcon(app: AppInfo, iconFor: suspend (AppInfo) -> ImageBitmap?) {
+private fun GridIcon(app: AppInfo, iconFor: suspend (AppInfo) -> ImageBitmap?, dot: Boolean = false) {
     val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
         Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
             icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(54.dp)) }
+            // Є сповіщення в шторці — біла крапка в куті (з чорним обідком, щоб не зливалась зі значком).
+            if (dot) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .size(13.dp)
+                        .clip(CircleShape)
+                        .background(Oled.Black)
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(Oled.TextPrimary),
+                )
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text(

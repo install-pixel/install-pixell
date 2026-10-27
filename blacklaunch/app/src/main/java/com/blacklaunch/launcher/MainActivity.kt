@@ -58,6 +58,16 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
+import com.blacklaunch.launcher.ui.LaunchPauseDialog
+import com.blacklaunch.launcher.ui.NowPlayingBar
+import com.blacklaunch.launcher.ui.PauseAppRow
+import com.blacklaunch.launcher.ui.WellbeingPage
+import com.blacklaunch.launcher.ui.SwitchRow
+import com.blacklaunch.launcher.ui.Note
+import com.blacklaunch.launcher.ui.ActionOption
+import androidx.compose.runtime.produceState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import com.blacklaunch.launcher.profiles.FocusGate
 import com.blacklaunch.launcher.profiles.FocusRules
 import com.blacklaunch.launcher.profiles.FocusSession
@@ -171,6 +181,7 @@ class MainActivity : ComponentActivity() {
                     startShortcut = app.globalSearch::startShortcut,
                     stepPackageAllowed = app::allowedInMode,
                     focusGate = app.focus::switchGate,
+                    launchPause = app::launchPause,
                     lastPlayerPackage = { com.blacklaunch.launcher.automation.MediaKeys.lastPlayerPackage(app) },
                     isMusicApp = { info -> com.blacklaunch.launcher.automation.MediaKeys.isPlayer(app, info.packageName, info.category) },
                     speakSteps = { parts -> app.speech.say(parts.joinToString(". ") { it ?: app.speech.timeText() }) },
@@ -324,6 +335,12 @@ class MainActivity : ComponentActivity() {
                 for (unused in viewModel.openMonitor) openMonitor()
             }
         }
+        // Пауза перед відволікальною програмою.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                for (prompt in viewModel.launchPauses) launchPrompt.value = prompt
+            }
+        }
         // «Зосередження» затримало перемикання: «ще 23 хв» або відлік «Важкого виходу».
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -386,6 +403,11 @@ class MainActivity : ComponentActivity() {
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 val focusSession by app.focus.session.collectAsStateWithLifecycle()
+                val dotsOn by app.wellbeing.dots.collectAsStateWithLifecycle()
+                val dots by ProfileNotificationFilter.dots.collectAsStateWithLifecycle()
+                val playingOn by app.wellbeing.nowPlaying.collectAsStateWithLifecycle()
+                val playingInfo by app.nowPlaying.info.collectAsStateWithLifecycle()
+                val playing = playingInfo.takeIf { playingOn }
                 val focusEndsAt = focusSession?.endsAt
                 // Фокус-таймер: на плашці — скільки ще лишилось (оновлюється, лише поки таймер іде).
                 val focusLeft = if (focusEndsAt != null) {
@@ -450,6 +472,21 @@ class MainActivity : ComponentActivity() {
                     onMicClick = ::onMicClick,
                     settingsRequest = settingsRequest.collectAsStateWithLifecycle().value,
                     settingsClose = settingsClose.collectAsStateWithLifecycle().value,
+                    dots = if (dotsOn) dots else emptySet(),
+                    nowPlaying = if (playing != null) {
+                        { modifier ->
+                            NowPlayingBar(
+                                info = playing,
+                                onOpen = { if (!app.nowPlaying.open()) toast(R.string.launch_failed) },
+                                onPrevious = app.nowPlaying::previous,
+                                onToggle = app.nowPlaying::toggle,
+                                onNext = app.nowPlaying::next,
+                                modifier = modifier,
+                            )
+                        }
+                    } else {
+                        null
+                    },
                     onSettingsRequest = ::requestSettings,
                     settingsScreen = { dismiss ->
                         var page by remember { mutableStateOf(requestedSettingsPage?.also { requestedSettingsPage = null } ?: SettingsNav.Main) }
@@ -554,6 +591,20 @@ class MainActivity : ComponentActivity() {
                                     toast(R.string.history_cleared)
                                 },
                                 onClearCrashLog = app.crashLog::clear,
+                                homeExtras = {
+                                    val dotsSetting by app.wellbeing.dots.collectAsStateWithLifecycle()
+                                    val playingSetting by app.wellbeing.nowPlaying.collectAsStateWithLifecycle()
+                                    val listenerAccess by notificationAccessState.collectAsStateWithLifecycle()
+                                    SwitchRow(stringResource(R.string.wb_dots_title), stringResource(R.string.wb_dots_subtitle), dotsSetting, app.wellbeing::setDots)
+                                    SwitchRow(stringResource(R.string.wb_now_playing_title), stringResource(R.string.wb_now_playing_subtitle), playingSetting) { on ->
+                                        app.wellbeing.setNowPlaying(on)
+                                        if (on) app.nowPlaying.start() else app.nowPlaying.stop()
+                                    }
+                                    if ((dotsSetting || playingSetting) && !listenerAccess) {
+                                        Note(stringResource(R.string.extras_read_access))
+                                        ActionOption(R.string.notif_filter_grant, Icons.Filled.Lock, ::openNotificationAccess)
+                                    }
+                                },
                                 onOpenAppInfo = {
                                     awaitingKind = GroupKind.SMS
                                     openAppInfo(packageName)
@@ -612,6 +663,16 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 FocusDialogs(home.profileName, focusSession)
+                launchPromptState.collectAsStateWithLifecycle().value?.let { prompt ->
+                    LaunchPauseDialog(
+                        prompt = prompt,
+                        onOpen = {
+                            launchPrompt.value = null
+                            viewModel.launchConfirmed(prompt)
+                        },
+                        onCancel = { launchPrompt.value = null },
+                    )
+                }
             }
             // Голос поверх заблокованого екрана: лише чорний екран із мікрофоном — нічого з телефона не видно.
             val lockedShown by lockedVoice.collectAsStateWithLifecycle()
@@ -840,6 +901,12 @@ class MainActivity : ComponentActivity() {
                 viewModel.forgetSearch()
                 requestSettings {
                     requestedSettingsPage = SettingsNav.Profiles
+                    settingsRequest.value++
+                }
+            } else if (result.action == SettingsCatalog.WELLBEING_ACTION) {
+                viewModel.forgetSearch()
+                requestSettings {
+                    requestedSettingsPage = SettingsNav.Wellbeing
                     settingsRequest.value++
                 }
             } else if (result.action == SettingsCatalog.COMMANDS_ACTION) {
@@ -1315,6 +1382,45 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
+            SettingsNav.Wellbeing -> {
+                val pauseApps by app.wellbeing.pauseApps.collectAsStateWithLifecycle()
+                val pauseSeconds by app.wellbeing.pauseSeconds.collectAsStateWithLifecycle()
+                val limits by app.wellbeing.limits.collectAsStateWithLifecycle()
+                val tick by resumeTick.collectAsStateWithLifecycle()
+                val usageAccess = remember(tick) { app.usageReader.hasAccess() }
+                // Тиждень рахується з подій Android — поза головним потоком і лише поки сторінка відкрита.
+                val week by produceState<List<com.blacklaunch.launcher.wellbeing.DayUsage>?>(null, usageAccess) {
+                    value = if (usageAccess) withContext(Dispatchers.IO) { app.usageReader.week() } else null
+                }
+                WellbeingPage(
+                    onBack = { onNavigate(SettingsNav.Main) },
+                    pauseApps = pauseApps.map { pkg ->
+                        PauseAppRow(pkg, appLabel(pkg) ?: pkg, limits[pkg])
+                    }.sortedBy { it.label.lowercase() },
+                    pauseSeconds = pauseSeconds,
+                    onPauseSeconds = app.wellbeing::setPauseSeconds,
+                    onAddApps = { onNavigate(SettingsNav.PickPauseApps) },
+                    onLimit = app.wellbeing::setLimit,
+                    onRemoveApp = { pkg -> app.wellbeing.setPauseApps(pauseApps - pkg) },
+                    hasUsageAccess = usageAccess,
+                    onGrantUsage = ::openUsageAccess,
+                    week = week,
+                    appLabel = ::appLabel,
+                )
+            }
+            SettingsNav.PickPauseApps -> {
+                val pauseApps by app.wellbeing.pauseApps.collectAsStateWithLifecycle()
+                AppPickerScreen(
+                    apps = apps,
+                    alreadyPinned = apps.filter { it.packageName in pauseApps }.map { it.key }.toSet(),
+                    iconFor = iconCache::load,
+                    onBack = { onNavigate(SettingsNav.Wellbeing) },
+                    onPick = { picked ->
+                        app.wellbeing.setPauseApps(pauseApps + picked.map { it.packageName })
+                        onNavigate(SettingsNav.Wellbeing)
+                    },
+                )
+            }
             // Невідома сторінка не лишає порожній чорний екран без «Назад» — повертаємось на головну налаштувань.
             else -> LaunchedEffect(page) { onNavigate(SettingsNav.Main) }
         }
@@ -1665,6 +1771,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         app.homeVisible = false
+        app.nowPlaying.stop()
         // Поверх блокування вікно живе лише поки на екрані.
         if (!awaitingUnlock) endLockedVoice()
         if (!isChangingConfigurations) {
@@ -1681,6 +1788,8 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         app.homeVisible = true
         actionRunner.onStart()
+        // «Що грає»: сесії слухаємо, лише поки головний екран показано.
+        if (app.wellbeing.nowPlaying.value) app.nowPlaying.start()
         if (wasStopped && SystemClock.elapsedRealtime() - stoppedAt > LauncherViewModel.RESTORE_QUERY_MS) {
             instantSearchClose = true
             viewModel.forgetSearch()
@@ -1706,6 +1815,10 @@ class MainActivity : ComponentActivity() {
     /** Відкрити налаштування лаунчера з пошуку: сторінка й лічильник запитів. */
     private var requestedSettingsPage: SettingsNav? = null
     private val settingsRequest = MutableStateFlow(0)
+
+    /** Пауза перед програмою на екрані. */
+    private val launchPrompt = MutableStateFlow<com.blacklaunch.launcher.viewmodel.LaunchPrompt?>(null)
+    private val launchPromptState get() = launchPrompt
 
     /** Закрити налаштування (почався фокус-таймер). */
     private val settingsClose = MutableStateFlow(0)

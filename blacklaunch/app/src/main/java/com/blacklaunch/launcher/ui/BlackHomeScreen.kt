@@ -176,6 +176,10 @@ fun BlackHomeScreen(
     settingsRequest: Int = 0,
     /** Збільшується, коли налаштування треба закрити (почався фокус-таймер). */
     settingsClose: Int = 0,
+    /** Пакети програм зі сповіщеннями — крапки біля значків. */
+    dots: Set<String> = emptySet(),
+    /** «Що грає» внизу головного екрана (null — немає). */
+    nowPlaying: (@Composable (Modifier) -> Unit)? = null,
     /** Відкрити налаштування — через «Зосередження» (таймер, «Важкий вихід»). */
     onSettingsRequest: (open: () -> Unit) -> Unit = { it() },
     /** Власні назви програми (з меню програми). */
@@ -224,6 +228,8 @@ fun BlackHomeScreen(
             showProfileLabel = showProfileLabel,
             glance = glance,
             monitor = monitor,
+            dots = dots,
+            nowPlaying = nowPlaying,
             modifier = Modifier.blur(homeBlur).alpha(homeAlpha),
         )
         AnimatedVisibility(
@@ -290,6 +296,8 @@ private fun HomeIdle(
     showProfileLabel: Boolean,
     glance: GlanceInfo?,
     monitor: (@Composable (Modifier) -> Unit)? = null,
+    dots: Set<String> = emptySet(),
+    nowPlaying: (@Composable (Modifier) -> Unit)? = null,
 ) {
     // На моніторі свій верхній рядок — «Короткий огляд» не накладається на нього.
     @Suppress("NAME_SHADOWING")
@@ -440,12 +448,17 @@ private fun HomeIdle(
             },
             reservedBottom = SearchFieldSpace,
             onDraggingChange = { dragging = it },
+            dots = dots,
             modifier = Modifier
                 // Місце під рядок стану лишається, навіть коли він схований, — значки не стрибають.
                 .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
                 .navigationBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 12.dp),
         )
+        // «Що грає» — у смузі під поле пошуку, тож значки не зсуваються; на моніторингу й під час перетягування — ні.
+        if (monitor == null && !dragging) {
+            nowPlaying?.invoke(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp))
+        }
         val topModifier = Modifier
             .align(Alignment.TopCenter)
             .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
