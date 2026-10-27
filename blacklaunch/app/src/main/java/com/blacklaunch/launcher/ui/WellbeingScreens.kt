@@ -212,7 +212,10 @@ fun WellbeingPage(
             PauseRules.PAUSE_SECONDS.forEach { seconds ->
                 TargetOption(stringResource(R.string.wb_seconds, seconds), pauseSeconds == seconds) { onPauseSeconds(seconds) }
             }
-            if (!hasUsageAccess) Note(stringResource(R.string.wb_limits_need_access))
+            if (!hasUsageAccess) {
+                Note(stringResource(R.string.wb_limits_need_access))
+                ActionOption(R.string.monitor_usage_grant, Icons.Filled.Lock, onGrantUsage)
+            }
         }
         Card {
             Text(stringResource(R.string.wb_week_title), color = Oled.TextPrimary, fontSize = 17.sp)

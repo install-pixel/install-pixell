@@ -861,7 +861,7 @@
     <string name="wb_pause_add">Додати програми</string>
     <string name="wb_pause_length">Тривалість паузи</string>
     <string name="wb_seconds">%1$d с</string>
-    <string name="wb_limits_need_access">Час сьогодні й ліміти потребують «Доступу до використання» (дається один раз нижче).</string>
+    <string name="wb_limits_need_access">Час сьогодні й ліміти потребують «Доступу до використання» — це окремий дозвіл Android (не те саме, що доступ до сповіщень). Дається один раз кнопкою нижче.</string>
     <string name="wb_week_title">Тижневий підсумок</string>
     <string name="wb_week_need_access">Екранний час за 7 днів потребує «Доступу до використання» — дається один раз у налаштуваннях Android. Рахується лише на телефоні.</string>
     <string name="wb_week_average">У середньому: %1$s на день</string>

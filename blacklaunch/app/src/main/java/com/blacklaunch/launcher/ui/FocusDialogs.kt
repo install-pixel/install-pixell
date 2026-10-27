@@ -332,7 +332,15 @@ fun FocusTimerScreen(
             modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (pin != PinState.NONE) PinChip(pin, onPin)
+            // «Закріплено» — коротко підтверджуємо й ховаємо: далі напис не потрібен.
+            var pinnedShown by remember(pin) { mutableStateOf(true) }
+            LaunchedEffect(pin) {
+                if (pin == PinState.PINNED) {
+                    delay(PINNED_VISIBLE_MS)
+                    pinnedShown = false
+                }
+            }
+            if (pin != PinState.NONE && (pin != PinState.PINNED || pinnedShown)) PinChip(pin, onPin)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 val shape = RoundedCornerShape(28.dp)
                 Column(
@@ -356,6 +364,8 @@ fun FocusTimerScreen(
     }
     if (early) EarlyExitDialog(onConfirm = { early = false; onEarlyExit() }, onDismiss = { early = false })
 }
+
+private const val PINNED_VISIBLE_MS = 3_000L
 
 /** Позначка вгорі: закріплено / Android питає / не закріплено + «Закріпити». */
 @Composable

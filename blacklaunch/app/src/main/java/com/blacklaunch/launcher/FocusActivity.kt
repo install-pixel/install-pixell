@@ -49,6 +49,16 @@ class FocusActivity : ComponentActivity() {
                 app.focus.session.collect { if (it == null || !app.focus.running()) leave() }
             }
         }
+        // Android змінює стан закріплення трохи пізніше, ніж повертає фокус вікну, — тож поки екран видно,
+        // перевіряємо його ще й раз на секунду (інакше лишалось би «Android питає…» після «Закріпити»).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    refreshPinned()
+                    kotlinx.coroutines.delay(PIN_CHECK_MS)
+                }
+            }
+        }
         setContent {
             val session by app.focus.session.collectAsStateWithLifecycle()
             val profiles by app.profileRepository.profiles.collectAsStateWithLifecycle(emptyList())
@@ -128,5 +138,6 @@ class FocusActivity : ComponentActivity() {
     private companion object {
         const val KEY_ASKED = "asked_pin"
         const val ASK_GRACE_MS = 1_500L
+        const val PIN_CHECK_MS = 1_000L
     }
 }

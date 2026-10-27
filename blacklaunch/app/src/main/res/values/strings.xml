@@ -857,7 +857,7 @@
     <string name="wb_pause_add">Add apps</string>
     <string name="wb_pause_length">Pause length</string>
     <string name="wb_seconds">%1$d s</string>
-    <string name="wb_limits_need_access">Time today and limits need “Usage access” (granted once below).</string>
+    <string name="wb_limits_need_access">Time today and limits need “Usage access” — a separate Android permission (not the same as notification access). Granted once with the button below.</string>
     <string name="wb_week_title">Weekly summary</string>
     <string name="wb_week_need_access">Screen time for the last 7 days needs “Usage access” — granted once in Android settings. Counted only on this phone.</string>
     <string name="wb_week_average">On average: %1$s a day</string>

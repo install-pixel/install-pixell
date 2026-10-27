@@ -861,7 +861,7 @@
     <string name="wb_pause_add">Dodaj aplikacje</string>
     <string name="wb_pause_length">Długość pauzy</string>
     <string name="wb_seconds">%1$d s</string>
-    <string name="wb_limits_need_access">Czas dzisiaj i limity wymagają „Dostępu do użycia” (udzielany raz poniżej).</string>
+    <string name="wb_limits_need_access">Czas dzisiaj i limity wymagają „Dostępu do użycia” — to osobne uprawnienie Androida (nie to samo co dostęp do powiadomień). Udzielany raz przyciskiem poniżej.</string>
     <string name="wb_week_title">Podsumowanie tygodnia</string>
     <string name="wb_week_need_access">Czas przed ekranem z 7 dni wymaga „Dostępu do użycia” — udzielany raz w ustawieniach Androida. Liczony tylko na telefonie.</string>
     <string name="wb_week_average">Średnio: %1$s dziennie</string>
