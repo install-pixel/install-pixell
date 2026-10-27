@@ -37,6 +37,12 @@ internal enum class CatAct {
 
     /** Роззирається. */
     LOOK_AROUND,
+
+    /** Його тримають за шкірку: звисає, лапи й хвіст бовтаються. */
+    HELD,
+
+    /** Щойно відпустили — приземлився, трохи присів. */
+    LAND,
 }
 
 /** Мить анімації: що робить, наскільки просунувся крок, час. */
@@ -63,6 +69,7 @@ internal class CatPose {
     var headTilt = 0f
     var headDrop = 0f
     var tailWag = 0f
+    var tailDown = false
     var bob = 0f
 }
 
@@ -143,6 +150,27 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
         CatAct.LOOK_AROUND -> {
             headTilt = sin(p * pi * 2f) * 15f
             armNear = 4f
+        }
+        CatAct.HELD -> {
+            // Звисає: лапи витягнуті донизу й бовтаються, хвіст висить.
+            val swing = sin(f.time * 4.5f)
+            legLen = 18f
+            legNear = 6f + swing * 9f
+            legFar = -4f - swing * 7f
+            armNear = 4f + swing * 6f
+            armFar = -4f - swing * 5f
+            tailDown = true
+            tailWag = swing * 4f
+            headTilt = -6f
+        }
+        CatAct.LAND -> {
+            val k = sin(pi * p)
+            drop = 4f * k
+            legLen = 16f - 3f * k
+            legNear = 18f * k
+            legFar = -16f * k
+            armNear = 40f * k
+            armFar = 30f * k
         }
     }
 }
@@ -250,7 +278,9 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
     // Хвіст: стоячи — вгору плавною дугою, сидячи — лежить на землі й закручується кінчиком.
     pen.shape(width = 2.4f) {
         move(hx - 7f, hy - 3f)
-        if (sitting) {
+        if (pose.tailDown) {
+            cubic(hx - 11f, hy - 1f, hx - 12f + pose.tailWag, hy + 6f, hx - 9f + pose.tailWag, hy + 14f)
+        } else if (sitting) {
             cubic(hx - 14f, 0f, hx - 21f + pose.tailWag, 0f, hx - 23f + pose.tailWag, -6f)
         } else {
             cubic(hx - 14f, hy - 2f, hx - 20f + pose.tailWag, hy - 11f, hx - 16f + pose.tailWag, hy - 22f)
@@ -305,10 +335,10 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
     // Ближня задня лапа — просто з тулуба (без окремого стегна, що ділило тіло навпіл).
     leg(pose.legNear, 0.95f)
 
-    // Ближня передня лапа: опущена — перед тілом. Піднята до голови — сама лапа йде за щокою (голова її закриває),
-    // а лапка лежить зверху на маківці (малюється після голови).
+    // Ближня передня лапа: опущена — перед тілом; піднята до голови — уся малюється після голови (за потилицею,
+    // не через мордочку), тож нічого не обрізається.
     val armRaised = pose.armNear > 90f
-    arm(shoulderX, pose.armNear, pose.armLen, paw = !armRaised)
+    if (!armRaised) arm(shoulderX, pose.armNear, pose.armLen)
 
     // Голова: нахиляється / трусить навколо шиї.
     val cx = hx + 2.5f
@@ -362,6 +392,10 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
     pen.line(cx + 8.4f, cy + 1.2f, cx + 15.5f, cy + 1.1f, width = 0.7f, alpha = 0.55f)
     pen.line(cx + 8.2f, cy + 1.8f, cx + 14.5f, cy + 3.5f, width = 0.7f, alpha = 0.55f)
     pen.restore()
-    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen, line = false)
+    // Тримають за шкірку — складка шкіри на загривку тягнеться вгору.
+    if (f.act == CatAct.HELD) {
+        pen.shape(width = 1.4f) { move(hx - 4f, hy - 23f); cubic(hx - 4.5f, hy - 26f, hx - 2.5f, hy - 28f, hx - 1.5f, hy - 31f) }
+    }
+    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen)
     return pen.shapes
 }

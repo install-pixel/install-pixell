@@ -325,9 +325,12 @@ fun FocusTimerScreen(
 ) {
     val now = tickingNow()
     var early by rememberSaveable { mutableStateOf(false) }
+    // Перешкоди для котика: плашка відліку, кнопки внизу, позначка закріплення вгорі (поки видна).
     var fence by remember { mutableStateOf<Rect?>(null) }
+    var buttons by remember { mutableStateOf<Rect?>(null) }
+    var chip by remember { mutableStateOf<Rect?>(null) }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (cat) FocusCat(fence)
+        if (cat) FocusCat(listOfNotNull(fence, buttons, chip))
         Column(
             modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -340,7 +343,11 @@ fun FocusTimerScreen(
                     pinnedShown = false
                 }
             }
-            if (pin != PinState.NONE && (pin != PinState.PINNED || pinnedShown)) PinChip(pin, onPin)
+            val chipShown = pin != PinState.NONE && (pin != PinState.PINNED || pinnedShown)
+            if (chipShown) {
+                Box(Modifier.onGloballyPositioned { chip = it.boundsInRoot() }) { PinChip(pin, onPin) }
+            }
+            LaunchedEffect(chipShown) { if (!chipShown) chip = null }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 val shape = RoundedCornerShape(28.dp)
                 Column(
@@ -356,7 +363,7 @@ fun FocusTimerScreen(
                     Text(FocusRules.clock(endsAt - now), color = Oled.TextPrimary, fontSize = 60.sp, fontWeight = FontWeight.Light)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.onGloballyPositioned { buttons = it.boundsInRoot() }, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 onMinimize?.let { DialogButton(stringResource(R.string.focus_minimize), it) }
                 DialogButton(stringResource(R.string.focus_end_early), { early = true }, Tone.Danger)
             }
