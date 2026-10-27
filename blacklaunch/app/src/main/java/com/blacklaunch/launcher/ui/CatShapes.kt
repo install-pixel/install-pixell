@@ -43,6 +43,9 @@ internal enum class CatAct {
 
     /** Щойно відпустили — приземлився, трохи присів. */
     LAND,
+
+    /** Ліг клубочком і спить: дихає, над ним «z-z-z». */
+    LIE,
 }
 
 /** Мить анімації: що робить, наскільки просунувся крок, час. */
@@ -151,6 +154,8 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             headTilt = sin(p * pi * 2f) * 15f
             armNear = 4f
         }
+        // Лежачи — окремий малюнок ([lyingShapes]), поза не потрібна.
+        CatAct.LIE -> Unit
         CatAct.HELD -> {
             // Звисає: лапи витягнуті донизу й бовтаються, хвіст висить.
             val swing = sin(f.time * 4.5f)
@@ -268,6 +273,7 @@ internal const val CAT_HEIGHT = 64f
 
 /** Усі фігури кадру — від дальніх до ближніх (порядок і є «що що закриває»). */
 internal fun catShapes(f: CatFrame): List<CatShape> {
+    if (f.act == CatAct.LIE) return lyingShapes(f)
     val pose = catPose(f)
     val pen = CatPen()
     pen.rotate(pose.lean, 0f, 0f)
@@ -345,12 +351,32 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
     val cy = hy - 30f + pose.headDrop
     pen.save()
     pen.rotate(pose.headTilt, hx + 1.5f, hy - 22f)
+    val eye = when {
+        f.dazed && f.act == CatAct.SIT -> CatEye.DAZED
+        f.act == CatAct.DUCK -> CatEye.CLOSED
+        else -> CatEye.OPEN
+    }
+    pen.head(cx, cy, eye, f.time)
+    pen.restore()
+    // Тримають за шкірку — складка шкіри на загривку тягнеться вгору.
+    if (f.act == CatAct.HELD) {
+        pen.shape(width = 1.4f) { move(hx - 4f, hy - 23f); cubic(hx - 4.5f, hy - 26f, hx - 2.5f, hy - 28f, hx - 1.5f, hy - 31f) }
+    }
+    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen)
+    return pen.shapes
+}
+
+/** Як виглядає око. */
+private enum class CatEye { OPEN, CLOSED, DAZED }
+
+/** Голова збоку: дальнє вухо, голова з мордочкою, ближнє вухо, смужки, око, носик, ротик, вуса. */
+private fun CatPen.head(cx: Float, cy: Float, eye: CatEye, time: Float) {
     // Дальнє вухо — позаду голови (голова закриє його основу).
-    pen.shape(CatFill.BLACK, alpha = 0.75f) {
+    shape(CatFill.BLACK, alpha = 0.75f) {
         move(cx - 5.5f, cy - 5.5f); line(cx - 4.5f, cy - 14f); line(cx + 0.5f, cy - 8f); close()
     }
     // Голова з мордочкою: лоб, перенісся, носик попереду, підборіддя, щока.
-    pen.shape(CatFill.BLACK) {
+    shape(CatFill.BLACK) {
         move(cx - 1f, cy - 8.5f)
         cubic(cx + 5f, cy - 9f, cx + 8.5f, cy - 5f, cx + 9f, cy - 1.5f)
         cubic(cx + 11f, cy - 0.5f, cx + 11f, cy + 3f, cx + 8.5f, cy + 4f)
@@ -359,43 +385,71 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
         close()
     }
     // Ближнє вухо з лінією всередині.
-    pen.shape(CatFill.BLACK) {
+    shape(CatFill.BLACK) {
         move(cx + 0.5f, cy - 8f); line(cx + 3f, cy - 15.5f); line(cx + 6.5f, cy - 6.5f)
     }
-    pen.line(cx + 2.9f, cy - 12.5f, cx + 4.4f, cy - 8.2f, width = 1f, alpha = 0.6f)
+    line(cx + 2.9f, cy - 12.5f, cx + 4.4f, cy - 8.2f, width = 1f, alpha = 0.6f)
     // Смужки на лобі.
-    pen.line(cx + 0.8f, cy - 6.6f, cx + 1.6f, cy - 4.6f, width = 1f, alpha = 0.55f)
-    pen.line(cx - 1.4f, cy - 6.8f, cx - 1f, cy - 4.9f, width = 1f, alpha = 0.55f)
+    line(cx + 0.8f, cy - 6.6f, cx + 1.6f, cy - 4.6f, width = 1f, alpha = 0.55f)
+    line(cx - 1.4f, cy - 6.8f, cx - 1f, cy - 4.9f, width = 1f, alpha = 0.55f)
     // Око: мигдалик із зіницею; присів — зажмурився; оглушило — «хрестик» і зірочки.
-    when {
-        f.dazed && f.act == CatAct.SIT -> {
-            pen.line(cx + 3.6f, cy - 3.4f, cx + 6f, cy - 1f, width = 1.2f)
-            pen.line(cx + 6f, cy - 3.4f, cx + 3.6f, cy - 1f, width = 1.2f)
+    when (eye) {
+        CatEye.DAZED -> {
+            line(cx + 3.6f, cy - 3.4f, cx + 6f, cy - 1f, width = 1.2f)
+            line(cx + 6f, cy - 3.4f, cx + 3.6f, cy - 1f, width = 1.2f)
             for (i in 0 until 3) {
-                val a = f.time * 3f + i * 2.1f
+                val a = time * 3f + i * 2.1f
                 val sx = cx + 1f + cos(a) * 13f
                 val sy = cy - 12f + sin(a) * 3.5f
-                pen.line(sx - 1.8f, sy, sx + 1.8f, sy, width = 1f)
-                pen.line(sx, sy - 1.8f, sx, sy + 1.8f, width = 1f)
+                line(sx - 1.8f, sy, sx + 1.8f, sy, width = 1f)
+                line(sx, sy - 1.8f, sx, sy + 1.8f, width = 1f)
             }
         }
-        f.act == CatAct.DUCK -> pen.shape(width = 1.2f) { move(cx + 3.2f, cy - 2.4f); cubic(cx + 4.2f, cy - 1.2f, cx + 5.4f, cy - 1.2f, cx + 6.3f, cy - 2.4f) }
-        else -> {
-            pen.shape(width = 1.2f) { move(cx + 3f, cy - 2f); cubic(cx + 4f, cy - 3.6f, cx + 5.5f, cy - 3.6f, cx + 6.4f, cy - 2.2f) }
-            pen.oval(cx + 5f, cy - 2f, 0.9f, 1.1f, CatFill.PENCIL, width = 0f, alpha = 1f)
+        CatEye.CLOSED -> shape(width = 1.2f) { move(cx + 3.2f, cy - 2.4f); cubic(cx + 4.2f, cy - 1.2f, cx + 5.4f, cy - 1.2f, cx + 6.3f, cy - 2.4f) }
+        CatEye.OPEN -> {
+            shape(width = 1.2f) { move(cx + 3f, cy - 2f); cubic(cx + 4f, cy - 3.6f, cx + 5.5f, cy - 3.6f, cx + 6.4f, cy - 2.2f) }
+            oval(cx + 5f, cy - 2f, 0.9f, 1.1f, CatFill.PENCIL, width = 0f, alpha = 1f)
         }
     }
     // Носик, ротик і тонкі вуса від щоки вперед.
-    pen.shape(CatFill.PENCIL, width = 0f, alpha = 0.95f) { move(cx + 9.3f, cy - 1.3f); line(cx + 10.7f, cy - 1.1f); line(cx + 10.1f, cy); close() }
-    pen.shape(width = 1f, alpha = 0.8f) { move(cx + 10f, cy); cubic(cx + 9.9f, cy + 1.4f, cx + 9f, cy + 1.8f, cx + 8.2f, cy + 1.3f) }
-    pen.line(cx + 8.4f, cy + 0.6f, cx + 15f, cy - 1.4f, width = 0.7f, alpha = 0.55f)
-    pen.line(cx + 8.4f, cy + 1.2f, cx + 15.5f, cy + 1.1f, width = 0.7f, alpha = 0.55f)
-    pen.line(cx + 8.2f, cy + 1.8f, cx + 14.5f, cy + 3.5f, width = 0.7f, alpha = 0.55f)
+    shape(CatFill.PENCIL, width = 0f, alpha = 0.95f) { move(cx + 9.3f, cy - 1.3f); line(cx + 10.7f, cy - 1.1f); line(cx + 10.1f, cy); close() }
+    shape(width = 1f, alpha = 0.8f) { move(cx + 10f, cy); cubic(cx + 9.9f, cy + 1.4f, cx + 9f, cy + 1.8f, cx + 8.2f, cy + 1.3f) }
+    line(cx + 8.4f, cy + 0.6f, cx + 15f, cy - 1.4f, width = 0.7f, alpha = 0.55f)
+    line(cx + 8.4f, cy + 1.2f, cx + 15.5f, cy + 1.1f, width = 0.7f, alpha = 0.55f)
+    line(cx + 8.2f, cy + 1.8f, cx + 14.5f, cy + 3.5f, width = 0.7f, alpha = 0.55f)
+}
+
+/**
+ * Лежить клубочком і спить: тулуб — витягнутий овал на землі (дихає), лапки під підборіддям, хвіст обгорнутий
+ * спереду, голова лежить, очі заплющені, над головою повільно спливають «z».
+ */
+private fun lyingShapes(f: CatFrame): List<CatShape> {
+    val pen = CatPen()
+    val breath = sin(f.time * 1.7f) * 0.6f
+    // Хвіст обгорнутий довкола — лежить на землі перед тілом.
+    pen.shape(width = 2.4f) { move(-16f, -5f); cubic(-22f, -1f, -10f, 1.5f, 6f, 0.5f) }
+    // Тулуб.
+    pen.oval(-3f, -8.5f - breath / 2f, 15f, 8.2f + breath, CatFill.BLACK)
+    // Смужки на спині й лінія стегна.
+    pen.line(-9f, -15.5f, -8f, -13f, width = 1.1f, alpha = 0.55f)
+    pen.line(-4f, -16.4f, -3.2f, -13.8f, width = 1.1f, alpha = 0.55f)
+    pen.line(1f, -16.2f, 1.6f, -13.8f, width = 1.1f, alpha = 0.55f)
+    pen.shape(width = 1.2f, alpha = 0.7f) { move(-15f, -4f); cubic(-14f, -10f, -8f, -12f, -5f, -7f) }
+    // Лапки під підборіддям.
+    pen.oval(14f, -1.7f, 3.2f, 1.7f, CatFill.BLACK, width = 1.3f)
+    // Голова лежить, трохи схилена вперед; очі заплющені.
+    pen.save()
+    pen.rotate(8f, 10f, -6f)
+    pen.head(10f, -11f, CatEye.CLOSED, f.time)
     pen.restore()
-    // Тримають за шкірку — складка шкіри на загривку тягнеться вгору.
-    if (f.act == CatAct.HELD) {
-        pen.shape(width = 1.4f) { move(hx - 4f, hy - 23f); cubic(hx - 4.5f, hy - 26f, hx - 2.5f, hy - 28f, hx - 1.5f, hy - 31f) }
+    // «z-z-z» спливають і тануть.
+    for (i in 0 until 3) {
+        val phase = (f.time * 0.35f + i / 3f) % 1f
+        val zx = 17f + phase * 14f
+        val zy = -22f - phase * 24f
+        val z = 1.8f + phase * 1.6f
+        val alpha = (1f - phase) * 0.8f
+        pen.shape(width = 1.1f, alpha = alpha) { move(zx - z, zy - z); line(zx + z, zy - z); line(zx - z, zy + z); line(zx + z, zy + z) }
     }
-    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen)
     return pen.shapes
 }

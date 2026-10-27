@@ -76,7 +76,7 @@ fun FocusCat(fences: List<Rect>, modifier: Modifier = Modifier) {
                         cat.dragTo(change.position, (size shr 32).toFloat(), (size and 0xFFFFFFFF).toFloat(), unit)
                         change.consume()
                     }
-                    cat.release()
+                    cat.release((size shr 32).toFloat(), (size and 0xFFFFFFFF).toFloat(), unit, currentFences)
                 }
             },
     ) {
@@ -108,8 +108,21 @@ private class CatSim {
     var time = 0f
     private var onEnd: (() -> Unit)? = null
     private val queue = ArrayDeque<CatStep>()
-    private var nextIdle = 4f
+    /** Скільки ще йти до наступного «рішення» і з якою швидкістю (щоразу інакше). */
+    private var walkLeft = 3f
+    private var speedFactor = 1f
+    /** Роззираючись, повернеться в інший бік посередині. */
+    private var lookTurn = false
+    private var lookTurned = false
     private val rnd = Random(System.nanoTime())
+
+    /** Випадкова тривалість: частіше коротка, іноді довга (квадрат рівномірного). */
+    private fun span(min: Float, max: Float): Float {
+        val r = rnd.nextFloat()
+        return min + (max - min) * r * r
+    }
+
+    private fun chance(p: Float) = rnd.nextFloat() < p
 
     val progress get() = (actTime / actLength).coerceIn(0f, 1f)
 
@@ -143,12 +156,36 @@ private class CatSim {
         y = (p.y + SCRUFF_Y * u).coerceIn(CAT_HEIGHT * u, h - 2f * u)
     }
 
-    /** Відпустили: приземлився й пішов далі (якщо поставили на огорожу — спершу вийде з неї). */
-    fun release() {
+    /**
+     * Відпустили: приземлився, струсився, трохи подумав і пішов. Поставили на таймер чи кнопку —
+     * переноситься на найближче вільне місце (за перешкодою котику не місце).
+     */
+    fun release(w: Float, h: Float, u: Float, fences: List<Rect>) {
         if (act != CatAct.HELD) return
+        if (blocked(x, y, w, h, u, fences)) nearestFree(w, h, u, fences)?.let { (fx, fy) -> x = fx; y = fy }
         dirX = if (rnd.nextBoolean()) 1f else -1f
         slope = randomSlope()
-        plan(CatStep(CatAct.LAND, 0.4f), CatStep(CatAct.SHAKE, 0.6f))
+        plan(CatStep(CatAct.LAND, 0.4f), CatStep(CatAct.SHAKE, span(0.4f, 0.9f)), look(span(0.5f, 2.5f)))
+    }
+
+    /** Найближче місце, де котик ні на що не налазить: кола довкола, дедалі ширші. */
+    private fun nearestFree(w: Float, h: Float, u: Float, fences: List<Rect>): Pair<Float, Float>? {
+        var r = 8f * u
+        while (r < maxOf(w, h)) {
+            for (i in 0 until 24) {
+                val a = i * (2f * kotlin.math.PI.toFloat() / 24f)
+                val cx = x + kotlin.math.cos(a) * r
+                val cy = y + kotlin.math.sin(a) * r
+                if (!blocked(cx, cy, w, h, u, fences)) return cx to cy
+            }
+            r += 8f * u
+        }
+        return null
+    }
+
+    /** Роззирається; іноді посередині повертається глянути в інший бік. */
+    private fun look(seconds: Float, then: (() -> Unit)? = null): CatStep {
+        return CatStep(CatAct.LOOK_AROUND, seconds, then = then)
     }
 
     fun step(dt: Float, w: Float, h: Float, u: Float, fences: List<Rect>) {
@@ -164,11 +201,16 @@ private class CatSim {
             }
             else -> Unit
         }
+        // Роззирається: посередині, бува, повертається в інший бік — і так і лишається, і йде вже туди.
+        if (act == CatAct.LOOK_AROUND && lookTurn && !lookTurned && progress > 0.45f) {
+            lookTurned = true
+            dirX = -dirX
+        }
         if (act != CatAct.WALK && actTime >= actLength) next()
     }
 
     private fun walk(dt: Float, w: Float, h: Float, u: Float, fences: List<Rect>) {
-        val speed = 30f * u
+        val speed = 30f * u * speedFactor
         val nx = x + dirX * speed * dt
         val ny = y + slope * speed * dt
         // Огорожа з'явилась (чи котика поставили) там, де він уже стоїть, — спершу просто виходить звідти.
@@ -180,19 +222,34 @@ private class CatSim {
         }
         x = nx
         y = ny
-        walkPhase += dt * 6.5f
-        nextIdle -= dt
-        if (nextIdle <= 0f) {
-            nextIdle = 3f + rnd.nextFloat() * 5f
-            val roll = rnd.nextFloat()
-            when {
-                roll < 0.14f -> plan(CatStep(CatAct.SIT, 2.5f + rnd.nextFloat() * 2.5f))
-                roll < 0.26f -> plan(CatStep(CatAct.SCRATCH, 1.6f))
-                roll < 0.36f -> plan(CatStep(CatAct.LOOK_AROUND, 1.4f))
-                roll < 0.5f -> dirX = -dirX
-                else -> slope = randomSlope()
+        walkPhase += dt * 6.5f * speedFactor
+        walkLeft -= dt
+        if (walkLeft <= 0f) decide()
+    }
+
+    /** Прогулянку завершено — що далі. Ймовірності й тривалості щоразу інші, тож поведінка не повторюється шаблоном. */
+    private fun decide() {
+        val roll = rnd.nextFloat()
+        when {
+            // Зупинився подумати й роззирнутися.
+            roll < 0.24f -> plan(look(span(0.8f, 3.5f)))
+            // Почухався, потім ще постояв, подумав.
+            roll < 0.36f -> plan(CatStep(CatAct.SCRATCH, span(0.7f, 2.6f)), look(span(0.6f, 2.8f)))
+            // Сів відпочити — від секунди до десяти; іноді потім ліг.
+            roll < 0.52f -> if (chance(0.3f)) {
+                plan(CatStep(CatAct.SIT, span(0.8f, 3f)), CatStep(CatAct.LIE, span(2f, 15f)), CatStep(CatAct.SIT, span(0.6f, 2f)), look(span(0.5f, 2f)))
+            } else {
+                plan(CatStep(CatAct.SIT, span(1f, 10f)), look(span(0.4f, 2f)))
             }
+            // Ліг подрімати.
+            roll < 0.62f -> plan(CatStep(CatAct.SIT, span(0.6f, 1.5f)), CatStep(CatAct.LIE, span(1f, 14f)), CatStep(CatAct.SIT, span(0.5f, 2f)))
+            // Розвернувся й пішов назад.
+            roll < 0.74f -> dirX = -dirX
+            // Просто пішов трохи інакше.
+            else -> slope = randomSlope()
         }
+        walkLeft = span(1.2f, 8f)
+        speedFactor = 0.65f + rnd.nextFloat() * 0.6f
     }
 
     /** Що саме вдарилось: бік (ніс), маківка (знизу під перешкодою / верхній край) чи лапи (згори / нижній край). */
@@ -215,23 +272,26 @@ private class CatSim {
         when (hit) {
             CatHit.SIDE -> {
                 val turn = { dirX = -dirX; slope = randomSlope() }
-                if (rnd.nextFloat() < 0.4f) {
-                    // Сильно: сів на хвіст, оговтався, почухав потилицю.
-                    plan(CatStep(CatAct.RECOIL, 0.35f), CatStep(CatAct.SIT, 1.8f, dazed = true), CatStep(CatAct.SCRATCH, 1.4f, then = turn))
-                } else {
-                    plan(CatStep(CatAct.RECOIL, 0.35f), CatStep(CatAct.SHAKE, 0.8f, then = turn))
+                when {
+                    // Сильно: сів на хвіст, оговтався, почухав потилицю, подумав.
+                    chance(0.35f) -> plan(
+                        CatStep(CatAct.RECOIL, 0.35f), CatStep(CatAct.SIT, span(1.2f, 3.5f), dazed = true),
+                        CatStep(CatAct.SCRATCH, span(0.8f, 2.2f)), look(span(0.5f, 2.5f), then = turn),
+                    )
+                    chance(0.5f) -> plan(CatStep(CatAct.RECOIL, 0.35f), CatStep(CatAct.SHAKE, span(0.5f, 1f)), look(span(0.6f, 2.5f), then = turn))
+                    else -> plan(CatStep(CatAct.RECOIL, 0.35f), CatStep(CatAct.SHAKE, span(0.5f, 1f), then = turn))
                 }
             }
             CatHit.HEAD -> {
                 // Далі — вниз і вбік, щоб обійти перешкоду з краю, а не битися знову.
                 val down = { slope = 0.3f + rnd.nextFloat() * 0.3f; if (rnd.nextBoolean()) dirX = -dirX }
-                if (rnd.nextFloat() < 0.5f) {
-                    plan(CatStep(CatAct.DUCK, 1.3f), CatStep(CatAct.SCRATCH, 1.2f, then = down))
+                if (chance(0.5f)) {
+                    plan(CatStep(CatAct.DUCK, span(0.9f, 1.8f)), CatStep(CatAct.SCRATCH, span(0.7f, 2f)), look(span(0.4f, 2f), then = down))
                 } else {
-                    plan(CatStep(CatAct.DUCK, 1.3f), CatStep(CatAct.SHAKE, 0.6f, then = down))
+                    plan(CatStep(CatAct.DUCK, span(0.9f, 1.8f)), CatStep(CatAct.SHAKE, span(0.4f, 0.8f), then = down))
                 }
             }
-            CatHit.FEET -> plan(CatStep(CatAct.LOOK_DOWN, 0.8f, then = { slope = -(0.3f + rnd.nextFloat() * 0.4f) }))
+            CatHit.FEET -> plan(CatStep(CatAct.LOOK_DOWN, span(0.5f, 1.6f), then = { slope = -(0.3f + rnd.nextFloat() * 0.4f) }))
         }
     }
 
@@ -248,6 +308,14 @@ private class CatSim {
     }
 
     private fun start(step: CatStep) {
+        if (step.act == CatAct.LOOK_AROUND) {
+            lookTurn = chance(0.45f)
+            lookTurned = false
+        }
+        if (step.act == CatAct.WALK) {
+            walkLeft = span(1.2f, 8f)
+            speedFactor = 0.65f + rnd.nextFloat() * 0.6f
+        }
         act = step.act
         actTime = 0f
         actLength = step.seconds.coerceAtLeast(0.01f)
