@@ -79,7 +79,8 @@ fun SearchField(
                     VoiceState.Preparing -> R.string.preparing
                     is VoiceState.Listening -> R.string.listening
                 }
-                Text(stringResource(hint), color = Oled.TextSecondary)
+                // «Аркуш»: «Слухаю…» — вишневим, як рамка мікрофона.
+                Text(stringResource(hint), color = if (sheet && listening) Oled.Listening else Oled.TextSecondary)
             },
             trailingIcon = {
                 if (query.isNotEmpty() && !listening) {

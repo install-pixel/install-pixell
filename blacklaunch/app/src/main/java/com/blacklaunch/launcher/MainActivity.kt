@@ -64,6 +64,7 @@ import com.blacklaunch.launcher.ui.NowPlayingScreen
 import com.blacklaunch.launcher.ui.PauseAppRow
 import com.blacklaunch.launcher.ui.WellbeingPage
 import com.blacklaunch.launcher.ui.GamesPage
+import com.blacklaunch.launcher.ui.HintBanner
 import com.blacklaunch.launcher.ui.SheetTheme
 import com.blacklaunch.launcher.ui.PresetsPage
 import com.blacklaunch.launcher.ui.FirstRunPresetDialog
@@ -141,6 +142,7 @@ import com.blacklaunch.launcher.voice.VoiceModelStore
 import com.blacklaunch.launcher.voice.VoiceLanguages
 import com.blacklaunch.launcher.voice.VoiceSearchManager
 import com.blacklaunch.launcher.voice.VoiceState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -710,6 +712,7 @@ class MainActivity : ComponentActivity() {
                         onCancel = { launchPrompt.value = null },
                     )
                 }
+                HintBanner(hint.collectAsStateWithLifecycle().value)
                 }
             }
             // Голос поверх заблокованого екрана: лише чорний екран із мікрофоном — нічого з телефона не видно.
@@ -722,7 +725,7 @@ class MainActivity : ComponentActivity() {
     private val actionRunner by lazy {
         VoiceActionRunner(
             context = this,
-            onMessage = { message -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show() },
+            onMessage = { message -> toastText(message) },
             speakAnswers = { app.voiceActionSettings.speakAnswers.value },
             ttsEngine = { app.voiceActionSettings.ttsEngine.value },
         )
@@ -852,7 +855,7 @@ class MainActivity : ComponentActivity() {
         if (action is VoiceAction.Message) {
             messenger = viewModel.findApp(action.app)
             if (messenger == null) {
-                Toast.makeText(this, getString(R.string.app_not_found, action.app), Toast.LENGTH_SHORT).show()
+                toastText(getString(R.string.app_not_found, action.app))
                 return
             }
             // Месенджер без чату за номером — його «Поділитися», контакт не потрібен.
@@ -877,7 +880,7 @@ class MainActivity : ComponentActivity() {
         }
         val contact = actionRunner.findContact(name)
         if (contact == null) {
-            Toast.makeText(this, getString(R.string.voice_contact_not_found, name), Toast.LENGTH_SHORT).show()
+            toastText(getString(R.string.voice_contact_not_found, name))
             return
         }
         when (action) {
@@ -906,7 +909,7 @@ class MainActivity : ComponentActivity() {
     private fun contactAction(contact: GlobalResult.Contact, call: Boolean) {
         val number = contactNumber(contact)
         if (number == null) {
-            Toast.makeText(this, getString(R.string.voice_contact_not_found, contact.name), Toast.LENGTH_SHORT).show()
+            toastText(getString(R.string.voice_contact_not_found, contact.name))
             return
         }
         val found = ContactNumber(contact.name, number)
@@ -1007,7 +1010,7 @@ class MainActivity : ComponentActivity() {
                 backup.restore(text)
             }
             result.onSuccess {
-                Toast.makeText(this@MainActivity, getString(R.string.backup_restored, it.profiles, it.waitingApps), Toast.LENGTH_SHORT).show()
+                toastText(getString(R.string.backup_restored, it.profiles, it.waitingApps))
             }.onFailure { toast(R.string.backup_failed) }
         }
     }
@@ -1633,9 +1636,38 @@ class MainActivity : ComponentActivity() {
         UiMessage.NOT_IN_MODE -> R.string.cmd_not_in_mode
     }
 
-    private fun toast(message: Int) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    private fun toast(message: Int) = toastText(getString(message))
 
-    private fun toastText(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    /**
+     * Коротка підказка. З темою «Аркуш», поки Black Glass на екрані, — власною плашкою від руки (системну спливаючу
+     * підказку перемалювати не можна); інакше — звичайною системною.
+     */
+    private fun toastText(message: String) {
+        if (app.appearanceSettings.appearance.value.sheet && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            hint.value = message
+            hintJob?.cancel()
+            hintJob = lifecycleScope.launch {
+                delay(HINT_MS)
+                hint.value = null
+            }
+        } else {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Підказка «Аркуша», що зараз на екрані. */
+    private val hint = MutableStateFlow<String?>(null)
+    private var hintJob: Job? = null
+
+    override fun onPause() {
+        super.onPause()
+        // Пішли з Black Glass, поки висить підказка, — дочитати її можна буде системною.
+        hint.value?.let { text ->
+            hintJob?.cancel()
+            hint.value = null
+            Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -1950,6 +1982,7 @@ class MainActivity : ComponentActivity() {
         /** Плитка: «наступний режим», коли його затримує «Зосередження». */
         const val EXTRA_SWITCH_NEXT = "com.blacklaunch.launcher.SWITCH_NEXT"
         private const val PROFILE_BANNER_MS = 1_500L
+        private const val HINT_MS = 2_500L
         private const val FOCUS_LABEL_TICK_MS = 15_000L
         private const val FOCUS_TEMPLATE_DELAY_S = 30
         private const val THUMB_CACHE = 200

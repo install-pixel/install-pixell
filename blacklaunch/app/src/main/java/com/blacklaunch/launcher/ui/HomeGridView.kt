@@ -192,7 +192,7 @@ private fun RemoveZone(highlighted: Boolean, modifier: Modifier) {
             Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextPrimary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(stringResource(R.string.remove_from_home), color = Oled.TextPrimary, fontSize = 14.sp)
+        Text(stringResource(R.string.remove_from_home), color = if (LocalSheet.current) Oled.Danger else Oled.TextPrimary, fontSize = 14.sp)
     }
 }
 

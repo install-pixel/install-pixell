@@ -53,7 +53,7 @@ internal fun SmallButton(text: String, tone: Tone, onClick: () -> Unit) {
         color = if (tone == Tone.Neutral) Oled.Accent else tone.color(),
         fontSize = 15.sp,
         modifier = Modifier
-            .then(if (sheet) Modifier.pencilFrame(12.dp, text.length) else Modifier.clip(shape).background(Oled.Knob).border(1.dp, Oled.Glint, shape))
+            .then(if (sheet) Modifier.pencilFrame(12.dp, text.length, ink = if (tone == Tone.Neutral) SheetInk else tone.color()) else Modifier.clip(shape).background(Oled.Knob).border(1.dp, Oled.Glint, shape))
             .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
@@ -202,7 +202,7 @@ internal fun ActionOption(label: String, icon: ImageVector, tone: Tone, onClick:
                 .padding(horizontal = 6.dp, vertical = 8.dp)
                 .drawWithContent {
                     drawContent()
-                    pencilStroke(size.height + 2.dp.toPx(), 0f, size.width * 0.6f, seed = label.length, alpha = 0.45f)
+                    pencilStroke(size.height + 2.dp.toPx(), 0f, size.width * 0.6f, seed = label.length, alpha = 0.45f, ink = if (tone == Tone.Neutral) SheetInk else tone.color())
                 },
         )
         return

@@ -1,18 +1,30 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,9 +43,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.ui.theme.Oled
 import kotlin.math.sin
@@ -150,11 +164,37 @@ private inline fun DrawScope.translateBy(o: Offset, block: DrawScope.() -> Unit)
 }
 
 /** Хвиляста риска олівцем (перекреслення вимкненого, підкреслення вибраного). */
-internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int, alpha: Float = 0.8f) {
+internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int, alpha: Float = 0.8f, ink: Color = SheetInk) {
     val wob = 1.1.dp.toPx()
     val path = Path().apply {
         moveTo(from, y + sin(seed * 1.3f) * wob)
         quadraticTo((from + to) / 2, y + sin(seed * 2.1f + 1f) * wob * 2f, to, y + sin(seed * 0.7f + 2f) * wob)
     }
-    drawPath(path, SheetInk.copy(alpha = alpha), style = Stroke(1.3.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path, ink.copy(alpha = alpha), style = Stroke(1.3.dp.toPx(), cap = StrokeCap.Round))
+}
+
+/**
+ * Підказка «Аркуша» внизу екрана — замість системної спливаючої: на чорному клаптику в рамці олівцем, шрифтом від руки.
+ * Сама зникає (час — у того, хто показує).
+ */
+@Composable
+fun HintBanner(text: String?) {
+    // Останній текст лишається, поки плашка тане.
+    var shown by remember { mutableStateOf("") }
+    if (text != null) shown = text
+    Box(Modifier.fillMaxSize().navigationBarsPadding().imePadding(), contentAlignment = Alignment.BottomCenter) {
+        AnimatedVisibility(visible = text != null, enter = fadeIn(), exit = fadeOut()) {
+            Text(
+                shown,
+                color = Oled.TextPrimary,
+                fontSize = 17.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .padding(start = 24.dp, end = 24.dp, bottom = 96.dp)
+                    .background(Oled.Black, RoundedCornerShape(18.dp))
+                    .pencilFrame(18.dp, seed = shown.length)
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+            )
+        }
+    }
 }

@@ -105,7 +105,8 @@ fun DialogButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, e
             .clip(shape)
             .then(
                 when {
-                    sheet -> Modifier.pencilFrame(14.dp, text.length, alpha = if (enabled) 0.75f else 0.3f)
+                    // Синя (зберегти) чи червона (видалити) рамка олівцем — як акцент на склі.
+                    sheet -> Modifier.pencilFrame(14.dp, text.length, alpha = if (enabled) 0.75f else 0.3f, ink = if (tone == Tone.Neutral) SheetInk else color)
                     else -> Modifier
                         .then(if (tone == Tone.Neutral) Modifier else Modifier.background(Oled.Surface))
                         .border(1.dp, if (tone == Tone.Neutral) Oled.Glint else androidx.compose.ui.graphics.SolidColor(color.copy(alpha = 0.55f)), shape)

@@ -192,9 +192,13 @@ private fun HoldButton(onHeld: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .clip(shape)
-            .background(Oled.Surface)
-            .border(1.dp, androidx.compose.ui.graphics.SolidColor(Oled.Danger.copy(alpha = 0.55f)), shape)
+            .then(
+                if (LocalSheet.current) {
+                    Modifier.pencilFrame(14.dp, seed = 23, ink = Oled.Danger).clip(shape)
+                } else {
+                    Modifier.clip(shape).background(Oled.Surface).border(1.dp, androidx.compose.ui.graphics.SolidColor(Oled.Danger.copy(alpha = 0.55f)), shape)
+                },
+            )
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     haptics.tap()

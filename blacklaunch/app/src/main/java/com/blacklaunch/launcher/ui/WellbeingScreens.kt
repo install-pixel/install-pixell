@@ -8,10 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +33,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,10 +51,10 @@ import com.blacklaunch.launcher.wellbeing.DayUsage
 import com.blacklaunch.launcher.wellbeing.NowPlayingInfo
 import com.blacklaunch.launcher.wellbeing.PauseRules
 import com.blacklaunch.launcher.wellbeing.UsageMath
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 /** «1 год 05 хв» / «47 хв». */
 @Composable
@@ -115,41 +120,100 @@ private enum class MediaGlyph { PREVIOUS, PLAY, PAUSE, NEXT, STOP }
 @Composable
 private fun MediaButton(glyph: MediaGlyph, description: String, big: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
+    val sheet = LocalSheet.current
     val box = if (big) 64.dp else 40.dp
     val shape = RoundedCornerShape(box / 2)
     Box(
         modifier = Modifier
             .size(box)
-            .clip(shape)
-            .then(if (big) Modifier.background(Oled.Knob).border(1.dp, Oled.Glint, shape) else Modifier)
+            .then(
+                when {
+                    !big -> Modifier.clip(shape)
+                    sheet -> Modifier.pencilFrame(box / 2, seed = glyph.ordinal + 31, alpha = if (enabled) 0.75f else 0.3f).clip(shape)
+                    else -> Modifier.clip(shape).background(Oled.Knob).border(1.dp, Oled.Glint, shape)
+                },
+            )
             // Гравець цього не вміє — кнопка притемнена й не натискається.
             .clickable(enabled = enabled, onClickLabel = description) { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(if (big) 24.dp else 16.dp)) {
-            val w = size.width
-            val h = size.height
             val color = if (enabled) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.35f)
-            fun triangle(left: Float, right: Float) = Path().apply {
-                moveTo(left, 0f); lineTo(right, h / 2); lineTo(left, h); close()
+            if (sheet) drawHandGlyph(glyph, color, glyph.ordinal) else drawGlyph(glyph, color)
+        }
+    }
+}
+
+private fun DrawScope.drawGlyph(glyph: MediaGlyph, color: Color) {
+    val w = size.width
+    val h = size.height
+    fun triangle(left: Float, right: Float) = Path().apply {
+        moveTo(left, 0f); lineTo(right, h / 2); lineTo(left, h); close()
+    }
+    when (glyph) {
+        MediaGlyph.PLAY -> drawPath(triangle(w * 0.15f, w * 0.95f), color)
+        MediaGlyph.PAUSE -> {
+            drawRect(color, Offset(w * 0.18f, 0f), androidx.compose.ui.geometry.Size(w * 0.22f, h))
+            drawRect(color, Offset(w * 0.6f, 0f), androidx.compose.ui.geometry.Size(w * 0.22f, h))
+        }
+        MediaGlyph.NEXT -> {
+            drawPath(triangle(0f, w * 0.75f), color)
+            drawRect(color, Offset(w * 0.78f, 0f), androidx.compose.ui.geometry.Size(w * 0.16f, h))
+        }
+        MediaGlyph.STOP -> drawRect(color, Offset(w * 0.1f, h * 0.1f), androidx.compose.ui.geometry.Size(w * 0.8f, h * 0.8f))
+        MediaGlyph.PREVIOUS -> {
+            drawRect(color, Offset(w * 0.06f, 0f), androidx.compose.ui.geometry.Size(w * 0.16f, h))
+            drawPath(Path().apply { moveTo(w, 0f); lineTo(w * 0.25f, h / 2); lineTo(w, h); close() }, color)
+        }
+    }
+}
+
+/**
+ * «Аркуш»: ті самі знаки, але намальовані від руки — контуром олівця з легким тремтінням і другим тьмяним штрихом,
+ * без заливки (як усе на аркуші).
+ */
+private fun DrawScope.drawHandGlyph(glyph: MediaGlyph, color: Color, seed: Int) {
+    val w = size.width
+    val h = size.height
+    val wob = w * 0.035f
+    fun j(i: Int) = kotlin.math.sin(seed * 1.9f + i * 2.7f) * wob
+    val path = Path().apply {
+        fun tri(left: Float, right: Float, k: Int) {
+            moveTo(left + j(k), j(k + 1))
+            quadraticTo((left + right) / 2 + j(k + 2), h * 0.25f + j(k + 3), right + j(k + 4), h / 2 + j(k + 5))
+            quadraticTo((left + right) / 2 + j(k + 6), h * 0.75f + j(k + 7), left + j(k + 8), h + j(k + 9))
+            quadraticTo(left - wob + j(k + 10), h / 2, left + j(k + 11), j(k + 12) + wob)
+        }
+        fun bar(x: Float, k: Int) {
+            moveTo(x + j(k), j(k + 1))
+            quadraticTo(x + j(k + 2) * 2f, h / 2, x + j(k + 3), h + j(k + 4))
+        }
+        when (glyph) {
+            MediaGlyph.PLAY -> tri(w * 0.18f, w * 0.95f, 0)
+            MediaGlyph.PAUSE -> { bar(w * 0.3f, 0); bar(w * 0.7f, 5) }
+            MediaGlyph.NEXT -> { tri(w * 0.02f, w * 0.72f, 0); bar(w * 0.86f, 13) }
+            MediaGlyph.PREVIOUS -> {
+                bar(w * 0.14f, 13)
+                moveTo(w * 0.98f + j(0), j(1))
+                quadraticTo(w * 0.62f + j(2), h * 0.25f + j(3), w * 0.28f + j(4), h / 2 + j(5))
+                quadraticTo(w * 0.62f + j(6), h * 0.75f + j(7), w * 0.98f + j(8), h + j(9))
+                quadraticTo(w + wob + j(10), h / 2, w * 0.98f + j(11), j(12) + wob)
             }
-            when (glyph) {
-                MediaGlyph.PLAY -> drawPath(triangle(w * 0.15f, w * 0.95f), color)
-                MediaGlyph.PAUSE -> {
-                    drawRect(color, Offset(w * 0.18f, 0f), androidx.compose.ui.geometry.Size(w * 0.22f, h))
-                    drawRect(color, Offset(w * 0.6f, 0f), androidx.compose.ui.geometry.Size(w * 0.22f, h))
-                }
-                MediaGlyph.NEXT -> {
-                    drawPath(triangle(0f, w * 0.75f), color)
-                    drawRect(color, Offset(w * 0.78f, 0f), androidx.compose.ui.geometry.Size(w * 0.16f, h))
-                }
-                MediaGlyph.STOP -> drawRect(color, Offset(w * 0.1f, h * 0.1f), androidx.compose.ui.geometry.Size(w * 0.8f, h * 0.8f))
-                MediaGlyph.PREVIOUS -> {
-                    drawRect(color, Offset(w * 0.06f, 0f), androidx.compose.ui.geometry.Size(w * 0.16f, h))
-                    drawPath(Path().apply { moveTo(w, 0f); lineTo(w * 0.25f, h / 2); lineTo(w, h); close() }, color)
-                }
+            MediaGlyph.STOP -> {
+                val a = w * 0.1f
+                val b = w * 0.9f
+                moveTo(a + j(0), a + j(1))
+                quadraticTo(w / 2, a + j(2) * 1.5f, b + j(3), a + j(4))
+                quadraticTo(b + j(5) * 1.5f, h / 2, b + j(6), b + j(7))
+                quadraticTo(w / 2, b + j(8) * 1.5f, a + j(9), b + j(10))
+                quadraticTo(a + j(11) * 1.5f, h / 2, a + j(12) + wob, a + j(13))
             }
         }
+    }
+    val stroke = if (glyph == MediaGlyph.PAUSE) w * 0.13f else w * 0.09f
+    drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    translate(stroke * 0.5f, stroke * 0.35f) {
+        drawPath(path, color.copy(alpha = color.alpha * 0.3f), style = Stroke(stroke * 0.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
 
@@ -262,9 +326,7 @@ fun NowPlayingScreen(
                     Modifier
                         .fillMaxWidth(0.82f)
                         .aspectRatio(1f)
-                        .clip(shape)
-                        .background(Color(0xFF0A0A0A))
-                        .border(1.dp, Oled.Glint, shape),
+                        .glassBox(28.dp, seed = 29, fill = androidx.compose.ui.graphics.SolidColor(Color(0xFF0A0A0A))),
                     contentAlignment = Alignment.Center,
                 ) {
                     val art = info.art
