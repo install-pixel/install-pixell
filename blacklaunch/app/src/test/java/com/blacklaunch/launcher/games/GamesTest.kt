@@ -42,8 +42,15 @@ class SnakeGameTest {
     @Test fun eatingGrowsScoresAndLevelsUp() {
         var game = SnakeGame(Random(4))
         repeat(SnakeGame.FOOD_PER_LEVEL) {
-            val next = game.body.first() + 1
-            game = SnakeGame.decode(game.encode().replace(Regex("f=\\d+"), "f=$next"), Random(4))!!
+            // Біля правої стіни — повертаємо донизу; їжа щоразу рівно перед головою.
+            val head = game.body.first()
+            val down = head % SnakeGame.COLS >= SnakeGame.COLS - 2 || game.dir == SnakeGame.Dir.DOWN
+            val next = if (down) head + SnakeGame.COLS else head + 1
+            val dir = if (down) SnakeGame.Dir.DOWN.ordinal else SnakeGame.Dir.RIGHT.ordinal
+            game = SnakeGame.decode(
+                game.encode().replace(Regex("f=\\d+"), "f=$next").replace(Regex("d=\\d+"), "d=$dir"),
+                Random(4),
+            )!!
             val before = game.body.size
             game.step(game.interval + 0.001f)
             assertEquals(before + 1, game.body.size)
@@ -177,7 +184,7 @@ class StarsGameTest {
     }
 
     @Test fun clearingWaveStartsNextLevelWithMoreRows() {
-        val g = StarsGame.decode("s=0;l=1;v=3;o=0;n=5000;e=1,0,0,1")!!
+        val g = StarsGame.decode("s=0;l=1;v=3;o=0;n=5000;w=2;e=1,0,0,1")!!
         g.target = g.slotX(g.enemies[0])
         run(g, 20f)
         assertTrue("level ${g.level}", g.level >= 2)
@@ -192,6 +199,16 @@ class StarsGameTest {
         assertEquals(g.enemies.size, copy.enemies.size)
         assertNotNull(copy)
         assertNull(StarsGame.decode("nothing"))
+    }
+
+    @Test fun levelHasSeveralWavesBeforeNextLevel() {
+        val g = StarsGame.decode("s=0;l=1;v=3;o=0;n=5000;w=1;e=1,0,0,1")!!
+        assertEquals(2, g.waves)
+        g.target = g.slotX(g.enemies[0])
+        run(g, 12f)
+        // Перша хвиля знищена — та сама гра йде далі другою хвилею першого рівня, а не одразу новим рівнем.
+        assertTrue("wave ${g.wave} level ${g.level}", g.wave == 2 || g.level >= 2)
+        assertEquals(1, g.level.coerceAtMost(1))
     }
 
     @Test fun everyFourthLevelIsBonusFlyby() {

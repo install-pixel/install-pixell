@@ -208,13 +208,16 @@ fun GameScreen(
                 Text(stringResource(R.string.game_score, game.score), color = Oled.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                 powerText(game)?.let { Text(it, color = Oled.Confirm, fontSize = 12.sp) }
             }
+            // «Блоки»: наступна фігура — тут, а склянка внизу на всю ширину.
+            (game as? BlocksGame)?.let { NextPiece(it.next) }
             Column(horizontalAlignment = Alignment.End) {
                 Text(stringResource(R.string.game_best, maxOf(best, game.score)), color = Oled.TextSecondary, fontSize = 12.sp)
                 Text(
                     when (val g = game) {
-                        is StarsGame -> stringResource(R.string.game_level_lives, g.level, g.lives)
-                        is BlocksGame -> stringResource(R.string.game_level_lines, g.level, g.lines)
-                        is SnakeGame -> stringResource(R.string.game_level_lives, g.level, g.lives)
+                        is StarsGame -> if (g.challenge) stringResource(R.string.game_level_lives, g.level, g.lives)
+                        else stringResource(R.string.game_stars_progress, g.level, g.wave, g.waves, g.lives)
+                        is BlocksGame -> stringResource(R.string.game_blocks_progress, g.level, g.linesToLevel)
+                        is SnakeGame -> stringResource(R.string.game_snake_progress, g.level, g.eaten % SnakeGame.FOOD_PER_LEVEL, SnakeGame.FOOD_PER_LEVEL, g.lives)
                         else -> stringResource(R.string.game_level, g.level)
                     },
                     color = Oled.TextSecondary,
@@ -240,12 +243,23 @@ fun GameScreen(
                         fontWeight = FontWeight.Light,
                     )
                     if (stars?.challenge == true) Text(stringResource(R.string.game_challenge), color = Oled.Confirm, fontSize = 16.sp)
+                    else if (stars != null) Text(stringResource(R.string.game_wave, stars.wave, stars.waves), color = Oled.TextSecondary, fontSize = 16.sp)
                     // Підсумок бонусного рівня, що щойно минув.
                     if (stars != null && stars.challengeResult > 0f) {
                         Text(stringResource(R.string.game_challenge_hits, stars.challengeHits, stars.challengeTotal), color = Oled.TextSecondary, fontSize = 15.sp)
                         if (stars.challengeHits == stars.challengeTotal) Text(stringResource(R.string.game_perfect, StarsGame.PERFECT_BONUS), color = Oled.Confirm, fontSize = 15.sp)
                     }
                 }
+            }
+            // «Блоки»: «Тетріс!», «Серія ×N», «Чиста склянка!».
+            (game as? BlocksGame)?.takeIf { it.featTime > 0f && !it.over }?.let { b ->
+                val text = when (b.feat) {
+                    BlocksGame.Feat.TETRIS -> stringResource(R.string.game_feat_tetris, b.featValue)
+                    BlocksGame.Feat.COMBO -> stringResource(R.string.game_feat_combo, b.featValue)
+                    BlocksGame.Feat.PERFECT -> stringResource(R.string.game_feat_perfect, b.featValue)
+                    null -> ""
+                }
+                Text(text, color = Oled.Confirm, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 40.dp))
             }
             if (stars != null && stars.shipDown > 0f && !stars.over) {
                 Text(stringResource(R.string.game_ship_down, stars.lives), color = Oled.Danger, fontSize = 18.sp, modifier = Modifier.align(Alignment.Center))
@@ -312,6 +326,15 @@ private fun Overlay(title: String, note: String, buttons: @Composable () -> Unit
     }
 }
 
+/** Рамка поля — однакова в усіх іграх: заокруглений прямокутник олівцем. */
+private fun DrawScope.fieldFrame(o: Offset, w: Float, h: Float) {
+    val pad = 3.dp.toPx()
+    val frame = Path().apply {
+        addRoundRect(androidx.compose.ui.geometry.RoundRect(Rect(o.x - pad, o.y - pad, o.x + w + pad, o.y + h + pad), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx())))
+    }
+    pencil(frame, 1.6.dp.toPx(), 0.45f)
+}
+
 /** Поле гри з потрібними пропорціями посередині вільного місця. */
 private fun DrawScope.fit(w: Float, h: Float): Pair<Float, Offset> {
     val s = min(size.width / w, size.height / h)
@@ -346,7 +369,7 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
         view.origin = o
         val p = { x: Float, y: Float -> Offset(o.x + x * s, o.y + y * s) }
         // Рамка поля й зорі, що повільно пливуть униз.
-        drawRoundRect(Ink.copy(alpha = 0.18f), topLeft = o, size = Size(StarsGame.W * s, StarsGame.H * s), cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f), style = Stroke(1.5f))
+        fieldFrame(o, StarsGame.W * s, StarsGame.H * s)
         for (i in 0 until 46) {
             val sx = ((i * 37) % 100).toFloat()
             val sy = ((i * 53 + game.time * (6 + i % 5) * 1.5f) % StarsGame.H)
@@ -486,6 +509,7 @@ private fun DrawScope.drawEnemy(e: StarsGame.Enemy, c: Offset, s: Float, time: F
 @Composable
 private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.MutableLongState, enabled: Boolean) {
     val density = LocalDensity.current
+    val haptics = LocalHaptics.current
     val view = remember { FieldView() }
     Canvas(
         Modifier.fillMaxSize().pointerInput(enabled) {
@@ -496,26 +520,45 @@ private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.Mutabl
                 val down = awaitFirstDown()
                 val start = down.position
                 val startTime = down.uptimeMillis
+                val slop = with(density) { 10.dp.toPx() }
+                // Довге натискання на місці — фігура одразу донизу (на місце «тіні»).
+                val early = withTimeoutOrNull(LONG_PRESS_MS) {
+                    var result = 0
+                    while (result == 0) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                        result = when {
+                            change == null || !change.pressed -> 1
+                            (change.position - start).getDistance() > slop -> 2
+                            else -> 0
+                        }
+                    }
+                    result
+                }
+                if (early == null) {
+                    game.hardDrop()
+                    haptics.longPress()
+                    // Чекаємо, поки відпустять, — щоб цей самий дотик не став ще й поворотом.
+                    while (awaitPointerEvent().changes.firstOrNull { it.id == down.id }?.pressed == true) Unit
+                    return@awaitEachGesture
+                }
+                if (early == 1) {
+                    game.rotate()
+                    return@awaitEachGesture
+                }
                 var lastX = start.x
                 var lastY = start.y
-                var moved = false
                 var dropped = false
-                val slop = with(density) { 10.dp.toPx() }
                 while (true) {
                     val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                     val cell = view.scale.coerceAtLeast(1f)
                     if (!change.pressed) {
                         val dy = change.position.y - start.y
                         val dt = (change.uptimeMillis - startTime).coerceAtLeast(1)
-                        when {
-                            // Швидкий змах донизу — скинути.
-                            !dropped && dy > cell * 2f && dy / dt > 1.2f * density.density -> game.hardDrop()
-                            !moved -> game.rotate()
-                        }
+                        // Швидкий змах донизу — скинути.
+                        if (!dropped && dy > cell * 2f && dy / dt > 1.2f * density.density) game.hardDrop()
                         break
                     }
                     val p = change.position
-                    if ((p - start).getDistance() > slop) moved = true
                     while (p.x - lastX > cell) { game.move(1); lastX += cell }
                     while (lastX - p.x > cell) { game.move(-1); lastX -= cell }
                     while (p.y - lastY > cell) { if (game.softDrop()) dropped = true; lastY += cell }
@@ -525,13 +568,12 @@ private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.Mutabl
         },
     ) {
         frame.longValue
-        // Склянка ліворуч, наступна фігура праворуч.
-        val (s, o) = fit(BlocksGame.COLS + 5f, BlocksGame.ROWS.toFloat())
+        // Склянка на всю ширину (наступна фігура — у верхньому рядку), рамка — як у решти ігор.
+        val (s, o) = fit(BlocksGame.COLS.toFloat(), BlocksGame.ROWS.toFloat())
         view.scale = s
         val cell = s
         val glass = Rect(o.x, o.y, o.x + BlocksGame.COLS * cell, o.y + BlocksGame.ROWS * cell)
-        val frame = Path().apply { moveTo(glass.left, glass.top); lineTo(glass.left, glass.bottom); lineTo(glass.right, glass.bottom); lineTo(glass.right, glass.top) }
-        pencil(frame, 0.12f * cell, 0.7f)
+        fieldFrame(o, glass.width, glass.height)
         fun cellAt(x: Int, y: Int, type: Int, alpha: Float, ghost: Boolean = false) {
             if (y < 0) return
             val r = Rect(glass.left + x * cell + cell * 0.1f, glass.top + y * cell + cell * 0.1f, glass.left + (x + 1) * cell - cell * 0.1f, glass.top + (y + 1) * cell - cell * 0.1f)
@@ -553,12 +595,24 @@ private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.Mutabl
             game.cells(y = ghost).forEach { (x, y) -> cellAt(x, y, game.piece, 0.25f, ghost = true) }
             game.cells().forEach { (x, y) -> cellAt(x, y, game.piece, 0.95f) }
         }
-        // Наступна фігура.
-        val nx = glass.right + cell * 0.8f
-        val ny = glass.top + cell * 1.2f
-        BlocksGame.SHAPES[game.next][0].forEach { (cx, cy) ->
-            val r = Rect(nx + cx * cell * 0.8f, ny + cy * cell * 0.8f, nx + (cx + 1) * cell * 0.8f - cell * 0.1f, ny + (cy + 1) * cell * 0.8f - cell * 0.1f)
-            pencil(Path().apply { addRect(r) }, cell * 0.06f, 0.7f)
+    }
+}
+
+/** Наступна фігура — маленька, у верхньому рядку «Блоків». */
+@Composable
+private fun NextPiece(type: Int) {
+    Canvas(Modifier.size(44.dp, 26.dp)) {
+        val cells = BlocksGame.SHAPES[type][0]
+        val minX = cells.minOf { it.first }
+        val maxX = cells.maxOf { it.first }
+        val minY = cells.minOf { it.second }
+        val maxY = cells.maxOf { it.second }
+        val cell = min(size.width / (maxX - minX + 1), size.height / (maxY - minY + 1))
+        val ox = (size.width - (maxX - minX + 1) * cell) / 2f
+        val oy = (size.height - (maxY - minY + 1) * cell) / 2f
+        cells.forEach { (cx, cy) ->
+            val r = Rect(ox + (cx - minX) * cell + cell * 0.1f, oy + (cy - minY) * cell + cell * 0.1f, ox + (cx - minX + 1) * cell - cell * 0.1f, oy + (cy - minY + 1) * cell - cell * 0.1f)
+            pencil(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(r, androidx.compose.ui.geometry.CornerRadius(cell * 0.18f))) }, cell * 0.1f, 0.8f)
         }
     }
 }
@@ -610,7 +664,7 @@ private fun SnakeField(game: SnakeGame, frame: androidx.compose.runtime.MutableL
         frame.longValue
         val (s, o) = fit(SnakeGame.COLS.toFloat(), SnakeGame.ROWS.toFloat())
         val center = { c: Int -> Offset(o.x + (c % SnakeGame.COLS + 0.5f) * s, o.y + (c / SnakeGame.COLS + 0.5f) * s) }
-        drawRoundRect(Ink.copy(alpha = 0.3f), topLeft = o, size = Size(SnakeGame.COLS * s, SnakeGame.ROWS * s), cornerRadius = androidx.compose.ui.geometry.CornerRadius(s * 0.4f), style = Stroke(s * 0.06f))
+        fieldFrame(o, SnakeGame.COLS * s, SnakeGame.ROWS * s)
         // Перешкоди — квадратики олівцем з хрестиком.
         game.obstacles.forEach { c ->
             val m = center(c)
@@ -714,6 +768,8 @@ fun GamesPage(
         }
     }
 }
+
+private const val LONG_PRESS_MS = 380L
 
 /** Де поле на екрані (для дотиків у «Зоряному патрулі»). */
 private class FieldView {

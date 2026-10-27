@@ -885,11 +885,11 @@
     <string name="games_enabled_subtitle">Wyłączone — gier nie widać tu ani w wyszukiwaniu</string>
     <string name="games_note">Gra, z której wyszedłeś, jest zapisywana i toczy się dalej od tego samego miejsca. Rekordy — tylko na tym telefonie. Podczas minutnika skupienia gry się nie otwierają.</string>
     <string name="game_stars">Gwiezdny patrol</string>
-    <string name="game_stars_desc">Szybka. Na dole stateczek, u góry rój obcych; niektórzy nurkują i zrzucają bomby. Z zestrzelonych czasem spadają kapsuły: dwa działa, trzy wachlarzem, szybki ogień, tarcza, życie. Co 4. poziom — bonusowy: przelatują i nie strzelają (100 za każdego, za wszystkich +10000). Poziomy trwają dalej; trzy życia, kolejne co 5000 punktów.</string>
+    <string name="game_stars_desc">Szybka. Na dole stateczek, u góry rój obcych; niektórzy nurkują i zrzucają bomby (nigdy za dużo naraz). Poziom to kilka fal. Z zestrzelonych czasem spada kapsuła: dwa działa, trzy wachlarzem, szybki ogień, tarcza, życie. Co 4. poziom — bonusowy: przelatują i nie strzelają (100 za każdego, za wszystkich +10000). Trzy życia, kolejne co 5000 punktów.</string>
     <string name="game_blocks">Klocki</string>
-    <string name="game_blocks_desc">Spokojna. Figury z czterech kwadracików spadają do szklanki; pełny rząd znika — punkty tylko za rzędy (100–800 × poziom). Nowy poziom tylko co 100 rzędów (klasyczna tabela szybkości, przyspiesza do 29., dalej najszybciej). Pauza — w każdej chwili.</string>
+    <string name="game_blocks_desc">Spokojna. Figury z czterech kwadracików spadają do szklanki; pełny rząd znika — punkty za rzędy (100–800 × poziom), bonus za serię rzędów z rzędu i duży — za całkiem czystą szklankę. Nowy poziom co 100 rzędów (klasyczna tabela szybkości, przyspiesza do 29., dalej najszybciej). Pauza — w każdej chwili.</string>
     <string name="game_snake">Wąż</string>
-    <string name="game_snake_desc">Minimum rysunku: linia i kropka. Przesunięcie — skręt; przed ścianą głowa na chwilę się zatrzymuje — można jeszcze skręcić. Trzy życia; co 5 kropek — nowy poziom, szybciej, a co dwa poziomy — nowe przeszkody. Bonusy: złoto (punkty), ślimak (wolniej), nożyczki (krótszy ogon), serce (życie).</string>
+    <string name="game_snake_desc">Minimum rysunku: linia i kropka. Spokojny start; przesunięcie — skręt; przed ścianą głowa na chwilę się zatrzymuje — można jeszcze skręcić. Trzy życia; co 10 kropek — nowy poziom, trochę szybciej, a co dwa poziomy — nowe przeszkody. Bonusy: złoto (punkty), ślimak (wolniej), nożyczki (krótszy ogon), serce (życie).</string>
     <string name="game_play">Graj</string>
     <string name="game_continue">Kontynuuj</string>
     <string name="game_restart">Zacznij od nowa</string>
@@ -905,7 +905,7 @@
     <string name="game_again">Jeszcze raz</string>
     <string name="game_exit">Wyjdź</string>
     <string name="game_hint_stars">Trzymaj palec i prowadź w lewo-prawo — stateczek płynie za nim i strzela sam.</string>
-    <string name="game_hint_blocks">Prowadź palcem w lewo-prawo — figura idzie za nim; w dół — spada szybciej; szybkie przesunięcie w dół — od razu na dół; lekkie dotknięcie — obrót.</string>
+    <string name="game_hint_blocks">Prowadź palcem w lewo-prawo — figura idzie za nim; w dół — spada szybciej; długie przytrzymanie lub szybkie przesunięcie w dół — od razu na dół; lekkie dotknięcie — obrót.</string>
     <string name="game_hint_snake">Przesunięcie w dowolną stronę — skręt.</string>
     <string name="game_focus_blocked">Podczas minutnika skupienia gry się nie otwierają</string>
     <string name="game_challenge">Poziom bonusowy — nie strzelają</string>
@@ -917,4 +917,11 @@
     <string name="game_power_rapid">szybki ogień %1$d s</string>
     <string name="game_power_shield">tarcza</string>
     <string name="game_power_slow">wolno %1$d s</string>
+    <string name="game_stars_progress">Poziom %1$d · fala %2$d/%3$d · życia %4$d</string>
+    <string name="game_blocks_progress">Poziom %1$d · do następnego %2$d rzędów</string>
+    <string name="game_snake_progress">Poziom %1$d · %2$d/%3$d · życia %4$d</string>
+    <string name="game_wave">Fala %1$d z %2$d</string>
+    <string name="game_feat_tetris">Cztery rzędy! +%1$d</string>
+    <string name="game_feat_combo">Seria ×%1$d</string>
+    <string name="game_feat_perfect">Czysta szklanka! +%1$d</string>
 </resources>

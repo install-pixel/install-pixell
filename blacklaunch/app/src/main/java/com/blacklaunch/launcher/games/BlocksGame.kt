@@ -34,6 +34,22 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
     private var lockTimer = 0f
     private val buzz = BuzzQueue()
 
+    /** Рядки поспіль без «порожніх» фігур (серія): кожен наступний — бонус. -1 — серії немає. */
+    var combo = -1
+        private set
+
+    /** Що показати поверх склянки: «Тетріс!», «Серія ×N», «Чиста склянка!» — і скільки ще. */
+    enum class Feat { TETRIS, COMBO, PERFECT }
+    var feat: Feat? = null
+        private set
+    var featValue = 0
+        private set
+    var featTime = 0f
+        private set
+
+    /** Скільки рядків до наступного рівня. */
+    val linesToLevel get() = LINES_PER_LEVEL - lines % LINES_PER_LEVEL
+
     override fun drainBuzz() = buzz.drain()
 
     /** Рядки, що зникають (коротка анімація), і скільки ще. */
@@ -136,6 +152,7 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
 
     override fun step(dt: Float) {
         if (over) return
+        if (featTime > 0f) featTime -= dt
         if (clearing.isNotEmpty()) {
             clearTimer -= dt
             if (clearTimer <= 0f) finishClear()
@@ -167,6 +184,7 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
             clearing = full
             clearTimer = CLEAR_TIME
         } else {
+            combo = -1
             spawn()
         }
     }
@@ -183,9 +201,28 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
             for (x in 0 until COLS) board[target * COLS + x] = copy[y * COLS + x]
         }
         score += LINE_SCORE[rows.size.coerceAtMost(4)] * level
+        // Серія: рядки кілька фігур поспіль — +50 × довжина серії × рівень.
+        combo++
+        if (combo > 0) {
+            score += 50 * combo * level
+            showFeat(Feat.COMBO, combo + 1)
+        }
+        if (rows.size >= 4) showFeat(Feat.TETRIS, LINE_SCORE[4] * level)
+        // Склянку очищено повністю — великий бонус.
+        if (board.all { it == 0 }) {
+            score += PERFECT_BONUS * level
+            showFeat(Feat.PERFECT, PERFECT_BONUS * level)
+            buzz.add(GameBuzz.STRONG)
+        }
         lines += rows.size
         level = 1 + lines / LINES_PER_LEVEL
         spawn()
+    }
+
+    private fun showFeat(kind: Feat, value: Int) {
+        feat = kind
+        featValue = value
+        featTime = 1.8f
     }
 
     override fun encode(): String = GameWriter()
@@ -197,6 +234,7 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
         const val COLS = 10
         const val ROWS = 20
         const val LOCK_DELAY = 0.5f
+        const val PERFECT_BONUS = 2000
         const val CLEAR_TIME = 0.3f
         /** Новий рівень кожні 100 рядків — гра довго лишається спокійною. */
         const val LINES_PER_LEVEL = 100

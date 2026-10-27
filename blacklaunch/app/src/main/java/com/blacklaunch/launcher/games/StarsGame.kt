@@ -97,6 +97,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
     var time = 0f
         private set
     private var fireCooldown = 0f
+    private var capsuleCooldown = 0f
     private val buzz = BuzzQueue()
 
     override fun drainBuzz() = buzz.drain()
@@ -119,7 +120,17 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
 
     private val rows get() = (2 + (level + 1) / 2).coerceAtMost(5)
 
+    /** Рівень — кілька хвиль строю: спершу дві, далі до чотирьох. */
+    val waves get() = (2 + (level - 1) / 3).coerceAtMost(4)
+    var wave = 1
+        private set
+
     private fun startLevel(keep: List<Enemy>? = null) {
+        if (keep == null) wave = 1
+        startWave(keep)
+    }
+
+    private fun startWave(keep: List<Enemy>? = null) {
         enemies.clear()
         shots.clear()
         bombs.clear()
@@ -165,6 +176,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         sparks.removeAll { it.t > (if (it.big) 1.4f else 0.6f) }
         if (gunLeft > 0f) gunLeft -= dt else gun = null
         if (rapidLeft > 0f) rapidLeft -= dt
+        if (capsuleCooldown > 0f) capsuleCooldown -= dt
         if (challengeResult > 0f) challengeResult -= dt
         if (shipDown > 0f) {
             shipDown -= dt
@@ -183,8 +195,14 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
                 if (challengeHits == challengeTotal) addScore(PERFECT_BONUS)
                 challengeResult = 3f
             }
-            level++
-            startLevel()
+            // Ще є хвилі цього рівня — наступна (коротка пауза з «Хвиля N з M»), інакше — новий рівень.
+            if (!challenge && wave < waves) {
+                wave++
+                startWave()
+            } else {
+                level++
+                startLevel()
+            }
         }
     }
 
@@ -247,9 +265,9 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         when (power) {
             Power.DOUBLE, Power.TRIPLE -> {
                 gun = power
-                gunLeft = if (power == Power.TRIPLE) 12f else 15f
+                gunLeft = if (power == Power.TRIPLE) 9f else 12f
             }
-            Power.RAPID -> rapidLeft = 12f
+            Power.RAPID -> rapidLeft = 9f
             Power.SHIELD -> shield = true
             Power.LIFE -> lives = (lives + 1).coerceAtMost(6)
         }
@@ -328,8 +346,9 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         diveTimer -= dt
         if (diveTimer <= 0f) {
             diveTimer = diveEvery * (0.6f + rnd.nextFloat() * 0.8f)
-            // З вищих рівнів — інколи двоє одразу.
-            repeat(if (level >= 3 && rnd.nextFloat() < 0.35f) 2 else 1) { startDive() }
+            // Одночасно пікірує обмежено: один, з 4-го рівня — до двох, з 8-го — до трьох (а не «з усіх боків»).
+            val maxDivers = 1 + (level / 4).coerceAtMost(2)
+            if (enemies.count { it.state == State.DIVING } < maxDivers) startDive()
         }
     }
 
@@ -366,11 +385,13 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
 
     private fun maybeBomb(e: Enemy, dt: Float, chancePerSecond: Float) {
         e.shotCooldown -= dt
-        if (e.shotCooldown > 0f || e.y > SHIP_Y - 20f || bombs.size >= 6) return
+        // Бомб у повітрі обмежено: 2 на першому рівні, далі більше, але не більше п'яти — завжди є куди відійти.
+        val maxBombs = (2 + level / 2).coerceAtMost(5)
+        if (e.shotCooldown > 0f || e.y > SHIP_Y - 25f || bombs.size >= maxBombs) return
         if (rnd.nextFloat() < chancePerSecond * dt) {
-            val vx = ((shipX - e.x) * 0.25f).coerceIn(-14f, 14f)
-            bombs += Shot(e.x, e.y + 3f, vx, (BOMB_SPEED + level * 2f).coerceAtMost(70f))
-            e.shotCooldown = 0.8f
+            val vx = ((shipX - e.x) * 0.15f).coerceIn(-9f, 9f)
+            bombs += Shot(e.x, e.y + 3f, vx, (BOMB_SPEED + level * 1.5f).coerceAtMost(62f))
+            e.shotCooldown = 1.4f
         }
     }
 
@@ -442,8 +463,11 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
     }
 
     private fun dropCapsule(e: Enemy) {
-        val chance = if (e.kind == Kind.GUARD) 0.25f else 0.09f
-        if (rnd.nextFloat() >= chance || capsules.size >= 2) return
+        // Прокачки — рідкісна радість, а не дощ: одна на екрані, після кожної — пауза, і лише поки нічого не діє.
+        val chance = if (e.kind == Kind.GUARD) 0.15f else 0.04f
+        if (capsuleCooldown > 0f || capsules.isNotEmpty() || gun != null || rapidLeft > 0f) return
+        if (rnd.nextFloat() >= chance) return
+        capsuleCooldown = CAPSULE_PAUSE
         val power = when (rnd.nextFloat()) {
             in 0f..0.3f -> Power.DOUBLE
             in 0.3f..0.5f -> Power.TRIPLE
@@ -464,7 +488,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
 
     /** Зберігаємо рахунок, рівень, життя й тих, хто лишився (вони знову влітають у стрій). */
     override fun encode(): String = GameWriter()
-        .put("s", score).put("l", level).put("v", lives).put("o", if (over) 1 else 0).put("n", nextLife)
+        .put("s", score).put("l", level).put("v", lives).put("o", if (over) 1 else 0).put("n", nextLife).put("w", wave)
         .putList("e", enemies.flatMap { listOf(it.row, it.col, it.kind.ordinal, it.hp) })
         .toString()
 
@@ -485,6 +509,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         const val FLYBY_SIZE = 8
         const val PERFECT_BONUS = 10000
         const val CAPSULE_SPEED = 26f
+        const val CAPSULE_PAUSE = 10f
         const val SHIP_DOWN_TIME = 1.6f
 
         fun decode(text: String?, rnd: Random = Random.Default): StarsGame? {
@@ -498,11 +523,12 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
                 lives = (r.int("v") ?: 3).coerceAtLeast(1)
                 over = r.int("o") == 1
                 nextLife = r.int("n") ?: LIFE_EVERY
+                wave = (r.int("w") ?: 1).coerceAtLeast(1)
                 val left = packed.chunked(4).mapNotNull { (row, col, kind, hp) ->
                     Kind.entries.getOrNull(kind)?.let { k -> Enemy(row, col, k).also { it.hp = hp.coerceIn(1, k.hp) } }
                 }
                 // Бонусний рівень починається заново (візерунки прольоту не зберігаємо).
-                startLevel(left.takeIf { it.isNotEmpty() && !challenge })
+                startWave(left.takeIf { it.isNotEmpty() && !challenge })
             }
         }
     }

@@ -95,7 +95,8 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
 
     val interval: Float
         get() {
-            val base = (0.2f * Math.pow(0.94, (level - 1).toDouble()).toFloat()).coerceAtLeast(0.075f)
+            // Спокійний старт (менше ніж чотири клітинки на секунду), далі поступово швидше.
+            val base = (0.27f * Math.pow(0.95, (level - 1).toDouble()).toFloat()).coerceAtLeast(0.08f)
             return if (slowLeft > 0f) base * 1.6f else base
         }
 
@@ -225,7 +226,7 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
     companion object {
         const val COLS = 16
         const val ROWS = 26
-        const val FOOD_PER_LEVEL = 5
+        const val FOOD_PER_LEVEL = 10
 
         /** Перешкоди рівня: раз на два рівні — інший візерунок (по колу), середній рядок завжди вільний. */
         fun layout(level: Int): Set<Int> {
