@@ -114,7 +114,7 @@ class NowPlaying(context: Context) {
             }
             main.postDelayed(hideLater, PAUSED_VISIBLE_MS - since + 50)
         }
-        val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
+        val artist = meta?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: meta?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
         _info.value = NowPlayingInfo(c.packageName, title, artist?.takeIf { it.isNotBlank() }, playing)
     }
 
