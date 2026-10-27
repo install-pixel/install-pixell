@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.aspectRatio
@@ -419,22 +418,34 @@ private val BarMaxHeight = 88.dp
 @Composable
 private fun WeekChart(week: List<DayUsage>) {
     val max = week.maxOfOrNull { it.totalMs }?.coerceAtLeast(1L) ?: 1L
-    val dayFormat = remember { SimpleDateFormat("EEEEE", Locale.getDefault()) }
-    Row(Modifier.fillMaxWidth().height(132.dp).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    // «пн», «вт»… — дві літери: одна плутається (понеділок/п'ятниця, середа/субота).
+    val dayFormat = remember { SimpleDateFormat("EE", Locale.getDefault()) }
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         week.forEachIndexed { index, day ->
             val today = index == week.lastIndex
-            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
-                val (h, m) = UsageMath.hoursMinutes(day.totalMs)
-                Text(if (h > 0) "$h:${"%02d".format(m)}" else "$m", color = Oled.TextSecondary, fontSize = 10.sp, maxLines = 1)
-                Box(
-                    Modifier
-                        .padding(vertical = 4.dp)
-                        .width(18.dp)
-                        .height(BarMaxHeight * (day.totalMs.toFloat() / max).coerceAtLeast(0.02f))
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (today) Oled.TextPrimary else Color(0xFF4A4A4A)),
+            // Кожен ряд фіксованої висоти: час угорі, стовпчик знизу, назва дня завжди під ним — нічого не виштовхується.
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.height(BarMaxHeight + 18.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val (h, m) = UsageMath.hoursMinutes(day.totalMs)
+                        Text(if (h > 0) "$h:${"%02d".format(m)}" else "$m", color = Oled.TextSecondary, fontSize = 10.sp, maxLines = 1)
+                        Box(
+                            Modifier
+                                .padding(top = 4.dp)
+                                .width(18.dp)
+                                .height(BarMaxHeight * (day.totalMs.toFloat() / max).coerceAtLeast(0.03f))
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (today) Oled.TextPrimary else Color(0xFF4A4A4A)),
+                        )
+                    }
+                }
+                Text(
+                    dayFormat.format(Date(day.dayStart)).replaceFirstChar { it.uppercase() },
+                    color = if (today) Oled.TextPrimary else Oled.TextSecondary,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
-                Text(dayFormat.format(Date(day.dayStart)).uppercase(), color = if (today) Oled.TextPrimary else Oled.TextSecondary, fontSize = 11.sp)
             }
         }
     }
