@@ -51,7 +51,8 @@ internal fun HandIcon(
         Icon(imageVector, contentDescription, modifier, tint)
         return
     }
-    val described = if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier
+    val description = contentDescription
+    val described = if (description != null) Modifier.semantics { this.contentDescription = description } else Modifier
     Canvas(modifier.then(described).size(24.dp)) {
         val unit = size.minDimension / 24f
         val origin = Offset((size.width - unit * 24f) / 2f, (size.height - unit * 24f) / 2f)
@@ -63,17 +64,17 @@ internal fun HandIcon(
 }
 
 /** Ламана через [corners], густо розбита на точки (щоб штрих рівно тоншав до кінців). */
-private fun line(vararg corners: Offset): List<Offset> = buildList {
-    add(corners.first())
+private fun line(vararg corners: P): List<Offset> = buildList {
+    add(corners.first().offset)
     for (i in 1 until corners.size) {
-        val a = corners[i - 1]
-        val b = corners[i]
+        val a = corners[i - 1].offset
+        val b = corners[i].offset
         for (s in 1..8) add(a + (b - a) * (s / 8f))
     }
 }
 
 /** Дуга кола з центром [c] і радіусом [r] від кута [from] до [to] (у градусах, за годинниковою стрілкою від «на третій»). */
-private fun arc(c: Offset, r: Float, from: Float, to: Float, steps: Int = 24): List<Offset> = List(steps + 1) { i ->
+private fun arc(c: P, r: Float, from: Float, to: Float, steps: Int = 24): List<Offset> = List(steps + 1) { i ->
     val a = (from + (to - from) * i / steps) * PI.toFloat() / 180f
     Offset(c.x + r * cos(a), c.y + r * sin(a))
 }
@@ -81,7 +82,12 @@ private fun arc(c: Offset, r: Float, from: Float, to: Float, steps: Int = 24): L
 /** Заокруглений прямокутник одним штрихом, що трохи заходить за початок. */
 private fun box(x: Float, y: Float, w: Float, h: Float): List<Offset> = pencilLoop(Size(w, h), 2f, 3, 0.25f).map { it + Offset(x, y) }
 
-private fun o(x: Float, y: Float) = Offset(x, y)
+/** Точка сітки значка (Offset — value-клас, у vararg його не передати). */
+private class P(val x: Float, val y: Float) {
+    val offset get() = Offset(x, y)
+}
+
+private fun o(x: Float, y: Float) = P(x, y)
 
 private fun handStrokes(icon: ImageVector): List<List<Offset>>? = when (icon) {
     Icons.AutoMirrored.Filled.ArrowBack -> listOf(line(o(19.5f, 12.3f), o(5.5f, 11.8f)), line(o(11f, 5.8f), o(5f, 12f), o(11.2f, 18.2f)))
