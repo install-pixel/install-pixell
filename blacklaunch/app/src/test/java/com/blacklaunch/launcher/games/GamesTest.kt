@@ -22,10 +22,21 @@ class SnakeGameTest {
         assertEquals(head + 1 + SnakeGame.COLS, g.body.first())
     }
 
-    @Test fun hittingWallEndsGame() {
+    @Test fun wallBrakesFirstThenCostsLifeAndThreeLivesEndGame() {
         val g = SnakeGame(Random(2))
-        repeat(40) { g.step(g.interval + 0.001f) }
+        // Голова йде праворуч до стіни: перед нею — один крок «гальмування», можна повернути.
+        while (g.body.first() % SnakeGame.COLS != SnakeGame.COLS - 1) g.step(g.interval + 0.001f)
+        g.step(g.interval + 0.001f)
+        assertTrue(g.braking)
+        assertEquals(3, g.lives)
+        g.turn(SnakeGame.Dir.UP)
+        g.step(g.interval + 0.001f)
+        assertFalse(g.braking)
+        assertEquals(3, g.lives)
+        // Не повертаємо — три удари, і гру закінчено.
+        repeat(400) { g.step(0.1f) }
         assertTrue(g.over)
+        assertEquals(0, g.lives)
     }
 
     @Test fun eatingGrowsScoresAndLevelsUp() {
@@ -55,7 +66,15 @@ class SnakeGameTest {
         val g = SnakeGame.decode("b=${body.joinToString(",")};d=3;f=${cell(0, 0)};s=0;l=1;e=0;o=0")!!
         g.turn(SnakeGame.Dir.DOWN)
         g.step(g.interval + 0.001f)
-        assertTrue(g.over)
+        // Укусила себе — мінус життя, змійка з'являється знову.
+        assertEquals(2, g.lives)
+        assertFalse(g.over)
+    }
+
+    @Test fun obstaclesAppearOnLaterLevelsAndKeepSpawnRowFree() {
+        assertTrue(SnakeGame.layout(1).isEmpty())
+        assertTrue(SnakeGame.layout(3).isNotEmpty())
+        (1..12).forEach { level -> assertTrue(SnakeGame.layout(level).none { it / SnakeGame.COLS == SnakeGame.ROWS / 2 }) }
     }
 }
 
@@ -65,6 +84,18 @@ class BlocksGameTest {
             assertEquals(4, rotations.size)
             rotations.forEach { assertEquals(4, it.toSet().size) }
         }
+    }
+
+    @Test fun pointsOnlyForLinesAndSpeedKeepsGrowing() {
+        val g = BlocksGame(Random(9))
+        g.hardDrop()
+        g.softDrop()
+        assertEquals(0, g.score)
+        val slow = BlocksGame.decode(g.encode().replace(Regex("l=\\d+"), "l=1"))!!.fallInterval
+        val fast = BlocksGame.decode(g.encode().replace(Regex("l=\\d+"), "l=29"))!!.fallInterval
+        val faster = BlocksGame.decode(g.encode().replace(Regex("l=\\d+"), "l=40"))!!.fallInterval
+        assertTrue(slow > fast)
+        assertEquals(fast, faster)
     }
 
     @Test fun pieceFallsSlowlyAtFirstAndLocks() {
@@ -161,6 +192,14 @@ class StarsGameTest {
         assertEquals(g.enemies.size, copy.enemies.size)
         assertNotNull(copy)
         assertNull(StarsGame.decode("nothing"))
+    }
+
+    @Test fun everyFourthLevelIsBonusFlyby() {
+        val g = StarsGame.decode("s=0;l=4;v=3;o=0;n=5000;e=")!!
+        assertTrue(g.challenge)
+        run(g, 40f)
+        assertTrue("level ${g.level}", g.level >= 5)
+        assertTrue(g.bombs.isEmpty() || g.level >= 5)
     }
 
     @Test fun losingAllLivesEndsGame() {

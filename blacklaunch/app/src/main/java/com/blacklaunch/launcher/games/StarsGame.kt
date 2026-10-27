@@ -8,12 +8,18 @@ import kotlin.random.Random
 /**
  * «Зоряний патруль» — як класичні аркадні «космічні рої»: внизу кораблик (пальцем вліво-вправо, стріляє сам),
  * угорі — стрій прибульців, що погойдується; час від часу хтось пікірує на кораблик дугою й скидає бомби.
- * Знищили всіх — новий рівень: більше рядів, частіше й швидше пікірують. Три життя, кожні 5000 очок — ще одне.
- * Поле — умовні одиниці [W]×[H]; екран масштабує.
+ * - Знищили всіх — новий рівень: більше рядів, частіше й швидше пікірують (до певної межі — далі рівні тривають).
+ * - Кожен 4-й рівень — бонусний: прибульці пролітають візерунками й не стріляють; 100 за кожного, усіх — +10000.
+ * - Зі збитих іноді падає капсула: подвійна чи потрійна гармата, швидкострільність, щит (тримає один удар), життя.
+ * - Збили кораблик — він розлітається на уламки, мить паузи, потім з'являється знову (блимає й невразливий).
+ * Три життя, кожні 5000 очок — ще одне. Поле — умовні одиниці [W]×[H]; екран масштабує.
  */
 internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame {
     enum class Kind(val hp: Int, val points: Int) { DRONE(1, 50), GUARD(2, 150) }
-    enum class State { ENTERING, FORMATION, DIVING }
+    enum class State { ENTERING, FORMATION, DIVING, FLYBY }
+    enum class Power { DOUBLE, TRIPLE, RAPID, SHIELD, LIFE }
+
+    class Capsule(var x: Float, var y: Float, val power: Power)
 
     class Enemy(val row: Int, val col: Int, val kind: Kind) {
         var hp = kind.hp
@@ -28,15 +34,44 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         var side = 1f
         var shotCooldown = 0f
         var hitFlash = 0f
+        /** Бонусний рівень: номер візерунка прольоту. */
+        var pattern = 0
     }
 
     class Shot(var x: Float, var y: Float, val vx: Float = 0f, val vy: Float)
-    class Spark(val x: Float, val y: Float, var t: Float = 0f)
+    class Spark(val x: Float, val y: Float, var t: Float = 0f, val big: Boolean = false)
 
     val enemies = ArrayList<Enemy>()
     val shots = ArrayList<Shot>()
     val bombs = ArrayList<Shot>()
     val sparks = ArrayList<Spark>()
+    val capsules = ArrayList<Capsule>()
+
+    /** Гармата: звичайна, подвійна чи потрійна (віялом) — і скільки ще. */
+    var gun: Power? = null
+        private set
+    var gunLeft = 0f
+        private set
+    var rapidLeft = 0f
+        private set
+    var shield = false
+        private set
+
+    /** Кораблик збито: скільки ще до появи нового (уламки розлітаються). */
+    var shipDown = 0f
+        private set
+
+    /** Бонусний рівень: скільки влучили з усіх і результат наприкінці. */
+    val challenge get() = level % CHALLENGE_EVERY == 0
+    var challengeHits = 0
+        private set
+    var challengeTotal = 0
+        private set
+    /** Показати «Влучань N з M» (і бонус) ще стільки секунд. */
+    var challengeResult = 0f
+        private set
+    private var flybyTimer = 0f
+    private var flybyGroups = 0
 
     override var score = 0
         private set
@@ -85,8 +120,16 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         enemies.clear()
         shots.clear()
         bombs.clear()
+        capsules.clear()
         banner = BANNER_TIME
-        diveTimer = 2.5f
+        diveTimer = 3f
+        if (challenge && keep == null) {
+            challengeHits = 0
+            challengeTotal = FLYBY_GROUPS * FLYBY_SIZE
+            flybyGroups = 0
+            flybyTimer = BANNER_TIME
+            return
+        }
         val list = keep ?: (0 until rows).flatMap { row ->
             (0 until COLS).map { col -> Enemy(row, col, if (row == 0) Kind.GUARD else Kind.DRONE) }
         }
@@ -106,8 +149,9 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
     fun slotX(e: Enemy) = W / 2 + (e.col - (COLS - 1) / 2f) * 9.5f + sin(time * 0.7f) * 8f
     fun slotY(e: Enemy) = 20f + e.row * 10f
 
-    private val diveSpeed get() = 0.42f + level * 0.05f
-    private val diveEvery get() = (3.2f - level * 0.3f).coerceAtLeast(0.7f)
+    // Легкий початок і плавне ускладнення до межі — далі рівні тривають, але не стають неможливими.
+    private val diveSpeed get() = (0.32f + level * 0.03f).coerceAtMost(0.75f)
+    private val diveEvery get() = (4.2f - level * 0.22f).coerceAtLeast(1f)
 
     override fun step(dt: Float) {
         if (over) return
@@ -115,16 +159,98 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         if (invulnerable > 0f) invulnerable -= dt
         if (banner > 0f) banner -= dt
         sparks.forEach { it.t += dt }
-        sparks.removeAll { it.t > 0.6f }
-        moveShip(dt)
-        fire(dt)
-        moveEnemies(dt)
+        sparks.removeAll { it.t > (if (it.big) 1.4f else 0.6f) }
+        if (gunLeft > 0f) gunLeft -= dt else gun = null
+        if (rapidLeft > 0f) rapidLeft -= dt
+        if (challengeResult > 0f) challengeResult -= dt
+        if (shipDown > 0f) {
+            shipDown -= dt
+            if (shipDown <= 0f) invulnerable = 2f
+        } else {
+            moveShip(dt)
+            fire(dt)
+        }
+        if (challenge) moveFlyby(dt) else moveEnemies(dt)
         moveShots(dt)
+        moveCapsules(dt)
         collide()
-        if (enemies.isEmpty() && !over) {
+        val waveDone = if (challenge) flybyGroups >= FLYBY_GROUPS && enemies.isEmpty() else enemies.isEmpty()
+        if (waveDone && !over && shipDown <= 0f) {
+            if (challenge) {
+                if (challengeHits == challengeTotal) addScore(PERFECT_BONUS)
+                challengeResult = 3f
+            }
             level++
             startLevel()
         }
+    }
+
+    /** Бонусний рівень: групи пролітають візерунками (не стріляють), що не збили — відлітають. */
+    private fun moveFlyby(dt: Float) {
+        if (flybyGroups < FLYBY_GROUPS) {
+            flybyTimer -= dt
+            if (flybyTimer <= 0f) {
+                val pattern = flybyGroups % 3
+                for (i in 0 until FLYBY_SIZE) {
+                    enemies += Enemy(0, i, if (i % 4 == 0) Kind.GUARD else Kind.DRONE).also {
+                        it.state = State.FLYBY
+                        it.pattern = pattern
+                        it.hp = 1
+                        it.delay = i * 0.22f
+                        it.t = 0f
+                        it.x = -20f
+                        it.y = -20f
+                    }
+                }
+                flybyGroups++
+                flybyTimer = 3.4f
+            }
+        }
+        enemies.forEach { e ->
+            if (e.hitFlash > 0f) e.hitFlash -= dt
+            if (e.delay > 0f) {
+                e.delay -= dt
+                return@forEach
+            }
+            e.t += dt / 3.2f
+            val (x, y) = flybyPoint(e.pattern, e.t)
+            e.x = x
+            e.y = y
+        }
+        enemies.removeAll { it.state == State.FLYBY && it.t >= 1f }
+    }
+
+    /** Три візерунки прольоту: хвиля зліва направо, петля згори, дуга справа наліво. */
+    fun flybyPoint(pattern: Int, t: Float): Pair<Float, Float> {
+        val u = t.coerceIn(0f, 1f)
+        val pi = Math.PI.toFloat()
+        return when (pattern) {
+            0 -> (-10f + u * (W + 20f)) to (30f + sin(u * pi * 3f) * 18f)
+            1 -> (W / 2 + sin(u * pi * 2f) * 34f) to (-10f + sin(u * pi) * 95f)
+            else -> (W + 10f - u * (W + 20f)) to (70f - sin(u * pi) * 45f + sin(u * pi * 4f) * 6f)
+        }
+    }
+
+    private fun moveCapsules(dt: Float) {
+        capsules.forEach { it.y += CAPSULE_SPEED * dt }
+        capsules.removeAll { it.y > H + 5f }
+        if (shipDown > 0f) return
+        val caught = capsules.filter { abs(it.x - shipX) < 6f && abs(it.y - SHIP_Y) < 6f }
+        caught.forEach { take(it.power) }
+        capsules.removeAll(caught)
+    }
+
+    private fun take(power: Power) {
+        when (power) {
+            Power.DOUBLE, Power.TRIPLE -> {
+                gun = power
+                gunLeft = if (power == Power.TRIPLE) 12f else 15f
+            }
+            Power.RAPID -> rapidLeft = 12f
+            Power.SHIELD -> shield = true
+            Power.LIFE -> lives = (lives + 1).coerceAtMost(6)
+        }
+        sparks += Spark(shipX, SHIP_Y - 4f)
     }
 
     private fun moveShip(dt: Float) {
@@ -137,9 +263,21 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
 
     private fun fire(dt: Float) {
         fireCooldown -= dt
-        if (banner > 0.6f || fireCooldown > 0f || shots.size >= 3) return
-        shots += Shot(shipX, SHIP_Y - 6f, vy = -SHOT_SPEED)
-        fireCooldown = FIRE_EVERY
+        val limit = when (gun) { Power.TRIPLE -> 9; Power.DOUBLE -> 6; else -> 3 } * (if (rapidLeft > 0f) 2 else 1)
+        if (banner > 0.6f || fireCooldown > 0f || shots.size >= limit) return
+        when (gun) {
+            Power.DOUBLE -> {
+                shots += Shot(shipX - 3f, SHIP_Y - 5f, vy = -SHOT_SPEED)
+                shots += Shot(shipX + 3f, SHIP_Y - 5f, vy = -SHOT_SPEED)
+            }
+            Power.TRIPLE -> {
+                shots += Shot(shipX, SHIP_Y - 6f, vy = -SHOT_SPEED)
+                shots += Shot(shipX - 2f, SHIP_Y - 5f, vx = -SHOT_SPEED * 0.22f, vy = -SHOT_SPEED * 0.97f)
+                shots += Shot(shipX + 2f, SHIP_Y - 5f, vx = SHOT_SPEED * 0.22f, vy = -SHOT_SPEED * 0.97f)
+            }
+            else -> shots += Shot(shipX, SHIP_Y - 6f, vy = -SHOT_SPEED)
+        }
+        fireCooldown = if (rapidLeft > 0f) FIRE_EVERY / 2f else FIRE_EVERY
     }
 
     private fun moveEnemies(dt: Float) {
@@ -160,15 +298,17 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
                 State.FORMATION -> {
                     e.x = slotX(e)
                     e.y = slotY(e)
-                    // З другого рівня й у строю зрідка стріляють.
-                    if (level >= 2) maybeBomb(e, dt, chancePerSecond = 0.012f * level)
+                    // З третього рівня й у строю зрідка стріляють.
+                    if (level >= 3) maybeBomb(e, dt, chancePerSecond = (0.006f * level).coerceAtMost(0.08f))
                 }
+                // Проліт буває лише на бонусному рівні (там рухає [moveFlyby]).
+                State.FLYBY -> Unit
                 State.DIVING -> {
                     e.t += dt * diveSpeed
                     val (x, y) = divePoint(e, e.t)
                     e.x = x
                     e.y = y
-                    maybeBomb(e, dt, chancePerSecond = 0.6f + level * 0.08f)
+                    maybeBomb(e, dt, chancePerSecond = (0.45f + level * 0.05f).coerceAtMost(1.2f))
                     // Пролетів униз — повертається згори на своє місце.
                     if (e.t >= 1f) {
                         e.state = State.ENTERING
@@ -180,7 +320,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
                 }
             }
         }
-        if (banner > 0f) return
+        if (banner > 0f || shipDown > 0f) return
         diveTimer -= dt
         if (diveTimer <= 0f) {
             diveTimer = diveEvery * (0.6f + rnd.nextFloat() * 0.8f)
@@ -225,14 +365,14 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         if (e.shotCooldown > 0f || e.y > SHIP_Y - 20f || bombs.size >= 6) return
         if (rnd.nextFloat() < chancePerSecond * dt) {
             val vx = ((shipX - e.x) * 0.25f).coerceIn(-14f, 14f)
-            bombs += Shot(e.x, e.y + 3f, vx, BOMB_SPEED + level * 3f)
+            bombs += Shot(e.x, e.y + 3f, vx, (BOMB_SPEED + level * 2f).coerceAtMost(70f))
             e.shotCooldown = 0.8f
         }
     }
 
     private fun moveShots(dt: Float) {
-        shots.forEach { it.y += it.vy * dt }
-        shots.removeAll { it.y < -5f }
+        shots.forEach { it.x += it.vx * dt; it.y += it.vy * dt }
+        shots.removeAll { it.y < -5f || it.x < -5f || it.x > W + 5f }
         bombs.forEach { it.x += it.vx * dt; it.y += it.vy * dt }
         bombs.removeAll { it.y > H + 5f }
     }
@@ -247,27 +387,64 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
             e.hitFlash = 0.15f
             if (e.hp <= 0) {
                 dead += e
+                sparks += Spark(e.x, e.y)
+                if (e.state == State.FLYBY) {
+                    challengeHits++
+                    addScore(100)
+                    return@forEach
+                }
                 // Збитий у піке — подвійні очки.
                 addScore(if (e.state == State.DIVING) e.kind.points * 2 else e.kind.points)
-                sparks += Spark(e.x, e.y)
+                dropCapsule(e)
             }
         }
         shots.removeAll(hitShots)
         enemies.removeAll(dead)
-        if (invulnerable > 0f) return
-        val bomb = bombs.firstOrNull { abs(it.x - shipX) < 4.5f && abs(it.y - SHIP_Y) < 5f }
-        val rammer = enemies.firstOrNull { it.state == State.DIVING && hypot(it.x - shipX, it.y - SHIP_Y) < ENEMY_R + 3f }
+        if (invulnerable > 0f || shipDown > 0f) return
+        val bomb = bombs.firstOrNull { abs(it.x - shipX) < 3.5f && abs(it.y - SHIP_Y) < 4f }
+        val rammer = enemies.firstOrNull { it.state == State.DIVING && hypot(it.x - shipX, it.y - SHIP_Y) < ENEMY_R + 2.5f }
         if (bomb != null || rammer != null) {
             if (rammer != null) {
                 enemies.remove(rammer)
                 sparks += Spark(rammer.x, rammer.y)
             }
-            sparks += Spark(shipX, SHIP_Y)
+            bomb?.let { bombs.remove(it) }
+            // Щит тримає один удар.
+            if (shield) {
+                shield = false
+                invulnerable = 1.2f
+                sparks += Spark(shipX, SHIP_Y)
+                return
+            }
+            sparks += Spark(shipX, SHIP_Y, big = true)
             bombs.clear()
+            capsules.clear()
+            gun = null
+            rapidLeft = 0f
             lives--
-            invulnerable = 2.5f
-            if (lives <= 0) over = true
+            if (lives <= 0) {
+                over = true
+                return
+            }
+            // Ті, хто пікірував, вертаються в стрій, поки з'являється новий кораблик.
+            enemies.filter { it.state == State.DIVING }.forEach { it.t = 1f }
+            shipDown = SHIP_DOWN_TIME
+            shipX = W / 2
+            target = null
         }
+    }
+
+    private fun dropCapsule(e: Enemy) {
+        val chance = if (e.kind == Kind.GUARD) 0.25f else 0.09f
+        if (rnd.nextFloat() >= chance || capsules.size >= 2) return
+        val power = when (rnd.nextFloat()) {
+            in 0f..0.3f -> Power.DOUBLE
+            in 0.3f..0.5f -> Power.TRIPLE
+            in 0.5f..0.72f -> Power.RAPID
+            in 0.72f..0.94f -> Power.SHIELD
+            else -> Power.LIFE
+        }
+        capsules += Capsule(e.x, e.y, power)
     }
 
     private fun addScore(points: Int) {
@@ -292,10 +469,16 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         const val ENEMY_R = 4.5f
         const val SHIP_SPEED = 120f
         const val SHOT_SPEED = 150f
-        const val BOMB_SPEED = 48f
+        const val BOMB_SPEED = 40f
         const val FIRE_EVERY = 0.32f
         const val BANNER_TIME = 1.6f
         const val LIFE_EVERY = 5000
+        const val CHALLENGE_EVERY = 4
+        const val FLYBY_GROUPS = 5
+        const val FLYBY_SIZE = 8
+        const val PERFECT_BONUS = 10000
+        const val CAPSULE_SPEED = 26f
+        const val SHIP_DOWN_TIME = 1.6f
 
         fun decode(text: String?, rnd: Random = Random.Default): StarsGame? {
             val r = GameReader(text ?: return null)
@@ -311,7 +494,8 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
                 val left = packed.chunked(4).mapNotNull { (row, col, kind, hp) ->
                     Kind.entries.getOrNull(kind)?.let { k -> Enemy(row, col, k).also { it.hp = hp.coerceIn(1, k.hp) } }
                 }
-                startLevel(left.takeIf { it.isNotEmpty() })
+                // Бонусний рівень починається заново (візерунки прольоту не зберігаємо).
+                startLevel(left.takeIf { it.isNotEmpty() && !challenge })
             }
         }
     }

@@ -4,8 +4,9 @@ import kotlin.random.Random
 
 /**
  * «Блоки» — для тих, хто любить неспішні ігри: класичні фігури з чотирьох квадратів падають у склянку
- * [COLS]×[ROWS]; повний рядок зникає. Перший рівень — повільно (фігура опускається раз на секунду), далі — плавно
- * швидше кожні 10 рядків. Пауза будь-коли; фігура не «прилипає» одразу — є мить, щоб її посунути.
+ * [COLS]×[ROWS]; повний рядок зникає. Очки — лише за рядки (100 / 300 / 500 / 800 за 1–4 одразу, × рівень).
+ * Швидкість — як у класичній версії: кожні 10 рядків новий рівень, до 29-го дедалі швидше, далі найшвидше й так
+ * і лишається (не обнуляється). Пауза будь-коли; фігура не «прилипає» одразу — є мить, щоб її посунути.
  */
 internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame {
     /** Склянка: 0 — порожньо, інакше номер фігури + 1. Рядок 0 — верхній. */
@@ -112,25 +113,23 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
         return false
     }
 
-    /** Трохи швидше вниз (+1 очко за клітинку). */
+    /** Трохи швидше вниз (очок за це немає — лише за рядки). */
     fun softDrop(): Boolean {
         if (busy || !fits(piece, rotation, px, py + 1)) return false
         py++
-        score += 1
         fall = 0f
         return true
     }
 
-    /** Одразу вниз (+2 за клітинку). */
+    /** Одразу вниз. */
     fun hardDrop() {
         if (busy) return
-        val target = ghostY()
-        score += 2 * (target - py)
-        py = target
+        py = ghostY()
         lock()
     }
 
-    val fallInterval: Float get() = (1.0f * Math.pow(0.85, (level - 1).toDouble()).toFloat()).coerceAtLeast(0.1f)
+    /** Скільки секунд на одну клітинку падіння на цьому рівні (класична таблиця кадрів при 60 кадрах/с). */
+    val fallInterval: Float get() = SPEED_FRAMES[(level - 1).coerceIn(0, SPEED_FRAMES.lastIndex)] / 60f
 
     override fun step(dt: Float) {
         if (over) return
@@ -197,6 +196,13 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
         const val CLEAR_TIME = 0.3f
         const val LINES_PER_LEVEL = 10
         private val LINE_SCORE = intArrayOf(0, 100, 300, 500, 800)
+
+        /** Кадрів на клітинку для рівнів 1…29+ (як у класичній версії; 29-й і далі — найшвидше). */
+        private val SPEED_FRAMES = intArrayOf(
+            48, 43, 38, 33, 28, 23, 18, 13, 8, 6,
+            5, 5, 5, 4, 4, 4, 3, 3, 3,
+            2, 2, 2, 2, 2, 2, 2, 2, 2, 1,
+        )
         private val KICKS = listOf(0 to 0, -1 to 0, 1 to 0, -2 to 0, 2 to 0, 0 to -1)
 
         /** Сім фігур у рамці 4×4; повороти — поворотом координат (I, O, T, S, Z, J, L). */

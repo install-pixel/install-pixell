@@ -46,7 +46,16 @@ internal enum class CatAct {
 
     /** Ліг клубочком і спить: дихає, над ним «z-z-z». */
     LIE,
+
+    /** Лягає: із сидячої пози тулуб опускається й витягується, голова лягає на лапки. */
+    LIE_DOWN,
+
+    /** Прокидається й сідає (те саме навпаки). */
+    GET_UP,
 }
+
+/** Дії, що малюються «лежачим» малюнком (з плавним опусканням). */
+private val LYING = setOf(CatAct.LIE, CatAct.LIE_DOWN, CatAct.GET_UP)
 
 /** Мить анімації: що робить, наскільки просунувся крок, час. */
 internal data class CatFrame(
@@ -125,7 +134,6 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             legFar = 74f * s
             armNear = 18f * s
             armFar = -20f * s
-            lean = -6f * s
             tailWag = sin(f.time * (if (f.dazed) 1.2f else 1.8f)) * 3f
             headTilt = if (f.dazed) sin(f.time * 3f) * 7f * s else 0f
         }
@@ -158,7 +166,7 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             armNear = 4f
         }
         // Лежачи — окремий малюнок ([lyingShapes]), поза не потрібна.
-        CatAct.LIE -> Unit
+        CatAct.LIE, CatAct.LIE_DOWN, CatAct.GET_UP -> Unit
         CatAct.HELD -> {
             // Звисає: лапи витягнуті донизу й бовтаються, хвіст висить.
             val swing = sin(f.time * 4.5f)
@@ -278,15 +286,22 @@ internal const val CAT_HEIGHT = 64f
 internal fun catShapes(f: CatFrame): List<CatShape> {
     val prev = f.prev
     val e = ease(f.blend)
+    val lyingNow = f.act in LYING
     if (prev != null && e < 1f) {
-        val lyingNow = f.act == CatAct.LIE
-        // Ліг / підвівся — інший малюнок: плавно перетікає один в одного.
-        if (lyingNow != (prev.act == CatAct.LIE)) {
+        // Сидячий котик і початок «лягає» майже однакові — коротке перетікання між двома малюнками непомітне.
+        if (lyingNow != (prev.act in LYING)) {
             return fade(catShapes(prev.copy(prev = null)), 1f - e) + fade(catShapes(f.copy(prev = null)), e)
         }
         if (!lyingNow) return standingShapes(f, mix(catPose(prev), catPose(f), e))
     }
-    if (f.act == CatAct.LIE) return lyingShapes(f)
+    if (lyingNow) {
+        val k = when (f.act) {
+            CatAct.LIE_DOWN -> ease(f.progress)
+            CatAct.GET_UP -> 1f - ease(f.progress)
+            else -> 1f
+        }
+        return lyingShapes(f, k)
+    }
     return standingShapes(f, catPose(f))
 }
 
@@ -460,34 +475,59 @@ private fun CatPen.head(cx: Float, cy: Float, eye: CatEye, time: Float) {
 /**
  * Лежить клубочком і спить: тулуб — витягнутий овал на землі (дихає), лапки під підборіддям, хвіст обгорнутий
  * спереду, голова лежить, очі заплющені, над головою повільно спливають «z».
+ * [k] — наскільки ліг: 0 — ще сидить (той самий вигляд, що й сидячий котик), 1 — лежить; між ними тулуб опускається
+ * й витягується, голова лягає на лапки, задні лапи підбираються, хвіст обгортається.
  */
-private fun lyingShapes(f: CatFrame): List<CatShape> {
+private fun lyingShapes(f: CatFrame, k: Float): List<CatShape> {
     val pen = CatPen()
-    val breath = sin(f.time * 1.7f) * 0.6f
-    // Хвіст обгорнутий довкола — лежить на землі перед тілом.
-    pen.shape(width = 2.4f) { move(-16f, -5f); cubic(-22f, -1f, -10f, 1.5f, 6f, 0.5f) }
-    // Тулуб.
-    pen.oval(-3f, -8.5f - breath / 2f, 15f, 8.2f + breath, CatFill.BLACK)
+    val l = { a: Float, b: Float -> a + (b - a) * k }
+    val breath = sin(f.time * 1.7f) * 0.6f * k
+    // Хвіст: від сидячого (лежить позаду) до обгорнутого спереду.
+    val wag = sin(f.time * 1.8f) * 3f * (1f - k)
+    pen.shape(width = 2.4f) {
+        move(l(-7f, -16f), l(-10f, -5f))
+        cubic(l(-14f, -22f), l(0f, -1f), l(-21f + wag, -10f), l(0f, 1.5f), l(-23f + wag, 6f), l(-6f, 0.5f))
+    }
+    // Задні лапи, витягнуті вперед, поступово підбираються під тулуб.
+    if (k < 0.95f) {
+        val legAlpha = 0.95f * (1f - k)
+        listOf(80f, 74f).forEach { angle ->
+            val r = angle * PI.toFloat() / 180f
+            val fx = -1f + sin(r) * 12f
+            val fy = -6f + cos(r) * 12f
+            pen.line(-1f, l(-6f, -4f), fx, l(fy, -2f), width = 2.2f, alpha = legAlpha)
+            pen.oval(fx + 2.4f, l(fy - 1.2f, -1.5f), 3.2f, 1.6f, CatFill.BLACK, width = 1.4f, alpha = legAlpha)
+        }
+    }
+    // Тулуб: стоячий «грушею» → низький витягнутий.
+    pen.oval(l(0f, -3f), l(-17f, -8.5f) - breath / 2f, l(8.5f, 15f), l(12f, 8.2f) + breath, CatFill.BLACK)
     // Смужки на спині й лінія стегна.
-    pen.line(-9f, -15.5f, -8f, -13f, width = 1.1f, alpha = 0.55f)
-    pen.line(-4f, -16.4f, -3.2f, -13.8f, width = 1.1f, alpha = 0.55f)
-    pen.line(1f, -16.2f, 1.6f, -13.8f, width = 1.1f, alpha = 0.55f)
-    pen.shape(width = 1.2f, alpha = 0.7f) { move(-15f, -4f); cubic(-14f, -10f, -8f, -12f, -5f, -7f) }
-    // Лапки під підборіддям.
-    pen.oval(14f, -1.7f, 3.2f, 1.7f, CatFill.BLACK, width = 1.3f)
-    // Голова лежить, трохи схилена вперед; очі заплющені.
+    pen.line(l(-7.2f, -9f), l(-22f, -15.5f), l(-4.6f, -8f), l(-21f, -13f), width = 1.1f, alpha = 0.55f)
+    pen.line(l(-8f, -4f), l(-18f, -16.4f), l(-5.2f, -3.2f), l(-17.4f, -13.8f), width = 1.1f, alpha = 0.55f)
+    pen.line(1f, -16.2f, 1.6f, -13.8f, width = 1.1f, alpha = 0.55f * k)
+    pen.shape(width = 1.2f, alpha = 0.7f * k) { move(-15f, -4f); cubic(-14f, -10f, -8f, -12f, -5f, -7f) }
+    // Передня лапа: від плеча донизу → лапка під підборіддям (сама лапа ховається під тулуб).
+    val pawX = l(7.6f, 14f)
+    val pawY = l(-9.7f, -1.7f)
+    if (k < 0.9f) pen.line(l(3f, 8f), l(-23f, -9f), pawX, pawY, width = 2.2f, alpha = 0.95f * (1f - k))
+    pen.oval(pawX, pawY, l(2.1f, 3.2f), l(1.7f, 1.7f), CatFill.BLACK, width = 1.3f)
+    // Голова опускається на лапки й трохи схиляється; очі заплющуються.
     pen.save()
-    pen.rotate(8f, 10f, -6f)
-    pen.head(10f, -11f, CatEye.CLOSED, f.time)
+    val hx = l(2.5f, 10f)
+    val hy = l(-37f, -11f)
+    pen.rotate(8f * k, hx, hy + 5f)
+    pen.head(hx, hy, if (k > 0.35f) CatEye.CLOSED else CatEye.OPEN, f.time)
     pen.restore()
-    // «z-z-z» спливають і тануть.
-    for (i in 0 until 3) {
-        val phase = (f.time * 0.35f + i / 3f) % 1f
-        val zx = 17f + phase * 14f
-        val zy = -22f - phase * 24f
-        val z = 1.8f + phase * 1.6f
-        val alpha = (1f - phase) * 0.8f
-        pen.shape(width = 1.1f, alpha = alpha) { move(zx - z, zy - z); line(zx + z, zy - z); line(zx - z, zy + z); line(zx + z, zy + z) }
+    // «z-z-z» спливають і тануть — лише коли вже спить.
+    if (f.act == CatAct.LIE) {
+        for (i in 0 until 3) {
+            val phase = (f.time * 0.35f + i / 3f) % 1f
+            val zx = 17f + phase * 14f
+            val zy = -22f - phase * 24f
+            val z = 1.8f + phase * 1.6f
+            val alpha = (1f - phase) * 0.8f
+            pen.shape(width = 1.1f, alpha = alpha) { move(zx - z, zy - z); line(zx + z, zy - z); line(zx - z, zy + z); line(zx + z, zy + z) }
+        }
     }
     return pen.shapes
 }

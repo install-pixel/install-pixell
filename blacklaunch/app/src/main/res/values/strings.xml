@@ -881,11 +881,11 @@
     <string name="games_enabled_subtitle">Off — games are hidden here and in search</string>
     <string name="games_note">A game you leave is saved and continues from the same place. Records stay only on this phone. Games do not open during the focus timer.</string>
     <string name="game_stars">Star Patrol</string>
-    <string name="game_stars_desc">Fast. Your little ship at the bottom, a swarm of aliens above: some dive at you and drop bombs. Clear the wave — the next level is harder. Three lives, an extra one every 5000 points.</string>
+    <string name="game_stars_desc">Fast. Your ship at the bottom, a swarm of aliens above; some dive and drop bombs. Shot-down aliens sometimes drop capsules: two guns, a fan of three, rapid fire, a shield, an extra life. Every 4th level is a bonus stage — they fly past without shooting (100 each, all of them +10000). Levels go on; three lives, one more every 5000 points.</string>
     <string name="game_blocks">Blocks</string>
-    <string name="game_blocks_desc">Calm. Pieces of four squares fall into a glass; fill a row and it disappears. The first level is slow, it speeds up gently every 10 rows, and you can pause any time.</string>
+    <string name="game_blocks_desc">Calm. Pieces of four squares fall into a glass; a full row disappears — points only for rows (100–800 × level). Classic speed: a new level every 10 rows, faster up to level 29, then it stays at the top speed. Pause any time.</string>
     <string name="game_snake">Snake</string>
-    <string name="game_snake_desc">Minimal: a line and a dot. Swipe to turn, eat dots to grow; every 5 is a new level and a bit faster. Do not hit the walls or yourself.</string>
+    <string name="game_snake_desc">Minimal: a line and a dot. Swipe to turn; before a wall the head pauses for a moment so you can still turn. Three lives; every 5 dots — a new level, faster, and every two levels new obstacles. Bonuses: gold (points), snail (slower), scissors (shorter tail), heart (a life).</string>
     <string name="game_play">Play</string>
     <string name="game_continue">Continue</string>
     <string name="game_restart">Start over</string>
@@ -901,7 +901,16 @@
     <string name="game_again">Again</string>
     <string name="game_exit">Exit</string>
     <string name="game_hint_stars">Hold your finger and move it left and right — the ship follows and shoots by itself.</string>
-    <string name="game_hint_blocks">Buttons below: left, rotate, right, down, drop. Tap the glass to rotate too.</string>
+    <string name="game_hint_blocks">Drag left and right — the piece follows your finger; drag down — falls faster; quick swipe down — drops at once; light tap — rotates.</string>
     <string name="game_hint_snake">Swipe in any direction to turn.</string>
     <string name="game_focus_blocked">Games do not open during the focus timer</string>
+    <string name="game_challenge">Bonus stage — they do not shoot</string>
+    <string name="game_challenge_hits">Hits: %1$d of %2$d</string>
+    <string name="game_perfect">Perfect! +%1$d</string>
+    <string name="game_ship_down">Ship down — lives left: %1$d</string>
+    <string name="game_power_double">×2 guns %1$d s</string>
+    <string name="game_power_triple">×3 fan %1$d s</string>
+    <string name="game_power_rapid">rapid fire %1$d s</string>
+    <string name="game_power_shield">shield</string>
+    <string name="game_power_slow">slow %1$d s</string>
 </resources>

@@ -238,25 +238,35 @@ private class CatSim {
     private fun decide() {
         val roll = rnd.nextFloat()
         when {
+            // Найчастіше — нічого особливого: просто йде далі трохи інакше чи розвертається.
+            roll < 0.3f -> slope = randomSlope()
+            roll < 0.4f -> dirX = -dirX
             // Зупинився подумати й роззирнутися.
-            roll < 0.24f -> plan(look(span(0.8f, 3.5f)))
-            // Почухався, потім ще постояв, подумав.
-            roll < 0.36f -> plan(CatStep(CatAct.SCRATCH, span(0.7f, 2.6f)), look(span(0.6f, 2.8f)))
-            // Сів відпочити — від секунди до десяти; іноді потім ліг.
-            roll < 0.52f -> if (chance(0.3f)) {
-                plan(CatStep(CatAct.SIT, span(0.8f, 3f)), CatStep(CatAct.LIE, span(2f, 15f)), CatStep(CatAct.SIT, span(0.6f, 2f)), look(span(0.5f, 2f)))
+            roll < 0.58f -> plan(look(span(0.8f, 4f)))
+            // Почухався, іноді ще постояв, подумав.
+            roll < 0.66f -> if (chance(0.6f)) {
+                plan(CatStep(CatAct.SCRATCH, span(0.7f, 2.6f)), look(span(0.6f, 3f)))
             } else {
-                plan(CatStep(CatAct.SIT, span(1f, 10f)), look(span(0.4f, 2f)))
+                plan(CatStep(CatAct.SCRATCH, span(0.7f, 2.6f)))
             }
+            // Сів відпочити — від секунди до дванадцяти; іноді потім ліг.
+            roll < 0.86f -> if (chance(0.3f)) sleep() else plan(CatStep(CatAct.SIT, span(1f, 12f)), look(span(0.4f, 2f)))
             // Ліг подрімати.
-            roll < 0.62f -> plan(CatStep(CatAct.SIT, span(0.6f, 1.5f)), CatStep(CatAct.LIE, span(1f, 14f)), CatStep(CatAct.SIT, span(0.5f, 2f)))
-            // Розвернувся й пішов назад.
-            roll < 0.74f -> dirX = -dirX
-            // Просто пішов трохи інакше.
-            else -> slope = randomSlope()
+            else -> sleep()
         }
-        walkLeft = span(1.2f, 8f)
+        walkLeft = walkSpan()
         speedFactor = 0.65f + rnd.nextFloat() * 0.6f
+    }
+
+    /** Скільки йти до наступного «рішення»: від двох до шістнадцяти секунд, а бува — й пів хвилини без зупинок. */
+    private fun walkSpan() = if (chance(0.15f)) 16f + rnd.nextFloat() * 14f else 2f + rnd.nextFloat() * 14f
+
+    /** Сідає, плавно лягає, спить (від секунди до чверті хвилини), прокидається, сідає, роззирається. */
+    private fun sleep() {
+        plan(
+            CatStep(CatAct.SIT, span(0.8f, 2.5f)), CatStep(CatAct.LIE_DOWN, 1.1f), CatStep(CatAct.LIE, span(1f, 15f)),
+            CatStep(CatAct.GET_UP, 0.9f), CatStep(CatAct.SIT, span(0.5f, 2.5f)), look(span(0.5f, 2f)),
+        )
     }
 
     /** Що саме вдарилось: бік (ніс), маківка (знизу під перешкодою / верхній край) чи лапи (згори / нижній край). */
@@ -334,7 +344,8 @@ private class CatSim {
         blendLength = when {
             step.dazed || step.act == CatAct.RECOIL || step.act == CatAct.LAND -> 0.12f
             step.act == CatAct.HELD -> 0.15f
-            step.act == CatAct.LIE || act == CatAct.LIE -> 0.35f
+            // Сидячий і «лягає» на початку майже однакові — перетікання коротке.
+            step.act == CatAct.LIE_DOWN || act == CatAct.GET_UP -> 0.15f
             else -> 0.32f
         }
         if (step.act == CatAct.LOOK_AROUND) {
@@ -342,7 +353,7 @@ private class CatSim {
             lookTurned = false
         }
         if (step.act == CatAct.WALK) {
-            walkLeft = span(1.2f, 8f)
+            walkLeft = walkSpan()
             speedFactor = 0.65f + rnd.nextFloat() * 0.6f
         }
         act = step.act

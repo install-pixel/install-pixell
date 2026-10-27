@@ -180,7 +180,7 @@ fun GameScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding().padding(horizontal = 12.dp),
+        Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding().padding(horizontal = 6.dp),
     ) {
         frame.longValue // перемальовувати щокадру
         // Верхній рядок.
@@ -197,6 +197,7 @@ fun GameScreen(
             Column(Modifier.weight(1f)) {
                 Text(gameTitle(kind).uppercase(), color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
                 Text(stringResource(R.string.game_score, game.score), color = Oled.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                powerText(game)?.let { Text(it, color = Oled.Confirm, fontSize = 12.sp) }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(stringResource(R.string.game_best, maxOf(best, game.score)), color = Oled.TextSecondary, fontSize = 12.sp)
@@ -204,6 +205,7 @@ fun GameScreen(
                     when (val g = game) {
                         is StarsGame -> stringResource(R.string.game_level_lives, g.level, g.lives)
                         is BlocksGame -> stringResource(R.string.game_level_lines, g.level, g.lines)
+                        is SnakeGame -> stringResource(R.string.game_level_lives, g.level, g.lives)
                         else -> stringResource(R.string.game_level, g.level)
                     },
                     color = Oled.TextSecondary,
@@ -218,15 +220,26 @@ fun GameScreen(
                 is BlocksGame -> BlocksField(g, frame, enabled = !paused)
                 is SnakeGame -> SnakeField(g, frame, enabled = !paused)
             }
-            val starsBanner = (game as? StarsGame)?.banner?.takeIf { it > 0f }
+            val stars = game as? StarsGame
+            val starsBanner = stars?.banner?.takeIf { it > 0f }
             if ((starsBanner != null || levelBanner > 0f) && !game.over) {
-                Text(
-                    stringResource(R.string.game_level, game.level),
-                    color = Oled.TextPrimary,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Light,
-                    modifier = Modifier.align(Alignment.Center),
-                )
+                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.game_level, game.level),
+                        color = Oled.TextPrimary,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Light,
+                    )
+                    if (stars?.challenge == true) Text(stringResource(R.string.game_challenge), color = Oled.Confirm, fontSize = 16.sp)
+                    // Підсумок бонусного рівня, що щойно минув.
+                    if (stars != null && stars.challengeResult > 0f) {
+                        Text(stringResource(R.string.game_challenge_hits, stars.challengeHits, stars.challengeTotal), color = Oled.TextSecondary, fontSize = 15.sp)
+                        if (stars.challengeHits == stars.challengeTotal) Text(stringResource(R.string.game_perfect, StarsGame.PERFECT_BONUS), color = Oled.Confirm, fontSize = 15.sp)
+                    }
+                }
+            }
+            if (stars != null && stars.shipDown > 0f && !stars.over) {
+                Text(stringResource(R.string.game_ship_down, stars.lives), color = Oled.Danger, fontSize = 18.sp, modifier = Modifier.align(Alignment.Center))
             }
             if (paused && !game.over) {
                 Overlay(
@@ -253,12 +266,22 @@ fun GameScreen(
                 }
             }
         }
-        // Керування «Блоками» — великі кнопки (на полі: дотик — поворот).
-        (game as? BlocksGame)?.let { g -> BlocksControls(g, enabled = !paused && !g.over) }
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
             if (!game.over && !paused) DialogButton(stringResource(R.string.game_pause), { paused = true; save(game.encode()) })
         }
     }
+}
+
+/** Що зараз діє: гармата, швидкострільність, щит, равлик — коротко для верхнього рядка. */
+@Composable
+private fun powerText(game: ArcadeGame): String? = when (game) {
+    is StarsGame -> listOfNotNull(
+        game.gun?.let { stringResource(if (it == StarsGame.Power.TRIPLE) R.string.game_power_triple else R.string.game_power_double, game.gunLeft.toInt() + 1) },
+        game.rapidLeft.takeIf { it > 0f }?.let { stringResource(R.string.game_power_rapid, it.toInt() + 1) },
+        stringResource(R.string.game_power_shield).takeIf { game.shield },
+    ).joinToString(" · ").ifEmpty { null }
+    is SnakeGame -> game.slowLeft.takeIf { it > 0f }?.let { stringResource(R.string.game_power_slow, it.toInt() + 1) }
+    else -> null
 }
 
 @Composable
@@ -326,8 +349,23 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
         // Постріли й бомби.
         game.shots.forEach { pencilLine(p(it.x, it.y - 2.5f), p(it.x, it.y + 2.5f), 0.9f * s) }
         game.bombs.forEach { pencilCircle(p(it.x, it.y), 1.1f * s, 0.6f * s) }
-        // Вибухи — промені, що розлітаються й тануть.
+        // Капсули-прокачки: кружечок зі знаком.
+        game.capsules.forEach { c -> drawCapsule(c, p(c.x, c.y), s, game.time) }
+        // Вибухи — промені, що розлітаються й тануть; кораблик — уламки, що крутяться й розлітаються далі.
         game.sparks.forEach { sp ->
+            if (sp.big) {
+                val k = sp.t / 1.4f
+                for (r in 0 until 10) {
+                    val a = r * 0.628f + r * 0.3f
+                    val d = 2f + k * (14f + (r % 3) * 6f)
+                    val cx = sp.x + cos(a) * d
+                    val cy = sp.y + sin(a) * d + k * k * 10f
+                    val spin = a + sp.t * 6f
+                    pencilLine(p(cx - cos(spin) * 1.6f, cy - sin(spin) * 1.6f), p(cx + cos(spin) * 1.6f, cy + sin(spin) * 1.6f), 0.6f * s, 0.95f * (1f - k))
+                }
+                pencilCircle(p(sp.x, sp.y), (3f + k * 16f) * s, 0.4f * s, 0.6f * (1f - k))
+                return@forEach
+            }
             val k = sp.t / 0.6f
             for (r in 0 until 8) {
                 val a = r * (Math.PI.toFloat() / 4f)
@@ -336,8 +374,8 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
                 pencilLine(p(sp.x + cos(a) * d0, sp.y + sin(a) * d0), p(sp.x + cos(a) * d1, sp.y + sin(a) * d1), 0.6f * s, 0.9f * (1f - k))
             }
         }
-        // Кораблик (блимає, поки невразливий).
-        if (game.invulnerable <= 0f || ((game.time * 10).toInt() % 2 == 0)) {
+        // Кораблик (блимає, поки невразливий; збитий — немає, доки не з'явиться новий).
+        if (game.shipDown <= 0f && (game.invulnerable <= 0f || ((game.time * 10).toInt() % 2 == 0))) {
             val c = p(game.shipX, StarsGame.SHIP_Y)
             val ship = Path().apply {
                 moveTo(c.x, c.y - 6f * s)
@@ -353,9 +391,44 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
             drawPath(ship, Color.Black)
             pencil(ship, 0.8f * s)
             pencilCircle(Offset(c.x, c.y - 1.2f * s), 1f * s, 0.5f * s)
+            // Додаткові гармати на крилах.
+            if (game.gun != null) {
+                pencilLine(Offset(c.x - 4f * s, c.y + 2f * s), Offset(c.x - 4f * s, c.y - 2.5f * s), 0.6f * s)
+                pencilLine(Offset(c.x + 4f * s, c.y + 2f * s), Offset(c.x + 4f * s, c.y - 2.5f * s), 0.6f * s)
+            }
+            // Щит — коло довкола.
+            if (game.shield) pencilCircle(Offset(c.x, c.y), (8f + sin(game.time * 5f) * 0.5f) * s, 0.4f * s, 0.6f)
             // Полум'я двигуна.
             val flame = 1.5f + abs(sin(game.time * 20f)) * 1.5f
             pencilLine(Offset(c.x, c.y + 4f * s), Offset(c.x, c.y + (4f + flame) * s), 0.6f * s, 0.6f)
+        }
+    }
+}
+
+/** Капсула прокачки: кружечок, що повільно обертається, і знак усередині. */
+private fun DrawScope.drawCapsule(c: StarsGame.Capsule, at: Offset, s: Float, time: Float) {
+    val r = 3f * s
+    pencilCircle(at, r, 0.5f * s)
+    val w = 0.5f * s
+    when (c.power) {
+        StarsGame.Power.DOUBLE -> { pencilLine(at + Offset(-1f * s, -1.6f * s), at + Offset(-1f * s, 1.6f * s), w); pencilLine(at + Offset(1f * s, -1.6f * s), at + Offset(1f * s, 1.6f * s), w) }
+        StarsGame.Power.TRIPLE -> {
+            pencilLine(at + Offset(0f, -1.8f * s), at + Offset(0f, 1.6f * s), w)
+            pencilLine(at + Offset(-1.6f * s, -1.4f * s), at + Offset(-0.8f * s, 1.6f * s), w)
+            pencilLine(at + Offset(1.6f * s, -1.4f * s), at + Offset(0.8f * s, 1.6f * s), w)
+        }
+        StarsGame.Power.RAPID -> {
+            val bolt = Path().apply { moveTo(at.x + 0.6f * s, at.y - 2f * s); lineTo(at.x - 1f * s, at.y + 0.2f * s); lineTo(at.x + 0.6f * s, at.y + 0.2f * s); lineTo(at.x - 0.6f * s, at.y + 2f * s) }
+            pencil(bolt, w)
+        }
+        StarsGame.Power.SHIELD -> pencilCircle(at, r * 0.55f + sin(time * 6f) * 0.2f * s, w)
+        StarsGame.Power.LIFE -> {
+            val heart = Path().apply {
+                moveTo(at.x, at.y + 1.8f * s)
+                cubicTo(at.x - 2.6f * s, at.y - 0.2f * s, at.x - 1.4f * s, at.y - 2.4f * s, at.x, at.y - 0.9f * s)
+                cubicTo(at.x + 1.4f * s, at.y - 2.4f * s, at.x + 2.6f * s, at.y - 0.2f * s, at.x, at.y + 1.8f * s)
+            }
+            pencil(heart, w)
         }
     }
 }
@@ -403,15 +476,49 @@ private fun DrawScope.drawEnemy(e: StarsGame.Enemy, c: Offset, s: Float, time: F
 
 @Composable
 private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.MutableLongState, enabled: Boolean) {
+    val density = LocalDensity.current
+    val view = remember { FieldView() }
     Canvas(
         Modifier.fillMaxSize().pointerInput(enabled) {
             if (!enabled) return@pointerInput
-            detectTapGestures(onTap = { game.rotate() })
+            // Пальцем, як у решті ігор: потягнути вліво-вправо — фігура йде за пальцем по клітинках; вниз — швидше падає;
+            // різкий змах униз — одразу донизу; легкий дотик — поворот.
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                val start = down.position
+                val startTime = down.uptimeMillis
+                var lastX = start.x
+                var lastY = start.y
+                var moved = false
+                var dropped = false
+                val slop = with(density) { 10.dp.toPx() }
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    val cell = view.scale.coerceAtLeast(1f)
+                    if (!change.pressed) {
+                        val dy = change.position.y - start.y
+                        val dt = (change.uptimeMillis - startTime).coerceAtLeast(1)
+                        when {
+                            // Швидкий змах донизу — скинути.
+                            !dropped && dy > cell * 2f && dy / dt > 1.2f * density.density -> game.hardDrop()
+                            !moved -> game.rotate()
+                        }
+                        break
+                    }
+                    val p = change.position
+                    if ((p - start).getDistance() > slop) moved = true
+                    while (p.x - lastX > cell) { game.move(1); lastX += cell }
+                    while (lastX - p.x > cell) { game.move(-1); lastX -= cell }
+                    while (p.y - lastY > cell) { if (game.softDrop()) dropped = true; lastY += cell }
+                    change.consume()
+                }
+            }
         },
     ) {
         frame.longValue
         // Склянка ліворуч, наступна фігура праворуч.
         val (s, o) = fit(BlocksGame.COLS + 5f, BlocksGame.ROWS.toFloat())
+        view.scale = s
         val cell = s
         val glass = Rect(o.x, o.y, o.x + BlocksGame.COLS * cell, o.y + BlocksGame.ROWS * cell)
         val frame = Path().apply { moveTo(glass.left, glass.top); lineTo(glass.left, glass.bottom); lineTo(glass.right, glass.bottom); lineTo(glass.right, glass.top) }
@@ -463,60 +570,6 @@ private fun DrawScope.hatch(r: Rect, type: Int, cell: Float, alpha: Float) {
     }
 }
 
-@Composable
-private fun BlocksControls(game: BlocksGame, enabled: Boolean) {
-    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-        PadButton("◀", enabled, repeat = true) { game.move(-1) }
-        PadButton("⟳", enabled) { game.rotate() }
-        PadButton("▶", enabled, repeat = true) { game.move(1) }
-        PadButton("▼", enabled, repeat = true) { game.softDrop() }
-        PadButton("⤓", enabled) { game.hardDrop() }
-    }
-}
-
-/** Кругла кнопка; [repeat] — утримання повторює (рух, падіння). */
-@Composable
-private fun PadButton(label: String, enabled: Boolean, repeat: Boolean = false, onPress: () -> Unit) {
-    val haptics = LocalHaptics.current
-    val press by rememberUpdatedState(onPress)
-    Box(
-        Modifier
-            .size(58.dp)
-            .clip(RoundedCornerShape(29.dp))
-            .background(Oled.Knob)
-            .border(1.dp, Oled.Glint, RoundedCornerShape(29.dp))
-            .pointerInput(enabled, repeat) {
-                if (!enabled) return@pointerInput
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    down.consume()
-                    haptics.tap()
-                    press()
-                    if (repeat) {
-                        // Утримання: після паузи — повтор, поки палець на кнопці.
-                        var wait = 260L
-                        while (true) {
-                            val released = withTimeoutOrNull(wait) {
-                                var up = false
-                                while (!up) {
-                                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
-                                    up = change == null || !change.pressed
-                                }
-                                true
-                            }
-                            if (released == true) break
-                            press()
-                            wait = 70L
-                        }
-                    }
-                }
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, color = if (enabled) Oled.TextPrimary else Oled.TextSecondary, fontSize = 22.sp)
-    }
-}
-
 // ——— «Змійка» ———
 
 @Composable
@@ -549,14 +602,65 @@ private fun SnakeField(game: SnakeGame, frame: androidx.compose.runtime.MutableL
         val (s, o) = fit(SnakeGame.COLS.toFloat(), SnakeGame.ROWS.toFloat())
         val center = { c: Int -> Offset(o.x + (c % SnakeGame.COLS + 0.5f) * s, o.y + (c / SnakeGame.COLS + 0.5f) * s) }
         drawRoundRect(Ink.copy(alpha = 0.3f), topLeft = o, size = Size(SnakeGame.COLS * s, SnakeGame.ROWS * s), cornerRadius = androidx.compose.ui.geometry.CornerRadius(s * 0.4f), style = Stroke(s * 0.06f))
+        // Перешкоди — квадратики олівцем з хрестиком.
+        game.obstacles.forEach { c ->
+            val m = center(c)
+            val h = s * 0.38f
+            pencil(Path().apply { addRect(Rect(m.x - h, m.y - h, m.x + h, m.y + h)) }, s * 0.07f, 0.7f)
+            pencilLine(m + Offset(-h * 0.6f, -h * 0.6f), m + Offset(h * 0.6f, h * 0.6f), s * 0.05f, 0.45f)
+        }
+        // Бонус: блимає, коли ось-ось зникне.
+        game.bonus?.let { b ->
+            if (game.bonusLeft > 2f || ((game.bonusLeft * 6).toInt() % 2 == 0)) drawSnakeBonus(b, center(game.bonusCell), s)
+        }
         // Їжа — кружечок, що ледь пульсує.
         pencilCircle(center(game.food), s * 0.22f, s * 0.08f)
         // Змійка — одна лінія; з'їла — на мить товща.
         val path = Path()
         game.body.forEachIndexed { i, c -> center(c).let { if (i == 0) path.moveTo(it.x, it.y) else path.lineTo(it.x, it.y) } }
-        pencil(path, s * (0.42f + game.flash), 0.9f)
+        // Щойно врізалась — блимає, поки з'являється знову; вперлась у стіну — голова теж блимає (ще можна повернути).
+        val blink = game.respawn > 0f && ((game.respawn * 8).toInt() % 2 == 0)
+        if (!blink) pencil(path, s * (0.42f + game.flash), 0.9f)
         val head = center(game.body.first())
+        if (game.braking) pencilCircle(head, s * 0.42f, s * 0.06f, 0.8f)
         drawCircle(Color.Black, s * 0.08f, head + Offset(game.dir.dx * s * 0.12f, game.dir.dy * s * 0.12f))
+    }
+}
+
+/** Бонуси змійки: золото — зірочка, равлик — спіраль, ножиці — два кола й хрест, серце. */
+private fun DrawScope.drawSnakeBonus(b: SnakeGame.Bonus, at: Offset, s: Float) {
+    val w = s * 0.07f
+    val r = s * 0.36f
+    when (b) {
+        SnakeGame.Bonus.GOLD -> for (i in 0 until 5) {
+            val a = -Math.PI.toFloat() / 2 + i * 2f * Math.PI.toFloat() / 5f
+            pencilLine(at, at + Offset(cos(a) * r, sin(a) * r), w)
+        }
+        SnakeGame.Bonus.SLOW -> {
+            val spiral = Path().apply {
+                for (i in 0..24) {
+                    val a = i * 0.5f
+                    val rr = r * i / 24f
+                    val pt = at + Offset(cos(a) * rr, sin(a) * rr)
+                    if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
+                }
+            }
+            pencil(spiral, w)
+        }
+        SnakeGame.Bonus.SHRINK -> {
+            pencilCircle(at + Offset(-r * 0.45f, r * 0.45f), r * 0.28f, w)
+            pencilCircle(at + Offset(r * 0.45f, r * 0.45f), r * 0.28f, w)
+            pencilLine(at + Offset(-r * 0.3f, r * 0.2f), at + Offset(r * 0.5f, -r * 0.7f), w)
+            pencilLine(at + Offset(r * 0.3f, r * 0.2f), at + Offset(-r * 0.5f, -r * 0.7f), w)
+        }
+        SnakeGame.Bonus.LIFE -> {
+            val heart = Path().apply {
+                moveTo(at.x, at.y + r)
+                cubicTo(at.x - r * 1.4f, at.y - r * 0.1f, at.x - r * 0.8f, at.y - r * 1.3f, at.x, at.y - r * 0.5f)
+                cubicTo(at.x + r * 0.8f, at.y - r * 1.3f, at.x + r * 1.4f, at.y - r * 0.1f, at.x, at.y + r)
+            }
+            pencil(heart, w)
+        }
     }
 }
 
