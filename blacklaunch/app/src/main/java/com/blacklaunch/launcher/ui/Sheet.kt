@@ -286,3 +286,12 @@ fun HintBanner(text: String?) {
         }
     }
 }
+
+/** Короткий штрих олівцем від [a] до [b]: ледь вигнутий, загострений на кінцях. */
+internal fun DrawScope.pencilTick(a: Offset, b: Offset, width: Float, color: Color, seed: Int) {
+    val bend = sin(seed * 2.3f) * width * 0.6f
+    val dir = b - a
+    val len = dir.getDistance().coerceAtLeast(0.001f)
+    val normal = Offset(-dir.y / len, dir.x / len)
+    drawPath(taperedPath(quadPoints(a, (a + b) / 2f + normal * bend, b, steps = 10), width), color)
+}

@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +33,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.currentCompositeKeyHash
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,9 +48,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -72,19 +75,17 @@ import com.blacklaunch.launcher.system.SystemSnapshot
 import com.blacklaunch.launcher.system.SystemStats
 import com.blacklaunch.launcher.system.UsageInfo
 import com.blacklaunch.launcher.ui.theme.Oled
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /** Приглушене тепле для тепла — у тон акцентів, не яскраве. */
 private val Warm = Color(0xFFC9956A)
 private val Track = Color(0x1FFFFFFF)
 /** Розряджені поділки шкали — рівні й помітні, щоб не здавалось, ніби частину кола щось закриває. */
 private val DialTrack = Color(0x40FFFFFF)
-private val GlassShape = RoundedCornerShape(18.dp)
-private val PlateShape = RoundedCornerShape(14.dp)
 
 /** Наш шрифт, але цифри однакової ширини — щоб значення не «стрибали» щосекунди. */
 @Composable
@@ -176,7 +177,8 @@ internal fun MonitorScreen(
             // Характеристики — за кнопкою-телефоном, щоб не займати місце на екрані.
             if (MonitorTile.DEVICE in tiles && device != null) {
                 Box(
-                    Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).border(1.dp, Oled.Glint, RoundedCornerShape(20.dp))
+                    Modifier.size(40.dp)
+                        .then(if (LocalSheet.current) Modifier.pencilFrame(20.dp, seed = 61).clip(RoundedCornerShape(20.dp)) else Modifier.clip(RoundedCornerShape(20.dp)).border(1.dp, Oled.Glint, RoundedCornerShape(20.dp)))
                         .clickable { detail = Detail.DEVICE },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -436,9 +438,7 @@ private fun DetailSheet(title: String, plates: List<Plate>, accent: Color, onClo
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 640.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF0A0A0A))
-                .border(1.dp, Oled.Glint, RoundedCornerShape(24.dp))
+                .glassBox(24.dp, seed = 67, fill = SolidColor(Color(0xFF0A0A0A)), paper = Color.Black)
                 .clickable(onClick = onClose)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
@@ -466,9 +466,7 @@ private fun PlateView(p: Plate, accent: Color, modifier: Modifier) {
     }
     Column(
         modifier
-            .clip(PlateShape)
-            .background(Oled.Surface)
-            .border(1.dp, Oled.Glint, PlateShape)
+            .glassBox(14.dp, seed = p.label.length + 71)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -486,9 +484,7 @@ private fun Glass(modifier: Modifier = Modifier, content: @Composable ColumnScop
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(GlassShape)
-            .background(Oled.Surface)
-            .border(1.dp, Oled.Glint, GlassShape)
+            .glassBox(18.dp, seed = currentCompositeKeyHash)
             .then(modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -519,9 +515,20 @@ private fun Footnote(text: String) {
 private fun Segments(level: Float, color: Color) {
     val lit = (level.coerceIn(0f, 1f) * SEGMENTS).roundToInt()
     val glass = Brush.verticalGradient(listOf(lerp(color, Color.White, 0.45f), color, color.copy(alpha = 0.6f)))
-    Canvas(Modifier.fillMaxWidth().height(8.dp)) {
+    val sheet = LocalSheet.current
+    Canvas(Modifier.fillMaxWidth().height(if (sheet) 12.dp else 8.dp)) {
         val gap = 2.dp.toPx()
         val w = (size.width - gap * (SEGMENTS - 1)) / SEGMENTS
+        // «Аркуш»: шкала — рядок рисок олівцем («паличок»): заповнені — кольором, решта — ледь помітні.
+        if (sheet) {
+            repeat(SEGMENTS) { i ->
+                val x = i * (w + gap) + w / 2
+                val lean = w * 0.35f
+                val ink = if (i < lit) color else Track
+                pencilTick(Offset(x - lean, size.height), Offset(x + lean, 0f), if (i < lit) 2.2.dp.toPx() else 1.4.dp.toPx(), ink, i)
+            }
+            return@Canvas
+        }
         val corner = CornerRadius(2.dp.toPx())
         repeat(SEGMENTS) { i ->
             val topLeft = Offset(i * (w + gap), 0f)
@@ -534,8 +541,14 @@ private fun Segments(level: Float, color: Color) {
 /** Значок телефона: корпус із заокругленими кутами й риска внизу. */
 @Composable
 private fun PhoneGlyph(color: Color, modifier: Modifier) {
+    val sheet = LocalSheet.current
     Canvas(modifier) {
         val stroke = 1.5.dp.toPx()
+        if (sheet) {
+            drawPath(taperedPath(pencilLoop(size, 3.dp.toPx(), 5, 0.4.dp.toPx()), 1.8.dp.toPx()), color)
+            pencilTick(Offset(size.width * 0.35f, size.height * 0.82f), Offset(size.width * 0.65f, size.height * 0.8f), 1.6.dp.toPx(), color, 3)
+            return@Canvas
+        }
         drawRoundRect(color, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), CornerRadius(3.dp.toPx()), style = Stroke(stroke))
         drawLine(color, Offset(size.width * 0.35f, size.height * 0.82f), Offset(size.width * 0.65f, size.height * 0.82f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
@@ -551,10 +564,30 @@ private fun BatteryDial(battery: Float, charging: Boolean, accent: Color, modifi
     } else {
         -1f
     }
+    val sheet = LocalSheet.current
     Canvas(modifier) {
         val r = size.minDimension / 2
         val c = Offset(size.width / 2, size.height / 2)
         val lit = (battery * TICKS).roundToInt()
+        // «Аркуш»: поділки — штрихи олівцем (без світіння), коло всередині — намальоване від руки.
+        if (sheet) {
+            repeat(TICKS) { i ->
+                val boost = if (wave >= 0f && i < lit) (1f - abs(i - wave * (lit + WAVE_TAIL)) / WAVE_TAIL).coerceIn(0f, 1f) else 0f
+                val tint = if (i < lit) lerp(accent, Color.White, 0.6f * boost) else DialTrack
+                val angle = (i * 360f / TICKS - 90f) * (Math.PI.toFloat() / 180f)
+                val dir = Offset(kotlin.math.cos(angle), kotlin.math.sin(angle))
+                val outer = r - 3.dp.toPx()
+                val inner = r - (if (i % 5 == 0) 14.dp else 10.dp).toPx()
+                pencilTick(c + dir * outer, c + dir * inner, if (i < lit) 2.4.dp.toPx() else 1.5.dp.toPx(), tint, i)
+            }
+            val ring = r - 22.dp.toPx()
+            if (ring > 0f) {
+                translate(c.x - ring, c.y - ring) {
+                    drawPath(taperedPath(pencilLoop(Size(ring * 2, ring * 2), ring, 73, 1.2.dp.toPx()), 1.6.dp.toPx()), Track)
+                }
+            }
+            return@Canvas
+        }
         repeat(TICKS) { i ->
             // Неон: тонка світла лінія над м'яким світінням; колір плавно світлішає вздовж кола.
             // Яскравість хвилі на цій поділці: найсильніше в її центрі, згасає за ~4 поділки.
@@ -575,6 +608,7 @@ private fun BatteryDial(battery: Float, charging: Boolean, accent: Color, modifi
 /** Лінія з м'якою заливкою під нею; [range] — фіксовані межі (інакше від найменшого до найбільшого). */
 @Composable
 private fun Sparkline(values: List<Float>, color: Color, range: Pair<Float, Float>?, modifier: Modifier) {
+    val sheet = LocalSheet.current
     Canvas(modifier) {
         if (values.size < 2) return@Canvas
         val min = range?.first ?: values.min()
@@ -594,6 +628,14 @@ private fun Sparkline(values: List<Float>, color: Color, range: Pair<Float, Floa
             lineTo(size.width, size.height)
             lineTo(0f, size.height)
             close()
+        }
+        if (sheet) {
+            // «Аркуш»: лінія графіка — штрихом олівця, загострена на кінцях, без заливки.
+            val points = values.mapIndexed { i, v ->
+                Offset(size.width * i / (values.size - 1).toFloat(), size.height - ((v - min) / span).coerceIn(0f, 1f) * size.height)
+            }
+            drawPath(taperedPath(points, 2.2.dp.toPx()), color)
+            return@Canvas
         }
         drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = 0.28f), Color.Transparent)))
         drawPath(line, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
