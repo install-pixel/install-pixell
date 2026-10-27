@@ -67,7 +67,7 @@ class FocusActivity : ComponentActivity() {
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
             val current = session
             // «Суворо»: «Назад» нікуди не веде (вийти — лише достроково); звичайний — згортає.
-            BackHandler { if (current?.strict != true) finish() }
+            BackHandler { if (current?.strict != true) minimize() }
             BlackLaunchTheme {
                 CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                     if (current != null) {
@@ -77,7 +77,7 @@ class FocusActivity : ComponentActivity() {
                             pin = if (current.strict) pinState else PinState.NONE,
                             cat = cat,
                             onPin = ::requestPin,
-                            onMinimize = if (current.strict) null else ::finish,
+                            onMinimize = if (current.strict) null else ::minimize,
                             onEarlyExit = { app.focus.endEarly() },
                         )
                     }
@@ -126,6 +126,12 @@ class FocusActivity : ComponentActivity() {
         pin.value = PinState.ASKING
         askedAt = SystemClock.elapsedRealtime()
         if (runCatching { startLockTask() }.isFailure) pin.value = PinState.NOT_PINNED
+    }
+
+    /** Звичайний таймер згортається, але йде далі — кажемо про це, щоб не здавалось, що вийшли. */
+    private fun minimize() {
+        android.widget.Toast.makeText(this, R.string.focus_minimized, android.widget.Toast.LENGTH_LONG).show()
+        finish()
     }
 
     private fun leave() {

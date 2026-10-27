@@ -878,4 +878,5 @@
     <string name="wb_now_playing_subtitle">Na dole ekranu głównego: utwór, wstecz / pauza / dalej / stop; dotknięcie tytułu — odtwarzacz na pełnym ekranie. Znika minutę po pauzie, „Stop” — od razu</string>
     <string name="wb_media_stop">Stop</string>
     <string name="wb_media_open_app">Otwórz w aplikacji</string>
+    <string name="focus_minimized">Minutnik działa dalej: tryb i ustawienia nadal zablokowane. Powrót — etykieta na ekranie głównym → „Otwórz minutnik”.</string>
 </resources>

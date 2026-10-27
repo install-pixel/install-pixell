@@ -874,4 +874,5 @@
     <string name="wb_now_playing_subtitle">At the bottom of the home screen: the song, previous / pause / next / stop; tap the title for a full-screen player. Hides a minute after pausing, “Stop” hides it at once</string>
     <string name="wb_media_stop">Stop</string>
     <string name="wb_media_open_app">Open in the app</string>
+    <string name="focus_minimized">The timer keeps running: switching modes and settings stay locked. Back to it — the label on the home screen → “Open the timer”.</string>
 </resources>

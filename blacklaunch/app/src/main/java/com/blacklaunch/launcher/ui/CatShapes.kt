@@ -59,8 +59,7 @@ internal class CatPose {
     var sitting = 0f
     var armNear = 0f
     var armFar = 0f
-    var farArmShown = false
-    var armLen = 12f
+    var armLen = 14f
     var headTilt = 0f
     var headDrop = 0f
     var tailWag = 0f
@@ -85,13 +84,16 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             val s = sin(f.walkPhase)
             legNear = 22f * s
             legFar = -22f * s
-            armNear = -24f * s
+            // Помах ширший за тулуб — дальня лапа визирає то спереду, то ззаду.
+            armNear = -36f * s
+            armFar = 36f * s
             bob = abs(s) * 1.4f
         }
         CatAct.RECOIL -> {
             val k = sin(pi * p)
             lean = -14f * k
             armNear = 55f * k
+            armFar = 40f * k
             legNear = 12f
             legFar = -10f
         }
@@ -109,6 +111,7 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             legNear = 80f * s
             legFar = 74f * s
             armNear = 18f * s
+            armFar = -20f * s
             lean = -6f * s
             tailWag = sin(f.time * (if (f.dazed) 1.2f else 1.8f)) * 3f
             headTilt = if (f.dazed) sin(f.time * 3f) * 7f * s else 0f
@@ -121,15 +124,14 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             legLen = 16f - 4f * s
             legNear = 28f * s
             legFar = -24f * s
-            armLen = 12f + 5f * s
-            armNear = 170f * s
-            armFar = 160f * s
-            farArmShown = s > 0.3f
+            armLen = 14f + 7f * s
+            armNear = 194f * s
+            armFar = 186f * s
         }
         CatAct.SCRATCH -> {
             val s = settle(p)
-            armLen = 12f + 3f * s
-            armNear = (150f + sin(f.actTime * 22f) * 12f) * s
+            armLen = 14f + 6f * s
+            armNear = (196f + sin(f.actTime * 22f) * 7f) * s
             headTilt = 10f * s
             legNear = 4f
             legFar = -4f
@@ -255,7 +257,7 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
         }
     }
 
-    // Дальня задня лапа — тьмяніша, наполовину за тулубом.
+    // Дальня задня лапа — того ж кольору, частково за тулубом.
     fun leg(angle: Float, alpha: Float) {
         val (dx, dy) = dir(angle)
         val kx = hx - 1f
@@ -265,15 +267,25 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
         pen.line(kx, ky, fx, fy, width = 2.2f, alpha = alpha)
         pen.oval(fx + 2.4f, fy - 1.2f, 3.2f, 1.6f, CatFill.BLACK, width = 1.4f, alpha = alpha)
     }
-    leg(pose.legFar, 0.5f)
+    leg(pose.legFar, 0.95f)
 
-    // Дальня передня лапа — лише коли обидві тягнуться до голови.
+    // Передні лапи: плече → лікоть → лапка.
     val shoulderX = hx + 3f
     val shoulderY = hy - 16f
-    if (pose.farArmShown) {
-        val (dx, dy) = dir(pose.armFar)
-        pen.line(shoulderX - 1f, shoulderY, shoulderX - 1f + dx * pose.armLen, shoulderY + dy * pose.armLen, width = 2f, alpha = 0.5f)
+    fun arm(fromX: Float, angle: Float, len: Float, line: Boolean = true, paw: Boolean = true) {
+        val (dx, dy) = dir(angle)
+        // Опущена лапа згинається в лікті вперед; піднята — передпліччя йде назад, на маківку, а не на морду.
+        val (bx, by) = dir(angle + if (angle > 90f) -32f else 18f)
+        val ex = fromX + dx * len * 0.55f
+        val ey = shoulderY + dy * len * 0.55f
+        val px = ex + bx * len * 0.45f
+        val py = ey + by * len * 0.45f
+        if (line) pen.shape(width = 2.2f, alpha = 0.95f) { move(fromX, shoulderY); line(ex, ey); line(px, py) }
+        if (paw) pen.oval(px, py, 2.1f, 1.7f, CatFill.BLACK, width = 1.3f)
     }
+    // Дальня — за тулубом: видно, лише коли вона попереду чи позаду тіла (на ходу, коли тягнеться до голови).
+    // Довга лише тоді, коли тягнеться до голови (присів); інакше звичайна — не звисає нижче тулуба.
+    arm(shoulderX - 2f, pose.armFar, if (pose.armFar > 90f) pose.armLen else 14f)
 
     // Тулуб — грушею, зафарбований чорним: закриває все, що позаду.
     pen.shape(CatFill.BLACK) {
@@ -290,21 +302,13 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
     pen.line(hx - 7.2f, hy - 15f, hx - 4.6f, hy - 14.2f, width = 1.1f, alpha = 0.55f)
     pen.line(hx - 8f, hy - 11f, hx - 5.2f, hy - 10.4f, width = 1.1f, alpha = 0.55f)
 
-    // Ближня задня лапа й стегно над нею.
+    // Ближня задня лапа — просто з тулуба (без окремого стегна, що ділило тіло навпіл).
     leg(pose.legNear, 0.95f)
-    pen.oval(hx - 2f, hy - 3f, if (sitting) 7.5f else 6f, if (sitting) 6f else 5f, CatFill.BLACK)
 
-    // Ближня передня лапа: плече → лікоть → лапка.
-    run {
-        val (dx, dy) = dir(pose.armNear)
-        val (bx, by) = dir(pose.armNear + 18f)
-        val ex = shoulderX + dx * pose.armLen * 0.55f
-        val ey = shoulderY + dy * pose.armLen * 0.55f
-        val px = ex + bx * pose.armLen * 0.45f
-        val py = ey + by * pose.armLen * 0.45f
-        pen.shape(width = 2.2f, alpha = 0.95f) { move(shoulderX, shoulderY); line(ex, ey); line(px, py) }
-        pen.oval(px, py, 2.1f, 1.7f, CatFill.BLACK, width = 1.3f)
-    }
+    // Ближня передня лапа: опущена — перед тілом. Піднята до голови — сама лапа йде за щокою (голова її закриває),
+    // а лапка лежить зверху на маківці (малюється після голови).
+    val armRaised = pose.armNear > 90f
+    arm(shoulderX, pose.armNear, pose.armLen, paw = !armRaised)
 
     // Голова: нахиляється / трусить навколо шиї.
     val cx = hx + 2.5f
@@ -358,5 +362,6 @@ internal fun catShapes(f: CatFrame): List<CatShape> {
     pen.line(cx + 8.4f, cy + 1.2f, cx + 15.5f, cy + 1.1f, width = 0.7f, alpha = 0.55f)
     pen.line(cx + 8.2f, cy + 1.8f, cx + 14.5f, cy + 3.5f, width = 0.7f, alpha = 0.55f)
     pen.restore()
+    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen, line = false)
     return pen.shapes
 }
