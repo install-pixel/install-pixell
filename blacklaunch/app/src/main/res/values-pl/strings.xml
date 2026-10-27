@@ -875,5 +875,7 @@
     <string name="wb_dots_title">Kropki powiadomień</string>
     <string name="wb_dots_subtitle">Mała kropka na ikonie aplikacji, gdy ma powiadomienia w panelu</string>
     <string name="wb_now_playing_title">Teraz odtwarzane</string>
-    <string name="wb_now_playing_subtitle">Na dole ekranu głównego: utwór, pauza i przełączanie; dotknięcie tytułu — otwórz odtwarzacz. Znika minutę po pauzie</string>
+    <string name="wb_now_playing_subtitle">Na dole ekranu głównego: utwór, wstecz / pauza / dalej / stop; dotknięcie tytułu — odtwarzacz na pełnym ekranie. Znika minutę po pauzie, „Stop” — od razu</string>
+    <string name="wb_media_stop">Stop</string>
+    <string name="wb_media_open_app">Otwórz w aplikacji</string>
 </resources>

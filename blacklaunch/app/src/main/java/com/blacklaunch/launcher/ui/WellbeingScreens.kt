@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -108,19 +111,22 @@ fun LaunchPauseDialog(prompt: LaunchPrompt, onOpen: () -> Unit, onCancel: () -> 
 }
 
 /** Маленькі значки керування музикою (у базовому наборі значків їх немає) — олівцевими лініями, як усе. */
-private enum class MediaGlyph { PREVIOUS, PLAY, PAUSE, NEXT }
+private enum class MediaGlyph { PREVIOUS, PLAY, PAUSE, NEXT, STOP }
 
 @Composable
-private fun MediaButton(glyph: MediaGlyph, description: String, onClick: () -> Unit) {
+private fun MediaButton(glyph: MediaGlyph, description: String, big: Boolean = false, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
+    val box = if (big) 64.dp else 40.dp
+    val shape = RoundedCornerShape(box / 2)
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .size(box)
+            .clip(shape)
+            .then(if (big) Modifier.background(Oled.Knob).border(1.dp, Oled.Glint, shape) else Modifier)
             .clickable(onClickLabel = description) { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(16.dp)) {
+        Canvas(Modifier.size(if (big) 24.dp else 16.dp)) {
             val w = size.width
             val h = size.height
             val color = Oled.TextPrimary
@@ -137,6 +143,7 @@ private fun MediaButton(glyph: MediaGlyph, description: String, onClick: () -> U
                     drawPath(triangle(0f, w * 0.75f), color)
                     drawRect(color, Offset(w * 0.78f, 0f), androidx.compose.ui.geometry.Size(w * 0.16f, h))
                 }
+                MediaGlyph.STOP -> drawRect(color, Offset(w * 0.1f, h * 0.1f), androidx.compose.ui.geometry.Size(w * 0.8f, h * 0.8f))
                 MediaGlyph.PREVIOUS -> {
                     drawRect(color, Offset(w * 0.06f, 0f), androidx.compose.ui.geometry.Size(w * 0.16f, h))
                     drawPath(Path().apply { moveTo(w, 0f); lineTo(w * 0.25f, h / 2); lineTo(w, h); close() }, color)
@@ -146,9 +153,20 @@ private fun MediaButton(glyph: MediaGlyph, description: String, onClick: () -> U
     }
 }
 
-/** «Що грає» внизу головного екрана: скляна плашка — назва й виконавець (дотик — відкрити гравець) і кнопки. */
+/**
+ * «Що грає» внизу головного екрана: скляна плашка — назва й виконавець (дотик — повноекранний гравець)
+ * і кнопки «назад», «пауза», «далі», «стоп» (зупиняє й одразу прибирає плашку).
+ */
 @Composable
-fun NowPlayingBar(info: NowPlayingInfo, onOpen: () -> Unit, onPrevious: () -> Unit, onToggle: () -> Unit, onNext: () -> Unit, modifier: Modifier = Modifier) {
+fun NowPlayingBar(
+    info: NowPlayingInfo,
+    onExpand: () -> Unit,
+    onPrevious: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(22.dp)
     Row(
@@ -165,15 +183,150 @@ fun NowPlayingBar(info: NowPlayingInfo, onOpen: () -> Unit, onPrevious: () -> Un
             Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .clickable { haptics.tap(); onOpen() }
+                .clickable { haptics.tap(); onExpand() }
                 .padding(vertical = 8.dp),
         ) {
             Text(info.title, color = Oled.TextPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             info.artist?.let { Text(it, color = Oled.TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), onPrevious)
-        MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), onToggle)
-        MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), onNext)
+        MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), onClick = onPrevious)
+        MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), onClick = onToggle)
+        MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), onClick = onNext)
+        MediaButton(MediaGlyph.STOP, stringResource(R.string.wb_media_stop), onClick = onStop)
+    }
+}
+
+/** «1:05» / «1:02:07». */
+private fun clockText(ms: Long): String {
+    val total = ms.coerceAtLeast(0) / 1000
+    val h = total / 3600
+    val m = total % 3600 / 60
+    val sec = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+}
+
+/**
+ * Повноекранний гравець: обкладинка, назва, виконавець, альбом, смужка часу (перемотування, якщо гравець дозволяє),
+ * великі кнопки, «Стоп» і «Відкрити в програмі». «Назад» чи стрілка вгорі — згорнути.
+ */
+@Composable
+fun NowPlayingScreen(
+    info: NowPlayingInfo,
+    appName: String?,
+    onClose: () -> Unit,
+    onPrevious: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    onStop: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onOpenApp: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onClose,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        var tick by remember { mutableIntStateOf(0) }
+        LaunchedEffect(info.playing) {
+            while (info.playing) {
+                delay(500)
+                tick++
+            }
+        }
+        // Поки тягнуть смужку — показуємо, куди перемотають; відпустили — перемотуємо.
+        var dragging by remember { mutableStateOf<Float?>(null) }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "⌄",
+                    color = Oled.TextSecondary,
+                    fontSize = 30.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClose).padding(horizontal = 12.dp),
+                )
+                Text(
+                    appName.orEmpty().uppercase(),
+                    color = Oled.TextSecondary,
+                    fontSize = 12.sp,
+                    letterSpacing = 2.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                )
+                Box(Modifier.size(42.dp))
+            }
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val shape = RoundedCornerShape(28.dp)
+                Box(
+                    Modifier
+                        .fillMaxWidth(0.82f)
+                        .aspectRatio(1f)
+                        .clip(shape)
+                        .background(Color(0xFF0A0A0A))
+                        .border(1.dp, Oled.Glint, shape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val art = info.art
+                    if (art != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = art.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Text("♪", color = Oled.TextSecondary, fontSize = 72.sp)
+                    }
+                }
+            }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(info.title, color = Oled.TextPrimary, fontSize = 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                info.artist?.let { Text(it, color = Oled.TextSecondary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                info.album?.let { Text(it, color = Oled.TextSecondary.copy(alpha = 0.7f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+            if (info.durationMs > 0) {
+                // [tick] — щоб позиція перераховувалась щопівсекунди, поки грає.
+                val position = dragging?.let { (it * info.durationMs).toLong() } ?: (tick.let { info.positionNow() })
+                androidx.compose.material3.Slider(
+                    value = (position.toFloat() / info.durationMs).coerceIn(0f, 1f),
+                    onValueChange = { if (info.canSeek) dragging = it },
+                    onValueChangeFinished = {
+                        dragging?.let { onSeek((it * info.durationMs).toLong()) }
+                        dragging = null
+                    },
+                    enabled = info.canSeek,
+                    colors = androidx.compose.material3.SliderDefaults.colors(
+                        thumbColor = Oled.TextPrimary,
+                        activeTrackColor = Oled.TextPrimary,
+                        inactiveTrackColor = Color(0xFF333333),
+                        disabledThumbColor = Oled.TextSecondary,
+                        disabledActiveTrackColor = Oled.TextSecondary,
+                        disabledInactiveTrackColor = Color(0xFF262626),
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    Text(clockText(position), color = Oled.TextSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    Text(clockText(info.durationMs), color = Oled.TextSecondary, fontSize = 12.sp)
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MediaButton(MediaGlyph.STOP, stringResource(R.string.wb_media_stop), onClick = onStop)
+                MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), big = true, onClick = onPrevious)
+                MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), big = true, onClick = onToggle)
+                MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), big = true, onClick = onNext)
+                Box(Modifier.size(40.dp))
+            }
+            DialogButton(stringResource(R.string.wb_media_open_app), onOpenApp)
+        }
     }
 }
 

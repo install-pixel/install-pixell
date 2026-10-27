@@ -875,5 +875,7 @@
     <string name="wb_dots_title">Крапки сповіщень</string>
     <string name="wb_dots_subtitle">Маленька крапка на значку програми, коли в шторці є її сповіщення</string>
     <string name="wb_now_playing_title">Що грає</string>
-    <string name="wb_now_playing_subtitle">Внизу головного екрана: що грає, пауза й перемикання; дотик до назви — відкрити гравець. Ховається за хвилину після паузи</string>
+    <string name="wb_now_playing_subtitle">Внизу головного екрана: що грає, назад / пауза / далі / стоп; дотик до назви — гравець на весь екран. Після паузи ховається за хвилину, «Стоп» — одразу</string>
+    <string name="wb_media_stop">Стоп</string>
+    <string name="wb_media_open_app">Відкрити в програмі</string>
 </resources>

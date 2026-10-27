@@ -871,5 +871,7 @@
     <string name="wb_dots_title">Notification dots</string>
     <string name="wb_dots_subtitle">A small dot on an app icon when it has notifications in the shade</string>
     <string name="wb_now_playing_title">Now playing</string>
-    <string name="wb_now_playing_subtitle">At the bottom of the home screen: the song, play/pause and skip; tap the title to open the player. Hides a minute after pausing</string>
+    <string name="wb_now_playing_subtitle">At the bottom of the home screen: the song, previous / pause / next / stop; tap the title for a full-screen player. Hides a minute after pausing, “Stop” hides it at once</string>
+    <string name="wb_media_stop">Stop</string>
+    <string name="wb_media_open_app">Open in the app</string>
 </resources>

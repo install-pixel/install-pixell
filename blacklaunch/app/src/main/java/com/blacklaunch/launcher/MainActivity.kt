@@ -60,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.blacklaunch.launcher.ui.LocalHaptics
 import com.blacklaunch.launcher.ui.LaunchPauseDialog
 import com.blacklaunch.launcher.ui.NowPlayingBar
+import com.blacklaunch.launcher.ui.NowPlayingScreen
 import com.blacklaunch.launcher.ui.PauseAppRow
 import com.blacklaunch.launcher.ui.WellbeingPage
 import com.blacklaunch.launcher.ui.SwitchRow
@@ -477,10 +478,11 @@ class MainActivity : ComponentActivity() {
                         { modifier ->
                             NowPlayingBar(
                                 info = playing,
-                                onOpen = { if (!app.nowPlaying.open()) toast(R.string.launch_failed) },
+                                onExpand = { playerOpen = true },
                                 onPrevious = app.nowPlaying::previous,
                                 onToggle = app.nowPlaying::toggle,
                                 onNext = app.nowPlaying::next,
+                                onStop = app.nowPlaying::stopPlayback,
                                 modifier = modifier,
                             )
                         }
@@ -598,7 +600,7 @@ class MainActivity : ComponentActivity() {
                                     SwitchRow(stringResource(R.string.wb_dots_title), stringResource(R.string.wb_dots_subtitle), dotsSetting, app.wellbeing::setDots)
                                     SwitchRow(stringResource(R.string.wb_now_playing_title), stringResource(R.string.wb_now_playing_subtitle), playingSetting) { on ->
                                         app.wellbeing.setNowPlaying(on)
-                                        if (on) app.nowPlaying.start() else app.nowPlaying.stop()
+                                        if (on) app.nowPlaying.listen() else app.nowPlaying.release()
                                     }
                                     if ((dotsSetting || playingSetting) && !listenerAccess) {
                                         Note(stringResource(R.string.extras_read_access))
@@ -663,6 +665,28 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 FocusDialogs(home.profileName, focusSession)
+                // Повноекранний гравець; музику зупинили чи плашка зникла — згортається сам.
+                if (playerOpen && playing != null) {
+                    NowPlayingScreen(
+                        info = playing,
+                        appName = appLabel(playing.packageName),
+                        onClose = { playerOpen = false },
+                        onPrevious = app.nowPlaying::previous,
+                        onToggle = app.nowPlaying::toggle,
+                        onNext = app.nowPlaying::next,
+                        onStop = {
+                            app.nowPlaying.stopPlayback()
+                            playerOpen = false
+                        },
+                        onSeek = app.nowPlaying::seekTo,
+                        onOpenApp = {
+                            playerOpen = false
+                            if (!app.nowPlaying.open()) toast(R.string.launch_failed)
+                        },
+                    )
+                } else if (playerOpen) {
+                    LaunchedEffect(Unit) { playerOpen = false }
+                }
                 launchPromptState.collectAsStateWithLifecycle().value?.let { prompt ->
                     LaunchPauseDialog(
                         prompt = prompt,
@@ -1771,7 +1795,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         app.homeVisible = false
-        app.nowPlaying.stop()
+        app.nowPlaying.release()
         // Поверх блокування вікно живе лише поки на екрані.
         if (!awaitingUnlock) endLockedVoice()
         if (!isChangingConfigurations) {
@@ -1789,7 +1813,7 @@ class MainActivity : ComponentActivity() {
         app.homeVisible = true
         actionRunner.onStart()
         // «Що грає»: сесії слухаємо, лише поки головний екран показано.
-        if (app.wellbeing.nowPlaying.value) app.nowPlaying.start()
+        if (app.wellbeing.nowPlaying.value) app.nowPlaying.listen()
         if (wasStopped && SystemClock.elapsedRealtime() - stoppedAt > LauncherViewModel.RESTORE_QUERY_MS) {
             instantSearchClose = true
             viewModel.forgetSearch()
@@ -1815,6 +1839,9 @@ class MainActivity : ComponentActivity() {
     /** Відкрити налаштування лаунчера з пошуку: сторінка й лічильник запитів. */
     private var requestedSettingsPage: SettingsNav? = null
     private val settingsRequest = MutableStateFlow(0)
+
+    /** Повноекранний гравець «Що грає» відкрито. */
+    private var playerOpen by mutableStateOf(false)
 
     /** Пауза перед програмою на екрані. */
     private val launchPrompt = MutableStateFlow<com.blacklaunch.launcher.viewmodel.LaunchPrompt?>(null)
