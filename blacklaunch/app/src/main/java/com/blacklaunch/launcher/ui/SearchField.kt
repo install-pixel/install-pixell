@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -51,6 +52,7 @@ fun SearchField(
 ) {
     val listening = voice != VoiceState.Idle
     val haptics = LocalHaptics.current
+    val sheet = LocalSheet.current
     val partialSpeech = (voice as? VoiceState.Listening)?.partial.orEmpty()
     // Клавіатура не відкривається сама: лише після натискання на поле.
     // Так зручніше для голосового пошуку (рішення від 23.10.2026).
@@ -60,13 +62,17 @@ fun SearchField(
             onValueChange = onQueryChange,
             modifier = Modifier
                 .weight(1f)
-                .clip(FieldShape)
-                .background(Oled.Surface)
-                .border(1.dp, if (listening) Oled.KnobListening else Oled.Glint, FieldShape)
+                .then(
+                    if (sheet) {
+                        Modifier.pencilFrame(28.dp, seed = 11, ink = if (listening) Oled.Listening else SheetInk).clip(FieldShape)
+                    } else {
+                        Modifier.clip(FieldShape).background(Oled.Surface).border(1.dp, if (listening) Oled.KnobListening else Oled.Glint, FieldShape)
+                    },
+                )
                 .onFocusChanged { onFocusChange(it.isFocused) },
             singleLine = true,
             readOnly = listening,
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp),
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, fontFamily = if (sheet) HandFont else null),
             placeholder = {
                 val hint = when (voice) {
                     VoiceState.Idle -> R.string.search_hint
@@ -77,8 +83,12 @@ fun SearchField(
             },
             trailingIcon = {
                 if (query.isNotEmpty() && !listening) {
-                    IconButton(onClick = { haptics.tap(); onClear() }) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
+                    if (sheet) {
+                        TextButton(onClick = { haptics.tap(); onClear() }) { Text(stringResource(R.string.clear), color = Oled.TextSecondary) }
+                    } else {
+                        IconButton(onClick = { haptics.tap(); onClear() }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
+                        }
                     }
                 }
             },
@@ -105,16 +115,20 @@ private fun MicButton(listening: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(56.dp)
-            .clip(CircleShape)
-            .background(if (listening) Oled.KnobListening else Oled.Knob)
-            .border(1.dp, Oled.Glint, CircleShape),
+            .then(
+                if (LocalSheet.current) {
+                    Modifier.pencilFrame(28.dp, seed = 13, ink = if (listening) Oled.Listening else SheetInk).clip(CircleShape)
+                } else {
+                    Modifier.clip(CircleShape).background(if (listening) Oled.KnobListening else Oled.Knob).border(1.dp, Oled.Glint, CircleShape)
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         IconButton(onClick = { haptics.tap(); onClick() }, modifier = Modifier.padding(4.dp)) {
             Icon(
                 painter = painterResource(R.drawable.ic_mic),
                 contentDescription = stringResource(if (listening) R.string.voice_stop else R.string.voice_search),
-                tint = if (listening) Color.White else Oled.Accent,
+                tint = if (listening) (if (LocalSheet.current) Oled.Listening else Color.White) else Oled.Accent,
             )
         }
     }

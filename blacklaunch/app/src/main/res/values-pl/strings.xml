@@ -945,5 +945,5 @@
     <string name="games_add_title">Dodaj grę</string>
     <string name="sheet_title">Motyw „Kartka” — odręcznie</string>
     <string name="sheet_subtitle">Ustawienia, menu i okna — jakby napisane odręcznie białym ołówkiem na czarnej kartce: pismo odręczne, ramki ołówkiem, wyłączone — przekreślone, zamiast ikon — nazwy</string>
-    <string name="sheet_note">Dotknięcie linii — włącz lub wyłącz: przekreślone oznacza wyłączone. Ekran główny i wyszukiwanie — wkrótce. Czcionka: Caveat (wolna licencja SIL OFL), wbudowana — bez internetu.</string>
+    <string name="sheet_note">Dotknięcie linii — włącz lub wyłącz: przekreślone oznacza wyłączone. Ekran główny i wyszukiwanie — też odręcznie: zamiast ikon aplikacji — nazwy. Gry i minutnik skupienia — wkrótce. Czcionka: Caveat (wolna licencja SIL OFL), wbudowana — bez internetu.</string>
 </resources>

@@ -425,6 +425,8 @@ class MainActivity : ComponentActivity() {
                 val shownHome = (if (display.showApps) home else home.copy(pinned = emptyList())).let { shown ->
                     if (focusLeft != null) shown.copy(profileName = getString(R.string.focus_left, home.profileName, FocusRules.minutesLeft(focusLeft))) else shown
                 }
+                // Тема «Аркуш»: головний екран і пошук теж від руки (налаштування — всередині, вдруге не збільшує).
+                SheetTheme(appearance.sheet) {
                 BlackHomeScreen(
                     state = state,
                     // «Показувати програми на екрані» вимкнено — значків не видно, профіль працює як раніше.
@@ -707,6 +709,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onCancel = { launchPrompt.value = null },
                     )
+                }
                 }
             }
             // Голос поверх заблокованого екрана: лише чорний екран із мікрофоном — нічого з телефона не видно.

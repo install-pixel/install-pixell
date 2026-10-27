@@ -1,14 +1,25 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -24,6 +35,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.R
+import com.blacklaunch.launcher.ui.theme.Oled
 import kotlin.math.sin
 
 /*
@@ -55,6 +67,11 @@ fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
         CompositionLocalProvider(LocalSheet provides false, content = content)
         return
     }
+    // Уже всередині «Аркуша» (налаштування поверх головного екрана) — вдруге не збільшуємо шрифт.
+    if (LocalSheet.current) {
+        content()
+        return
+    }
     val density = LocalDensity.current
     val hand = TextStyle(fontFamily = HandFont)
     val base = MaterialTheme.typography
@@ -75,17 +92,35 @@ fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
     }
 }
 
-private val SheetInk = Color(0xFFEDEDED)
+internal val SheetInk = Color(0xFFEDEDED)
 
 /**
  * Рамка «від руки»: заокруглений прямокутник двома штрихами олівцем, сторони ледь хвилясті (кожна рамка — трохи
  * інакша, за [seed]), щоб не виглядало як лінійка.
  */
-fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.75f, width: Dp = 1.4.dp): Modifier = drawBehind {
-    drawPencilFrame(radius.toPx(), seed, alpha, width.toPx())
+fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.75f, width: Dp = 1.4.dp, ink: Color = SheetInk): Modifier = drawBehind {
+    drawPencilFrame(radius.toPx(), seed, alpha, width.toPx(), ink)
 }
 
-internal fun DrawScope.drawPencilFrame(r: Float, seed: Int, alpha: Float, w: Float) {
+/**
+ * Рамка плашки: звичайно — скло (темне тло [fill] і тонкий відблиск), в «Аркуші» — рамка олівцем без тла
+ * кольором [ink] (наприклад, вишневим, поки слухає мікрофон).
+ */
+@Composable
+internal fun Modifier.glassBox(radius: Dp, seed: Int = 0, fill: Brush = Oled.Surface, ink: Color = SheetInk): Modifier {
+    val shape = RoundedCornerShape(radius)
+    return if (LocalSheet.current) pencilFrame(radius, seed, ink = ink).clip(shape) else clip(shape).background(fill).border(1.dp, Oled.Glint, shape)
+}
+
+/** Значок на початку рядка (і відступ після нього). В «Аркуші» не малюється — лише назва. */
+@Composable
+internal fun LeadingIcon(size: Dp = 40.dp, content: @Composable BoxScope.() -> Unit) {
+    if (LocalSheet.current) return
+    Box(Modifier.size(size), contentAlignment = Alignment.Center, content = content)
+    Spacer(Modifier.width(16.dp))
+}
+
+internal fun DrawScope.drawPencilFrame(r: Float, seed: Int, alpha: Float, w: Float, ink: Color = SheetInk) {
     val wob = 1.2.dp.toPx()
     fun j(i: Int) = sin(seed * 1.7f + i * 2.3f) * wob
     val path = Path().apply {
@@ -101,10 +136,10 @@ internal fun DrawScope.drawPencilFrame(r: Float, seed: Int, alpha: Float, w: Flo
         quadraticTo(j(24) * 1.5f, bottom / 2, j(25), r + j(26))
         quadraticTo(j(27), j(28), r + j(29) + 2f, j(30))
     }
-    drawPath(path, SheetInk.copy(alpha = alpha), style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawPath(path, ink.copy(alpha = alpha), style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round))
     // Другий, ледь зсунутий тьмяний штрих — як від олівця.
     translateBy(Offset(w * 0.6f, w * 0.4f)) {
-        drawPath(path, SheetInk.copy(alpha = alpha * 0.3f), style = Stroke(w * 0.6f, cap = StrokeCap.Round))
+        drawPath(path, ink.copy(alpha = alpha * 0.3f), style = Stroke(w * 0.6f, cap = StrokeCap.Round))
     }
 }
 

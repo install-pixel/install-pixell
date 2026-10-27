@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -233,12 +234,20 @@ private fun EmptySearch(
                                 .padding(vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
-                            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                                icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(48.dp)) }
+                            if (LocalSheet.current) {
+                                // «Аркуш»: лише назва від руки.
+                                Text(
+                                    app.label, color = Oled.TextPrimary, fontSize = 16.sp, maxLines = 2, lineHeight = 17.sp,
+                                    overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                                )
+                            } else {
+                                val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
+                                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                                    icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(48.dp)) }
+                                }
+                                Spacer(Modifier.size(4.dp))
+                                Text(app.label, color = Oled.TextPrimary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            Spacer(Modifier.size(4.dp))
-                            Text(app.label, color = Oled.TextPrimary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     repeat(SUGGESTION_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
@@ -262,11 +271,8 @@ private fun EmptySearch(
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Menu, contentDescription = null, tint = Oled.TextSecondary)
-                }
-                Spacer(Modifier.width(16.dp))
-                Text(stringResource(R.string.all_apps, allApps.size), color = Oled.TextSecondary, fontSize = 16.sp)
+                LeadingIcon { Icon(Icons.Filled.Menu, contentDescription = null, tint = Oled.TextSecondary) }
+                Text(stringResource(R.string.all_apps, allApps.size) + if (LocalSheet.current) "  →" else "", color = Oled.TextSecondary, fontSize = 16.sp)
             }
         }
     }
@@ -298,11 +304,8 @@ private fun AllAppsList(
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextSecondary)
-                }
-                Spacer(Modifier.width(16.dp))
-                Text(stringResource(R.string.all_apps, apps.size), color = Oled.TextPrimary, fontSize = 16.sp)
+                LeadingIcon { Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextSecondary) }
+                Text((if (LocalSheet.current) "← " else "") + stringResource(R.string.all_apps, apps.size), color = Oled.TextPrimary, fontSize = 16.sp)
             }
         }
         sections.forEach { (letter, group) ->
@@ -329,10 +332,7 @@ private fun AllAppsList(
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary)
-                    }
-                    Spacer(Modifier.width(16.dp))
+                    LeadingIcon { Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary) }
                     Text(stringResource(R.string.private_space), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
                     Text(
                         stringResource(if (privateSpace.locked) R.string.private_space_unlock else R.string.private_space_lock),
@@ -375,10 +375,7 @@ private fun RecentRow(text: String, onRecent: (String) -> Unit, onRemoveRecent: 
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary)
-        }
-        Spacer(Modifier.width(16.dp))
+        LeadingIcon { Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary) }
         Text(text, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -392,7 +389,9 @@ internal fun AppRow(
     onLaunch: (AppInfo) -> Unit,
     onLongPress: (AppInfo) -> Unit,
 ) {
-    val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
+    // «Аркуш»: значок не потрібен — і не вантажимо його.
+    val sheet = LocalSheet.current
+    val icon by produceState<ImageBitmap?>(null, app.key, iconFor, sheet) { value = if (sheet) null else iconFor(app) }
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(18.dp)
     Row(
@@ -407,13 +406,7 @@ internal fun AppRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val current = icon
-        if (current != null) {
-            Image(bitmap = current, contentDescription = null, modifier = Modifier.size(36.dp))
-        } else {
-            Spacer(Modifier.size(36.dp))
-        }
-        Spacer(Modifier.width(16.dp))
+        LeadingIcon(36.dp) { icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(36.dp)) } }
         Text(app.label, color = Oled.TextPrimary, fontSize = 18.sp)
     }
 }
@@ -442,6 +435,7 @@ private fun GlobalRow(
     onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = LocalHaptics.current
+    val sheet = LocalSheet.current
     val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
@@ -456,7 +450,9 @@ private fun GlobalRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        // «Аркуш»: значок типу не малюємо — лише «=» калькулятора й мініатюри фото/відео (це вміст, а не значок).
+        val media = result is GlobalResult.Media && !result.mime.startsWith("audio/")
+        if (!sheet || result is GlobalResult.Calculation || media) Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
             if (result is GlobalResult.Calculation) {
                 // Без додаткових відступів шрифту — щоб «=» стояв рівно по центру рядка.
                 Text(
@@ -468,7 +464,7 @@ private fun GlobalRow(
                         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
                     ),
                 )
-            } else if (result is GlobalResult.Media && !result.mime.startsWith("audio/")) {
+            } else if (media && result is GlobalResult.Media) {
                 // Фото й відео — мініатюрою; поки вантажиться — звичайний значок.
                 val thumb by produceState<ImageBitmap?>(null, result.uri) { value = thumbFor(result.uri) }
                 thumb?.let {
@@ -478,7 +474,7 @@ private fun GlobalRow(
                 Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
             }
         }
-        Spacer(Modifier.width(16.dp))
+        if (!sheet || result is GlobalResult.Calculation || media) Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             val title = if (result is GlobalResult.AppSetting) stringResource(result.kind.title(), result.appLabel) else result.title
             Text(title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -488,23 +484,27 @@ private fun GlobalRow(
         }
         // Недавній дзвінок — «Передзвонити» одним дотиком (номер відкривається в «Телефоні»).
         if (result is GlobalResult.Call && canCall) {
-            IconButton(onClick = { haptics.tap(); onClick(result) }) {
-                Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.call_back), tint = Oled.TextPrimary)
-            }
+            RowButton(R.string.call_back, Icons.Filled.Call) { haptics.tap(); onClick(result) }
         }
         // S2: біля контакту — «Подзвонити» й «Написати» одним дотиком.
         if (result is GlobalResult.Contact) {
             if (canCall) {
-                IconButton(onClick = { haptics.tap(); onContactAction(result, true) }) {
-                    Icon(Icons.Filled.Call, contentDescription = stringResource(R.string.contact_call), tint = Oled.TextPrimary)
-                }
+                RowButton(R.string.contact_call, Icons.Filled.Call) { haptics.tap(); onContactAction(result, true) }
             }
             if (canMessage) {
-                IconButton(onClick = { haptics.tap(); onContactAction(result, false) }) {
-                    Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.contact_message), tint = Oled.TextPrimary)
-                }
+                RowButton(R.string.contact_message, Icons.Filled.Email) { haptics.tap(); onContactAction(result, false) }
             }
         }
+    }
+}
+
+/** Кнопка в рядку результату: значок, а в «Аркуші» — слово («Подзвонити», «Написати»). */
+@Composable
+private fun RowButton(@StringRes label: Int, icon: ImageVector, onClick: () -> Unit) {
+    if (LocalSheet.current) {
+        TextButton(onClick = onClick) { Text(stringResource(label), color = Oled.TextPrimary, fontSize = 16.sp) }
+    } else {
+        IconButton(onClick = onClick) { Icon(icon, contentDescription = stringResource(label), tint = Oled.TextPrimary) }
     }
 }
 
@@ -519,7 +519,7 @@ private fun ExpandRow(@StringRes label: Int, onClick: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .clickable { haptics.tap(); onClick() }
-            .padding(start = 68.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = if (LocalSheet.current) 12.dp else 68.dp, top = 10.dp, bottom = 10.dp),
     )
 }
 
@@ -576,16 +576,14 @@ private fun SelectionBar(count: Int, onShare: () -> Unit, onTrash: (() -> Unit)?
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Oled.Surface)
-            .border(1.dp, Oled.Glint, RoundedCornerShape(18.dp))
+            .glassBox(18.dp, seed = 19)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(stringResource(R.string.selected_count, count), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f).padding(start = 6.dp))
         TextButton(onClick = onShare) { Text(stringResource(R.string.share), color = Oled.TextPrimary) }
         if (onTrash != null) TextButton(onClick = onTrash) { Text(stringResource(R.string.to_trash), color = Oled.TextPrimary) }
-        IconButton(onClick = onCancel) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel), tint = Oled.TextSecondary) }
+        RowButton(R.string.cancel, Icons.Filled.Close, onCancel)
     }
 }
 
@@ -605,10 +603,7 @@ private fun CommandRow(icon: ImageVector, title: String, subtitle: String?, onCl
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = Oled.TextPrimary)
-        }
-        Spacer(Modifier.width(16.dp))
+        LeadingIcon { Icon(icon, contentDescription = null, tint = Oled.TextPrimary) }
         Column(Modifier.weight(1f)) {
             Text(title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             subtitle?.let {

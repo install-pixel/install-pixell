@@ -181,24 +181,40 @@ fun HomeGridView(
 
 @Composable
 private fun RemoveZone(highlighted: Boolean, modifier: Modifier) {
-    val shape = RoundedCornerShape(24.dp)
     Row(
         modifier = modifier
             .padding(top = 8.dp)
-            .clip(shape)
-            .background(if (highlighted) Oled.KnobDanger else Oled.Surface)
-            .border(1.dp, Oled.Glint, shape)
+            .glassBox(24.dp, seed = 3, fill = if (highlighted) Oled.KnobDanger else Oled.Surface, ink = if (highlighted) Oled.Danger else SheetInk)
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextPrimary, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
+        if (!LocalSheet.current) {
+            Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextPrimary, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
         Text(stringResource(R.string.remove_from_home), color = Oled.TextPrimary, fontSize = 14.sp)
     }
 }
 
 @Composable
 private fun GridIcon(app: AppInfo, iconFor: suspend (AppInfo) -> ImageBitmap?, dot: Boolean = false) {
+    // «Аркуш»: замість значка — лише назва від руки (крапка сповіщення — поруч).
+    if (LocalSheet.current) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+            Text(
+                text = app.label,
+                color = Oled.TextPrimary,
+                fontSize = 17.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (dot) Text(" •", color = Oled.TextPrimary, fontSize = 17.sp)
+        }
+        return
+    }
     val icon by produceState<ImageBitmap?>(null, app.key, iconFor) { value = iconFor(app) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
         Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {

@@ -168,14 +168,11 @@ fun NowPlayingBar(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(22.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(shape)
-            .background(Oled.Surface)
-            .border(1.dp, Oled.Glint, shape)
+            .glassBox(22.dp, seed = 17)
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

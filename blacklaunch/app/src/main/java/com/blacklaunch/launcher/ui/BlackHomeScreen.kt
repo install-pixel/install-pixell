@@ -517,16 +517,13 @@ private val GlanceClockLine = 52.dp
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(20.dp)
     Text(
         text = name,
         color = if (highlighted) Oled.TextPrimary else Oled.TextSecondary,
         fontSize = 15.sp,
         fontWeight = FontWeight.Medium,
         modifier = modifier
-            .clip(shape)
-            .background(Oled.Surface)
-            .border(1.dp, Oled.Glint, shape)
+            .glassBox(20.dp, seed = 5)
             .then(if (onClick != null) Modifier.clickable { haptics.tap(); onClick() } else Modifier)
             .padding(horizontal = 18.dp, vertical = 8.dp),
     )
