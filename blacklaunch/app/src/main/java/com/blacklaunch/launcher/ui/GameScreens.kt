@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -770,13 +772,16 @@ fun GamesPage(
     best: Map<GameKind, Int>,
     saved: Set<GameKind>,
     onPlay: (GameKind, Boolean) -> Unit,
+    /** Ігри в меню (набір налаштувань дає одну) і змінити цей список. */
+    shown: Set<GameKind> = GameKind.entries.toSet(),
+    onShown: (Set<GameKind>) -> Unit = {},
 ) {
     SettingsPage(stringResource(R.string.games_title), onBack) {
         Card {
             SwitchRow(stringResource(R.string.games_enabled), stringResource(R.string.games_enabled_subtitle), enabled, onEnabled)
         }
         if (enabled) {
-            GameKind.entries.forEach { kind ->
+            GameKind.entries.filter { it in shown }.forEach { kind ->
                 Card {
                     Text(gameTitle(kind), color = Oled.TextPrimary, fontSize = 17.sp)
                     Note(
@@ -796,6 +801,16 @@ fun GamesPage(
                         Tone.Confirm,
                     ) { onPlay(kind, false) }
                     if (kind in saved) ActionOption(R.string.game_restart, Icons.Filled.Refresh) { onPlay(kind, true) }
+                    // Прибрати з меню (рекорд і збережена гра лишаються — повернете, і все на місці).
+                    if (shown.size > 1) ActionOption(stringResource(R.string.games_hide), Icons.Filled.Close) { onShown(shown - kind) }
+                }
+            }
+            // Ігри, яких немає в меню, — додати одним дотиком.
+            val hidden = GameKind.entries.filter { it !in shown }
+            if (hidden.isNotEmpty()) {
+                Card {
+                    Text(stringResource(R.string.games_add_title), color = Oled.TextPrimary, fontSize = 17.sp)
+                    hidden.forEach { kind -> ActionOption(gameTitle(kind), Icons.Filled.Add) { onShown(shown + kind) } }
                 }
             }
             Note(stringResource(R.string.games_note))

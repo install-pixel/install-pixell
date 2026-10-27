@@ -925,4 +925,22 @@
     <string name="game_feat_combo">Серія ×%1$d</string>
     <string name="game_feat_perfect">Чиста склянка! +%1$d</string>
     <string name="game_next">Далі</string>
+    <string name="presets_title">Набори налаштувань</string>
+    <string name="presets_menu_hint">Мінімум, Темп чи Затишок — готовий початок, далі змінюйте що завгодно</string>
+    <string name="presets_note">Набір змінює оформлення, головний екран і пошук усіх режимів, відповіді вголос, крапки сповіщень, «Що грає», котика й гру в меню. Ваші програми, режими, команди й історія лишаються. Далі все можна змінити вручну.</string>
+    <string name="preset_minimum">Мінімум</string>
+    <string name="preset_tempo">Темп</string>
+    <string name="preset_cozy">Затишок</string>
+    <string name="preset_minimum_desc">Якнайменше: повністю чорний екран без плашки й огляду, без підказок і останніх запитів, без відповідей уголос, крапок і «Що грає». Гра: Змійка.</string>
+    <string name="preset_tempo_desc">Швидко перемикатись і запускати: свайп між режимами, огляд із годинником і подіями, підказки, останні запити й «Усі програми», рядок стану видно, відповіді вголос, крапки, «Що грає». Гра: Зоряний патруль.</string>
+    <string name="preset_cozy_desc">Неспішно й спокійно: великий годинник і огляд, лагідні підказки без останніх запитів, без випадкових свайпів, відповіді вголос, «Що грає» й котик на фокус-таймері. Гра: Блоки.</string>
+    <string name="preset_apply">Вибрати</string>
+    <string name="preset_confirm_title">Застосувати «%1$s»?</string>
+    <string name="preset_confirm_note">Оформлення й поведінка зміняться; ваші програми, режими й команди лишаться. Далі можна змінити що завгодно.</string>
+    <string name="presets_first_title">Як вам зручніше?</string>
+    <string name="presets_first_note">Виберіть готовий набір для початку — усе можна змінити пізніше в Налаштуваннях → «Набори налаштувань».</string>
+    <string name="preset_keep">Лишити як є</string>
+    <string name="preset_applied">Набір застосовано — змінюйте що завгодно в Налаштуваннях</string>
+    <string name="games_hide">Прибрати з меню</string>
+    <string name="games_add_title">Додати гру</string>
 </resources>

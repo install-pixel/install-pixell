@@ -64,6 +64,8 @@ import com.blacklaunch.launcher.ui.NowPlayingScreen
 import com.blacklaunch.launcher.ui.PauseAppRow
 import com.blacklaunch.launcher.ui.WellbeingPage
 import com.blacklaunch.launcher.ui.GamesPage
+import com.blacklaunch.launcher.ui.PresetsPage
+import com.blacklaunch.launcher.ui.FirstRunPresetDialog
 import com.blacklaunch.launcher.ui.SwitchRow
 import com.blacklaunch.launcher.ui.Note
 import com.blacklaunch.launcher.ui.ActionOption
@@ -666,6 +668,10 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 FocusDialogs(home.profileName, focusSession)
+                // Перший запуск — вибір набору налаштувань (раз; потім — у Налаштуваннях).
+                if (app.presets.chosen.collectAsStateWithLifecycle().value == null) {
+                    FirstRunPresetDialog(onPick = ::applyPreset, onKeep = app.presets::keepAsIs)
+                }
                 // Повноекранний гравець; музику зупинили чи плашка зникла — згортається сам.
                 if (playerOpen && playing != null) {
                     NowPlayingScreen(
@@ -1452,6 +1458,16 @@ class MainActivity : ComponentActivity() {
                     onPlay = { kind, fresh ->
                         if (app.focus.running()) toast(R.string.game_focus_blocked) else startActivity(GameActivity.intent(this, kind, fresh))
                     },
+                    shown = app.games.shown.collectAsStateWithLifecycle().value,
+                    onShown = app.games::setShown,
+                )
+            }
+            SettingsNav.Presets -> {
+                app.presets.chosen.collectAsStateWithLifecycle().value
+                PresetsPage(
+                    onBack = { onNavigate(SettingsNav.Main) },
+                    current = app.presets.current,
+                    onApply = ::applyPreset,
                 )
             }
             SettingsNav.PickPauseApps -> {
@@ -1516,6 +1532,15 @@ class MainActivity : ComponentActivity() {
                 onCreated(id)
             },
         )
+    }
+
+    /** Набір налаштувань: оформлення, екран і пошук режимів, голос, котик, своя гра. */
+    private fun applyPreset(preset: com.blacklaunch.launcher.settings.Preset) {
+        lifecycleScope.launch {
+            app.presets.apply(app, preset)
+            applyStatusBar()
+            toast(R.string.preset_applied)
+        }
     }
 
     /** Завантаження — браузером: у BlackLaunch немає дозволу INTERNET. */

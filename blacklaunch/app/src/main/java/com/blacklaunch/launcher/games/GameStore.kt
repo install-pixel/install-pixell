@@ -18,6 +18,19 @@ class GameStore(context: Context) {
     private val _enabled = MutableStateFlow(prefs.getBoolean(KEY_ENABLED, true))
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
+    private val _shown = MutableStateFlow(
+        prefs.getStringSet(KEY_SHOWN, null)?.mapNotNull { n -> GameKind.entries.firstOrNull { it.name == n } }?.toSet()
+            ?: GameKind.entries.toSet(),
+    )
+
+    /** Які ігри в меню: набір налаштувань дає одну, решту можна додати. */
+    val shown: StateFlow<Set<GameKind>> = _shown.asStateFlow()
+
+    fun setShown(kinds: Set<GameKind>) {
+        _shown.value = kinds
+        prefs.edit().putStringSet(KEY_SHOWN, kinds.map { it.name }.toSet()).apply()
+    }
+
     private val _best = MutableStateFlow(GameKind.entries.associateWith { prefs.getInt(KEY_BEST + it.name, 0) })
     val best: StateFlow<Map<GameKind, Int>> = _best.asStateFlow()
 
@@ -48,6 +61,7 @@ class GameStore(context: Context) {
 
     private companion object {
         const val KEY_ENABLED = "enabled"
+        const val KEY_SHOWN = "shown"
         const val KEY_STATE = "state_"
         const val KEY_BEST = "best_"
     }

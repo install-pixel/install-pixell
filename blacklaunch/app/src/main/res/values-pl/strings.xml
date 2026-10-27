@@ -925,4 +925,22 @@
     <string name="game_feat_combo">Seria ×%1$d</string>
     <string name="game_feat_perfect">Czysta szklanka! +%1$d</string>
     <string name="game_next">Dalej</string>
+    <string name="presets_title">Zestawy ustawień</string>
+    <string name="presets_menu_hint">Minimum, Tempo albo Przytulnie — gotowy start, potem zmieniaj co chcesz</string>
+    <string name="presets_note">Zestaw zmienia wygląd, ekran główny i wyszukiwanie wszystkich trybów, odpowiedzi na głos, kropki powiadomień, „Teraz odtwarzane”, kotka i grę w menu. Twoje aplikacje, tryby, polecenia i historia zostają. Potem wszystko można zmienić ręcznie.</string>
+    <string name="preset_minimum">Minimum</string>
+    <string name="preset_tempo">Tempo</string>
+    <string name="preset_cozy">Przytulnie</string>
+    <string name="preset_minimum_desc">Jak najmniej: całkiem czarny ekran bez etykiety i podglądu, bez podpowiedzi i ostatnich wyszukiwań, bez odpowiedzi na głos, kropek i „Teraz odtwarzane”. Gra: Wąż.</string>
+    <string name="preset_tempo_desc">Szybko przełączać i uruchamiać: przesunięcie między trybami, podgląd z zegarem i wydarzeniami, podpowiedzi, ostatnie wyszukiwania i „Wszystkie aplikacje”, pasek stanu widoczny, odpowiedzi na głos, kropki, „Teraz odtwarzane”. Gra: Gwiezdny patrol.</string>
+    <string name="preset_cozy_desc">Bez pośpiechu i spokojnie: duży zegar i podgląd, łagodne podpowiedzi bez ostatnich wyszukiwań, bez przypadkowych przesunięć, odpowiedzi na głos, „Teraz odtwarzane” i kotek na minutniku skupienia. Gra: Klocki.</string>
+    <string name="preset_apply">Wybierz</string>
+    <string name="preset_confirm_title">Zastosować „%1$s”?</string>
+    <string name="preset_confirm_note">Wygląd i zachowanie się zmienią; twoje aplikacje, tryby i polecenia zostaną. Potem można zmienić wszystko.</string>
+    <string name="presets_first_title">Jak ci wygodniej?</string>
+    <string name="presets_first_note">Wybierz gotowy zestaw na start — wszystko można zmienić później w Ustawieniach → „Zestawy ustawień”.</string>
+    <string name="preset_keep">Zostaw jak jest</string>
+    <string name="preset_applied">Zestaw zastosowany — zmieniaj co chcesz w Ustawieniach</string>
+    <string name="games_hide">Usuń z menu</string>
+    <string name="games_add_title">Dodaj grę</string>
 </resources>

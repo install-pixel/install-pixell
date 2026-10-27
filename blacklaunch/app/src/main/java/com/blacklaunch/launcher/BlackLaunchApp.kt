@@ -74,6 +74,7 @@ class BlackLaunchApp : Application() {
     val automationSettings: com.blacklaunch.launcher.settings.AutomationSettings by lazy { com.blacklaunch.launcher.settings.AutomationSettings(this) }
     val smartProfiles: com.blacklaunch.launcher.automation.SmartProfiles by lazy { com.blacklaunch.launcher.automation.SmartProfiles(this) }
     val hourlyChime: com.blacklaunch.launcher.automation.HourlyChime by lazy { com.blacklaunch.launcher.automation.HourlyChime(this) }
+    val presets: com.blacklaunch.launcher.settings.PresetStore by lazy { com.blacklaunch.launcher.settings.PresetStore(this) }
     val games: com.blacklaunch.launcher.games.GameStore by lazy { com.blacklaunch.launcher.games.GameStore(this) }
     val wellbeing: com.blacklaunch.launcher.wellbeing.WellbeingSettings by lazy { com.blacklaunch.launcher.wellbeing.WellbeingSettings(this) }
     val usageReader: com.blacklaunch.launcher.wellbeing.UsageReader by lazy { com.blacklaunch.launcher.wellbeing.UsageReader(this) }

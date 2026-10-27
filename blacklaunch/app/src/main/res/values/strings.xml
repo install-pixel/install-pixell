@@ -921,4 +921,22 @@
     <string name="game_feat_combo">Streak ×%1$d</string>
     <string name="game_feat_perfect">Clean glass! +%1$d</string>
     <string name="game_next">Next</string>
+    <string name="presets_title">Settings sets</string>
+    <string name="presets_menu_hint">Minimum, Tempo or Cozy — a ready start, then change anything</string>
+    <string name="presets_note">A set changes the look, the home screen and search of every mode, voice replies, notification dots, “Now playing”, the cat and which game is in the menu. Your apps, modes, commands and history stay. After that, everything can be changed by hand.</string>
+    <string name="preset_minimum">Minimum</string>
+    <string name="preset_tempo">Tempo</string>
+    <string name="preset_cozy">Cozy</string>
+    <string name="preset_minimum_desc">As little as possible: a fully black screen without a label or glance, no suggestions or recent searches, no voice replies, dots or “Now playing”. Game: Snake.</string>
+    <string name="preset_tempo_desc">Switch and launch quickly: swipe between modes, glance with clock and events, suggestions, recent searches and All apps, the status bar visible, voice replies, dots and “Now playing”. Game: Star Patrol.</string>
+    <string name="preset_cozy_desc">Unhurried and calm: a big clock and glance, gentle suggestions without recent searches, no accidental swipes, voice replies, “Now playing” and the cat on the focus timer. Game: Blocks.</string>
+    <string name="preset_apply">Choose</string>
+    <string name="preset_confirm_title">Apply “%1$s”?</string>
+    <string name="preset_confirm_note">The look and behaviour change; your apps, modes and commands stay. Then you can change anything.</string>
+    <string name="presets_first_title">How do you like it?</string>
+    <string name="presets_first_note">Choose a ready set to start with — everything can be changed later in Settings → Settings sets.</string>
+    <string name="preset_keep">Keep as is</string>
+    <string name="preset_applied">Set applied — change anything in Settings</string>
+    <string name="games_hide">Remove from the menu</string>
+    <string name="games_add_title">Add a game</string>
 </resources>
