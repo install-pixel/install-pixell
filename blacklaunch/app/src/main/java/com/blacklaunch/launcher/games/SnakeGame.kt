@@ -226,7 +226,7 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
     companion object {
         const val COLS = 16
         const val ROWS = 26
-        const val FOOD_PER_LEVEL = 10
+        const val FOOD_PER_LEVEL = 20
 
         /** Перешкоди рівня: раз на два рівні — інший візерунок (по колу), середній рядок завжди вільний. */
         fun layout(level: Int): Set<Int> {

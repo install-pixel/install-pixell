@@ -184,7 +184,7 @@ class StarsGameTest {
     }
 
     @Test fun clearingWaveStartsNextLevelWithMoreRows() {
-        val g = StarsGame.decode("s=0;l=1;v=3;o=0;n=5000;w=2;e=1,0,0,1")!!
+        val g = StarsGame.decode("s=0;l=1;v=3;o=0;n=5000;w=3;e=1,0,0,1")!!
         g.target = g.slotX(g.enemies[0])
         run(g, 20f)
         assertTrue("level ${g.level}", g.level >= 2)
@@ -203,7 +203,7 @@ class StarsGameTest {
 
     @Test fun levelHasSeveralWavesBeforeNextLevel() {
         val g = StarsGame.decode("s=0;l=1;v=3;o=0;n=5000;w=1;e=1,0,0,1")!!
-        assertEquals(2, g.waves)
+        assertEquals(3, g.waves)
         g.target = g.slotX(g.enemies[0])
         run(g, 12f)
         // Перша хвиля знищена — та сама гра йде далі другою хвилею першого рівня, а не одразу новим рівнем.

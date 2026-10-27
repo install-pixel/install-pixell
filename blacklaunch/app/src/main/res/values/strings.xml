@@ -885,7 +885,7 @@
     <string name="game_blocks">Blocks</string>
     <string name="game_blocks_desc">Calm. Pieces of four squares fall into a glass; a full row disappears — points for rows (100–800 × level), a bonus for a streak of rows in a row and a big one for a completely clean glass. A new level every 100 rows (classic speed table, faster up to level 29, then the top speed stays). Pause any time.</string>
     <string name="game_snake">Snake</string>
-    <string name="game_snake_desc">Minimal: a line and a dot. A calm start; swipe to turn; before a wall the head pauses for a moment so you can still turn. Three lives; every 10 dots — a new level, a bit faster, and every two levels new obstacles. Bonuses: gold (points), snail (slower), scissors (shorter tail), heart (a life).</string>
+    <string name="game_snake_desc">Minimal: a line and a dot. A calm start; swipe to turn; before a wall the head pauses for a moment so you can still turn. Three lives; every 20 dots — a new level, a bit faster, and every two levels new obstacles. Bonuses: gold (points), snail (slower), scissors (shorter tail), heart (a life).</string>
     <string name="game_play">Play</string>
     <string name="game_continue">Continue</string>
     <string name="game_restart">Start over</string>

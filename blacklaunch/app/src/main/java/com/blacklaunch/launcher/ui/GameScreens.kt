@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -209,7 +211,8 @@ fun GameScreen(
             }
             Text(stringResource(R.string.game_best, maxOf(best, game.score)), color = Oled.TextSecondary, fontSize = HudSmall, maxLines = 1)
         }
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, bottom = 8.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Висота другого рядка стала (два рядки тексту завжди) — коли з'являється «щит» чи зникає, поле не стрибає.
+        Row(Modifier.fillMaxWidth().height(40.dp).padding(start = 12.dp, bottom = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
                     when (val g = game) {
@@ -266,7 +269,8 @@ fun GameScreen(
                     null -> ""
                 }
                 // На чорній плашці — фігури, що падають позаду, не заважають прочитати.
-                Plate(Modifier.align(Alignment.TopCenter).padding(top = 24.dp)) { Text(text, color = Oled.Confirm, fontSize = 20.sp) }
+                // Збоку вгорі — там фігури не з'являються (падають посередині), тож напис видно.
+                Plate(Modifier.align(Alignment.TopStart).padding(start = 10.dp, top = 10.dp)) { Text(text, color = Oled.Confirm, fontSize = 16.sp) }
             }
             if (stars != null && stars.shipDown > 0f && !stars.over) {
                 Plate(Modifier.align(Alignment.Center)) { Text(stringResource(R.string.game_ship_down, stars.lives), color = Oled.Danger, fontSize = 18.sp) }
@@ -394,6 +398,8 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
         val p = { x: Float, y: Float -> Offset(o.x + x * s, o.y + y * s) }
         // Рамка поля й зорі, що повільно пливуть униз.
         fieldFrame(o, StarsGame.W * s, StarsGame.H * s)
+        // Усе, що летить, — лише в межах поля (тих, хто вилітає за край чи влітає, не видно поверх рядка очок).
+        clipRect(o.x, o.y, o.x + StarsGame.W * s, o.y + StarsGame.H * s) {
         for (i in 0 until 46) {
             val sx = ((i * 37) % 100).toFloat()
             val sy = ((i * 53 + game.time * (6 + i % 5) * 1.5f) % StarsGame.H)
@@ -461,6 +467,7 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
             val flame = 1.5f + abs(sin(game.time * 20f)) * 1.5f
             pencilLine(Offset(c.x, c.y + 4f * s), Offset(c.x, c.y + (4f + flame) * s), 0.6f * s, 0.6f)
         }
+    }
     }
 }
 

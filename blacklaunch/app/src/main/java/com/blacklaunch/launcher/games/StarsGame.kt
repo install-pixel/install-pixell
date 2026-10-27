@@ -123,8 +123,8 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
 
     private val rows get() = (2 + (level + 1) / 2).coerceAtMost(5)
 
-    /** Рівень — кілька хвиль строю: спершу дві, далі до чотирьох. */
-    val waves get() = (2 + (level - 1) / 3).coerceAtMost(4)
+    /** Рівень — справжнє випробування: спершу три хвилі строю, раз на два рівні — ще одна, до шести. */
+    val waves get() = (3 + (level - 1) / 2).coerceAtMost(6)
     var wave = 1
         private set
 

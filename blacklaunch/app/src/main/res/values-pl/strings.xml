@@ -889,7 +889,7 @@
     <string name="game_blocks">Klocki</string>
     <string name="game_blocks_desc">Spokojna. Figury z czterech kwadracików spadają do szklanki; pełny rząd znika — punkty za rzędy (100–800 × poziom), bonus za serię rzędów z rzędu i duży — za całkiem czystą szklankę. Nowy poziom co 100 rzędów (klasyczna tabela szybkości, przyspiesza do 29., dalej najszybciej). Pauza — w każdej chwili.</string>
     <string name="game_snake">Wąż</string>
-    <string name="game_snake_desc">Minimum rysunku: linia i kropka. Spokojny start; przesunięcie — skręt; przed ścianą głowa na chwilę się zatrzymuje — można jeszcze skręcić. Trzy życia; co 10 kropek — nowy poziom, trochę szybciej, a co dwa poziomy — nowe przeszkody. Bonusy: złoto (punkty), ślimak (wolniej), nożyczki (krótszy ogon), serce (życie).</string>
+    <string name="game_snake_desc">Minimum rysunku: linia i kropka. Spokojny start; przesunięcie — skręt; przed ścianą głowa na chwilę się zatrzymuje — można jeszcze skręcić. Trzy życia; co 20 kropek — nowy poziom, trochę szybciej, a co dwa poziomy — nowe przeszkody. Bonusy: złoto (punkty), ślimak (wolniej), nożyczki (krótszy ogon), serce (życie).</string>
     <string name="game_play">Graj</string>
     <string name="game_continue">Kontynuuj</string>
     <string name="game_restart">Zacznij od nowa</string>
