@@ -64,6 +64,7 @@ import com.blacklaunch.launcher.ui.NowPlayingScreen
 import com.blacklaunch.launcher.ui.PauseAppRow
 import com.blacklaunch.launcher.ui.WellbeingPage
 import com.blacklaunch.launcher.ui.GamesPage
+import com.blacklaunch.launcher.ui.SheetTheme
 import com.blacklaunch.launcher.ui.PresetsPage
 import com.blacklaunch.launcher.ui.FirstRunPresetDialog
 import com.blacklaunch.launcher.ui.SwitchRow
@@ -495,6 +496,8 @@ class MainActivity : ComponentActivity() {
                     onSettingsRequest = ::requestSettings,
                     settingsScreen = { dismiss ->
                         var page by remember { mutableStateOf(requestedSettingsPage?.also { requestedSettingsPage = null } ?: SettingsNav.Main) }
+                        // Тема «Аркуш» (частина 1) — налаштування, меню й вікна від руки.
+                        SheetTheme(appearance.sheet) {
                         when (val current = page) {
                             SettingsNav.Main, SettingsNav.HomeScreen, SettingsNav.Appearance, SettingsNav.Search,
                             SettingsNav.Voice, SettingsNav.VoiceActions, SettingsNav.Recognition, SettingsNav.CustomCommands, SettingsNav.Monitor, SettingsNav.Battery, SettingsNav.About,
@@ -622,6 +625,7 @@ class MainActivity : ComponentActivity() {
                                 PermissionsScreen(permissionItems(), onBack = { page = SettingsNav.Main })
                             }
                             else -> ProfileSettings(current, onNavigate = { page = it })
+                        }
                         }
                     },
                     appActions = { target, onNames, dismiss ->

@@ -141,6 +141,15 @@ fun SettingsScreen(
         SettingsNav.Appearance -> SettingsPage(stringResource(R.string.section_appearance), toMain) {
             Card {
                 SwitchRow(
+                    title = stringResource(R.string.sheet_title),
+                    subtitle = stringResource(R.string.sheet_subtitle),
+                    checked = appearance.sheet,
+                    onCheckedChange = { on -> onChange { it.copy(sheet = on) } },
+                )
+                Note(stringResource(R.string.sheet_note))
+            }
+            Card {
+                SwitchRow(
                     title = stringResource(R.string.auto_wallpaper_title),
                     subtitle = stringResource(R.string.auto_wallpaper_subtitle),
                     checked = appearance.autoBlackWallpaper,

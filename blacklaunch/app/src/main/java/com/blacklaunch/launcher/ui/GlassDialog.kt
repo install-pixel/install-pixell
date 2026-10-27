@@ -65,7 +65,7 @@ fun GlassDialog(
                 .heightIn(max = 680.dp)
                 .clip(DialogShape)
                 .background(Color(0xFF0A0A0A))
-                .border(1.dp, Oled.Glint, DialogShape)
+                .then(if (LocalSheet.current) Modifier.pencilFrame(24.dp, seed = 7) else Modifier.border(1.dp, Oled.Glint, DialogShape))
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -99,16 +99,23 @@ fun DialogButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, e
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     val color = if (enabled) tone.color() else Oled.TextSecondary.copy(alpha = 0.45f)
+    val sheet = LocalSheet.current
     Row(
         modifier = Modifier
             .clip(shape)
-            .then(if (tone == Tone.Neutral) Modifier else Modifier.background(Oled.Surface))
-            .border(1.dp, if (tone == Tone.Neutral) Oled.Glint else androidx.compose.ui.graphics.SolidColor(color.copy(alpha = 0.55f)), shape)
+            .then(
+                when {
+                    sheet -> Modifier.pencilFrame(14.dp, text.length, alpha = if (enabled) 0.75f else 0.3f)
+                    else -> Modifier
+                        .then(if (tone == Tone.Neutral) Modifier else Modifier.background(Oled.Surface))
+                        .border(1.dp, if (tone == Tone.Neutral) Oled.Glint else androidx.compose.ui.graphics.SolidColor(color.copy(alpha = 0.55f)), shape)
+                },
+            )
             .clickable(enabled = enabled) { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (tone == Tone.Confirm) {
+        if (tone == Tone.Confirm && !sheet) {
             Icon(Icons.Filled.Check, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }

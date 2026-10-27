@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.runtime.currentCompositeKeyHash
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -45,14 +47,13 @@ internal fun SmallButton(text: String, onClick: () -> Unit) = SmallButton(text, 
 internal fun SmallButton(text: String, tone: Tone, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(12.dp)
+    val sheet = LocalSheet.current
     Text(
         text = text,
         color = if (tone == Tone.Neutral) Oled.Accent else tone.color(),
         fontSize = 15.sp,
         modifier = Modifier
-            .clip(shape)
-            .background(Oled.Knob)
-            .border(1.dp, Oled.Glint, shape)
+            .then(if (sheet) Modifier.pencilFrame(12.dp, text.length) else Modifier.clip(shape).background(Oled.Knob).border(1.dp, Oled.Glint, shape))
             .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
@@ -60,12 +61,12 @@ internal fun SmallButton(text: String, tone: Tone, onClick: () -> Unit) {
 
 @Composable
 internal fun Card(content: @Composable () -> Unit) {
+    // «Аркуш»: без скляної поверхні — лише рамка олівцем на чорному.
+    val sheet = LocalSheet.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(CardShape)
-            .background(Oled.Surface)
-            .border(1.dp, Oled.Glint, CardShape)
+            .then(if (sheet) Modifier.pencilFrame(18.dp, seed = currentCompositeKeyHash, alpha = 0.6f) else Modifier.clip(CardShape).background(Oled.Surface).border(1.dp, Oled.Glint, CardShape))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
@@ -79,6 +80,28 @@ internal fun Note(text: String) {
 @Composable
 internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     val haptics = LocalHaptics.current
+    // «Аркуш»: перемикача немає — увімкнене написано, вимкнене перекреслене олівцем; дотик — навпаки.
+    if (LocalSheet.current) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { haptics.tap(); onCheckedChange(!checked) }
+                .padding(vertical = 4.dp),
+        ) {
+            Text(
+                title,
+                color = if (checked) Oled.TextPrimary else Oled.TextSecondary,
+                fontSize = 18.sp,
+                modifier = if (checked) Modifier else Modifier.drawWithContent {
+                    drawContent()
+                    pencilStroke(size.height * 0.55f, -2f, size.width + 2f, seed = title.length)
+                },
+            )
+            if (subtitle.isNotEmpty()) Text(subtitle, color = Oled.TextSecondary.copy(alpha = if (checked) 1f else 0.6f), fontSize = 13.sp)
+        }
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = Oled.TextPrimary, fontSize = 17.sp)
@@ -107,6 +130,20 @@ internal fun TargetOption(@StringRes label: Int, selected: Boolean, onClick: () 
 internal fun TargetOption(label: String, selected: Boolean, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
+    // «Аркуш»: вибране обведене олівцем, решта — просто написана, тьмяніше.
+    if (LocalSheet.current) {
+        Text(
+            label,
+            color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
+            fontSize = 17.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (selected) Modifier.pencilFrame(14.dp, label.length) else Modifier)
+                .selectable(selected = selected, onClick = { haptics.tap(); onClick() }, role = Role.RadioButton)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        )
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,6 +189,24 @@ internal fun ActionOption(@StringRes label: Int, icon: ImageVector, tone: Tone, 
 internal fun ActionOption(label: String, icon: ImageVector, tone: Tone, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
+    // «Аркуш»: без значка — лише назва, підкреслена олівцем.
+    if (LocalSheet.current) {
+        Text(
+            label,
+            color = tone.color(),
+            fontSize = 17.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .clickable { haptics.tap(); onClick() }
+                .padding(horizontal = 6.dp, vertical = 8.dp)
+                .drawWithContent {
+                    drawContent()
+                    pencilStroke(size.height + 2.dp.toPx(), 0f, size.width * 0.6f, seed = label.length, alpha = 0.45f)
+                },
+        )
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,6 +232,20 @@ internal fun MenuRow(icon: ImageVector, @StringRes title: Int, @StringRes hint: 
 internal fun MenuRow(icon: Painter, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
+    // «Аркуш»: пункти меню — просто написані рядки зі стрілкою, без значків.
+    if (LocalSheet.current) {
+        Row(
+            Modifier.fillMaxWidth().clip(shape).clickable { haptics.tap(); onClick() }.padding(horizontal = 6.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(title), color = Oled.TextPrimary, fontSize = 19.sp)
+                if (hint != null) Text(stringResource(hint), color = Oled.TextSecondary, fontSize = 13.sp)
+            }
+            Text("→", color = Oled.TextSecondary, fontSize = 20.sp)
+        }
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()

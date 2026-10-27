@@ -36,6 +36,8 @@ data class Appearance(
     val glanceAlarm: Boolean = true,
     val glanceEvent: Boolean = true,
     val glanceBattery: Boolean = true,
+    /** Тема «Аркуш»: усе від руки олівцем (етап 12d). */
+    val sheet: Boolean = false,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -67,6 +69,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_GLANCE_ALARM, next.glanceAlarm)
             .putBoolean(KEY_GLANCE_EVENT, next.glanceEvent)
             .putBoolean(KEY_GLANCE_BATTERY, next.glanceBattery)
+            .putBoolean(KEY_SHEET, next.sheet)
             .apply()
         _appearance.value = next
     }
@@ -91,6 +94,7 @@ class AppearanceSettings(context: Context) {
             glanceAlarm = prefs.getBoolean(KEY_GLANCE_ALARM, defaults.glanceAlarm),
             glanceEvent = prefs.getBoolean(KEY_GLANCE_EVENT, defaults.glanceEvent),
             glanceBattery = prefs.getBoolean(KEY_GLANCE_BATTERY, defaults.glanceBattery),
+            sheet = prefs.getBoolean(KEY_SHEET, defaults.sheet),
         )
     }
 
@@ -111,6 +115,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_GLANCE_ALARM = "glance_alarm"
         private const val KEY_GLANCE_EVENT = "glance_event"
         private const val KEY_GLANCE_BATTERY = "glance_battery"
+        private const val KEY_SHEET = "sheet_theme"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

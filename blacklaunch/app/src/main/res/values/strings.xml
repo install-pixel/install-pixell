@@ -939,4 +939,7 @@
     <string name="preset_applied">Set applied — change anything in Settings</string>
     <string name="games_hide">Remove from the menu</string>
     <string name="games_add_title">Add a game</string>
+    <string name="sheet_title">“Sheet” theme — by hand</string>
+    <string name="sheet_subtitle">Settings, menus and windows look hand-written in white pencil on a black sheet: a hand-written font, pencil frames, switched-off items crossed out, names instead of icons</string>
+    <string name="sheet_note">Tap a line to turn it on or off: crossed out means off. Home screen and search will follow. Font: Caveat (SIL Open Font License), built in — no internet.</string>
 </resources>

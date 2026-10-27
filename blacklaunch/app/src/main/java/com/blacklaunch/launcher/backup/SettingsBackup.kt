@@ -95,6 +95,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                 put("glanceAlarm", look.glanceAlarm)
                 put("glanceEvent", look.glanceEvent)
                 put("glanceBattery", look.glanceBattery)
+                put("sheet", look.sheet)
             })
             val voice = app.voiceActionSettings
             put("voiceActions", JSONObject().apply {
@@ -206,6 +207,7 @@ class SettingsBackup(private val app: BlackLaunchApp) {
                     glanceAlarm = a.optBoolean("glanceAlarm", it.glanceAlarm),
                     glanceEvent = a.optBoolean("glanceEvent", it.glanceEvent),
                     glanceBattery = a.optBoolean("glanceBattery", it.glanceBattery),
+                    sheet = a.optBoolean("sheet", it.sheet),
                 )
             }
         }
