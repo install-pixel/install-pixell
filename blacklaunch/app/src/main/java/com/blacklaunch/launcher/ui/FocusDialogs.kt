@@ -1,5 +1,8 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,28 +17,33 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,8 +58,6 @@ import com.blacklaunch.launcher.ui.theme.Oled
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-private val DialogColor = Color(0xFF141414)
 
 /** Відлік, що йде лише поки вікно на екрані: закрили — наступного разу спочатку. */
 @Composable
@@ -79,110 +85,116 @@ internal fun tickingNow(periodMs: Long = 1_000): Long {
     return now
 }
 
+/** Велике кільце з числом посередині: скільки секунд лишилось із [total]. */
+@Composable
+private fun CountdownRing(left: Int, total: Int, modifier: Modifier = Modifier) {
+    Box(modifier.size(96.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 4.dp.toPx()
+            drawArc(Color(0xFF262626), 0f, 360f, false, style = Stroke(stroke))
+            drawArc(Oled.TextPrimary, -90f, 360f * left / total.coerceAtLeast(1), false, style = Stroke(stroke, cap = StrokeCap.Round))
+        }
+        Text("$left", color = Oled.TextPrimary, fontSize = 30.sp, fontWeight = FontWeight.Light)
+    }
+}
+
 /**
- * «Важкий вихід»: вийти з режиму чи відкрити налаштування можна лише після відліку.
+ * «Вихід із режиму» з відліком: вийти чи відкрити налаштування — лише коли кільце добіжить.
  * Головна кнопка — «Залишитись»: передумати легше, ніж піти.
  */
 @Composable
 fun ExitDelayDialog(title: String, seconds: Int, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     val left = countdown(seconds)
-    val haptics = LocalHaptics.current
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogColor,
-        title = { Text(title, color = Oled.TextPrimary) },
-        text = { Text(stringResource(R.string.focus_exit_note), color = Oled.TextSecondary, fontSize = 15.sp) },
-        confirmButton = {
-            TextButton(onClick = { haptics.tap(); onDismiss() }) { Text(stringResource(R.string.focus_stay), color = Oled.TextPrimary) }
-        },
-        dismissButton = {
-            TextButton(onClick = { haptics.tap(); onConfirm() }, enabled = left == 0) {
-                Text(if (left > 0) "$confirm ($left)" else confirm, color = if (left > 0) Oled.TextSecondary.copy(alpha = 0.5f) else Oled.TextSecondary)
+        title = { DialogTitle(title) },
+        text = {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                CountdownRing(left, seconds)
+                Text(stringResource(R.string.focus_exit_note), color = Oled.TextSecondary, fontSize = 15.sp, textAlign = TextAlign.Center)
             }
         },
+        confirmButton = { DialogButton(stringResource(R.string.focus_stay), onDismiss, Tone.Confirm) },
+        dismissButton = { DialogButton(if (left > 0) "$confirm · $left" else confirm, onConfirm, enabled = left == 0) },
     )
 }
 
-/** Фокус-таймер іде: нічого не перемикається; звідси — достроково (з утриманням і хвилиною відліку). */
+/** Фокус-таймер іде: нічого не перемикається. Звідси — екран таймера або «достроково» (два кроки). */
 @Composable
-fun FocusLockedDialog(profileName: String, endsAt: Long, strict: Boolean, onEarlyExit: () -> Unit, onOpenStrict: () -> Unit, onDismiss: () -> Unit) {
+fun FocusLockedDialog(profileName: String, endsAt: Long, onEarlyExit: () -> Unit, onOpenTimer: () -> Unit, onDismiss: () -> Unit) {
     val now = tickingNow()
     var early by rememberSaveable { mutableStateOf(false) }
-    val haptics = LocalHaptics.current
     if (early) {
         EarlyExitDialog(onConfirm = onEarlyExit, onDismiss = onDismiss)
         return
     }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogColor,
-        title = { Text(stringResource(R.string.focus_locked_title, profileName), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(R.string.focus_locked_title, profileName)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(FocusRules.clock(endsAt - now), color = Oled.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Light)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(FocusRules.clock(endsAt - now), color = Oled.TextPrimary, fontSize = 44.sp, fontWeight = FontWeight.Light)
                 Text(stringResource(R.string.focus_locked_note), color = Oled.TextSecondary, fontSize = 15.sp)
-                if (strict) {
-                    Text(
-                        stringResource(R.string.focus_open_strict),
-                        color = Oled.Accent,
-                        fontSize = 15.sp,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { haptics.tap(); onOpenStrict() }.padding(vertical = 6.dp),
-                    )
-                }
+                ActionOption(R.string.focus_open_timer, Icons.Filled.PlayArrow, onOpenTimer)
             }
         },
-        confirmButton = {
-            TextButton(onClick = { haptics.tap(); onDismiss() }) { Text(stringResource(R.string.focus_stay), color = Oled.TextPrimary) }
-        },
-        dismissButton = {
-            TextButton(onClick = { haptics.tap(); early = true }) { Text(stringResource(R.string.focus_end_early), color = Oled.TextSecondary) }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.focus_stay), onDismiss, Tone.Confirm) },
+        dismissButton = { DialogButton(stringResource(R.string.focus_end_early), { early = true }, Tone.Danger) },
     )
 }
 
-/** Достроково: спершу утримати кнопку, потім хвилина відліку — імпульс за цей час зазвичай минає. */
+/**
+ * Достроково — два явні кроки: 1) утримати кнопку 3 с (смужка заповнюється, «ще 2 с»);
+ * 2) хвилина відліку на кільці. Лише тоді «Завершити» стає активною. «Залишитись» — завжди.
+ */
 @Composable
 fun EarlyExitDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     var held by rememberSaveable { mutableStateOf(false) }
-    val haptics = LocalHaptics.current
-    AlertDialog(
+    // Один відлік на весь крок 2 — і для кільця, і для кнопки.
+    val left = if (held) countdown(FocusRules.EARLY_EXIT_S) else FocusRules.EARLY_EXIT_S
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogColor,
-        title = { Text(stringResource(R.string.focus_end_early_title), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(R.string.focus_end_early_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.focus_end_early_note), color = Oled.TextSecondary, fontSize = 15.sp)
-                if (!held) HoldButton(stringResource(R.string.focus_hold)) { held = true }
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (!held) {
+                    Text(stringResource(R.string.focus_step1), color = Oled.TextSecondary, fontSize = 15.sp)
+                    HoldButton { held = true }
+                } else {
+                    Text(
+                        stringResource(if (left > 0) R.string.focus_step2 else R.string.focus_step_done),
+                        color = Oled.TextSecondary,
+                        fontSize = 15.sp,
+                    )
+                    CountdownRing(left, FocusRules.EARLY_EXIT_S)
+                }
             }
         },
-        confirmButton = {
-            TextButton(onClick = { haptics.tap(); onDismiss() }) { Text(stringResource(R.string.focus_stay), color = Oled.TextPrimary) }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.focus_stay), onDismiss, Tone.Confirm) },
         dismissButton = {
             if (held) {
-                val left = countdown(FocusRules.EARLY_EXIT_S)
                 val label = stringResource(R.string.focus_end)
-                TextButton(onClick = { haptics.tap(); onConfirm() }, enabled = left == 0) {
-                    Text(if (left > 0) "$label ($left)" else label, color = if (left > 0) Oled.TextSecondary.copy(alpha = 0.5f) else Oled.TextSecondary)
-                }
+                DialogButton(if (left > 0) "$label · $left" else label, onConfirm, Tone.Danger, enabled = left == 0)
             }
         },
     )
 }
 
-/** Кнопка, яку треба втримати [FocusRules.HOLD_MS]; відпустили раніше — смужка повертається на нуль. */
+/** Кнопка, яку треба втримати [FocusRules.HOLD_MS]: смужка заповнюється й лічить «ще 2 с»; відпустили — з нуля. */
 @Composable
-private fun HoldButton(text: String, onHeld: () -> Unit) {
+private fun HoldButton(onHeld: () -> Unit) {
     var progress by remember { mutableFloatStateOf(0f) }
     val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(12.dp)
+    val held by rememberUpdatedState(onHeld)
+    val shape = RoundedCornerShape(14.dp)
+    val secondsLeft = ((1f - progress) * FocusRules.HOLD_MS / 1000f).let { kotlin.math.ceil(it).toInt() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 52.dp)
             .clip(shape)
-            .background(Oled.Knob)
-            .border(1.dp, Oled.Glint, shape)
+            .background(Oled.Surface)
+            .border(1.dp, androidx.compose.ui.graphics.SolidColor(Oled.Danger.copy(alpha = 0.55f)), shape)
             .pointerInput(Unit) {
                 detectTapGestures(onPress = {
                     haptics.tap()
@@ -200,7 +212,7 @@ private fun HoldButton(text: String, onHeld: () -> Unit) {
                     }
                     if (done) {
                         haptics.longPress()
-                        onHeld()
+                        held()
                     } else {
                         progress = 0f
                     }
@@ -208,29 +220,34 @@ private fun HoldButton(text: String, onHeld: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(progress).background(Oled.Glint))
-        Text(text, color = Oled.Accent, fontSize = 15.sp, modifier = Modifier.padding(12.dp))
+        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(progress).background(Oled.Danger.copy(alpha = 0.22f)))
+        Text(stringResource(R.string.focus_hold, secondsLeft.coerceAtLeast(1)), color = Oled.Danger, fontSize = 16.sp, modifier = Modifier.padding(14.dp))
     }
 }
 
-/** Запуск фокус-таймера: режим, тривалість і «Суворо». */
+/** Запуск фокус-таймера: режим, тривалість, «Суворо» і котик. */
 @Composable
-fun FocusStartDialog(profiles: List<LauncherProfile>, initialId: String?, onStart: (String, Int, Boolean) -> Unit, onDismiss: () -> Unit) {
+fun FocusStartDialog(
+    profiles: List<LauncherProfile>,
+    initialId: String?,
+    cat: Boolean,
+    onCatChange: (Boolean) -> Unit,
+    onStart: (String, Int, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var profileId by rememberSaveable { mutableStateOf(initialId ?: profiles.firstOrNull()?.id) }
     var minutes by rememberSaveable { mutableIntStateOf(FocusRules.DEFAULT_MINUTES) }
     var strict by rememberSaveable { mutableStateOf(false) }
-    val haptics = LocalHaptics.current
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogColor,
-        title = { Text(stringResource(R.string.focus_start_title), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(R.string.focus_start_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.focus_start_profile), color = Oled.TextPrimary, fontSize = 16.sp)
                 profiles.forEach { profile ->
                     TargetOption(profile.name, profileId == profile.id) { profileId = profile.id }
                 }
-                Text(stringResource(R.string.focus_start_duration), color = Oled.TextPrimary, fontSize = 16.sp)
+                Text(stringResource(R.string.focus_start_duration), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp))
                 FocusRules.DURATIONS.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { value ->
@@ -239,17 +256,14 @@ fun FocusStartDialog(profiles: List<LauncherProfile>, initialId: String?, onStar
                     }
                 }
                 SwitchRow(stringResource(R.string.focus_strict_title), stringResource(R.string.focus_strict_subtitle), strict) { strict = it }
+                SwitchRow(stringResource(R.string.focus_cat_title), stringResource(R.string.focus_cat_subtitle), cat, onCatChange)
                 Note(stringResource(R.string.focus_start_note))
             }
         },
         confirmButton = {
-            TextButton(onClick = { haptics.tap(); profileId?.let { onStart(it, minutes, strict) } }, enabled = profileId != null) {
-                Text(stringResource(R.string.focus_start), color = Oled.TextPrimary)
-            }
+            DialogButton(stringResource(R.string.focus_start), { profileId?.let { onStart(it, minutes, strict) } }, Tone.Confirm, enabled = profileId != null)
         },
-        dismissButton = {
-            TextButton(onClick = { haptics.tap(); onDismiss() }) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-        },
+        dismissButton = { DialogButton(stringResource(R.string.cancel), onDismiss) },
     )
 }
 
@@ -274,58 +288,94 @@ private fun DurationChip(text: String, selected: Boolean, modifier: Modifier, on
 /** Підсумок після таймера — раз, коли повернулися на екран. */
 @Composable
 fun FocusSummaryDialog(summary: FocusSummary, onDismiss: () -> Unit) {
-    val haptics = LocalHaptics.current
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogColor,
-        title = {
-            Text(stringResource(if (summary.early) R.string.focus_ended_early else R.string.focus_done), color = Oled.TextPrimary)
-        },
+        title = { DialogTitle(stringResource(if (summary.early) R.string.focus_ended_early else R.string.focus_done)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(summary.profileName, color = Oled.TextSecondary, fontSize = 14.sp)
-                Text(stringResource(R.string.focus_minutes_of, summary.minutes, summary.plannedMinutes), color = Oled.TextPrimary, fontSize = 22.sp)
-                Text(LocalContext.current.resources.getQuantityString(R.plurals.focus_attempts, summary.attempts, summary.attempts), color = Oled.TextSecondary, fontSize = 15.sp)
+                Text(stringResource(R.string.focus_minutes_of, summary.minutes, summary.plannedMinutes), color = Oled.TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Light)
+                Text(
+                    LocalContext.current.resources.getQuantityString(R.plurals.focus_attempts, summary.attempts, summary.attempts),
+                    color = Oled.TextSecondary,
+                    fontSize = 15.sp,
+                )
             }
         },
-        confirmButton = {
-            TextButton(onClick = { haptics.tap(); onDismiss() }) { Text(stringResource(R.string.alias_done), color = Oled.TextPrimary) }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.alias_done), onDismiss, Tone.Confirm) },
     )
 }
 
+/** Стан закріплення на екрані «Суворо». */
+enum class PinState { NONE, ASKING, PINNED, NOT_PINNED }
+
 /**
- * Екран «Суворо»: лише відлік. Android закріплює його (системне «Закріплення програми») — «Недавні», шторку
- * й інші програми блокує сама система до кінця таймера.
+ * Екран фокус-таймера: великий відлік на скляній плашці (огорожа для котика), котик гуляє довкола.
+ * «Суворо» — угорі позначка закріплення; без нього — «Згорнути».
  */
 @Composable
-fun FocusStrictScreen(
+fun FocusTimerScreen(
     profileName: String,
     endsAt: Long,
-    pinned: Boolean,
+    pin: PinState,
+    cat: Boolean,
     onPin: () -> Unit,
+    onMinimize: (() -> Unit)?,
     onEarlyExit: () -> Unit,
 ) {
     val now = tickingNow()
     var early by rememberSaveable { mutableStateOf(false) }
-    Column(
-        modifier = Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(profileName.uppercase(), color = Oled.TextSecondary, fontSize = 13.sp, letterSpacing = 2.sp)
-        Text(FocusRules.clock(endsAt - now), color = Oled.TextPrimary, fontSize = 64.sp, fontWeight = FontWeight.Light)
-        Text(
-            stringResource(if (pinned) R.string.focus_strict_pinned else R.string.focus_strict_not_pinned),
-            color = Oled.TextSecondary,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 16.dp),
-        )
-        Row(Modifier.padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (!pinned) SmallButton(stringResource(R.string.focus_pin), onPin)
-            SmallButton(stringResource(R.string.focus_end_early)) { early = true }
+    var fence by remember { mutableStateOf<Rect?>(null) }
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        if (cat) FocusCat(fence)
+        Column(
+            modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (pin != PinState.NONE) PinChip(pin, onPin)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                val shape = RoundedCornerShape(28.dp)
+                Column(
+                    modifier = Modifier
+                        .onGloballyPositioned { fence = it.boundsInRoot() }
+                        .clip(shape)
+                        .background(Color(0xFF0A0A0A))
+                        .border(1.dp, Oled.Glint, shape)
+                        .padding(horizontal = 32.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(profileName.uppercase(), color = Oled.TextSecondary, fontSize = 12.sp, letterSpacing = 2.sp)
+                    Text(FocusRules.clock(endsAt - now), color = Oled.TextPrimary, fontSize = 60.sp, fontWeight = FontWeight.Light)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                onMinimize?.let { DialogButton(stringResource(R.string.focus_minimize), it) }
+                DialogButton(stringResource(R.string.focus_end_early), { early = true }, Tone.Danger)
+            }
         }
     }
     if (early) EarlyExitDialog(onConfirm = { early = false; onEarlyExit() }, onDismiss = { early = false })
+}
+
+/** Позначка вгорі: закріплено / Android питає / не закріплено + «Закріпити». */
+@Composable
+private fun PinChip(pin: PinState, onPin: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color(0xFF0A0A0A))
+            .border(1.dp, Oled.Glint, shape)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        val text = when (pin) {
+            PinState.PINNED -> R.string.focus_strict_pinned
+            PinState.ASKING -> R.string.focus_strict_asking
+            else -> R.string.focus_strict_not_pinned
+        }
+        Text(stringResource(text), color = if (pin == PinState.PINNED) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp)
+        if (pin == PinState.NOT_PINNED) DialogButton(stringResource(R.string.focus_pin), onPin, Tone.Confirm)
+    }
 }

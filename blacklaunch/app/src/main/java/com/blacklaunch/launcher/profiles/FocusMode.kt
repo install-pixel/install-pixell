@@ -45,6 +45,16 @@ class FocusMode(private val app: BlackLaunchApp) {
         prefs.edit().apply { if (seconds > 0) putInt(PREFIX_DELAY + profileId, seconds) else remove(PREFIX_DELAY + profileId) }.apply()
     }
 
+    private val _cat = MutableStateFlow(prefs.getBoolean(KEY_CAT, true))
+
+    /** Котик на екрані таймера (можна вимкнути). */
+    val cat: StateFlow<Boolean> = _cat.asStateFlow()
+
+    fun setCat(on: Boolean) {
+        _cat.value = on
+        prefs.edit().putBoolean(KEY_CAT, on).apply()
+    }
+
     private val _session = MutableStateFlow(FocusSession.decode(prefs.getString(KEY_SESSION, null)))
     val session: StateFlow<FocusSession?> = _session.asStateFlow()
 
@@ -171,6 +181,7 @@ class FocusMode(private val app: BlackLaunchApp) {
     companion object {
         private const val PREFIX_DELAY = "exit_delay_"
         private const val KEY_SESSION = "session"
+        private const val KEY_CAT = "cat"
         private const val CHANNEL = "focus"
         private const val REQUEST = 7316
         private const val NOTIFICATION_ID = 7316

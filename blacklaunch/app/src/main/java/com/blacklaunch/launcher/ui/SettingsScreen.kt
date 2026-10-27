@@ -1,17 +1,13 @@
 package com.blacklaunch.launcher.ui
 
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.ui.graphics.Color
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.filled.Share
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.voice.VoiceActionKind
-import com.blacklaunch.launcher.commands.CustomCommand
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import com.blacklaunch.launcher.diagnostics.CrashEntries
@@ -35,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -193,23 +188,20 @@ fun SettingsScreen(
             var confirmClear by remember { mutableStateOf(false) }
             Card {
                 Note(stringResource(R.string.history_note))
-                ActionOption(R.string.history_clear, Icons.Filled.Delete) { confirmClear = true }
+                ActionOption(R.string.history_clear, Icons.Filled.Delete, Tone.Danger) { confirmClear = true }
             }
             if (confirmClear) {
-                AlertDialog(
+                GlassDialog(
                     onDismissRequest = { confirmClear = false },
-                    containerColor = Color(0xFF141414),
-                    title = { Text(stringResource(R.string.history_clear), color = Oled.TextPrimary) },
+                    title = { DialogTitle(stringResource(R.string.history_clear)) },
                     text = { Text(stringResource(R.string.history_clear_confirm), color = Oled.TextSecondary) },
                     confirmButton = {
-                        TextButton(onClick = {
+                        DialogButton(stringResource(R.string.history_clear_yes), {
                             confirmClear = false
                             onClearHistory()
-                        }) { Text(stringResource(R.string.history_clear_yes), color = Oled.TextPrimary) }
+                        }, Tone.Danger)
                     },
-                    dismissButton = {
-                        TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-                    },
+                    dismissButton = { DialogButton(stringResource(R.string.cancel), { confirmClear = false }) },
                 )
             }
             Card {
@@ -375,20 +367,18 @@ fun SettingsScreen(
                 ActionOption(R.string.backup_import, Icons.Filled.Refresh) { confirmRestore = true }
             }
             if (confirmRestore) {
-                AlertDialog(
+                GlassDialog(
                     onDismissRequest = { confirmRestore = false },
-                    containerColor = Color(0xFF141414),
-                    title = { Text(stringResource(R.string.backup_import), color = Oled.TextPrimary) },
+                    title = { DialogTitle(stringResource(R.string.backup_import)) },
                     text = { Text(stringResource(R.string.backup_import_confirm), color = Oled.TextSecondary) },
                     confirmButton = {
-                        TextButton(onClick = {
+                        // Замінює поточні налаштування — червоним, як і все, що стирає.
+                        DialogButton(stringResource(R.string.backup_import_choose), {
                             confirmRestore = false
                             onImportSettings()
-                        }) { Text(stringResource(R.string.backup_import_choose), color = Oled.TextPrimary) }
+                        }, Tone.Danger)
                     },
-                    dismissButton = {
-                        TextButton(onClick = { confirmRestore = false }) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-                    },
+                    dismissButton = { DialogButton(stringResource(R.string.cancel), { confirmRestore = false }) },
                 )
             }
             Card {
@@ -411,7 +401,7 @@ fun SettingsScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SmallButton(stringResource(R.string.crash_log_copy), onCopyCrashLog)
-                        SmallButton(stringResource(R.string.crash_log_clear), onClearCrashLog)
+                        SmallButton(stringResource(R.string.crash_log_clear), Tone.Danger, onClearCrashLog)
                     }
                 }
             }
@@ -499,7 +489,7 @@ private fun ModelRow(
             Text(status, color = Oled.TextSecondary, fontSize = 13.sp)
         }
         if (installed) {
-            SmallButton(stringResource(R.string.model_delete)) { onDelete(language) }
+            SmallButton(stringResource(R.string.model_delete), Tone.Danger) { onDelete(language) }
         } else {
             SmallButton(stringResource(R.string.download)) { onDownload(language) }
         }

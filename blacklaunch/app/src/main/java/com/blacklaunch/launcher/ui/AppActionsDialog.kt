@@ -11,16 +11,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
-import com.blacklaunch.launcher.ui.theme.Oled
 
 /** Меню за довгим натисканням на програму в пошуку (як у лаунчері Pixel). */
 @Composable
@@ -42,10 +37,9 @@ fun AppActionsDialog(
     onTeachVoice: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141414),
-        title = { Text(app.label, color = Oled.TextPrimary) },
+        title = { DialogTitle(app.label) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 shortcuts.forEach { (title, open) ->
@@ -61,11 +55,9 @@ fun AppActionsDialog(
                 ActionOption(if (ownIcon) R.string.icon_original else R.string.icon_own, Icons.Filled.Face) { onToggleOwnIcon(); onDismiss() }
                 ActionOption(R.string.hide_from_search, Icons.Filled.Lock) { onHide(); onDismiss() }
                 ActionOption(R.string.app_info, Icons.Filled.Info) { onAppInfo(); onDismiss() }
-                ActionOption(R.string.app_uninstall, Icons.Filled.Delete) { onUninstall(); onDismiss() }
+                ActionOption(R.string.app_uninstall, Icons.Filled.Delete, Tone.Danger) { onUninstall(); onDismiss() }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.cancel), onDismiss) },
     )
 }

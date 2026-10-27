@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,18 +10,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,10 +43,9 @@ fun AliasDialog(
         if (text.isNotBlank()) onAdd(text.trim())
         text = ""
     }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141414),
-        title = { Text(stringResource(R.string.alias_title, app.label), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(R.string.alias_title, app.label)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 aliases.sorted().forEach { alias ->
@@ -81,13 +78,7 @@ fun AliasDialog(
                 )
             }
         },
-        confirmButton = {
-            TextButton(onClick = add, enabled = text.isNotBlank()) {
-                Text(stringResource(R.string.alias_add), color = Oled.Accent)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.alias_done), color = Oled.TextSecondary) }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.alias_add), add, Tone.Confirm, enabled = text.isNotBlank()) },
+        dismissButton = { DialogButton(stringResource(R.string.alias_done), onDismiss) },
     )
 }

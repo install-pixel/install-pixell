@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.filled.Done
 import com.blacklaunch.launcher.system.GlanceParts
@@ -44,19 +46,15 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -381,7 +379,7 @@ fun ProfileEditScreen(
 
         Card {
             if (canDelete) {
-                ActionOption(R.string.profile_delete, Icons.Filled.Delete) { confirmDelete = true }
+                ActionOption(R.string.profile_delete, Icons.Filled.Delete, Tone.Danger) { confirmDelete = true }
             } else {
                 Note(stringResource(R.string.profile_last))
             }
@@ -401,21 +399,16 @@ fun ProfileEditScreen(
         )
     }
     if (confirmDelete) {
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { confirmDelete = false },
-            containerColor = Color(0xFF141414),
-            title = { Text(stringResource(R.string.profile_delete_confirm, profile.name), color = Oled.TextPrimary) },
+            title = { DialogTitle(stringResource(R.string.profile_delete_confirm, profile.name)) },
             confirmButton = {
-                TextButton(onClick = {
+                DialogButton(stringResource(R.string.model_delete), {
                     confirmDelete = false
                     onDelete()
-                }) { Text(stringResource(R.string.model_delete), color = Oled.Listening) }
+                }, Tone.Danger)
             },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.cancel), color = Oled.TextSecondary)
-                }
-            },
+            dismissButton = { DialogButton(stringResource(R.string.cancel), { confirmDelete = false }) },
         )
     }
 }
@@ -514,7 +507,7 @@ fun AppPickerScreen(
         if (picked.isNotEmpty()) {
             val byKey = apps.associateBy { it.key }
             Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                SmallButton(stringResource(R.string.pick_apps_add, picked.size)) { onPick(picked.mapNotNull { byKey[it] }) }
+                SmallButton(stringResource(R.string.pick_apps_add, picked.size), Tone.Confirm) { onPick(picked.mapNotNull { byKey[it] }) }
             }
         }
     }
@@ -529,10 +522,9 @@ private fun NameDialog(
     onDismiss: () -> Unit,
 ) {
     var text by rememberSaveable { mutableStateOf(initial) }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141414),
-        title = { Text(title, color = Oled.TextPrimary) },
+        title = { DialogTitle(title) },
         text = {
             OutlinedTextField(
                 value = text,
@@ -548,14 +540,8 @@ private fun NameDialog(
                 ),
             )
         },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text.trim()) }, enabled = text.isNotBlank()) {
-                Text(confirm, color = Oled.Accent)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-        },
+        confirmButton = { DialogButton(confirm, { onConfirm(text.trim()) }, Tone.Confirm, enabled = text.isNotBlank()) },
+        dismissButton = { DialogButton(stringResource(R.string.cancel), onDismiss) },
     )
 }
 

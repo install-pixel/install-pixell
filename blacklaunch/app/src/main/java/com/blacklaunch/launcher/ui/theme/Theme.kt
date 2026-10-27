@@ -17,6 +17,10 @@ object Oled {
     val Accent = Color(0xFFBDBDBD)
     val Listening = Color(0xFFE53935)
 
+    /** Стримані акценти (лише там, де важливо): що підтверджує/зберігає і що видаляє. Решта — сіра. */
+    val Confirm = Color(0xFF8AB4F8)
+    val Danger = Color(0xFFEF8A80)
+
     /** Поверхня: світліша вгорі, темніша внизу, але помітно світліша за чорне тло. */
     val Surface = Brush.verticalGradient(listOf(Color(0xFF242424), Color(0xFF161616)))
 

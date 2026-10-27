@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -80,10 +82,8 @@ import com.blacklaunch.launcher.voice.ContactNumber
 import com.blacklaunch.launcher.ui.CallCountdownDialog
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
@@ -1206,10 +1206,13 @@ class MainActivity : ComponentActivity() {
         val exitDelays by app.focus.exitDelays.collectAsStateWithLifecycle()
         // Фокус-таймер: з якого режиму відкрили вибір (null — вікно закрите, "" — без попереднього вибору).
         var focusStartFor by rememberSaveable { mutableStateOf<String?>(null) }
+        val focusCat by app.focus.cat.collectAsStateWithLifecycle()
         focusStartFor?.let { initial ->
             FocusStartDialog(
                 profiles = profiles,
                 initialId = initial.ifEmpty { activeId },
+                cat = focusCat,
+                onCatChange = app.focus::setCat,
                 onStart = { id, minutes, strict ->
                     focusStartFor = null
                     startFocus(id, minutes, strict)
@@ -1502,7 +1505,8 @@ class MainActivity : ComponentActivity() {
         app.focus.start(profileId, minutes, strict)
         viewModel.forgetSearch()
         settingsClose.value++
-        if (strict) startActivity(Intent(this, FocusActivity::class.java))
+        // Екран таймера з котиком — одразу; звичайний можна згорнути, «Суворо» Android закріплює.
+        startActivity(Intent(this, FocusActivity::class.java))
     }
 
     @Composable
@@ -1536,12 +1540,11 @@ class MainActivity : ComponentActivity() {
                 FocusLockedDialog(
                     profileName = profiles.firstOrNull { it.id == session.profileId }?.name.orEmpty(),
                     endsAt = session.endsAt,
-                    strict = session.strict,
                     onEarlyExit = {
                         dismiss()
                         app.focus.endEarly()
                     },
-                    onOpenStrict = {
+                    onOpenTimer = {
                         dismiss()
                         startActivity(Intent(this, FocusActivity::class.java))
                     },

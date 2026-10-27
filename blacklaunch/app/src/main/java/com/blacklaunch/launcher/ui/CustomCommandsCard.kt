@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.annotation.StringRes
 import com.blacklaunch.launcher.commands.CommandProblemKind
 import com.blacklaunch.launcher.commands.CommandProblem
@@ -45,7 +47,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -53,14 +54,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -276,7 +274,7 @@ private fun CommandEditor(
         problems.forEach { problem -> Warning(problemText(problem)) }
         // Кнопки — у тому ж вигляді, що й пункти меню налаштувань.
         if (canSave) {
-            ActionOption(R.string.custom_command_save, Icons.Filled.Done) {
+            ActionOption(R.string.custom_command_save, Icons.Filled.Done, Tone.Confirm) {
                 val id = command.id.ifEmpty { CustomCommand.create(phrase, emptyList()).id }
                 onSave(CustomCommand(id, phrase.trim(), steps, triggers, conditions))
             }
@@ -297,7 +295,7 @@ private fun CommandEditor(
             }
         }
         ActionOption(R.string.cancel, Icons.Filled.Close, onCancel)
-        if (onDelete != null) ActionOption(R.string.custom_command_delete, Icons.Filled.Delete, onDelete)
+        if (onDelete != null) ActionOption(R.string.custom_command_delete, Icons.Filled.Delete, Tone.Danger, onDelete)
     }
     if (pickingCondition) {
         ConditionDialog(devices, profiles, onPick = { conditions = (conditions + it).distinct(); pickingCondition = false }, onDismiss = { pickingCondition = false })
@@ -382,10 +380,9 @@ private fun StepConditionsDialog(
     onDismiss: () -> Unit,
 ) {
     var adding by remember { mutableStateOf(false) }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141414),
-        title = { Text(stringResource(R.string.stepcond_title), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(R.string.stepcond_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(step.text, color = Oled.TextPrimary, fontSize = 15.sp)
@@ -400,7 +397,7 @@ private fun StepConditionsDialog(
                 ActionOption(R.string.condition_add, Icons.Filled.Add) { adding = true }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close), color = Oled.TextPrimary) } },
+        confirmButton = { DialogButton(stringResource(R.string.close), onDismiss) },
     )
     if (adding) {
         ConditionDialog(devices, profiles, onPick = { onChange((step.conditions + it).distinct()); adding = false }, onDismiss = { adding = false })
@@ -768,19 +765,14 @@ private fun TextStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
 /** Темний діалог вибору; [confirm] = null — без кнопки «Додати» (вибір одним дотиком). */
 @Composable
 private fun PickerDialog(@StringRes title: Int, onDismiss: () -> Unit, confirm: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141414),
-        title = { Text(stringResource(title), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(title)) },
         text = content,
         confirmButton = {
-            if (confirm != null) {
-                TextButton(onClick = confirm) { Text(stringResource(R.string.custom_step_add_confirm), color = Oled.TextPrimary) }
-            }
+            if (confirm != null) DialogButton(stringResource(R.string.custom_step_add_confirm), confirm, Tone.Confirm)
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-        },
+        dismissButton = { DialogButton(stringResource(R.string.cancel), onDismiss) },
     )
 }
 

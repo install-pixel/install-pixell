@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,18 +24,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -296,19 +294,14 @@ private fun DevicePicker(devices: DeviceAccess, selected: PairedDevice?, onSelec
 
 @Composable
 private fun PickDialog(@StringRes title: Int, onDismiss: () -> Unit, confirm: (() -> Unit)?, content: @Composable () -> Unit) {
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141414),
-        title = { Text(stringResource(title), color = Oled.TextPrimary) },
+        title = { DialogTitle(stringResource(title)) },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() } },
         confirmButton = {
-            TextButton(onClick = { confirm?.invoke() }, enabled = confirm != null) {
-                Text(stringResource(R.string.custom_step_add_confirm), color = if (confirm != null) Oled.TextPrimary else Oled.TextSecondary)
-            }
+            DialogButton(stringResource(R.string.custom_step_add_confirm), { confirm?.invoke() }, Tone.Confirm, enabled = confirm != null)
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Oled.TextSecondary) }
-        },
+        dismissButton = { DialogButton(stringResource(R.string.cancel), onDismiss) },
     )
 }
 

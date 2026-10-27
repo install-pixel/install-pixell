@@ -39,12 +39,15 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 internal val CardShape = RoundedCornerShape(20.dp)
 
 @Composable
-internal fun SmallButton(text: String, onClick: () -> Unit) {
+internal fun SmallButton(text: String, onClick: () -> Unit) = SmallButton(text, Tone.Neutral, onClick)
+
+@Composable
+internal fun SmallButton(text: String, tone: Tone, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(12.dp)
     Text(
         text = text,
-        color = Oled.Accent,
+        color = if (tone == Tone.Neutral) Oled.Accent else tone.color(),
         fontSize = 15.sp,
         modifier = Modifier
             .clip(shape)
@@ -138,7 +141,15 @@ internal fun ActionOption(@StringRes label: Int, icon: ImageVector, onClick: () 
     ActionOption(stringResource(label), icon, onClick)
 
 @Composable
-internal fun ActionOption(label: String, icon: ImageVector, onClick: () -> Unit) {
+internal fun ActionOption(label: String, icon: ImageVector, onClick: () -> Unit) = ActionOption(label, icon, Tone.Neutral, onClick)
+
+/** Дія з акцентом: [Tone.Danger] — видалити/стерти (червоним), [Tone.Confirm] — зберегти/почати (синім). */
+@Composable
+internal fun ActionOption(@StringRes label: Int, icon: ImageVector, tone: Tone, onClick: () -> Unit) =
+    ActionOption(stringResource(label), icon, tone, onClick)
+
+@Composable
+internal fun ActionOption(label: String, icon: ImageVector, tone: Tone, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
@@ -151,9 +162,9 @@ internal fun ActionOption(label: String, icon: ImageVector, onClick: () -> Unit)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, tint = if (tone == Tone.Neutral) Oled.TextSecondary else tone.color(), modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
-        Text(label, color = Oled.TextPrimary, fontSize = 16.sp)
+        Text(label, color = tone.color(), fontSize = 16.sp)
     }
 }
 
