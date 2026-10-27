@@ -43,6 +43,9 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
     override var over = false
         private set
     private var clock = 0f
+    private val buzz = BuzzQueue()
+
+    override fun drainBuzz() = buzz.drain()
 
     /** Голова вперлась у стіну — один крок «пригальмовує», далі — удар. */
     var braking = false
@@ -144,6 +147,7 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
         if (next == bonusCell && bonus != null) takeBonus()
         if (grows) {
             eaten++
+            buzz.add(GameBuzz.LIGHT)
             score += 10 * level
             flash = 0.25f
             if (eaten % FOOD_PER_LEVEL == 0) levelUp()
@@ -155,6 +159,7 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
     }
 
     private fun crash() {
+        buzz.add(GameBuzz.STRONG)
         lives--
         if (lives <= 0) {
             over = true
@@ -182,6 +187,7 @@ internal class SnakeGame(private val rnd: Random = Random.Default) : ArcadeGame 
             Bonus.LIFE -> lives = (lives + 1).coerceAtMost(5)
             null -> Unit
         }
+        buzz.add(GameBuzz.MEDIUM)
         flash = 0.35f
         bonus = null
         bonusCell = -1

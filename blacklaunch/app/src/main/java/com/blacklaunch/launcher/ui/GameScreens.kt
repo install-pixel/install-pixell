@@ -134,6 +134,7 @@ fun GameScreen(
     var levelShown by remember { mutableIntStateOf(game.level) }
     var levelBanner by remember { mutableStateOf(0f) }
     val save by rememberUpdatedState(onSave)
+    val haptics = LocalHaptics.current
 
     LaunchedEffect(active) { if (!active) { paused = true; save(game.takeIf { !it.over }?.encode()) } }
     // Вікно гри закривається (вийшли, система прибрала) — зберігаємо останній стан.
@@ -151,6 +152,14 @@ fun GameScreen(
                 val dt = if (last == 0L) 0f else ((now - last) / 1e9f).coerceAtMost(0.05f)
                 last = now
                 game.step(dt)
+                // Вібрація на подіях гри (вимикається загальним «Вібровідгуком» у налаштуваннях).
+                game.drainBuzz().forEach {
+                    when (it) {
+                        com.blacklaunch.launcher.games.GameBuzz.LIGHT -> haptics.tick()
+                        com.blacklaunch.launcher.games.GameBuzz.MEDIUM -> haptics.tap()
+                        com.blacklaunch.launcher.games.GameBuzz.STRONG -> haptics.longPress()
+                    }
+                }
                 if (levelBanner > 0f) levelBanner -= dt
                 if (game.level != levelShown) {
                     levelShown = game.level

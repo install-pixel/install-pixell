@@ -23,11 +23,26 @@ internal class GameReader(text: String) {
     fun ints(key: String): List<Int>? = map[key]?.let { v -> if (v.isEmpty()) emptyList() else v.split(',').map { it.toIntOrNull() ?: return null } }
 }
 
-/** Що спільне в усіх ігор: рахунок, рівень, кінець гри, збереження. */
+/** Подія для вібрації: легка (влучив, з'їв), помітна (рядок, прокачка), сильна (збили, врізався). */
+internal enum class GameBuzz { LIGHT, MEDIUM, STRONG }
+
+/** Що спільне в усіх ігор: рахунок, рівень, кінець гри, збереження, події для вібрації. */
 internal interface ArcadeGame {
     val score: Int
     val level: Int
     val over: Boolean
     fun step(dt: Float)
     fun encode(): String
+
+    /** Події з минулого разу (і очистити). */
+    fun drainBuzz(): List<GameBuzz>
+}
+
+/** Черга подій вібрації — спільна для ігор. */
+internal class BuzzQueue {
+    private val list = ArrayList<GameBuzz>()
+    fun add(b: GameBuzz) {
+        if (list.size < 8) list += b
+    }
+    fun drain(): List<GameBuzz> = list.toList().also { list.clear() }
 }

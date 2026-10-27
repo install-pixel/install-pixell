@@ -97,6 +97,9 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
     var time = 0f
         private set
     private var fireCooldown = 0f
+    private val buzz = BuzzQueue()
+
+    override fun drainBuzz() = buzz.drain()
     private var diveTimer = 2f
     private var nextLife = LIFE_EVERY
 
@@ -250,6 +253,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
             Power.SHIELD -> shield = true
             Power.LIFE -> lives = (lives + 1).coerceAtMost(6)
         }
+        buzz.add(GameBuzz.MEDIUM)
         sparks += Spark(shipX, SHIP_Y - 4f)
     }
 
@@ -387,6 +391,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
             e.hitFlash = 0.15f
             if (e.hp <= 0) {
                 dead += e
+                buzz.add(GameBuzz.LIGHT)
                 sparks += Spark(e.x, e.y)
                 if (e.state == State.FLYBY) {
                     challengeHits++
@@ -411,12 +416,14 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
             bomb?.let { bombs.remove(it) }
             // Щит тримає один удар.
             if (shield) {
+                buzz.add(GameBuzz.MEDIUM)
                 shield = false
                 invulnerable = 1.2f
                 sparks += Spark(shipX, SHIP_Y)
                 return
             }
             sparks += Spark(shipX, SHIP_Y, big = true)
+            buzz.add(GameBuzz.STRONG)
             bombs.clear()
             capsules.clear()
             gun = null

@@ -5,8 +5,8 @@ import kotlin.random.Random
 /**
  * «Блоки» — для тих, хто любить неспішні ігри: класичні фігури з чотирьох квадратів падають у склянку
  * [COLS]×[ROWS]; повний рядок зникає. Очки — лише за рядки (100 / 300 / 500 / 800 за 1–4 одразу, × рівень).
- * Швидкість — як у класичній версії: кожні 10 рядків новий рівень, до 29-го дедалі швидше, далі найшвидше й так
- * і лишається (не обнуляється). Пауза будь-коли; фігура не «прилипає» одразу — є мить, щоб її посунути.
+ * Швидкість — за класичною таблицею, але новий рівень лише кожні [LINES_PER_LEVEL] рядків (у класиці — 10): до 29-го
+ * дедалі швидше, далі найшвидше й так і лишається (не обнуляється). Пауза будь-коли; фігура не «прилипає» одразу — є мить, щоб її посунути.
  */
 internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame {
     /** Склянка: 0 — порожньо, інакше номер фігури + 1. Рядок 0 — верхній. */
@@ -32,6 +32,9 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
         private set
     private var fall = 0f
     private var lockTimer = 0f
+    private val buzz = BuzzQueue()
+
+    override fun drainBuzz() = buzz.drain()
 
     /** Рядки, що зникають (коротка анімація), і скільки ще. */
     var clearing: List<Int> = emptyList()
@@ -159,6 +162,7 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
             board[y * COLS + x] = piece + 1
         }
         val full = (0 until ROWS).filter { y -> (0 until COLS).all { board[y * COLS + it] != 0 } }
+        buzz.add(if (full.size >= 4) GameBuzz.STRONG else if (full.isNotEmpty()) GameBuzz.MEDIUM else GameBuzz.LIGHT)
         if (full.isNotEmpty()) {
             clearing = full
             clearTimer = CLEAR_TIME
@@ -194,7 +198,8 @@ internal class BlocksGame(private val rnd: Random = Random.Default) : ArcadeGame
         const val ROWS = 20
         const val LOCK_DELAY = 0.5f
         const val CLEAR_TIME = 0.3f
-        const val LINES_PER_LEVEL = 10
+        /** Новий рівень кожні 100 рядків — гра довго лишається спокійною. */
+        const val LINES_PER_LEVEL = 100
         private val LINE_SCORE = intArrayOf(0, 100, 300, 500, 800)
 
         /** Кадрів на клітинку для рівнів 1…29+ (як у класичній версії; 29-й і далі — найшвидше). */

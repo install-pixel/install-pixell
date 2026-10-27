@@ -887,7 +887,7 @@
     <string name="game_stars">Gwiezdny patrol</string>
     <string name="game_stars_desc">Szybka. Na dole stateczek, u góry rój obcych; niektórzy nurkują i zrzucają bomby. Z zestrzelonych czasem spadają kapsuły: dwa działa, trzy wachlarzem, szybki ogień, tarcza, życie. Co 4. poziom — bonusowy: przelatują i nie strzelają (100 za każdego, za wszystkich +10000). Poziomy trwają dalej; trzy życia, kolejne co 5000 punktów.</string>
     <string name="game_blocks">Klocki</string>
-    <string name="game_blocks_desc">Spokojna. Figury z czterech kwadracików spadają do szklanki; pełny rząd znika — punkty tylko za rzędy (100–800 × poziom). Klasyczna szybkość: nowy poziom co 10 rzędów, przyspiesza do 29., dalej najszybciej. Pauza — w każdej chwili.</string>
+    <string name="game_blocks_desc">Spokojna. Figury z czterech kwadracików spadają do szklanki; pełny rząd znika — punkty tylko za rzędy (100–800 × poziom). Nowy poziom tylko co 100 rzędów (klasyczna tabela szybkości, przyspiesza do 29., dalej najszybciej). Pauza — w każdej chwili.</string>
     <string name="game_snake">Wąż</string>
     <string name="game_snake_desc">Minimum rysunku: linia i kropka. Przesunięcie — skręt; przed ścianą głowa na chwilę się zatrzymuje — można jeszcze skręcić. Trzy życia; co 5 kropek — nowy poziom, szybciej, a co dwa poziomy — nowe przeszkody. Bonusy: złoto (punkty), ślimak (wolniej), nożyczki (krótszy ogon), serce (życie).</string>
     <string name="game_play">Graj</string>
