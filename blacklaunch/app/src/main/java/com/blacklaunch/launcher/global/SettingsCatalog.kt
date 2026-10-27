@@ -93,6 +93,14 @@ object SettingsCatalog {
                 "habits", "screen time", "app pause", "time limit", "weekly summary",
             ),
         ),
+        Entry(
+            "games", GAMES_ACTION,
+            listOf(
+                "ігри", "гра", "зоряний патруль", "блоки", "змійка",
+                "gry", "gra", "gwiezdny patrol", "klocki", "wąż",
+                "games", "game", "star patrol", "blocks", "snake",
+            ),
+        ),
         Entry("monitor", MONITOR_ACTION, listOf("моніторинг", "monitoring", "стан системи", "оперативна пам'ять", "температура телефона", "монітор", "dashboard", "system dashboard", "panel", "panel systemu", "ram")),
     )
 
@@ -104,6 +112,9 @@ object SettingsCatalog {
 
     /** «Звички й екранний час» Black Glass. */
     const val WELLBEING_ACTION = "com.blacklaunch.launcher.WELLBEING"
+
+    /** «Ігри» Black Glass. */
+    const val GAMES_ACTION = "com.blacklaunch.launcher.GAMES"
 
     /** «Мої команди» Black Glass (автоматизації, голос і режими) — сторінка налаштувань лаунчера. */
     const val COMMANDS_ACTION = "com.blacklaunch.launcher.COMMANDS"

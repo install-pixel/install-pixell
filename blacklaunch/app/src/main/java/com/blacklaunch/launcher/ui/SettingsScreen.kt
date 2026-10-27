@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
@@ -415,6 +416,7 @@ fun SettingsScreen(
                 MenuRow(Icons.Filled.Home, R.string.section_home, R.string.section_home_hint) { onNavigate(SettingsNav.HomeScreen) }
                 MenuRow(Icons.Filled.Person, R.string.settings_profiles, R.string.section_profiles_hint) { onNavigate(SettingsNav.Profiles) }
                 MenuRow(painterResource(R.drawable.ic_timer), R.string.wb_title, R.string.wb_menu_hint) { onNavigate(SettingsNav.Wellbeing) }
+                MenuRow(Icons.Filled.Star, R.string.games_title, R.string.games_menu_hint) { onNavigate(SettingsNav.Games) }
                 MenuRow(painterResource(R.drawable.ic_palette), R.string.section_appearance, R.string.section_appearance_hint) {
                     onNavigate(SettingsNav.Appearance)
                 }

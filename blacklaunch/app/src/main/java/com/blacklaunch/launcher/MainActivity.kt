@@ -63,6 +63,7 @@ import com.blacklaunch.launcher.ui.NowPlayingBar
 import com.blacklaunch.launcher.ui.NowPlayingScreen
 import com.blacklaunch.launcher.ui.PauseAppRow
 import com.blacklaunch.launcher.ui.WellbeingPage
+import com.blacklaunch.launcher.ui.GamesPage
 import com.blacklaunch.launcher.ui.SwitchRow
 import com.blacklaunch.launcher.ui.Note
 import com.blacklaunch.launcher.ui.ActionOption
@@ -927,6 +928,12 @@ class MainActivity : ComponentActivity() {
                     requestedSettingsPage = SettingsNav.Profiles
                     settingsRequest.value++
                 }
+            } else if (result.action == SettingsCatalog.GAMES_ACTION) {
+                viewModel.forgetSearch()
+                requestSettings {
+                    requestedSettingsPage = SettingsNav.Games
+                    settingsRequest.value++
+                }
             } else if (result.action == SettingsCatalog.WELLBEING_ACTION) {
                 viewModel.forgetSearch()
                 requestSettings {
@@ -1430,6 +1437,21 @@ class MainActivity : ComponentActivity() {
                     onGrantUsage = ::openUsageAccess,
                     week = week,
                     appLabel = ::appLabel,
+                )
+            }
+            SettingsNav.Games -> {
+                val gamesOn by app.games.enabled.collectAsStateWithLifecycle()
+                val best by app.games.best.collectAsStateWithLifecycle()
+                val saved by app.games.saved.collectAsStateWithLifecycle()
+                GamesPage(
+                    onBack = { onNavigate(SettingsNav.Main) },
+                    enabled = gamesOn,
+                    onEnabled = app.games::setEnabled,
+                    best = best,
+                    saved = saved,
+                    onPlay = { kind, fresh ->
+                        if (app.focus.running()) toast(R.string.game_focus_blocked) else startActivity(GameActivity.intent(this, kind, fresh))
+                    },
                 )
             }
             SettingsNav.PickPauseApps -> {

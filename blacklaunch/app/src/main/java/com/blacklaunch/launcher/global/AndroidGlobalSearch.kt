@@ -61,7 +61,12 @@ class AndroidGlobalSearch(
         fun limit(kind: GroupKind) = (if (kind == expanded) EXPANDED_LIMIT else LIMIT) + 1
         buildList {
             if (GroupKind.SETTINGS in kinds) {
-                group(GroupKind.SETTINGS) { SettingsCatalog.search(prepared).map { it.copy(title = settingTitle(it.entryId)) } }
+                group(GroupKind.SETTINGS) {
+                    SettingsCatalog.search(prepared)
+                        // Ігри вимкнено — у пошуку їх теж немає.
+                        .filter { it.action != SettingsCatalog.GAMES_ACTION || (appContext as? com.blacklaunch.launcher.BlackLaunchApp)?.games?.enabled?.value != false }
+                        .map { it.copy(title = settingTitle(it.entryId)) }
+                }
             }
             if (GroupKind.SHORTCUTS in kinds) group(GroupKind.SHORTCUTS) { shortcuts(prepared, appPackages) }
             if (GroupKind.CONTACTS in kinds && granted(Manifest.permission.READ_CONTACTS)) {

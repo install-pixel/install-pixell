@@ -173,6 +173,14 @@
             android:taskAffinity="com.blacklaunch.launcher.focus"
             android:autoRemoveFromRecents="true"
             android:theme="@style/Theme.BlackLaunch" />
+        <!-- Ігри в олівцевому стилі: окреме вікно на весь екран, лише для Black Glass. -->
+        <activity
+            android:name=".GameActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.blacklaunch.launcher.games"
+            android:autoRemoveFromRecents="true"
+            android:theme="@style/Theme.BlackLaunch" />
         <!-- Кінець фокус-таймера: один будильник, лише для Black Glass. -->
         <receiver
             android:name=".profiles.FocusReceiver"
