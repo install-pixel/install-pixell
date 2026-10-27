@@ -56,6 +56,9 @@ internal data class CatFrame(
     val time: Float,
     val walkPhase: Float,
     val dazed: Boolean,
+    /** Поза, з якої щойно перейшли, і наскільки вже перейшли (0…1) — щоб рухи не «вирізались». */
+    val prev: CatFrame? = null,
+    val blend: Float = 1f,
 )
 
 /** Поза на кадр; кути в градусах (0 — донизу, додатні — вперед). */
@@ -78,12 +81,12 @@ internal class CatPose {
 
 private fun ease(t: Float) = (1f - cos(t.coerceIn(0f, 1f) * PI.toFloat())) / 2f
 
-/** Плавно перейти в позу на початку кроку й вийти з неї наприкінці. */
-private fun settle(p: Float, inPart: Float = 0.15f, outPart: Float = 0.15f): Float = when {
-    p < inPart -> ease(p / inPart)
-    p > 1f - outPart -> ease((1f - p) / outPart)
-    else -> 1f
-}
+/**
+ * Колись поза плавно входила й виходила в межах кроку; тепер переходи між кроками робить змішування поз
+ * ([CatFrame.prev]), тож усередині кроку поза тримається повністю (інакше між «сів» і «ліг» він би вставав).
+ */
+@Suppress("UNUSED_PARAMETER")
+private fun settle(p: Float, inPart: Float = 0.15f, outPart: Float = 0.15f): Float = 1f
 
 internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
     val p = f.progress
@@ -192,7 +195,7 @@ internal sealed interface CatSeg {
 internal enum class CatFill { NONE, BLACK, PENCIL }
 
 /** Одна фігура: контур, заливка, товщина штриха (0 — без штриха) і яскравість. */
-internal data class CatShape(val segs: List<CatSeg>, val fill: CatFill, val width: Float, val alpha: Float)
+internal data class CatShape(val segs: List<CatSeg>, val fill: CatFill, val width: Float, val alpha: Float, val fillAlpha: Float = 1f)
 
 /** Будує фігури з поворотами (нахил тіла, голова) — точки одразу перетворені, екрану лишається намалювати. */
 private class CatPen {
@@ -273,8 +276,43 @@ internal const val CAT_HEIGHT = 64f
 
 /** Усі фігури кадру — від дальніх до ближніх (порядок і є «що що закриває»). */
 internal fun catShapes(f: CatFrame): List<CatShape> {
+    val prev = f.prev
+    val e = ease(f.blend)
+    if (prev != null && e < 1f) {
+        val lyingNow = f.act == CatAct.LIE
+        // Ліг / підвівся — інший малюнок: плавно перетікає один в одного.
+        if (lyingNow != (prev.act == CatAct.LIE)) {
+            return fade(catShapes(prev.copy(prev = null)), 1f - e) + fade(catShapes(f.copy(prev = null)), e)
+        }
+        if (!lyingNow) return standingShapes(f, mix(catPose(prev), catPose(f), e))
+    }
     if (f.act == CatAct.LIE) return lyingShapes(f)
-    val pose = catPose(f)
+    return standingShapes(f, catPose(f))
+}
+
+private fun fade(shapes: List<CatShape>, k: Float) = shapes.map { it.copy(alpha = it.alpha * k, fillAlpha = it.fillAlpha * k) }
+
+private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+
+/** Проміжна поза між [a] і [b]. */
+private fun mix(a: CatPose, b: CatPose, t: Float) = CatPose().apply {
+    drop = lerp(a.drop, b.drop, t)
+    lean = lerp(a.lean, b.lean, t)
+    legFar = lerp(a.legFar, b.legFar, t)
+    legNear = lerp(a.legNear, b.legNear, t)
+    legLen = lerp(a.legLen, b.legLen, t)
+    sitting = lerp(a.sitting, b.sitting, t)
+    armNear = lerp(a.armNear, b.armNear, t)
+    armFar = lerp(a.armFar, b.armFar, t)
+    armLen = lerp(a.armLen, b.armLen, t)
+    headTilt = lerp(a.headTilt, b.headTilt, t)
+    headDrop = lerp(a.headDrop, b.headDrop, t)
+    tailWag = lerp(a.tailWag, b.tailWag, t)
+    tailDown = if (t < 0.5f) a.tailDown else b.tailDown
+    bob = lerp(a.bob, b.bob, t)
+}
+
+private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
     val pen = CatPen()
     pen.rotate(pose.lean, 0f, 0f)
     val hx = 0f

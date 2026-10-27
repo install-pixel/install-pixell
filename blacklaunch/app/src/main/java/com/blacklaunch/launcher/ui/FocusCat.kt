@@ -99,6 +99,9 @@ private class CatSim {
     var x = 0f
     var y = 0f
     var dirX = 1f
+
+    /** Куди зараз дивиться на малюнку: плавно йде за [dirX]. */
+    var facing = 1f
     var slope = 0f
     var act = CatAct.WALK
     var actTime = 0f
@@ -133,6 +136,7 @@ private class CatSim {
             if (!blocked(x, y, w, h, u, fences)) break
         }
         dirX = if (rnd.nextBoolean()) 1f else -1f
+        facing = dirX
         slope = randomSlope()
         queue.clear()
         start(CatStep(CatAct.WALK, 0f))
@@ -190,6 +194,9 @@ private class CatSim {
 
     fun step(dt: Float, w: Float, h: Float, u: Float, fences: List<Rect>) {
         time += dt
+        blendTime += dt
+        // Розворот не миттєвий: котик ніби обертається (стискається й розгортається в інший бік).
+        facing += (dirX - facing) * (dt * 9f).coerceAtMost(1f)
         if (act == CatAct.HELD) return
         actTime += dt
         when (act) {
@@ -307,7 +314,29 @@ private class CatSim {
         start(queue.removeFirstOrNull() ?: CatStep(CatAct.WALK, 0f))
     }
 
+    /** Поза, з якої переходимо, і скільки вже минуло від переходу. */
+    private var prevFrame: CatFrame? = null
+    private var blendTime = 1f
+    private var blendLength = 0.3f
+
+    fun frame(): CatFrame {
+        val now = CatFrame(act, progress, actTime, time, walkPhase, dazed)
+        val prev = prevFrame ?: return now
+        val blend = (blendTime / blendLength).coerceIn(0f, 1f)
+        return if (blend >= 1f) now else now.copy(prev = prev, blend = blend)
+    }
+
     private fun start(step: CatStep) {
+        // Запам'ятовуємо, яким котик був щойно (разом із незавершеним переходом), — нова поза виростає з неї.
+        prevFrame = frame().copy(prev = null, blend = 1f).takeIf { prevFrame != null || act != step.act }
+        blendTime = 0f
+        // Падіння й удар — швидко; сісти, лягти, підвестись — повільніше.
+        blendLength = when {
+            step.dazed || step.act == CatAct.RECOIL || step.act == CatAct.LAND -> 0.12f
+            step.act == CatAct.HELD -> 0.15f
+            step.act == CatAct.LIE || act == CatAct.LIE -> 0.35f
+            else -> 0.32f
+        }
         if (step.act == CatAct.LOOK_AROUND) {
             lookTurn = chance(0.45f)
             lookTurned = false
@@ -336,10 +365,10 @@ private val Pencil = Color(0xFFEDEDED)
 
 /** Фігури з [catShapes] — олівцем: чорна заливка закриває те, що позаду; штрих двічі — основний і ледь зсунутий. */
 private fun DrawScope.drawCat(cat: CatSim, u: Float) {
-    val frame = CatFrame(cat.act, cat.progress, cat.actTime, cat.time, cat.walkPhase, cat.dazed)
+    val frame = cat.frame()
     withTransform({
         translate(cat.x, cat.y)
-        scale(cat.dirX * u, u, pivot = Offset.Zero)
+        scale(cat.facing * u, u, pivot = Offset.Zero)
     }) {
         catShapes(frame).forEach { shape ->
             val path = Path().apply {
@@ -353,7 +382,7 @@ private fun DrawScope.drawCat(cat: CatSim, u: Float) {
                 }
             }
             when (shape.fill) {
-                CatFill.BLACK -> drawPath(path, Color.Black)
+                CatFill.BLACK -> drawPath(path, Color.Black.copy(alpha = shape.fillAlpha))
                 CatFill.PENCIL -> drawPath(path, Pencil.copy(alpha = shape.alpha))
                 CatFill.NONE -> Unit
             }
