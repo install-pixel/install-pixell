@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -275,15 +276,24 @@ fun FocusStartDialog(
 private fun DurationChip(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(12.dp)
+    // «Аркуш»: вибране — обведене олівцем, решта — просто написані тьмяніше.
+    val sheet = LocalSheet.current
     Text(
         text = text,
-        color = if (selected) Color.Black else Oled.TextPrimary,
+        color = when {
+            sheet -> if (selected) Oled.TextPrimary else Oled.TextSecondary
+            selected -> Color.Black
+            else -> Oled.TextPrimary
+        },
         fontSize = 14.sp,
         textAlign = TextAlign.Center,
         modifier = modifier
-            .clip(shape)
-            .then(if (selected) Modifier.background(Oled.TextPrimary) else Modifier.background(Oled.Knob))
-            .border(1.dp, Oled.Glint, shape)
+            .then(
+                when {
+                    sheet -> if (selected) Modifier.pencilFrame(12.dp, seed = text.length).clip(shape) else Modifier.clip(shape)
+                    else -> Modifier.clip(shape).background(if (selected) SolidColor(Oled.TextPrimary) else Oled.Knob).border(1.dp, Oled.Glint, shape)
+                },
+            )
             .clickable { haptics.tap(); onClick() }
             .padding(vertical = 8.dp),
     )
@@ -353,13 +363,10 @@ fun FocusTimerScreen(
             }
             LaunchedEffect(chipShown) { if (!chipShown) chip = null }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                val shape = RoundedCornerShape(28.dp)
                 Column(
                     modifier = Modifier
                         .onGloballyPositioned { fence = it.boundsInRoot() }
-                        .clip(shape)
-                        .background(Color(0xFF0A0A0A))
-                        .border(1.dp, Oled.Glint, shape)
+                        .glassBox(28.dp, seed = 53, fill = SolidColor(Color(0xFF0A0A0A)))
                         .padding(horizontal = 32.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -381,13 +388,10 @@ private const val PINNED_VISIBLE_MS = 3_000L
 /** Позначка вгорі: закріплено / Android питає / не закріплено + «Закріпити». */
 @Composable
 private fun PinChip(pin: PinState, onPin: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(Color(0xFF0A0A0A))
-            .border(1.dp, Oled.Glint, shape)
+            .glassBox(16.dp, seed = 59, fill = SolidColor(Color(0xFF0A0A0A)), paper = Color.Black)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

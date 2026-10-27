@@ -43,6 +43,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -214,7 +215,7 @@ fun GameScreen(
             Text(stringResource(R.string.game_best, maxOf(best, game.score)), color = Oled.TextSecondary, fontSize = HudSmall, maxLines = 1)
         }
         // Висота другого рядка стала (два рядки тексту завжди) — коли з'являється «щит» чи зникає, поле не стрибає.
-        Row(Modifier.fillMaxWidth().height(40.dp).padding(start = 12.dp, bottom = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(if (LocalSheet.current) 48.dp else 40.dp).padding(start = 12.dp, bottom = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
                     when (val g = game) {
@@ -326,12 +327,9 @@ private val HudSmall = 12.sp
 /** Чорна скляна плашка під написами поверх поля (рівень, «Серія», «Кораблик збито»). */
 @Composable
 private fun Plate(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
     Column(
         modifier
-            .clip(shape)
-            .background(Color(0xE6000000))
-            .border(1.dp, Oled.Glint, shape)
+            .glassBox(16.dp, seed = 41, fill = SolidColor(Color(0xE6000000)), paper = Color(0xE6000000))
             .padding(horizontal = 18.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) { content() }
@@ -339,13 +337,10 @@ private fun Plate(modifier: Modifier = Modifier, content: @Composable () -> Unit
 
 @Composable
 private fun Overlay(title: String, note: String, buttons: @Composable () -> Unit) {
-    val shape = RoundedCornerShape(24.dp)
     Column(
         Modifier
             .padding(24.dp)
-            .clip(shape)
-            .background(Color(0xF20A0A0A))
-            .border(1.dp, Oled.Glint, shape)
+            .glassBox(24.dp, seed = 43, fill = SolidColor(Color(0xF20A0A0A)), paper = Color(0xF2000000))
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -356,14 +351,24 @@ private fun Overlay(title: String, note: String, buttons: @Composable () -> Unit
     }
 }
 
-/** Рамка поля — однакова в усіх іграх: заокруглений прямокутник олівцем. */
-private fun DrawScope.fieldFrame(o: Offset, w: Float, h: Float) {
+/** Рамка поля — однакова в усіх іграх: заокруглений прямокутник олівцем; в «Аркуші» — намальований від руки. */
+private fun DrawScope.fieldFrame(o: Offset, w: Float, h: Float, sheet: Boolean = false) {
     val pad = 3.dp.toPx()
+    if (sheet) {
+        val frameSize = Size(w + 2 * pad, h + 2 * pad)
+        // Контур рахуємо лише коли змінився розмір поля, а не щокадру.
+        val cached = handFrame?.takeIf { it.first == frameSize } ?: (frameSize to taperedPath(pencilLoop(frameSize, 10.dp.toPx(), 47, 1.3.dp.toPx()), 2.2.dp.toPx())).also { handFrame = it }
+        translate(o.x - pad, o.y - pad) { drawPath(cached.second, Ink.copy(alpha = 0.6f)) }
+        return
+    }
     val frame = Path().apply {
         addRoundRect(androidx.compose.ui.geometry.RoundRect(Rect(o.x - pad, o.y - pad, o.x + w + pad, o.y + h + pad), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx())))
     }
     pencil(frame, 1.6.dp.toPx(), 0.45f)
 }
+
+/** Остання рамка поля «від руки» (розмір → контур). */
+private var handFrame: Pair<Size, Path>? = null
 
 /** Поле гри з потрібними пропорціями посередині вільного місця. */
 private fun DrawScope.fit(w: Float, h: Float): Pair<Float, Offset> {
@@ -375,6 +380,7 @@ private fun DrawScope.fit(w: Float, h: Float): Pair<Float, Offset> {
 
 @Composable
 private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableLongState, enabled: Boolean) {
+    val sheet = LocalSheet.current
     // Масштаб поля для дотиків — не стан (оновлюється під час малювання).
     val view = remember { FieldView() }
     Canvas(
@@ -399,7 +405,7 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
         view.origin = o
         val p = { x: Float, y: Float -> Offset(o.x + x * s, o.y + y * s) }
         // Рамка поля й зорі, що повільно пливуть униз.
-        fieldFrame(o, StarsGame.W * s, StarsGame.H * s)
+        fieldFrame(o, StarsGame.W * s, StarsGame.H * s, sheet)
         // Усе, що летить, — лише в межах поля (тих, хто вилітає за край чи влітає, не видно поверх рядка очок).
         clipRect(o.x, o.y, o.x + StarsGame.W * s, o.y + StarsGame.H * s) {
         for (i in 0 until 46) {
@@ -544,6 +550,7 @@ private fun DrawScope.drawEnemy(e: StarsGame.Enemy, c: Offset, s: Float, time: F
 
 @Composable
 private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.MutableLongState, enabled: Boolean) {
+    val sheet = LocalSheet.current
     val density = LocalDensity.current
     val haptics = LocalHaptics.current
     val view = remember { FieldView() }
@@ -609,7 +616,7 @@ private fun BlocksField(game: BlocksGame, frame: androidx.compose.runtime.Mutabl
         view.scale = s
         val cell = s
         val glass = Rect(o.x, o.y, o.x + BlocksGame.COLS * cell, o.y + BlocksGame.ROWS * cell)
-        fieldFrame(o, glass.width, glass.height)
+        fieldFrame(o, glass.width, glass.height, sheet)
         fun cellAt(x: Int, y: Int, type: Int, alpha: Float, ghost: Boolean = false) {
             if (y < 0) return
             val r = Rect(glass.left + x * cell + cell * 0.1f, glass.top + y * cell + cell * 0.1f, glass.left + (x + 1) * cell - cell * 0.1f, glass.top + (y + 1) * cell - cell * 0.1f)
@@ -673,6 +680,7 @@ private fun DrawScope.hatch(r: Rect, type: Int, cell: Float, alpha: Float) {
 
 @Composable
 private fun SnakeField(game: SnakeGame, frame: androidx.compose.runtime.MutableLongState, enabled: Boolean) {
+    val sheet = LocalSheet.current
     val swipe = with(LocalDensity.current) { 22.dp.toPx() }
     Canvas(
         Modifier.fillMaxSize().pointerInput(enabled) {
@@ -700,7 +708,7 @@ private fun SnakeField(game: SnakeGame, frame: androidx.compose.runtime.MutableL
         frame.longValue
         val (s, o) = fit(SnakeGame.COLS.toFloat(), SnakeGame.ROWS.toFloat())
         val center = { c: Int -> Offset(o.x + (c % SnakeGame.COLS + 0.5f) * s, o.y + (c / SnakeGame.COLS + 0.5f) * s) }
-        fieldFrame(o, SnakeGame.COLS * s, SnakeGame.ROWS * s)
+        fieldFrame(o, SnakeGame.COLS * s, SnakeGame.ROWS * s, sheet)
         // Перешкоди — квадратики олівцем з хрестиком.
         game.obstacles.forEach { c ->
             val m = center(c)

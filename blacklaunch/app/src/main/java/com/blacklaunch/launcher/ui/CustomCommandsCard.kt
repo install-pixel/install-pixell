@@ -47,7 +47,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -233,7 +232,7 @@ private fun CommandEditor(
         if (conditions.isEmpty()) Note(stringResource(R.string.condition_always))
         conditions.forEach { condition ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+                HandIcon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(conditionText(condition), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 SmallButton(Icons.Filled.Close, R.string.custom_step_remove, onClick = { conditions = conditions - condition })
@@ -243,7 +242,7 @@ private fun CommandEditor(
         Text(stringResource(R.string.command_auto_title), color = Oled.TextSecondary, fontSize = 13.sp)
         triggers.forEach { trigger ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+                HandIcon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(triggerText(trigger), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 SmallButton(Icons.Filled.Close, R.string.custom_step_remove, onClick = { triggers = triggers - trigger })
@@ -354,7 +353,7 @@ private fun StepRow(number: Int, step: CommandStep, onConditions: () -> Unit, on
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text("$number", color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.width(18.dp))
-        Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
+        HandIcon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(step.text, color = Oled.TextPrimary, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -408,7 +407,7 @@ private fun StepConditionsDialog(
 private fun SmallButton(icon: ImageVector, @StringRes description: Int, onClick: (() -> Unit)?, highlighted: Boolean = false) {
     val haptics = LocalHaptics.current
     IconButton(onClick = { haptics.tap(); onClick?.invoke() }, enabled = onClick != null, modifier = Modifier.size(36.dp)) {
-        Icon(
+        HandIcon(
             icon,
             contentDescription = stringResource(description),
             tint = when {

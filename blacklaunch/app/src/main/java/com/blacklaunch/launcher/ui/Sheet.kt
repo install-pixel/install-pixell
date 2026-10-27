@@ -131,9 +131,14 @@ fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.8f,
  * кольором [ink] (наприклад, вишневим, поки слухає мікрофон).
  */
 @Composable
-internal fun Modifier.glassBox(radius: Dp, seed: Int = 0, fill: Brush = Oled.Surface, ink: Color = SheetInk): Modifier {
+internal fun Modifier.glassBox(radius: Dp, seed: Int = 0, fill: Brush = Oled.Surface, ink: Color = SheetInk, paper: Color? = null): Modifier {
     val shape = RoundedCornerShape(radius)
-    return if (LocalSheet.current) pencilFrame(radius, seed, ink = ink).clip(shape) else clip(shape).background(fill).border(1.dp, Oled.Glint, shape)
+    return if (LocalSheet.current) {
+        // [paper] — чорне тло під рамкою, коли плашка лежить поверх чогось (фігур у грі).
+        (if (paper != null) background(paper, shape) else this).pencilFrame(radius, seed, ink = ink).clip(shape)
+    } else {
+        clip(shape).background(fill).border(1.dp, Oled.Glint, shape)
+    }
 }
 
 /** Значок на початку рядка (і відступ після нього). В «Аркуші» не малюється — лише назва. */

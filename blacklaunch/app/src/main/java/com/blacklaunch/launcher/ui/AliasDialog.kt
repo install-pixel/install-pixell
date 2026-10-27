@@ -10,7 +10,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -52,7 +51,7 @@ fun AliasDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(alias, color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
                         IconButton(onClick = { onRemove(alias) }) {
-                            Icon(
+                            HandIcon(
                                 Icons.Filled.Close,
                                 contentDescription = stringResource(R.string.alias_remove, alias),
                                 tint = Oled.TextSecondary,

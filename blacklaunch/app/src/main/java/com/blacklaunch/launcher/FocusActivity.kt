@@ -17,6 +17,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.blacklaunch.launcher.ui.FocusTimerScreen
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.ui.LocalHaptics
+import com.blacklaunch.launcher.ui.SheetTheme
 import com.blacklaunch.launcher.ui.PinState
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +71,7 @@ class FocusActivity : ComponentActivity() {
             BackHandler { if (current?.strict != true) minimize() }
             BlackLaunchTheme {
                 CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
+                    SheetTheme(appearance.sheet) {
                     if (current != null) {
                         FocusTimerScreen(
                             profileName = profiles.firstOrNull { it.id == current.profileId }?.name.orEmpty(),
@@ -80,6 +82,7 @@ class FocusActivity : ComponentActivity() {
                             onMinimize = if (current.strict) null else ::minimize,
                             onEarlyExit = { app.focus.endEarly() },
                         )
+                    }
                     }
                 }
             }

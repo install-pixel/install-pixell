@@ -17,6 +17,7 @@ import com.blacklaunch.launcher.games.GameKind
 import com.blacklaunch.launcher.ui.GameScreen
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.ui.LocalHaptics
+import com.blacklaunch.launcher.ui.SheetTheme
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 
 /**
@@ -42,6 +43,7 @@ class GameActivity : ComponentActivity() {
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
             BlackLaunchTheme {
                 CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
+                    SheetTheme(appearance.sheet) {
                     GameScreen(
                         kind = kind,
                         saved = app.games.state(kind),
@@ -51,6 +53,7 @@ class GameActivity : ComponentActivity() {
                         onExit = ::finish,
                         active = active,
                     )
+                    }
                 }
             }
         }

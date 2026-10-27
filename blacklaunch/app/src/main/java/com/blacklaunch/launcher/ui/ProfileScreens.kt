@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -85,7 +84,7 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, content: @Composabl
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
+                HandIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
             }
             Text(title, color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
         }
@@ -176,7 +175,7 @@ private fun ProfileRow(profile: LauncherProfile, active: Boolean, onSetActive: (
             Text("$apps · ${stringResource(profile.soundMode.label())}", color = Oled.TextSecondary, fontSize = 13.sp)
         }
         IconButton(onClick = onEdit) {
-            Icon(Icons.Filled.Edit, stringResource(R.string.profile_edit), tint = Oled.TextSecondary)
+            HandIcon(Icons.Filled.Edit, stringResource(R.string.profile_edit), tint = Oled.TextSecondary)
         }
     }
 }
@@ -351,7 +350,7 @@ fun ProfileEditScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(extra.label, color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
                         IconButton(onClick = { onRemoveNotificationExtra(extra) }) {
-                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
+                            HandIcon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
                         }
                     }
                 }
@@ -432,13 +431,13 @@ private fun PinnedRow(
             }
         }
         IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
-            Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up), tint = if (canMoveUp) Oled.TextSecondary else Color(0xFF333333))
+            HandIcon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up), tint = if (canMoveUp) Oled.TextSecondary else Color(0xFF333333))
         }
         IconButton(onClick = { onMove(1) }, enabled = canMoveDown) {
-            Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.move_down), tint = if (canMoveDown) Oled.TextSecondary else Color(0xFF333333))
+            HandIcon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.move_down), tint = if (canMoveDown) Oled.TextSecondary else Color(0xFF333333))
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Close, stringResource(R.string.pinned_remove), tint = Oled.TextSecondary)
+            HandIcon(Icons.Filled.Close, stringResource(R.string.pinned_remove), tint = Oled.TextSecondary)
         }
     }
 }
@@ -464,7 +463,7 @@ fun AppPickerScreen(
     Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
+                HandIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
             }
             Text(stringResource(R.string.pick_app_title), color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
         }
@@ -591,7 +590,7 @@ fun AppListScreen(
     Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
+                HandIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = Oled.TextPrimary)
             }
             Text(title, color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
         }
