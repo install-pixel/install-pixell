@@ -210,7 +210,7 @@ private fun DrawScope.drawHandGlyph(glyph: MediaGlyph, color: Color, seed: Int) 
             }
         }
     }
-    val stroke = if (glyph == MediaGlyph.PAUSE) w * 0.13f else w * 0.09f
+    val stroke = if (glyph == MediaGlyph.PAUSE) w * 0.15f else w * 0.11f
     drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
     translate(stroke * 0.5f, stroke * 0.35f) {
         drawPath(path, color.copy(alpha = color.alpha * 0.3f), style = Stroke(stroke * 0.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))

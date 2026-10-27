@@ -29,8 +29,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -50,7 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.ui.theme.Oled
+import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.random.Random
 
 /*
  * Тема «Аркуш» (етап 12d): усе ніби написано й намальовано від руки білим олівцем на чорному аркуші —
@@ -112,9 +115,18 @@ internal val SheetInk = Color(0xFFEDEDED)
  * Рамка «від руки»: заокруглений прямокутник двома штрихами олівцем, сторони ледь хвилясті (кожна рамка — трохи
  * інакша, за [seed]), щоб не виглядало як лінійка.
  */
-fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.75f, width: Dp = 1.4.dp, ink: Color = SheetInk): Modifier = drawBehind {
-    drawPencilFrame(radius.toPx(), seed, alpha, width.toPx(), ink)
-}
+fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.8f, width: Dp = 2.2.dp, ink: Color = SheetInk): Modifier =
+    drawWithCache {
+        // Контур рахуємо раз на розмір, а не щокадру.
+        val main = pencilLoop(size, radius.toPx(), seed, 1.3.dp.toPx())
+        val ghost = pencilLoop(size, radius.toPx(), seed + 101, 1.6.dp.toPx())
+        val w = width.toPx()
+        onDrawBehind {
+            drawPath(main, ink.copy(alpha = alpha), style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            // Другий, тьмяніший і трохи інакший штрих — як коли олівцем обводять двічі.
+            drawPath(ghost, ink.copy(alpha = alpha * 0.35f), style = Stroke(w * 0.55f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+    }
 
 /**
  * Рамка плашки: звичайно — скло (темне тло [fill] і тонкий відблиск), в «Аркуші» — рамка олівцем без тла
@@ -134,33 +146,70 @@ internal fun LeadingIcon(size: Dp = 40.dp, content: @Composable BoxScope.() -> U
     Spacer(Modifier.width(16.dp))
 }
 
-internal fun DrawScope.drawPencilFrame(r: Float, seed: Int, alpha: Float, w: Float, ink: Color = SheetInk) {
-    val wob = 1.2.dp.toPx()
-    fun j(i: Int) = sin(seed * 1.7f + i * 2.3f) * wob
-    val path = Path().apply {
-        val right = size.width
-        val bottom = size.height
-        moveTo(r + j(1), j(2))
-        quadraticTo(right / 2, j(3) * 1.5f, right - r + j(4), j(5))
-        quadraticTo(right + j(6), j(7), right + j(8), r + j(9))
-        quadraticTo(right + j(10) * 1.5f, bottom / 2, right + j(11), bottom - r + j(12))
-        quadraticTo(right + j(13), bottom + j(14), right - r + j(15), bottom + j(16))
-        quadraticTo(right / 2, bottom + j(17) * 1.5f, r + j(18), bottom + j(19))
-        quadraticTo(j(20), bottom + j(21), j(22), bottom - r + j(23))
-        quadraticTo(j(24) * 1.5f, bottom / 2, j(25), r + j(26))
-        quadraticTo(j(27), j(28), r + j(29) + 2f, j(30))
+/**
+ * Контур «від руки» навколо заокругленого прямокутника (коло — коли радіус ≥ половини сторони): одна плавна лінія
+ * з повільним тремтінням, що починається в іншому місці для кожного [seed] і трохи заходить за початок — як коли
+ * малюєш рамку олівцем одним рухом.
+ */
+internal fun pencilLoop(size: Size, radius: Float, seed: Int, wobble: Float): Path {
+    val w = size.width
+    val h = size.height
+    if (w <= 0f || h <= 0f) return Path()
+    val r = radius.coerceAtMost(minOf(w, h) / 2f).coerceAtLeast(0.5f)
+    val straightW = w - 2 * r
+    val straightH = h - 2 * r
+    val arc = (Math.PI / 2 * r).toFloat()
+    val perimeter = 2 * straightW + 2 * straightH + 4 * arc
+    // Точка на контурі за відстанню від верхнього лівого кінця верхньої сторони (за годинниковою стрілкою).
+    fun point(d0: Float): Offset {
+        var d = ((d0 % perimeter) + perimeter) % perimeter
+        fun corner(cx: Float, cy: Float, from: Double): Offset {
+            val a = from + d / r
+            return Offset(cx + r * cos(a).toFloat(), cy + r * sin(a).toFloat())
+        }
+        if (d < straightW) return Offset(r + d, 0f)
+        d -= straightW
+        if (d < arc) return corner(w - r, r, -Math.PI / 2)
+        d -= arc
+        if (d < straightH) return Offset(w, r + d)
+        d -= straightH
+        if (d < arc) return corner(w - r, h - r, 0.0)
+        d -= arc
+        if (d < straightW) return Offset(w - r - d, h)
+        d -= straightW
+        if (d < arc) return corner(r, h - r, Math.PI / 2)
+        d -= arc
+        if (d < straightH) return Offset(0f, h - r - d)
+        d -= straightH
+        return corner(r, r, Math.PI)
     }
-    drawPath(path, ink.copy(alpha = alpha), style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    // Другий, ледь зсунутий тьмяний штрих — як від олівця.
-    translateBy(Offset(w * 0.6f, w * 0.4f)) {
-        drawPath(path, ink.copy(alpha = alpha * 0.3f), style = Stroke(w * 0.6f, cap = StrokeCap.Round))
+    val random = Random(seed)
+    val start = random.nextFloat() * perimeter
+    val overlap = perimeter * (0.05f + random.nextFloat() * 0.04f)
+    val p1 = random.nextFloat() * 6.28f
+    val p2 = random.nextFloat() * 6.28f
+    // Повільні хвилі (2–3 на весь контур); на малих фігурах — слабші, щоб коло не ставало кутастим.
+    val f1 = 2 * 6.2832f / perimeter
+    val f2 = 3 * 6.2832f / perimeter
+    val wob = wobble * (0.45f + perimeter / 2500f).coerceAtMost(1f)
+    val total = perimeter + overlap
+    val steps = (total / 4f).toInt().coerceIn(48, 600)
+    val centre = Offset(w / 2, h / 2)
+    return Path().apply {
+        for (i in 0..steps) {
+            val t = i / steps.toFloat()
+            val d = start + total * t
+            val base = point(d)
+            // Тремтіння — від центру назовні/всередину. Лінія починається трохи всередині, а закінчується, заходячи
+            // за початок назовні, — видно, де олівець замкнув рамку.
+            val head = ((0.1f - t) / 0.1f).coerceAtLeast(0f)
+            val tail = ((t - 0.9f) / 0.1f).coerceAtLeast(0f)
+            val drift = wob * (0.65f * sin(d * f1 + p1) + 0.35f * sin(d * f2 + p2)) + wob * 1.6f * tail * tail - wob * 1.2f * head * head
+            val dir = (base - centre).let { v -> val len = v.getDistance().coerceAtLeast(1f); Offset(v.x / len, v.y / len) }
+            val pt = base + dir * drift
+            if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
+        }
     }
-}
-
-private inline fun DrawScope.translateBy(o: Offset, block: DrawScope.() -> Unit) {
-    drawContext.transform.translate(o.x, o.y)
-    block()
-    drawContext.transform.translate(-o.x, -o.y)
 }
 
 /** Хвиляста риска олівцем (перекреслення вимкненого, підкреслення вибраного). */
@@ -170,7 +219,7 @@ internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int,
         moveTo(from, y + sin(seed * 1.3f) * wob)
         quadraticTo((from + to) / 2, y + sin(seed * 2.1f + 1f) * wob * 2f, to, y + sin(seed * 0.7f + 2f) * wob)
     }
-    drawPath(path, ink.copy(alpha = alpha), style = Stroke(1.3.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path, ink.copy(alpha = alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
 }
 
 /**
