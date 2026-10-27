@@ -186,7 +186,7 @@ private fun RemoveZone(highlighted: Boolean, modifier: Modifier) {
         modifier = modifier
             .padding(top = 8.dp)
             .clip(shape)
-            .background(if (highlighted) Oled.KnobListening else Oled.Surface)
+            .background(if (highlighted) Oled.KnobDanger else Oled.Surface)
             .border(1.dp, Oled.Glint, shape)
             .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
