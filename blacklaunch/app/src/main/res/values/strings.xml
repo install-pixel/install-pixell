@@ -911,7 +911,7 @@
     <string name="game_power_double">×2 guns %1$d s</string>
     <string name="game_power_triple">×3 fan %1$d s</string>
     <string name="game_power_rapid">rapid fire %1$d s</string>
-    <string name="game_power_shield">shield</string>
+    <string name="game_power_shield">shield %1$d s</string>
     <string name="game_power_slow">slow %1$d s</string>
     <string name="game_stars_progress">Level %1$d · wave %2$d/%3$d · lives %4$d</string>
     <string name="game_blocks_progress">Level %1$d · %2$d rows to next</string>
@@ -920,4 +920,5 @@
     <string name="game_feat_tetris">Four rows! +%1$d</string>
     <string name="game_feat_combo">Streak ×%1$d</string>
     <string name="game_feat_perfect">Clean glass! +%1$d</string>
+    <string name="game_next">Next</string>
 </resources>

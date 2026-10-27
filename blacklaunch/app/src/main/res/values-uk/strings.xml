@@ -915,7 +915,7 @@
     <string name="game_power_double">×2 гармати %1$d с</string>
     <string name="game_power_triple">×3 віялом %1$d с</string>
     <string name="game_power_rapid">швидкострільність %1$d с</string>
-    <string name="game_power_shield">щит</string>
+    <string name="game_power_shield">щит %1$d с</string>
     <string name="game_power_slow">повільно %1$d с</string>
     <string name="game_stars_progress">Рівень %1$d · хвиля %2$d/%3$d · життя %4$d</string>
     <string name="game_blocks_progress">Рівень %1$d · до наступного %2$d рядків</string>
@@ -924,4 +924,5 @@
     <string name="game_feat_tetris">Чотири рядки! +%1$d</string>
     <string name="game_feat_combo">Серія ×%1$d</string>
     <string name="game_feat_perfect">Чиста склянка! +%1$d</string>
+    <string name="game_next">Далі</string>
 </resources>

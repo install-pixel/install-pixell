@@ -915,7 +915,7 @@
     <string name="game_power_double">×2 działa %1$d s</string>
     <string name="game_power_triple">×3 wachlarzem %1$d s</string>
     <string name="game_power_rapid">szybki ogień %1$d s</string>
-    <string name="game_power_shield">tarcza</string>
+    <string name="game_power_shield">tarcza %1$d s</string>
     <string name="game_power_slow">wolno %1$d s</string>
     <string name="game_stars_progress">Poziom %1$d · fala %2$d/%3$d · życia %4$d</string>
     <string name="game_blocks_progress">Poziom %1$d · do następnego %2$d rzędów</string>
@@ -924,4 +924,5 @@
     <string name="game_feat_tetris">Cztery rzędy! +%1$d</string>
     <string name="game_feat_combo">Seria ×%1$d</string>
     <string name="game_feat_perfect">Czysta szklanka! +%1$d</string>
+    <string name="game_next">Dalej</string>
 </resources>

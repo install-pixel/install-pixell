@@ -192,8 +192,8 @@ fun GameScreen(
         Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding().padding(horizontal = 6.dp),
     ) {
         frame.longValue // перемальовувати щокадру
-        // Верхній рядок.
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Верхній рядок — однаковий в усіх іграх: «назад», назва й очки, рекорд; під ним — прогрес і що діє.
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "‹",
                 color = Oled.TextSecondary,
@@ -204,14 +204,13 @@ fun GameScreen(
                 }.padding(horizontal = 10.dp),
             )
             Column(Modifier.weight(1f)) {
-                Text(gameTitle(kind).uppercase(), color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
-                Text(stringResource(R.string.game_score, game.score), color = Oled.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-                powerText(game)?.let { Text(it, color = Oled.Confirm, fontSize = 12.sp) }
+                Text(gameTitle(kind).uppercase(), color = Oled.TextSecondary, fontSize = HudSmall, letterSpacing = 2.sp, maxLines = 1)
+                Text(stringResource(R.string.game_score, game.score), color = Oled.TextPrimary, fontSize = HudBig, fontWeight = FontWeight.Medium, maxLines = 1)
             }
-            // «Блоки»: наступна фігура — тут, а склянка внизу на всю ширину.
-            (game as? BlocksGame)?.let { NextPiece(it.next) }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(stringResource(R.string.game_best, maxOf(best, game.score)), color = Oled.TextSecondary, fontSize = 12.sp)
+            Text(stringResource(R.string.game_best, maxOf(best, game.score)), color = Oled.TextSecondary, fontSize = HudSmall, maxLines = 1)
+        }
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, bottom = 8.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
                 Text(
                     when (val g = game) {
                         is StarsGame -> if (g.challenge) stringResource(R.string.game_level_lives, g.level, g.lives)
@@ -221,8 +220,15 @@ fun GameScreen(
                         else -> stringResource(R.string.game_level, g.level)
                     },
                     color = Oled.TextSecondary,
-                    fontSize = 12.sp,
+                    fontSize = HudSmall,
+                    maxLines = 1,
                 )
+                powerText(game)?.let { Text(it, color = Oled.Confirm, fontSize = HudSmall, maxLines = 1) }
+            }
+            // «Блоки»: наступна фігура — у власній рамочці з підписом, нічого не перекриває.
+            (game as? BlocksGame)?.let {
+                Text(stringResource(R.string.game_next), color = Oled.TextSecondary, fontSize = HudSmall, modifier = Modifier.padding(end = 6.dp))
+                NextPiece(it.next)
             }
         }
         // Поле.
@@ -235,7 +241,7 @@ fun GameScreen(
             val stars = game as? StarsGame
             val starsBanner = stars?.banner?.takeIf { it > 0f }
             if ((starsBanner != null || levelBanner > 0f) && !game.over) {
-                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Plate(Modifier.align(Alignment.Center)) {
                     Text(
                         stringResource(R.string.game_level, game.level),
                         color = Oled.TextPrimary,
@@ -259,10 +265,11 @@ fun GameScreen(
                     BlocksGame.Feat.PERFECT -> stringResource(R.string.game_feat_perfect, b.featValue)
                     null -> ""
                 }
-                Text(text, color = Oled.Confirm, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 40.dp))
+                // На чорній плашці — фігури, що падають позаду, не заважають прочитати.
+                Plate(Modifier.align(Alignment.TopCenter).padding(top = 24.dp)) { Text(text, color = Oled.Confirm, fontSize = 20.sp) }
             }
             if (stars != null && stars.shipDown > 0f && !stars.over) {
-                Text(stringResource(R.string.game_ship_down, stars.lives), color = Oled.Danger, fontSize = 18.sp, modifier = Modifier.align(Alignment.Center))
+                Plate(Modifier.align(Alignment.Center)) { Text(stringResource(R.string.game_ship_down, stars.lives), color = Oled.Danger, fontSize = 18.sp) }
             }
             if (paused && !game.over) {
                 Overlay(
@@ -301,10 +308,27 @@ private fun powerText(game: ArcadeGame): String? = when (game) {
     is StarsGame -> listOfNotNull(
         game.gun?.let { stringResource(if (it == StarsGame.Power.TRIPLE) R.string.game_power_triple else R.string.game_power_double, game.gunLeft.toInt() + 1) },
         game.rapidLeft.takeIf { it > 0f }?.let { stringResource(R.string.game_power_rapid, it.toInt() + 1) },
-        stringResource(R.string.game_power_shield).takeIf { game.shield },
+        game.shieldLeft.takeIf { game.shield }?.let { stringResource(R.string.game_power_shield, it.toInt() + 1) },
     ).joinToString(" · ").ifEmpty { null }
     is SnakeGame -> game.slowLeft.takeIf { it > 0f }?.let { stringResource(R.string.game_power_slow, it.toInt() + 1) }
     else -> null
+}
+
+private val HudBig = 20.sp
+private val HudSmall = 12.sp
+
+/** Чорна скляна плашка під написами поверх поля (рівень, «Серія», «Кораблик збито»). */
+@Composable
+private fun Plate(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .background(Color(0xE6000000))
+            .border(1.dp, Oled.Glint, shape)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) { content() }
 }
 
 @Composable
@@ -429,7 +453,10 @@ private fun StarsField(game: StarsGame, frame: androidx.compose.runtime.MutableL
                 pencilLine(Offset(c.x + 4f * s, c.y + 2f * s), Offset(c.x + 4f * s, c.y - 2.5f * s), 0.6f * s)
             }
             // Щит — коло довкола.
-            if (game.shield) pencilCircle(Offset(c.x, c.y), (8f + sin(game.time * 5f) * 0.5f) * s, 0.4f * s, 0.6f)
+            // Останні три секунди щит блимає — скоро зникне.
+            if (game.shield && (game.shieldLeft > 3f || ((game.time * 6).toInt() % 2 == 0))) {
+                pencilCircle(Offset(c.x, c.y), (8f + sin(game.time * 5f) * 0.5f) * s, 0.4f * s, 0.6f)
+            }
             // Полум'я двигуна.
             val flame = 1.5f + abs(sin(game.time * 20f)) * 1.5f
             pencilLine(Offset(c.x, c.y + 4f * s), Offset(c.x, c.y + (4f + flame) * s), 0.6f * s, 0.6f)

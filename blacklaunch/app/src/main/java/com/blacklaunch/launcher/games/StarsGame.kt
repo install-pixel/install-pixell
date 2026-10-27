@@ -54,7 +54,10 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         private set
     var rapidLeft = 0f
         private set
+    /** Щит: тримає один удар і діє [SHIELD_TIME] секунд (не вічно). */
     var shield = false
+        private set
+    var shieldLeft = 0f
         private set
 
     /** Кораблик збито: скільки ще до появи нового (уламки розлітаються). */
@@ -177,6 +180,10 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         if (gunLeft > 0f) gunLeft -= dt else gun = null
         if (rapidLeft > 0f) rapidLeft -= dt
         if (capsuleCooldown > 0f) capsuleCooldown -= dt
+        if (shield) {
+            shieldLeft -= dt
+            if (shieldLeft <= 0f) shield = false
+        }
         if (challengeResult > 0f) challengeResult -= dt
         if (shipDown > 0f) {
             shipDown -= dt
@@ -268,7 +275,10 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
                 gunLeft = if (power == Power.TRIPLE) 9f else 12f
             }
             Power.RAPID -> rapidLeft = 9f
-            Power.SHIELD -> shield = true
+            Power.SHIELD -> {
+                shield = true
+                shieldLeft = SHIELD_TIME
+            }
             Power.LIFE -> lives = (lives + 1).coerceAtMost(6)
         }
         buzz.add(GameBuzz.MEDIUM)
@@ -465,7 +475,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
     private fun dropCapsule(e: Enemy) {
         // Прокачки — рідкісна радість, а не дощ: одна на екрані, після кожної — пауза, і лише поки нічого не діє.
         val chance = if (e.kind == Kind.GUARD) 0.15f else 0.04f
-        if (capsuleCooldown > 0f || capsules.isNotEmpty() || gun != null || rapidLeft > 0f) return
+        if (capsuleCooldown > 0f || capsules.isNotEmpty() || gun != null || rapidLeft > 0f || shield) return
         if (rnd.nextFloat() >= chance) return
         capsuleCooldown = CAPSULE_PAUSE
         val power = when (rnd.nextFloat()) {
@@ -510,6 +520,7 @@ internal class StarsGame(private val rnd: Random = Random.Default) : ArcadeGame 
         const val PERFECT_BONUS = 10000
         const val CAPSULE_SPEED = 26f
         const val CAPSULE_PAUSE = 10f
+        const val SHIELD_TIME = 15f
         const val SHIP_DOWN_TIME = 1.6f
 
         fun decode(text: String?, rnd: Random = Random.Default): StarsGame? {

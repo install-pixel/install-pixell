@@ -211,6 +211,14 @@ class StarsGameTest {
         assertEquals(1, g.level.coerceAtMost(1))
     }
 
+    @Test fun capsulesAreRareAndShieldIsTimed() {
+        val g = StarsGame(Random(11))
+        run(g, 90f)
+        // Не дощ прокачок: щонайбільше одна в повітрі.
+        assertTrue(g.capsules.size <= 1)
+        assertTrue(!g.shield || g.shieldLeft <= StarsGame.SHIELD_TIME)
+    }
+
     @Test fun everyFourthLevelIsBonusFlyby() {
         val g = StarsGame.decode("s=0;l=4;v=3;o=0;n=5000;e=")!!
         assertTrue(g.challenge)
