@@ -35,10 +35,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -52,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.ui.theme.Oled
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -118,13 +116,13 @@ internal val SheetInk = Color(0xFFEDEDED)
 fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.8f, width: Dp = 2.2.dp, ink: Color = SheetInk): Modifier =
     drawWithCache {
         // Контур рахуємо раз на розмір, а не щокадру.
-        val main = pencilLoop(size, radius.toPx(), seed, 1.3.dp.toPx())
-        val ghost = pencilLoop(size, radius.toPx(), seed + 101, 1.6.dp.toPx())
         val w = width.toPx()
+        val main = taperedPath(pencilLoop(size, radius.toPx(), seed, 1.3.dp.toPx()), w)
+        // Другий, тьмяніший і трохи інакший штрих — як коли олівцем обводять двічі.
+        val ghost = taperedPath(pencilLoop(size, radius.toPx(), seed + 101, 1.6.dp.toPx()), w * 0.55f)
         onDrawBehind {
-            drawPath(main, ink.copy(alpha = alpha), style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round))
-            // Другий, тьмяніший і трохи інакший штрих — як коли олівцем обводять двічі.
-            drawPath(ghost, ink.copy(alpha = alpha * 0.35f), style = Stroke(w * 0.55f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(main, ink.copy(alpha = alpha))
+            drawPath(ghost, ink.copy(alpha = alpha * 0.35f))
         }
     }
 
@@ -151,10 +149,10 @@ internal fun LeadingIcon(size: Dp = 40.dp, content: @Composable BoxScope.() -> U
  * з повільним тремтінням, що починається в іншому місці для кожного [seed] і трохи заходить за початок — як коли
  * малюєш рамку олівцем одним рухом.
  */
-internal fun pencilLoop(size: Size, radius: Float, seed: Int, wobble: Float): Path {
+internal fun pencilLoop(size: Size, radius: Float, seed: Int, wobble: Float): List<Offset> {
     val w = size.width
     val h = size.height
-    if (w <= 0f || h <= 0f) return Path()
+    if (w <= 0f || h <= 0f) return emptyList()
     val r = radius.coerceAtMost(minOf(w, h) / 2f).coerceAtLeast(0.5f)
     val straightW = w - 2 * r
     val straightH = h - 2 * r
@@ -195,31 +193,67 @@ internal fun pencilLoop(size: Size, radius: Float, seed: Int, wobble: Float): Pa
     val total = perimeter + overlap
     val steps = (total / 4f).toInt().coerceIn(48, 600)
     val centre = Offset(w / 2, h / 2)
-    return Path().apply {
-        for (i in 0..steps) {
-            val t = i / steps.toFloat()
-            val d = start + total * t
-            val base = point(d)
-            // Тремтіння — від центру назовні/всередину. Лінія починається трохи всередині, а закінчується, заходячи
-            // за початок назовні, — видно, де олівець замкнув рамку.
-            val head = ((0.1f - t) / 0.1f).coerceAtLeast(0f)
-            val tail = ((t - 0.9f) / 0.1f).coerceAtLeast(0f)
-            val drift = wob * (0.65f * sin(d * f1 + p1) + 0.35f * sin(d * f2 + p2)) + wob * 1.6f * tail * tail - wob * 1.2f * head * head
-            val dir = (base - centre).let { v -> val len = v.getDistance().coerceAtLeast(1f); Offset(v.x / len, v.y / len) }
-            val pt = base + dir * drift
-            if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
-        }
+    return List(steps + 1) { i ->
+        val t = i / steps.toFloat()
+        val d = start + total * t
+        val base = point(d)
+        // Тремтіння — від центру назовні/всередину. Лінія починається трохи всередині, а закінчується, заходячи
+        // за початок назовні, — видно, де олівець замкнув рамку.
+        val head = ((0.1f - t) / 0.1f).coerceAtLeast(0f)
+        val tail = ((t - 0.9f) / 0.1f).coerceAtLeast(0f)
+        val drift = wob * (0.65f * sin(d * f1 + p1) + 0.35f * sin(d * f2 + p2)) + wob * 1.6f * tail * tail - wob * 1.2f * head * head
+        val dir = (base - centre).let { v -> val len = v.getDistance().coerceAtLeast(1f); Offset(v.x / len, v.y / len) }
+        base + dir * drift
     }
+}
+
+/**
+ * Лінія олівця вздовж [points] завтовшки [width] — посередині повна, до кінців тоншає й загострюється
+ * (як справжній штрих: олівець торкається паперу й відривається від нього).
+ */
+internal fun taperedPath(points: List<Offset>, width: Float): Path {
+    val path = Path()
+    val n = points.size
+    if (n < 2) return path
+    val left = ArrayList<Offset>(n)
+    val right = ArrayList<Offset>(n)
+    for (i in 0 until n) {
+        val a = points[maxOf(0, i - 1)]
+        val b = points[minOf(n - 1, i + 1)]
+        val dx = b.x - a.x
+        val dy = b.y - a.y
+        val len = kotlin.math.hypot(dx, dy).coerceAtLeast(0.001f)
+        val t = i / (n - 1f)
+        val taper = minOf(1f, t / 0.1f, (1f - t) / 0.14f).coerceAtLeast(0.04f).pow(0.8f)
+        val half = width * taper / 2f
+        val normal = Offset(-dy / len * half, dx / len * half)
+        left += points[i] + normal
+        right += points[i] - normal
+    }
+    path.moveTo(left[0].x, left[0].y)
+    for (i in 1 until n) path.lineTo(left[i].x, left[i].y)
+    for (i in n - 1 downTo 0) path.lineTo(right[i].x, right[i].y)
+    path.close()
+    return path
+}
+
+/** Точки квадратичної кривої (для штрихів олівцем). */
+internal fun quadPoints(from: Offset, control: Offset, to: Offset, steps: Int = 16): List<Offset> = List(steps + 1) { i ->
+    val t = i / steps.toFloat()
+    val u = 1 - t
+    Offset(u * u * from.x + 2 * u * t * control.x + t * t * to.x, u * u * from.y + 2 * u * t * control.y + t * t * to.y)
 }
 
 /** Хвиляста риска олівцем (перекреслення вимкненого, підкреслення вибраного). */
 internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int, alpha: Float = 0.8f, ink: Color = SheetInk) {
     val wob = 1.1.dp.toPx()
-    val path = Path().apply {
-        moveTo(from, y + sin(seed * 1.3f) * wob)
-        quadraticTo((from + to) / 2, y + sin(seed * 2.1f + 1f) * wob * 2f, to, y + sin(seed * 0.7f + 2f) * wob)
-    }
-    drawPath(path, ink.copy(alpha = alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+    val points = quadPoints(
+        Offset(from, y + sin(seed * 1.3f) * wob),
+        Offset((from + to) / 2, y + sin(seed * 2.1f + 1f) * wob * 2f),
+        Offset(to, y + sin(seed * 0.7f + 2f) * wob),
+        steps = 24,
+    )
+    drawPath(taperedPath(points, 2.2.dp.toPx()), ink.copy(alpha = alpha))
 }
 
 /**
