@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,7 +26,6 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
-import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
@@ -50,13 +50,14 @@ fun FocusCat(fences: List<Rect>, modifier: Modifier = Modifier) {
         val h = (size and 0xFFFFFFFF).toFloat()
         if (w <= 0f || h <= 0f) return@LaunchedEffect
         cat.place(w, h, unit, currentFences)
-        var last = System.nanoTime()
+        var last = withFrameNanos { it }
+        // Кожен кадр екрана (на 120 Гц — 120 разів на секунду): рух рахується за справжнім часом між кадрами.
         while (true) {
-            delay(FRAME_MS)
-            val now = System.nanoTime()
-            cat.step(((now - last) / 1e9f).coerceAtMost(0.1f), w, h, unit, currentFences)
-            last = now
-            frame++
+            withFrameNanos { now ->
+                cat.step(((now - last) / 1e9f).coerceIn(0f, 0.1f), w, h, unit, currentFences)
+                last = now
+                frame++
+            }
         }
     }
     Canvas(
@@ -85,7 +86,6 @@ fun FocusCat(fences: List<Rect>, modifier: Modifier = Modifier) {
     }
 }
 
-private const val FRAME_MS = 33L
 
 /** Де шкірка (за неї тримають) — над потилицею, від лап угору. */
 private const val SCRUFF_Y = 50f

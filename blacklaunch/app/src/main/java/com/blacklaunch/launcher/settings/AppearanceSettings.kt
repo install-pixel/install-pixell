@@ -38,6 +38,8 @@ data class Appearance(
     val glanceBattery: Boolean = true,
     /** Тема «Аркуш»: усе від руки олівцем (етап 12d). */
     val sheet: Boolean = false,
+    /** Просити в системи найвищу частоту екрана (120 Гц), щоб рух був плавнішим. */
+    val highRefresh: Boolean = true,
 )
 
 /** Налаштування оформлення. На Етапі 7 можуть переїхати в DataStore разом з іншими. */
@@ -70,6 +72,7 @@ class AppearanceSettings(context: Context) {
             .putBoolean(KEY_GLANCE_EVENT, next.glanceEvent)
             .putBoolean(KEY_GLANCE_BATTERY, next.glanceBattery)
             .putBoolean(KEY_SHEET, next.sheet)
+            .putBoolean(KEY_HIGH_REFRESH, next.highRefresh)
             .apply()
         _appearance.value = next
     }
@@ -95,6 +98,7 @@ class AppearanceSettings(context: Context) {
             glanceEvent = prefs.getBoolean(KEY_GLANCE_EVENT, defaults.glanceEvent),
             glanceBattery = prefs.getBoolean(KEY_GLANCE_BATTERY, defaults.glanceBattery),
             sheet = prefs.getBoolean(KEY_SHEET, defaults.sheet),
+            highRefresh = prefs.getBoolean(KEY_HIGH_REFRESH, defaults.highRefresh),
         )
     }
 
@@ -116,6 +120,7 @@ class AppearanceSettings(context: Context) {
         private const val KEY_GLANCE_EVENT = "glance_event"
         private const val KEY_GLANCE_BATTERY = "glance_battery"
         private const val KEY_SHEET = "sheet_theme"
+        private const val KEY_HIGH_REFRESH = "high_refresh"
         private const val KEY_WALLPAPER_ID = "black_wallpaper_id"
     }
 }

@@ -946,4 +946,6 @@
     <string name="sheet_title">Motyw „Kartka” — odręcznie</string>
     <string name="sheet_subtitle">Ustawienia, menu i okna — jakby napisane odręcznie białym ołówkiem na czarnej kartce: pismo odręczne, ramki ołówkiem, wyłączone — przekreślone, zamiast ikon — nazwy</string>
     <string name="sheet_note">Dotknięcie linii — włącz lub wyłącz: przekreślone oznacza wyłączone. Ekran główny i wyszukiwanie — też odręcznie: zamiast ikon aplikacji — nazwy. Gry, minutnik skupienia i pozostałe ikony — też ołówkiem. Czcionka: Caveat (wolna licencja SIL OFL), wbudowana — bez internetu.</string>
+    <string name="high_refresh_title">Płynność — 120 Hz</string>
+    <string name="high_refresh_subtitle">Prosić telefon o najwyższą częstotliwość ekranu (na OnePlus 13 — 120 Hz): przewijanie, gry, kotek i animacje są płynniejsze. Zużywa trochę więcej baterii; wyłączone — decyduje telefon</string>
 </resources>

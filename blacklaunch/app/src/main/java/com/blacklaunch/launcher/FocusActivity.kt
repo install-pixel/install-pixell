@@ -14,6 +14,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.blacklaunch.launcher.system.RefreshRate
 import com.blacklaunch.launcher.ui.FocusTimerScreen
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.ui.LocalHaptics
@@ -66,6 +67,8 @@ class FocusActivity : ComponentActivity() {
             val pinState by pin.collectAsStateWithLifecycle()
             val cat by app.focus.cat.collectAsStateWithLifecycle()
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
+            // Плавність: найвища частота екрана (120 Гц), якщо ввімкнено в Оформленні.
+            androidx.compose.runtime.LaunchedEffect(appearance.highRefresh) { RefreshRate.apply(this@FocusActivity, appearance.highRefresh) }
             val current = session
             // «Суворо»: «Назад» нікуди не веде (вийти — лише достроково); звичайний — згортає.
             BackHandler { if (current?.strict != true) minimize() }

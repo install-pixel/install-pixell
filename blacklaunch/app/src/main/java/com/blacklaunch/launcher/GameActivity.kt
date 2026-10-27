@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.blacklaunch.launcher.system.RefreshRate
 import com.blacklaunch.launcher.games.GameKind
 import com.blacklaunch.launcher.ui.GameScreen
 import com.blacklaunch.launcher.ui.Haptics
@@ -41,6 +42,8 @@ class GameActivity : ComponentActivity() {
         setContent {
             val best by app.games.best.collectAsStateWithLifecycle()
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
+            // Плавність: найвища частота екрана (120 Гц), якщо ввімкнено в Оформленні.
+            androidx.compose.runtime.LaunchedEffect(appearance.highRefresh) { RefreshRate.apply(this@GameActivity, appearance.highRefresh) }
             BlackLaunchTheme {
                 CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                     SheetTheme(appearance.sheet) {

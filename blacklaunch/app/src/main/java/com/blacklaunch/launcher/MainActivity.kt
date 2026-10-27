@@ -16,6 +16,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import com.blacklaunch.launcher.system.RefreshRate
 import com.blacklaunch.launcher.global.SettingsCatalog
 import com.blacklaunch.launcher.ui.MonitorSettingsContent
 import com.blacklaunch.launcher.ui.MonitorScreen
@@ -370,6 +371,8 @@ class MainActivity : ComponentActivity() {
             val banner by profileBanner.collectAsStateWithLifecycle()
             val voiceState by voice.state.collectAsStateWithLifecycle()
             val appearance by app.appearanceSettings.appearance.collectAsStateWithLifecycle()
+            // Плавність: найвища частота екрана (120 Гц), якщо ввімкнено в Оформленні.
+            androidx.compose.runtime.LaunchedEffect(appearance.highRefresh) { RefreshRate.apply(this@MainActivity, appearance.highRefresh) }
             val offline by offlineStatus.collectAsStateWithLifecycle()
             val installedModels by app.voiceModelStore.installed.collectAsStateWithLifecycle()
             val modelInfo by app.voiceModelStore.info.collectAsStateWithLifecycle()
