@@ -113,7 +113,7 @@ fun LaunchPauseDialog(prompt: LaunchPrompt, onOpen: () -> Unit, onCancel: () -> 
 private enum class MediaGlyph { PREVIOUS, PLAY, PAUSE, NEXT, STOP }
 
 @Composable
-private fun MediaButton(glyph: MediaGlyph, description: String, big: Boolean = false, onClick: () -> Unit) {
+private fun MediaButton(glyph: MediaGlyph, description: String, big: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val box = if (big) 64.dp else 40.dp
     val shape = RoundedCornerShape(box / 2)
@@ -122,13 +122,14 @@ private fun MediaButton(glyph: MediaGlyph, description: String, big: Boolean = f
             .size(box)
             .clip(shape)
             .then(if (big) Modifier.background(Oled.Knob).border(1.dp, Oled.Glint, shape) else Modifier)
-            .clickable(onClickLabel = description) { haptics.tap(); onClick() },
+            // Гравець цього не вміє — кнопка притемнена й не натискається.
+            .clickable(enabled = enabled, onClickLabel = description) { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(if (big) 24.dp else 16.dp)) {
             val w = size.width
             val h = size.height
-            val color = Oled.TextPrimary
+            val color = if (enabled) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.35f)
             fun triangle(left: Float, right: Float) = Path().apply {
                 moveTo(left, 0f); lineTo(right, h / 2); lineTo(left, h); close()
             }
@@ -188,9 +189,9 @@ fun NowPlayingBar(
             Text(info.title, color = Oled.TextPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             info.artist?.let { Text(it, color = Oled.TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), onClick = onPrevious)
+        MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), enabled = info.canPrevious, onClick = onPrevious)
         MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), onClick = onToggle)
-        MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), onClick = onNext)
+        MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), enabled = info.canNext, onClick = onNext)
         MediaButton(MediaGlyph.STOP, stringResource(R.string.wb_media_stop), onClick = onStop)
     }
 }
@@ -319,9 +320,9 @@ fun NowPlayingScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 MediaButton(MediaGlyph.STOP, stringResource(R.string.wb_media_stop), onClick = onStop)
-                MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), big = true, onClick = onPrevious)
+                MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), big = true, enabled = info.canPrevious, onClick = onPrevious)
                 MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), big = true, onClick = onToggle)
-                MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), big = true, onClick = onNext)
+                MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), big = true, enabled = info.canNext, onClick = onNext)
                 Box(Modifier.size(40.dp))
             }
             DialogButton(stringResource(R.string.wb_media_open_app), onOpenApp)

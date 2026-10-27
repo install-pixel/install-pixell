@@ -30,6 +30,9 @@ data class NowPlayingInfo(
     val positionAt: Long = 0,
     val speed: Float = 1f,
     val canSeek: Boolean = false,
+    /** Чи гравець уміє «далі» / «назад» (не вміє — кнопка притемнена й нічого не робить). */
+    val canNext: Boolean = true,
+    val canPrevious: Boolean = true,
 ) {
     /** Позиція зараз (поки грає — рухається). */
     fun positionNow(): Long {
@@ -86,7 +89,8 @@ class NowPlaying(context: Context) {
 
     fun toggle() {
         val c = controller ?: return
-        if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause() else c.transportControls.play()
+        // Сесія гравця могла вже закритись — тоді просто нічого (а не виліт).
+        runCatching { if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause() else c.transportControls.play() }
     }
 
     /** «Стоп»: зупинити гравець (деякі розуміють лише паузу) і одразу прибрати плашку. */
@@ -100,15 +104,18 @@ class NowPlaying(context: Context) {
     }
 
     fun seekTo(ms: Long) {
-        controller?.transportControls?.seekTo(ms)
+        if (_info.value?.canSeek != true) return
+        runCatching { controller?.transportControls?.seekTo(ms) }
     }
 
     fun next() {
-        controller?.transportControls?.skipToNext()
+        if (_info.value?.canNext == false) return
+        runCatching { controller?.transportControls?.skipToNext() }
     }
 
     fun previous() {
-        controller?.transportControls?.skipToPrevious()
+        if (_info.value?.canPrevious == false) return
+        runCatching { controller?.transportControls?.skipToPrevious() }
     }
 
     /** Відкрити гравець: його власний екран сесії або просто програму. */
@@ -177,6 +184,9 @@ class NowPlaying(context: Context) {
             positionAt = playback?.lastPositionUpdateTime?.takeIf { it > 0 } ?: SystemClock.elapsedRealtime(),
             speed = playback?.playbackSpeed?.takeIf { it > 0f } ?: 1f,
             canSeek = (playback?.actions ?: 0L) and PlaybackState.ACTION_SEEK_TO != 0L,
+            // Невідомо (гравець не повідомив дій) — дозволяємо; повідомив і без «далі» — ні.
+            canNext = playback == null || playback.actions == 0L || playback.actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L,
+            canPrevious = playback == null || playback.actions == 0L || playback.actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L,
         )
     }
 

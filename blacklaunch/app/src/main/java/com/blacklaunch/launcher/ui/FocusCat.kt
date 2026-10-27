@@ -12,23 +12,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.delay
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.exp
-import kotlin.math.sin
 import kotlin.random.Random
 
 /**
@@ -70,32 +64,6 @@ fun FocusCat(fence: Rect?, modifier: Modifier = Modifier) {
 }
 
 private const val FRAME_MS = 33L
-
-/** Що котик робить зараз. */
-private enum class CatAct {
-    WALK,
-
-    /** Удар носом: відсахується назад. */
-    RECOIL,
-
-    /** Трусить головою. */
-    SHAKE,
-
-    /** Сів на хвіст (після удару — з «зірочками»). */
-    SIT,
-
-    /** Присів, лапи на голові (удар маківкою знизу). */
-    DUCK,
-
-    /** Чухає голову передньою лапою. */
-    SCRATCH,
-
-    /** Стоїть, дивиться під ноги. */
-    LOOK_DOWN,
-
-    /** Роззирається. */
-    LOOK_AROUND,
-}
 
 private class CatStep(val act: CatAct, val seconds: Float, val dazed: Boolean = false, val then: (() -> Unit)? = null)
 
@@ -234,7 +202,7 @@ private class CatSim {
         onEnd = step.then
     }
 
-    fun bounds(cx: Float, cy: Float, u: Float) = Rect(cx - 16f * u, cy - 60f * u, cx + 16f * u, cy + 2f * u)
+    fun bounds(cx: Float, cy: Float, u: Float) = Rect(cx - CAT_HALF_WIDTH * u, cy - CAT_HEIGHT * u, cx + CAT_HALF_WIDTH * u, cy + 2f * u)
 
     private fun blocked(cx: Float, cy: Float, w: Float, h: Float, u: Float, fence: Rect?): Boolean {
         val box = bounds(cx, cy, u)
@@ -243,190 +211,37 @@ private class CatSim {
     }
 }
 
-/** Поза на цей кадр: усе в «одиницях» (dp), кути в градусах (0 — донизу, додатні — вперед). */
-private class CatPose {
-    var drop = 0f
-    var lean = 0f
-    var legBack = 0f
-    var legFront = 0f
-    var sitting = 0f
-    var armBack = 0f
-    var armFront = 0f
-    var headTilt = 0f
-    var headDrop = 0f
-    var tailWag = 0f
-    var bob = 0f
-    var legLen = 18f
-    var armLen = 13f
-}
-
-/** Плавно сісти / присісти на початку кроку й підвестися наприкінці. */
-private fun settle(p: Float, inPart: Float = 0.15f, outPart: Float = 0.15f): Float = when {
-    p < inPart -> ease(p / inPart)
-    p > 1f - outPart -> ease((1f - p) / outPart)
-    else -> 1f
-}
-
-private fun ease(t: Float) = (1f - cos(t.coerceIn(0f, 1f) * PI.toFloat())) / 2f
-
-private fun pose(cat: CatSim): CatPose = CatPose().apply {
-    val p = cat.progress
-    tailWag = sin(cat.time * 2.6f) * 5f
-    when (cat.act) {
-        CatAct.WALK -> {
-            val s = sin(cat.walkPhase)
-            legFront = 24f * s
-            legBack = -24f * s
-            armFront = -26f * s
-            armBack = 26f * s
-            bob = abs(sin(cat.walkPhase)) * 1.6f
-        }
-        CatAct.RECOIL -> {
-            lean = -16f * sin(PI.toFloat() * p)
-            armFront = 50f * sin(PI.toFloat() * p)
-            armBack = 35f * sin(PI.toFloat() * p)
-            legFront = 10f
-            legBack = -10f
-        }
-        CatAct.SHAKE -> {
-            headTilt = sin(cat.actTime * 26f) * 20f * exp(-cat.actTime * 2.2f)
-            armFront = 8f
-            armBack = -8f
-        }
-        CatAct.SIT -> {
-            val s = settle(p, inPart = if (cat.dazed) 0.08f else 0.2f)
-            sitting = s
-            drop = 15f * s
-            legFront = 82f * s
-            legBack = 72f * s
-            armFront = 20f * s
-            armBack = -25f * s
-            tailWag = sin(cat.time * (if (cat.dazed) 1.2f else 1.8f)) * 4f
-            headTilt = if (cat.dazed) sin(cat.time * 3f) * 8f * s else 0f
-        }
-        CatAct.DUCK -> {
-            val s = settle(p, inPart = 0.12f, outPart = 0.2f)
-            // Присідає, згинаючи лапи (а не провалюючись), і дістає лапами до маківки.
-            drop = 6f * s
-            headDrop = 3f * s
-            legLen = 18f - 5f * s
-            legFront = 30f * s
-            legBack = -26f * s
-            armLen = 13f + 5f * s
-            armFront = 168f * s
-            armBack = 155f * s
-        }
-        CatAct.SCRATCH -> {
-            val s = settle(p, inPart = 0.15f, outPart = 0.15f)
-            armLen = 13f + 3f * s
-            armFront = (150f + sin(cat.actTime * 22f) * 12f) * s
-            armBack = 6f
-            headTilt = 12f * s
-            // Якщо до того сидів — чухається сидячи.
-        }
-        CatAct.LOOK_DOWN -> {
-            headTilt = 18f * settle(p, 0.2f, 0.2f)
-            armFront = 6f
-            armBack = -6f
-        }
-        CatAct.LOOK_AROUND -> {
-            headTilt = sin(p * PI.toFloat() * 2f) * 16f
-            armFront = 4f
-            armBack = -4f
-        }
-    }
-}
-
 private val Pencil = Color(0xFFEDEDED)
 
-/** Олівцем: основна лінія й ледь зсунута друга, тьмяніша, — як штрих від руки. */
-private fun DrawScope.pencilLine(a: Offset, b: Offset, u: Float) {
-    drawLine(Pencil.copy(alpha = 0.85f), a, b, strokeWidth = 1.8f * u, cap = StrokeCap.Round)
-    drawLine(Pencil.copy(alpha = 0.3f), a + Offset(0.7f * u, 0.5f * u), b + Offset(0.4f * u, -0.3f * u), strokeWidth = 1.2f * u, cap = StrokeCap.Round)
-}
-
-private fun DrawScope.pencilPath(path: Path, u: Float) {
-    drawPath(path, Pencil.copy(alpha = 0.85f), style = Stroke(width = 1.8f * u, cap = StrokeCap.Round))
-    withTransform({ translate(0.7f * u, 0.5f * u) }) {
-        drawPath(path, Pencil.copy(alpha = 0.3f), style = Stroke(width = 1.2f * u, cap = StrokeCap.Round))
-    }
-}
-
-private fun DrawScope.pencilOval(topLeft: Offset, size: Size, u: Float) {
-    drawOval(Pencil.copy(alpha = 0.85f), topLeft, size, style = Stroke(width = 1.8f * u))
-    drawOval(Pencil.copy(alpha = 0.3f), topLeft + Offset(0.8f * u, 0.6f * u), size, style = Stroke(width = 1.2f * u))
-}
-
-/** Кінець кінцівки довжини [len] під кутом [deg] від вертикалі (додатний — уперед). */
-private fun limb(from: Offset, deg: Float, len: Float): Offset {
-    val r = deg * PI.toFloat() / 180f
-    return Offset(from.x + sin(r) * len, from.y + cos(r) * len)
-}
-
-/** Котик дивиться праворуч, (0, 0) — під ногами на землі; дзеркалимо, коли йде ліворуч. */
+/** Фігури з [catShapes] — олівцем: чорна заливка закриває те, що позаду; штрих двічі — основний і ледь зсунутий. */
 private fun DrawScope.drawCat(cat: CatSim, u: Float) {
-    val pose = pose(cat)
+    val frame = CatFrame(cat.act, cat.progress, cat.actTime, cat.time, cat.walkPhase, cat.dazed)
     withTransform({
         translate(cat.x, cat.y)
-        scale(cat.dirX, 1f, pivot = Offset.Zero)
-        rotate(pose.lean, pivot = Offset.Zero)
+        scale(cat.dirX * u, u, pivot = Offset.Zero)
     }) {
-        val o = { dx: Float, dy: Float -> Offset(dx * u, dy * u) }
-        val lift = -pose.bob + pose.drop
-        val hip = o(0f, -19f + lift)
-        // Хвіст: стоячи — вгору хвилею, сидячи — лежить на землі й закручується.
-        val tail = Path().apply {
-            moveTo(-6f * u, (-20f + lift) * u)
-            if (pose.sitting > 0.5f) {
-                cubicTo(-16f * u, -2f * u, (-26f + pose.tailWag) * u, -2f * u, (-28f + pose.tailWag) * u, -10f * u)
-            } else {
-                cubicTo(-16f * u, (-20f + lift) * u, (-22f + pose.tailWag) * u, (-30f + lift) * u, (-18f + pose.tailWag) * u, (-40f + lift) * u)
-            }
-        }
-        pencilPath(tail, u)
-        // Задні лапи: стегно → лапа, ступня вперед.
-        listOf(pose.legBack, pose.legFront).forEach { angle ->
-            val foot = limb(hip, angle, pose.legLen * u)
-            pencilLine(hip, foot, u)
-            pencilLine(foot, foot + o(4f, 0f), u)
-        }
-        // Тулуб стоячи.
-        pencilOval(o(-9f, -41f + lift), Size(18f * u, 24f * u), u)
-        // Передні лапи від плечей.
-        val shoulder = o(2f, -35f + lift)
-        listOf(pose.armBack, pose.armFront).forEach { angle ->
-            val paw = limb(shoulder, angle, pose.armLen * u)
-            pencilLine(shoulder, paw, u)
-            drawCircle(Pencil.copy(alpha = 0.7f), radius = 1.4f * u, center = paw)
-        }
-        // Голова з вухами, оком, носиком і вусами — нахиляється / трусить навколо шиї.
-        val neck = o(1f, -40f + lift)
-        rotate(pose.headTilt, pivot = neck) {
-            val cy = -48f + lift + pose.headDrop
-            pencilOval(o(-7f, cy - 8f), Size(18f * u, 16f * u), u)
-            pencilLine(o(-5f, cy - 5f), o(-4f, cy - 14f), u)
-            pencilLine(o(-4f, cy - 14f), o(0f, cy - 7f), u)
-            pencilLine(o(4f, cy - 7f), o(7f, cy - 14f), u)
-            pencilLine(o(7f, cy - 14f), o(9f, cy - 4f), u)
-            if (cat.dazed && cat.act == CatAct.SIT) {
-                // Оглушило: очі «хрестиком» і зірочки довкола голови.
-                pencilLine(o(4f, cy - 2f), o(7f, cy + 1f), u)
-                pencilLine(o(7f, cy - 2f), o(4f, cy + 1f), u)
-                for (i in 0 until 3) {
-                    val a = cat.time * 3f + i * 2.1f
-                    val c = o(1f + cos(a) * 14f, cy - 12f + sin(a) * 4f)
-                    pencilLine(c + o(-2f, 0f), c + o(2f, 0f), u)
-                    pencilLine(c + o(0f, -2f), c + o(0f, 2f), u)
+        catShapes(frame).forEach { shape ->
+            val path = Path().apply {
+                shape.segs.forEach { seg ->
+                    when (seg) {
+                        is CatSeg.Move -> moveTo(seg.x, seg.y)
+                        is CatSeg.Line -> lineTo(seg.x, seg.y)
+                        is CatSeg.Cubic -> cubicTo(seg.x1, seg.y1, seg.x2, seg.y2, seg.x, seg.y)
+                        CatSeg.Close -> close()
+                    }
                 }
-            } else if (cat.act == CatAct.DUCK) {
-                // Зажмурився.
-                pencilLine(o(4f, cy - 1f), o(7f, cy - 1f), u)
-            } else {
-                drawCircle(Pencil, radius = 1.3f * u, center = o(5.5f, cy - 1f))
             }
-            drawCircle(Pencil.copy(alpha = 0.8f), radius = 0.9f * u, center = o(10.5f, cy + 2f))
-            pencilLine(o(11f, cy + 3f), o(17f, cy + 2f), u)
-            pencilLine(o(11f, cy + 5f), o(16f, cy + 6f), u)
+            when (shape.fill) {
+                CatFill.BLACK -> drawPath(path, Color.Black)
+                CatFill.PENCIL -> drawPath(path, Pencil.copy(alpha = shape.alpha))
+                CatFill.NONE -> Unit
+            }
+            if (shape.width > 0f) {
+                drawPath(path, Pencil.copy(alpha = shape.alpha * 0.9f), style = Stroke(width = shape.width, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                withTransform({ translate(0.35f, 0.25f) }) {
+                    drawPath(path, Pencil.copy(alpha = shape.alpha * 0.28f), style = Stroke(width = shape.width * 0.6f, cap = StrokeCap.Round))
+                }
+            }
         }
     }
 }
