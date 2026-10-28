@@ -126,6 +126,8 @@ private const val FLICK_PULL = 0.4f
 /** Тривалість анімації закриття пошуку. */
 private const val CLOSE_MS = 280
 private const val MIN_CLOSE_MS = 120
+/** Спуск після «Назад» — трохи повільніший за змах. */
+private const val BACK_CLOSE_MS = 360
 private val HOME_BLUR = 10.dp
 private const val HOME_DIM = 0.7f
 /** Скільки чекати, поки клавіатура сховається, перш ніж панель поїде вниз. */
@@ -682,7 +684,8 @@ private fun SearchOpen(
     // Одне й те саме закриття для свайпу, змаху, «Назад» і клавіатури: клавіатура ховається, панель їде вниз
     // разом із нею (лежить на ній), а тоді плавно доїжджає донизу — і лише тоді пошук закривається.
     // [alreadyMoving] — до панелі щойно рухалась клавіатура: панель підхоплює рух рівно, без розгону з місця.
-    fun closeSmoothly(alreadyMoving: Boolean = false) {
+    // [fromBack] — закрили кнопкою чи жестом «Назад»: спуск трохи повільніший, спокійніший.
+    fun closeSmoothly(alreadyMoving: Boolean = false, fromBack: Boolean = false) {
         if (closing) return
         closing = true
         hideKeyboard()
@@ -703,12 +706,12 @@ private fun SearchOpen(
             }
             val target = distance.coerceAtLeast(pull)
             val left = if (target > 0f) (target - pull) / target else 1f
-            animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = if (alreadyMoving || rideKeyboard) LinearEasing else FastOutLinearInEasing)) { v, _ -> pull = v }
+            animate(pull, target, animationSpec = tween(((if (fromBack) BACK_CLOSE_MS else CLOSE_MS) * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = if (alreadyMoving || rideKeyboard) LinearEasing else FastOutLinearInEasing)) { v, _ -> pull = v }
             fading.join()
             close()
         }
     }
-    BackHandler(enabled = visible && !closing) { closeSmoothly() }
+    BackHandler(enabled = visible && !closing) { closeSmoothly(fromBack = true) }
 
     // Палець рухається на [dy] (униз — додатне). Відкрита клавіатура йде за пальцем (поле лежить на ній, одним блоком);
     // сховалась — далі вниз їде вже панель. Клавіатура не дає себе вести — ховається сама, а панель чекає на ній,
@@ -856,7 +859,7 @@ private fun SearchOpen(
         } else if (keyboardWasShown && !imeDrag.active && !imeDrag.pending && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             // Клавіатуру ведемо пальцем — це не «Назад», рішення прийме сам жест.
             keyboardWasShown = false
-            if (canCloseWithKeyboard()) closeSmoothly()
+            if (canCloseWithKeyboard()) closeSmoothly(fromBack = true)
         }
     }
 
@@ -865,9 +868,8 @@ private fun SearchOpen(
             .fillMaxSize()
             .onSizeChanged { panelHeight = it.height.toFloat() }
             .graphicsLayer {
+                // Без прозорості: панель повністю з'їжджає за нижній край, а не «розчиняється» посеред екрана.
                 translationY = pull
-                val distance = hideDistance()
-                alpha = if (distance > 0f) (1f - pull / distance).coerceIn(0f, 1f) else 1f
             }
             .background(Color(0x40000000))
             // Відступ під рядок стану — однаковий, видно рядок чи ні: витягнули його жестом — нічого не стрибає.
