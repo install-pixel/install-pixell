@@ -45,6 +45,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -127,6 +130,8 @@ private val HOME_BLUR = 10.dp
 private const val HOME_DIM = 0.7f
 /** Скільки чекати, поки клавіатура сховається, перш ніж панель поїде вниз. */
 private const val IME_WAIT_MS = 600L
+/** Найменший шлях спуску панелі (щоб навіть порожній пошук закривався рухом, а не стрибком). */
+private val MIN_HIDE = 160.dp
 /** Клавіатуру відпустили — за скільки вона доїжджає вниз чи повертається. */
 private const val IME_SETTLE_MS = 220
 private const val OPEN_MS = 180
@@ -629,10 +634,20 @@ private fun SearchOpen(
             hideKeyboard()
         }
     }
-    // Скільки панелі вже опущено — фон за нею проясняється в лад.
+    // Видимий вміст пошуку притиснутий донизу: поле й рядки над ним. Щоб він повністю сховався, панель має опуститися
+    // лише на його висоту, а не на весь екран. Від цієї відстані рахуються і спуск, і прояснення фону — фон стає ясним
+    // рівно тоді, коли сховалось останнє, що було видно.
+    var fieldTop by remember { mutableFloatStateOf(0f) }
+    var contentHeight by remember { mutableIntStateOf(0) }
+    val minHidePx = with(LocalDensity.current) { MIN_HIDE.toPx() }
+    fun hideDistance(): Float {
+        if (panelHeight <= 0f) return 0f
+        if (fieldTop <= 0f || contentHeight == Int.MAX_VALUE) return panelHeight
+        return (panelHeight - (fieldTop - contentHeight)).coerceIn(minHidePx.coerceAtMost(panelHeight), panelHeight)
+    }
     val progress by rememberUpdatedState(onCloseProgress)
     LaunchedEffect(Unit) {
-        snapshotFlow { if (panelHeight > 0f) (pull / panelHeight).coerceIn(0f, 1f) else 0f }.collect { progress(it) }
+        snapshotFlow { hideDistance().let { d -> if (d > 0f) (pull / d).coerceIn(0f, 1f) else 0f } }.collect { progress(it) }
     }
 
     // Скільки клавіатури зараз видно (пікселі) — панель лежить на ній і не заходить під неї.
@@ -648,7 +663,7 @@ private fun SearchOpen(
         hideKeyboard()
         scope.launch {
             if (imeNow.value > 0) withTimeoutOrNull(IME_WAIT_MS) { snapshotFlow { imeNow.value }.first { it == 0 } }
-            val target = panelHeight.coerceAtLeast(pull)
+            val target = hideDistance().coerceAtLeast(pull)
             val left = if (target > 0f) (target - pull) / target else 1f
             animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = FastOutLinearInEasing)) { v, _ -> pull = v }
             close()
@@ -786,7 +801,8 @@ private fun SearchOpen(
             .onSizeChanged { panelHeight = it.height.toFloat() }
             .graphicsLayer {
                 translationY = pull
-                alpha = if (panelHeight > 0f) (1f - pull / panelHeight).coerceIn(0f, 1f) else 1f
+                val distance = hideDistance()
+                alpha = if (distance > 0f) (1f - pull / distance).coerceIn(0f, 1f) else 1f
             }
             .background(Color(0x40000000))
             .statusBarsPadding()
@@ -834,9 +850,12 @@ private fun SearchOpen(
             onContactAction = onContactAction,
             canCall = state.canCall,
             canMessage = state.canMessage,
+            onContentHeight = { contentHeight = it },
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         SearchField(
+            // Де поле, коли панель на місці (у координатах екрана; зсув від пальця віднімаємо).
+            modifier = Modifier.onGloballyPositioned { fieldTop = it.boundsInRoot().top - pull },
             query = state.query,
             onQueryChange = onQueryChange,
             onClear = onClearQuery,

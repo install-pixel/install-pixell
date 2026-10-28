@@ -1,79 +1,84 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material.icons.Icons
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.foundation.border
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.blacklaunch.launcher.system.PrivateSpaceState
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.global.AppSettingKind
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
 import com.blacklaunch.launcher.global.ResultGroup
+import com.blacklaunch.launcher.system.PrivateSpaceState
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.voice.VoiceAction
-import com.blacklaunch.launcher.commands.CustomCommand
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 
 @Composable
 fun SearchResults(
@@ -105,10 +110,12 @@ fun SearchResults(
     /** Які кнопки біля контакту дозволені профілем. */
     canCall: Boolean = true,
     canMessage: Boolean = true,
+    /** Скільки висоти справді займають рядки (пікселі): для плавного закриття — фон проясняється, поки вони ховаються. */
+    onContentHeight: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) {
-        EmptySearch(suggestions, recent, allApps, privateSpace, onTogglePrivate, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, modifier)
+        EmptySearch(suggestions, recent, allApps, privateSpace, onTogglePrivate, iconFor, onLaunch, onLongPress, onRecent, onRemoveRecent, onContentHeight, modifier)
         return
     }
     if (results.isEmpty() && groups.isEmpty() && actions.isEmpty() && custom.isEmpty()) {
@@ -139,6 +146,7 @@ fun SearchResults(
     // калькулятор, програми, далі групи; заголовок групи — над її рядками.
     LazyColumn(
         modifier = modifier,
+        state = reportingListState(onContentHeight),
         reverseLayout = true,
         verticalArrangement = Arrangement.Bottom,
     ) {
@@ -201,15 +209,18 @@ private fun EmptySearch(
     onLongPress: (AppInfo) -> Unit,
     onRecent: (String) -> Unit,
     onRemoveRecent: (String) -> Unit,
+    onContentHeight: (Int) -> Unit,
     modifier: Modifier,
 ) {
     val haptics = LocalHaptics.current
     var showAll by remember { mutableStateOf(false) }
     if (showAll) {
+        // Список усіх програм займає весь екран.
+        LaunchedEffect(Unit) { onContentHeight(Int.MAX_VALUE) }
         AllAppsList(allApps, privateSpace, onTogglePrivate, iconFor, onLaunch, onLongPress, onHide = { showAll = false }, modifier = modifier)
         return
     }
-    LazyColumn(modifier = modifier, reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
+    LazyColumn(modifier = modifier, state = reportingListState(onContentHeight), reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
         // Видно два останні запити; решту (до 5) — гортанням у цьому ж блоці.
         if (recent.isNotEmpty()) item(key = "recent") {
             LazyColumn(
@@ -276,6 +287,20 @@ private fun EmptySearch(
             }
         }
     }
+}
+
+/** Стан списку, що повідомляє, скільки висоти займають видимі рядки (список притиснутий донизу). */
+@Composable
+private fun reportingListState(onContentHeight: (Int) -> Unit): LazyListState {
+    val state = rememberLazyListState()
+    val report by rememberUpdatedState(onContentHeight)
+    LaunchedEffect(state) {
+        snapshotFlow {
+            val info = state.layoutInfo
+            (info.visibleItemsInfo.maxOfOrNull { it.offset + it.size } ?: 0).coerceAtMost(info.viewportSize.height)
+        }.collect { report(it) }
+    }
+    return state
 }
 
 /** Усі програми за абеткою з літерами-розділювачами (P3). */
