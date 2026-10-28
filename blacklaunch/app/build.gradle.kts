@@ -14,8 +14,8 @@ android {
         applicationId = "com.blacklaunch.launcher"
         minSdk = 26
         targetSdk = 36
-        versionCode = 154
-        versionName = "1.2.0-alpha52"
+        versionCode = 155
+        versionName = "1.2.0-alpha53"
 
         // Офлайн-голос (Vosk) має нативні бібліотеки; лишаємо лише ARM — це всі реальні телефони.
         ndk {

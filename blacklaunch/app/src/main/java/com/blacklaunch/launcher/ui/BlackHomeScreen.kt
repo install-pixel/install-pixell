@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -208,8 +207,9 @@ fun BlackHomeScreen(
     var showSettings by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(settingsRequest) { if (settingsRequest > 0) showSettings = true }
     LaunchedEffect(settingsClose) { if (settingsClose > 0) showSettings = false }
-    // Повністю чорний екран: рядок стану ховається, поки нічого не відкрито.
-    val idle = state is LauncherUiState.HomeIdle && !showSettings
+    // Повністю чорний екран: рядок стану схований і на головному, і в пошуку (з клавіатурою теж) — з'являється
+    // лише жестом згори; у налаштуваннях — видно.
+    val idle = !showSettings
     LaunchedEffect(idle) { onIdleChange(idle) }
     var aliasApp by remember { mutableStateOf<AppInfo?>(null) }
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
@@ -496,7 +496,8 @@ private fun HomeIdle(
         )
         // «Що грає» — у смузі під поле пошуку, тож значки не зсуваються; на моніторингу й під час перетягування — ні.
         if (monitor == null && !dragging) {
-            nowPlaying?.invoke(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp))
+            // Там само, де поле пошуку (той самий відступ знизу), — пошук відкривається на місці плашки.
+            nowPlaying?.invoke(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 8.dp))
         }
         val topModifier = Modifier
             .align(Alignment.TopCenter)
@@ -805,7 +806,8 @@ private fun SearchOpen(
                 alpha = if (distance > 0f) (1f - pull / distance).coerceIn(0f, 1f) else 1f
             }
             .background(Color(0x40000000))
-            .statusBarsPadding()
+            // Відступ під рядок стану — однаковий, видно рядок чи ні: витягнули його жестом — нічого не стрибає.
+            .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
             .navigationBarsPadding()
             .imePadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -208,8 +210,9 @@ private fun DrawScope.drawHandGlyph(glyph: MediaGlyph, color: Color, seed: Int) 
     }
 }
 
-/** Заокруглення плашки «Що грає»: на всю висоту, як у поля пошуку. */
-private val NowPlayingRadius = 40.dp
+/** Плашка «Що грає» — як поле пошуку: та сама висота й заокруглення на всю висоту. */
+private val NowPlayingHeight = 56.dp
+private val NowPlayingRadius = 28.dp
 
 /**
  * «Що грає» внизу головного екрана: скляна плашка — назва й виконавець (дотик — повноекранний гравець)
@@ -226,29 +229,50 @@ fun NowPlayingBar(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHaptics.current
+    val sheet = LocalSheet.current
+    // Як поле пошуку з мікрофоном: ліворуч капсула (назва, «назад», «далі», «стоп»), праворуч — окреме коло
+    // з «пауза / грати» на місці мікрофона. Та сама висота й ті самі відступи — пошук відкривається на тому ж місці.
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            // Капсула — як поле пошуку (заокруглення на всю висоту).
-            .glassBox(NowPlayingRadius, seed = 17)
-            .padding(start = 16.dp, end = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
+        Row(
             Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { haptics.tap(); onExpand() }
-                .padding(vertical = 8.dp),
+                .height(NowPlayingHeight)
+                .glassBox(NowPlayingRadius, seed = 17)
+                .padding(start = 18.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(info.title, color = Oled.TextPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            info.artist?.let { Text(it, color = Oled.TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { haptics.tap(); onExpand() }
+                    .padding(vertical = 6.dp),
+            ) {
+                Text(info.title, color = Oled.TextPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                info.artist?.let { Text(it, color = Oled.TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+            MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), enabled = info.canPrevious, onClick = onPrevious)
+            MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), enabled = info.canNext, onClick = onNext)
+            MediaButton(MediaGlyph.STOP, stringResource(R.string.wb_media_stop), onClick = onStop)
         }
-        MediaButton(MediaGlyph.PREVIOUS, stringResource(R.string.wb_media_previous), enabled = info.canPrevious, onClick = onPrevious)
-        MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), onClick = onToggle)
-        MediaButton(MediaGlyph.NEXT, stringResource(R.string.wb_media_next), enabled = info.canNext, onClick = onNext)
-        MediaButton(MediaGlyph.STOP, stringResource(R.string.wb_media_stop), onClick = onStop)
+        Spacer(Modifier.width(10.dp))
+        Box(
+            Modifier
+                .size(NowPlayingHeight)
+                .then(
+                    if (sheet) {
+                        Modifier.pencilFrame(NowPlayingHeight / 2, seed = 19).clip(CircleShape)
+                    } else {
+                        Modifier.clip(CircleShape).background(Oled.Knob).border(1.dp, Oled.Glint, CircleShape)
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            MediaButton(if (info.playing) MediaGlyph.PAUSE else MediaGlyph.PLAY, stringResource(R.string.wb_media_toggle), onClick = onToggle)
+        }
     }
 }
 
