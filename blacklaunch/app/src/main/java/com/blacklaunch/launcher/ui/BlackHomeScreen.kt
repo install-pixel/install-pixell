@@ -285,7 +285,9 @@ fun BlackHomeScreen(
         AnimatedVisibility(
             visible = searchOpen,
             enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
-            exit = if (animateSearchClose) {
+            // Панель уже з'їхала сама (свайп, «Назад») — прибираємо її одразу: інакше ще чверть секунди
+            // невидима панель перехоплювала б наступний жест, і він спрацьовував лише з другого разу.
+            exit = if (animateSearchClose && closeFraction == 0f) {
                 fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 }
             } else {
                 ExitTransition.None
@@ -701,13 +703,13 @@ private fun SearchOpen(
             }
             val distance = hideDistance()
             val start = if (distance > 0f) (pull / distance).coerceIn(0f, 1f) else 0f
-            val fading = launch {
+            launch {
                 animate(start, 1f, animationSpec = tween((BLUR_FADE_MS * (1f - start)).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = FastOutSlowInEasing)) { v, _ -> fade = v }
             }
             val target = distance.coerceAtLeast(pull)
             val left = if (target > 0f) (target - pull) / target else 1f
             animate(pull, target, animationSpec = tween(((if (fromBack) BACK_CLOSE_MS else CLOSE_MS) * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = if (alreadyMoving || rideKeyboard) LinearEasing else FastOutLinearInEasing)) { v, _ -> pull = v }
-            fading.join()
+            // Панель доїхала — пошук закривається одразу (фон догасає сам), щоб невидима панель не ловила дотики.
             close()
         }
     }
