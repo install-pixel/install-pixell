@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
@@ -72,7 +73,18 @@ fun SearchField(
                 .onFocusChanged { onFocusChange(it.isFocused) },
             singleLine = true,
             readOnly = listening,
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, fontFamily = if (sheet) HandFont else null),
+            // «Аркуш»: у шрифту від руки дуже високий рядок — курсор виходив на півполя. Обрізаємо рядок до самих
+            // літер, і курсор стає звичайної висоти.
+            textStyle = if (sheet) {
+                androidx.compose.ui.text.TextStyle(
+                    fontSize = 18.sp,
+                    fontFamily = HandFont,
+                    lineHeight = 22.sp,
+                    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+                )
+            } else {
+                androidx.compose.ui.text.TextStyle(fontSize = 18.sp)
+            },
             placeholder = {
                 val hint = when (voice) {
                     VoiceState.Idle -> R.string.search_hint
@@ -80,7 +92,12 @@ fun SearchField(
                     is VoiceState.Listening -> R.string.listening
                 }
                 // «Аркуш»: «Слухаю…» — вишневим, як рамка мікрофона.
-                Text(stringResource(hint), color = if (sheet && listening) Oled.Listening else Oled.TextSecondary)
+                // Підказка трохи правіше курсора — він стоїть перед першою літерою, а не на ній.
+                Text(
+                    stringResource(hint),
+                    color = if (sheet && listening) Oled.Listening else Oled.TextSecondary,
+                    modifier = Modifier.padding(start = 3.dp),
+                )
             },
             trailingIcon = {
                 if (query.isNotEmpty() && !listening) {
@@ -98,7 +115,7 @@ fun SearchField(
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Oled.TextPrimary,
                 unfocusedTextColor = Oled.TextPrimary,
-                cursorColor = Oled.Accent,
+                cursorColor = if (sheet) Oled.TextSecondary else Oled.Accent,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
