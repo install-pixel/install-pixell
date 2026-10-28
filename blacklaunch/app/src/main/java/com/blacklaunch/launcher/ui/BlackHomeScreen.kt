@@ -130,6 +130,8 @@ private val HOME_BLUR = 10.dp
 private const val HOME_DIM = 0.7f
 /** Скільки чекати, поки клавіатура сховається, перш ніж панель поїде вниз. */
 private const val IME_WAIT_MS = 600L
+/** Яка частка клавіатури ще видна, коли панель уже підхоплює спуск («Назад» із клавіатурою). */
+private const val IME_HANDOFF = 0.35f
 /** Найменший шлях спуску панелі (щоб навіть порожній пошук закривався рухом, а не стрибком). */
 private val MIN_HIDE = 160.dp
 /** Клавіатуру відпустили — за скільки вона доїжджає вниз чи повертається. */
@@ -660,6 +662,9 @@ private fun SearchOpen(
     // (воно приходить із запізненням, і виходила пауза перед спуском панелі).
     var imeReleased by remember { mutableStateOf(false) }
     val keyboardThere = { imeNow.value > 0 && !imeReleased }
+    // Повна висота клавіатури (найбільша, яку бачили) — щоб знати, яку частину шляху вона вже пройшла.
+    var imeFull by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { snapshotFlow { imeNow.value }.collect { if (it > imeFull) imeFull = it } }
 
     // Одне й те саме закриття для свайпу, змаху, «Назад» і клавіатури: клавіатура ховається, панель їде вниз
     // разом із нею (лежить на ній), а тоді плавно доїжджає донизу — і лише тоді пошук закривається.
@@ -671,7 +676,13 @@ private fun SearchOpen(
         scope.launch {
             // Панель їхала разом із клавіатурою — далі рівний рух, без нового розгону.
             val rideKeyboard = keyboardThere()
-            if (rideKeyboard) withTimeoutOrNull(IME_WAIT_MS) { snapshotFlow { keyboardThere() }.first { !it } }
+            // Системна анімація клавіатури в кінці дуже сповільнюється — не чекаємо останніх пікселів: панель
+            // підхоплює рух, щойно клавіатура пройшла більшу частину шляху.
+            if (rideKeyboard) {
+                withTimeoutOrNull(IME_WAIT_MS) {
+                    snapshotFlow { !keyboardThere() || imeNow.value <= imeFull * IME_HANDOFF }.first { it }
+                }
+            }
             val target = hideDistance().coerceAtLeast(pull)
             val left = if (target > 0f) (target - pull) / target else 1f
             animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = if (alreadyMoving || rideKeyboard) LinearEasing else FastOutLinearInEasing)) { v, _ -> pull = v }
