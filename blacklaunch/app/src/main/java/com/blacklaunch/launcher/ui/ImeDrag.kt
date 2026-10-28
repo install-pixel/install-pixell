@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import android.annotation.SuppressLint
 import android.graphics.Insets
 import android.os.Build
 import android.os.CancellationSignal
@@ -16,6 +17,8 @@ import kotlin.math.roundToInt
  * клавіатура їде вниз рівно під пальцем, а панель лежить на ній (одним блоком). Система рухає вікно клавіатури сама,
  * тож це працює з більшістю клавіатур. Не вдалося взяти керування ([failed]) — клавіатура ховається звичайною анімацією.
  */
+// Керування ([controller]) з'являється лише на Android 11+ — [start] перевіряє версію, тож решта викликів безпечна.
+@SuppressLint("NewApi")
 internal class ImeDrag(private val view: View) {
     private var controller: WindowInsetsAnimationController? = null
     private var signal: CancellationSignal? = null

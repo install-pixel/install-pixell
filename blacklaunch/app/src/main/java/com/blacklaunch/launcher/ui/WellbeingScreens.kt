@@ -208,6 +208,9 @@ private fun DrawScope.drawHandGlyph(glyph: MediaGlyph, color: Color, seed: Int) 
     }
 }
 
+/** Заокруглення плашки «Що грає»: на всю висоту, як у поля пошуку. */
+private val NowPlayingRadius = 40.dp
+
 /**
  * «Що грає» внизу головного екрана: скляна плашка — назва й виконавець (дотик — повноекранний гравець)
  * і кнопки «назад», «пауза», «далі», «стоп» (зупиняє й одразу прибирає плашку).
@@ -227,7 +230,8 @@ fun NowPlayingBar(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .glassBox(22.dp, seed = 17)
+            // Капсула — як поле пошуку (заокруглення на всю висоту).
+            .glassBox(NowPlayingRadius, seed = 17)
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
