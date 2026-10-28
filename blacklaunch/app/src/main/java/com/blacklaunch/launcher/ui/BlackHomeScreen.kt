@@ -9,6 +9,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -655,18 +656,25 @@ private fun SearchOpen(
     val imeNow = rememberUpdatedState(WindowInsets.ime.getBottom(LocalDensity.current))
     val view = LocalView.current
     val imeDrag = remember(view) { ImeDrag(view) }
+    // Клавіатуру опустили пальцем самі — знаємо, що її вже немає, і не чекаємо системного «сховалась»
+    // (воно приходить із запізненням, і виходила пауза перед спуском панелі).
+    var imeReleased by remember { mutableStateOf(false) }
+    val keyboardThere = { imeNow.value > 0 && !imeReleased }
 
     // Одне й те саме закриття для свайпу, змаху, «Назад» і клавіатури: клавіатура ховається, панель їде вниз
     // разом із нею (лежить на ній), а тоді плавно доїжджає донизу — і лише тоді пошук закривається.
-    fun closeSmoothly() {
+    // [alreadyMoving] — до панелі щойно рухалась клавіатура: панель підхоплює рух рівно, без розгону з місця.
+    fun closeSmoothly(alreadyMoving: Boolean = false) {
         if (closing) return
         closing = true
         hideKeyboard()
         scope.launch {
-            if (imeNow.value > 0) withTimeoutOrNull(IME_WAIT_MS) { snapshotFlow { imeNow.value }.first { it == 0 } }
+            // Панель їхала разом із клавіатурою — далі рівний рух, без нового розгону.
+            val rideKeyboard = keyboardThere()
+            if (rideKeyboard) withTimeoutOrNull(IME_WAIT_MS) { snapshotFlow { keyboardThere() }.first { !it } }
             val target = hideDistance().coerceAtLeast(pull)
             val left = if (target > 0f) (target - pull) / target else 1f
-            animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = FastOutLinearInEasing)) { v, _ -> pull = v }
+            animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = if (alreadyMoving || rideKeyboard) LinearEasing else FastOutLinearInEasing)) { v, _ -> pull = v }
             close()
         }
     }
@@ -683,6 +691,7 @@ private fun SearchOpen(
                     val rest = imeDrag.moveBy(dy)
                     if (imeDrag.shown <= 0f) {
                         imeDrag.finish(false)
+                        imeReleased = true
                         hideKeyboard()
                     }
                     if (rest > 0f) pull += rest * RESISTANCE
@@ -692,7 +701,7 @@ private fun SearchOpen(
                 dy > 0f -> hideKeyboard()
             }
         }
-        if (dy > 0f && imeNow.value > 0) return
+        if (dy > 0f && keyboardThere()) return
         pull = (pull + dy * RESISTANCE).coerceAtLeast(0f)
     }
     // Новий запит — новий список: довший свайп потрібен, лише якщо гортали саме його.
@@ -707,9 +716,13 @@ private fun SearchOpen(
             val hide = canClose && (velocity > FLICK_VELOCITY || imeDrag.shown < imeDrag.full / 2f)
             val target = if (hide) 0f else imeDrag.full
             scope.launch {
-                animate(imeDrag.shown, target, animationSpec = tween(IME_SETTLE_MS, easing = FastOutSlowInEasing)) { v, _ -> imeDrag.moveTo(v) }
+                // Клавіатура доїжджає вниз, а панель одразу продовжує рух — без зупинки між ними.
+                animate(imeDrag.shown, target, animationSpec = tween(IME_SETTLE_MS, easing = if (hide) LinearEasing else FastOutSlowInEasing)) { v, _ -> imeDrag.moveTo(v) }
                 imeDrag.finish(!hide)
-                if (hide) closeSmoothly()
+                if (hide) {
+                    imeReleased = true
+                    closeSmoothly(alreadyMoving = true)
+                }
             }
             return
         }
@@ -788,7 +801,10 @@ private fun SearchOpen(
     val imeGoingAway = WindowInsets.imeAnimationTarget.getBottom(LocalDensity.current) == 0
     LaunchedEffect(imeVisible, imeGoingAway, fieldFocused) {
         if (imeVisible && !imeGoingAway) {
-            if (fieldFocused) keyboardWasShown = true
+            if (fieldFocused) {
+                keyboardWasShown = true
+                imeReleased = false
+            }
         } else if (keyboardWasShown && !imeDrag.active && !imeDrag.pending && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             // Клавіатуру ведемо пальцем — це не «Назад», рішення прийме сам жест.
             keyboardWasShown = false

@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,16 +30,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -276,6 +281,65 @@ fun NowPlayingBar(
     }
 }
 
+/**
+ * «Аркуш»: шкала програвання від руки — тонка тьмяна лінія олівцем на всю довжину, зігране — товстіший штрих,
+ * а повзунок — кружечок, обведений олівцем. Тягнути чи торкнутися — перемотати (якщо гравець дозволяє).
+ */
+@Composable
+private fun HandSeekBar(
+    value: Float,
+    enabled: Boolean,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val change by rememberUpdatedState(onValueChange)
+    val finished by rememberUpdatedState(onValueChangeFinished)
+    val ink = if (enabled) Oled.TextPrimary else Oled.TextSecondary
+    Canvas(
+        modifier
+            .height(32.dp)
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(Unit) {
+                        val pad = 10.dp.toPx()
+                        fun at(x: Float) = ((x - pad) / (size.width - 2 * pad)).coerceIn(0f, 1f)
+                        detectHorizontalDragGestures(
+                            onDragStart = { change(at(it.x)) },
+                            onHorizontalDrag = { c, _ -> c.consume(); change(at(c.position.x)) },
+                            onDragEnd = { finished() },
+                            onDragCancel = { finished() },
+                        )
+                    }.pointerInput(Unit) {
+                        val pad = 10.dp.toPx()
+                        detectTapGestures { change(((it.x - pad) / (size.width - 2 * pad)).coerceIn(0f, 1f)); finished() }
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        val pad = 10.dp.toPx()
+        val y = size.height / 2
+        val start = pad
+        val end = size.width - pad
+        val x = start + (end - start) * value
+        // Уся шкала — легка, ледь хвиляста лінія.
+        val track = quadPoints(Offset(start, y + 1.dp.toPx()), Offset((start + end) / 2, y - 1.5.dp.toPx()), Offset(end, y + 0.5.dp.toPx()), steps = 40)
+        drawPath(taperedPath(track, 2.dp.toPx()), ink.copy(alpha = 0.3f))
+        // Зігране — густіший штрих по тій самій лінії.
+        val played = track.filter { it.x <= x }
+        if (played.size >= 2) drawPath(taperedPath(played + Offset(x, played.last().y), 4.dp.toPx()), ink)
+        // Повзунок — кружечок олівцем на чорному.
+        val r = 8.dp.toPx()
+        val thumbY = played.lastOrNull()?.y ?: y
+        drawCircle(Color.Black, r, Offset(x, thumbY))
+        translate(x - r, thumbY - r) {
+            drawPath(taperedPath(pencilLoop(Size(2 * r, 2 * r), r, 37, 0.6.dp.toPx()), 2.dp.toPx()), ink)
+        }
+    }
+}
+
 /** «1:05» / «1:02:07». */
 private fun clockText(ms: Long): String {
     val total = ms.coerceAtLeast(0) / 1000
@@ -369,7 +433,18 @@ fun NowPlayingScreen(
             if (info.durationMs > 0) {
                 // [tick] — щоб позиція перераховувалась щопівсекунди, поки грає.
                 val position = dragging?.let { (it * info.durationMs).toLong() } ?: (tick.let { info.positionNow() })
-                androidx.compose.material3.Slider(
+                if (LocalSheet.current) {
+                    HandSeekBar(
+                        value = (position.toFloat() / info.durationMs).coerceIn(0f, 1f),
+                        enabled = info.canSeek,
+                        onValueChange = { dragging = it },
+                        onValueChangeFinished = {
+                            dragging?.let { onSeek((it * info.durationMs).toLong()) }
+                            dragging = null
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    )
+                } else androidx.compose.material3.Slider(
                     value = (position.toFloat() / info.durationMs).coerceIn(0f, 1f),
                     onValueChange = { if (info.canSeek) dragging = it },
                     onValueChangeFinished = {
