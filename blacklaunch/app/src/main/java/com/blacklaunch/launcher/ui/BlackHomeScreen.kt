@@ -1,95 +1,96 @@
 package com.blacklaunch.launcher.ui
 
-import androidx.compose.ui.platform.LocalWindowInfo
-import kotlinx.coroutines.delay
-import androidx.compose.animation.core.Animatable
+import android.os.Build
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
-import kotlinx.coroutines.launch
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.mutableLongStateOf
-import android.os.SystemClock
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.blacklaunch.launcher.system.PrivateSpaceState
 import com.blacklaunch.launcher.apps.AppInfo
+import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.global.GlobalResult
 import com.blacklaunch.launcher.global.GroupKind
+import com.blacklaunch.launcher.system.GlanceInfo
+import com.blacklaunch.launcher.system.PrivateSpaceState
 import com.blacklaunch.launcher.ui.theme.Oled
 import com.blacklaunch.launcher.viewmodel.HomeState
 import com.blacklaunch.launcher.viewmodel.LauncherUiState
 import com.blacklaunch.launcher.voice.VoiceAction
-import com.blacklaunch.launcher.system.GlanceInfo
-import com.blacklaunch.launcher.commands.CustomCommand
 import com.blacklaunch.launcher.voice.VoiceState
 import kotlin.math.abs
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val SwipeThreshold = 48.dp
 
@@ -116,6 +117,11 @@ private const val FLICK_PULL = 0.4f
 
 /** Тривалість анімації закриття пошуку. */
 private const val CLOSE_MS = 280
+private const val MIN_CLOSE_MS = 120
+private val HOME_BLUR = 10.dp
+private const val HOME_DIM = 0.7f
+/** Скільки потягнути панель униз, щоб клавіатура почала ховатися разом із нею. */
+private val KEYBOARD_SLOP = 12.dp
 private const val OPEN_MS = 180
 
 @Composable
@@ -210,8 +216,23 @@ fun BlackHomeScreen(
     // Під час анімації закриття показуємо останній стан пошуку, а не порожнечу.
     var lastSearch by remember { mutableStateOf<LauncherUiState.SearchOpen?>(null) }
     if (state is LauncherUiState.SearchOpen) lastSearch = state
-    val homeBlur by animateDpAsState(if (searchOpen) 10.dp else 0.dp, tween(if (animateSearchClose) CLOSE_MS else 0), label = "homeBlur")
-    val homeAlpha by animateFloatAsState(if (searchOpen) 0.7f else 1f, tween(if (animateSearchClose) CLOSE_MS else 0), label = "homeAlpha")
+    // Розмиття й притемнення фону: з'являються з відкриттям пошуку, а при закритті тануть рівно настільки,
+    // наскільки панель уже опущена (тягнете пальцем — фон світлішає під пальцем).
+    val openAmount = remember { Animatable(0f) }
+    var closeFraction by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(searchOpen) {
+        if (searchOpen) {
+            closeFraction = 0f
+            openAmount.animateTo(1f, tween(OPEN_MS))
+        } else if (closeFraction >= 1f || !animateSearchClose) {
+            // Панель уже доїхала донизу (свайп, «Назад») — фон уже ясний; або закрили без анімації.
+            openAmount.snapTo(0f)
+            closeFraction = 0f
+        } else {
+            openAmount.animateTo(0f, tween(CLOSE_MS))
+        }
+    }
+    val density = LocalDensity.current
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // Під пошуком головний екран лишається на фоні — розмитий і притемнений.
         HomeIdle(
@@ -230,7 +251,14 @@ fun BlackHomeScreen(
             monitor = monitor,
             dots = dots,
             nowPlaying = nowPlaying,
-            modifier = Modifier.blur(homeBlur).alpha(homeAlpha),
+            // Значення читаються лише під час малювання — головний екран не перебудовується щокадру.
+            modifier = Modifier.graphicsLayer {
+                val k = openAmount.value * (1f - closeFraction)
+                val radius = with(density) { HOME_BLUR.toPx() } * k
+                renderEffect = if (radius > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) BlurEffect(radius, radius, TileMode.Decal) else null
+                alpha = 1f - (1f - HOME_DIM) * k
+                clip = true
+            },
         )
         AnimatedVisibility(
             visible = searchOpen,
@@ -266,11 +294,10 @@ fun BlackHomeScreen(
                 iconFor = iconFor,
                 voiceState = voiceState,
                 onMicClick = onMicClick,
-                // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом.
-                onKeyboardHidden = {
-                    if (aliasApp == null && menuApp == null && voiceState == VoiceState.Idle) onCloseSearch()
-                },
+                // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом (якщо не відкрите вікно чи голос).
+                canCloseWithKeyboard = { aliasApp == null && menuApp == null && voiceState == VoiceState.Idle },
                 onSwipeDown = onCloseSearch,
+                onCloseProgress = { closeFraction = it },
             )
         }
     }
@@ -564,8 +591,11 @@ private fun SearchOpen(
     iconFor: suspend (AppInfo) -> ImageBitmap?,
     voiceState: VoiceState,
     onMicClick: () -> Unit,
-    onKeyboardHidden: () -> Unit,
+    /** Клавіатуру сховали «Назад»: чи закривати й пошук. */
+    canCloseWithKeyboard: () -> Boolean,
     onSwipeDown: () -> Unit,
+    /** Наскільки панель опущена: 0 — на місці, 1 — сховалась (для розмиття фону). */
+    onCloseProgress: (Float) -> Unit = {},
 ) {
     val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
     val close by rememberUpdatedState(onSwipeDown)
@@ -583,7 +613,42 @@ private fun SearchOpen(
     }
     // Пошук знову відкрили, поки панель ще від'їжджала, — повертаємо її на місце;
     // почали закривати (Назад, свайп) — клавіатура їде вниз одночасно з панеллю.
-    LaunchedEffect(visible) { if (visible) pull = 0f else hideKeyboard() }
+    var closing by remember { mutableStateOf(false) }
+    LaunchedEffect(visible) {
+        if (visible) {
+            pull = 0f
+            closing = false
+        } else {
+            hideKeyboard()
+        }
+    }
+    // Скільки панелі вже опущено — фон за нею проясняється в лад.
+    val progress by rememberUpdatedState(onCloseProgress)
+    LaunchedEffect(Unit) {
+        snapshotFlow { if (panelHeight > 0f) (pull / panelHeight).coerceIn(0f, 1f) else 0f }.collect { progress(it) }
+    }
+
+    // Одне й те саме закриття для свайпу, змаху, «Назад» і клавіатури: клавіатура ховається одразу,
+    // панель плавно доїжджає донизу з того місця, де вона зараз, і лише тоді пошук закривається.
+    fun closeSmoothly() {
+        if (closing) return
+        closing = true
+        hideKeyboard()
+        scope.launch {
+            val target = panelHeight.coerceAtLeast(pull)
+            val left = if (target > 0f) (target - pull) / target else 1f
+            animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = FastOutLinearInEasing)) { v, _ -> pull = v }
+            close()
+        }
+    }
+    BackHandler(enabled = visible && !closing) { closeSmoothly() }
+
+    // Потягнули панель униз, а клавіатура відкрита — ховаємо її одразу, щоб панель не заїжджала під неї:
+    // клавіатура їде вниз разом із панеллю, одним блоком.
+    val keyboardSlopPx = with(LocalDensity.current) { KEYBOARD_SLOP.toPx() }
+    fun pulled() {
+        if (pull > keyboardSlopPx && keyboardWasShown) hideKeyboard()
+    }
     // Новий запит — новий список: довший свайп потрібен, лише якщо гортали саме його.
     LaunchedEffect(state.query) { listWasScrolled = false }
 
@@ -594,9 +659,7 @@ private fun SearchOpen(
         val flick = velocity > FLICK_VELOCITY && pull > thresholdPx * FLICK_PULL
         scope.launch {
             if (canClose && (pull > needed || flick)) {
-                hideKeyboard()
-                animate(pull, panelHeight.coerceAtLeast(pull), animationSpec = tween(CLOSE_MS, easing = FastOutLinearInEasing)) { v, _ -> pull = v }
-                close()
+                closeSmoothly()
             } else {
                 animate(pull, 0f, animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow)) { v, _ -> pull = v }
             }
@@ -627,6 +690,7 @@ private fun SearchOpen(
                 }
                 if (available.y > 0f) {
                     pull += available.y * RESISTANCE
+                    pulled()
                     return Offset(0f, available.y)
                 }
                 return Offset.Zero
@@ -653,12 +717,14 @@ private fun SearchOpen(
     }
     // Рахуємо клавіатуру «нашою», лише коли вона відкрилась для поля пошуку. Інакше залишковий
     // стан клавіатури з попередньої програми закривав пошук одразу після відкриття.
-    LaunchedEffect(imeVisible, fieldFocused) {
-        if (imeVisible) {
+    // Клавіатура почала ховатися («Назад») — не чекаємо, поки вона зникне: панель починає спуск одночасно з нею.
+    val imeGoingAway = WindowInsets.imeAnimationTarget.getBottom(LocalDensity.current) == 0
+    LaunchedEffect(imeVisible, imeGoingAway, fieldFocused) {
+        if (imeVisible && !imeGoingAway) {
             if (fieldFocused) keyboardWasShown = true
         } else if (keyboardWasShown && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             keyboardWasShown = false
-            onKeyboardHidden()
+            if (canCloseWithKeyboard()) closeSmoothly()
         }
     }
 
@@ -684,6 +750,7 @@ private fun SearchOpen(
                         change.consume()
                         tracker.addPosition(change.uptimeMillis, change.position)
                         pull = (pull + amount * RESISTANCE).coerceAtLeast(0f)
+                        pulled()
                     },
                     onDragEnd = { release(canClose = true, velocity = tracker.calculateVelocity().y) },
                     onDragCancel = { release(canClose = false) },
