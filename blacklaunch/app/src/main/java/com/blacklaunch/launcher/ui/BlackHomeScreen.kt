@@ -130,6 +130,11 @@ private val HOME_BLUR = 10.dp
 private const val HOME_DIM = 0.7f
 /** Скільки чекати, поки клавіатура сховається, перш ніж панель поїде вниз. */
 private const val IME_WAIT_MS = 600L
+/** За скільки фон проясняється, коли пошук закривається. */
+private const val BLUR_FADE_MS = 420
+/** Гумка вгору: наскільки туго й наскільки далеко панель піддається. */
+private const val UP_RESISTANCE = 0.25f
+private val MAX_UP = 48.dp
 /** Яка частка клавіатури ще видна, коли панель уже підхоплює спуск («Назад» із клавіатурою). */
 private const val IME_HANDOFF = 0.35f
 /** Найменший шлях спуску панелі (щоб навіть порожній пошук закривався рухом, а не стрибком). */
@@ -630,9 +635,14 @@ private fun SearchOpen(
     // Пошук знову відкрили, поки панель ще від'їжджала, — повертаємо її на місце;
     // почали закривати (Назад, свайп) — клавіатура їде вниз одночасно з панеллю.
     var closing by remember { mutableStateOf(false) }
+    // Під час закриття фон проясняється власним плавним згасанням (не швидше за [BLUR_FADE_MS]), а не стрибком.
+    var fade by remember { mutableFloatStateOf(-1f) }
+    // Клавіатуру цим жестом опустили до кінця — відпустили палець: пошук закривається, а не пружинить назад.
+    var pushedKeyboard by remember { mutableStateOf(false) }
     LaunchedEffect(visible) {
         if (visible) {
             pull = 0f
+            fade = -1f
             closing = false
         } else {
             hideKeyboard()
@@ -644,6 +654,7 @@ private fun SearchOpen(
     var fieldTop by remember { mutableFloatStateOf(0f) }
     var contentHeight by remember { mutableIntStateOf(0) }
     val minHidePx = with(LocalDensity.current) { MIN_HIDE.toPx() }
+    val maxUpPx = with(LocalDensity.current) { MAX_UP.toPx() }
     fun hideDistance(): Float {
         if (panelHeight <= 0f) return 0f
         if (fieldTop <= 0f || contentHeight == Int.MAX_VALUE) return panelHeight
@@ -651,7 +662,9 @@ private fun SearchOpen(
     }
     val progress by rememberUpdatedState(onCloseProgress)
     LaunchedEffect(Unit) {
-        snapshotFlow { hideDistance().let { d -> if (d > 0f) (pull / d).coerceIn(0f, 1f) else 0f } }.collect { progress(it) }
+        snapshotFlow {
+            if (fade >= 0f) fade else hideDistance().let { d -> if (d > 0f) (pull / d).coerceIn(0f, 1f) else 0f }
+        }.collect { progress(it) }
     }
 
     // Скільки клавіатури зараз видно (пікселі) — панель лежить на ній і не заходить під неї.
@@ -683,9 +696,15 @@ private fun SearchOpen(
                     snapshotFlow { !keyboardThere() || imeNow.value <= imeFull * IME_HANDOFF }.first { it }
                 }
             }
-            val target = hideDistance().coerceAtLeast(pull)
+            val distance = hideDistance()
+            val start = if (distance > 0f) (pull / distance).coerceIn(0f, 1f) else 0f
+            val fading = launch {
+                animate(start, 1f, animationSpec = tween((BLUR_FADE_MS * (1f - start)).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = FastOutSlowInEasing)) { v, _ -> fade = v }
+            }
+            val target = distance.coerceAtLeast(pull)
             val left = if (target > 0f) (target - pull) / target else 1f
             animate(pull, target, animationSpec = tween((CLOSE_MS * left).toInt().coerceAtLeast(MIN_CLOSE_MS), easing = if (alreadyMoving || rideKeyboard) LinearEasing else FastOutLinearInEasing)) { v, _ -> pull = v }
+            fading.join()
             close()
         }
     }
@@ -703,6 +722,7 @@ private fun SearchOpen(
                     if (imeDrag.shown <= 0f) {
                         imeDrag.finish(false)
                         imeReleased = true
+                        pushedKeyboard = true
                         hideKeyboard()
                     }
                     if (rest > 0f) pull += rest * RESISTANCE
@@ -713,7 +733,10 @@ private fun SearchOpen(
             }
         }
         if (dy > 0f && keyboardThere()) return
-        pull = (pull + dy * RESISTANCE).coerceAtLeast(0f)
+        // Угору панель трохи піддається пальцю (туга гумка) і потім пружно повертається — живий відгук,
+        // навіть коли гортати нема чого.
+        val resistance = if (pull < 0f || (pull == 0f && dy < 0f)) UP_RESISTANCE else RESISTANCE
+        pull = (pull + dy * resistance).coerceIn(-maxUpPx, Float.MAX_VALUE)
     }
     // Новий запит — новий список: довший свайп потрібен, лише якщо гортали саме його.
     LaunchedEffect(state.query) { listWasScrolled = false }
@@ -738,10 +761,16 @@ private fun SearchOpen(
             return
         }
         imeDrag.reset()
+        val pushed = pushedKeyboard
+        pushedKeyboard = false
+        if (pushed && canClose && velocity >= 0f) {
+            closeSmoothly(alreadyMoving = true)
+            return
+        }
         val needed = thresholdPx * if (listWasScrolled) LONG_PULL else PULL
         val flick = velocity > FLICK_VELOCITY && pull > thresholdPx * FLICK_PULL
         scope.launch {
-            if (canClose && (pull > needed || flick)) {
+            if (canClose && pull > 0f && (pull > needed || flick)) {
                 closeSmoothly()
             } else {
                 animate(pull, 0f, animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow)) { v, _ -> pull = v }
@@ -758,7 +787,15 @@ private fun SearchOpen(
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 // Палець пішов назад угору — спершу повертаємо відтягнуту панель.
-                if (source != NestedScrollSource.UserInput || available.y >= 0f) return Offset.Zero
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                // Панель відтягнута вгору (гумка), а палець пішов униз — спершу повертаємо її.
+                if (pull < 0f && available.y > 0f) {
+                    val next = (pull + available.y * UP_RESISTANCE).coerceAtMost(0f)
+                    val used = (next - pull) / UP_RESISTANCE
+                    pull = next
+                    return Offset(0f, used)
+                }
+                if (available.y >= 0f) return Offset.Zero
                 // Клавіатуру опустили пальцем і ведуть назад угору — вона піднімається за пальцем.
                 if (imeDrag.active) {
                     dragBy(available.y)
@@ -777,7 +814,7 @@ private fun SearchOpen(
                     scrolledThisGesture = true
                     listWasScrolled = true
                 }
-                if (available.y > 0f) {
+                if (available.y > 0f || (available.y < 0f && !imeDrag.active && consumed.y == 0f)) {
                     dragBy(available.y)
                     return Offset(0f, available.y)
                 }
@@ -788,7 +825,7 @@ private fun SearchOpen(
             override suspend fun onPreFling(available: Velocity): Velocity {
                 val canClose = !scrolledThisGesture
                 scrolledThisGesture = false
-                if (pull <= 0f && !imeDrag.active) {
+                if (pull == 0f && !imeDrag.active && !pushedKeyboard) {
                     imeDrag.reset()
                     return Velocity.Zero
                 }
