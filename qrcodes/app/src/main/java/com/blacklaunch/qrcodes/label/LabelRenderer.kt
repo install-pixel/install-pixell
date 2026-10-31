@@ -267,14 +267,27 @@ class LabelRenderer(private val hand: Typeface) {
     // ——— друк і «Поділитися» ———
 
     /** PDF: [copies] однакових наклейок, кожна — окрема сторінка точного розміру. */
-    fun writePdf(out: FileOutputStream, design: LabelDesign, copies: Int) {
+    /**
+     * PDF: [copies] однакових наклейок, кожна — окрема сторінка. [paperMm] — папір, вибраний у вікні друку (ширина ×
+     * висота, мм): сторінка — цього розміру, а наклейка — по центру в справжніх міліметрах, без масштабування (код
+     * точно того розміру, що на екрані). Якщо наклейка більша за папір — зменшуємо, щоб умістилась. null — сторінка
+     * розміром із саму наклейку.
+     */
+    fun writePdf(out: FileOutputStream, design: LabelDesign, copies: Int, paperMm: Pair<Float, Float>? = null) {
         val doc = PdfDocument()
         try {
-            val w = (design.size.widthMm * PDF_POINTS_PER_MM).toInt()
-            val h = (design.size.heightMm * PDF_POINTS_PER_MM).toInt()
+            val landscape = design.size.widthMm > design.size.heightMm
+            // Папір повертаємо так само, як наклейку (принтер сам знає, як подавати рулон).
+            val (pw, ph) = paperMm?.let { (a, b) -> if ((a > b) == landscape) a to b else b to a }
+                ?: (design.size.widthMm to design.size.heightMm)
+            val w = (pw * PDF_POINTS_PER_MM).toInt()
+            val h = (ph * PDF_POINTS_PER_MM).toInt()
+            val fit = minOf(1f, pw / design.size.widthMm, ph / design.size.heightMm)
+            val k = PDF_POINTS_PER_MM * fit
             repeat(copies.coerceAtLeast(1)) { p ->
                 val page = doc.startPage(PdfDocument.PageInfo.Builder(w, h, p + 1).create())
-                draw(page.canvas, PDF_POINTS_PER_MM, design, LabelPalette.Print)
+                page.canvas.translate((w - design.size.widthMm * k) / 2f, (h - design.size.heightMm * k) / 2f)
+                draw(page.canvas, k, design, LabelPalette.Print)
                 doc.finishPage(page)
             }
             doc.writeTo(out)
@@ -303,6 +316,8 @@ class LabelRenderer(private val hand: Typeface) {
     }
 
     private inner class Adapter(val name: String, val design: LabelDesign, val copies: Int) : PrintDocumentAdapter() {
+        @Volatile private var paperMm: Pair<Float, Float>? = null
+
         override fun onLayout(
             oldAttributes: PrintAttributes?,
             newAttributes: PrintAttributes,
@@ -318,6 +333,8 @@ class LabelRenderer(private val hand: Typeface) {
                 .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
                 .setPageCount(copies.coerceAtLeast(1))
                 .build()
+            // Папір, який зараз вибраний у вікні друку (у принтера Zebra — розмір його рулону).
+            paperMm = newAttributes.mediaSize?.let { it.widthMils * 25.4f / 1000f to it.heightMils * 25.4f / 1000f }
             callback.onLayoutFinished(info, oldAttributes != newAttributes)
         }
 
@@ -328,7 +345,7 @@ class LabelRenderer(private val hand: Typeface) {
             callback: WriteResultCallback,
         ) {
             try {
-                FileOutputStream(destination.fileDescriptor).use { writePdf(it, design, copies) }
+                FileOutputStream(destination.fileDescriptor).use { writePdf(it, design, copies, paperMm) }
                 callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
             } catch (e: Exception) {
                 callback.onWriteFailed(e.message)

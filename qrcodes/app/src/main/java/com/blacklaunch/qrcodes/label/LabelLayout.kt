@@ -21,6 +21,8 @@ data class LabelSize(
     companion object {
         val PRESETS = listOf(
             LabelSize(150f, 100f),
+            // 4″ × 6,5″ — рулон Zebra (так його показує служба друку: 4,01″ × 6,49″).
+            LabelSize(165f, 102f),
             LabelSize(100f, 50f),
             LabelSize(58f, 40f),
             LabelSize(50f, 30f),
