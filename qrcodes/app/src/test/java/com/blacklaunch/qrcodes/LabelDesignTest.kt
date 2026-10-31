@@ -146,4 +146,15 @@ class LabelDesignTest {
         assertEquals(flat.height, turned.width, 0.01f)
         assertTrue(text.rotated(45f).bounds(tw).width > flat.height)
     }
+
+    @Test
+    fun sheetBorderKeepsItemsFurtherFromEdge() {
+        val q = qr(1, cx = 22f, cy = 22f, side = 40f)
+        val plain = LabelDesign(zebra, listOf(q))
+        assertTrue(Placement.fits(plain, q, tw))
+        val bordered = plain.copy(border = QrFrame.Double)
+        assertFalse(Placement.fits(bordered, q, tw))
+        val moved = Placement.nearestFree(bordered, q, tw)!!
+        assertTrue(moved.bounds(tw).left >= Placement.EDGE_WITH_BORDER - 0.01f)
+    }
 }

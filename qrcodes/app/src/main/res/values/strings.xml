@@ -18,7 +18,7 @@
     <string name="favorite_add">Add to favourites</string>
     <string name="favorite_remove">Remove from favourites</string>
     <string name="in_favorites">In favourites</string>
-    <string name="favorites_empty">Your favourite codes will be here.\n\nSwipe left to create a code. Long-press a saved code → “Add to favourites”.</string>
+    <string name="favorites_empty">Your favourite codes will be here.\n\nSwipe left to create a code. Long-press a saved code → “Add to favourites”. Here: hold and drag to reorder, drag to the top to remove.</string>
     <string name="flashlight">Flashlight</string>
     <string name="from_gallery">From gallery</string>
     <string name="input_hint">Text for the QR code</string>
@@ -62,7 +62,6 @@
     <string name="text_pick_none">Nothing chosen yet</string>
     <string name="label_add_text">Text</string>
     <string name="label_add_icon">Icon</string>
-    <string name="label_border">Border</string>
     <string name="label_grid">Grid</string>
     <string name="label_hint">Tap an item to choose it. Drag — move; two fingers — size and turn; double tap — edit; drag onto “Delete” at the top — remove. Items never overlap or leave the label.</string>
     <string name="label_text_size">Letters: %1$d mm</string>
@@ -93,5 +92,8 @@
     <string name="label_fill_short">Fill label</string>
     <string name="label_edit_short">Edit</string>
     <string name="label_icon_pick">Icon — tap another to replace</string>
-    <string name="label_border_sheet">Label border</string>
+    <string name="unfavorited">Removed from favourites</string>
+    <string name="label_frame_code">Around the code: %1$s</string>
+    <string name="label_frame_pick_code">To frame a code, first tap it on the label</string>
+    <string name="label_frame_sheet">Around the whole label</string>
 </resources>

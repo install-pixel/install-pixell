@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -60,6 +61,8 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.ui.graphics.BlurEffect
@@ -377,9 +380,43 @@ fun SheetTextField(
 }
 
 /**
- * Підказка («Збережено», «Видалено» + «Повернути») — по центру екрана, на чорному клаптику в рамці олівцем;
- * дія — під текстом.
+ * Сповіщення — завжди однакове: на всю ширину (з полями), сталої висоти, вгорі під рядком стану, на чорному клаптику
+ * в рамці олівцем. Дія («Повернути») — праворуч. Так само виглядають і підказки камери.
  */
+@Composable
+fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = NOTICE_HEIGHT)
+            .background(Oled.Black.copy(alpha = 0.92f), RoundedCornerShape(NOTICE_HEIGHT / 2))
+            .pencilFrame(NOTICE_HEIGHT / 2, seed = 17)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text,
+            color = Oled.TextPrimary,
+            fontSize = 17.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (action != null) {
+            Spacer(Modifier.width(12.dp))
+            SheetButton(action, onAction, tone = Tone.Confirm)
+        }
+    }
+}
+
+private val NOTICE_HEIGHT = 56.dp
+
+/** Місце сповіщень — одне на всю програму: угорі, під рядком стану. */
+fun Modifier.noticePlace(): Modifier = statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp)
+
+/** Сповіщення, що з'являється й тане («Збережено», «Видалено» + «Повернути», «Немає місця»…). */
 @Composable
 fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
     var shown by remember { mutableStateOf("") }
@@ -388,19 +425,32 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
         shown = text
         shownAction = action
     }
-    Box(Modifier.fillMaxSize().navigationBarsPadding().imePadding().padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(visible = text != null, enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 4 }, exit = fadeOut(tween(CLOSE_MS))) {
-            Column(
-                Modifier
-                    .background(Oled.Black, RoundedCornerShape(20.dp))
-                    .pencilFrame(20.dp, seed = shown.length)
-                    .padding(horizontal = 24.dp, vertical = 14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(shown, color = Oled.TextPrimary, fontSize = 19.sp, textAlign = TextAlign.Center)
-                shownAction?.let { label -> SheetButton(label, onAction, tone = Tone.Confirm) }
-            }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(
+            visible = text != null,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { -it / 3 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { -it / 3 },
+            modifier = Modifier.noticePlace(),
+        ) {
+            Notice(shown, action = shownAction, onAction = onAction)
         }
     }
 }
+
+/**
+ * Список, що гортається, не обрізається різко: вгорі й унизу вміст плавно тане в чорне (на [fade] висоти).
+ */
+fun Modifier.fadingEdges(fade: Dp = 28.dp): Modifier = graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val f = fade.toPx().coerceAtMost(size.height / 3)
+        drawRect(
+            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to Color.Transparent,
+                f / size.height to Color.Black,
+                1f - f / size.height to Color.Black,
+                1f to Color.Transparent,
+            ),
+            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+        )
+    }

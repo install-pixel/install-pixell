@@ -84,6 +84,8 @@ import com.blacklaunch.qrcodes.ui.RoundButton
 import com.blacklaunch.qrcodes.ui.SheetButton
 import com.blacklaunch.qrcodes.ui.SheetInk
 import com.blacklaunch.qrcodes.ui.pencilFrame
+import com.blacklaunch.qrcodes.ui.noticePlace
+import com.blacklaunch.qrcodes.ui.fadingEdges
 import com.blacklaunch.qrcodes.ui.pencilLoop
 import com.blacklaunch.qrcodes.ui.taperedPath
 import com.blacklaunch.qrcodes.ui.theme.Oled
@@ -245,27 +247,17 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
                 modifier = Modifier.fillMaxSize(),
             )
             if (scanQr) ScanFrame()
-            Text(
-                stringResource(if (scanQr) R.string.scan_hint else R.string.photo_hint),
-                color = Oled.TextPrimary,
-                fontSize = 18.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 24.dp, start = 24.dp, end = 24.dp)
-                    .background(Oled.Black.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
-                    .pencilFrame(16.dp, seed = 31, alpha = 0.6f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            // Підказка — як усі сповіщення програми: те саме місце, той самий вигляд.
+            com.blacklaunch.qrcodes.ui.Notice(
+                stringResource(
+                    when {
+                        photo == PhotoState.Working -> R.string.recognizing
+                        scanQr -> R.string.scan_hint
+                        else -> R.string.photo_hint
+                    },
+                ),
+                modifier = Modifier.align(Alignment.TopCenter).then(Modifier.noticePlace()),
             )
-            if (photo == PhotoState.Working) {
-                Text(
-                    stringResource(R.string.recognizing),
-                    color = Oled.TextPrimary,
-                    fontSize = 20.sp,
-                    modifier = Modifier.align(Alignment.Center).background(Oled.Black.copy(alpha = 0.8f), RoundedCornerShape(16.dp)).padding(16.dp),
-                )
-            }
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -408,6 +400,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                     .fillMaxWidth()
                     .heightIn(max = 220.dp)
                     .padding(top = 10.dp)
+                    .fadingEdges(14.dp)
                     .verticalScroll(rememberScrollState())
                     // Усередині прокрутки: після затискання тягнемо вибір, а не прокручуємо список.
                     .onGloballyPositioned { listOrigin = it.positionInRoot() }

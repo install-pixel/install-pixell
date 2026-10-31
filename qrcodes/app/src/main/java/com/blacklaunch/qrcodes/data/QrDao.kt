@@ -26,6 +26,16 @@ interface QrDao {
     @Update
     suspend fun update(code: QrCode)
 
+    @Query("UPDATE codes SET favoriteAt = :at WHERE id = :id")
+    suspend fun setFavoriteAt(id: Long, at: Long?)
+
+    /** Новий порядок вибраних: перший у списку — перший на головному. */
+    @androidx.room.Transaction
+    suspend fun reorderFavorites(ids: List<Long>) {
+        val base = System.currentTimeMillis()
+        ids.forEachIndexed { i, id -> setFavoriteAt(id, base + i) }
+    }
+
     @Query("DELETE FROM codes WHERE id = :id")
     suspend fun delete(id: Long)
 }

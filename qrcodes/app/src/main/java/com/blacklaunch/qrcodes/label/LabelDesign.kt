@@ -178,7 +178,8 @@ fun MmRect.overlaps(o: MmRect, gap: Float = 0f): Boolean =
 data class LabelDesign(
     val size: LabelSize = LabelSize.DEFAULT,
     val elements: List<Element> = emptyList(),
-    val border: Boolean = false,
+    /** Рамка по краю всього аркуша (ті самі стилі, що й у коду, крім «Скануй мене»). */
+    val border: QrFrame = QrFrame.None,
 ) {
     val nextId: Int get() = (elements.maxOfOrNull { it.id } ?: 0) + 1
 
@@ -211,7 +212,7 @@ object Snap {
      * [cx], [cy] — куди хоче лягти центр; [box] — межі елемента в поточному місці (для країв і розміру).
      * vertical/horizontal — лінії, до яких прилипло (щоб показати їх на екрані).
      */
-    fun place(cx: Float, cy: Float, element: MmRect, current: Element, size: LabelSize, margin: Float = LabelLayout.MARGIN_MM): Result {
+    fun place(cx: Float, cy: Float, element: MmRect, current: Element, size: LabelSize, margin: Float = LabelLayout.MARGIN_MM, edge: Float = Placement.EDGE): Result {
         val halfW = element.width / 2
         val halfH = element.height / 2
         // Межі елемента відносно центру можуть бути несиметричні (підпис під кодом) — враховуємо зсув.
@@ -235,7 +236,7 @@ object Snap {
             if (abs(y + offY + halfH - (size.heightMm - margin)) < DISTANCE) { y = size.heightMm - margin - halfH - offY; horizontal = size.heightMm - margin }
         }
         // Не виїжджати за наклейку (якщо елемент більший за неї — тримаємо центр на ній).
-        val e = Placement.EDGE
+        val e = edge
         x = if (element.width <= size.widthMm - 2 * e) x.coerceIn(e + halfW - offX, size.widthMm - e - halfW - offX) else midX - offX
         y = if (element.height <= size.heightMm - 2 * e) y.coerceIn(e + halfH - offY, size.heightMm - e - halfH - offY) else midY - offY
         return Result(x, y, vertical, horizontal)
@@ -250,16 +251,21 @@ object Placement {
     /** Скільки мм від краю наклейки лишати (принтер не друкує впритул). */
     const val EDGE = 1.5f
 
+    /** З рамкою аркуша — ще далі від краю, щоб нічого не налазило на рамку. */
+    const val EDGE_WITH_BORDER = 4f
+
+    fun edge(design: LabelDesign): Float = if (design.border == QrFrame.None) EDGE else EDGE_WITH_BORDER
+
     /** Мінімальний проміжок між елементами. */
     const val GAP = 1f
 
-    fun inside(b: MmRect, size: LabelSize) =
-        b.left >= EDGE - 0.01f && b.top >= EDGE - 0.01f && b.right <= size.widthMm - EDGE + 0.01f && b.bottom <= size.heightMm - EDGE + 0.01f
+    fun inside(b: MmRect, size: LabelSize, edge: Float = EDGE) =
+        b.left >= edge - 0.01f && b.top >= edge - 0.01f && b.right <= size.widthMm - edge + 0.01f && b.bottom <= size.heightMm - edge + 0.01f
 
     /** Чи стоїть [e] на своєму місці: всередині й ні на кого не налазить. */
     fun fits(design: LabelDesign, e: Element, tw: (String, Float) -> Float): Boolean {
         val b = e.bounds(tw)
-        return inside(b, design.size) && design.elements.none { it.id != e.id && it.bounds(tw).overlaps(b, GAP - 0.01f) }
+        return inside(b, design.size, edge(design)) && design.elements.none { it.id != e.id && it.bounds(tw).overlaps(b, GAP - 0.01f) }
     }
 
     /** На кого налазить [e] (щоб підсвітити). */
@@ -276,10 +282,11 @@ object Placement {
         val halfW = b.width / 2
         val halfH = b.height / 2
         val size = design.size
-        val minX = EDGE + halfW - offX
-        val maxX = size.widthMm - EDGE - halfW - offX
-        val minY = EDGE + halfH - offY
-        val maxY = size.heightMm - EDGE - halfH - offY
+        val edge = edge(design)
+        val minX = edge + halfW - offX
+        val maxX = size.widthMm - edge - halfW - offX
+        val minY = edge + halfH - offY
+        val maxY = size.heightMm - edge - halfH - offY
         if (minX > maxX + 0.01f || minY > maxY + 0.01f) return null
         val others = design.elements.filter { it.id != e.id }.map { it.bounds(tw) }
         fun free(x: Float, y: Float): Boolean {
@@ -315,8 +322,8 @@ object Arrange {
     private const val GRID_GAP = 3f
 
     /** Скільки клітинок [cw]×[ch] вміщається вздовж [total] мм. */
-    private fun fit(total: Float, cell: Float): Int =
-        maxOf(0, kotlin.math.floor((total - 2 * Placement.EDGE + GRID_GAP) / (cell + GRID_GAP)).toInt())
+    private fun fit(total: Float, cell: Float, edge: Float): Int =
+        maxOf(0, kotlin.math.floor((total - 2 * edge + GRID_GAP) / (cell + GRID_GAP)).toInt())
 
     /** Центри клітинок сітки [cols]×[rows] для [count] елементів, сітка — по центру наклейки. */
     private fun centres(size: LabelSize, cw: Float, ch: Float, cols: Int, count: Int): List<Pair<Float, Float>> {
@@ -347,8 +354,8 @@ object Arrange {
         while (true) {
             val sample = codes.maxBy { qrBlockHeight(it.copy(side = side)) }.copy(side = side)
             val (cw, ch) = cell(sample, tw)
-            val cols = fit(design.size.widthMm, cw)
-            val rows = fit(design.size.heightMm, ch)
+            val cols = fit(design.size.widthMm, cw, Placement.edge(design))
+            val rows = fit(design.size.heightMm, ch, Placement.edge(design))
             if ((cols * rows >= codes.size && cols > 0) || side <= Element.MIN_QR) {
                 val pos = centres(design.size, cw, ch, maxOf(cols, 1), codes.size)
                 val placed = codes.mapIndexed { i, qr -> qr.copy(side = side, cx = pos[i].first, cy = pos[i].second) }.associateBy { it.id }
@@ -361,8 +368,8 @@ object Arrange {
     /** Заповнити наклейку копіями коду [qr] (інші коди прибираються). */
     fun fill(design: LabelDesign, qr: Element.Qr, tw: (String, Float) -> Float): LabelDesign {
         val (cw, ch) = cell(qr, tw)
-        val cols = fit(design.size.widthMm, cw)
-        val rows = fit(design.size.heightMm, ch)
+        val cols = fit(design.size.widthMm, cw, Placement.edge(design))
+        val rows = fit(design.size.heightMm, ch, Placement.edge(design))
         val count = maxOf(1, cols * rows)
         val pos = centres(design.size, cw, ch, maxOf(cols, 1), count)
         var id = design.nextId

@@ -40,6 +40,15 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
         dao.update(code.copy(favoriteAt = if (code.isFavorite) null else System.currentTimeMillis()))
     }
 
+    /** Вибрані в новому порядку (після перетягування на головному). */
+    fun reorderFavorites(ids: List<Long>) = viewModelScope.launch { dao.reorderFavorites(ids) }
+
+    /** Прибрати з вибраного (сам код лишається серед збережених). */
+    fun unfavorite(code: QrCode) = viewModelScope.launch { dao.setFavoriteAt(code.id, null) }
+
+    /** «Повернути» — на те саме місце серед вибраних. */
+    fun refavorite(code: QrCode) = viewModelScope.launch { dao.setFavoriteAt(code.id, code.favoriteAt ?: System.currentTimeMillis()) }
+
     /** Своя назва; порожня — знову підписується змістом. */
     fun rename(code: QrCode, name: String) = viewModelScope.launch {
         dao.update(code.copy(name = name.trim().ifEmpty { null }))

@@ -85,9 +85,13 @@ class LabelRenderer(private val hand: Typeface) {
 
     private fun drawContent(canvas: Canvas, pxPerMm: Float, design: LabelDesign, palette: LabelPalette) {
         val ink = Paint().apply { color = palette.ink; style = Paint.Style.FILL; isAntiAlias = true }
-        if (design.border) {
-            val inset = 1.5f * pxPerMm
-            pencil(canvas, inset, inset, design.size.widthMm * pxPerMm - 2 * inset, design.size.heightMm * pxPerMm - 2 * inset, 4f * pxPerMm, 997, pxPerMm, 0.5f, ink)
+        if (design.border != QrFrame.None) {
+            val inset = BORDER_INSET * pxPerMm
+            drawOutline(
+                canvas, design.border, inset, inset,
+                design.size.widthMm * pxPerMm - 2 * inset, design.size.heightMm * pxPerMm - 2 * inset,
+                4f * pxPerMm, 1.2f * pxPerMm, 997, pxPerMm, ink,
+            )
         }
         design.elements.forEach { e -> drawElement(canvas, pxPerMm, e, palette, ink) }
     }
@@ -141,43 +145,8 @@ class LabelRenderer(private val hand: Typeface) {
         val radius = pad * 1.6f * k
         when (e.frame) {
             QrFrame.None -> Unit
-            QrFrame.Pencil -> pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
-            QrFrame.Double -> {
-                pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
-                val d = pad * 0.45f * k
-                pencil(canvas, blockLeft + d, blockTop + d, blockW - 2 * d, blockH - 2 * d, pad * 1.1f * k, seed + 101, k, 0.3f, ink)
-            }
-            QrFrame.Dashed -> {
-                // Пунктир олівцем: той самий контур, порізаний на короткі штрихи (кожен загострений на кінцях).
-                val points = pencilLoop(Size(blockW, blockH), radius, seed, 0.3f * k).map { Offset(it.x + blockLeft, it.y + blockTop) }
-                val dash = (2.4f * k)
-                var run = ArrayList<Offset>()
-                var len = 0f
-                var draw = true
-                for (i in 1 until points.size) {
-                    val step = (points[i] - points[i - 1]).getDistance()
-                    if (draw) run.add(points[i - 1])
-                    len += step
-                    if (len >= dash * (if (draw) 1f else 0.7f)) {
-                        if (draw && run.size > 1) canvas.drawPath(taperedPath(run + points[i], 0.45f * k).asAndroidPath(), ink)
-                        run = ArrayList()
-                        len = 0f
-                        draw = !draw
-                    }
-                }
-            }
-            QrFrame.Corners -> {
-                // Лише кутики, як рамка видошукача.
-                val arm = minOf(blockW, blockH) * 0.22f
-                val r = radius * 0.6f
-                val corners = listOf(
-                    listOf(Offset(blockLeft, blockTop + arm), Offset(blockLeft, blockTop + r), Offset(blockLeft + r, blockTop), Offset(blockLeft + arm, blockTop)),
-                    listOf(Offset(blockLeft + blockW - arm, blockTop), Offset(blockLeft + blockW - r, blockTop), Offset(blockLeft + blockW, blockTop + r), Offset(blockLeft + blockW, blockTop + arm)),
-                    listOf(Offset(blockLeft + blockW, blockTop + blockH - arm), Offset(blockLeft + blockW, blockTop + blockH - r), Offset(blockLeft + blockW - r, blockTop + blockH), Offset(blockLeft + blockW - arm, blockTop + blockH)),
-                    listOf(Offset(blockLeft + arm, blockTop + blockH), Offset(blockLeft + r, blockTop + blockH), Offset(blockLeft, blockTop + blockH - r), Offset(blockLeft, blockTop + blockH - arm)),
-                )
-                corners.forEach { c -> canvas.drawPath(taperedPath(densify(c), 0.7f * k).asAndroidPath(), ink) }
-            }
+            QrFrame.Pencil, QrFrame.Double, QrFrame.Dashed, QrFrame.Corners ->
+                drawOutline(canvas, e.frame, blockLeft, blockTop, blockW, blockH, radius, pad * 0.45f * k, seed, k, ink)
             QrFrame.ScanMe -> {
                 pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
                 // Плашка знизу: залита чорнилом, напис — кольором паперу, шрифтом від руки.
@@ -195,6 +164,51 @@ class LabelRenderer(private val hand: Typeface) {
                 val fm = tp.fontMetrics
                 canvas.drawText(label, bRect.centerX(), bRect.centerY() - (fm.ascent + fm.descent) / 2f, tp)
             }
+        }
+    }
+
+    /**
+     * Контур рамки олівцем навколо прямокутника — однаково для рамки коду й рамки всього аркуша: олівцем, подвійна
+     * ([gap] — відступ другої лінії), пунктир, кутики.
+     */
+    private fun drawOutline(canvas: Canvas, style: QrFrame, left: Float, top: Float, w: Float, h: Float, radius: Float, gap: Float, seed: Int, k: Float, ink: Paint) {
+        when (style) {
+            QrFrame.Pencil, QrFrame.ScanMe -> pencil(canvas, left, top, w, h, radius, seed, k, 0.45f, ink)
+            QrFrame.Double -> {
+                pencil(canvas, left, top, w, h, radius, seed, k, 0.45f, ink)
+                pencil(canvas, left + gap, top + gap, w - 2 * gap, h - 2 * gap, radius * 0.7f, seed + 101, k, 0.3f, ink)
+            }
+            QrFrame.Dashed -> {
+                // Пунктир олівцем: той самий контур, порізаний на короткі штрихи (кожен загострений на кінцях).
+                val points = pencilLoop(Size(w, h), radius, seed, 0.3f * k).map { Offset(it.x + left, it.y + top) }
+                val dash = 2.4f * k
+                var run = ArrayList<Offset>()
+                var len = 0f
+                var draw = true
+                for (i in 1 until points.size) {
+                    if (draw) run.add(points[i - 1])
+                    len += (points[i] - points[i - 1]).getDistance()
+                    if (len >= dash * (if (draw) 1f else 0.7f)) {
+                        if (draw && run.size > 1) canvas.drawPath(taperedPath(run + points[i], 0.45f * k).asAndroidPath(), ink)
+                        run = ArrayList()
+                        len = 0f
+                        draw = !draw
+                    }
+                }
+            }
+            QrFrame.Corners -> {
+                // Лише кутики, як рамка видошукача.
+                val arm = minOf(w, h) * 0.22f
+                val r = radius * 0.6f
+                val corners = listOf(
+                    listOf(Offset(left, top + arm), Offset(left, top + r), Offset(left + r, top), Offset(left + arm, top)),
+                    listOf(Offset(left + w - arm, top), Offset(left + w - r, top), Offset(left + w, top + r), Offset(left + w, top + arm)),
+                    listOf(Offset(left + w, top + h - arm), Offset(left + w, top + h - r), Offset(left + w - r, top + h), Offset(left + w - arm, top + h)),
+                    listOf(Offset(left + arm, top + h), Offset(left + r, top + h), Offset(left, top + h - r), Offset(left, top + h - arm)),
+                )
+                corners.forEach { c -> canvas.drawPath(taperedPath(densify(c), 0.7f * k).asAndroidPath(), ink) }
+            }
+            QrFrame.None -> Unit
         }
     }
 
@@ -321,6 +335,9 @@ class LabelRenderer(private val hand: Typeface) {
 
         /** Шрифт від руки дрібніший на око (як у «Аркуші») — підпис трохи більший. */
         private const val HAND_SCALE = 1.25f
+
+        /** Рамка аркуша — за 1 мм від краю (елементи тримаються ще далі, див. Placement.EDGE). */
+        private const val BORDER_INSET = 1f
 
         fun create(context: Context): LabelRenderer =
             LabelRenderer(ResourcesCompat.getFont(context, R.font.caveat_semibold) ?: Typeface.DEFAULT)

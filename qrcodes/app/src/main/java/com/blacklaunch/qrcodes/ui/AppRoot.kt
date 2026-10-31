@@ -99,6 +99,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
     val textDeleted = stringResource(R.string.deleted)
     val textUndo = stringResource(R.string.undo)
     val textCopied = stringResource(R.string.copied)
+    val textUnfavorited = stringResource(R.string.unfavorited)
     val textNoCamera = stringResource(R.string.camera_denied)
 
     fun show(text: String, action: String? = null, onAction: () -> Unit = {}) {
@@ -172,7 +173,19 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
             PageTabs(pager.currentPage) { scope.launch { pager.animateScrollToPage(it) } }
             HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
                 when (page) {
-                    0 -> FavoritesPage(favorites, onOpen = { fullscreen = it }, onMenu = { menuFor = it })
+                    0 -> FavoritesPage(
+                        favorites,
+                        onOpen = { fullscreen = it },
+                        onMenu = { menuFor = it },
+                        onReorder = { vm.reorderFavorites(it) },
+                        onUnfavorite = { code ->
+                            vm.unfavorite(code)
+                            show(textUnfavorited, textUndo) {
+                                vm.refavorite(code)
+                                banner = null
+                            }
+                        },
+                    )
                     else -> CreatePage(
                         input = input,
                         onInputChange = { input = it },

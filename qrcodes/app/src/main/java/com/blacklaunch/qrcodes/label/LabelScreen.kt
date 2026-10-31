@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -83,6 +84,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import com.blacklaunch.qrcodes.ui.backdrop
+import com.blacklaunch.qrcodes.ui.fadingEdges
 import com.blacklaunch.qrcodes.ui.backdropAmount
 import androidx.compose.ui.graphics.graphicsLayer
 import com.blacklaunch.qrcodes.ui.pencilFrame
@@ -139,6 +141,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var dragging by remember { mutableStateOf(false) }
     var overZone by remember { mutableStateOf(false) }
     var shareOpen by remember { mutableStateOf(false) }
+    var frameOpen by remember { mutableStateOf(false) }
     var guides by remember { mutableStateOf<Pair<Float?, Float?>>(null to null) }
     var sizeOpen by remember { mutableStateOf(false) }
     var textEdit by remember { mutableStateOf<Element.Text?>(null) }
@@ -149,6 +152,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var busy by remember { mutableStateOf(false) }
 
     val selected = design.elements.firstOrNull { it.id == selectedId }
+    // Кому «Рамка» міняє рамку коду: вибраному коду, а якщо код один — йому.
+    val frameTarget = (selected as? Element.Qr) ?: design.elements.filterIsInstance<Element.Qr>().singleOrNull()
 
     // Розмір наклейки, розмір коду й підпис — на наступний раз.
     LaunchedEffect(design.size, (selected as? Element.Qr)?.side, (selected as? Element.Qr)?.caption) {
@@ -211,7 +216,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val shareTitle = stringResource(R.string.share)
     val codes = design.elements.filterIsInstance<Element.Qr>()
 
-    val dialogOpen = shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    val dialogOpen = frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
     Column(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -273,7 +278,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                     angle += turn
                                     val changed = now.resized(size * zoom).rotated(normalizeAngle(angle, snap = true))
                                     size = changed.size
-                                    val snap = Snap.place(wantX, wantY, changed.bounds(renderer::textWidth), changed, current.size)
+                                    val snap = Snap.place(wantX, wantY, changed.bounds(renderer::textWidth), changed, current.size, edge = Placement.edge(current))
                                     val next = changed.moved(snap.cx, snap.cy)
                                     update(next)
                                     moved = true
@@ -358,10 +363,12 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             ) {
                 Box(
                     Modifier
-                        .size(220.dp, 40.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
+                        .height(56.dp)
                         .onGloballyPositioned { zoneRect = it.boundsInRoot().inflate(24f) }
-                        .background(if (overZone) Oled.Danger.copy(alpha = 0.25f) else Oled.Black, RoundedCornerShape(20.dp))
-                        .pencilFrame(20.dp, seed = 5, ink = if (overZone) Oled.Danger else SheetInk),
+                        .background(if (overZone) Oled.Danger.copy(alpha = 0.25f) else Oled.Black.copy(alpha = 0.92f), RoundedCornerShape(28.dp))
+                        .pencilFrame(28.dp, seed = 17, ink = if (overZone) Oled.Danger else SheetInk),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(stringResource(R.string.delete), color = Oled.Danger, fontSize = 16.sp)
@@ -370,12 +377,12 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         }
 
         // Керування.
-        Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).fadingEdges(16.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Tool(Glyph.ScanQr, stringResource(R.string.label_add_code)) { pickerOpen = true }
                 Tool(Glyph.TextT, stringResource(R.string.label_add_text)) { textNew = true }
                 Tool(Glyph.Star, stringResource(R.string.label_add_icon)) { stickerNew = true }
-                Tool(Glyph.Frame, stringResource(R.string.label_border_sheet), on = design.border) { commit(design.copy(border = !design.border)) }
+                Tool(Glyph.Frame, stringResource(R.string.label_frame), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
                 if (codes.size > 1) Tool(Glyph.Grid, stringResource(R.string.label_grid)) { commit(Arrange.grid(design, tw)) }
                 Tool(Glyph.Undo, stringResource(R.string.label_undo), enabled = canUndo) { undo() }
                 Tool(Glyph.Delete, stringResource(R.string.label_clear), enabled = design.elements.isNotEmpty()) { clearAsk = true }
@@ -431,6 +438,47 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         ) {
             SheetButton(stringResource(R.string.share), { shareOpen = true }, enabled = !busy && design.elements.isNotEmpty())
             SheetButton(stringResource(R.string.print), { renderer.print(context, jobName, design, 1) }, tone = Tone.Confirm, enabled = design.elements.isNotEmpty())
+        }
+    }
+
+    if (frameOpen) {
+        // Усі рамки в одному місці: навколо коду (вибраного або єдиного) і навколо всього аркуша.
+        SheetDialog(onDismissRequest = { frameOpen = false }, title = stringResource(R.string.label_frame)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val target = frameTarget
+                if (target != null) {
+                    Text(stringResource(R.string.label_frame_code, target.title), color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        QrFrame.entries.forEach { f ->
+                            Sample(stringResource(f.title()), selected = target.frame == f, onClick = {
+                                tryChange(target.copy(frame = f, banner = if (f == QrFrame.ScanMe && target.banner.isEmpty()) scanMe else target.banner))
+                                frameOpen = false
+                            }) { Element.Qr(0, 0f, 0f, "QR", "", 20f, caption = false, frame = f, banner = scanMe) }
+                        }
+                    }
+                } else if (codes.size > 1) {
+                    Text(stringResource(R.string.label_frame_pick_code), fontSize = 15.sp)
+                }
+                Text(stringResource(R.string.label_frame_sheet), color = Oled.TextPrimary, fontSize = 17.sp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QrFrame.entries.filter { it != QrFrame.ScanMe }.forEach { f ->
+                        SampleBox(stringResource(f.title()), selected = design.border == f, onClick = {
+                            // Нова рамка відсуває елементи від краю — що не вміщається, переїжджає.
+                            var d = design.copy(border = f)
+                            d.elements.forEach { e -> if (!Placement.fits(d, e, tw)) Placement.nearestFree(d, e, tw)?.let { p -> d = d.replace(p) } }
+                            commit(d)
+                            frameOpen = false
+                        }) { canvas, w, h ->
+                            val sheet = LabelDesign(size = LabelSize(30f, 20f), border = f)
+                            val k = w / 34f
+                            canvas.save()
+                            canvas.translate(2f * k, (h - 20f * k) / 2f)
+                            renderer.draw(canvas, k, sheet, LabelPalette.Screen)
+                            canvas.restore()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -639,17 +687,6 @@ private fun SelectedPanel(
                     Chip(stringResource(R.string.label_caption), element.caption) { onChange(element.copy(caption = !element.caption)) }
                     SheetButton(stringResource(R.string.label_edit_caption), { onEditCaption(element) })
                 }
-                Text(stringResource(R.string.label_frame), color = Oled.TextPrimary, fontSize = 17.sp)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QrFrame.entries.forEach { f ->
-                        Sample(stringResource(f.title()), selected = element.frame == f, onClick = {
-                            onChange(element.copy(frame = f, banner = if (f == QrFrame.ScanMe && element.banner.isEmpty()) scanMeDefault else element.banner))
-                        }) {
-                            val sample = Element.Qr(0, 0f, 0f, "QR", "", 20f, caption = false, frame = f, banner = scanMeDefault)
-                            sample
-                        }
-                    }
-                }
                 if (element.frame == QrFrame.ScanMe) SheetButton(stringResource(R.string.label_edit_banner), { onEditBanner(element) })
             }
             is Element.Icon -> {
@@ -673,10 +710,20 @@ private fun SelectedPanel(
  */
 @Composable
 private fun Sample(label: String?, selected: Boolean, onClick: () -> Unit, make: () -> Element) {
-    val haptics = LocalHaptics.current
     val context = LocalContext.current
     val renderer = remember { LabelRenderer.create(context) }
     val element = remember(label, selected) { make() }
+    SampleBox(label, selected, onClick) { canvas, w, h ->
+        val b = element.bounds(renderer::textWidth)
+        val k = minOf(w / (b.width + 4f), h / (b.height + 4f))
+        renderer.drawElement(canvas, k, element.moved(w / 2 / k, h / 2 / k), LabelPalette.Screen)
+    }
+}
+
+/** Клаптик-зразок 64 dp: малює [paint] (полотно, ширина, висота в px); вибраний — у синій рамці. */
+@Composable
+private fun SampleBox(label: String?, selected: Boolean, onClick: () -> Unit, paint: (android.graphics.Canvas, Float, Float) -> Unit) {
+    val haptics = LocalHaptics.current
     Column(
         Modifier.clip(RoundedCornerShape(14.dp)).clickable { haptics.tap(); onClick() }.padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -688,10 +735,7 @@ private fun Sample(label: String?, selected: Boolean, onClick: () -> Unit, make:
                 .background(androidx.compose.ui.graphics.Color(LabelPalette.Screen.paper))
                 .then(if (selected) Modifier.pencilFrame(10.dp, seed = 9, ink = Oled.Confirm) else Modifier),
         ) {
-            val b = element.bounds(renderer::textWidth)
-            val k = minOf(size.width / (b.width + 4f), size.height / (b.height + 4f))
-            val placed = element.moved(size.width / 2 / k, size.height / 2 / k)
-            drawIntoCanvas { renderer.drawElement(it.nativeCanvas, k, placed, LabelPalette.Screen) }
+            drawIntoCanvas { paint(it.nativeCanvas, size.width, size.height) }
         }
         if (label != null) {
             Text(label, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 4.dp))

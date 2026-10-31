@@ -18,7 +18,7 @@
     <string name="favorite_add">У вибране</string>
     <string name="favorite_remove">Прибрати з вибраного</string>
     <string name="in_favorites">У вибраному</string>
-    <string name="favorites_empty">Тут будуть вибрані коди.\n\nСвайпни вліво — створити код. Довге натискання на збереженому → «У вибране».</string>
+    <string name="favorites_empty">Тут будуть вибрані коди.\n\nСвайпни вліво — створити код. Довге натискання на збереженому → «У вибране». Тут: затисни й тягни — змінити порядок, угору на плашку — прибрати.</string>
     <string name="flashlight">Ліхтарик</string>
     <string name="from_gallery">З галереї</string>
     <string name="input_hint">Текст для QR-коду</string>
@@ -62,7 +62,6 @@
     <string name="text_pick_none">Ще нічого не вибрано</string>
     <string name="label_add_text">Текст</string>
     <string name="label_add_icon">Значок</string>
-    <string name="label_border">Рамка</string>
     <string name="label_grid">Сіткою</string>
     <string name="label_hint">Торкнись елемента, щоб вибрати. Тягни — перемістити; двома пальцями — розмір і поворот; два дотики — змінити; тягни на «Видалити» вгорі — прибрати. Елементи не налазять один на одного й не виходять за аркуш.</string>
     <string name="label_text_size">Літери: %1$d мм</string>
@@ -93,5 +92,8 @@
     <string name="label_fill_short">Заповнити наклейку</string>
     <string name="label_edit_short">Змінити</string>
     <string name="label_icon_pick">Значок — торкнись іншого, щоб замінити</string>
-    <string name="label_border_sheet">Рамка аркуша</string>
+    <string name="unfavorited">Прибрано з вибраного</string>
+    <string name="label_frame_code">Навколо коду: %1$s</string>
+    <string name="label_frame_pick_code">Щоб обвести код, спершу торкнись його на аркуші</string>
+    <string name="label_frame_sheet">Навколо всього аркуша</string>
 </resources>

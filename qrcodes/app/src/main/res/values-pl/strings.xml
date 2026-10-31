@@ -18,7 +18,7 @@
     <string name="favorite_add">Do ulubionych</string>
     <string name="favorite_remove">Usuń z ulubionych</string>
     <string name="in_favorites">W ulubionych</string>
-    <string name="favorites_empty">Tu będą ulubione kody.\n\nPrzesuń w lewo, aby utworzyć kod. Przytrzymaj zapisany kod → „Do ulubionych”.</string>
+    <string name="favorites_empty">Tu będą ulubione kody.\n\nPrzesuń w lewo, aby utworzyć kod. Przytrzymaj zapisany kod → „Do ulubionych”. Tutaj: przytrzymaj i przeciągnij — zmień kolejność, w górę na pasek — usuń.</string>
     <string name="flashlight">Latarka</string>
     <string name="from_gallery">Z galerii</string>
     <string name="input_hint">Tekst do kodu QR</string>
@@ -62,7 +62,6 @@
     <string name="text_pick_none">Nic jeszcze nie wybrano</string>
     <string name="label_add_text">Tekst</string>
     <string name="label_add_icon">Ikona</string>
-    <string name="label_border">Ramka</string>
     <string name="label_grid">Siatka</string>
     <string name="label_hint">Dotknij elementu, aby go wybrać. Przeciągnij — przesuń; dwa palce — rozmiar i obrót; dwa dotknięcia — zmień; przeciągnij na „Usuń” u góry — usuń. Elementy nie nachodzą na siebie i nie wychodzą poza etykietę.</string>
     <string name="label_text_size">Litery: %1$d mm</string>
@@ -93,5 +92,8 @@
     <string name="label_fill_short">Wypełnij etykietę</string>
     <string name="label_edit_short">Zmień</string>
     <string name="label_icon_pick">Ikona — dotknij innej, aby zamienić</string>
-    <string name="label_border_sheet">Ramka etykiety</string>
+    <string name="unfavorited">Usunięto z ulubionych</string>
+    <string name="label_frame_code">Wokół kodu: %1$s</string>
+    <string name="label_frame_pick_code">Aby obrysować kod, najpierw dotknij go na etykiecie</string>
+    <string name="label_frame_sheet">Wokół całej etykiety</string>
 </resources>
