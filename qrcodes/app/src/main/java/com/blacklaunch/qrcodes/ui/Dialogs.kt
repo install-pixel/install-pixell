@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
@@ -39,17 +40,24 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.blacklaunch.qrcodes.R
 import com.blacklaunch.qrcodes.data.QrCode
-import com.blacklaunch.qrcodes.qr.QrMatrix
+import com.blacklaunch.qrcodes.qr.CodeFormat
+import com.blacklaunch.qrcodes.qr.Symbol
+import com.blacklaunch.qrcodes.qr.codeFormat
 import com.blacklaunch.qrcodes.ui.theme.Oled
 
 /** Вибір способу вводу (кнопка всередині капсули). */
 @Composable
-fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit) {
+fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.mode_choose)) {
-        Column {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
             MenuRow(Glyph.Keyboard, stringResource(R.string.mode_manual), { onPick(InputMode.Manual) })
             MenuRow(Glyph.ScanQr, stringResource(R.string.mode_scan), { onPick(InputMode.ScanQr) })
             MenuRow(Glyph.Photo, stringResource(R.string.mode_photo), { onPick(InputMode.PhotoText) })
+            // Готові форми: телефон, що сканує такий код, сам пропонує підключитися, зберегти контакт, відкрити сайт.
+            Text(stringResource(R.string.forms_title), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
+            MenuRow(Glyph.Wifi, stringResource(R.string.form_wifi), { onForm(FormKind.Wifi) })
+            MenuRow(Glyph.Person, stringResource(R.string.form_contact), { onForm(FormKind.Contact) })
+            MenuRow(Glyph.Globe, stringResource(R.string.form_site), { onForm(FormKind.Site) })
         }
     }
 }
@@ -111,7 +119,7 @@ private fun displayTitleOf(code: QrCode): String = if (code.name == null) code.t
  */
 @Composable
 fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu: () -> Unit) {
-    val matrix = remember(code.content) { QrMatrix.encode(code.content) }
+    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         // Яскравість — у власному вікні діалогу (воно зверху, система бере яскравість із нього). Поки поверх відкрите
         // меню — звичайна яскравість, а код розмитий і притемнений, як усе під меню.
@@ -127,7 +135,14 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
             Column(Modifier.align(Alignment.Center).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 // Той самий розмір, що й угорі на «Створити»: великий код сканер не бере зблизька.
                 val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
-                QrImage(matrix, Modifier.size(qrPreviewSide(screen - 32.dp)), seed = code.id.toInt(), radius = 14.dp)
+                val bars = code.codeFormat == CodeFormat.BARCODE
+                CodeImage(
+                    symbol,
+                    if (bars) Modifier.width(barPreviewWidth(screen - 32.dp)) else Modifier.size(qrPreviewSide(screen - 32.dp)),
+                    seed = code.id.toInt(),
+                    radius = 14.dp,
+                    barcode = bars,
+                )
                 Text(
                     code.title,
                     color = Oled.TextPrimary,
@@ -150,7 +165,7 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
  * Стиль міняється одразу; мова — після короткого перезапуску екрана.
  */
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
+fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
@@ -182,6 +197,11 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
                     }
                 }
             }
+            // Резервна копія: усі коди — у файл (наприклад, у «Завантаження» чи на диск) і назад.
+            Text(stringResource(R.string.settings_backup), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+            MenuRow(Glyph.Download, stringResource(R.string.backup_export), onExport)
+            MenuRow(Glyph.Copy, stringResource(R.string.backup_import), onImport)
+            Text(stringResource(R.string.backup_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
         }
     }
 }
@@ -203,5 +223,75 @@ private fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, onCli
             if (subtitle != null) Text(subtitle, color = Oled.TextSecondary, fontSize = 14.sp)
         }
         if (selected) GlyphIcon(Glyph.Save, null, tint = Oled.Confirm)
+    }
+}
+
+/** Форми для QR-кодів, які телефон розуміє сам. */
+enum class FormKind { Wifi, Contact, Site }
+
+/**
+ * Форма: заповнюєш поля — у поле вводу йде готовий текст коду, а назва (мережа, ім'я, сайт) стане назвою коду, тож
+ * пароль чи телефон ніде не підписуються. [onDone] — (текст коду, назва).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
+    var a by remember { mutableStateOf("") }
+    var b by remember { mutableStateOf("") }
+    var c by remember { mutableStateOf("") }
+    var d by remember { mutableStateOf("") }
+    var security by remember { mutableStateOf(com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA) }
+    var hidden by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val title = stringResource(
+        when (kind) {
+            FormKind.Wifi -> R.string.form_wifi
+            FormKind.Contact -> R.string.form_contact
+            FormKind.Site -> R.string.form_site
+        },
+    )
+    val ready = when (kind) {
+        FormKind.Wifi -> a.isNotBlank()
+        FormKind.Contact -> a.isNotBlank() && (b.isNotBlank() || c.isNotBlank())
+        FormKind.Site -> a.isNotBlank()
+    }
+    SheetDialog(onDismissRequest = onDismiss, title = title, buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.done), {
+            val p = com.blacklaunch.qrcodes.qr.Payloads
+            when (kind) {
+                FormKind.Wifi -> onDone(p.wifi(a.trim(), b, security, hidden), "Wi‑Fi: ${a.trim()}")
+                FormKind.Contact -> onDone(p.contact(a, b, c, d), a.trim())
+                FormKind.Site -> onDone(p.url(a), p.siteName(a))
+            }
+        }, tone = Tone.Confirm, enabled = ready)
+    }) {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            when (kind) {
+                FormKind.Wifi -> {
+                    SheetTextField(a, { a = it }, stringResource(R.string.form_wifi_ssid), focusRequester = focus)
+                    if (security != com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE) {
+                        SheetTextField(b, { b = it }, stringResource(R.string.form_wifi_password), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password))
+                    }
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip("WPA/WPA2", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA }
+                        ChoiceChip("WEP", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP }
+                        ChoiceChip(stringResource(R.string.form_wifi_open), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE }
+                        ChoiceChip(stringResource(R.string.form_wifi_hidden), hidden) { hidden = !hidden }
+                    }
+                }
+                FormKind.Contact -> {
+                    SheetTextField(a, { a = it }, stringResource(R.string.form_contact_name), focusRequester = focus)
+                    SheetTextField(b, { b = it }, stringResource(R.string.form_contact_phone), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone))
+                    SheetTextField(c, { c = it }, stringResource(R.string.form_contact_email), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Email))
+                    SheetTextField(d, { d = it }, stringResource(R.string.form_contact_org))
+                }
+                FormKind.Site -> {
+                    SheetTextField(a, { a = it }, stringResource(R.string.form_site_address), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri), focusRequester = focus)
+                }
+            }
+            Text(stringResource(R.string.form_hint), fontSize = 14.sp)
+        }
     }
 }

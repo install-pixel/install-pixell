@@ -60,7 +60,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.qrcodes.R
 import com.blacklaunch.qrcodes.data.QrCode
-import com.blacklaunch.qrcodes.qr.QrMatrix
+import com.blacklaunch.qrcodes.qr.CodeFormat
+import com.blacklaunch.qrcodes.qr.Symbol
+import com.blacklaunch.qrcodes.qr.codeFormat
 import com.blacklaunch.qrcodes.ui.theme.Oled
 import java.text.DateFormat
 import java.util.Date
@@ -174,7 +176,7 @@ fun FavoritesPage(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             items(order, key = { it.id }) { code ->
-                val matrix = remember(code.content) { QrMatrix.encode(code.content) }
+                val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
                 val dragged = code.id == draggingId
                 Column(
                     Modifier
@@ -198,7 +200,7 @@ fun FavoritesPage(
                         .padding(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    QrImage(matrix, Modifier.fillMaxWidth(), seed = code.id.toInt())
+                    CodeImage(symbol, Modifier.fillMaxWidth(), seed = code.id.toInt(), barcode = code.codeFormat == CodeFormat.BARCODE)
                     Text(
                         code.title,
                         color = Oled.TextPrimary,
@@ -263,23 +265,40 @@ fun CreatePage(
     onMenu: (QrCode) -> Unit,
     onDelete: (QrCode) -> Unit,
     focusRequester: FocusRequester,
+    format: CodeFormat,
+    onFormatChange: (CodeFormat) -> Unit,
 ) {
     val haptics = LocalHaptics.current
-    val matrix = remember(input.text) { QrMatrix.encode(input.text) }
-    val tooLong = input.text.isNotEmpty() && matrix == null
+    val symbol = remember(input.text, format) { Symbol.encode(input.text, format) }
+    val tooLong = input.text.isNotEmpty() && symbol == null
+    val barcode = format == CodeFormat.BARCODE
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        // Що створюємо — вибирається раз тут і зберігається з кодом (у списку, на весь екран, на наклейці — так само).
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+            ChoiceChip(stringResource(R.string.format_qr), !barcode) { onFormatChange(CodeFormat.QR) }
+            ChoiceChip(stringResource(R.string.format_barcode), barcode) { onFormatChange(CodeFormat.BARCODE) }
+        }
         BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             val side = qrPreviewSide(maxWidth)
-            if (matrix != null) {
-                QrImage(matrix, Modifier.size(side), seed = 3)
-            } else {
-                Box(Modifier.size(side).pencilFrame(14.dp, seed = 3, alpha = 0.35f).padding(20.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(if (tooLong) R.string.too_long else R.string.preview_hint),
-                        color = if (tooLong) Oled.Danger else Oled.TextSecondary,
-                        fontSize = 17.sp,
-                        textAlign = TextAlign.Center,
-                    )
+            val shape = if (barcode) Modifier.width(barPreviewWidth(maxWidth)).height(side) else Modifier.size(side)
+            Box(shape, contentAlignment = Alignment.Center) {
+                if (symbol != null) {
+                    CodeImage(symbol, if (barcode) Modifier.fillMaxWidth() else Modifier.fillMaxSize(), seed = 3)
+                } else {
+                    Box(Modifier.fillMaxSize().pencilFrame(14.dp, seed = 3, alpha = 0.35f).padding(20.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            stringResource(
+                                when {
+                                    !tooLong -> R.string.preview_hint
+                                    barcode -> R.string.barcode_invalid
+                                    else -> R.string.too_long
+                                },
+                            ),
+                            color = if (tooLong) Oled.Danger else Oled.TextSecondary,
+                            fontSize = 17.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }
@@ -335,12 +354,15 @@ fun CreatePage(
             onModeClick = onModeClick,
             onClear = { onInputChange(TextFieldValue("")) },
             onSave = onSave,
-            canSave = matrix != null,
+            canSave = symbol != null,
             focusRequester = focusRequester,
             modifier = Modifier.padding(top = 8.dp),
         )
     }
 }
+
+/** Ширина штрихкоду вгорі «Створити» і на весь екран: ширший за QR, щоб смуги не були надто тонкими. */
+fun barPreviewWidth(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp = minOf(available * 0.92f, 360.dp)
 
 /** Розмір коду вгорі сторінки «Створити» — такий самий і в коду на весь екран (зручно для сканера). */
 fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp = minOf(available * 0.62f, 260.dp)
@@ -348,7 +370,7 @@ fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.u
 /** Рядок збереженого коду: маленький код, назва (зміст ховається, якщо є своя назва), дата, зірка вибраного. */
 @Composable
 private fun SavedRow(code: QrCode, modifier: Modifier) {
-    val matrix = remember(code.content) { QrMatrix.encode(code.content) }
+    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -357,7 +379,10 @@ private fun SavedRow(code: QrCode, modifier: Modifier) {
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        QrImage(matrix, Modifier.size(48.dp), seed = code.id.toInt(), radius = 8.dp)
+        Box(Modifier.width(60.dp), contentAlignment = Alignment.Center) {
+            val bars = code.codeFormat == CodeFormat.BARCODE
+            CodeImage(symbol, Modifier.width(if (bars) 60.dp else 48.dp), seed = code.id.toInt(), radius = 8.dp, barcode = bars)
+        }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(code.title, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

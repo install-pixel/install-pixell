@@ -80,6 +80,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.blacklaunch.qrcodes.R
+import com.blacklaunch.qrcodes.qr.CodeFormat
 import com.blacklaunch.qrcodes.ui.Glyph
 import com.blacklaunch.qrcodes.ui.LocalHaptics
 import com.blacklaunch.qrcodes.ui.RoundButton
@@ -124,7 +125,7 @@ private sealed interface PhotoState {
  * Усе розпізнавання — на телефоні, без мережі.
  */
 @Composable
-fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Unit, onMessage: (String) -> Unit) {
+fun CameraScreen(scanQr: Boolean, onResult: (String, CodeFormat?) -> Unit, onClose: () -> Unit, onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptics = LocalHaptics.current
@@ -146,11 +147,12 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
         }
     }
 
-    fun deliver(text: String) {
+    /** [format] — що зісканували (QR чи лінійний штрихкод), щоб дубль був таким самим; null — текст із фото. */
+    fun deliver(text: String, format: CodeFormat? = null) {
         if (delivered) return
         delivered = true
         haptics.longPress()
-        result(text)
+        result(text, format)
     }
 
     // Розмір екрана камери — щоб знати, де рамка (код зчитується лише в ній).
@@ -165,12 +167,12 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
                     // Лише код у рамці (координати — у пікселях екрана камери): решту, що випадково в кадрі, пропускаємо.
                     val view = previewSize.value
                     val frame = scanFrame(view.width.toFloat(), view.height.toFloat())
-                    val value = r.getValue(scanner)?.firstNotNullOfOrNull { b ->
+                    val found = r.getValue(scanner)?.firstOrNull { b ->
                         val box = b.boundingBox
                         val inside = box == null || view.width == 0 || frame.contains(box.exactCenterX(), box.exactCenterY())
-                        b.rawValue?.takeIf { v -> v.isNotEmpty() && inside }
+                        !b.rawValue.isNullOrEmpty() && inside
                     }
-                    if (value != null) deliver(value)
+                    if (found != null) deliver(found.rawValue!!, found.codeFormat())
                 },
             )
         } else {
@@ -213,15 +215,15 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             if (scanQr) {
-                val value = withContext<String?>(Dispatchers.Default) {
+                val found = withContext<com.google.mlkit.vision.barcode.common.Barcode?>(Dispatchers.Default) {
                     val image = runCatching { InputImage.fromFilePath(context, uri) }.getOrNull() ?: return@withContext null
-                    suspendCancellableCoroutine<String?> { cont ->
+                    suspendCancellableCoroutine { cont ->
                         scanner.process(image)
-                            .addOnSuccessListener { list -> cont.resume(list.firstNotNullOfOrNull { it.rawValue?.takeIf { v -> v.isNotEmpty() } }) }
+                            .addOnSuccessListener { list -> cont.resume(list.firstOrNull { !it.rawValue.isNullOrEmpty() }) }
                             .addOnFailureListener { cont.resume(null) }
                     }
                 }
-                if (value != null) deliver(value) else onMessage(notFoundQr)
+                if (found != null) deliver(found.rawValue!!, found.codeFormat()) else onMessage(notFoundQr)
             } else {
                 val bitmap = withContext(Dispatchers.IO) { loadBitmap(context, uri) }
                 if (bitmap != null) recognize(bitmap) else onMessage(notFoundText)
@@ -506,6 +508,21 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
             SheetButton(stringResource(R.string.done), { onPick(chosen) }, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm, enabled = chosen.isNotEmpty(), compact = true, modifier = Modifier.weight(1f))
         }
     }
+}
+
+/** Лінійні штрихкоди (Code128, EAN, UPC…) — «Штрихкод»; QR і інші квадратні — «QR». */
+private fun com.google.mlkit.vision.barcode.common.Barcode.codeFormat(): CodeFormat = when (format) {
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_39,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_93,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODABAR,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ITF,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A,
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E,
+    -> CodeFormat.BARCODE
+    else -> CodeFormat.QR
 }
 
 /** Кадр з камери — повернутий так, як тримали телефон. */

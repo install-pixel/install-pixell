@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blacklaunch.qrcodes.QrViewModel
 import com.blacklaunch.qrcodes.R
 import com.blacklaunch.qrcodes.SaveResult
+import com.blacklaunch.qrcodes.qr.CodeFormat
 import com.blacklaunch.qrcodes.data.QrCode
 import com.blacklaunch.qrcodes.label.LabelScreen
 import com.blacklaunch.qrcodes.scan.CameraScreen
@@ -86,8 +87,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     var input by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     var mode by rememberSaveable { mutableStateOf(InputMode.Manual) }
+    // Що створюємо: QR чи штрихкод (зберігається з кодом).
+    var format by rememberSaveable { mutableStateOf(CodeFormat.QR) }
+    // Назва з форми (Wi‑Fi, контакт, сайт) — стане назвою коду при збереженні.
+    var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
     var modeMenu by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var formOpen by remember { mutableStateOf<FormKind?>(null) }
     var camera by rememberSaveable { mutableStateOf<InputMode?>(null) }
     var pendingCamera by remember { mutableStateOf<InputMode?>(null) }
     var fullscreen by remember { mutableStateOf<QrCode?>(null) }
@@ -134,6 +140,25 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         pendingCamera = null
     }
 
+    // Експорт / імпорт кодів: файл вибирає користувач (системне вікно), доступ — лише до нього.
+    val textExported = stringResource(R.string.backup_exported)
+    val textImported = stringResource(R.string.backup_imported)
+    val textBadFile = stringResource(R.string.backup_bad_file)
+    val exportFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val n = runCatching { context.contentResolver.openOutputStream(uri)?.use { vm.exportTo(it) } }.getOrNull()
+            show(if (n != null) textExported.format(n) else textBadFile)
+        }
+    }
+    val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val n = runCatching { context.contentResolver.openInputStream(uri)?.use { vm.importFrom(it) } }.getOrNull() ?: -1
+            show(if (n >= 0) textImported.format(n) else textBadFile)
+        }
+    }
+
     fun openCamera(m: InputMode) {
         focusManager.clearFocus()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -172,7 +197,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(settingsOpen || modeMenu || menuFor != null || renameFor != null)
+    val blur = backdropAmount(formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -200,13 +225,18 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                     )
                     else -> CreatePage(
                         input = input,
-                        onInputChange = { input = it },
+                        onInputChange = {
+                            // Поле очистили — і запропонована формою назва вже ні до чого.
+                            if (it.text.isEmpty()) pendingName = null
+                            input = it
+                        },
                         mode = mode,
                         onModeClick = { modeMenu = true },
                         onSave = {
-                            vm.save(input.text) { show(if (it == SaveResult.Saved) textSaved else textAlready) }
+                            vm.save(input.text, format, pendingName) { show(if (it == SaveResult.Saved) textSaved else textAlready) }
                             // Збережено — назад на старт: поле порожнє, клавіатура схована, код уже в списку.
                             input = TextFieldValue("")
+                            pendingName = null
                             mode = InputMode.Manual
                             focusManager.clearFocus()
                             keyboard?.hide()
@@ -216,6 +246,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         onMenu = { menuFor = it },
                         onDelete = ::delete,
                         focusRequester = focus,
+                        format = format,
+                        onFormatChange = { format = it },
                     )
                 }
             }
@@ -229,8 +261,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             val m = lastCamera
             CameraScreen(
                 scanQr = m == InputMode.ScanQr,
-                onResult = { text ->
+                onResult = { text, scanned ->
                     input = TextFieldValue(text, TextRange(text.length))
+                    pendingName = null
+                    // Дубль — того самого виду: зісканували штрихкод — створюємо штрихкод.
+                    if (scanned != null) format = scanned
                     camera = null
                     mode = InputMode.Manual
                     if (m == InputMode.PhotoText) focusAfterCamera++
@@ -260,19 +295,48 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         Banner(banner?.text, banner?.action, banner?.onAction ?: {})
     }
 
+    formOpen?.let { kind ->
+        PayloadForm(kind, onDismiss = { formOpen = null }) { content, name ->
+            formOpen = null
+            // Готовий текст — у поле (код одразу видно вгорі), назва — при збереженні. Такі коди бувають лише QR.
+            input = TextFieldValue(content, TextRange(content.length))
+            pendingName = name
+            format = CodeFormat.QR
+            mode = InputMode.Manual
+        }
+    }
+
     if (settingsOpen) {
-        SettingsDialog(onDismiss = { settingsOpen = false }, onLanguageChanged = onLanguageChanged)
+        SettingsDialog(
+            onDismiss = { settingsOpen = false },
+            onLanguageChanged = onLanguageChanged,
+            onExport = {
+                settingsOpen = false
+                exportFile.launch("qraft-${java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT).format(java.util.Date())}.json")
+            },
+            onImport = {
+                settingsOpen = false
+                importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+            },
+        )
     }
 
     if (modeMenu) {
-        ModeMenu(onDismiss = { modeMenu = false }) { picked ->
-            modeMenu = false
-            mode = picked
-            when (picked) {
-                InputMode.Manual -> focusAfterCamera++
-                InputMode.ScanQr, InputMode.PhotoText -> openCamera(picked)
-            }
-        }
+        ModeMenu(
+            onDismiss = { modeMenu = false },
+            onPick = { picked ->
+                modeMenu = false
+                mode = picked
+                when (picked) {
+                    InputMode.Manual -> focusAfterCamera++
+                    InputMode.ScanQr, InputMode.PhotoText -> openCamera(picked)
+                }
+            },
+            onForm = {
+                modeMenu = false
+                formOpen = it
+            },
+        )
     }
 
     fullscreen?.let { shown ->

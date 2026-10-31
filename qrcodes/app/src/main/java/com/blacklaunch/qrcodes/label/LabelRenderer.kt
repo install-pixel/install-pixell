@@ -27,7 +27,10 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import com.blacklaunch.qrcodes.R
+import com.blacklaunch.qrcodes.qr.CodeFormat
 import com.blacklaunch.qrcodes.qr.QrMatrix
+import com.blacklaunch.qrcodes.qr.Symbol
+import com.blacklaunch.qrcodes.ui.AppStyle
 import com.blacklaunch.qrcodes.ui.Glyph
 import com.blacklaunch.qrcodes.ui.glyphStrokes
 import com.blacklaunch.qrcodes.ui.pencilLoop
@@ -39,10 +42,10 @@ import java.io.FileOutputStream
  * Кольори наклейки. І на екрані, і на папері — біле тло й чорне чорнило: на чорному екрані аркуш видно цілком, з
  * чіткими межами, і він виглядає точно так, як надрукується (так читає будь-який сканер і друкує Zebra).
  */
-data class LabelPalette(val paper: Int, val ink: Int, val qrTile: Int?, val qrDark: Int) {
+data class LabelPalette(val paper: Int, val ink: Int, val qrDark: Int) {
     companion object {
-        val Screen = LabelPalette(paper = 0xFFF4F4F2.toInt(), ink = 0xFF111111.toInt(), qrTile = null, qrDark = 0xFF000000.toInt())
-        val Print = LabelPalette(paper = 0xFFFFFFFF.toInt(), ink = 0xFF000000.toInt(), qrTile = null, qrDark = 0xFF000000.toInt())
+        val Screen = LabelPalette(paper = 0xFFF4F4F2.toInt(), ink = 0xFF111111.toInt(), qrDark = 0xFF000000.toInt())
+        val Print = LabelPalette(paper = 0xFFFFFFFF.toInt(), ink = 0xFF000000.toInt(), qrDark = 0xFF000000.toInt())
     }
 }
 
@@ -64,16 +67,22 @@ fun Sticker.glyph(): Glyph = when (this) {
  * Текст і підписи — шрифтом від руки (Caveat), рамки й значки — олівцем.
  */
 class LabelRenderer(private val hand: Typeface) {
-    private val measurePaint = Paint().apply { typeface = hand; textSize = 100f; isAntiAlias = true }
+    private val measurePaint = Paint().apply { typeface = face(); textSize = 100f; isAntiAlias = true }
     /** Останні закодовані QR-коди (не більше [MATRIX_CACHE] — старі витісняються). */
-    private val matrices = object : LinkedHashMap<String, QrMatrix?>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, QrMatrix?>?) = size > MATRIX_CACHE
+    private val matrices = object : LinkedHashMap<String, Symbol?>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Symbol?>?) = size > MATRIX_CACHE
     }
 
     /** Ширина тексту в мм при висоті літер [letters] мм. */
-    fun textWidth(text: String, letters: Float): Float = synchronized(measurePaint) { measurePaint.measureText(text) } * letters / 100f
+    fun textWidth(text: String, letters: Float): Float = synchronized(measurePaint) {
+        measurePaint.typeface = face()
+        measurePaint.measureText(text)
+    } * letters / 100f
 
-    private fun matrix(content: String): QrMatrix? = synchronized(matrices) { matrices.getOrPut(content) { QrMatrix.encode(content) } }
+    private fun symbol(e: Element.Qr): Symbol? = synchronized(matrices) {
+        val format = if (e.barcode) CodeFormat.BARCODE else CodeFormat.QR
+        matrices.getOrPut("${format.name}|${e.content}") { Symbol.encode(e.content, format) }
+    }
 
     fun draw(canvas: Canvas, pxPerMm: Float, design: LabelDesign, palette: LabelPalette) {
         // Лише сам аркуш: тло й усе намальоване обрізаються по його краю (нічого не вилазить за наклейку).
@@ -121,15 +130,16 @@ class LabelRenderer(private val hand: Typeface) {
         val left = (e.cx - e.side / 2) * k
         val top = qrTop(e) * k
         val side = e.side * k
-        val m = matrix(e.content)
-        palette.qrTile?.let { tile ->
-            val margin = if (m != null) side / m.size else 0f
-            canvas.drawRoundRect(RectF(left - margin, top - margin, left + side + margin, top + side + margin), margin * 1.5f, margin * 1.5f, Paint().apply { color = tile; isAntiAlias = true })
+        val symbolH = symbolHeight(e) * k
+        val dark = Paint().apply { color = palette.qrDark; style = Paint.Style.FILL }
+        when (val symbol = symbol(e)) {
+            is Symbol.Qr -> drawQr(canvas, symbol.matrix, left, top, side, dark)
+            is Symbol.Bars -> drawBars(canvas, symbol.modules, left, top, side, symbolH, dark)
+            null -> Unit
         }
-        if (m != null) drawQr(canvas, m, left, top, side, Paint().apply { color = palette.qrDark; style = Paint.Style.FILL })
         if (e.caption) {
             val letters = captionLetters(e.side)
-            val text = TextPaint().apply { color = palette.ink; isAntiAlias = true; typeface = hand; textSize = letters * HAND_SCALE * k }
+            val text = TextPaint().apply { color = palette.ink; isAntiAlias = true; typeface = face(); textSize = letters * scale() * k }
             val width = ((e.side + letters * 2) * k).toInt().coerceAtLeast(1)
             val layout = StaticLayout.Builder.obtain(e.title, 0, e.title.length, text, width)
                 .setAlignment(Layout.Alignment.ALIGN_CENTER)
@@ -139,7 +149,7 @@ class LabelRenderer(private val hand: Typeface) {
                 .setLineSpacing(0f, 0.85f)
                 .build()
             canvas.save()
-            canvas.translate(left + side / 2 - width / 2f, top + side + letters * 0.45f * k)
+            canvas.translate(left + side / 2 - width / 2f, top + symbolH + letters * 0.45f * k)
             layout.draw(canvas)
             canvas.restore()
         }
@@ -156,7 +166,7 @@ class LabelRenderer(private val hand: Typeface) {
                 val bTop = blockTop + blockH - pad * k - bh
                 val bRect = RectF(blockLeft + pad * k, bTop, blockLeft + blockW - pad * k, bTop + bh)
                 canvas.drawRoundRect(bRect, bh * 0.3f, bh * 0.3f, ink)
-                val tp = Paint().apply { color = palette.paper; isAntiAlias = true; typeface = hand; textAlign = Paint.Align.CENTER; textSize = bh * 0.62f }
+                val tp = Paint().apply { color = palette.paper; isAntiAlias = true; typeface = face(); textAlign = Paint.Align.CENTER; textSize = bh * 0.62f }
                 var label = e.banner
                 // Довгий напис — дрібніше, щоб уліз у плашку.
                 val maxW = bRect.width() * 0.92f
@@ -225,7 +235,7 @@ class LabelRenderer(private val hand: Typeface) {
     }
 
     private fun drawText(canvas: Canvas, k: Float, e: Element.Text, ink: Paint) {
-        val paint = Paint(ink).apply { typeface = hand; textSize = e.letters * k; textAlign = Paint.Align.CENTER }
+        val paint = Paint(ink).apply { typeface = face(); textSize = e.letters * k; textAlign = Paint.Align.CENTER }
         val fm = paint.fontMetrics
         canvas.drawText(e.text, e.cx * k, e.cy * k - (fm.ascent + fm.descent) / 2f, paint)
     }
@@ -361,6 +371,18 @@ class LabelRenderer(private val hand: Typeface) {
                     while (x < m.size && m[x, y]) x++
                     canvas.drawRect(left + start * cell, top + y * cell, left + x * cell, top + (y + 1) * cell + 0.01f, paint)
                 }
+            }
+        }
+
+        /** Смуги штрихкоду в прямокутнику [w]×[h] з тихими зонами по боках. */
+        fun drawBars(canvas: Canvas, bars: BooleanArray, left: Float, top: Float, w: Float, h: Float, paint: Paint) {
+            val cell = w / (bars.size + 2 * Symbol.BAR_QUIET)
+            var x = 0
+            while (x < bars.size) {
+                if (!bars[x]) { x++; continue }
+                val start = x
+                while (x < bars.size && bars[x]) x++
+                canvas.drawRect(left + (Symbol.BAR_QUIET + start) * cell, top, left + (Symbol.BAR_QUIET + x) * cell, top + h, paint)
             }
         }
 

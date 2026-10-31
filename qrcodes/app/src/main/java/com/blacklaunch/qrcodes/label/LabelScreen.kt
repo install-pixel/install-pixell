@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -67,6 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.qrcodes.R
 import com.blacklaunch.qrcodes.data.QrCode
+import com.blacklaunch.qrcodes.qr.CodeFormat
+import com.blacklaunch.qrcodes.qr.codeFormat
 import com.blacklaunch.qrcodes.ui.Glyph
 import com.blacklaunch.qrcodes.ui.GlyphIcon
 import com.blacklaunch.qrcodes.ui.LocalHaptics
@@ -113,15 +116,20 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val noRoom = stringResource(R.string.label_no_room)
     val scanMe = stringResource(R.string.label_scan_me)
 
-    fun newQr(id: Int, code: QrCode, size: LabelSize) = Element.Qr(
-        id = id,
-        cx = size.widthMm / 2,
-        cy = size.heightMm / 2,
-        content = code.content,
-        title = code.title,
-        side = defaults.qrMm.coerceAtMost(LabelLayout.maxQrMm(size, defaults.caption)),
-        caption = defaults.caption,
-    )
+    fun newQr(id: Int, code: QrCode, size: LabelSize): Element.Qr {
+        val barcode = code.codeFormat == CodeFormat.BARCODE
+        return Element.Qr(
+            id = id,
+            cx = size.widthMm / 2,
+            cy = size.heightMm / 2,
+            content = code.content,
+            title = code.title,
+            // Штрихкод — ширший (смуги не мають бути надто тонкими), QR — останній вибраний розмір.
+            side = if (barcode) minOf(DEFAULT_BAR_MM, size.widthMm - 12f) else defaults.qrMm.coerceAtMost(LabelLayout.maxQrMm(size, defaults.caption)),
+            caption = defaults.caption,
+            barcode = barcode,
+        )
+    }
 
     var design by remember {
         val first = LabelDesign(size = defaults.size)
@@ -141,6 +149,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var overZone by remember { mutableStateOf(false) }
     var shareOpen by remember { mutableStateOf(false) }
     var frameOpen by remember { mutableStateOf(false) }
+    var templatesOpen by remember { mutableStateOf(false) }
+    var templateNameOpen by remember { mutableStateOf(false) }
+    val templateStore = remember { TemplateStore(context) }
+    var savedTemplates by remember { mutableStateOf(templateStore.load()) }
     var guides by remember { mutableStateOf<Pair<Float?, Float?>>(null to null) }
     var sizeOpen by remember { mutableStateOf(false) }
     var textEdit by remember { mutableStateOf<Element.Text?>(null) }
@@ -157,7 +169,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     // Розмір наклейки, розмір коду й підпис — на наступний раз.
     LaunchedEffect(design.size, (selected as? Element.Qr)?.side, (selected as? Element.Qr)?.caption) {
         val qr = selected as? Element.Qr
-        prefs.save(LabelSettings(design.size, qr?.side ?: defaults.qrMm, 1, qr?.caption ?: defaults.caption))
+        prefs.save(LabelSettings(design.size, qr?.takeIf { !it.barcode }?.side ?: defaults.qrMm, 1, qr?.caption ?: defaults.caption))
     }
     BackHandler(onBack = onClose)
 
@@ -215,7 +227,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val shareTitle = stringResource(R.string.share)
     val codes = design.elements.filterIsInstance<Element.Qr>()
 
-    val dialogOpen = frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    val dialogOpen = templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
     Column(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -382,6 +394,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     val icon = selected as? Element.Icon
                     if (icon != null) stickerFor = icon else stickerNew = true
                 }
+                Tool(Glyph.Template, stringResource(R.string.label_templates)) { templatesOpen = true }
                 Tool(Glyph.Frame, stringResource(R.string.label_frame), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
                 if (codes.size > 1) Tool(Glyph.Grid, stringResource(R.string.label_grid)) { commit(Arrange.grid(design, tw)) }
                 Tool(Glyph.Undo, stringResource(R.string.label_undo), enabled = canUndo) { undo() }
@@ -438,6 +451,66 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         ) {
             SheetButton(stringResource(R.string.share), { shareOpen = true }, enabled = !busy && design.elements.isNotEmpty())
             SheetButton(stringResource(R.string.print), { renderer.print(context, jobName, design, 1) }, tone = Tone.Confirm, enabled = design.elements.isNotEmpty())
+        }
+    }
+
+    if (templatesOpen) {
+        // Код для готових шаблонів: вибраний, інакше перший на аркуші, інакше той, з яким відкрили друк.
+        val code = (selected as? Element.Qr) ?: codes.firstOrNull() ?: start.firstOrNull()?.let { newQr(1, it, design.size) }
+        val templateDeleted = stringResource(R.string.label_template_deleted)
+        SheetDialog(onDismissRequest = { templatesOpen = false }, title = stringResource(R.string.label_templates)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (code != null) {
+                    Text(stringResource(R.string.label_templates_ready), color = Oled.TextPrimary, fontSize = 17.sp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Templates.Kind.entries.forEach { kind ->
+                            val built = remember(kind, design.size, code, AppStyleKey()) { Templates.build(kind, design.size, code, scanMe, tw) }
+                            TemplateSample(stringResource(kind.title()), built, renderer) {
+                                commit(built)
+                                selectedId = null
+                                templatesOpen = false
+                            }
+                        }
+                    }
+                }
+                Text(stringResource(R.string.label_templates_mine), color = Oled.TextPrimary, fontSize = 17.sp)
+                if (savedTemplates.isEmpty()) {
+                    Text(stringResource(R.string.label_templates_mine_empty), fontSize = 14.sp)
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        savedTemplates.forEach { t ->
+                            TemplateSample(
+                                t.name,
+                                t.design,
+                                renderer,
+                                onLongClick = {
+                                    savedTemplates = templateStore.remove(t.name)
+                                    onMessage(templateDeleted)
+                                },
+                            ) {
+                                // Свій шаблон — з тим самим розміром аркуша, а коди в ньому — ті, що зараз на аркуші.
+                                val current = codes.ifEmpty { listOfNotNull(code) }
+                                commit(Templates.apply(t.design, current, tw))
+                                selectedId = null
+                                templatesOpen = false
+                            }
+                        }
+                    }
+                    Text(stringResource(R.string.label_templates_hint), fontSize = 14.sp)
+                }
+                SheetButton(stringResource(R.string.label_template_save), {
+                    templatesOpen = false
+                    templateNameOpen = true
+                }, enabled = design.elements.isNotEmpty())
+            }
+        }
+    }
+    if (templateNameOpen) {
+        val savedText = stringResource(R.string.label_template_saved)
+        TextDialog("", title = stringResource(R.string.label_template_save), onDismiss = { templateNameOpen = false }) { name ->
+            savedTemplates = templateStore.save(name, design)
+            templateNameOpen = false
+            onMessage(savedText)
         }
     }
 
@@ -592,6 +665,7 @@ private const val MAX_UNDO = 40
 private const val DOUBLE_TAP_MS = 320L
 private const val DEFAULT_LETTERS = 7f
 private const val DEFAULT_ICON = 14f
+private const val DEFAULT_BAR_MM = 70f
 
 /** Інструмент: значок олівцем у кружечку й підпис під ним. */
 @Composable
@@ -646,7 +720,11 @@ private fun SelectedPanel(
     scanMeDefault: String,
 ) {
     val (label, min, max) = when (element) {
-        is Element.Qr -> Triple(R.string.label_qr_size, Element.MIN_QR, minOf(Element.MAX_QR, minOf(design.size.widthMm, design.size.heightMm)))
+        is Element.Qr -> if (element.barcode) {
+            Triple(R.string.label_bar_size, Element.MIN_QR, minOf(Element.MAX_QR, design.size.widthMm))
+        } else {
+            Triple(R.string.label_qr_size, Element.MIN_QR, minOf(Element.MAX_QR, minOf(design.size.widthMm, design.size.heightMm)))
+        }
         is Element.Text -> Triple(R.string.label_text_size, Element.MIN_LETTERS, Element.MAX_LETTERS)
         is Element.Icon -> Triple(R.string.label_icon_size, Element.MIN_ICON, minOf(Element.MAX_ICON, minOf(design.size.widthMm, design.size.heightMm)))
     }
@@ -712,15 +790,31 @@ private fun Sample(label: String?, selected: Boolean, onClick: () -> Unit, make:
 
 /** Клаптик-зразок 64 dp: малює [paint] (полотно, ширина, висота в px); вибраний — у синій рамці. */
 @Composable
-private fun SampleBox(label: String?, selected: Boolean, onClick: () -> Unit, paint: (android.graphics.Canvas, Float, Float) -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun SampleBox(
+    label: String?,
+    selected: Boolean,
+    onClick: () -> Unit,
+    width: androidx.compose.ui.unit.Dp = 64.dp,
+    height: androidx.compose.ui.unit.Dp = 64.dp,
+    onLongClick: (() -> Unit)? = null,
+    paint: (android.graphics.Canvas, Float, Float) -> Unit,
+) {
     val haptics = LocalHaptics.current
     Column(
-        Modifier.clip(RoundedCornerShape(14.dp)).clickable { haptics.tap(); onClick() }.padding(4.dp),
+        Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .combinedClickable(
+                onClick = { haptics.tap(); onClick() },
+                onLongClick = onLongClick?.let { { haptics.longPress(); it() } },
+            )
+            .padding(4.dp)
+            .width(width),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Canvas(
             Modifier
-                .size(64.dp)
+                .size(width, height)
                 .clip(RoundedCornerShape(10.dp))
                 .background(androidx.compose.ui.graphics.Color(LabelPalette.Screen.paper))
                 .then(
@@ -735,8 +829,34 @@ private fun SampleBox(label: String?, selected: Boolean, onClick: () -> Unit, pa
             drawIntoCanvas { paint(it.nativeCanvas, size.width, size.height) }
         }
         if (label != null) {
-            Text(label, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.padding(top = 4.dp))
+            Text(label, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
         }
+    }
+}
+
+private fun Templates.Kind.title(): Int = when (this) {
+    Templates.Kind.Simple -> R.string.template_simple
+    Templates.Kind.Shelf -> R.string.template_shelf
+    Templates.Kind.ScanMe -> R.string.template_scanme
+    Templates.Kind.Copies -> R.string.template_copies
+}
+
+/** Стиль (шрифт) змінився — зразки шаблонів треба перемалювати й переміряти. */
+private data class AppStyleKeyData(val glass: Boolean)
+
+@Composable
+private fun AppStyleKey() = AppStyleKeyData(com.blacklaunch.qrcodes.ui.AppStyle.glass)
+
+/** Зразок шаблону: увесь аркуш у мініатюрі (ширина 96 dp, висота — за пропорціями наклейки). */
+@Composable
+private fun TemplateSample(label: String, design: LabelDesign, renderer: LabelRenderer, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+    val ratio = design.size.heightMm / design.size.widthMm
+    SampleBox(label, selected = false, onClick = onClick, width = 96.dp, height = (96f * ratio).coerceIn(40f, 140f).dp, onLongClick = onLongClick) { canvas, w, h ->
+        val k = minOf(w / design.size.widthMm, h / design.size.heightMm)
+        canvas.save()
+        canvas.translate((w - design.size.widthMm * k) / 2f, (h - design.size.heightMm * k) / 2f)
+        renderer.draw(canvas, k, design, LabelPalette.Screen)
+        canvas.restore()
     }
 }
 

@@ -72,7 +72,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import android.os.Build
 import com.blacklaunch.qrcodes.R
-import com.blacklaunch.qrcodes.qr.QrMatrix
+import com.blacklaunch.qrcodes.qr.Symbol
 import com.blacklaunch.qrcodes.ui.theme.Oled
 
 private val FieldShape = RoundedCornerShape(28.dp)
@@ -193,22 +193,24 @@ fun RoundButton(glyph: Glyph, description: String, onClick: () -> Unit, ink: Col
 }
 
 /**
- * QR-код на екрані: чорні модулі на світлому «папірці» в рамці олівцем. Світле тло — щоб код читав будь-який
- * сканер (інвертований, світлий на чорному, читають не всі).
+ * Код на екрані: чорне на світлому «папірці» в рамці (олівцем чи склом). Світле тло — щоб код читав будь-який сканер
+ * (інвертований, світлий на чорному, читають не всі). QR — квадрат, штрихкод — широка плашка зі смугами.
+ * [symbol] null — порожній папірець потрібної форми ([barcode]).
  */
 @Composable
-fun QrImage(matrix: QrMatrix?, modifier: Modifier = Modifier, seed: Int = 5, radius: Dp = 14.dp) {
+fun CodeImage(symbol: Symbol?, modifier: Modifier = Modifier, seed: Int = 5, radius: Dp = 14.dp, barcode: Boolean = symbol is Symbol.Bars) {
     Box(
         modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (barcode) BAR_ASPECT else 1f)
             .pencilFrame(radius, seed = seed)
             .padding(4.dp)
             .clip(RoundedCornerShape(radius - 2.dp))
             .background(QrPaper),
         contentAlignment = Alignment.Center,
     ) {
-        if (matrix != null) {
-            Canvas(Modifier.fillMaxSize()) {
+        when (symbol) {
+            is Symbol.Qr -> Canvas(Modifier.fillMaxSize()) {
+                val matrix = symbol.matrix
                 val total = matrix.size + 2 * PREVIEW_QUIET
                 val cell = size.minDimension / total
                 val off = (size.minDimension - cell * matrix.size) / 2f
@@ -226,9 +228,30 @@ fun QrImage(matrix: QrMatrix?, modifier: Modifier = Modifier, seed: Int = 5, rad
                     }
                 }
             }
+            is Symbol.Bars -> Canvas(Modifier.fillMaxSize()) {
+                val bars = symbol.modules
+                val cell = size.width / (bars.size + 2 * Symbol.BAR_QUIET)
+                val top = size.height * 0.12f
+                val h = size.height * 0.76f
+                var x = 0
+                while (x < bars.size) {
+                    if (!bars[x]) { x++; continue }
+                    val start = x
+                    while (x < bars.size && bars[x]) x++
+                    drawRect(
+                        QrDark,
+                        topLeft = androidx.compose.ui.geometry.Offset((Symbol.BAR_QUIET + start) * cell, top),
+                        size = androidx.compose.ui.geometry.Size((x - start) * cell + 0.3f, h),
+                    )
+                }
+            }
+            null -> Unit
         }
     }
 }
+
+/** Ширина до висоти плашки штрихкоду на екрані. */
+const val BAR_ASPECT = 2.2f
 
 /** На екрані поле навколо коду менше за друковане (там — проміжки між кодами). */
 private const val PREVIEW_QUIET = 2
@@ -460,3 +483,18 @@ fun Modifier.fadingEdges(fade: Dp = 28.dp): Modifier = graphicsLayer { compositi
             blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
         )
     }
+
+/** Вибір-«табличка» (QR / Штрихкод тощо): вибраний — синьою рамкою; текст в один рядок. */
+@Composable
+fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .pencilFrame(14.dp, seed = text.length + 3, alpha = if (selected) 0.9f else 0.35f, ink = if (selected) Oled.Confirm else SheetInk)
+            .clickable { haptics.tap(); onClick() }
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    ) {
+        Text(text, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, softWrap = false)
+    }
+}

@@ -17,6 +17,9 @@ interface QrDao {
     @Query("SELECT * FROM codes WHERE favoriteAt IS NOT NULL ORDER BY favoriteAt ASC")
     fun favorites(): Flow<List<QrCode>>
 
+    @Query("SELECT * FROM codes ORDER BY createdAt ASC")
+    suspend fun snapshot(): List<QrCode>
+
     @Query("SELECT * FROM codes WHERE content = :content LIMIT 1")
     suspend fun byContent(content: String): QrCode?
 

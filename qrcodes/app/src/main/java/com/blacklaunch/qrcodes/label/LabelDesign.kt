@@ -47,6 +47,8 @@ sealed interface Element {
         val frame: QrFrame = QrFrame.None,
         /** Напис на плашці рамки «Скануй мене». */
         val banner: String = "",
+        /** Лінійний штрихкод замість QR: [side] — ширина, висота смуг — [BAR_HEIGHT_RATIO] від неї. */
+        val barcode: Boolean = false,
         override val rotation: Float = 0f,
     ) : Element {
         override val size get() = side
@@ -143,7 +145,13 @@ fun bannerArea(qr: Element.Qr): Float {
 fun bannerHeight(qr: Element.Qr): Float = (qr.side * 0.24f).coerceIn(5f, 18f)
 
 /** Повна висота блоку коду: поле, код, підпис, плашка, поле. */
-fun qrBlockHeight(qr: Element.Qr): Float = qr.side + captionArea(qr) + bannerArea(qr) + 2 * framePad(qr)
+fun qrBlockHeight(qr: Element.Qr): Float = symbolHeight(qr) + captionArea(qr) + bannerArea(qr) + 2 * framePad(qr)
+
+/** Висота самого коду: QR — квадрат, штрихкод — нижчий за ширину. */
+fun symbolHeight(qr: Element.Qr): Float = if (qr.barcode) qr.side * BAR_HEIGHT_RATIO else qr.side
+
+/** Висота смуг штрихкоду відносно його ширини (з тихими зонами по боках). */
+const val BAR_HEIGHT_RATIO = 0.42f
 
 /** Верх самого коду (мм). */
 fun qrTop(qr: Element.Qr): Float = qr.cy - qrBlockHeight(qr) / 2 + framePad(qr)
@@ -373,7 +381,14 @@ object Arrange {
     }
 
     /** Заповнити наклейку копіями коду [qr] (інші коди прибираються). */
-    fun fill(design: LabelDesign, qr: Element.Qr, tw: (String, Float) -> Float): LabelDesign {
+    fun fill(design: LabelDesign, original: Element.Qr, tw: (String, Float) -> Float): LabelDesign {
+        // Не вміщається навіть один — зменшуємо код, доки не влізе.
+        var qr = original
+        while (qr.side > Element.MIN_QR) {
+            val (w, h) = cell(qr, tw)
+            if (fit(design.size.widthMm, w, Placement.edge(design)) > 0 && fit(design.size.heightMm, h, Placement.edge(design)) > 0) break
+            qr = qr.copy(side = qr.side - 1f)
+        }
         val (cw, ch) = cell(qr, tw)
         val cols = fit(design.size.widthMm, cw, Placement.edge(design))
         val rows = fit(design.size.heightMm, ch, Placement.edge(design))
