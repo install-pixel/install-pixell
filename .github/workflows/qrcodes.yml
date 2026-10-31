@@ -99,3 +99,18 @@ jobs:
         run: |
           gh release edit qrcodes-latest --draft=false --prerelease --target "${{ github.sha }}"
           gh release view qrcodes-latest --json isDraft,assets --jq '"draft=\(.isDraft) assets=\(.assets | length)"'
+
+      # Фінальна версія (без «-alpha», «-rc»…) — ще й окремий постійний реліз, який не перезаписується.
+      - name: Publish final release
+        if: ${{ !contains(env.VERSION, '-') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: qraft-v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: QRaft ${{ env.VERSION }}
+          prerelease: false
+          make_latest: false
+          body: |
+            QRaft ${{ env.VERSION }} — робоча версія. Що вміє — у qrcodes/README.md.
+            Коміт: ${{ github.sha }}
+          files: qrcodes/${{ env.APK }}
