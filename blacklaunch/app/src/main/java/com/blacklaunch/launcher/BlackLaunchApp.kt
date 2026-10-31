@@ -118,6 +118,18 @@ class BlackLaunchApp : Application() {
     /** Головний екран Black Glass зараз видно (для «розумного перемикання» — чи треба виходити наперед). */
     @Volatile
     var homeVisible = false
+
+    /** Підказки для головного екрана: з темою «Аркуш» він показує їх власною плашкою від руки. */
+    val hints = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
+
+    /**
+     * Коротка підказка звідусіль (перемикання режиму, автоматизації): Black Glass на екрані й тема «Аркуш» — плашкою
+     * від руки на головному екрані; інакше — звичайною системною. Викликати з головного потоку.
+     */
+    fun hint(text: String) {
+        if (homeVisible && appearanceSettings.appearance.value.sheet && hints.tryEmit(text)) return
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    }
     val commandConditions: CommandConditions by lazy { CommandConditions(this) { profileRepository.activeProfile.first()?.name } }
     val systemStats: SystemStats by lazy { SystemStats(this) }
     val monitorSettings: MonitorSettings by lazy { MonitorSettings(this) }
@@ -227,7 +239,7 @@ class BlackLaunchApp : Application() {
                 if (!result.ok) {
                     withContext(Dispatchers.Main) {
                         val text = if (result.needsAccess) R.string.profile_needs_dnd else R.string.profile_sound_failed
-                        Toast.makeText(this@BlackLaunchApp, getString(text, result.profileName), Toast.LENGTH_SHORT).show()
+                        hint(getString(text, result.profileName))
                     }
                 }
             }

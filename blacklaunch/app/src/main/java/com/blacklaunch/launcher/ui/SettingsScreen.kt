@@ -107,6 +107,10 @@ fun SettingsScreen(
     onDismiss: () -> Unit,
     /** «Головний екран»: крапки сповіщень і «Що грає» (свої налаштування — окремо від оформлення). */
     homeExtras: @Composable () -> Unit = {},
+    /** Чи показується «Короткий огляд» у поточному режимі (назва режиму) і змінити це прямо тут. */
+    glanceProfileName: String = "",
+    glanceInProfile: Boolean = true,
+    onGlanceInProfile: (Boolean) -> Unit = {},
 ) {
     val toMain = { onNavigate(SettingsNav.Main) }
     when (page) {
@@ -121,6 +125,13 @@ fun SettingsScreen(
                 Note(stringResource(R.string.double_tap_hint))
             }
             Card {
+                // Сам огляд вмикається в кожному режимі — тут же, щоб не шукати: інакше пункти нижче «нічого не робили».
+                SwitchRow(
+                    stringResource(R.string.glance_in_profile, glanceProfileName),
+                    stringResource(R.string.glance_in_profile_subtitle),
+                    glanceInProfile,
+                    onGlanceInProfile,
+                )
                 Text(stringResource(R.string.glance_parts_title), color = Oled.TextPrimary, fontSize = 17.sp)
                 SwitchRow(stringResource(R.string.glance_part_clock), "", appearance.glanceClock) { on -> onChange { it.copy(glanceClock = on) } }
                 SwitchRow(stringResource(R.string.glance_part_alarm), "", appearance.glanceAlarm) { on -> onChange { it.copy(glanceAlarm = on) } }

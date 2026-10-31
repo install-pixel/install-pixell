@@ -293,6 +293,12 @@ class MainActivity : ComponentActivity() {
                 for (message in viewModel.messages) toast(message.text())
             }
         }
+        // Підказки звідусіль (перемикання режиму, автоматизації) — тією ж плашкою «Аркуша», поки головний екран видно.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                app.hints.collect { toastText(it) }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 for (action in viewModel.voiceActions) runVoiceAction(action)
@@ -514,6 +520,9 @@ class MainActivity : ComponentActivity() {
                                 versionName = versionName,
                                 appearance = appearance,
                                 onChange = ::changeAppearance,
+                                glanceProfileName = home.profileName,
+                                glanceInProfile = display.glance,
+                                onGlanceInProfile = { on -> app.profileDisplay.set(home.profileId, display.copy(glance = on)) },
                                 onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
                                 onOpenSystemTheme = ::openSystemTheme,
                                 offlineStatus = offline,
@@ -650,6 +659,7 @@ class MainActivity : ComponentActivity() {
                             ownIcon = target.key in ownIcons,
                             onToggleOwnIcon = { app.ownIcons.set(target.key, target.key !in ownIcons) },
                             onTeachVoice = { teachVoice(target) },
+                            onOpen = { viewModel.launch(target) },
                             shortcuts = remember(target.key) {
                                 app.globalSearch.shortcutsFor(target.packageName, target.userSerial).map { shortcut ->
                                     shortcut.title to { openGlobalResult(shortcut) }
@@ -1955,7 +1965,8 @@ class MainActivity : ComponentActivity() {
     private fun applyStatusBar() {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (homeIdle && activeDisplay().hideStatusBar) {
+        // Сховали рядок стану в режимі — його немає ніде в Black Glass (і в налаштуваннях): лише жестом згори.
+        if (activeDisplay().hideStatusBar) {
             controller.hide(WindowInsetsCompat.Type.statusBars())
         } else {
             controller.show(WindowInsetsCompat.Type.statusBars())

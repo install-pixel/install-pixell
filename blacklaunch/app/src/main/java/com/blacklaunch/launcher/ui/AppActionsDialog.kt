@@ -7,9 +7,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -35,6 +36,8 @@ fun AppActionsDialog(
     shortcuts: List<Pair<String, () -> Unit>> = emptyList(),
     /** «Навчити голосом»: сказати назву — почуте стане власною назвою програми (для офлайн-розпізнавання). */
     onTeachVoice: (() -> Unit)? = null,
+    /** «Відкрити» — першим пунктом (довго натиснули випадково — не треба виходити з меню й торкатися знову). */
+    onOpen: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     GlassDialog(
@@ -42,6 +45,7 @@ fun AppActionsDialog(
         title = { DialogTitle(app.label) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                onOpen?.let { open -> ActionOption(R.string.app_open, Icons.Filled.PlayArrow, Tone.Confirm) { onDismiss(); open() } }
                 shortcuts.forEach { (title, open) ->
                     ActionOption(title, Icons.Filled.Star) { open(); onDismiss() }
                 }

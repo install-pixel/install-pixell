@@ -34,8 +34,10 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TileMode
@@ -77,6 +80,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -126,6 +130,8 @@ private const val FLICK_PULL = 0.4f
 /** Тривалість анімації закриття пошуку. */
 private const val CLOSE_MS = 280
 private const val MIN_CLOSE_MS = 120
+/** Плашка з назвою режиму з'являється й тане плавно. */
+private const val BANNER_FADE_MS = 400
 /** Спуск після «Назад» — трохи повільніший за змах. */
 private const val BACK_CLOSE_MS = 360
 private val HOME_BLUR = 10.dp
@@ -264,6 +270,7 @@ fun BlackHomeScreen(
             onLaunch = onLaunch,
             onOpenSearch = onOpenSearch,
             onLongPress = { onSettingsRequest { showSettings = true } },
+            onLongPressApp = { menuApp = it },
             onSwitchProfile = onSwitchProfile,
             onMoveApp = onMoveApp,
             onRemoveApp = onRemoveApp,
@@ -320,6 +327,9 @@ fun BlackHomeScreen(
                 onMicClick = onMicClick,
                 // Сховали клавіатуру кнопкою «Назад» — закриваємо й пошук, одним рухом (якщо не відкрите вікно чи голос).
                 canCloseWithKeyboard = { aliasApp == null && menuApp == null && voiceState == VoiceState.Idle },
+                // Відкрили меню програми — клавіатура на цей час ховається (вікно забирає фокус), а місце під неї
+                // лишається: список і поле не стрибають ні вниз, ні назад угору, коли меню закрили.
+                holdKeyboardSpace = aliasApp != null || menuApp != null,
                 onSwipeDown = onCloseSearch,
                 onCloseProgress = { closeFraction = it },
             )
@@ -340,6 +350,8 @@ private fun HomeIdle(
     onLaunch: (AppInfo) -> Unit,
     onOpenSearch: () -> Unit,
     onLongPress: () -> Unit,
+    /** Довго натиснули на програмі й відпустили, не перетягуючи, — меню програми. */
+    onLongPressApp: (AppInfo) -> Unit = {},
     onSwitchProfile: (Int) -> Unit,
     onMoveApp: (appKey: String, cell: Int) -> Unit,
     onRemoveApp: (appKey: String) -> Unit,
@@ -493,13 +505,15 @@ private fun HomeIdle(
             // Великий шрифт Android — більше місця під текст, щоб значки не налазили.
             reservedTop = when {
                 glance != null -> GlanceSpace + ((if (showProfileLabel) GlanceProfileLine else 0.dp) +
-                    (if (glance.time != null) GlanceClockLine else 0.dp)) * fontScale
+                    (if (glance.time != null) GlanceClockLine else 0.dp) +
+                    (if (LocalSheet.current && glance.battery != null) GlanceBatteryLine else 0.dp)) * fontScale
                 showProfileLabel -> ProfileLabelSpace * fontScale
                 else -> 0.dp
             },
             reservedBottom = SearchFieldSpace,
             onDraggingChange = { dragging = it },
             dots = dots,
+            onLongPressApp = onLongPressApp,
             modifier = Modifier
                 // Місце під рядок стану лишається, навіть коли він схований, — значки не стрибають.
                 .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
@@ -537,7 +551,15 @@ private fun HomeIdle(
                 }
                 glance.time?.let { Text(it, color = Oled.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Light) }
                 Text(glance.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)
+                if (LocalSheet.current) {
+                    // «Аркуш»: батарейка намальована (пальчикова, з поділками), під нею — відсотки.
+                    if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)
+                    glance.battery?.let { HandBattery(it, Modifier.padding(top = 8.dp)) }
+                } else {
+                    val batteryText = glance.battery?.let { stringResource(R.string.glance_battery, it) }
+                    val details = listOfNotNull(glance.details.takeIf { it.isNotEmpty() }, batteryText).joinToString("  ·  ")
+                    if (details.isNotEmpty()) Text(details, color = Oled.TextSecondary, fontSize = 13.sp)
+                }
             }
         }
         // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.
@@ -552,8 +574,17 @@ private fun HomeIdle(
             )
         } else if (glance == null && !dragging) {
             // Без плашки назва коротко з'являється вгорі під час перемикання.
-            AnimatedVisibility(visible = profileBanner != null, enter = fadeIn(), exit = fadeOut(), modifier = topModifier) {
-                ProfilePill(name = profileBanner.orEmpty(), highlighted = true, onClick = null)
+            // Поки плашка тане, на ній лишається остання назва (раніше текст зникав одразу — і на мить
+            // з'являлася крихітна порожня плашка).
+            var lastBanner by remember { mutableStateOf("") }
+            if (profileBanner != null) lastBanner = profileBanner
+            AnimatedVisibility(
+                visible = profileBanner != null,
+                enter = fadeIn(tween(BANNER_FADE_MS)),
+                exit = fadeOut(tween(BANNER_FADE_MS)),
+                modifier = topModifier,
+            ) {
+                ProfilePill(name = lastBanner, highlighted = true, onClick = null)
             }
         }
     }
@@ -565,21 +596,49 @@ private val SearchFieldSpace = 64.dp
 private val GlanceSpace = 64.dp
 private val GlanceProfileLine = 20.dp
 private val GlanceClockLine = 52.dp
+/** «Аркуш»: намальована батарейка з підписом під оглядом. */
+private val GlanceBatteryLine = 56.dp
 
 @Composable
 private fun ProfilePill(name: String, highlighted: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
-    val haptics = LocalHaptics.current
-    Text(
-        text = name,
-        color = if (highlighted) Oled.TextPrimary else Oled.TextSecondary,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
-        modifier = modifier
-            .glassBox(20.dp, seed = 5)
-            .then(if (onClick != null) Modifier.clickable { haptics.tap(); onClick() } else Modifier)
-            .padding(horizontal = 18.dp, vertical = 8.dp),
-    )
+    TopPill(name, if (highlighted) Oled.TextPrimary else Oled.TextSecondary, onClick = onClick, modifier = modifier)
 }
+
+/**
+ * Плашка вгорі головного екрана — однакова для назви режиму й зони «Прибрати»: сталого розміру (довга назва
+ * скорочується «…»), на тому самому місці. Як поле пошуку й «Що грає» внизу — пара однакових плашок.
+ */
+@Composable
+internal fun TopPill(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fill: Brush = Oled.Surface,
+    ink: Color = SheetInk,
+    onClick: (() -> Unit)? = null,
+) {
+    val haptics = LocalHaptics.current
+    Box(
+        modifier
+            .size(TopPillWidth, TopPillHeight)
+            .glassBox(TopPillHeight / 2, seed = 5, fill = fill, ink = ink)
+            .then(if (onClick != null) Modifier.clickable { haptics.tap(); onClick() } else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+}
+
+internal val TopPillWidth = 220.dp
+internal val TopPillHeight = 40.dp
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -618,6 +677,8 @@ private fun SearchOpen(
     onMicClick: () -> Unit,
     /** Клавіатуру сховали «Назад»: чи закривати й пошук. */
     canCloseWithKeyboard: () -> Boolean,
+    /** Тримати місце під клавіатуру, навіть якщо вона на мить сховалась (поверх відкрите меню). */
+    holdKeyboardSpace: Boolean = false,
     onSwipeDown: () -> Unit,
     /** Наскільки панель опущена: 0 — на місці, 1 — сховалась (для розмиття фону). */
     onCloseProgress: (Float) -> Unit = {},
@@ -840,6 +901,10 @@ private fun SearchOpen(
         }
     }
     val imeVisible = WindowInsets.isImeVisible
+    // Скільки місця займала клавіатура над панеллю навігації — запам'ятовуємо, поки меню не відкрите.
+    val navBottom = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    var heldKeyboard by remember { mutableStateOf(0.dp) }
+    if (!holdKeyboardSpace) heldKeyboard = with(LocalDensity.current) { (imeNow.value - navBottom).coerceAtLeast(0).toDp() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var fieldFocused by remember { mutableStateOf(false) }
     // Пішли в іншу програму — ховаємо клавіатуру; повернулись — результати на місці, без клавіатури.
@@ -877,7 +942,7 @@ private fun SearchOpen(
             // Відступ під рядок стану — однаковий, видно рядок чи ні: витягнули його жестом — нічого не стрибає.
             .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
             .navigationBarsPadding()
-            .imePadding()
+            .then(if (holdKeyboardSpace) Modifier.padding(bottom = heldKeyboard) else Modifier.imePadding())
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .nestedScroll(pullToClose)
             .pointerInput(thresholdPx) {

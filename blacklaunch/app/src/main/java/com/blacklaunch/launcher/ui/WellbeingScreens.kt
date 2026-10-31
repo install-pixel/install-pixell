@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -340,6 +341,28 @@ private fun HandSeekBar(
     }
 }
 
+/** «Аркуш»: нота, намальована олівцем (замість обкладинки, коли її немає). */
+@Composable
+private fun HandNote(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = w * 0.06f
+        // Головка ноти — овал олівцем, штиль угору й прапорець.
+        val headW = w * 0.42f
+        val headH = h * 0.3f
+        translate(w * 0.12f, h * 0.64f) {
+            drawPath(taperedPath(pencilLoop(Size(headW, headH), headH / 2, 97, stroke * 0.3f), stroke), color)
+        }
+        val stemX = w * 0.12f + headW - stroke * 0.4f
+        pencilTick(Offset(stemX, h * 0.78f), Offset(stemX + w * 0.01f, h * 0.06f), stroke, color, 3)
+        drawPath(
+            taperedPath(quadPoints(Offset(stemX, h * 0.06f), Offset(w * 0.98f, h * 0.18f), Offset(w * 0.84f, h * 0.46f), steps = 20), stroke),
+            color,
+        )
+    }
+}
+
 /** «1:05» / «1:02:07». */
 private fun clockText(ms: Long): String {
     val total = ms.coerceAtLeast(0) / 1000
@@ -386,12 +409,22 @@ fun NowPlayingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "⌄",
-                    color = Oled.TextSecondary,
-                    fontSize = 30.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClose).padding(horizontal = 12.dp),
-                )
+                if (LocalSheet.current) {
+                    // «Аркуш»: «згорнути» — стрілка вниз, намальована олівцем.
+                    Box(
+                        Modifier.size(42.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onClose),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        HandIcon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.back), tint = Oled.TextSecondary, modifier = Modifier.size(30.dp))
+                    }
+                } else {
+                    Text(
+                        "⌄",
+                        color = Oled.TextSecondary,
+                        fontSize = 30.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClose).padding(horizontal = 12.dp),
+                    )
+                }
                 Text(
                     appName.orEmpty().uppercase(),
                     color = Oled.TextSecondary,
@@ -420,6 +453,8 @@ fun NowPlayingScreen(
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )
+                    } else if (LocalSheet.current) {
+                        HandNote(Oled.TextSecondary, Modifier.fillMaxSize(0.42f))
                     } else {
                         Text("♪", color = Oled.TextSecondary, fontSize = 72.sp)
                     }

@@ -3,10 +3,12 @@ package com.blacklaunch.launcher.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -295,3 +298,46 @@ internal fun DrawScope.pencilTick(a: Offset, b: Offset, width: Float, color: Col
     val normal = Offset(-dir.y / len, dir.x / len)
     drawPath(taperedPath(quadPoints(a, (a + b) / 2f + normal * bend, b, steps = 10), width), color)
 }
+
+/**
+ * «Аркуш»: батарейка, намальована олівцем, — як пальчикова: корпус, «носик», усередині рядок рисок (заповнені — скільки
+ * заряду, решта ледь видно; мало заряду — червоні), під нею — відсотки.
+ */
+@Composable
+internal fun HandBattery(level: Int, modifier: Modifier = Modifier) {
+    val low = level <= LOW_BATTERY
+    val ink = if (low) Oled.Danger else SheetInk
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(Modifier.size(width = 64.dp, height = 28.dp)) {
+            val nubW = 5.dp.toPx()
+            val bodyW = size.width - nubW - 1.dp.toPx()
+            val bodyH = size.height
+            drawPath(taperedPath(pencilLoop(Size(bodyW, bodyH), 6.dp.toPx(), 83, 0.6.dp.toPx()), 2.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+            // «Носик» праворуч.
+            val nubH = bodyH * 0.42f
+            translate(bodyW + 1.dp.toPx(), (bodyH - nubH) / 2f) {
+                drawPath(taperedPath(pencilLoop(Size(nubW, nubH), 2.dp.toPx(), 89, 0.3.dp.toPx()), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+            }
+            // Поділки всередині: заповнені — скільки заряду.
+            val pad = 5.dp.toPx()
+            val filled = ((level + 5) / 10).coerceIn(if (level > 0) 1 else 0, BATTERY_TICKS)
+            val step = (bodyW - 2 * pad) / BATTERY_TICKS
+            repeat(BATTERY_TICKS) { i ->
+                val x = pad + step * (i + 0.5f)
+                val lean = step * 0.25f
+                val on = i < filled
+                pencilTick(
+                    Offset(x - lean, bodyH - pad),
+                    Offset(x + lean, pad),
+                    if (on) 2.4.dp.toPx() else 1.2.dp.toPx(),
+                    if (on) ink else SheetInk.copy(alpha = 0.2f),
+                    i + 7,
+                )
+            }
+        }
+        Text("$level%", color = if (low) Oled.Danger else Oled.TextSecondary, fontSize = 13.sp)
+    }
+}
+
+private const val BATTERY_TICKS = 10
+private const val LOW_BATTERY = 15

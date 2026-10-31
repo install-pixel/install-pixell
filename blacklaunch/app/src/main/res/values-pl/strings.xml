@@ -948,4 +948,7 @@
     <string name="sheet_note">Dotknięcie linii — włącz lub wyłącz: przekreślone oznacza wyłączone. Ekran główny i wyszukiwanie — też odręcznie: zamiast ikon aplikacji — nazwy. Gry, minutnik skupienia i pozostałe ikony — też ołówkiem. Czcionka: Caveat (wolna licencja SIL OFL), wbudowana — bez internetu.</string>
     <string name="high_refresh_title">Płynność — 120 Hz</string>
     <string name="high_refresh_subtitle">Prosić telefon o najwyższą częstotliwość ekranu (na OnePlus 13 — 120 Hz): przewijanie, gry, kotek i animacje są płynniejsze. Zużywa trochę więcej baterii; wyłączone — decyduje telefon</string>
+    <string name="app_open">Otwórz</string>
+    <string name="glance_in_profile">Pokazuj w trybie „%1$s”</string>
+    <string name="glance_in_profile_subtitle">Przegląd włącza się osobno w każdym trybie; tutaj — dla bieżącego</string>
 </resources>

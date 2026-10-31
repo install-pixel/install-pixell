@@ -203,7 +203,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
     }
 
     private fun notInMode() {
-        android.widget.Toast.makeText(app, R.string.cmd_not_in_mode, android.widget.Toast.LENGTH_SHORT).show()
+        app.hint(app.getString(R.string.cmd_not_in_mode))
     }
 
     private fun switchProfile(name: String) {
@@ -222,7 +222,7 @@ class AutomationRunner(private val app: BlackLaunchApp) {
             app.profileRepository.setActive(id)
         } else {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(app, R.string.focus_automation_skipped, android.widget.Toast.LENGTH_SHORT).show()
+                app.hint(app.getString(R.string.focus_automation_skipped))
             }
         }
     }

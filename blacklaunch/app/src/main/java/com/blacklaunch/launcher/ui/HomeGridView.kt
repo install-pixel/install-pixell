@@ -1,31 +1,31 @@
 package com.blacklaunch.launcher.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.ui.res.stringResource
-import com.blacklaunch.launcher.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -42,6 +42,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -49,13 +50,20 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.apps.AppInfo
 import com.blacklaunch.launcher.profiles.HomeGrid
 import com.blacklaunch.launcher.ui.theme.Oled
 import kotlin.math.roundToInt
 
 private val CellHeight = 104.dp
-private val RemoveZoneHeight = 64.dp
+/** Палець вище цієї межі — програма прибирається (плашка «Прибрати» + запас, щоб не тягти за край екрана). */
+private val RemoveZoneHeight = 96.dp
+/** Наскільки вище пальця тримається значок, коли його тягнуть. */
+private val DragLift = 36.dp
+/** Скільки треба зрушити палець, щоб це вважалось перетягуванням, а не довгим натисканням. */
+private val DragSlop = 12.dp
+private const val SUPPRESS_TAP_MS = 400L
 
 /**
  * Вільна сітка головного екрана: кожна програма — окремий значок у будь-якій клітинці
@@ -81,6 +89,8 @@ fun HomeGridView(
     onDraggingChange: (Boolean) -> Unit = {},
     /** Пакети програм зі сповіщеннями — крапка біля значка. */
     dots: Set<String> = emptySet(),
+    /** Довго натиснули й відпустили, не перетягуючи, — меню програми (як у пошуку). */
+    onLongPressApp: (AppInfo) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHaptics.current
@@ -89,6 +99,15 @@ fun HomeGridView(
     val draggingChanged by rememberUpdatedState(onDraggingChange)
     var dragging by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    // Де палець (у координатах сітки) і чи справді тягнули — довге натискання без руху відкриває меню, а не програму.
+    var finger by remember { mutableStateOf(Offset.Zero) }
+    var pressedAt by remember { mutableStateOf(Offset.Zero) }
+    var moved by remember { mutableStateOf(false) }
+    // Після довгого натискання звичайний «дотик» на відпусканні не запускає програму (хоч би в якому порядку
+    // прийшли події): до [suppressUntil] запуск цієї програми ігнорується.
+    var suppressKey by remember { mutableStateOf<String?>(null) }
+    var suppressUntil by remember { mutableLongStateOf(0L) }
+    val longPressMenu by rememberUpdatedState(onLongPressApp)
     val bounds = remember { mutableMapOf<String, Rect>() }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -101,15 +120,14 @@ fun HomeGridView(
         val heightPx = with(density) { maxHeight.toPx() - reservedBottom.toPx() }
         val rows = ((heightPx - topPx) / cellHeightPx).toInt().coerceAtLeast(1)
         val removeZonePx = with(density) { RemoveZoneHeight.toPx() }
-        val draggedTop = dragging?.let { key ->
-            cells[key]?.let { heightPx - (HomeGrid.rowFromBottom(it).coerceAtMost(rows - 1) + 1) * cellHeightPx + dragOffset.y }
-        }
-        // Прибираємо, коли центр значка в зоні — легкий рух верхнього ряду не видаляє.
-        val overRemoveZone = draggedTop != null && draggedTop + cellHeightPx / 2 < removeZonePx
+        val liftPx = with(density) { DragLift.toPx() }
+        val movedPx = with(density) { DragSlop.toPx() }
+        // Прибираємо, коли до зони дотягнувся сам палець (не треба тягти значок за край екрана).
+        val overRemoveZone = dragging != null && finger.y < removeZonePx
 
         // Зона «Прибрати» з'являється лише під час перетягування.
         if (dragging != null) {
-            RemoveZone(highlighted = overRemoveZone, modifier = Modifier.align(Alignment.TopCenter))
+            RemoveZone(highlighted = overRemoveZone, modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp))
         }
 
         apps.forEach { app ->
@@ -138,18 +156,29 @@ fun HomeGridView(
                     }
                     .pointerInput(app.key, cell, rows) {
                         detectDragGesturesAfterLongPress(
-                            onDragStart = {
+                            onDragStart = { at ->
                                 dragging = app.key
-                                dragOffset = Offset.Zero
+                                // Значок «стрибає» під палець — трохи вище нього, щоб палець його не закривав.
+                                dragOffset = Offset(at.x - cellWidthPx / 2, at.y - cellHeightPx / 2 - liftPx)
+                                finger = Offset(x + at.x, y + at.y)
+                                pressedAt = finger
+                                moved = false
+                                suppressKey = app.key
+                                suppressUntil = Long.MAX_VALUE
                                 draggingChanged(true)
                                 haptics.longPress()
                             },
                             onDrag = { change, amount ->
                                 change.consume()
                                 dragOffset += amount
+                                finger += amount
+                                if (!moved && (finger - pressedAt).getDistance() > movedPx) moved = true
                             },
                             onDragEnd = {
-                                if (y + dragOffset.y + cellHeightPx / 2 < removeZonePx) {
+                                if (!moved) {
+                                    // Довго натиснули й відпустили на місці — меню програми.
+                                    longPressMenu(app)
+                                } else if (finger.y < removeZonePx) {
                                     haptics.longPress()
                                     remove(app.key)
                                 } else {
@@ -160,17 +189,24 @@ fun HomeGridView(
                                 }
                                 dragging = null
                                 dragOffset = Offset.Zero
+                                suppressUntil = SystemClock.uptimeMillis() + SUPPRESS_TAP_MS
                                 draggingChanged(false)
                             },
                             onDragCancel = {
                                 dragging = null
                                 dragOffset = Offset.Zero
+                                suppressUntil = SystemClock.uptimeMillis() + SUPPRESS_TAP_MS
                                 draggingChanged(false)
                             },
                         )
                     }
                     .clip(RoundedCornerShape(20.dp))
-                    .clickable { haptics.tap(); onLaunch(app) },
+                    .clickable {
+                        // Відпускання після довгого натискання — не запуск (меню відкриває сам жест).
+                        if (suppressKey == app.key && SystemClock.uptimeMillis() < suppressUntil) return@clickable
+                        haptics.tap()
+                        onLaunch(app)
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 GridIcon(app, iconFor, dot = app.packageName in dots)
@@ -181,19 +217,14 @@ fun HomeGridView(
 
 @Composable
 private fun RemoveZone(highlighted: Boolean, modifier: Modifier) {
-    Row(
-        modifier = modifier
-            .padding(top = 8.dp)
-            .glassBox(24.dp, seed = 3, fill = if (highlighted) Oled.KnobDanger else Oled.Surface, ink = if (highlighted) Oled.Danger else SheetInk)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (!LocalSheet.current) {
-            Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextPrimary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(stringResource(R.string.remove_from_home), color = if (LocalSheet.current) Oled.Danger else Oled.TextPrimary, fontSize = 14.sp)
-    }
+    // Така сама плашка, як назва режиму, і на тому самому місці; напис — червоним.
+    TopPill(
+        text = stringResource(R.string.remove_from_home),
+        color = if (LocalSheet.current || highlighted) Oled.Danger else Oled.TextPrimary,
+        fill = if (highlighted) Oled.KnobDanger else Oled.Surface,
+        ink = if (highlighted) Oled.Danger else SheetInk,
+        modifier = modifier,
+    )
 }
 
 @Composable

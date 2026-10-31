@@ -13,7 +13,8 @@ import com.blacklaunch.launcher.R
 import java.util.Date
 
 /** «Короткий огляд» на головному екрані: [time] (якщо ввімкнено), дата і рядок — будильник, подія, батарея. */
-data class GlanceInfo(val time: String?, val date: String, val details: String)
+/** [battery] — заряд у відсотках окремо: у «Аркуші» його малюємо батарейкою, у склі — текстом після [details]. */
+data class GlanceInfo(val time: String?, val date: String, val details: String, val battery: Int? = null)
 
 /** Що показувати в огляді. */
 data class GlanceParts(val clock: Boolean = true, val alarm: Boolean = true, val event: Boolean = true, val battery: Boolean = true)
@@ -35,12 +36,12 @@ object Glance {
                 ?.takeIf { it - now in 0..DAY_MS }
                 ?.let { context.getString(R.string.glance_alarm, time.format(Date(it))) },
             if (!parts.event) null else nextEvent(context, now)?.let { (title, begin) -> "$title, ${time.format(Date(begin))}" },
-            if (!parts.battery) null else context.getSystemService(BatteryManager::class.java)
-                ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-                ?.takeIf { it in 0..100 }
-                ?.let { context.getString(R.string.glance_battery, it) },
         )
-        return GlanceInfo(if (parts.clock) time.format(Date(now)) else null, date, details.joinToString("  ·  "))
+        // Батарея — окремо: у «Аркуші» її малюємо (батарейка з поділками), у склі — текстом у тому ж рядку.
+        val battery = if (!parts.battery) null else context.getSystemService(BatteryManager::class.java)
+            ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            ?.takeIf { it in 0..100 }
+        return GlanceInfo(if (parts.clock) time.format(Date(now)) else null, date, details.joinToString("  ·  "), battery)
     }
 
     // Найближча подія на добу вперед — лише якщо календар уже дозволено (для пошуку).
