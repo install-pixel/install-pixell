@@ -275,7 +275,8 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
                         SheetTextField(b, { b = it }, stringResource(R.string.form_wifi_password), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password))
                     }
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ChoiceChip("WPA/WPA2", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA }
+                        ChoiceChip("WPA/WPA2/WPA3", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA }
+                        ChoiceChip(stringResource(R.string.form_wifi_wpa3_only), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA3) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA3 }
                         ChoiceChip("WEP", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP }
                         ChoiceChip(stringResource(R.string.form_wifi_open), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE }
                         ChoiceChip(stringResource(R.string.form_wifi_hidden), hidden) { hidden = !hidden }

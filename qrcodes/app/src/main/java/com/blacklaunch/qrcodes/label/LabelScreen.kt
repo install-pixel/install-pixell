@@ -257,6 +257,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             Canvas(
                 Modifier
                     .size(w, h)
+                    // Чорний аркуш «Екран телефону» на чорному тлі — тонкою рамкою, щоб було видно межі.
+                    .then(if (design.size.screen) Modifier.border(1.dp, SheetInk.copy(alpha = 0.35f)) else Modifier)
                     .onGloballyPositioned { canvasOrigin = it.positionInRoot() }
                     .pointerInput(k) {
                         awaitEachGesture {
@@ -345,7 +347,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         }
                     },
             ) {
-                drawIntoCanvas { renderer.draw(it.nativeCanvas, k, design, LabelPalette.Screen) }
+                drawIntoCanvas { renderer.draw(it.nativeCanvas, k, design, LabelPalette.forView(design)) }
                 // Лінії, до яких прилипло.
                 guides.first?.let { x -> drawLine(Oled.Confirm.copy(alpha = 0.8f), Offset(x * k, 0f), Offset(x * k, size.height), 1.dp.toPx()) }
                 guides.second?.let { y -> drawLine(Oled.Confirm.copy(alpha = 0.8f), Offset(0f, y * k), Offset(size.width, y * k), 1.dp.toPx()) }
@@ -869,7 +871,7 @@ private fun TemplateSample(label: String, design: LabelDesign, renderer: LabelRe
         val k = minOf(w / design.size.widthMm, h / design.size.heightMm)
         canvas.save()
         canvas.translate((w - design.size.widthMm * k) / 2f, (h - design.size.heightMm * k) / 2f)
-        renderer.draw(canvas, k, design, LabelPalette.Screen)
+        renderer.draw(canvas, k, design, LabelPalette.forView(design))
         canvas.restore()
     }
 }

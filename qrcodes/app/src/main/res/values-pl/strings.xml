@@ -148,8 +148,9 @@
     <string name="backup_imported">Dodano nowych kodów: %1$d</string>
     <string name="backup_bad_file">Nie udało się odczytać tego pliku</string>
     <string name="label_screen">Ekran telefonu</string>
-    <string name="label_screen_hint">W kształcie ekranu tego telefonu. „Udostępnij → Jako obraz” lub „Zapisz w galerii” da obraz dokładnie w pikselach ekranu — otwierasz i pokazujesz kod na cały ekran.</string>
+    <string name="label_screen_hint">W kształcie ekranu tego telefonu, czarne tło i kod na białej karcie — na każdym telefonie wygląda na cały ekran. „Udostępnij → Jako obraz” lub „Zapisz w galerii” daje obraz dokładnie w pikselach ekranu. Druk — na białym.</string>
     <string name="share_save_gallery">Zapisz w galerii</string>
     <string name="share_saved_gallery">Zapisano w galerii (Pictures/QRaft)</string>
     <string name="share_save_failed">Nie udało się zapisać obrazu</string>
+    <string name="form_wifi_wpa3_only">Tylko WPA3</string>
 </resources>

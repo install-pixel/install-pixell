@@ -148,8 +148,9 @@
     <string name="backup_imported">Додано нових кодів: %1$d</string>
     <string name="backup_bad_file">Не вдалося прочитати цей файл</string>
     <string name="label_screen">Екран телефону</string>
-    <string name="label_screen_hint">За формою екрана цього телефона. «Поділитися → Картинкою» чи «Зберегти в галерею» дасть зображення точно в пікселях екрана — відкрив і показуєш код на весь екран.</string>
+    <string name="label_screen_hint">За формою екрана цього телефона, чорне тло й код на білій картці — на будь-якому телефоні виглядає на весь екран. «Поділитися → Картинкою» чи «Зберегти в галерею» дає зображення точно в пікселях екрана. Друкується — на білому.</string>
     <string name="share_save_gallery">Зберегти в галерею</string>
     <string name="share_saved_gallery">Збережено в галерею (Pictures/QRaft)</string>
     <string name="share_save_failed">Не вдалося зберегти картинку</string>
+    <string name="form_wifi_wpa3_only">Лише WPA3</string>
 </resources>

@@ -42,8 +42,17 @@ import java.io.FileOutputStream
  * Кольори наклейки. І на екрані, і на папері — біле тло й чорне чорнило: на чорному екрані аркуш видно цілком, з
  * чіткими межами, і він виглядає точно так, як надрукується (так читає будь-який сканер і друкує Zebra).
  */
-data class LabelPalette(val paper: Int, val ink: Int, val qrDark: Int) {
+data class LabelPalette(val paper: Int, val ink: Int, val qrDark: Int, val qrTile: Int? = null) {
     companion object {
+        /**
+         * «Екран телефону»: чорне тло, білі тексти й значки, код — на білій картці. На іншому телефоні галерея додасть
+         * чорні смуги — вони зіллються з тлом, і картинка всюди виглядає як на весь екран.
+         */
+        val Phone = LabelPalette(paper = 0xFF000000.toInt(), ink = 0xFFEDEDED.toInt(), qrDark = 0xFF000000.toInt(), qrTile = 0xFFFFFFFF.toInt())
+
+        /** На екрані й у картинці: аркуш «Екран телефону» — чорний, решта — білий папір. */
+        fun forView(design: LabelDesign): LabelPalette = if (design.size.screen) Phone else Screen
+
         val Screen = LabelPalette(paper = 0xFFF4F4F2.toInt(), ink = 0xFF111111.toInt(), qrDark = 0xFF000000.toInt())
         val Print = LabelPalette(paper = 0xFFFFFFFF.toInt(), ink = 0xFF000000.toInt(), qrDark = 0xFF000000.toInt())
     }
@@ -140,6 +149,11 @@ class LabelRenderer(private val hand: Typeface) {
         val side = e.side * k
         val symbolH = symbolHeight(e) * k
         val dark = Paint().apply { color = palette.qrDark; style = Paint.Style.FILL }
+        palette.qrTile?.let { tile ->
+            // Біла картка під кодом (на чорному тлі) — з полем навколо, щоб сканер бачив межі коду.
+            val m = side * 0.06f
+            canvas.drawRoundRect(RectF(left - m, top - m, left + side + m, top + symbolH + m), m * 1.2f, m * 1.2f, Paint().apply { color = tile; isAntiAlias = true })
+        }
         when (val symbol = symbol(e)) {
             is Symbol.Qr -> drawQr(canvas, symbol.matrix, left, top, side, dark)
             is Symbol.Bars -> drawBars(canvas, symbol.modules, left, top, side, symbolH, dark)
@@ -377,7 +391,8 @@ class LabelRenderer(private val hand: Typeface) {
         val w = (design.size.widthMm * pxPerMm).toInt().coerceAtLeast(1)
         val h = (design.size.heightMm * pxPerMm).toInt().coerceAtLeast(1)
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        draw(Canvas(bitmap), pxPerMm, design, LabelPalette.Print)
+        // Картинка — як на екрані: «Екран телефону» — чорна з білою карткою, звичайна наклейка — біла.
+        draw(Canvas(bitmap), pxPerMm, design, if (design.size.screen) LabelPalette.Phone else LabelPalette.Print)
         return bitmap
     }
 

@@ -5,7 +5,11 @@ package com.blacklaunch.qrcodes.qr
  * Wi‑Fi, зберегти контакт чи відкрити сайт. Користувач заповнює форму, а не пише службові рядки вручну.
  */
 object Payloads {
-    enum class WifiSecurity(val code: String) { WPA("WPA"), WEP("WEP"), NONE("nopass") }
+    /**
+     * Захист мережі. [WPA] — WPA, WPA2 і змішаний WPA2/WPA3 (так працює більшість роутерів); [WPA3] — мережа лише
+     * WPA3 («SAE», розуміють новіші телефони); [WEP] — старі роутери; [NONE] — без пароля.
+     */
+    enum class WifiSecurity(val code: String) { WPA("WPA"), WPA3("SAE"), WEP("WEP"), NONE("nopass") }
 
     /** Wi‑Fi: `WIFI:T:WPA;S:назва;P:пароль;H:true;;` — спецсимволи \ ; , : " екрануються зворотною рискою. */
     fun wifi(ssid: String, password: String, security: WifiSecurity, hidden: Boolean): String = buildString {
