@@ -2,6 +2,7 @@ package com.blacklaunch.launcher.voice
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,8 +79,10 @@ class VoiceModelStore(context: Context) {
                 throw IOException("Cannot install model")
             }
             old.deleteRecursively()
-            // Назва моделі — з теки в архіві («vosk-model-uk-v3»), щоб потім було видно, що встановлено.
-            modelRoot.trimEnd('/').substringAfterLast('/').takeIf { it.isNotEmpty() }?.let { File(target, NAME_FILE).writeText(it) }
+            // Назва моделі — з теки в архіві («vosk-model-uk-v3»), а якщо файли лежать в архіві без теки — з назви
+            // самого архіву, щоб потім було видно, що встановлено.
+            (modelRoot.trimEnd('/').substringAfterLast('/').takeIf { it.isNotEmpty() } ?: archiveName(uri))
+                ?.let { File(target, NAME_FILE).writeText(it) }
             _installed.value = scan()
             _info.value = readInfo()
             Result.success(language)
@@ -110,8 +113,27 @@ class VoiceModelStore(context: Context) {
 
     private fun readInfo(): Map<String, ModelInfo> = scan().associateWith { language ->
         val dir = dir(language)
-        val name = File(dir, NAME_FILE).takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null }
+        val name = File(dir, NAME_FILE).takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null } ?: readmeName(dir)
         ModelInfo(name, dir.walkTopDown().filter { it.isFile && it.name != NAME_FILE }.sumOf { it.length() })
+    }
+
+    /** Назва архіву без «.zip» (наприклад «vosk-model-small-pl-0.22»). */
+    private fun archiveName(uri: Uri): String? = try {
+        appContext.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }?.substringBeforeLast(".zip")?.trim()?.ifEmpty { null }
+    } catch (e: RuntimeException) {
+        Log.w(TAG, "No archive name", e)
+        null
+    }
+
+    /** Для моделей, встановлених раніше без назви: назва з README моделі Vosk, якщо вона там є. */
+    private fun readmeName(dir: File): String? = try {
+        File(dir, "README").takeIf { it.isFile }?.useLines { lines ->
+            lines.take(20).firstNotNullOfOrNull { Regex("vosk-model[\\w.-]+").find(it)?.value }
+        }
+    } catch (e: IOException) {
+        null
     }
 
     private fun scan(): Set<String> =

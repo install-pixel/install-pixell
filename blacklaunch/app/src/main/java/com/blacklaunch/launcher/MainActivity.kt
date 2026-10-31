@@ -15,7 +15,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
-import androidx.activity.compose.BackHandler
 import com.blacklaunch.launcher.system.RefreshRate
 import com.blacklaunch.launcher.global.SettingsCatalog
 import com.blacklaunch.launcher.ui.MonitorSettingsContent
@@ -414,8 +413,6 @@ class MainActivity : ComponentActivity() {
             val installedApps by repository.apps.collectAsStateWithLifecycle()
             val monitorLook by app.monitorSettings.look.collectAsStateWithLifecycle()
             val monitorShown by monitorOpen.collectAsStateWithLifecycle()
-            // Монітор відкрили командою з іншого профілю — «Назад» повертає звичайний екран.
-            BackHandler(enabled = monitorShown) { monitorOpen.value = false }
             BlackLaunchTheme {
             CompositionLocalProvider(LocalHaptics provides Haptics(LocalView.current, appearance.haptics)) {
                 val focusSession by app.focus.session.collectAsStateWithLifecycle()
@@ -455,6 +452,8 @@ class MainActivity : ComponentActivity() {
                     } else {
                         null
                     },
+                    // Дашборд відкрили лише подивитись (командою чи з налаштувань) — «Назад» повертає звичайний екран.
+                    onBackHome = if (monitorShown && !display.monitor) ({ monitorOpen.value = false }) else null,
                     onSwitchProfile = viewModel::switchProfile,
                     onMoveApp = viewModel::moveApp,
                     onRemoveApp = viewModel::unpin,

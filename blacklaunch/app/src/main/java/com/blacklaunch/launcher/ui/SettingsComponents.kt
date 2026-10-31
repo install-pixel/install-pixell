@@ -21,6 +21,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.currentCompositeKeyHash
 import androidx.compose.runtime.getValue
@@ -299,3 +300,19 @@ private fun MenuRow(icon: @Composable (Modifier) -> Unit, @StringRes title: Int,
         Text("›", color = Oled.TextSecondary, fontSize = 22.sp)
     }
 }
+
+/** Поля введення — заокруглені, як решта скла: тонкий кант (яскравіший під час введення) і ледь світліший фон. */
+internal val FieldShape = RoundedCornerShape(16.dp)
+
+@Composable
+internal fun glassFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Oled.TextPrimary,
+    unfocusedTextColor = Oled.TextPrimary,
+    cursorColor = Oled.TextPrimary,
+    focusedBorderColor = Color(0x99FFFFFF),
+    unfocusedBorderColor = Color(0x38FFFFFF),
+    focusedContainerColor = Color(0x0FFFFFFF),
+    unfocusedContainerColor = Color(0x08FFFFFF),
+    focusedLabelColor = Oled.TextPrimary,
+    unfocusedLabelColor = Oled.TextSecondary,
+)

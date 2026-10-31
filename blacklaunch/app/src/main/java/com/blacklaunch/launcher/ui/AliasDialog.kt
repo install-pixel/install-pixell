@@ -12,14 +12,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -67,13 +65,8 @@ fun AliasDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { add() }),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Oled.TextPrimary,
-                        unfocusedTextColor = Oled.TextPrimary,
-                        cursorColor = Oled.Accent,
-                        focusedBorderColor = Color(0xFF5A5A5A),
-                        unfocusedBorderColor = Color(0xFF3A3A3A),
-                    ),
+                    colors = glassFieldColors(),
+                    shape = FieldShape,
                 )
             }
         },

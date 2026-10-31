@@ -513,15 +513,16 @@ private fun ModelRow(
 ) {
     val context = LocalContext.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+        // Відступ від кнопки — довга назва моделі переноситься, а не ховається під «Видалити».
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(stringResource(ModelImportActivity.languageName(language)), color = Oled.TextPrimary, fontSize = 16.sp)
             // Яка саме модель стоїть і скільки займає — щоб через тиждень не гадати, мала чи велика.
-            val status = if (installed && info != null) {
-                listOf(info.name ?: stringResource(R.string.model_installed), Formatter.formatShortFileSize(context, info.bytes)).joinToString(" · ")
+            if (installed && info != null) {
+                Text(info.name ?: stringResource(R.string.model_installed), color = Oled.TextSecondary, fontSize = 13.sp)
+                Text(Formatter.formatShortFileSize(context, info.bytes), color = Oled.TextSecondary, fontSize = 13.sp)
             } else {
-                stringResource(if (installed) R.string.model_installed else R.string.model_missing)
+                Text(stringResource(if (installed) R.string.model_installed else R.string.model_missing), color = Oled.TextSecondary, fontSize = 13.sp)
             }
-            Text(status, color = Oled.TextSecondary, fontSize = 13.sp)
         }
         if (installed) {
             SmallButton(stringResource(R.string.model_delete), Tone.Danger) { onDelete(language) }

@@ -27,9 +27,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Text
@@ -262,7 +260,7 @@ fun FocusStartDialog(
         onDismissRequest = onDismiss,
         title = { DialogTitle(stringResource(R.string.focus_start_title)) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.focus_start_profile), color = Oled.TextPrimary, fontSize = 16.sp)
                 profiles.forEach { profile ->
                     TargetOption(profile.name, profileId == profile.id) { profileId = profile.id }
@@ -352,7 +350,7 @@ fun FocusSummaryDialog(summary: FocusSummary, onDismiss: () -> Unit) {
                 Note(stringResource(R.string.focus_attempts_note))
             }
         },
-        confirmButton = { DialogButton(stringResource(R.string.alias_done), onDismiss, Tone.Confirm) },
+        confirmButton = { DialogButton(stringResource(R.string.alias_done), onDismiss) },
     )
 }
 

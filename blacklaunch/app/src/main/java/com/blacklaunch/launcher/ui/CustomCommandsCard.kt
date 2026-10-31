@@ -11,8 +11,6 @@ import com.blacklaunch.launcher.commands.StepTexts
 import com.blacklaunch.launcher.commands.StepCommands
 import com.blacklaunch.launcher.commands.StepCommand
 import com.blacklaunch.launcher.commands.CommandReverse
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Place
@@ -31,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,7 +48,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -223,7 +221,8 @@ private fun CommandEditor(
             label = { Text(stringResource(R.string.custom_command_phrase)) },
             placeholder = { Text(stringResource(R.string.custom_command_phrase_hint), color = Oled.TextSecondary) },
             modifier = Modifier.fillMaxWidth(),
-            colors = fieldColors(),
+            colors = glassFieldColors(),
+            shape = FieldShape,
         )
         // Фраза, що збігається з чимось іншим, — попереджаємо, щоб жодна команда не «зникала» мовчки.
         phraseConflict(phrase, conditions, others, apps, profiles)?.let { Note(it) }
@@ -426,7 +425,7 @@ private fun SmallButton(icon: ImageVector, @StringRes description: Int, onClick:
 private fun StepMenu(onPick: (StepPicker) -> Unit, onHome: (String) -> Unit, onDismiss: () -> Unit) {
     val home = stringResource(R.string.cstep_home)
     PickerDialog(R.string.custom_step_add, onDismiss) {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ActionOption(R.string.custom_step_from_search, Icons.Filled.Search) { onPick(StepPicker.SEARCH) }
             ActionOption(R.string.custom_step_app, Icons.Filled.PlayArrow) { onPick(StepPicker.APP) }
             ActionOption(R.string.custom_step_action, Icons.Filled.Settings) { onPick(StepPicker.ACTION) }
@@ -483,9 +482,11 @@ private fun SearchStepDialog(apps: List<AppInfo>, profiles: List<String>, onPick
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.custom_step_search_hint), color = Oled.TextSecondary) },
                 modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
-            LazyColumn(Modifier.fillMaxWidth().height(300.dp).fadingEdges()) {
+            val listState = rememberLazyListState()
+            LazyColumn(Modifier.fillMaxWidth().height(300.dp).fadingEdges().bounceWhenFits(listState.fits), state = listState, userScrollEnabled = !listState.fits) {
                 items(candidates, key = { it.first }) { (step, title, icon) ->
                     ActionOption(title, icon) { onPick(step) }
                 }
@@ -546,7 +547,8 @@ private fun SingleFieldStepDialog(@StringRes title: Int, @StringRes label: Int, 
                 singleLine = true,
                 label = { Text(stringResource(label)) },
                 modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
             note?.let { Note(it) }
         }
@@ -569,8 +571,8 @@ private fun SmsStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val template = stringResource(R.string.step_sms)
     PickerDialog(R.string.custom_step_sms, onDismiss, confirm = if (name.isNotBlank() && body.isNotBlank()) ({ onPick(template.format(name.trim(), body.trim())) }) else null) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text(stringResource(R.string.custom_step_contact)) }, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
-            OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text(stringResource(R.string.custom_step_sms_text)) }, modifier = Modifier.fillMaxWidth(), colors = fieldColors())
+            OutlinedTextField(shape = FieldShape, value = name, onValueChange = { name = it }, singleLine = true, label = { Text(stringResource(R.string.custom_step_contact)) }, modifier = Modifier.fillMaxWidth(), colors = glassFieldColors())
+            OutlinedTextField(shape = FieldShape, value = body, onValueChange = { body = it }, label = { Text(stringResource(R.string.custom_step_sms_text)) }, modifier = Modifier.fillMaxWidth(), colors = glassFieldColors())
             Note(stringResource(R.string.custom_step_sms_note))
         }
     }
@@ -591,7 +593,8 @@ private fun WaitStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
             SwitchRow(stringResource(R.string.custom_wait_in_minutes), "", minutes) { minutes = it }
             Note(stringResource(R.string.custom_step_wait_note))
@@ -615,9 +618,11 @@ private fun AppStepDialog(apps: List<AppInfo>, iconFor: suspend (AppInfo) -> Ima
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.custom_step_search), color = Oled.TextSecondary) },
                 modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
-            LazyColumn(Modifier.fillMaxWidth().height(320.dp).fadingEdges()) {
+            val listState = rememberLazyListState()
+            LazyColumn(Modifier.fillMaxWidth().height(320.dp).fadingEdges().bounceWhenFits(listState.fits), state = listState, userScrollEnabled = !listState.fits) {
                 items(shown, key = { it.key }) { app ->
                     val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
                     Row(
@@ -653,7 +658,8 @@ private fun ActionStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
         R.string.step_timer -> TimerDialog(onPick, onDismiss)
         R.string.step_alarm -> AlarmDialog(onPick, onDismiss)
         else -> PickerDialog(R.string.custom_step_action, onDismiss) {
-            LazyColumn(Modifier.fillMaxWidth().height(360.dp).fadingEdges(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val listState = rememberLazyListState()
+            LazyColumn(Modifier.fillMaxWidth().height(360.dp).fadingEdges().bounceWhenFits(listState.fits), state = listState, userScrollEnabled = !listState.fits, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 item { ActionOption(R.string.custom_action_brightness, Icons.Filled.Settings) { param = R.string.step_brightness } }
                 item { ActionOption(R.string.custom_action_timer, Icons.Filled.Settings) { param = R.string.step_timer } }
                 item { ActionOption(R.string.custom_action_alarm, Icons.Filled.Settings) { param = R.string.step_alarm } }
@@ -695,7 +701,8 @@ private fun TimerDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
             label = { Text(stringResource(R.string.custom_step_minutes)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
-            colors = fieldColors(),
+            colors = glassFieldColors(),
+            shape = FieldShape,
         )
     }
 }
@@ -716,7 +723,8 @@ private fun AlarmDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                 label = { Text(stringResource(R.string.custom_step_hour)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
             Text(" : ", color = Oled.TextPrimary, fontSize = 20.sp)
             OutlinedTextField(
@@ -726,7 +734,8 @@ private fun AlarmDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                 label = { Text(stringResource(R.string.custom_step_minute)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
         }
     }
@@ -756,7 +765,8 @@ private fun TextStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.custom_command_steps_hint), color = Oled.TextSecondary) },
                 modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
             Note(stringResource(R.string.custom_command_steps_note))
         }
@@ -776,14 +786,3 @@ private fun PickerDialog(@StringRes title: Int, onDismiss: () -> Unit, confirm: 
         dismissButton = { DialogButton(stringResource(R.string.cancel), onDismiss) },
     )
 }
-
-@Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Oled.TextPrimary,
-    unfocusedTextColor = Oled.TextPrimary,
-    cursorColor = Oled.Accent,
-    focusedBorderColor = Color(0xFF5A5A5A),
-    unfocusedBorderColor = Color(0xFF3A3A3A),
-    focusedLabelColor = Oled.TextSecondary,
-    unfocusedLabelColor = Oled.TextSecondary,
-)

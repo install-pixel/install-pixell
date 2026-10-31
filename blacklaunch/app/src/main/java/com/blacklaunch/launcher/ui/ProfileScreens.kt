@@ -26,11 +26,10 @@ import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -46,7 +45,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -98,7 +96,7 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, content: @Composabl
                 .weight(1f)
                 // Вміст тане біля заголовка й низу, а не обрізається різкою межею.
                 .fadingEdges()
-                .verticalScroll(rememberScrollState())
+                .bouncyScroll()
                 .padding(horizontal = 16.dp)
                 .padding(top = EdgeFade / 2)
                 .navigationBarsPadding()
@@ -249,7 +247,7 @@ fun ProfileEditScreen(
             Text(stringResource(R.string.pinned_title), color = Oled.TextPrimary, fontSize = 17.sp)
             if (profile.pinnedAppKeys.isEmpty()) Note(stringResource(R.string.pinned_empty))
             // Багато програм не розтягує сторінку: віконце фіксованої висоти з власною прокруткою.
-            Column(Modifier.heightIn(max = PinnedListMaxHeight).fadingEdges().verticalScroll(rememberScrollState()).padding(vertical = EdgeFade / 2)) {
+            Column(Modifier.heightIn(max = PinnedListMaxHeight).fadingEdges().bouncyScroll().padding(vertical = EdgeFade / 2)) {
                 profile.pinnedAppKeys.forEachIndexed { index, key ->
                     val app = appsByKey[key]
                     PinnedRow(
@@ -479,15 +477,11 @@ fun AppPickerScreen(
             singleLine = true,
             placeholder = { Text(stringResource(R.string.search_hint), color = Oled.TextSecondary) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Oled.TextPrimary,
-                unfocusedTextColor = Oled.TextPrimary,
-                cursorColor = Oled.Accent,
-                focusedBorderColor = Color(0xFF5A5A5A),
-                unfocusedBorderColor = Color(0xFF3A3A3A),
-            ),
+            colors = glassFieldColors(),
+            shape = FieldShape,
         )
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges()) {
+        val listState = rememberLazyListState()
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges().bounceWhenFits(listState.fits), state = listState, userScrollEnabled = !listState.fits) {
             items(shown, key = { it.key }) { app ->
                 val selected = app.key in picked
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -536,13 +530,8 @@ private fun NameDialog(
                 onValueChange = { text = it },
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.profile_name), color = Oled.TextSecondary) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Oled.TextPrimary,
-                    unfocusedTextColor = Oled.TextPrimary,
-                    cursorColor = Oled.Accent,
-                    focusedBorderColor = Color(0xFF5A5A5A),
-                    unfocusedBorderColor = Color(0xFF3A3A3A),
-                ),
+                colors = glassFieldColors(),
+                shape = FieldShape,
             )
         },
         confirmButton = { DialogButton(confirm, { onConfirm(text.trim()) }, Tone.Confirm, enabled = text.isNotBlank()) },
@@ -600,7 +589,8 @@ fun AppListScreen(
             }
             Text(title, color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
         }
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges()) {
+        val listState = rememberLazyListState()
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges().bounceWhenFits(listState.fits), state = listState, userScrollEnabled = !listState.fits) {
             item(key = "note") { Box(Modifier.padding(vertical = 8.dp)) { Note(note) } }
             items(sorted, key = { it.key }) { app ->
                 AppRow(app, iconFor = iconFor, onLaunch = onPick, onLongPress = {})

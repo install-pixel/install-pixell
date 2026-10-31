@@ -216,6 +216,8 @@ fun BlackHomeScreen(
     onMicClick: () -> Unit,
     /** Налаштування на весь екран (довге натискання на чорному екрані). */
     settingsScreen: @Composable (onDismiss: () -> Unit) -> Unit,
+    /** «Назад» на головному екрані (поза пошуком): закрити дашборд, відкритий лише для перегляду; null — нічого. */
+    onBackHome: (() -> Unit)? = null,
     /** Відкрити налаштування ззовні (з результату пошуку): кожне збільшення — відкрити. */
     settingsRequest: Int = 0,
     /** Збільшується, коли налаштування треба закрити (почався фокус-таймер). */
@@ -241,9 +243,9 @@ fun BlackHomeScreen(
     var aliasApp by remember { mutableStateOf<AppInfo?>(null) }
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
 
-    // На головному екрані Back нічого не робить; у пошуку — закриває його.
+    // На головному екрані Back нічого не робить (крім дашборда для перегляду — закриває його); у пошуку — закриває пошук.
     BackHandler {
-        if (state is LauncherUiState.SearchOpen) onCloseSearch()
+        if (state is LauncherUiState.SearchOpen) onCloseSearch() else onBackHome?.invoke()
     }
 
     if (showSettings) {

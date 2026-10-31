@@ -2,8 +2,6 @@ package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Text
@@ -13,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,9 +41,10 @@ private fun presetDescription(preset: Preset) = stringResource(
 @Composable
 private fun PresetCard(preset: Preset, current: Boolean, onPick: () -> Unit) {
     Card {
-        Text(presetTitle(preset) + if (current) "  ✓" else "", color = if (current) Oled.Confirm else Oled.TextPrimary, fontSize = 18.sp)
+        // Вибраний набір позначено галочкою біля назви; кнопка «Вибрати» лише в інших (синій — у вікні підтвердження).
+        Text(presetTitle(preset) + if (current) "  ✓" else "", color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = if (current) FontWeight.SemiBold else null)
         Note(presetDescription(preset))
-        ActionOption(stringResource(R.string.preset_apply), Icons.Filled.Done, Tone.Confirm, onPick)
+        if (!current) ActionOption(stringResource(R.string.preset_apply), Icons.Filled.Done, onPick)
     }
 }
 
@@ -79,7 +79,7 @@ fun FirstRunPresetDialog(onPick: (Preset) -> Unit, onKeep: () -> Unit) {
         onDismissRequest = {},
         title = { DialogTitle(stringResource(R.string.presets_first_title)) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.presets_first_note), color = Oled.TextSecondary, fontSize = 15.sp)
                 Preset.entries.forEach { preset -> PresetCard(preset, current = false) { onPick(preset) } }
             }

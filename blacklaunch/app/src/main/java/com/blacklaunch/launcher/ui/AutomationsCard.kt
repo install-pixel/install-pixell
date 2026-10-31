@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.ui.text.input.KeyboardType
@@ -18,9 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
@@ -165,11 +162,8 @@ private fun TimeField(@StringRes label: Int, value: String, modifier: Modifier, 
         placeholder = { Text("07:00", color = Oled.TextSecondary) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Oled.TextPrimary, unfocusedTextColor = Oled.TextPrimary, cursorColor = Oled.Accent,
-            focusedBorderColor = Color(0xFF5A5A5A), unfocusedBorderColor = Color(0xFF3A3A3A),
-            focusedLabelColor = Oled.TextSecondary, unfocusedLabelColor = Oled.TextSecondary,
-        ),
+        colors = glassFieldColors(),
+        shape = FieldShape,
     )
 }
 
@@ -297,7 +291,7 @@ private fun PickDialog(@StringRes title: Int, onDismiss: () -> Unit, confirm: ((
     GlassDialog(
         onDismissRequest = onDismiss,
         title = { DialogTitle(stringResource(title)) },
-        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() } },
+        text = { Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(4.dp)) { content() } },
         confirmButton = {
             DialogButton(stringResource(R.string.custom_step_add_confirm), { confirm?.invoke() }, Tone.Confirm, enabled = confirm != null)
         },

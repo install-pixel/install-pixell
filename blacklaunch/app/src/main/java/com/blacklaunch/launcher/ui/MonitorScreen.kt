@@ -459,7 +459,7 @@ private fun DetailSheet(title: String, plates: List<Plate>, accent: Color, onClo
                 .heightIn(max = 640.dp)
                 .glassBox(24.dp, seed = 67, fill = SolidColor(Color(0xFF0A0A0A)), paper = Color.Black)
                 .clickable(onClick = onClose)
-                .verticalScroll(rememberScrollState())
+                .bouncyScroll()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -533,9 +533,9 @@ private fun Footnote(text: String) {
 @Composable
 private fun Segments(level: Float, color: Color) {
     val lit = (level.coerceIn(0f, 1f) * SEGMENTS).roundToInt()
-    val glass = Brush.verticalGradient(listOf(lerp(color, Color.White, 0.45f), color, color.copy(alpha = 0.6f)))
+    val glass = Brush.verticalGradient(listOf(lerp(color, Color.White, 0.55f), color, lerp(color, Color.Black, 0.25f)))
     val sheet = LocalSheet.current
-    Canvas(Modifier.fillMaxWidth().height(if (sheet) 12.dp else 8.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(if (sheet) 12.dp else 14.dp)) {
         val gap = 2.dp.toPx()
         val w = (size.width - gap * (SEGMENTS - 1)) / SEGMENTS
         // «Аркуш»: шкала — рядок рисок олівцем («паличок»): заповнені — кольором, решта — ледь помітні.
@@ -548,12 +548,30 @@ private fun Segments(level: Float, color: Color) {
             }
             return@Canvas
         }
-        val corner = CornerRadius(2.dp.toPx())
+        // Скло: чорна скляна трубка з тонким кантом, усередині світні поділки (як у батарейці) і відблиск зверху.
+        val tube = CornerRadius(size.height / 2)
+        drawRoundRect(Brush.verticalGradient(listOf(Color(0xFF020202), Color(0xFF161616))), cornerRadius = tube)
+        val pad = 3.dp.toPx()
+        val cellGap = 2.dp.toPx()
+        val cellW = (size.width - pad * 2 - cellGap * (SEGMENTS - 1)) / SEGMENTS
+        val cellH = size.height - pad * 2
+        val cellCorner = CornerRadius(minOf(cellW, cellH) * 0.35f)
         repeat(SEGMENTS) { i ->
-            val topLeft = Offset(i * (w + gap), 0f)
-            val cell = Size(w, size.height)
-            if (i < lit) drawRoundRect(glass, topLeft, cell, corner) else drawRoundRect(Track, topLeft, cell, corner)
+            val topLeft = Offset(pad + i * (cellW + cellGap), pad)
+            if (i < lit) {
+                val glow = 1.5.dp.toPx()
+                drawRoundRect(color.copy(alpha = 0.14f), topLeft - Offset(glow, glow), Size(cellW + glow * 2, cellH + glow * 2), CornerRadius(cellCorner.x + glow))
+                drawRoundRect(glass, topLeft, Size(cellW, cellH), cellCorner)
+            } else {
+                drawRoundRect(Color(0x12FFFFFF), topLeft, Size(cellW, cellH), cellCorner)
+            }
         }
+        drawRoundRect(
+            Brush.verticalGradient(listOf(Color(0x2EFFFFFF), Color.Transparent), 0f, size.height * 0.5f),
+            size = Size(size.width, size.height * 0.5f),
+            cornerRadius = tube,
+        )
+        drawRoundRect(Color(0x4DFFFFFF), Offset(0.5f, 0.5f), Size(size.width - 1f, size.height - 1f), tube, style = Stroke(1f))
     }
 }
 
