@@ -339,17 +339,71 @@ class LabelRenderer(private val hand: Typeface) {
     /** Картинка наклейки (PNG 300 dpi) — для «Поділитися» в будь-яку програму. */
     fun renderPng(context: Context, design: LabelDesign): Uri {
         val dir = File(context.cacheDir, "share").apply { deleteRecursively(); mkdirs() }
-        val w = (design.size.widthMm * PNG_PX_PER_MM).toInt().coerceAtLeast(1)
-        val h = (design.size.heightMm * PNG_PX_PER_MM).toInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        draw(Canvas(bitmap), PNG_PX_PER_MM, design, LabelPalette.Print)
+        val bitmap = renderBitmap(context, design)
         val file = File(dir, "qr_label.png")
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
         return FileProvider.getUriForFile(context, "${context.packageName}.files", file)
     }
 
+    /**
+     * Картинка наклейки: звичайна — 300 dpi (для друку); «Екран телефону» — точно в пікселях екрана, щоб на телефоні
+     * відкривалась на весь екран без смуг і розмиття.
+     */
+    fun renderBitmap(context: Context, design: LabelDesign): Bitmap {
+        val pxPerMm = if (design.size.screen) {
+            val (w, h) = screenPixels(context)
+            minOf(w, h).toFloat() / design.size.widthMm
+        } else {
+            PNG_PX_PER_MM
+        }
+        val w = (design.size.widthMm * pxPerMm).toInt().coerceAtLeast(1)
+        val h = (design.size.heightMm * pxPerMm).toInt().coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        draw(Canvas(bitmap), pxPerMm, design, LabelPalette.Print)
+        return bitmap
+    }
+
+    /**
+     * Зберегти картинку наклейки в галерею (Фото → Pictures/QRaft). Android 10+ — без жодних дозволів.
+     * true — збережено.
+     */
+    fun saveToGallery(context: Context, design: LabelDesign, name: String): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
+        val bitmap = renderBitmap(context, design)
+        return try {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/QRaft")
+                put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            val resolver = context.contentResolver
+            val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
+            resolver.openOutputStream(uri)?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } ?: return false
+            values.clear()
+            values.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
     companion object {
+        /** Справжні пікселі екрана (з рядком стану й навігацією). */
+        fun screenPixels(context: Context): Pair<Int, Int> {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val wm = context.getSystemService(android.view.WindowManager::class.java)
+                val b = wm.maximumWindowMetrics.bounds
+                return b.width() to b.height()
+            }
+            val m = context.resources.displayMetrics
+            return m.widthPixels to m.heightPixels
+        }
+
         private const val PDF_POINTS_PER_MM = 72f / 25.4f
         private const val PNG_PX_PER_MM = 300f / 25.4f
 

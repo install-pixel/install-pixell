@@ -40,4 +40,16 @@ class TemplatesTest {
         assertEquals(t.size, applied.size)
         applied.elements.forEach { assertTrue(Placement.fits(applied, it, tw)) }
     }
+
+    @Test
+    fun phoneScreenLabelKeepsProportionsAndFitsTemplates() {
+        val size = LabelSize.forScreen(1440, 3168)
+        assertTrue(size.screen)
+        assertEquals(3168f / 1440f, size.heightMm / size.widthMm, 0.01f)
+        assertEquals(size, LabelSize.forScreen(3168, 1440))
+        for (kind in Templates.Kind.entries) {
+            val d = Templates.build(kind, size, code(false), "Скануй мене", tw)
+            d.elements.forEach { assertTrue("$kind", Placement.fits(d, it, tw)) }
+        }
+    }
 }

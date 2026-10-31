@@ -48,6 +48,7 @@ class TemplateStore(context: Context) {
             .put("w", d.size.widthMm.toDouble())
             .put("h", d.size.heightMm.toDouble())
             .put("custom", d.size.custom)
+            .put("screen", d.size.screen)
             .put("border", d.border.name)
             .put("elements", JSONArray().apply { d.elements.forEach { put(elementJson(it)) } })
 
@@ -64,7 +65,7 @@ class TemplateStore(context: Context) {
         fun designFrom(o: JSONObject): LabelDesign? = runCatching {
             val arr = o.getJSONArray("elements")
             LabelDesign(
-                size = LabelSize(o.getDouble("w").toFloat(), o.getDouble("h").toFloat(), o.optBoolean("custom")),
+                size = LabelSize(o.getDouble("w").toFloat(), o.getDouble("h").toFloat(), o.optBoolean("custom"), o.optBoolean("screen")),
                 border = QrFrame.entries.firstOrNull { it.name == o.optString("border") } ?: QrFrame.None,
                 elements = (0 until arr.length()).mapNotNull { i -> elementFrom(arr.getJSONObject(i)) },
             )

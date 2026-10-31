@@ -236,7 +236,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             }
             Text(stringResource(R.string.label_title), color = Oled.TextPrimary, fontSize = 22.sp, modifier = Modifier.padding(start = 8.dp).weight(1f))
             SheetButton(
-                "${LabelRenderer.fmt(design.size.widthMm)}×${LabelRenderer.fmt(design.size.heightMm)} mm",
+                if (design.size.screen) stringResource(R.string.label_screen) else "${LabelRenderer.fmt(design.size.widthMm)}×${LabelRenderer.fmt(design.size.heightMm)} mm",
                 { sizeOpen = true },
                 modifier = Modifier.padding(end = 8.dp),
             )
@@ -556,6 +556,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     }
 
     if (shareOpen) {
+        val savedToGallery = stringResource(R.string.share_saved_gallery)
+        val saveFailed = stringResource(R.string.share_save_failed)
         val textCode = (selected as? Element.Qr) ?: codes.singleOrNull()
         SheetDialog(onDismissRequest = { shareOpen = false }, title = stringResource(R.string.share)) {
             Column {
@@ -568,6 +570,18 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         LabelRenderer.shareImage(context, shareTitle, uri)
                     }
                 })
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    MenuRow(Glyph.Download, stringResource(R.string.share_save_gallery), {
+                        shareOpen = false
+                        busy = true
+                        scope.launch {
+                            val name = "QRaft-" + java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
+                            val ok = withContext(Dispatchers.IO) { renderer.saveToGallery(context, design, name) }
+                            busy = false
+                            onMessage(if (ok) savedToGallery else saveFailed)
+                        }
+                    })
+                }
                 if (textCode != null) {
                     MenuRow(Glyph.TextT, stringResource(R.string.share_code_text), {
                         shareOpen = false
@@ -888,8 +902,12 @@ private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SizeDialog(current: LabelSize, onDismiss: () -> Unit, onApply: (LabelSize) -> Unit) {
+    val context = LocalContext.current
+    val screenSize = remember { LabelRenderer.screenPixels(context).let { (pw, ph) -> LabelSize.forScreen(pw, ph) } }
     var w by remember { mutableStateOf(LabelRenderer.fmt(current.widthMm)) }
     var h by remember { mutableStateOf(LabelRenderer.fmt(current.heightMm)) }
+    // «Екран телефону» — поки розміри не змінили вручну.
+    var screen by remember { mutableStateOf(current.screen) }
     val wv = w.replace(',', '.').toFloatOrNull()
     val hv = h.replace(',', '.').toFloatOrNull()
     val ok = wv != null && hv != null && wv in LabelSize.MIN_MM..LabelSize.MAX_MM && hv in LabelSize.MIN_MM..LabelSize.MAX_MM
@@ -898,7 +916,7 @@ private fun SizeDialog(current: LabelSize, onDismiss: () -> Unit, onApply: (Labe
         SheetButton(stringResource(R.string.apply), {
             if (ok) {
                 val preset = LabelSize.PRESETS.any { (it.widthMm == wv && it.heightMm == hv) || (it.widthMm == hv && it.heightMm == wv) }
-                onApply(LabelSize(wv!!, hv!!, custom = !preset))
+                onApply(if (screen) screenSize else LabelSize(wv!!, hv!!, custom = !preset))
             }
         }, tone = Tone.Confirm, enabled = ok)
     }) {
@@ -906,22 +924,31 @@ private fun SizeDialog(current: LabelSize, onDismiss: () -> Unit, onApply: (Labe
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LabelSize.PRESETS.forEach { p ->
                     val text = "${LabelRenderer.fmt(p.widthMm)}×${LabelRenderer.fmt(p.heightMm)}"
-                    Chip(text, wv == p.widthMm && hv == p.heightMm) {
+                    Chip(text, !screen && wv == p.widthMm && hv == p.heightMm) {
                         w = LabelRenderer.fmt(p.widthMm)
                         h = LabelRenderer.fmt(p.heightMm)
+                        screen = false
                     }
+                }
+                // Під екран цього телефона: картинка — точно в його пікселях.
+                Chip(stringResource(R.string.label_screen), screen) {
+                    w = LabelRenderer.fmt(screenSize.widthMm)
+                    h = LabelRenderer.fmt(screenSize.heightMm)
+                    screen = true
                 }
                 Chip(stringResource(R.string.label_rotate), false) {
                     val t = w
                     w = h
                     h = t
+                    screen = false
                 }
             }
             val numbers = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             Text(stringResource(R.string.label_width_mm), fontSize = 15.sp)
-            SheetTextField(w, { w = it }, "150", keyboardOptions = numbers)
+            SheetTextField(w, { w = it; screen = false }, "150", keyboardOptions = numbers)
             Text(stringResource(R.string.label_height_mm), fontSize = 15.sp)
-            SheetTextField(h, { h = it }, "100", keyboardOptions = numbers)
+            SheetTextField(h, { h = it; screen = false }, "100", keyboardOptions = numbers)
+            if (screen) Text(stringResource(R.string.label_screen_hint), fontSize = 14.sp)
             Text(stringResource(R.string.label_custom_range, LabelSize.MIN_MM.toInt(), LabelSize.MAX_MM.toInt()), fontSize = 14.sp)
         }
     }

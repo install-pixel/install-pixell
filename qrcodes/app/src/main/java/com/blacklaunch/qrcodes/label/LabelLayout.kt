@@ -9,7 +9,13 @@ import kotlin.math.min
  * Розмір наклейки/аркуша. За замовчуванням — наклейка Zebra 150×100 мм (15 см завдовжки, 10 см заввишки).
  * [custom] — розмір задано вручну.
  */
-data class LabelSize(val widthMm: Float, val heightMm: Float, val custom: Boolean = false) {
+data class LabelSize(
+    val widthMm: Float,
+    val heightMm: Float,
+    val custom: Boolean = false,
+    /** «Екран телефону»: пропорції екрана, картинка — точно в його пікселях (відкрити й показати з телефона). */
+    val screen: Boolean = false,
+) {
     fun rotated() = copy(widthMm = heightMm, heightMm = widthMm)
 
     companion object {
@@ -22,6 +28,16 @@ data class LabelSize(val widthMm: Float, val heightMm: Float, val custom: Boolea
         )
         val DEFAULT = PRESETS.first()
         const val MIN_MM = 20f
+
+        /** Ширина аркуша «Екран телефону» в мм (умовна: висота — за пропорціями екрана). */
+        const val SCREEN_WIDTH_MM = 70f
+
+        /** Аркуш під екран [widthPx]×[heightPx] (портретно). */
+        fun forScreen(widthPx: Int, heightPx: Int): LabelSize {
+            val w = minOf(widthPx, heightPx).coerceAtLeast(1)
+            val h = maxOf(widthPx, heightPx)
+            return LabelSize(SCREEN_WIDTH_MM, (SCREEN_WIDTH_MM * h / w).coerceAtMost(MAX_MM), custom = false, screen = true)
+        }
         const val MAX_MM = 400f
     }
 }

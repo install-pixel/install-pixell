@@ -149,4 +149,9 @@
     <string name="backup_exported">Exported codes: %1$d</string>
     <string name="backup_imported">New codes added: %1$d</string>
     <string name="backup_bad_file">This file could not be read</string>
+    <string name="label_screen">Phone screen</string>
+    <string name="label_screen_hint">Shaped like this phone\'s screen. “Share → As a picture” or “Save to gallery” gives an image exactly in screen pixels — open it and show the code full screen.</string>
+    <string name="share_save_gallery">Save to gallery</string>
+    <string name="share_saved_gallery">Saved to gallery (Pictures/QRaft)</string>
+    <string name="share_save_failed">Could not save the picture</string>
 </resources>

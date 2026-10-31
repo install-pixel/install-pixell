@@ -13,6 +13,7 @@ class LabelPrefs(context: Context) {
                 prefs.getFloat(KEY_W, d.size.widthMm),
                 prefs.getFloat(KEY_H, d.size.heightMm),
                 prefs.getBoolean(KEY_CUSTOM, false),
+                prefs.getBoolean(KEY_SCREEN, false),
             ),
             qrMm = prefs.getFloat(KEY_QR, d.qrMm),
             caption = prefs.getBoolean(KEY_CAPTION, d.caption),
@@ -24,6 +25,7 @@ class LabelPrefs(context: Context) {
             .putFloat(KEY_W, s.size.widthMm)
             .putFloat(KEY_H, s.size.heightMm)
             .putBoolean(KEY_CUSTOM, s.size.custom)
+            .putBoolean(KEY_SCREEN, s.size.screen)
             .putFloat(KEY_QR, s.qrMm)
             .putBoolean(KEY_CAPTION, s.caption)
             .apply()
@@ -33,6 +35,7 @@ class LabelPrefs(context: Context) {
         const val KEY_W = "w"
         const val KEY_H = "h"
         const val KEY_CUSTOM = "custom"
+        const val KEY_SCREEN = "screen"
         const val KEY_QR = "qr"
         const val KEY_CAPTION = "caption"
     }
