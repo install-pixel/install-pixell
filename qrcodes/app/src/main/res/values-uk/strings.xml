@@ -143,7 +143,7 @@
     <string name="settings_backup">Резервна копія</string>
     <string name="backup_export">Експорт кодів у файл</string>
     <string name="backup_import">Імпорт кодів із файлу</string>
-    <string name="backup_hint">Усі коди з назвами й вибраним — одним файлом: для нового телефона чи про всяк випадок. Імпорт додає лише нові коди.</string>
+    <string name="backup_hint">Усі коди з назвами й вибраним, а також свої шаблони наклейок — одним файлом: для нового телефона чи про всяк випадок. Імпорт додає лише нове.</string>
     <string name="backup_exported">Експортовано кодів: %1$d</string>
     <string name="backup_imported">Додано нових кодів: %1$d</string>
     <string name="backup_bad_file">Не вдалося прочитати цей файл</string>

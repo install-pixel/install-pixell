@@ -75,7 +75,12 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
                     .put("createdAt", c.createdAt),
             )
         }
-        val root = org.json.JSONObject().put("app", "QRaft").put("version", 1).put("codes", arr)
+        // Свої шаблони наклейок — теж у файл, щоб переїхали на новий телефон разом із кодами.
+        val templates = org.json.JSONArray()
+        com.blacklaunch.qrcodes.label.TemplateStore(getApplication()).load().forEach { t ->
+            templates.put(org.json.JSONObject().put("name", t.name).put("design", com.blacklaunch.qrcodes.label.TemplateStore.designJson(t.design)))
+        }
+        val root = org.json.JSONObject().put("app", "QRaft").put("version", 1).put("codes", arr).put("templates", templates)
         out.bufferedWriter(Charsets.UTF_8).use { it.write(root.toString(2)) }
         codes.size
     }
@@ -86,7 +91,19 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
      */
     suspend fun importFrom(input: java.io.InputStream): Int = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val text = runCatching { input.bufferedReader(Charsets.UTF_8).use { it.readText() } }.getOrNull() ?: return@withContext -1
-        val arr = runCatching { org.json.JSONObject(text).getJSONArray("codes") }.getOrNull() ?: return@withContext -1
+        val root = runCatching { org.json.JSONObject(text) }.getOrNull() ?: return@withContext -1
+        val arr = root.optJSONArray("codes") ?: return@withContext -1
+        // Шаблони з файлу: додаємо ті, яких ще немає (за назвою).
+        root.optJSONArray("templates")?.let { list ->
+            val store = com.blacklaunch.qrcodes.label.TemplateStore(getApplication())
+            val have = store.load().map { it.name }.toSet()
+            for (i in 0 until list.length()) {
+                val o = list.optJSONObject(i) ?: continue
+                val name = o.optString("name")
+                val design = o.optJSONObject("design")?.let { com.blacklaunch.qrcodes.label.TemplateStore.designFrom(it) } ?: continue
+                if (name.isNotEmpty() && name !in have) store.save(name, design)
+            }
+        }
         var added = 0
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue

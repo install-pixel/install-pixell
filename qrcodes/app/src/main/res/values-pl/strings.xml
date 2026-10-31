@@ -143,7 +143,7 @@
     <string name="settings_backup">Kopia zapasowa</string>
     <string name="backup_export">Eksportuj kody do pliku</string>
     <string name="backup_import">Importuj kody z pliku</string>
-    <string name="backup_hint">Wszystkie kody z nazwami i ulubionymi w jednym pliku — na nowy telefon albo na wszelki wypadek. Import dodaje tylko nowe kody.</string>
+    <string name="backup_hint">Wszystkie kody z nazwami i ulubionymi oraz własne szablony etykiet w jednym pliku — na nowy telefon albo na wszelki wypadek. Import dodaje tylko nowe.</string>
     <string name="backup_exported">Wyeksportowano kodów: %1$d</string>
     <string name="backup_imported">Dodano nowych kodów: %1$d</string>
     <string name="backup_bad_file">Nie udało się odczytać tego pliku</string>

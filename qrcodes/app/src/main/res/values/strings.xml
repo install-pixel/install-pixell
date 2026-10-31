@@ -145,7 +145,7 @@
     <string name="settings_backup">Backup</string>
     <string name="backup_export">Export codes to a file</string>
     <string name="backup_import">Import codes from a file</string>
-    <string name="backup_hint">All codes with names and favourites in one file — for a new phone or just in case. Import adds only new codes.</string>
+    <string name="backup_hint">All codes with names and favourites, and your label templates, in one file — for a new phone or just in case. Import adds only what is new.</string>
     <string name="backup_exported">Exported codes: %1$d</string>
     <string name="backup_imported">New codes added: %1$d</string>
     <string name="backup_bad_file">This file could not be read</string>

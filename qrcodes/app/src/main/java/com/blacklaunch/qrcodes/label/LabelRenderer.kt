@@ -64,10 +64,18 @@ fun Sticker.glyph(): Glyph = when (this) {
 
 /**
  * Малює наклейку однаково для екрана, друку (PDF — векторно, точний розмір у мм) і картинки (PNG 300 dpi).
- * Текст і підписи — шрифтом від руки (Caveat), рамки й значки — олівцем.
+ * Текст і підписи — шрифтом за стилем (від руки чи звичайним), рамки й значки — олівцем.
  */
 class LabelRenderer(private val hand: Typeface) {
-    private val measurePaint = Paint().apply { typeface = face(); textSize = 100f; isAntiAlias = true }
+    private val measurePaint = Paint().apply { textSize = 100f; isAntiAlias = true }
+    private val plain: Typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+
+    /** Шрифт наклейки — за стилем програми: «Аркуш» — від руки, «Скло» — звичайний (так і друкується). */
+    private fun face(): Typeface = if (AppStyle.glass) plain else hand
+
+    /** Шрифт від руки дрібніший на око — підпис трохи більший; звичайний — як є. */
+    private fun scale(): Float = if (AppStyle.glass) 1f else HAND_SCALE
+
     /** Останні закодовані QR-коди (не більше [MATRIX_CACHE] — старі витісняються). */
     private val matrices = object : LinkedHashMap<String, Symbol?>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Symbol?>?) = size > MATRIX_CACHE
