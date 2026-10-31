@@ -261,6 +261,8 @@ private fun CommandEditor(
                 onRemove = { steps = steps.filterIndexed { i, _ -> i != index } },
             )
         }
+        // Як змінити порядок — щоб не видаляти й не додавати кроки наново.
+        if (steps.size > 1) Note(stringResource(R.string.custom_steps_reorder_hint))
         ActionOption(R.string.custom_step_add, Icons.Filled.Add) { picker = StepPicker.MENU }
         // Що не спрацює — одразу, до збереження.
         val problems = CommandCheck.check(
@@ -406,16 +408,16 @@ private fun StepConditionsDialog(
 @Composable
 private fun SmallButton(icon: ImageVector, @StringRes description: Int, onClick: (() -> Unit)?, highlighted: Boolean = false) {
     val haptics = LocalHaptics.current
-    IconButton(onClick = { haptics.tap(); onClick?.invoke() }, enabled = onClick != null, modifier = Modifier.size(36.dp)) {
+    IconButton(onClick = { haptics.tap(); onClick?.invoke() }, enabled = onClick != null, modifier = Modifier.size(40.dp)) {
         HandIcon(
             icon,
             contentDescription = stringResource(description),
             tint = when {
                 onClick == null -> Oled.TextSecondary.copy(alpha = 0.3f)
                 highlighted -> Oled.TextPrimary
-                else -> Oled.TextSecondary
+                else -> Oled.TextPrimary.copy(alpha = 0.8f)
             },
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -483,7 +485,7 @@ private fun SearchStepDialog(apps: List<AppInfo>, profiles: List<String>, onPick
                 modifier = Modifier.fillMaxWidth(),
                 colors = fieldColors(),
             )
-            LazyColumn(Modifier.fillMaxWidth().height(300.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().height(300.dp).fadingEdges()) {
                 items(candidates, key = { it.first }) { (step, title, icon) ->
                     ActionOption(title, icon) { onPick(step) }
                 }
@@ -615,7 +617,7 @@ private fun AppStepDialog(apps: List<AppInfo>, iconFor: suspend (AppInfo) -> Ima
                 modifier = Modifier.fillMaxWidth(),
                 colors = fieldColors(),
             )
-            LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().height(320.dp).fadingEdges()) {
                 items(shown, key = { it.key }) { app ->
                     val icon by produceState<ImageBitmap?>(null, app.key) { value = iconFor(app) }
                     Row(
@@ -651,7 +653,7 @@ private fun ActionStepDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
         R.string.step_timer -> TimerDialog(onPick, onDismiss)
         R.string.step_alarm -> AlarmDialog(onPick, onDismiss)
         else -> PickerDialog(R.string.custom_step_action, onDismiss) {
-            LazyColumn(Modifier.fillMaxWidth().height(360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().height(360.dp).fadingEdges(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 item { ActionOption(R.string.custom_action_brightness, Icons.Filled.Settings) { param = R.string.step_brightness } }
                 item { ActionOption(R.string.custom_action_timer, Icons.Filled.Settings) { param = R.string.step_timer } }
                 item { ActionOption(R.string.custom_action_alarm, Icons.Filled.Settings) { param = R.string.step_alarm } }

@@ -1,5 +1,7 @@
 package com.blacklaunch.launcher.ui
 
+import android.os.Build
+import android.view.WindowManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,18 +26,21 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import com.blacklaunch.launcher.ui.theme.Oled
 
 /** Значення кнопки: звичайна, «підтвердити/зберегти» (синій акцент і ✓) чи «видалити» (червоний). */
@@ -63,6 +68,7 @@ fun GlassDialog(
     text: (@Composable () -> Unit)? = null,
 ) {
     Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        BlurBehindDialog()
         Column(
             modifier = Modifier
                 .padding(horizontal = 20.dp, vertical = 24.dp)
@@ -154,6 +160,25 @@ private fun DialogButtons(content: @Composable () -> Unit) {
         }
     }
 }
+
+/**
+ * Відкрилось вікно — усе позаду нього розмивається (Android 12+, розмиття робить сама система; на старших —
+ * лише притемнення, як і було).
+ */
+@Composable
+internal fun BlurBehindDialog() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.parent as? DialogWindowProvider)?.window
+        if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            window.attributes = window.attributes.also { it.blurBehindRadius = DIALOG_BLUR_PX }
+        }
+        onDispose { }
+    }
+}
+
+private const val DIALOG_BLUR_PX = 48
 
 /** Заголовок вікна — однаковий скрізь. */
 @Composable

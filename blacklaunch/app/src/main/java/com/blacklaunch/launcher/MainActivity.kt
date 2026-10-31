@@ -446,7 +446,11 @@ class MainActivity : ComponentActivity() {
                     monitor = if (display.monitor || monitorShown) {
                         { modifier ->
                             val title = if (display.monitor) home.profileName else stringResource(R.string.mon_title)
-                            MonitorScreen(monitorLook, app.systemStats, ::appLabel, title.uppercase(), modifier)
+                            MonitorScreen(
+                                monitorLook, app.systemStats, ::appLabel, title.uppercase(), modifier,
+                                // Дотик до назви — наступний режим (з дашборда завжди можна вийти).
+                                onTitleClick = if (display.monitor && home.profileCount > 1) ({ viewModel.switchProfile(1) }) else null,
+                            )
                         }
                     } else {
                         null

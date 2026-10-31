@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -245,7 +246,8 @@ fun NowPlayingBar(
         Row(
             Modifier
                 .weight(1f)
-                .height(NowPlayingHeight)
+                // Не нижча за поле пошуку, але росте, якщо шрифт телефона великий (текст не обрізається).
+                .heightIn(min = NowPlayingHeight)
                 .glassBox(NowPlayingRadius, seed = 17)
                 .padding(start = 18.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,

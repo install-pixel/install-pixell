@@ -364,7 +364,7 @@
     <string name="glance_part_alarm">Najbliższy budzik</string>
     <string name="glance_part_event">Najbliższe wydarzenie</string>
     <string name="glance_part_battery">Bateria</string>
-    <string name="glance_parts_note">Data jest widoczna zawsze. Sam „Krótki przegląd” włącza się w każdym profilu — tam też można wybrać, co ma pokazywać.</string>
+    <string name="glance_parts_note">Sam „Krótki przegląd” włącza się w każdym trybie (wyżej — przełącznik dla bieżącego); tam też można wybrać, co ma pokazywać.</string>
     <string name="history_note">Black Glass pamięta, które aplikacje otwierasz i czego szukałeś — tylko na tym telefonie i z automatycznymi limitami.</string>
     <string name="history_clear">Wyczyść historię</string>
     <string name="history_clear_confirm">Zostaną usunięte historia uruchomień, nauka wyszukiwania i ostatnie wyszukiwania we wszystkich profilach. Ustawienia zostaną.</string>
@@ -954,4 +954,5 @@
     <string name="focus_hours_short">godz.</string>
     <string name="focus_minutes_short">min</string>
     <string name="focus_attempts_note">Próby — ile razy w trakcie minutnika próbowano wyjść z trybu lub otworzyć ustawienia.</string>
+    <string name="custom_steps_reorder_hint">Kolejność kroków: strzałki ↑ ↓ przy kroku przesuwają go wyżej lub niżej.</string>
 </resources>

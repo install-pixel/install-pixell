@@ -105,6 +105,8 @@ internal fun MonitorScreen(
     /** Назва профілю (або «МОНІТОРИНГ», якщо відкрито командою) — замість окремої плашки. */
     title: String,
     modifier: Modifier = Modifier,
+    /** Дотик до назви режиму — наступний режим (дашборд не має «зациклювати»). */
+    onTitleClick: (() -> Unit)? = null,
 ) {
     val accent = Color(look.accent.argb)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -173,7 +175,16 @@ internal fun MonitorScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = Oled.TextSecondary, fontSize = 11.sp, letterSpacing = 2.sp)
+            Text(
+                title,
+                color = Oled.TextSecondary,
+                fontSize = 11.sp,
+                letterSpacing = 2.sp,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier)
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+            )
             // Характеристики — за кнопкою-телефоном, щоб не займати місце на екрані.
             if (MonitorTile.DEVICE in tiles && device != null) {
                 Box(
@@ -434,6 +445,7 @@ private fun DetailSheet(title: String, plates: List<Plate>, accent: Color, onClo
         out
     }
     Dialog(onDismissRequest = onClose) {
+        BlurBehindDialog()
         Column(
             Modifier
                 .fillMaxWidth()

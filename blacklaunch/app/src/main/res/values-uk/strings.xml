@@ -364,7 +364,7 @@
     <string name="glance_part_alarm">Найближчий будильник</string>
     <string name="glance_part_event">Найближча подія</string>
     <string name="glance_part_battery">Батарея</string>
-    <string name="glance_parts_note">Дата показується завжди. Сам «Короткий огляд» вмикається в кожному профілі — там же можна вибрати, що показувати саме в ньому.</string>
+    <string name="glance_parts_note">Сам «Короткий огляд» вмикається в кожному режимі (вище — перемикач для поточного); там же можна вибрати, що показувати саме в ньому.</string>
     <string name="history_note">Black Glass пам\'ятає, які програми ви відкриваєте і що шукали, — лише на цьому телефоні й з автоматичними межами.</string>
     <string name="history_clear">Очистити історію</string>
     <string name="history_clear_confirm">Буде видалено історію запусків, навчання пошуку й останні запити в усіх профілях. Налаштування лишаться.</string>
@@ -954,4 +954,5 @@
     <string name="focus_hours_short">год</string>
     <string name="focus_minutes_short">хв</string>
     <string name="focus_attempts_note">Спроби — скільки разів під час таймера ви намагались вийти з режиму чи відкрити налаштування.</string>
+    <string name="custom_steps_reorder_hint">Порядок кроків: стрілки ↑ ↓ біля кроку переміщують його вище чи нижче.</string>
 </resources>
