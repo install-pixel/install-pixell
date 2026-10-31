@@ -46,8 +46,6 @@
     <string name="print">Print</string>
     <string name="print_share">Print and share</string>
     <string name="share">Share</string>
-    <string name="share_image">Picture</string>
-    <string name="share_text">Text</string>
     <string name="remove">Remove</string>
     <string name="rename">Name</string>
     <string name="rename_hint">Your own name is shown and printed instead of the content (handy for passwords). Leave empty to use the content.</string>
@@ -58,7 +56,6 @@
     <string name="label_custom_range">From %1$d to %2$d mm</string>
     <string name="label_rotate">Rotate</string>
     <string name="label_qr_size">QR code: %1$d mm</string>
-    <string name="label_copies">How many labels to print</string>
     <string name="label_fill_page">Fill the label</string>
     <string name="label_caption">Caption</string>
     <string name="label_add_code">Code</string>
@@ -67,15 +64,13 @@
     <string name="label_add_icon">Icon</string>
     <string name="label_border">Border</string>
     <string name="label_grid">Grid</string>
-    <string name="label_hint">Tap an item to change it. Drag to move, pinch with two fingers to resize — it sticks to the centre and edges.</string>
+    <string name="label_hint">Tap an item to choose it. Drag — move; two fingers — size and turn; double tap — edit; drag onto “Delete” at the top — remove. Items never overlap or leave the label.</string>
     <string name="label_text_size">Letters: %1$d mm</string>
     <string name="label_icon_size">Icon: %1$d mm</string>
     <string name="label_frame_none">No frame</string>
     <string name="label_frame_pencil">Pencil frame</string>
     <string name="label_frame_double">Double frame</string>
     <string name="label_center">Centre</string>
-    <string name="label_edit_text">Edit text</string>
-    <string name="label_change_icon">Other icon</string>
     <string name="label_duplicate">Copy</string>
     <string name="label_text_hint">Your text</string>
     <string name="label_no_room">No free space on the label for this</string>
@@ -90,4 +85,13 @@
     <string name="label_clear_text">Everything on the label will be removed. “Undo” brings it back.</string>
     <string name="label_edit_caption">Caption text</string>
     <string name="label_edit_banner">Banner text</string>
+    <string name="share_label_image">Label as a picture</string>
+    <string name="share_code_text">Code text: %1$s</string>
+    <string name="label_angle">Turned %1$d°</string>
+    <string name="label_rotate_left">Turn left</string>
+    <string name="label_rotate_right">Turn right</string>
+    <string name="label_fill_short">Fill label</string>
+    <string name="label_edit_short">Edit</string>
+    <string name="label_icon_pick">Icon — tap another to replace</string>
+    <string name="label_border_sheet">Label border</string>
 </resources>

@@ -46,8 +46,6 @@
     <string name="print">Друк</string>
     <string name="print_share">Друк і поділитися</string>
     <string name="share">Поділитися</string>
-    <string name="share_image">Картинка</string>
-    <string name="share_text">Текст</string>
     <string name="remove">Прибрати</string>
     <string name="rename">Назва</string>
     <string name="rename_hint">Своя назва показується й друкується замість змісту (зручно для паролів). Порожньо — підписом буде зміст.</string>
@@ -58,7 +56,6 @@
     <string name="label_custom_range">Від %1$d до %2$d мм</string>
     <string name="label_rotate">Повернути</string>
     <string name="label_qr_size">QR-код: %1$d мм</string>
-    <string name="label_copies">Скільки наклейок друкувати</string>
     <string name="label_fill_page">Заповнити наклейку</string>
     <string name="label_caption">Підпис</string>
     <string name="label_add_code">Код</string>
@@ -67,15 +64,13 @@
     <string name="label_add_icon">Значок</string>
     <string name="label_border">Рамка</string>
     <string name="label_grid">Сіткою</string>
-    <string name="label_hint">Торкнись елемента, щоб змінити. Тягни — перемістити, двома пальцями — розмір; прилипає до центру й країв.</string>
+    <string name="label_hint">Торкнись елемента, щоб вибрати. Тягни — перемістити; двома пальцями — розмір і поворот; два дотики — змінити; тягни на «Видалити» вгорі — прибрати. Елементи не налазять один на одного й не виходять за аркуш.</string>
     <string name="label_text_size">Літери: %1$d мм</string>
     <string name="label_icon_size">Значок: %1$d мм</string>
     <string name="label_frame_none">Без рамки</string>
     <string name="label_frame_pencil">Рамка олівцем</string>
     <string name="label_frame_double">Подвійна</string>
     <string name="label_center">По центру</string>
-    <string name="label_edit_text">Змінити текст</string>
-    <string name="label_change_icon">Інший значок</string>
     <string name="label_duplicate">Копія</string>
     <string name="label_text_hint">Свій текст</string>
     <string name="label_no_room">На наклейці немає вільного місця для цього</string>
@@ -90,4 +85,13 @@
     <string name="label_clear_text">З наклейки зникне все. «Крок назад» поверне.</string>
     <string name="label_edit_caption">Текст підпису</string>
     <string name="label_edit_banner">Напис на плашці</string>
+    <string name="share_label_image">Наклейку картинкою</string>
+    <string name="share_code_text">Текст коду: %1$s</string>
+    <string name="label_angle">Поворот %1$d°</string>
+    <string name="label_rotate_left">Повернути ліворуч</string>
+    <string name="label_rotate_right">Повернути праворуч</string>
+    <string name="label_fill_short">Заповнити наклейку</string>
+    <string name="label_edit_short">Змінити</string>
+    <string name="label_icon_pick">Значок — торкнись іншого, щоб замінити</string>
+    <string name="label_border_sheet">Рамка аркуша</string>
 </resources>

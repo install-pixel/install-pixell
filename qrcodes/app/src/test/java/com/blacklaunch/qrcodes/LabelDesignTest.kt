@@ -133,4 +133,17 @@ class LabelDesignTest {
         d.elements.forEach { e -> assertTrue(Placement.fits(d, e, tw)) }
         assertNotNull(d.elements.first())
     }
+
+    @Test
+    fun rotationSnapsAndTurnsBounds() {
+        assertEquals(90f, com.blacklaunch.qrcodes.label.normalizeAngle(93f, snap = true), 0.001f)
+        assertEquals(270f, com.blacklaunch.qrcodes.label.normalizeAngle(-90f), 0.001f)
+        assertEquals(30f, com.blacklaunch.qrcodes.label.normalizeAngle(30f, snap = true), 0.001f)
+        val text = Element.Text(1, 75f, 50f, "Hello world", 6f)
+        val flat = text.bounds(tw)
+        val turned = text.rotated(90f).bounds(tw)
+        assertEquals(flat.width, turned.height, 0.01f)
+        assertEquals(flat.height, turned.width, 0.01f)
+        assertTrue(text.rotated(45f).bounds(tw).width > flat.height)
+    }
 }

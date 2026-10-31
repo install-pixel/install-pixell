@@ -73,19 +73,35 @@ class LabelRenderer(private val hand: Typeface) {
     private fun matrix(content: String): QrMatrix? = synchronized(matrices) { matrices.getOrPut(content) { QrMatrix.encode(content) } }
 
     fun draw(canvas: Canvas, pxPerMm: Float, design: LabelDesign, palette: LabelPalette) {
-        canvas.drawColor(palette.paper)
+        // Лише сам аркуш: тло й усе намальоване обрізаються по його краю (нічого не вилазить за наклейку).
+        val w = design.size.widthMm * pxPerMm
+        val h = design.size.heightMm * pxPerMm
+        canvas.save()
+        canvas.clipRect(0f, 0f, w, h)
+        canvas.drawRect(0f, 0f, w, h, Paint().apply { color = palette.paper })
+        drawContent(canvas, pxPerMm, design, palette)
+        canvas.restore()
+    }
+
+    private fun drawContent(canvas: Canvas, pxPerMm: Float, design: LabelDesign, palette: LabelPalette) {
         val ink = Paint().apply { color = palette.ink; style = Paint.Style.FILL; isAntiAlias = true }
         if (design.border) {
             val inset = 1.5f * pxPerMm
             pencil(canvas, inset, inset, design.size.widthMm * pxPerMm - 2 * inset, design.size.heightMm * pxPerMm - 2 * inset, 4f * pxPerMm, 997, pxPerMm, 0.5f, ink)
         }
-        design.elements.forEach { e ->
-            when (e) {
-                is Element.Qr -> drawQrElement(canvas, pxPerMm, e, palette, ink)
-                is Element.Text -> drawText(canvas, pxPerMm, e, ink)
-                is Element.Icon -> drawIcon(canvas, pxPerMm, e, ink)
-            }
+        design.elements.forEach { e -> drawElement(canvas, pxPerMm, e, palette, ink) }
+    }
+
+    /** Один елемент (з поворотом навколо його центру). Також для зразків рамок і значків у панелі. */
+    fun drawElement(canvas: Canvas, pxPerMm: Float, e: Element, palette: LabelPalette, ink: Paint = Paint().apply { color = palette.ink; style = Paint.Style.FILL; isAntiAlias = true }) {
+        canvas.save()
+        if (e.rotation != 0f) canvas.rotate(e.rotation, e.cx * pxPerMm, e.cy * pxPerMm)
+        when (e) {
+            is Element.Qr -> drawQrElement(canvas, pxPerMm, e, palette, ink)
+            is Element.Text -> drawText(canvas, pxPerMm, e, ink)
+            is Element.Icon -> drawIcon(canvas, pxPerMm, e, ink)
         }
+        canvas.restore()
     }
 
     private fun drawQrElement(canvas: Canvas, k: Float, e: Element.Qr, palette: LabelPalette, ink: Paint) {

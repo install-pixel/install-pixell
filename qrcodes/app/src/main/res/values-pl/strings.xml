@@ -46,8 +46,6 @@
     <string name="print">Drukuj</string>
     <string name="print_share">Drukuj i udostępnij</string>
     <string name="share">Udostępnij</string>
-    <string name="share_image">Obraz</string>
-    <string name="share_text">Tekst</string>
     <string name="remove">Usuń</string>
     <string name="rename">Nazwa</string>
     <string name="rename_hint">Własna nazwa jest pokazywana i drukowana zamiast treści (wygodne dla haseł). Puste — podpisem będzie treść.</string>
@@ -58,7 +56,6 @@
     <string name="label_custom_range">Od %1$d do %2$d mm</string>
     <string name="label_rotate">Obróć</string>
     <string name="label_qr_size">Kod QR: %1$d mm</string>
-    <string name="label_copies">Ile etykiet wydrukować</string>
     <string name="label_fill_page">Wypełnij etykietę</string>
     <string name="label_caption">Podpis</string>
     <string name="label_add_code">Kod</string>
@@ -67,15 +64,13 @@
     <string name="label_add_icon">Ikona</string>
     <string name="label_border">Ramka</string>
     <string name="label_grid">Siatka</string>
-    <string name="label_hint">Dotknij elementu, aby go zmienić. Przeciągnij — przesuń, dwa palce — rozmiar; przyciąga do środka i krawędzi.</string>
+    <string name="label_hint">Dotknij elementu, aby go wybrać. Przeciągnij — przesuń; dwa palce — rozmiar i obrót; dwa dotknięcia — zmień; przeciągnij na „Usuń” u góry — usuń. Elementy nie nachodzą na siebie i nie wychodzą poza etykietę.</string>
     <string name="label_text_size">Litery: %1$d mm</string>
     <string name="label_icon_size">Ikona: %1$d mm</string>
     <string name="label_frame_none">Bez ramki</string>
     <string name="label_frame_pencil">Ramka ołówkiem</string>
     <string name="label_frame_double">Podwójna</string>
     <string name="label_center">Na środek</string>
-    <string name="label_edit_text">Zmień tekst</string>
-    <string name="label_change_icon">Inna ikona</string>
     <string name="label_duplicate">Kopia</string>
     <string name="label_text_hint">Twój tekst</string>
     <string name="label_no_room">Na etykiecie nie ma na to wolnego miejsca</string>
@@ -90,4 +85,13 @@
     <string name="label_clear_text">Z etykiety zniknie wszystko. „Cofnij” przywróci.</string>
     <string name="label_edit_caption">Tekst podpisu</string>
     <string name="label_edit_banner">Napis na pasku</string>
+    <string name="share_label_image">Etykietę jako obraz</string>
+    <string name="share_code_text">Tekst kodu: %1$s</string>
+    <string name="label_angle">Obrót %1$d°</string>
+    <string name="label_rotate_left">Obróć w lewo</string>
+    <string name="label_rotate_right">Obróć w prawo</string>
+    <string name="label_fill_short">Wypełnij etykietę</string>
+    <string name="label_edit_short">Zmień</string>
+    <string name="label_icon_pick">Ikona — dotknij innej, aby zamienić</string>
+    <string name="label_border_sheet">Ramka etykiety</string>
 </resources>

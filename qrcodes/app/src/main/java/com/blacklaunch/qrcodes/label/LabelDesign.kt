@@ -23,10 +23,15 @@ sealed interface Element {
     val cx: Float
     val cy: Float
 
+    /** Поворот навколо центру, градуси (0…360, за годинниковою стрілкою). */
+    val rotation: Float
+
     fun moved(cx: Float, cy: Float): Element
 
     /** Новий «основний розмір» (сторона коду, висота літер, розмір значка). */
     fun resized(size: Float): Element
+
+    fun rotated(degrees: Float): Element
 
     val size: Float
 
@@ -42,8 +47,10 @@ sealed interface Element {
         val frame: QrFrame = QrFrame.None,
         /** Напис на плашці рамки «Скануй мене». */
         val banner: String = "",
+        override val rotation: Float = 0f,
     ) : Element {
         override val size get() = side
+        override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))
         override fun moved(cx: Float, cy: Float) = copy(cx = cx, cy = cy)
         override fun resized(size: Float) = copy(side = size.coerceIn(MIN_QR, MAX_QR))
     }
@@ -55,8 +62,10 @@ sealed interface Element {
         override val cy: Float,
         val text: String,
         val letters: Float,
+        override val rotation: Float = 0f,
     ) : Element {
         override val size get() = letters
+        override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))
         override fun moved(cx: Float, cy: Float) = copy(cx = cx, cy = cy)
         override fun resized(size: Float) = copy(letters = size.coerceIn(MIN_LETTERS, MAX_LETTERS))
     }
@@ -68,8 +77,10 @@ sealed interface Element {
         override val cy: Float,
         val sticker: Sticker,
         val side: Float,
+        override val rotation: Float = 0f,
     ) : Element {
         override val size get() = side
+        override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))
         override fun moved(cx: Float, cy: Float) = copy(cx = cx, cy = cy)
         override fun resized(size: Float) = copy(side = size.coerceIn(MIN_ICON, MAX_ICON))
     }
@@ -83,6 +94,19 @@ sealed interface Element {
         const val MAX_ICON = 120f
     }
 }
+
+/** Кут у межах 0…360; біля прямого кута (±[SNAP_DEG]) — рівно прямий, щоб легко поставити рівно. */
+fun normalizeAngle(degrees: Float, snap: Boolean = false): Float {
+    var a = degrees % 360f
+    if (a < 0f) a += 360f
+    if (snap) {
+        val right = kotlin.math.round(a / 90f) * 90f
+        if (abs(a - right) <= SNAP_DEG) a = right % 360f
+    }
+    return a
+}
+
+const val SNAP_DEG = 6f
 
 /** Прямокутник у мм. */
 data class MmRect(val left: Float, val top: Float, val right: Float, val bottom: Float) {
@@ -118,7 +142,22 @@ fun qrTop(qr: Element.Qr): Float = qr.cy - qrBlockHeight(qr) / 2 + framePad(qr)
  * Межі елемента в мм. Ширину тексту дає [textWidth] (міряє програма тим самим шрифтом, яким малює:
  * текст, висота літер → ширина в мм).
  */
-fun Element.bounds(textWidth: (String, Float) -> Float): MmRect = when (this) {
+fun Element.bounds(textWidth: (String, Float) -> Float): MmRect {
+    val b = baseBounds(textWidth)
+    if (rotation == 0f) return b
+    // Повернутий елемент займає більший прямокутник (центр той самий).
+    val rad = Math.toRadians(rotation.toDouble())
+    val c = abs(kotlin.math.cos(rad)).toFloat()
+    val s = abs(kotlin.math.sin(rad)).toFloat()
+    val w = b.width * c + b.height * s
+    val h = b.width * s + b.height * c
+    val mx = (b.left + b.right) / 2
+    val my = (b.top + b.bottom) / 2
+    return MmRect(mx - w / 2, my - h / 2, mx + w / 2, my + h / 2)
+}
+
+/** Межі без повороту. */
+fun Element.baseBounds(textWidth: (String, Float) -> Float): MmRect = when (this) {
     is Element.Qr -> {
         val halfW = side / 2 + framePad(this)
         val halfH = qrBlockHeight(this) / 2
