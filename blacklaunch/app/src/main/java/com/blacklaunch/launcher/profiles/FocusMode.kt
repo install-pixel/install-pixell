@@ -121,6 +121,8 @@ class FocusMode(private val app: BlackLaunchApp) {
 
     private fun finish(endedAt: Long) {
         val current = _session.value ?: return
+        // Black Glass на екрані — підсумок покаже наше вікно в стилі теми; системне сповіщення — лише коли нас не видно.
+        val onScreen = app.homeVisible || app.focusVisible
         alarms?.cancel(pending())
         save(null)
         app.appScope.launch {
@@ -131,7 +133,7 @@ class FocusMode(private val app: BlackLaunchApp) {
             _summary.value = summary
             // Назад туди, де були до таймера (якщо той режим ще є).
             current.previousId?.takeIf { id -> profiles.any { it.id == id } }?.let { app.profileRepository.setActive(it) }
-            notify(summary)
+            if (!onScreen) notify(summary)
         }
     }
 

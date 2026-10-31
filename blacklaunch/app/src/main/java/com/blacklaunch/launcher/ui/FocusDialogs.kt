@@ -1,24 +1,28 @@
 package com.blacklaunch.launcher.ui
 
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +31,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -34,6 +39,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +53,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -241,7 +249,10 @@ fun FocusStartDialog(
     onDismiss: () -> Unit,
 ) {
     var profileId by rememberSaveable { mutableStateOf(initialId ?: profiles.firstOrNull()?.id) }
-    var minutes by rememberSaveable { mutableIntStateOf(FocusRules.DEFAULT_MINUTES) }
+    var hours by rememberSaveable { mutableIntStateOf(FocusRules.DEFAULT_MINUTES / 60) }
+    var mins by rememberSaveable { mutableIntStateOf(FocusRules.DEFAULT_MINUTES % 60) }
+    // Щонайменше хвилина.
+    val minutes = (hours * 60 + mins).coerceAtLeast(1)
     var strict by rememberSaveable { mutableStateOf(false) }
     GlassDialog(
         onDismissRequest = onDismiss,
@@ -253,12 +264,12 @@ fun FocusStartDialog(
                     TargetOption(profile.name, profileId == profile.id) { profileId = profile.id }
                 }
                 Text(stringResource(R.string.focus_start_duration), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp))
-                FocusRules.DURATIONS.chunked(3).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        row.forEach { value ->
-                            DurationChip(stringResource(R.string.focus_minutes, value), value == minutes, Modifier.weight(1f)) { minutes = value }
-                        }
-                    }
+                // Години й хвилини — коліщатками, як у звичайному таймері (гортати пальцем).
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WheelPicker(MAX_HOURS + 1, hours, { hours = it }, { "$it" }, Modifier.weight(1f))
+                    Text(stringResource(R.string.focus_hours_short), color = Oled.TextSecondary, fontSize = 15.sp)
+                    WheelPicker(60, mins, { mins = it }, { "%02d".format(it) }, Modifier.weight(1f))
+                    Text(stringResource(R.string.focus_minutes_short), color = Oled.TextSecondary, fontSize = 15.sp)
                 }
                 SwitchRow(stringResource(R.string.focus_strict_title), stringResource(R.string.focus_strict_subtitle), strict) { strict = it }
                 SwitchRow(stringResource(R.string.focus_cat_title), stringResource(R.string.focus_cat_subtitle), cat, onCatChange)
@@ -272,32 +283,51 @@ fun FocusStartDialog(
     )
 }
 
+/**
+ * Коліщатко вибору числа (як у системному таймері): гортається пальцем і зупиняється рівно на числі; вибране —
+ * посередині, у рамці (скло чи олівець — за темою).
+ */
 @Composable
-private fun DurationChip(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun WheelPicker(count: Int, value: Int, onValue: (Int) -> Unit, label: (Int) -> String, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(12.dp)
-    // «Аркуш»: вибране — обведене олівцем, решта — просто написані тьмяніше.
-    val sheet = LocalSheet.current
-    Text(
-        text = text,
-        color = when {
-            sheet -> if (selected) Oled.TextPrimary else Oled.TextSecondary
-            selected -> Color.Black
-            else -> Oled.TextPrimary
-        },
-        fontSize = 14.sp,
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .then(
-                when {
-                    sheet -> if (selected) Modifier.pencilFrame(12.dp, seed = text.length).clip(shape) else Modifier.clip(shape)
-                    else -> Modifier.clip(shape).background(if (selected) SolidColor(Oled.TextPrimary) else Oled.Knob).border(1.dp, Oled.Glint, shape)
-                },
-            )
-            .clickable { haptics.tap(); onClick() }
-            .padding(vertical = 8.dp),
-    )
+    val itemHeight = 40.dp
+    val itemPx = with(LocalDensity.current) { itemHeight.toPx() }
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = value)
+    val changed by rememberUpdatedState(onValue)
+    LaunchedEffect(state) {
+        var last = value
+        snapshotFlow { (state.firstVisibleItemIndex + if (state.firstVisibleItemScrollOffset > itemPx / 2) 1 else 0).coerceIn(0, count - 1) }
+            .collect { picked ->
+                if (picked != last) {
+                    last = picked
+                    haptics.tick()
+                    changed(picked)
+                }
+            }
+    }
+    Box(modifier.height(itemHeight * 3), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().height(itemHeight).glassBox(12.dp, seed = count))
+        LazyColumn(
+            state = state,
+            flingBehavior = rememberSnapFlingBehavior(state),
+            contentPadding = PaddingValues(vertical = itemHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(count) { i ->
+                Box(Modifier.height(itemHeight).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        label(i),
+                        color = if (i == value) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.6f),
+                        fontSize = if (i == value) 22.sp else 17.sp,
+                    )
+                }
+            }
+        }
+    }
 }
+
+private const val MAX_HOURS = 12
 
 /** Підсумок після таймера — раз, коли повернулися на екран. */
 @Composable
@@ -314,6 +344,8 @@ fun FocusSummaryDialog(summary: FocusSummary, onDismiss: () -> Unit) {
                     color = Oled.TextSecondary,
                     fontSize = 15.sp,
                 )
+                // Що таке «спроби» — щоб не гадати.
+                Note(stringResource(R.string.focus_attempts_note))
             }
         },
         confirmButton = { DialogButton(stringResource(R.string.alias_done), onDismiss, Tone.Confirm) },

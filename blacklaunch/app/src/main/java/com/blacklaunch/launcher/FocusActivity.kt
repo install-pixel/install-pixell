@@ -104,6 +104,16 @@ class FocusActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        app.focusVisible = true
+    }
+
+    override fun onStop() {
+        app.focusVisible = false
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         refreshPinned()

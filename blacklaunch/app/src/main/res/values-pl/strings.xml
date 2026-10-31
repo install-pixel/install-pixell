@@ -951,4 +951,7 @@
     <string name="app_open">Otwórz</string>
     <string name="glance_in_profile">Pokazuj w trybie „%1$s”</string>
     <string name="glance_in_profile_subtitle">Przegląd włącza się osobno w każdym trybie; tutaj — dla bieżącego</string>
+    <string name="focus_hours_short">godz.</string>
+    <string name="focus_minutes_short">min</string>
+    <string name="focus_attempts_note">Próby — ile razy w trakcie minutnika próbowano wyjść z trybu lub otworzyć ustawienia.</string>
 </resources>

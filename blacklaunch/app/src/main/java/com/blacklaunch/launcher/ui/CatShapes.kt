@@ -52,6 +52,12 @@ internal enum class CatAct {
 
     /** Прокидається й сідає (те саме навпаки). */
     GET_UP,
+
+    /** Сердиться після удару об стінку: гупає лапою по ній, над головою — знак злості. */
+    ANGRY,
+
+    /** Стрибає на скакалці. */
+    JUMP_ROPE,
 }
 
 /** Дії, що малюються «лежачим» малюнком (з плавним опусканням). */
@@ -178,6 +184,29 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
             tailDown = true
             tailWag = swing * 4f
             headTilt = -6f
+        }
+        CatAct.ANGRY -> {
+            // Нахилився до стінки й гупає по ній ближньою лапою; хвіст сіпається.
+            val bang = sin(f.actTime * 13f)
+            lean = 6f
+            armLen = 16f
+            armNear = 72f + bang * 16f
+            armFar = 20f
+            legNear = 10f
+            legFar = -8f
+            tailWag = sin(f.time * 9f) * 5f
+            headTilt = -4f + bang * 3f
+        }
+        CatAct.JUMP_ROPE -> {
+            // Підстрибує, коли скакалка проходить під лапами; лапи з ручками — по боках.
+            val rope = f.actTime * ROPE_SPEED
+            val air = (-cos(rope)).coerceAtLeast(0f)
+            drop = -7f * air
+            legLen = 16f - 3f * air
+            legNear = 14f * air
+            legFar = -10f * air
+            armNear = 58f
+            armFar = 48f
         }
         CatAct.LAND -> {
             val k = sin(pi * p)
@@ -411,13 +440,54 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
     }
     pen.head(cx, cy, eye, f.time)
     pen.restore()
-    // Тримають за шкірку — складка шкіри на загривку тягнеться вгору.
+    // Тримають за шкірку — складка шкіри на загривку тягнеться вгору, аж до пальця (котик висить нижче за палець,
+    // щоб його було видно).
     if (f.act == CatAct.HELD) {
-        pen.shape(width = 1.4f) { move(hx - 4f, hy - 23f); cubic(hx - 4.5f, hy - 26f, hx - 2.5f, hy - 28f, hx - 1.5f, hy - 31f) }
+        pen.shape(width = 1.4f) {
+            // За потилицею, а не через голову.
+            move(hx - 4f, hy - 23f)
+            cubic(hx - 8f, hy - 28f, hx - 9.5f, hy - 36f, hx - 8f, hy - 23f - HOLD_STRETCH)
+        }
+    }
+    // Сердиться: брова навскіс над оком і знак злості над головою.
+    if (f.act == CatAct.ANGRY) {
+        val bx = hx + 2.5f
+        val by = hy - 30f
+        pen.line(bx + 2.6f, by - 5.6f, bx + 6.8f, by - 3.6f, width = 1.3f)
+        val pulse = 1f + sin(f.time * 8f) * 0.12f
+        val ax = bx - 2f
+        val ay = by - 20f
+        val r = 3.2f * pulse
+        pen.shape(width = 1.3f) { move(ax - r, ay - r * 0.3f); cubic(ax - r * 0.3f, ay - r * 0.3f, ax - r * 0.3f, ay - r * 0.3f, ax - r * 0.3f, ay - r) }
+        pen.shape(width = 1.3f) { move(ax + r, ay - r * 0.3f); cubic(ax + r * 0.3f, ay - r * 0.3f, ax + r * 0.3f, ay - r * 0.3f, ax + r * 0.3f, ay - r) }
+        pen.shape(width = 1.3f) { move(ax - r, ay + r * 0.3f); cubic(ax - r * 0.3f, ay + r * 0.3f, ax - r * 0.3f, ay + r * 0.3f, ax - r * 0.3f, ay + r) }
+        pen.shape(width = 1.3f) { move(ax + r, ay + r * 0.3f); cubic(ax + r * 0.3f, ay + r * 0.3f, ax + r * 0.3f, ay + r * 0.3f, ax + r * 0.3f, ay + r) }
+    }
+    // Скакалка: ручки в лапах, мотузка описує коло довкола котика — над головою, попереду, під лапами, позаду.
+    if (f.act == CatAct.JUMP_ROPE) {
+        val rope = f.actTime * ROPE_SPEED
+        val handX = hx + 6f
+        val handY = hy - 10f
+        // Коло довкола всього котика: над вухами, попереду, під лапами, позаду.
+        val cx2 = hx + 1f + sin(rope) * 44f
+        val cy2 = hy - 14f - cos(rope) * 52f
+        pen.shape(width = 1.1f, alpha = 0.85f) {
+            move(handX, handY)
+            // Петля трохи «розкрита» вбік від напрямку — видно, що це мотузка, а не риска.
+            val px = cos(rope) * 16f
+            val py = sin(rope) * 16f
+            cubic(cx2 + px, cy2 + py, cx2 - px, cy2 - py, handX - 9f, handY + 1f)
+        }
     }
     if (armRaised) arm(shoulderX, pose.armNear, pose.armLen)
     return pen.shapes
 }
+
+/** Наскільки тягнеться шкірка вгору до пальця, коли котика тримають. */
+internal const val HOLD_STRETCH = 26f
+
+/** Швидкість обертання скакалки (радіан за секунду). */
+private const val ROPE_SPEED = 6.5f
 
 /** Як виглядає око. */
 private enum class CatEye { OPEN, CLOSED, DAZED }

@@ -947,4 +947,7 @@
     <string name="app_open">Open</string>
     <string name="glance_in_profile">Show in the “%1$s” mode</string>
     <string name="glance_in_profile_subtitle">The glance is switched on separately in each mode; here — for the current one</string>
+    <string name="focus_hours_short">h</string>
+    <string name="focus_minutes_short">min</string>
+    <string name="focus_attempts_note">Attempts — how many times during the timer you tried to leave the mode or open the settings.</string>
 </resources>

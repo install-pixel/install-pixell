@@ -119,6 +119,9 @@ class BlackLaunchApp : Application() {
     @Volatile
     var homeVisible = false
 
+    /** Екран фокус-таймера зараз на виду. */
+    var focusVisible = false
+
     /** Підказки для головного екрана: з темою «Аркуш» він показує їх власною плашкою від руки. */
     val hints = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
 

@@ -951,4 +951,7 @@
     <string name="app_open">Відкрити</string>
     <string name="glance_in_profile">Показувати в режимі «%1$s»</string>
     <string name="glance_in_profile_subtitle">Огляд вмикається окремо в кожному режимі; тут — для поточного</string>
+    <string name="focus_hours_short">год</string>
+    <string name="focus_minutes_short">хв</string>
+    <string name="focus_attempts_note">Спроби — скільки разів під час таймера ви намагались вийти з режиму чи відкрити налаштування.</string>
 </resources>
