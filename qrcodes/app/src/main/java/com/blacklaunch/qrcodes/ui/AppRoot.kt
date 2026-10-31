@@ -124,7 +124,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     }
 
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) camera = pendingCamera else show(textNoCamera)
+        if (granted) {
+            camera = pendingCamera
+        } else {
+            // Без дозволу камера не відкрилась — повертаємо значок «вручну».
+            mode = InputMode.Manual
+            show(textNoCamera)
+        }
         pendingCamera = null
     }
 
@@ -164,8 +170,9 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         scope.launch { pager.animateScrollToPage(0) }
     }
 
-    // Під меню, вікнами, камерою й друком — розмитий і притемнений фон, як у Black Glass.
-    val blur = backdropAmount(settingsOpen || modeMenu || menuFor != null || renameFor != null || fullscreen != null || camera != null || labelFor != null)
+    // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
+    // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
+    val blur = backdropAmount(settingsOpen || modeMenu || menuFor != null || renameFor != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -244,7 +251,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
         DropZonePill(dropZone, stringResource(R.string.favorite_remove))
 
-        // Підказки — поверх усього (і камери), по центру.
+        // Сповіщення — поверх усього (і камери), завжди вгорі.
         Banner(banner?.text, banner?.action, banner?.onAction ?: {})
     }
 

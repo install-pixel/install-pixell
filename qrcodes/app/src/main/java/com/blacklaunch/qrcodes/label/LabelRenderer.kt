@@ -65,7 +65,10 @@ fun Sticker.glyph(): Glyph = when (this) {
  */
 class LabelRenderer(private val hand: Typeface) {
     private val measurePaint = Paint().apply { typeface = hand; textSize = 100f; isAntiAlias = true }
-    private val matrices = HashMap<String, QrMatrix?>()
+    /** Останні закодовані QR-коди (не більше [MATRIX_CACHE] — старі витісняються). */
+    private val matrices = object : LinkedHashMap<String, QrMatrix?>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, QrMatrix?>?) = size > MATRIX_CACHE
+    }
 
     /** Ширина тексту в мм при висоті літер [letters] мм. */
     fun textWidth(text: String, letters: Float): Float = synchronized(measurePaint) { measurePaint.measureText(text) } * letters / 100f
@@ -339,8 +342,14 @@ class LabelRenderer(private val hand: Typeface) {
         /** Рамка аркуша — за 1 мм від краю (елементи тримаються ще далі, див. Placement.EDGE). */
         private const val BORDER_INSET = 1f
 
-        fun create(context: Context): LabelRenderer =
-            LabelRenderer(ResourcesCompat.getFont(context, R.font.caveat_semibold) ?: Typeface.DEFAULT)
+        private const val MATRIX_CACHE = 64
+
+        @Volatile private var shared: LabelRenderer? = null
+
+        /** Один на всю програму: шрифт вантажиться раз, а закодовані QR-коди кешуються для екрана, друку й зразків. */
+        fun create(context: Context): LabelRenderer = shared ?: synchronized(this) {
+            shared ?: LabelRenderer(ResourcesCompat.getFont(context.applicationContext, R.font.caveat_semibold) ?: Typeface.DEFAULT).also { shared = it }
+        }
 
         /** Модулі коду квадратиками; сусідні в рядку — одним прямокутником (без тонких щілин між ними). */
         fun drawQr(canvas: Canvas, m: QrMatrix, left: Float, top: Float, side: Float, paint: Paint) {
