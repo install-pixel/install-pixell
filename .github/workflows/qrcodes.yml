@@ -1,4 +1,4 @@
-name: QR Codes APK
+name: QRaft APK
 
 on:
   push:
@@ -48,9 +48,11 @@ jobs:
       - name: Rename APK
         run: |
           VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
-          APK="QrCodes-v${VERSION}-${GITHUB_SHA::7}.apk"
+          APK="QRaft-v${VERSION}-${GITHUB_SHA::7}.apk"
           cp app/build/outputs/apk/release/app-release.apk "$APK"
           # Копія з постійною назвою — одне посилання в закладках завжди дає найновішу збірку.
+          cp app/build/outputs/apk/release/app-release.apk QRaft.apk
+          # Стара постійна назва — щоб давні закладки теж давали найновішу збірку.
           cp app/build/outputs/apk/release/app-release.apk QrCodes.apk
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -78,16 +80,17 @@ jobs:
         with:
           tag_name: qrcodes-latest
           target_commitish: ${{ github.sha }}
-          name: QR-коди v${{ env.VERSION }} (тестова збірка)
+          name: QRaft v${{ env.VERSION }} (тестова збірка)
           prerelease: true
           make_latest: false
           body: |
-            Остання тестова збірка «QR-кодів» з гілки ${{ github.ref_name }}.
+            Остання тестова збірка QRaft з гілки ${{ github.ref_name }}.
             Версія: ${{ env.VERSION }}
             Коміт: ${{ github.sha }}
-            Постійне посилання: https://github.com/${{ github.repository }}/releases/download/qrcodes-latest/QrCodes.apk
+            Постійне посилання: https://github.com/${{ github.repository }}/releases/download/qrcodes-latest/QRaft.apk
           files: |
             qrcodes/${{ env.APK }}
+            qrcodes/QRaft.apk
             qrcodes/QrCodes.apk
 
       - name: Make sure the test release is published

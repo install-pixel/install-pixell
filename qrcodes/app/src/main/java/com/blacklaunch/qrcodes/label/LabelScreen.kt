@@ -492,7 +492,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     }
                 })
                 if (textCode != null) {
-                    MenuRow(Glyph.TextT, stringResource(R.string.share_code_text, textCode.title), {
+                    MenuRow(Glyph.TextT, stringResource(R.string.share_code_text), {
                         shareOpen = false
                         LabelRenderer.shareText(context, shareTitle, textCode.content)
                     })

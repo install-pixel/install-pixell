@@ -29,6 +29,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -151,6 +153,8 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
         result(text)
     }
 
+    // Розмір екрана камери — щоб знати, де рамка (код зчитується лише в ній).
+    val previewSize = remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     DisposableEffect(scanQr) {
         val executor = ContextCompat.getMainExecutor(context)
         if (scanQr) {
@@ -158,7 +162,14 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
             controller.setImageAnalysisAnalyzer(
                 executor,
                 MlKitAnalyzer(listOf(scanner), CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED, executor) { r ->
-                    val value = r.getValue(scanner)?.firstNotNullOfOrNull { it.rawValue?.takeIf { v -> v.isNotEmpty() } }
+                    // Лише код у рамці (координати — у пікселях екрана камери): решту, що випадково в кадрі, пропускаємо.
+                    val view = previewSize.value
+                    val frame = scanFrame(view.width.toFloat(), view.height.toFloat())
+                    val value = r.getValue(scanner)?.firstNotNullOfOrNull { b ->
+                        val box = b.boundingBox
+                        val inside = box == null || view.width == 0 || frame.contains(box.exactCenterX(), box.exactCenterY())
+                        b.rawValue?.takeIf { v -> v.isNotEmpty() && inside }
+                    }
                     if (value != null) deliver(value)
                 },
             )
@@ -243,7 +254,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
         if (done == null) {
             AndroidView(
                 factory = { ctx -> PreviewView(ctx).apply { this.controller = controller; scaleType = PreviewView.ScaleType.FILL_CENTER } },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().onSizeChanged { previewSize.value = it },
             )
             if (scanQr) ScanFrame()
             // Підказка — як усі сповіщення програми: те саме місце, той самий вигляд.
@@ -283,13 +294,17 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
 @Composable
 private fun ScanFrame() {
     Canvas(Modifier.fillMaxSize()) {
-        val side = size.minDimension * 0.62f
-        val left = (size.width - side) / 2f
-        val top = (size.height - side) / 2f
-        translate(left, top) {
-            outline(Offset.Zero, Size(side, side), 28.dp.toPx(), 41, SheetInk.copy(alpha = 0.9f), 3.dp.toPx())
-        }
+        val f = scanFrame(size.width, size.height)
+        outline(Offset(f.left, f.top), Size(f.width(), f.height()), 28.dp.toPx(), 41, SheetInk.copy(alpha = 0.9f), 3.dp.toPx())
     }
+}
+
+/** Рамка видошукача — квадрат посередині (62 % меншої сторони). Код зараховується, якщо його центр усередині. */
+private fun scanFrame(w: Float, h: Float): android.graphics.RectF {
+    val side = minOf(w, h) * 0.62f
+    val left = (w - side) / 2f
+    val top = (h - side) / 2f
+    return android.graphics.RectF(left, top, left + side, top + side)
 }
 
 /**
@@ -303,7 +318,15 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
     val haptics = LocalHaptics.current
     var selected by remember(state) { mutableStateOf<Set<WordRef>>(emptySet()) }
     val words = state.found.map { line -> line.words.map { it.text } }
-    val chosen = TextPick.join(words, selected)
+    val joined = TextPick.join(words, selected)
+    // Вибране можна підправити вручну (ML Kit інколи плутає літери). Змінили вибір слів — текст знову збирається зі слів.
+    var edited by remember(state) { mutableStateOf<String?>(null) }
+    var lastJoined by remember(state) { mutableStateOf(joined) }
+    if (joined != lastJoined) {
+        lastJoined = joined
+        edited = null
+    }
+    val chosen = (edited ?: joined).trim()
 
     fun toggle(ref: WordRef) {
         haptics.tap()
@@ -329,7 +352,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
     val chipBounds = remember(state) { HashMap<WordRef, androidx.compose.ui.geometry.Rect>() }
     var listOrigin by remember(state) { mutableStateOf(Offset.Zero) }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(16.dp)) {
         Text(
             stringResource(if (state.found.isEmpty()) R.string.text_not_found else R.string.text_pick),
             color = Oled.TextPrimary,
@@ -459,23 +482,28 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                 }
             }
         }
-        // Що піде в код.
-        Text(
-            if (chosen.isEmpty()) stringResource(R.string.text_pick_none) else chosen,
-            color = if (chosen.isEmpty()) Oled.TextSecondary else Oled.TextPrimary,
-            fontSize = 18.sp,
-            // Завжди висотою у два рядки — щоб фото вище не стрибало, коли вибір змінюється.
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp).pencilFrame(14.dp, seed = 77, alpha = 0.5f).padding(horizontal = 14.dp, vertical = 10.dp),
-        )
+        // Що піде в код — можна торкнутись і підправити. Висота сталa (два рядки), щоб фото не стрибало.
+        Box(Modifier.fillMaxWidth().padding(top = 10.dp).pencilFrame(14.dp, seed = 77, alpha = 0.5f).padding(horizontal = 14.dp, vertical = 10.dp)) {
+            val value = edited ?: joined
+            if (value.isEmpty()) {
+                Text(stringResource(R.string.text_pick_none), color = Oled.TextSecondary, fontSize = 18.sp, minLines = 2, maxLines = 2)
+            }
+            androidx.compose.foundation.text.BasicTextField(
+                value = value,
+                onValueChange = { edited = it },
+                textStyle = androidx.compose.material3.LocalTextStyle.current.copy(color = Oled.TextPrimary, fontSize = 18.sp),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Oled.TextSecondary),
+                minLines = 2,
+                maxLines = 2,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         // Чотири однакові кнопки, завжди на місці (недоступна — притемнена), в один рядок — нічого не стрибає.
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            SheetButton(stringResource(R.string.close), onClose, modifier = Modifier.weight(1f))
-            SheetButton(stringResource(R.string.retake), onRetake, modifier = Modifier.weight(1f))
-            SheetButton(stringResource(R.string.clear), { selected = emptySet() }, enabled = selected.isNotEmpty(), modifier = Modifier.weight(1f))
-            SheetButton(stringResource(R.string.done), { onPick(chosen) }, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.close), onClose, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.retake), onRetake, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.clear), { selected = emptySet(); edited = null }, enabled = selected.isNotEmpty() || !edited.isNullOrEmpty(), compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.done), { onPick(chosen) }, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm, enabled = chosen.isNotEmpty(), compact = true, modifier = Modifier.weight(1f))
         }
     }
 }

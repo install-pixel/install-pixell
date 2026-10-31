@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">QR Codes</string>
+    <!-- Назва однакова всіма мовами. -->
+    <string name="app_name" translatable="false">QRaft</string>
     <string name="already_saved">Already saved — moved to the top</string>
     <string name="saved">Saved</string>
     <string name="apply">Apply</string>
@@ -55,7 +56,7 @@
     <string name="label_qr_size">QR code: %1$d mm</string>
     <string name="label_caption">Caption</string>
     <string name="label_add_code">Code</string>
-    <string name="text_pick_none">Nothing chosen yet</string>
+    <string name="text_pick_none">Nothing chosen yet — pick words above, then you can fix the text here</string>
     <string name="label_add_text">Text</string>
     <string name="label_add_icon">Icon</string>
     <string name="label_grid">Grid</string>
@@ -80,8 +81,8 @@
     <string name="label_clear_text">Everything on the label will be removed. “Undo” brings it back.</string>
     <string name="label_edit_caption">Caption text</string>
     <string name="label_edit_banner">Banner text</string>
-    <string name="share_label_image">Label as a picture</string>
-    <string name="share_code_text">Code text: %1$s</string>
+    <string name="share_label_image">As a picture — the whole label</string>
+    <string name="share_code_text">As text — only what the code contains</string>
     <string name="label_angle">Turned %1$d°</string>
     <string name="label_rotate_left">Turn left</string>
     <string name="label_rotate_right">Turn right</string>

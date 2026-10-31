@@ -321,7 +321,7 @@ fun Tone.color(): Color = when (this) {
 
 /** Кнопка-«табличка» з рамкою олівцем (як кнопки вікон Black Glass в «Аркуші»). */
 @Composable
-fun SheetButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, enabled: Boolean = true, modifier: Modifier = Modifier) {
+fun SheetButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, enabled: Boolean = true, compact: Boolean = false, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val color = if (enabled) tone.color() else Oled.TextSecondary.copy(alpha = 0.45f)
     Box(
@@ -329,11 +329,12 @@ fun SheetButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, en
             .clip(RoundedCornerShape(14.dp))
             .pencilFrame(14.dp, text.length, alpha = if (enabled) 0.75f else 0.3f, ink = if (tone == Tone.Neutral) SheetInk else color)
             .clickable(enabled = enabled) { haptics.tap(); onClick() }
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            // Компактна — для рядка з кількох рівних кнопок: менші поля, щоб напис не обрізався.
+            .padding(horizontal = if (compact) 4.dp else 14.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
         // Завжди один рядок: кнопка не росте в висоту й не «ламається» на два рядки.
-        Text(text, color = color, fontSize = 15.sp, textAlign = TextAlign.Center, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        Text(text, color = color, fontSize = if (compact) 14.sp else 15.sp, textAlign = TextAlign.Center, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 

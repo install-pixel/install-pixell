@@ -129,8 +129,18 @@ fun framePad(qr: Element.Qr): Float = when (qr.frame) {
     QrFrame.Corners -> (qr.side * 0.07f).coerceIn(1.8f, 6f)
 }
 
-/** Висота плашки «Скануй мене» під кодом. */
-fun bannerArea(qr: Element.Qr): Float = if (qr.frame == QrFrame.ScanMe) (qr.side * 0.24f).coerceIn(5f, 18f) else 0f
+/**
+ * Місце під плашку «Скануй мене»: сама плашка й відступ від коду. З підписом відступ дає підпис; без нього —
+ * окремий проміжок, щоб плашка не прилипала до коду.
+ */
+fun bannerArea(qr: Element.Qr): Float {
+    if (qr.frame != QrFrame.ScanMe) return 0f
+    val gap = if (qr.caption) 0f else (qr.side * 0.07f).coerceIn(1.5f, 5f)
+    return bannerHeight(qr) + gap
+}
+
+/** Висота самої плашки «Скануй мене». */
+fun bannerHeight(qr: Element.Qr): Float = (qr.side * 0.24f).coerceIn(5f, 18f)
 
 /** Повна висота блоку коду: поле, код, підпис, плашка, поле. */
 fun qrBlockHeight(qr: Element.Qr): Float = qr.side + captionArea(qr) + bannerArea(qr) + 2 * framePad(qr)

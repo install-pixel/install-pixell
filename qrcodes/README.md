@@ -1,9 +1,11 @@
-# QR-коди
+# QRaft
+
+QR + craft — програма для QR-кодів (раніше «QR-коди»).
 
 Генерація, збереження й друк QR-кодів. Стиль — як у лаунчері Black Glass: «Аркуш» (від руки на чорному) або «Скло»
 (чорне скло). Мова й стиль — у Налаштуваннях (шестірня вгорі праворуч).
 
-**Завантажити тестову збірку:** https://github.com/install-pixel/install-pixell/releases/download/qrcodes-latest/QrCodes.apk
+**Завантажити тестову збірку:** https://github.com/install-pixel/install-pixell/releases/download/qrcodes-latest/QRaft.apk
 
 ## Екрани
 

@@ -157,4 +157,17 @@ class LabelDesignTest {
         val moved = Placement.nearestFree(bordered, q, tw)!!
         assertTrue(moved.bounds(tw).left >= Placement.EDGE_WITH_BORDER - 0.01f)
     }
+
+    @Test
+    fun scanMeBannerKeepsGapWithoutCaption() {
+        val bare = qr(1, frame = QrFrame.ScanMe, caption = false)
+        val gap = com.blacklaunch.qrcodes.label.bannerArea(bare) - com.blacklaunch.qrcodes.label.bannerHeight(bare)
+        assertTrue(gap >= 1.5f)
+        val captioned = qr(1, frame = QrFrame.ScanMe, caption = true)
+        assertEquals(
+            com.blacklaunch.qrcodes.label.bannerHeight(captioned),
+            com.blacklaunch.qrcodes.label.bannerArea(captioned),
+            0.001f,
+        )
+    }
 }

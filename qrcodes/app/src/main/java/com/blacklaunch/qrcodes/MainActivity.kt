@@ -25,7 +25,7 @@ import com.blacklaunch.qrcodes.ui.theme.QrTheme
 class MainActivity : ComponentActivity() {
     private val vm: QrViewModel by viewModels()
 
-    /** Текст, яким поділились («Поділитися» → «QR-коди»). */
+    /** Текст, яким поділились («Поділитися» → QRaft). */
     private var shared by mutableStateOf<String?>(null)
 
     /** Вибрана в Налаштуваннях мова — для всієї програми. */

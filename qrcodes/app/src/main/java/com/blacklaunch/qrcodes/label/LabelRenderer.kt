@@ -114,7 +114,6 @@ class LabelRenderer(private val hand: Typeface) {
     private fun drawQrElement(canvas: Canvas, k: Float, e: Element.Qr, palette: LabelPalette, ink: Paint) {
         val pad = framePad(e)
         val caption = captionArea(e)
-        val banner = bannerArea(e)
         val blockW = (e.side + 2 * pad) * k
         val blockH = qrBlockHeight(e) * k
         val blockLeft = e.cx * k - blockW / 2
@@ -153,7 +152,7 @@ class LabelRenderer(private val hand: Typeface) {
             QrFrame.ScanMe -> {
                 pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
                 // Плашка знизу: залита чорнилом, напис — кольором паперу, шрифтом від руки.
-                val bh = banner * k
+                val bh = bannerHeight(e) * k
                 val bTop = blockTop + blockH - pad * k - bh
                 val bRect = RectF(blockLeft + pad * k, bTop, blockLeft + blockW - pad * k, bTop + bh)
                 canvas.drawRoundRect(bRect, bh * 0.3f, bh * 0.3f, ink)
