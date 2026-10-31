@@ -170,7 +170,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
     suspend fun recognize(bitmap: Bitmap) {
         photo = PhotoState.Working
         val found = withContext(Dispatchers.Default) {
-            val text = suspendCancellableCoroutine { cont ->
+            val text = suspendCancellableCoroutine<com.google.mlkit.vision.text.Text?> { cont ->
                 recognizer.process(InputImage.fromBitmap(bitmap, 0))
                     .addOnSuccessListener { cont.resume(it) }
                     .addOnFailureListener { cont.resume(null) }
@@ -188,9 +188,9 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             if (scanQr) {
-                val value = withContext(Dispatchers.Default) {
+                val value = withContext<String?>(Dispatchers.Default) {
                     val image = runCatching { InputImage.fromFilePath(context, uri) }.getOrNull() ?: return@withContext null
-                    suspendCancellableCoroutine { cont ->
+                    suspendCancellableCoroutine<String?> { cont ->
                         scanner.process(image)
                             .addOnSuccessListener { list -> cont.resume(list.firstNotNullOfOrNull { it.rawValue?.takeIf { v -> v.isNotEmpty() } }) }
                             .addOnFailureListener { cont.resume(null) }
