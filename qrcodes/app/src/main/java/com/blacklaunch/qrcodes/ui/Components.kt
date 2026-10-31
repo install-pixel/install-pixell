@@ -54,6 +54,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import android.os.Build
 import com.blacklaunch.qrcodes.R
 import com.blacklaunch.qrcodes.qr.QrMatrix
 import com.blacklaunch.qrcodes.ui.theme.Oled
@@ -214,6 +228,47 @@ private const val PREVIEW_QUIET = 2
 val QrPaper = Color(0xFFEDEDED)
 private val QrDark = Color(0xFF000000)
 
+/** Час появи й зникнення вікон і розмиття — як у Black Glass. */
+const val OPEN_MS = 180
+const val CLOSE_MS = 280
+private val BACKDROP_BLUR = 10.dp
+private const val BACKDROP_DIM = 0.7f
+
+/**
+ * Фон під відкритим вікном/меню — розмитий і притемнений (як головний екран Black Glass під пошуком). Розмиття
+ * плавно з'являється й тане; на Android 11 і старших — лише притемнення.
+ */
+@Composable
+fun backdropAmount(open: Boolean): State<Float> =
+    animateFloatAsState(if (open) 1f else 0f, tween(if (open) OPEN_MS else CLOSE_MS), label = "backdrop")
+
+/** Значення читається лише під час малювання — вміст під вікном не перебудовується щокадру. */
+fun Modifier.backdrop(amount: State<Float>): Modifier = graphicsLayer {
+    val k = amount.value
+    val radius = BACKDROP_BLUR.toPx() * k
+    renderEffect = if (radius > 0.5f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) BlurEffect(radius, radius, TileMode.Decal) else null
+    alpha = 1f - (1f - BACKDROP_DIM) * k
+}
+
+/**
+ * Вікно поверх програми без системного затемнення (фон розмиває [backdrop]), з'являється плавно: проявляється й
+ * трохи підіймається.
+ */
+@Composable
+fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) {
+    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { window?.setDimAmount(0f) }
+        val shown = remember { MutableTransitionState(false) }.apply { targetState = true }
+        AnimatedVisibility(
+            visibleState = shown,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS, easing = FastOutSlowInEasing)) { it / 10 },
+        ) {
+            content()
+        }
+    }
+}
+
 /** Вікно в стилі «Аркуша»: чорна плашка в рамці олівцем, кнопки праворуч. */
 @Composable
 fun SheetDialog(
@@ -222,7 +277,7 @@ fun SheetDialog(
     buttons: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    SmoothDialog(onDismissRequest) {
         Column(
             modifier = Modifier
                 .padding(horizontal = 20.dp, vertical = 24.dp)
@@ -235,7 +290,7 @@ fun SheetDialog(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (title != null) Text(title, color = Oled.TextPrimary, fontSize = 20.sp)
+            if (title != null) Text(title, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Box(Modifier.weight(1f, fill = false)) {
                 CompositionLocalProvider(LocalContentColor provides Oled.TextSecondary) { content() }
             }
@@ -334,7 +389,7 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
         shownAction = action
     }
     Box(Modifier.fillMaxSize().navigationBarsPadding().imePadding().padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(visible = text != null, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = text != null, enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 4 }, exit = fadeOut(tween(CLOSE_MS))) {
             Column(
                 Modifier
                     .background(Oled.Black, RoundedCornerShape(20.dp))

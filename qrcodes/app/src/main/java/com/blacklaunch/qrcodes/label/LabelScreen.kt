@@ -74,6 +74,9 @@ import com.blacklaunch.qrcodes.ui.SheetDialog
 import com.blacklaunch.qrcodes.ui.SheetInk
 import com.blacklaunch.qrcodes.ui.SheetTextField
 import com.blacklaunch.qrcodes.ui.Tone
+import com.blacklaunch.qrcodes.ui.backdrop
+import com.blacklaunch.qrcodes.ui.backdropAmount
+import androidx.compose.ui.graphics.graphicsLayer
 import com.blacklaunch.qrcodes.ui.pencilFrame
 import com.blacklaunch.qrcodes.ui.pencilLoop
 import com.blacklaunch.qrcodes.ui.taperedPath
@@ -90,13 +93,16 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
+fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
     val prefs = remember { LabelPrefs(context) }
     val renderer = remember { LabelRenderer.create(context) }
     val defaults = remember { prefs.load() }
+    val tw: (String, Float) -> Float = renderer::textWidth
+    val noRoom = stringResource(R.string.label_no_room)
+    val scanMe = stringResource(R.string.label_scan_me)
 
     fun newQr(id: Int, code: QrCode, size: LabelSize) = Element.Qr(
         id = id,
@@ -111,8 +117,16 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
     var design by remember {
         val first = LabelDesign(size = defaults.size)
         val withCodes = start.foldIndexed(first) { i, d, code -> d.add(newQr(i + 1, code, d.size)) }
-        mutableStateOf(if (start.size > 1) Arrange.grid(withCodes) else withCodes)
+        // Кілька кодів — одразу сіткою, кожен на своєму місці.
+        mutableStateOf(if (start.size > 1) Arrange.grid(withCodes, tw) else withCodes)
     }
+    // «Крок назад»: попередні стани наклейки.
+    val history = remember { ArrayDeque<LabelDesign>() }
+    var canUndo by remember { mutableStateOf(false) }
+    var clashing by remember { mutableStateOf(false) }
+    var clearAsk by remember { mutableStateOf(false) }
+    var captionEdit by remember { mutableStateOf<Element.Qr?>(null) }
+    var bannerEdit by remember { mutableStateOf<Element.Qr?>(null) }
     var selectedId by remember { mutableStateOf(design.elements.singleOrNull()?.id) }
     var copies by remember { mutableIntStateOf(1) }
     var guides by remember { mutableStateOf<Pair<Float?, Float?>>(null to null) }
@@ -133,20 +147,63 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
     }
     BackHandler(onBack = onClose)
 
+    fun pushHistory(old: LabelDesign) {
+        history.addLast(old)
+        if (history.size > MAX_UNDO) history.removeFirst()
+        canUndo = true
+    }
+
+    fun commit(next: LabelDesign) {
+        if (next == design) return
+        pushHistory(design)
+        design = next
+    }
+
+    fun undo() {
+        val prev = history.removeLastOrNull() ?: return
+        design = prev
+        canUndo = history.isNotEmpty()
+        if (design.elements.none { it.id == selectedId }) selectedId = null
+    }
+
+    /** Під час перетягування — без перевірок (перевіряємо, коли відпустили). */
     fun update(e: Element) {
         design = design.replace(e)
     }
 
-    fun addElement(e: Element) {
-        design = design.add(e)
-        selectedId = e.id
+    /**
+     * Зміна з кнопок (розмір, рамка, підпис…): якщо після неї елемент вилазить за край чи налазить на інший —
+     * шукаємо йому найближче вільне місце; немає — зміну не робимо й кажемо чому.
+     */
+    fun tryChange(e: Element) {
+        val placed = if (Placement.fits(design, e, tw)) e else Placement.nearestFree(design, e, tw)
+        if (placed == null) {
+            haptics.longPress()
+            onMessage(noRoom)
+        } else {
+            commit(design.replace(placed))
+        }
+    }
+
+    /** Новий елемент — на найближче до [wantX], [wantY] вільне місце (типово — центр наклейки). */
+    fun addElement(e: Element, wantX: Float = design.size.widthMm / 2, wantY: Float = design.size.heightMm / 2) {
+        val placed = Placement.nearestFree(design, e, tw, wantX, wantY)
+        if (placed == null) {
+            haptics.longPress()
+            onMessage(noRoom)
+            return
+        }
+        commit(design.add(placed))
+        selectedId = placed.id
     }
 
     val jobName = stringResource(R.string.app_name)
     val shareTitle = stringResource(R.string.share)
     val codes = design.elements.filterIsInstance<Element.Qr>()
 
-    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().imePadding()) {
+    val dialogOpen = sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    val blur = backdropAmount(dialogOpen)
+    Column(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clip(CircleShape).clickable { haptics.tap(); onClose() }, contentAlignment = Alignment.Center) {
                 GlyphIcon(Glyph.Back, stringResource(R.string.back))
@@ -180,6 +237,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                             selectedId = hit?.id
                             if (hit == null) return@awaitEachGesture
                             haptics.tap()
+                            val before = d
+                            var moved = false
                             var wantX = hit.cx
                             var wantY = hit.cy
                             var size = hit.size
@@ -195,7 +254,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                                     val resized = now.resized(size * zoom)
                                     size = resized.size
                                     val snap = Snap.place(wantX, wantY, resized.bounds(renderer::textWidth), resized, current.size)
-                                    update(resized.moved(snap.cx, snap.cy))
+                                    val next = resized.moved(snap.cx, snap.cy)
+                                    update(next)
+                                    moved = true
+                                    clashing = !Placement.fits(current, next, renderer::textWidth)
                                     val g = snap.vertical to snap.horizontal
                                     if (g != lastGuides && (g.first != null || g.second != null)) haptics.tick()
                                     lastGuides = g
@@ -204,6 +266,22 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                                 }
                             } while (event.changes.any { it.pressed })
                             guides = null to null
+                            clashing = false
+                            if (moved) {
+                                // Відпустили: якщо налізло на інший чи вилізло — на найближче вільне місце; немає — назад.
+                                val now = current.elements.firstOrNull { it.id == hit.id }
+                                if (now != null) {
+                                    val placed = if (Placement.fits(current, now, renderer::textWidth)) now else Placement.nearestFree(current, now, renderer::textWidth)
+                                    if (placed == null) {
+                                        design = before
+                                        haptics.longPress()
+                                        onMessage(noRoom)
+                                    } else {
+                                        design = current.replace(placed)
+                                        pushHistory(before)
+                                    }
+                                }
+                            }
                         }
                     },
             ) {
@@ -217,7 +295,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                     val bw = b.width * k + 2 * pad
                     val bh = b.height * k + 2 * pad
                     translate(b.left * k - pad, b.top * k - pad) {
-                        drawPath(taperedPath(pencilLoop(Size(bw, bh), 6.dp.toPx(), selected.id + 400, 0.8.dp.toPx()), 2.dp.toPx()), Oled.Confirm)
+                        drawPath(taperedPath(pencilLoop(Size(bw, bh), 6.dp.toPx(), selected.id + 400, 0.8.dp.toPx()), 2.dp.toPx()), if (clashing) Oled.Danger else Oled.Confirm)
                     }
                 }
             }
@@ -229,8 +307,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                 Tool(Glyph.ScanQr, stringResource(R.string.label_add_code)) { pickerOpen = true }
                 Tool(Glyph.TextT, stringResource(R.string.label_add_text)) { textNew = true }
                 Tool(Glyph.Star, stringResource(R.string.label_add_icon)) { stickerNew = true }
-                Tool(Glyph.Frame, stringResource(R.string.label_border), on = design.border) { design = design.copy(border = !design.border) }
-                if (codes.size > 1) Tool(Glyph.Keyboard, stringResource(R.string.label_grid)) { design = Arrange.grid(design) }
+                Tool(Glyph.Frame, stringResource(R.string.label_border), on = design.border) { commit(design.copy(border = !design.border)) }
+                if (codes.size > 1) Tool(Glyph.Grid, stringResource(R.string.label_grid)) { commit(Arrange.grid(design, tw)) }
+                Tool(Glyph.Undo, stringResource(R.string.label_undo), enabled = canUndo) { undo() }
+                Tool(Glyph.Delete, stringResource(R.string.label_clear), enabled = design.elements.isNotEmpty()) { clearAsk = true }
             }
             Spacer(Modifier.size(12.dp))
             when (val e = selected) {
@@ -244,11 +324,14 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                 else -> SelectedPanel(
                     element = e,
                     design = design,
-                    onChange = ::update,
+                    onChange = ::tryChange,
                     onCenter = {
-                        val b = e.bounds(renderer::textWidth)
+                        val b = e.bounds(tw)
                         val offY = (b.top + b.bottom) / 2 - e.cy
-                        update(e.moved(design.size.widthMm / 2, design.size.heightMm / 2 - offY))
+                        val cx = design.size.widthMm / 2
+                        val cy = design.size.heightMm / 2 - offY
+                        val placed = Placement.nearestFree(design, e, tw, cx, cy)
+                        if (placed == null) onMessage(noRoom) else commit(design.replace(placed))
                     },
                     onCopy = {
                         val copy = when (e) {
@@ -256,13 +339,17 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
                             is Element.Text -> e.copy(id = design.nextId)
                             is Element.Icon -> e.copy(id = design.nextId)
                         }
-                        addElement(copy.moved(e.cx + 4f, e.cy + 4f))
+                        // Копія — поруч з оригіналом, на вільному місці.
+                        addElement(copy, e.cx, e.cy)
                     },
                     onDelete = {
-                        design = design.remove(e.id)
+                        commit(design.remove(e.id))
                         selectedId = null
                     },
-                    onFill = { qr -> design = Arrange.fill(design, qr) },
+                    onFill = { qr -> commit(Arrange.fill(design, qr, tw)) },
+                    onEditCaption = { captionEdit = it },
+                    onEditBanner = { bannerEdit = it },
+                    scanMeDefault = scanMe,
                     onEditText = { textEdit = it },
                     onPickSticker = { stickerFor = it },
                 )
@@ -296,15 +383,18 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
 
     if (sizeOpen) {
         SizeDialog(design.size, onDismiss = { sizeOpen = false }) {
-            design = design.resizedTo(it)
+            // Нова наклейка: що не влізло — на вільні місця.
+            var d = design.resizedTo(it)
+            d.elements.forEach { e -> if (!Placement.fits(d, e, tw)) Placement.nearestFree(d, e, tw)?.let { p -> d = d.replace(p) } }
+            commit(d)
             sizeOpen = false
         }
     }
     if (textNew || textEdit != null) {
-        TextDialog(textEdit?.text.orEmpty(), onDismiss = { textNew = false; textEdit = null }) { text ->
+        TextDialog(textEdit?.text.orEmpty(), title = stringResource(R.string.label_add_text), onDismiss = { textNew = false; textEdit = null }) { text ->
             val edit = textEdit
             if (edit != null) {
-                update(edit.copy(text = text))
+                tryChange(edit.copy(text = text))
             } else {
                 addElement(Element.Text(design.nextId, design.size.widthMm / 2, design.size.heightMm / 2, text, DEFAULT_LETTERS))
             }
@@ -316,12 +406,36 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
         StickerDialog(onDismiss = { stickerNew = false; stickerFor = null }) { sticker ->
             val edit = stickerFor
             if (edit != null) {
-                update(edit.copy(sticker = sticker))
+                tryChange(edit.copy(sticker = sticker))
             } else {
                 addElement(Element.Icon(design.nextId, design.size.widthMm / 2, design.size.heightMm / 2, sticker, DEFAULT_ICON))
             }
             stickerNew = false
             stickerFor = null
+        }
+    }
+    if (clearAsk) {
+        SheetDialog(onDismissRequest = { clearAsk = false }, title = stringResource(R.string.label_clear_title), buttons = {
+            SheetButton(stringResource(R.string.cancel), { clearAsk = false })
+            SheetButton(stringResource(R.string.label_clear), {
+                commit(design.copy(elements = emptyList()))
+                selectedId = null
+                clearAsk = false
+            }, tone = Tone.Danger)
+        }) {
+            Text(stringResource(R.string.label_clear_text), fontSize = 16.sp)
+        }
+    }
+    captionEdit?.let { qr ->
+        TextDialog(qr.title, title = stringResource(R.string.label_edit_caption), onDismiss = { captionEdit = null }) {
+            tryChange(qr.copy(title = it, caption = true))
+            captionEdit = null
+        }
+    }
+    bannerEdit?.let { qr ->
+        TextDialog(qr.banner, title = stringResource(R.string.label_edit_banner), onDismiss = { bannerEdit = null }) {
+            tryChange(qr.copy(banner = it))
+            bannerEdit = null
         }
     }
     if (pickerOpen) {
@@ -351,15 +465,21 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit) {
 }
 
 private const val MAX_COPIES = 500
+private const val MAX_UNDO = 40
 private const val DEFAULT_LETTERS = 7f
 private const val DEFAULT_ICON = 14f
 
 /** Інструмент: значок олівцем у кружечку й підпис під ним. */
 @Composable
-private fun Tool(glyph: Glyph, label: String, on: Boolean = false, onClick: () -> Unit) {
+private fun Tool(glyph: Glyph, label: String, on: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     Column(
-        Modifier.clip(RoundedCornerShape(14.dp)).clickable { haptics.tap(); onClick() }.padding(4.dp).width(76.dp),
+        Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled) { haptics.tap(); onClick() }
+            .padding(4.dp)
+            .width(76.dp)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.35f },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -385,6 +505,9 @@ private fun SelectedPanel(
     onFill: (Element.Qr) -> Unit,
     onEditText: (Element.Text) -> Unit,
     onPickSticker: (Element.Icon) -> Unit,
+    onEditCaption: (Element.Qr) -> Unit,
+    onEditBanner: (Element.Qr) -> Unit,
+    scanMeDefault: String,
 ) {
     val (label, min, max) = when (element) {
         is Element.Qr -> Triple(R.string.label_qr_size, Element.MIN_QR, minOf(Element.MAX_QR, minOf(design.size.widthMm, design.size.heightMm)))
@@ -411,15 +534,24 @@ private fun SelectedPanel(
         if (element is Element.Qr) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(stringResource(R.string.label_caption), element.caption) { onChange(element.copy(caption = !element.caption)) }
-                Chip(stringResource(R.string.label_frame_none), element.frame == QrFrame.None) { onChange(element.copy(frame = QrFrame.None)) }
-                Chip(stringResource(R.string.label_frame_pencil), element.frame == QrFrame.Pencil) { onChange(element.copy(frame = QrFrame.Pencil)) }
-                Chip(stringResource(R.string.label_frame_double), element.frame == QrFrame.Double) { onChange(element.copy(frame = QrFrame.Double)) }
+            }
+            Text(stringResource(R.string.label_frame), color = Oled.TextPrimary, fontSize = 17.sp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                QrFrame.entries.forEach { f ->
+                    Chip(stringResource(f.title()), element.frame == f) {
+                        onChange(element.copy(frame = f, banner = if (f == QrFrame.ScanMe && element.banner.isEmpty()) scanMeDefault else element.banner))
+                    }
+                }
             }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SheetButton(stringResource(R.string.label_center), onCenter)
             when (element) {
-                is Element.Qr -> SheetButton(stringResource(R.string.label_fill_page), { onFill(element) })
+                is Element.Qr -> {
+                    SheetButton(stringResource(R.string.label_edit_caption), { onEditCaption(element) })
+                    if (element.frame == QrFrame.ScanMe) SheetButton(stringResource(R.string.label_edit_banner), { onEditBanner(element) })
+                    SheetButton(stringResource(R.string.label_fill_page), { onFill(element) })
+                }
                 is Element.Text -> SheetButton(stringResource(R.string.label_edit_text), { onEditText(element) })
                 is Element.Icon -> SheetButton(stringResource(R.string.label_change_icon), { onPickSticker(element) })
             }
@@ -427,6 +559,15 @@ private fun SelectedPanel(
             SheetButton(stringResource(R.string.delete), onDelete, tone = Tone.Danger)
         }
     }
+}
+
+private fun QrFrame.title(): Int = when (this) {
+    QrFrame.None -> R.string.label_frame_none
+    QrFrame.Pencil -> R.string.label_frame_pencil
+    QrFrame.Double -> R.string.label_frame_double
+    QrFrame.Dashed -> R.string.label_frame_dashed
+    QrFrame.Corners -> R.string.label_frame_corners
+    QrFrame.ScanMe -> R.string.label_frame_scanme
 }
 
 /** Вибір-«табличка»: вибраний — синьою рамкою, текст ніколи не переноситься й не вилазить. */
@@ -489,11 +630,11 @@ private fun SizeDialog(current: LabelSize, onDismiss: () -> Unit, onApply: (Labe
 
 /** Свій текст на наклейку (шрифтом від руки). */
 @Composable
-private fun TextDialog(initial: String, onDismiss: () -> Unit, onApply: (String) -> Unit) {
+private fun TextDialog(initial: String, title: String, onDismiss: () -> Unit, onApply: (String) -> Unit) {
     var text by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.label_add_text), buttons = {
+    SheetDialog(onDismissRequest = onDismiss, title = title, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.apply), { onApply(text.trim()) }, tone = Tone.Confirm, enabled = text.isNotBlank())
     }) {

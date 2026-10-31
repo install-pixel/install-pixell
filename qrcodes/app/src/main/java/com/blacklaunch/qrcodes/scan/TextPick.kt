@@ -26,3 +26,41 @@ object TextPick {
 
 /** Слово з фото: номер рядка й номер слова в ньому. */
 data class WordRef(val line: Int, val word: Int)
+
+/**
+ * Вибір пальцем: затиснув слово [start] і ведеш — до вибраного раніше додається (або з нього знімається, якщо почали з
+ * уже вибраного слова) усе від першого слова до того, що під пальцем, у порядку читання.
+ */
+class RangeDrag(private val order: List<WordRef>) {
+    private var base: Set<WordRef> = emptySet()
+    private var anchor: Int = -1
+    private var adding = true
+    private var last: Int = -1
+
+    fun start(ref: WordRef, selected: Set<WordRef>): Set<WordRef> {
+        base = selected
+        anchor = order.indexOf(ref)
+        adding = ref !in selected
+        last = anchor
+        return apply()
+    }
+
+    /** null — нічого не змінилось (палець між словами чи на тому самому). */
+    fun move(ref: WordRef?): Set<WordRef>? {
+        if (anchor < 0 || ref == null) return null
+        val i = order.indexOf(ref)
+        if (i < 0 || i == last) return null
+        last = i
+        return apply()
+    }
+
+    fun end() {
+        anchor = -1
+    }
+
+    private fun apply(): Set<WordRef> {
+        if (anchor < 0) return base
+        val range = order.subList(minOf(anchor, last), maxOf(anchor, last) + 1).toSet()
+        return if (adding) base + range else base - range
+    }
+}

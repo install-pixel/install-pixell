@@ -20,7 +20,7 @@ import kotlin.math.sin
  * Сітка 24×24.
  */
 
-enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter, Box, Arrow, Wifi, Warning, Phone, TextT, Frame }
+enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter, Box, Arrow, Wifi, Warning, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid }
 
 @Composable
 fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Modifier, tint: Color = SheetInk, size: Dp = 24.dp) {
@@ -138,6 +138,49 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     Glyph.Warning -> listOf(line(12f, 3.6f, 21f, 19.6f, 3f, 19.8f, 12.2f, 3.4f), line(12f, 9f, 12.1f, 14.2f), arc(12f, 17.1f, 0.6f, 0f, 360f, 6))
     // Телефон: корпус і кнопка.
     Glyph.Phone -> listOf(box(7f, 2.8f, 10f, 18.4f, 7, 2.2f), line(10.8f, 17.6f, 13.2f, 17.6f), line(10.5f, 5.2f, 13.5f, 5.2f))
+    // Глобус — сайт, посилання.
+    Glyph.Globe -> listOf(
+        arc(12f, 12f, 8.6f, -90f, 275f, 32),
+        line(3.6f, 12.1f, 20.4f, 11.9f),
+        arc(12f, 12f, 8.6f, -90f, 90f, 18).map { Offset(12f + (it.x - 12f) * 0.45f, it.y) },
+        arc(12f, 12f, 8.6f, 90f, 270f, 18).map { Offset(12f + (it.x - 12f) * 0.45f, it.y) },
+        line(5.2f, 7.6f, 18.8f, 7.4f), line(5.2f, 16.4f, 18.8f, 16.6f),
+    )
+    // Стрілка вниз у лоток — завантажити.
+    Glyph.Download -> listOf(
+        line(12f, 3.5f, 12.1f, 14.8f), line(7.4f, 10.4f, 12f, 15.2f, 16.7f, 10.3f),
+        line(4f, 15.5f, 4.2f, 20f, 19.8f, 19.9f, 20f, 15.4f),
+    )
+    // Конверт — пошта.
+    Glyph.Mail -> listOf(box(3.2f, 5.8f, 17.6f, 12.6f, 9, 1.5f), line(3.8f, 6.8f, 12f, 13.4f, 20.2f, 6.7f))
+    // Шпилька мапи — адреса.
+    Glyph.Pin -> listOf(
+        arc(12f, 9.6f, 6.2f, 150f, 390f, 26) + line(17.4f, 12.7f, 12.1f, 21f, 6.6f, 12.7f),
+        arc(12f, 9.6f, 2.3f, 0f, 365f, 14),
+    )
+    // Людина — контакт.
+    Glyph.Person -> listOf(arc(12f, 8f, 3.8f, -90f, 275f, 20), arc(12f, 21.5f, 7.6f, 200f, 340f, 18))
+    // Смайлик.
+    Glyph.Smile -> listOf(
+        arc(12f, 12f, 8.8f, -100f, 268f, 36),
+        arc(12f, 12.2f, 4.8f, 25f, 155f, 14),
+        line(9.1f, 8.8f, 9.2f, 10.2f), line(14.8f, 8.7f, 14.9f, 10.1f),
+    )
+    // Серце.
+    Glyph.Heart -> listOf(
+        arc(8.2f, 9f, 3.9f, 135f, 340f, 16) + arc(15.8f, 9f, 3.9f, 200f, 405f, 16) + line(18.6f, 11.8f, 12f, 19.6f, 5.4f, 11.8f),
+    )
+    // Телефон наводять на код — «скануй».
+    Glyph.ScanPhone -> listOf(
+        box(8.5f, 6.5f, 9f, 15f, 21, 1.8f),
+        line(11.6f, 18.8f, 14.4f, 18.8f),
+        line(3f, 6f, 3f, 3f, 6f, 3f), line(18f, 3f, 21f, 3f, 21f, 6f),
+        line(10.8f, 10.5f, 13.2f, 10.5f, 13.2f, 13f, 10.8f, 13f, 10.8f, 10.5f),
+    )
+    // Крок назад: дуга зі стрілкою.
+    Glyph.Undo -> listOf(arc(12.5f, 13.5f, 6.5f, 200f, 470f, 24), line(4.6f, 7.2f, 6.2f, 11.4f, 10.4f, 9.8f))
+    // Сітка 2×2.
+    Glyph.Grid -> listOf(box(3.5f, 3.5f, 7.5f, 7.5f, 31, 1.4f), box(13f, 3.5f, 7.5f, 7.5f, 32, 1.4f), box(3.5f, 13f, 7.5f, 7.5f, 33, 1.4f), box(13f, 13f, 7.5f, 7.5f, 34, 1.4f))
     // «Т» — свій текст.
     Glyph.TextT -> listOf(line(5f, 5.6f, 19f, 5.3f), line(12f, 5.4f, 12.2f, 19.2f), line(9.6f, 19.2f, 14.6f, 19.1f))
     // Рамка олівцем.

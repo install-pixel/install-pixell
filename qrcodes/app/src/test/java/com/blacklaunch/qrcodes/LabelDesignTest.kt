@@ -4,6 +4,10 @@ import com.blacklaunch.qrcodes.label.Arrange
 import com.blacklaunch.qrcodes.label.Element
 import com.blacklaunch.qrcodes.label.LabelDesign
 import com.blacklaunch.qrcodes.label.LabelSize
+import com.blacklaunch.qrcodes.label.Placement
+import com.blacklaunch.qrcodes.label.overlaps
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import com.blacklaunch.qrcodes.label.QrFrame
 import com.blacklaunch.qrcodes.label.Snap
 import com.blacklaunch.qrcodes.label.bounds
@@ -31,8 +35,8 @@ class LabelDesignTest {
     fun staysInsideLabel() {
         val e = qr(1)
         val r = Snap.place(500f, -300f, e.bounds(tw), e, zebra)
-        assertEquals(150f - 20f, r.cx, 0.001f)
-        assertEquals(20f, r.cy, 0.001f)
+        assertEquals(150f - 20f - Placement.EDGE, r.cx, 0.001f)
+        assertEquals(20f + Placement.EDGE, r.cy, 0.001f)
     }
 
     @Test
@@ -69,7 +73,7 @@ class LabelDesignTest {
 
     @Test
     fun fillMakesCopiesInsideLabel() {
-        val d = Arrange.fill(LabelDesign(zebra, listOf(qr(1), Element.Text(9, 10f, 10f, "x", 5f))), qr(1))
+        val d = Arrange.fill(LabelDesign(zebra, listOf(qr(1), Element.Text(9, 10f, 10f, "x", 5f))), qr(1), tw)
         val codes = d.elements.filterIsInstance<Element.Qr>()
         assertEquals(6, codes.size)
         assertEquals(codes.size, codes.map { it.id }.toSet().size)
@@ -82,7 +86,7 @@ class LabelDesignTest {
 
     @Test
     fun gridSpreadsCodes() {
-        val d = Arrange.grid(LabelDesign(zebra, listOf(qr(1), qr(2), qr(3))))
+        val d = Arrange.grid(LabelDesign(zebra, listOf(qr(1), qr(2), qr(3))), tw)
         val xs = d.elements.map { it.cx }.toSet()
         assertEquals(3, xs.size)
     }
@@ -92,5 +96,41 @@ class LabelDesignTest {
         val d = LabelDesign(zebra, listOf(qr(1, cx = 75f, cy = 50f))).resizedTo(LabelSize(100f, 50f))
         assertEquals(50f, d.elements[0].cx, 0.001f)
         assertEquals(25f, d.elements[0].cy, 0.001f)
+    }
+
+    @Test
+    fun overlappingDropMovesToNearestFreeSpot() {
+        val d = LabelDesign(zebra, listOf(qr(1, cx = 40f), qr(2, cx = 45f)))
+        val moving = d.elements[1]
+        assertFalse(Placement.fits(d, moving, tw))
+        val placed = Placement.nearestFree(d, moving, tw)!!
+        val withPlaced = d.replace(placed)
+        assertTrue(Placement.fits(withPlaced, placed, tw))
+        assertFalse(placed.bounds(tw).overlaps(d.elements[0].bounds(tw)))
+    }
+
+    @Test
+    fun noRoomGivesNull() {
+        val small = LabelSize(50f, 30f)
+        val d = LabelDesign(small, listOf(qr(1, cx = 25f, cy = 15f, side = 26f)))
+        assertEquals(null, Placement.nearestFree(d, qr(2, cx = 25f, cy = 15f, side = 26f), tw))
+    }
+
+    @Test
+    fun everyFrameFitsAndFilledCopiesNeverOverlap() {
+        for (frame in QrFrame.entries) for (caption in listOf(true, false)) {
+            val q = qr(1, side = 30f, caption = caption, frame = frame)
+            val d = Arrange.fill(LabelDesign(zebra, listOf(q)), q, tw)
+            assertTrue(d.elements.isNotEmpty())
+            d.elements.forEach { e -> assertTrue("$frame $caption", Placement.fits(d, e, tw)) }
+        }
+    }
+
+    @Test
+    fun gridShrinksWhenCodesDoNotFit() {
+        val many = (1..12).map { qr(it, side = 60f, caption = true) }
+        val d = Arrange.grid(LabelDesign(zebra, many), tw)
+        d.elements.forEach { e -> assertTrue(Placement.fits(d, e, tw)) }
+        assertNotNull(d.elements.first())
     }
 }

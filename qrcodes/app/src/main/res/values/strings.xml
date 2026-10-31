@@ -36,7 +36,7 @@
     <string name="take_photo">Take photo</string>
     <string name="recognizing">Looking for text…</string>
     <string name="text_not_found">No text longer than 5 characters found</string>
-    <string name="text_pick">Tap words or slide your finger over them — only the chosen part goes into the code</string>
+    <string name="text_pick">Tap words to add them one by one. Press and hold a word, then slide — everything up to your finger is chosen</string>
     <string name="retake">Retake</string>
     <string name="more">More</string>
     <string name="yes">Yes</string>
@@ -78,4 +78,16 @@
     <string name="label_change_icon">Other icon</string>
     <string name="label_duplicate">Copy</string>
     <string name="label_text_hint">Your text</string>
+    <string name="label_no_room">No free space on the label for this</string>
+    <string name="label_scan_me">Scan me</string>
+    <string name="label_frame">Frame</string>
+    <string name="label_frame_dashed">Dashed</string>
+    <string name="label_frame_corners">Corners</string>
+    <string name="label_frame_scanme">“Scan me”</string>
+    <string name="label_undo">Undo</string>
+    <string name="label_clear">Clear</string>
+    <string name="label_clear_title">Clear the label?</string>
+    <string name="label_clear_text">Everything on the label will be removed. “Undo” brings it back.</string>
+    <string name="label_edit_caption">Caption text</string>
+    <string name="label_edit_banner">Banner text</string>
 </resources>

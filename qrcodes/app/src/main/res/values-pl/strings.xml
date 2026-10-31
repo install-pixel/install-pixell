@@ -36,7 +36,7 @@
     <string name="take_photo">Zrób zdjęcie</string>
     <string name="recognizing">Szukam tekstu…</string>
     <string name="text_not_found">Nie znaleziono tekstu dłuższego niż 5 znaków</string>
-    <string name="text_pick">Dotykaj słów lub przesuwaj po nich palcem — do kodu trafi tylko wybrane</string>
+    <string name="text_pick">Dotykaj słów — dodajesz po jednym. Przytrzymaj słowo i przesuń — wybierze się wszystko do palca</string>
     <string name="retake">Jeszcze raz</string>
     <string name="more">Więcej</string>
     <string name="yes">Tak</string>
@@ -78,4 +78,16 @@
     <string name="label_change_icon">Inna ikona</string>
     <string name="label_duplicate">Kopia</string>
     <string name="label_text_hint">Twój tekst</string>
+    <string name="label_no_room">Na etykiecie nie ma na to wolnego miejsca</string>
+    <string name="label_scan_me">Zeskanuj mnie</string>
+    <string name="label_frame">Ramka</string>
+    <string name="label_frame_dashed">Przerywana</string>
+    <string name="label_frame_corners">Narożniki</string>
+    <string name="label_frame_scanme">„Zeskanuj mnie”</string>
+    <string name="label_undo">Cofnij</string>
+    <string name="label_clear">Wyczyść</string>
+    <string name="label_clear_title">Wyczyścić etykietę?</string>
+    <string name="label_clear_text">Z etykiety zniknie wszystko. „Cofnij” przywróci.</string>
+    <string name="label_edit_caption">Tekst podpisu</string>
+    <string name="label_edit_banner">Napis na pasku</string>
 </resources>

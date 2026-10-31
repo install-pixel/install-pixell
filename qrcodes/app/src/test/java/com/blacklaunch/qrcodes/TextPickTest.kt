@@ -42,3 +42,27 @@ class WordJoinTest {
         assertEquals("", com.blacklaunch.qrcodes.scan.TextPick.join(lines, emptySet()))
     }
 }
+
+class RangeDragTest {
+    private val r = { l: Int, w: Int -> com.blacklaunch.qrcodes.scan.WordRef(l, w) }
+    private val order = listOf(r(0, 0), r(0, 1), r(0, 2), r(1, 0), r(1, 1))
+
+    @Test
+    fun holdAndSlideSelectsRangeOnTopOfEarlierPicks() {
+        val drag = com.blacklaunch.qrcodes.scan.RangeDrag(order)
+        val earlier = setOf(r(1, 1))
+        assertEquals(earlier + r(0, 1), drag.start(r(0, 1), earlier))
+        assertEquals(earlier + setOf(r(0, 1), r(0, 2), r(1, 0)), drag.move(r(1, 0)))
+        // Повернули палець назад — зайве знімається.
+        assertEquals(earlier + setOf(r(0, 1), r(0, 2)), drag.move(r(0, 2)))
+        assertEquals(null, drag.move(r(0, 2)))
+    }
+
+    @Test
+    fun startingOnChosenWordRemovesRange() {
+        val drag = com.blacklaunch.qrcodes.scan.RangeDrag(order)
+        val all = order.toSet()
+        drag.start(r(0, 0), all)
+        assertEquals(setOf(r(1, 0), r(1, 1)), drag.move(r(0, 2)))
+    }
+}

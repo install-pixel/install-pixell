@@ -36,7 +36,7 @@
     <string name="take_photo">Сфотографувати</string>
     <string name="recognizing">Шукаю текст…</string>
     <string name="text_not_found">Тексту, довшого за 5 символів, не знайдено</string>
-    <string name="text_pick">Торкайся слів або веди по них пальцем — у код піде лише вибране</string>
+    <string name="text_pick">Торкайся слів — додаєш по одному. Затисни слово й веди — вибереться все до пальця</string>
     <string name="retake">Ще раз</string>
     <string name="more">Ще</string>
     <string name="yes">Так</string>
@@ -78,4 +78,16 @@
     <string name="label_change_icon">Інший значок</string>
     <string name="label_duplicate">Копія</string>
     <string name="label_text_hint">Свій текст</string>
+    <string name="label_no_room">На наклейці немає вільного місця для цього</string>
+    <string name="label_scan_me">Скануй мене</string>
+    <string name="label_frame">Рамка</string>
+    <string name="label_frame_dashed">Пунктир</string>
+    <string name="label_frame_corners">Кутики</string>
+    <string name="label_frame_scanme">«Скануй мене»</string>
+    <string name="label_undo">Крок назад</string>
+    <string name="label_clear">Очистити</string>
+    <string name="label_clear_title">Очистити наклейку?</string>
+    <string name="label_clear_text">З наклейки зникне все. «Крок назад» поверне.</string>
+    <string name="label_edit_caption">Текст підпису</string>
+    <string name="label_edit_banner">Напис на плашці</string>
 </resources>

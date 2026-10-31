@@ -2,11 +2,17 @@ package com.blacklaunch.qrcodes.label
 
 import kotlin.math.abs
 
-/** Рамка навколо QR-коду, намальована олівцем. */
-enum class QrFrame { None, Pencil, Double }
+/**
+ * Рамка навколо QR-коду, намальована олівцем. Як на постерах із QR: проста, подвійна, пунктир, лише кутики
+ * (видошукач) і «Скануй мене» — рамка з плашкою-написом знизу.
+ */
+enum class QrFrame { None, Pencil, Double, Dashed, Corners, ScanMe }
 
-/** Значки, які можна покласти на наклейку (малюються олівцем, як значки програми). */
-enum class Sticker { Camera, Box, Arrow, Star, Wifi, Warning, Phone, Scan }
+/**
+ * Значки — що закодовано і що з ним робити (як біля QR на сайтах і листівках): Wi‑Fi, дзвінок, сайт, завантаження,
+ * пошта, адреса, контакт, «наведи телефон»; і просто для настрою — смайлик, серце.
+ */
+enum class Sticker { Wifi, Phone, Link, Download, Email, Location, Contact, ScanPhone, Smile, Heart }
 
 /**
  * Елемент наклейки. Координати — центр елемента в мм від лівого верхнього кута наклейки, тож розмір змінюється
@@ -34,6 +40,8 @@ sealed interface Element {
         val side: Float,
         val caption: Boolean = true,
         val frame: QrFrame = QrFrame.None,
+        /** Напис на плашці рамки «Скануй мене». */
+        val banner: String = "",
     ) : Element {
         override val size get() = side
         override fun moved(cx: Float, cy: Float) = copy(cx = cx, cy = cy)
@@ -92,9 +100,19 @@ fun captionArea(qr: Element.Qr): Float = if (qr.caption) captionLetters(qr.side)
 /** Поле між кодом і рамкою олівцем. */
 fun framePad(qr: Element.Qr): Float = when (qr.frame) {
     QrFrame.None -> 0f
-    QrFrame.Pencil -> (qr.side * 0.06f).coerceIn(1.5f, 5f)
+    QrFrame.Pencil, QrFrame.Dashed, QrFrame.ScanMe -> (qr.side * 0.06f).coerceIn(1.5f, 5f)
     QrFrame.Double -> (qr.side * 0.09f).coerceIn(2.2f, 7f)
+    QrFrame.Corners -> (qr.side * 0.07f).coerceIn(1.8f, 6f)
 }
+
+/** Висота плашки «Скануй мене» під кодом. */
+fun bannerArea(qr: Element.Qr): Float = if (qr.frame == QrFrame.ScanMe) (qr.side * 0.24f).coerceIn(5f, 18f) else 0f
+
+/** Повна висота блоку коду: поле, код, підпис, плашка, поле. */
+fun qrBlockHeight(qr: Element.Qr): Float = qr.side + captionArea(qr) + bannerArea(qr) + 2 * framePad(qr)
+
+/** Верх самого коду (мм). */
+fun qrTop(qr: Element.Qr): Float = qr.cy - qrBlockHeight(qr) / 2 + framePad(qr)
 
 /**
  * Межі елемента в мм. Ширину тексту дає [textWidth] (міряє програма тим самим шрифтом, яким малює:
@@ -102,9 +120,9 @@ fun framePad(qr: Element.Qr): Float = when (qr.frame) {
  */
 fun Element.bounds(textWidth: (String, Float) -> Float): MmRect = when (this) {
     is Element.Qr -> {
-        val pad = framePad(this)
-        val h = side + captionArea(this)
-        MmRect(cx - side / 2 - pad, cy - h / 2 - pad, cx + side / 2 + pad, cy + h / 2 + pad)
+        val halfW = side / 2 + framePad(this)
+        val halfH = qrBlockHeight(this) / 2
+        MmRect(cx - halfW, cy - halfH, cx + halfW, cy + halfH)
     }
     is Element.Text -> {
         val w = textWidth(text, letters).coerceAtLeast(letters)
@@ -113,6 +131,9 @@ fun Element.bounds(textWidth: (String, Float) -> Float): MmRect = when (this) {
     }
     is Element.Icon -> MmRect(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2)
 }
+
+fun MmRect.overlaps(o: MmRect, gap: Float = 0f): Boolean =
+    left < o.right + gap && right > o.left - gap && top < o.bottom + gap && bottom > o.top - gap
 
 /** Наклейка: розмір, елементи (останній — зверху), рамка олівцем по краю. */
 data class LabelDesign(
@@ -175,44 +196,147 @@ object Snap {
             if (abs(y + offY + halfH - (size.heightMm - margin)) < DISTANCE) { y = size.heightMm - margin - halfH - offY; horizontal = size.heightMm - margin }
         }
         // Не виїжджати за наклейку (якщо елемент більший за неї — тримаємо центр на ній).
-        x = if (element.width <= size.widthMm) x.coerceIn(halfW - offX, size.widthMm - halfW - offX) else midX - offX
-        y = if (element.height <= size.heightMm) y.coerceIn(halfH - offY, size.heightMm - halfH - offY) else midY - offY
+        val e = Placement.EDGE
+        x = if (element.width <= size.widthMm - 2 * e) x.coerceIn(e + halfW - offX, size.widthMm - e - halfW - offX) else midX - offX
+        y = if (element.height <= size.heightMm - 2 * e) y.coerceIn(e + halfH - offY, size.heightMm - e - halfH - offY) else midY - offY
         return Result(x, y, vertical, horizontal)
     }
 }
 
-/** Розкласти коди сіткою (як раніше), решту елементів не чіпати. */
-object Arrange {
-    /** Усі коди — сіткою по центру наклейки, розміром найбільшого з них (якщо вміщається). */
-    fun grid(design: LabelDesign): LabelDesign {
-        val codes = design.elements.filterIsInstance<Element.Qr>()
-        if (codes.isEmpty()) return design
-        val side = codes.maxOf { it.side }
-        val caption = codes.any { it.caption }
-        val layout = LabelLayout(LabelSettings(design.size, side, 1, caption), codes.size)
-        val placed = layout.pages.flatten()
-        // Що не вмістилось на одну наклейку — лишається, де було.
-        val byIndex = codes.mapIndexed { i, qr ->
-            val p = placed.getOrNull(i)
-            if (p == null) qr else qr.copy(
-                cx = p.xMm + layout.cellWidthMm / 2,
-                cy = p.yMm + layout.cellHeightMm / 2,
-                side = layout.qrMm,
-            )
-        }.associateBy { it.id }
-        return design.copy(elements = design.elements.map { byIndex[it.id] ?: it })
+/**
+ * «Захист від помилок»: елементи не виходять за край наклейки й не лягають один на одного (на наклейці, де коди
+ * накладаються, спрацює лише верхній). Якщо місце зайняте — шукаємо найближче вільне.
+ */
+object Placement {
+    /** Скільки мм від краю наклейки лишати (принтер не друкує впритул). */
+    const val EDGE = 1.5f
+
+    /** Мінімальний проміжок між елементами. */
+    const val GAP = 1f
+
+    fun inside(b: MmRect, size: LabelSize) =
+        b.left >= EDGE - 0.01f && b.top >= EDGE - 0.01f && b.right <= size.widthMm - EDGE + 0.01f && b.bottom <= size.heightMm - EDGE + 0.01f
+
+    /** Чи стоїть [e] на своєму місці: всередині й ні на кого не налазить. */
+    fun fits(design: LabelDesign, e: Element, tw: (String, Float) -> Float): Boolean {
+        val b = e.bounds(tw)
+        return inside(b, design.size) && design.elements.none { it.id != e.id && it.bounds(tw).overlaps(b, GAP - 0.01f) }
     }
 
-    /** Заповнити наклейку копіями коду [qr] (інші коди прибираються, текст і значки лишаються). */
-    fun fill(design: LabelDesign, qr: Element.Qr): LabelDesign {
-        val layout = LabelLayout(LabelSettings(design.size, qr.side, 1, qr.caption), 1)
-        var id = design.nextId
-        val copies = (0 until layout.perPage).map { i ->
-            if (i == 0) qr else qr.copy(id = id++)
+    /** На кого налазить [e] (щоб підсвітити). */
+    fun clashes(design: LabelDesign, e: Element, tw: (String, Float) -> Float): Boolean = !fits(design, e, tw)
+
+    /**
+     * Найближче до ([wantX], [wantY]) вільне місце для [e]; null — на наклейці для нього немає місця.
+     * Перебираємо центри з кроком 1 мм — для наклейки 150×100 це мить.
+     */
+    fun nearestFree(design: LabelDesign, e: Element, tw: (String, Float) -> Float, wantX: Float = e.cx, wantY: Float = e.cy): Element? {
+        val b = e.bounds(tw)
+        val offX = (b.left + b.right) / 2 - e.cx
+        val offY = (b.top + b.bottom) / 2 - e.cy
+        val halfW = b.width / 2
+        val halfH = b.height / 2
+        val size = design.size
+        val minX = EDGE + halfW - offX
+        val maxX = size.widthMm - EDGE - halfW - offX
+        val minY = EDGE + halfH - offY
+        val maxY = size.heightMm - EDGE - halfH - offY
+        if (minX > maxX + 0.01f || minY > maxY + 0.01f) return null
+        val others = design.elements.filter { it.id != e.id }.map { it.bounds(tw) }
+        fun free(x: Float, y: Float): Boolean {
+            val r = MmRect(x + offX - halfW, y + offY - halfH, x + offX + halfW, y + offY + halfH)
+            return others.none { it.overlaps(r, GAP - 0.01f) }
         }
-        val filled = LabelLayout(LabelSettings(design.size, qr.side, layout.perPage, qr.caption), 1).pages.first()
-        val placed = copies.zip(filled) { c, p -> c.copy(cx = p.xMm + layout.cellWidthMm / 2, cy = p.yMm + layout.cellHeightMm / 2, side = layout.qrMm) }
-        val others = design.elements.filter { it !is Element.Qr }
-        return design.copy(elements = placed + others)
+        val x0 = wantX.coerceIn(minX, maxOf(minX, maxX))
+        val y0 = wantY.coerceIn(minY, maxOf(minY, maxY))
+        if (free(x0, y0)) return e.moved(x0, y0)
+        var best: Pair<Float, Float>? = null
+        var bestD = Float.MAX_VALUE
+        val stepsX = ((maxX - minX) / STEP).toInt().coerceAtLeast(0)
+        val stepsY = ((maxY - minY) / STEP).toInt().coerceAtLeast(0)
+        for (i in 0..stepsX) {
+            val x = if (stepsX == 0) minX else minX + i * (maxX - minX) / stepsX
+            for (j in 0..stepsY) {
+                val y = if (stepsY == 0) minY else minY + j * (maxY - minY) / stepsY
+                val d = (x - wantX) * (x - wantX) + (y - wantY) * (y - wantY)
+                if (d < bestD && free(x, y)) {
+                    bestD = d
+                    best = x to y
+                }
+            }
+        }
+        return best?.let { (x, y) -> e.moved(x, y) }
+    }
+
+    private const val STEP = 1f
+}
+
+/** Розкласти коди сіткою або заповнити наклейку копіями — з урахуванням рамок, підписів і плашок. */
+object Arrange {
+    private const val GRID_GAP = 3f
+
+    /** Скільки клітинок [cw]×[ch] вміщається вздовж [total] мм. */
+    private fun fit(total: Float, cell: Float): Int =
+        maxOf(0, kotlin.math.floor((total - 2 * Placement.EDGE + GRID_GAP) / (cell + GRID_GAP)).toInt())
+
+    /** Центри клітинок сітки [cols]×[rows] для [count] елементів, сітка — по центру наклейки. */
+    private fun centres(size: LabelSize, cw: Float, ch: Float, cols: Int, count: Int): List<Pair<Float, Float>> {
+        val usedCols = minOf(cols, count)
+        val usedRows = (count + cols - 1) / cols
+        val gridW = usedCols * cw + (usedCols - 1) * GRID_GAP
+        val gridH = usedRows * ch + (usedRows - 1) * GRID_GAP
+        val left = (size.widthMm - gridW) / 2
+        val top = (size.heightMm - gridH) / 2
+        return (0 until count).map { i ->
+            val col = i % cols
+            val row = i / cols
+            (left + col * (cw + GRID_GAP) + cw / 2) to (top + row * (ch + GRID_GAP) + ch / 2)
+        }
+    }
+
+    /** Блок коду (з рамкою, підписом, плашкою) відносно центру: ширина й висота. */
+    private fun cell(qr: Element.Qr, tw: (String, Float) -> Float) = qr.bounds(tw).let { it.width to it.height }
+
+    /**
+     * Усі коди — сіткою по центру. Якщо не вміщаються — коди зменшуються, поки не влізуть. Текст і значки потім
+     * переїжджають на найближче вільне місце.
+     */
+    fun grid(design: LabelDesign, tw: (String, Float) -> Float): LabelDesign {
+        val codes = design.elements.filterIsInstance<Element.Qr>()
+        if (codes.isEmpty()) return design
+        var side = codes.maxOf { it.side }
+        while (true) {
+            val sample = codes.maxBy { qrBlockHeight(it.copy(side = side)) }.copy(side = side)
+            val (cw, ch) = cell(sample, tw)
+            val cols = fit(design.size.widthMm, cw)
+            val rows = fit(design.size.heightMm, ch)
+            if ((cols * rows >= codes.size && cols > 0) || side <= Element.MIN_QR) {
+                val pos = centres(design.size, cw, ch, maxOf(cols, 1), codes.size)
+                val placed = codes.mapIndexed { i, qr -> qr.copy(side = side, cx = pos[i].first, cy = pos[i].second) }.associateBy { it.id }
+                return settleOthers(design.copy(elements = design.elements.map { placed[it.id] ?: it }), tw)
+            }
+            side -= 1f
+        }
+    }
+
+    /** Заповнити наклейку копіями коду [qr] (інші коди прибираються). */
+    fun fill(design: LabelDesign, qr: Element.Qr, tw: (String, Float) -> Float): LabelDesign {
+        val (cw, ch) = cell(qr, tw)
+        val cols = fit(design.size.widthMm, cw)
+        val rows = fit(design.size.heightMm, ch)
+        val count = maxOf(1, cols * rows)
+        val pos = centres(design.size, cw, ch, maxOf(cols, 1), count)
+        var id = design.nextId
+        val copies = pos.mapIndexed { i, (x, y) -> (if (i == 0) qr else qr.copy(id = id++)).copy(cx = x, cy = y) }
+        return settleOthers(design.copy(elements = copies + design.elements.filter { it !is Element.Qr }), tw)
+    }
+
+    /** Текст і значки, що налізли на коди, — на найближче вільне місце (не вміщаються — лишаються, де були). */
+    private fun settleOthers(design: LabelDesign, tw: (String, Float) -> Float): LabelDesign {
+        var d = design
+        d.elements.filter { it !is Element.Qr }.forEach { e ->
+            if (!Placement.fits(d, e, tw)) Placement.nearestFree(d, e, tw)?.let { d = d.replace(it) }
+        }
+        return d
     }
 }

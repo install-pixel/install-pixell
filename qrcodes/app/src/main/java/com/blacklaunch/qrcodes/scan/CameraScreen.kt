@@ -25,7 +25,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -314,6 +319,25 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
         selected = if (ref in selected) selected - ref else selected + ref
     }
 
+    // Затиснув слово й ведеш — вибирається (або знімається) все від першого слова до того, що під пальцем.
+    val order = remember(state) { state.found.flatMapIndexed { li, line -> line.words.indices.map { WordRef(li, it) } } }
+    val drag = remember(state) { RangeDrag(order) }
+    fun startRange(ref: WordRef?) {
+        if (ref == null) return
+        haptics.longPress()
+        selected = drag.start(ref, selected)
+    }
+    fun moveRange(ref: WordRef?) {
+        val next = drag.move(ref) ?: return
+        if (next != selected) {
+            haptics.tick()
+            selected = next
+        }
+    }
+    // Де стоїть кожне слово-«табличка» у списку (для вибору пальцем і там).
+    val chipBounds = remember(state) { HashMap<WordRef, androidx.compose.ui.geometry.Rect>() }
+    var listOrigin by remember(state) { mutableStateOf(Offset.Zero) }
+
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
         Text(
             stringResource(if (state.found.isEmpty()) R.string.text_not_found else R.string.text_pick),
@@ -348,21 +372,11 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                     .fillMaxSize()
                     .pointerInput(state) { detectTapGestures { tap -> hit(tap)?.let(::toggle) } }
                     .pointerInput(state) {
-                        // Веди пальцем: перше слово вирішує — вибирати чи знімати; далі так само з кожним словом під пальцем.
-                        var adding = true
-                        detectDragGestures(
-                            onDragStart = { p ->
-                                val ref = hit(p)
-                                adding = ref == null || ref !in selected
-                                if (ref != null) selected = if (adding) selected + ref else selected - ref
-                            },
-                            onDrag = { change, _ ->
-                                val ref = hit(change.position)
-                                if (ref != null && (ref in selected) != adding) {
-                                    haptics.tick()
-                                    selected = if (adding) selected + ref else selected - ref
-                                }
-                            },
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { p -> startRange(hit(p)) },
+                            onDrag = { change, _ -> moveRange(hit(change.position)) },
+                            onDragEnd = { drag.end() },
+                            onDragCancel = { drag.end() },
                         )
                     },
             ) {
@@ -385,8 +399,31 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
             }
         }
         if (state.found.isNotEmpty()) {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 210.dp).padding(top = 10.dp)) {
-                items(state.found.size) { li ->
+            fun chipAt(p: Offset): WordRef? {
+                val abs = p + listOrigin
+                return chipBounds.entries.firstOrNull { it.value.inflate(4f).contains(abs) }?.key
+            }
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .padding(top = 10.dp)
+                    .verticalScroll(rememberScrollState())
+                    // Усередині прокрутки: після затискання тягнемо вибір, а не прокручуємо список.
+                    .onGloballyPositioned { listOrigin = it.positionInRoot() }
+                    .pointerInput(state) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { p -> startRange(chipAt(p)) },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                moveRange(chipAt(change.position))
+                            },
+                            onDragEnd = { drag.end() },
+                            onDragCancel = { drag.end() },
+                        )
+                    },
+            ) {
+                for (li in state.found.indices) {
                     val line = state.found[li]
                     val all = line.words.indices.all { WordRef(li, it) in selected }
                     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
@@ -422,6 +459,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(if (on) Oled.Confirm.copy(alpha = 0.18f) else Color.Transparent)
                                         .pencilFrame(10.dp, seed = li * 13 + wi, alpha = if (on) 0.9f else 0.3f, ink = if (on) Oled.Confirm else SheetInk)
+                                        .onGloballyPositioned { chipBounds[WordRef(li, wi)] = androidx.compose.ui.geometry.Rect(it.positionInRoot(), it.size.toSize()) }
                                         .clickable { toggle(WordRef(li, wi)) }
                                         .padding(horizontal = 9.dp, vertical = 5.dp),
                                 )

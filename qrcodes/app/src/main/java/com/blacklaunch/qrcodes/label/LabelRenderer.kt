@@ -36,25 +36,27 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Кольори наклейки. На екрані — як уся програма: чорний «аркуш», білий олівець, код на світлому папірці.
- * На папері — навпаки: біле тло, чорне чорнило (так читає будь-який сканер і друкує Zebra).
+ * Кольори наклейки. І на екрані, і на папері — біле тло й чорне чорнило: на чорному екрані аркуш видно цілком, з
+ * чіткими межами, і він виглядає точно так, як надрукується (так читає будь-який сканер і друкує Zebra).
  */
 data class LabelPalette(val paper: Int, val ink: Int, val qrTile: Int?, val qrDark: Int) {
     companion object {
-        val Screen = LabelPalette(paper = 0xFF000000.toInt(), ink = 0xFFEDEDED.toInt(), qrTile = 0xFFEDEDED.toInt(), qrDark = 0xFF000000.toInt())
+        val Screen = LabelPalette(paper = 0xFFF4F4F2.toInt(), ink = 0xFF111111.toInt(), qrTile = null, qrDark = 0xFF000000.toInt())
         val Print = LabelPalette(paper = 0xFFFFFFFF.toInt(), ink = 0xFF000000.toInt(), qrTile = null, qrDark = 0xFF000000.toInt())
     }
 }
 
 fun Sticker.glyph(): Glyph = when (this) {
-    Sticker.Camera -> Glyph.Photo
-    Sticker.Box -> Glyph.Box
-    Sticker.Arrow -> Glyph.Arrow
-    Sticker.Star -> Glyph.StarEmpty
     Sticker.Wifi -> Glyph.Wifi
-    Sticker.Warning -> Glyph.Warning
     Sticker.Phone -> Glyph.Phone
-    Sticker.Scan -> Glyph.ScanQr
+    Sticker.Link -> Glyph.Globe
+    Sticker.Download -> Glyph.Download
+    Sticker.Email -> Glyph.Mail
+    Sticker.Location -> Glyph.Pin
+    Sticker.Contact -> Glyph.Person
+    Sticker.ScanPhone -> Glyph.ScanPhone
+    Sticker.Smile -> Glyph.Smile
+    Sticker.Heart -> Glyph.Heart
 }
 
 /**
@@ -87,13 +89,18 @@ class LabelRenderer(private val hand: Typeface) {
     }
 
     private fun drawQrElement(canvas: Canvas, k: Float, e: Element.Qr, palette: LabelPalette, ink: Paint) {
+        val pad = framePad(e)
         val caption = captionArea(e)
+        val banner = bannerArea(e)
+        val blockW = (e.side + 2 * pad) * k
+        val blockH = qrBlockHeight(e) * k
+        val blockLeft = e.cx * k - blockW / 2
+        val blockTop = e.cy * k - blockH / 2
         val left = (e.cx - e.side / 2) * k
-        val top = (e.cy - (e.side + caption) / 2) * k
+        val top = qrTop(e) * k
         val side = e.side * k
         val m = matrix(e.content)
         palette.qrTile?.let { tile ->
-            // На екрані — світлий папірець під кодом (на чорному коду інакше не видно).
             val margin = if (m != null) side / m.size else 0f
             canvas.drawRoundRect(RectF(left - margin, top - margin, left + side + margin, top + side + margin), margin * 1.5f, margin * 1.5f, Paint().apply { color = tile; isAntiAlias = true })
         }
@@ -101,7 +108,7 @@ class LabelRenderer(private val hand: Typeface) {
         if (e.caption) {
             val letters = captionLetters(e.side)
             val text = TextPaint().apply { color = palette.ink; isAntiAlias = true; typeface = hand; textSize = letters * HAND_SCALE * k }
-            val width = ((e.side + letters * 4) * k).toInt().coerceAtLeast(1)
+            val width = ((e.side + letters * 2) * k).toInt().coerceAtLeast(1)
             val layout = StaticLayout.Builder.obtain(e.title, 0, e.title.length, text, width)
                 .setAlignment(Layout.Alignment.ALIGN_CENTER)
                 .setMaxLines(2)
@@ -114,15 +121,74 @@ class LabelRenderer(private val hand: Typeface) {
             layout.draw(canvas)
             canvas.restore()
         }
-        val pad = framePad(e) * k
-        if (e.frame != QrFrame.None) {
-            val w = side + 2 * pad
-            val h = side + caption * k + 2 * pad
-            pencil(canvas, left - pad, top - pad, w, h, pad * 1.6f, e.id * 7 + 3, k, 0.45f, ink)
-            if (e.frame == QrFrame.Double) {
-                val d = pad * 0.45f
-                pencil(canvas, left - pad + d, top - pad + d, w - 2 * d, h - 2 * d, pad * 1.1f, e.id * 7 + 104, k, 0.3f, ink)
+        val seed = e.id * 7 + 3
+        val radius = pad * 1.6f * k
+        when (e.frame) {
+            QrFrame.None -> Unit
+            QrFrame.Pencil -> pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
+            QrFrame.Double -> {
+                pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
+                val d = pad * 0.45f * k
+                pencil(canvas, blockLeft + d, blockTop + d, blockW - 2 * d, blockH - 2 * d, pad * 1.1f * k, seed + 101, k, 0.3f, ink)
             }
+            QrFrame.Dashed -> {
+                // Пунктир олівцем: той самий контур, порізаний на короткі штрихи (кожен загострений на кінцях).
+                val points = pencilLoop(Size(blockW, blockH), radius, seed, 0.3f * k).map { Offset(it.x + blockLeft, it.y + blockTop) }
+                val dash = (2.4f * k)
+                var run = ArrayList<Offset>()
+                var len = 0f
+                var draw = true
+                for (i in 1 until points.size) {
+                    val step = (points[i] - points[i - 1]).getDistance()
+                    if (draw) run.add(points[i - 1])
+                    len += step
+                    if (len >= dash * (if (draw) 1f else 0.7f)) {
+                        if (draw && run.size > 1) canvas.drawPath(taperedPath(run + points[i], 0.45f * k).asAndroidPath(), ink)
+                        run = ArrayList()
+                        len = 0f
+                        draw = !draw
+                    }
+                }
+            }
+            QrFrame.Corners -> {
+                // Лише кутики, як рамка видошукача.
+                val arm = minOf(blockW, blockH) * 0.22f
+                val r = radius * 0.6f
+                val corners = listOf(
+                    listOf(Offset(blockLeft, blockTop + arm), Offset(blockLeft, blockTop + r), Offset(blockLeft + r, blockTop), Offset(blockLeft + arm, blockTop)),
+                    listOf(Offset(blockLeft + blockW - arm, blockTop), Offset(blockLeft + blockW - r, blockTop), Offset(blockLeft + blockW, blockTop + r), Offset(blockLeft + blockW, blockTop + arm)),
+                    listOf(Offset(blockLeft + blockW, blockTop + blockH - arm), Offset(blockLeft + blockW, blockTop + blockH - r), Offset(blockLeft + blockW - r, blockTop + blockH), Offset(blockLeft + blockW - arm, blockTop + blockH)),
+                    listOf(Offset(blockLeft + arm, blockTop + blockH), Offset(blockLeft + r, blockTop + blockH), Offset(blockLeft, blockTop + blockH - r), Offset(blockLeft, blockTop + blockH - arm)),
+                )
+                corners.forEach { c -> canvas.drawPath(taperedPath(densify(c), 0.7f * k).asAndroidPath(), ink) }
+            }
+            QrFrame.ScanMe -> {
+                pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
+                // Плашка знизу: залита чорнилом, напис — кольором паперу, шрифтом від руки.
+                val bh = banner * k
+                val bTop = blockTop + blockH - pad * k - bh
+                val bRect = RectF(blockLeft + pad * k, bTop, blockLeft + blockW - pad * k, bTop + bh)
+                canvas.drawRoundRect(bRect, bh * 0.3f, bh * 0.3f, ink)
+                val tp = Paint().apply { color = palette.paper; isAntiAlias = true; typeface = hand; textAlign = Paint.Align.CENTER; textSize = bh * 0.62f }
+                var label = e.banner
+                // Довгий напис — дрібніше, щоб уліз у плашку.
+                val maxW = bRect.width() * 0.92f
+                val w = tp.measureText(label)
+                if (w > maxW) tp.textSize *= maxW / w
+                if (label.isEmpty()) label = " "
+                val fm = tp.fontMetrics
+                canvas.drawText(label, bRect.centerX(), bRect.centerY() - (fm.ascent + fm.descent) / 2f, tp)
+            }
+        }
+    }
+
+    /** Ламана, густо розбита на точки (щоб штрих рівно тоншав до кінців). */
+    private fun densify(corners: List<Offset>): List<Offset> = buildList {
+        add(corners.first())
+        for (i in 1 until corners.size) {
+            val a = corners[i - 1]
+            val b = corners[i]
+            for (s in 1..10) add(a + (b - a) * (s / 10f))
         }
     }
 

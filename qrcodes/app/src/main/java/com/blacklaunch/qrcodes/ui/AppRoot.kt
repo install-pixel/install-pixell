@@ -11,6 +11,12 @@ import android.os.PersistableBundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -153,8 +159,16 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
         scope.launch { pager.animateScrollToPage(0) }
     }
 
+    // Під меню, вікнами, камерою й друком — розмитий і притемнений фон, як у Black Glass.
+    val blur = backdropAmount(modeMenu || menuFor != null || renameFor != null || fullscreen != null || camera != null || labelFor != null)
+    // Останні значення лишаються, поки екран плавно зникає.
+    var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
+    camera?.let { lastCamera = it }
+    var lastLabel by remember { mutableStateOf<List<QrCode>>(emptyList()) }
+    labelFor?.let { lastLabel = it }
+
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+        Column(Modifier.fillMaxSize().backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
             PageTabs(pager.currentPage) { scope.launch { pager.animateScrollToPage(it) } }
             HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
                 when (page) {
@@ -177,7 +191,12 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
             }
         }
 
-        camera?.let { m ->
+        AnimatedVisibility(
+            visible = camera != null,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
+        ) {
+            val m = lastCamera
             CameraScreen(
                 scanQr = m == InputMode.ScanQr,
                 onResult = { text ->
@@ -194,8 +213,15 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
             )
         }
 
-        labelFor?.let { start ->
-            LabelScreen(start = start, saved = saved.orEmpty(), onClose = { labelFor = null })
+        AnimatedVisibility(
+            visible = labelFor != null,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
+        ) {
+            // Новий набір кодів — новий макет наклейки.
+            androidx.compose.runtime.key(lastLabel) {
+                LabelScreen(start = lastLabel, saved = saved.orEmpty(), onClose = { labelFor = null }, onMessage = { show(it) })
+            }
         }
 
         // Підказки — поверх усього (і камери), по центру.
