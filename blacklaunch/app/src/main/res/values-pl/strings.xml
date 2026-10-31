@@ -132,7 +132,7 @@
     <string name="group_calculator">Kalkulator</string>
     <string name="group_profiles">Profile</string>
     <string name="group_settings">Ustawienia</string>
-    <string name="group_shortcuts">Skróty aplikacji</string>
+    <string name="group_shortcuts">Akcje w aplikacjach</string>
     <string name="group_contacts">Kontakty</string>
     <string name="group_calendar">Kalendarz</string>
     <string name="group_sms">SMS</string>

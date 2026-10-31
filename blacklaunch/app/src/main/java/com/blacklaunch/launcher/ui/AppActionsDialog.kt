@@ -2,6 +2,8 @@ package com.blacklaunch.launcher.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.launcher.R
@@ -44,7 +47,8 @@ fun AppActionsDialog(
         onDismissRequest = onDismiss,
         title = { DialogTitle(app.label) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Пунктів може бути багато (ярлики програми) — список гортається, нижні не обрізаються.
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 onOpen?.let { open -> ActionOption(R.string.app_open, Icons.Filled.PlayArrow, Tone.Confirm) { onDismiss(); open() } }
                 shortcuts.forEach { (title, open) ->
                     ActionOption(title, Icons.Filled.Star) { open(); onDismiss() }

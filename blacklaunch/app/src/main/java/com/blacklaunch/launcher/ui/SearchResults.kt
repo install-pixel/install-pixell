@@ -62,11 +62,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
@@ -502,7 +506,23 @@ private fun GlobalRow(
         if (!sheet || result is GlobalResult.Calculation || media) Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             val title = if (result is GlobalResult.AppSetting) stringResource(result.kind.title(), result.appLabel) else result.title
-            Text(title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Дія всередині програми (ярлик, її налаштування) — не сама програма: стрілочка «↳» і трохи дрібніше,
+            // щоб не плутати з рядком програми.
+            val inApp = result is GlobalResult.Shortcut || result is GlobalResult.AppSetting
+            Text(
+                if (inApp) {
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = Oled.TextSecondary)) { append("↳ ") }
+                        append(title)
+                    }
+                } else {
+                    AnnotatedString(title)
+                },
+                color = Oled.TextPrimary,
+                fontSize = if (inApp) 16.sp else 18.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             result.subtitle?.let {
                 Text(it, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
