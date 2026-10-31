@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="34" android:translateY="34">
+        <path android:strokeColor="#EDEDED" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M1.5,2.2 L15.6,1.6 L16.2,15.8 L1.8,16.1 Z" />
+        <path android:fillColor="#EDEDED" android:pathData="M6,6.2 L11.6,5.9 L11.8,11.6 L6.1,11.8 Z" />
+        <path android:strokeColor="#EDEDED" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M24,1.8 L38.2,2.1 L38.4,16 L24.2,15.7 Z" />
+        <path android:fillColor="#EDEDED" android:pathData="M28.5,6 L34.1,6.2 L34,11.8 L28.4,11.6 Z" />
+        <path android:strokeColor="#EDEDED" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M1.9,24.1 L16,24.4 L15.7,38.3 L1.6,38 Z" />
+        <path android:fillColor="#EDEDED" android:pathData="M6.2,28.6 L11.8,28.4 L11.7,34.1 L6.1,33.9 Z" />
+        <path android:strokeColor="#EDEDED" android:strokeWidth="2.6" android:strokeLineCap="round"
+            android:pathData="M24.5,25 L30,24.6 M33.5,25.2 L38,25 M24.2,31.5 L24.6,38 M29.5,30.5 L37.8,30.8 M31,35.5 L38.2,37.6" />
+    </group>
+</vector>
