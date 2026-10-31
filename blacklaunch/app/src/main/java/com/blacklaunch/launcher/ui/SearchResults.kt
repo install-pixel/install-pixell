@@ -10,6 +10,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -153,6 +154,8 @@ fun SearchResults(
         state = reportingListState(onContentHeight),
         reverseLayout = true,
         verticalArrangement = Arrangement.Bottom,
+        // Відступ від країв — щоб розмитий край (над полем пошуку й згори) не притемнював рядки в спокої.
+        contentPadding = EdgePadding,
     ) {
         // Панель вибору — у самому низу, під пальцем.
         if (selected.isNotEmpty()) item(key = "selection") {
@@ -224,7 +227,7 @@ private fun EmptySearch(
         AllAppsList(allApps, privateSpace, onTogglePrivate, iconFor, onLaunch, onLongPress, onHide = { showAll = false }, modifier = modifier)
         return
     }
-    LazyColumn(modifier = modifier, state = reportingListState(onContentHeight), reverseLayout = true, verticalArrangement = Arrangement.Bottom) {
+    LazyColumn(modifier = modifier, state = reportingListState(onContentHeight), reverseLayout = true, verticalArrangement = Arrangement.Bottom, contentPadding = EdgePadding) {
         // Видно два останні запити; решту (до 5) — гортанням у цьому ж блоці.
         if (recent.isNotEmpty()) item(key = "recent") {
             LazyColumn(
@@ -323,7 +326,7 @@ private fun AllAppsList(
     // Програми приватного простору — окремим блоком унизу, як у системному лаунчері.
     val (privateApps, apps) = remember(allApps, privateSpace) { allApps.partition { it.userSerial == privateSpace?.userSerial } }
     val sections = remember(apps) { apps.groupBy { it.label.firstOrNull()?.uppercaseChar() ?: '#' } }
-    LazyColumn(modifier = modifier) {
+    LazyColumn(modifier = modifier, contentPadding = EdgePadding) {
         item(key = "all:back") {
             Row(
                 modifier = Modifier
@@ -380,6 +383,9 @@ private fun AllAppsList(
 }
 
 private const val SUGGESTION_COLUMNS = 4
+
+/** Відступ списку від верхнього й нижнього країв (під розмитий край). */
+private val EdgePadding = PaddingValues(vertical = EdgeFade / 2)
 
 private val RecentRowHeight = 56.dp
 
