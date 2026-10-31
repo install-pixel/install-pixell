@@ -33,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -272,7 +271,7 @@ fun SettingsScreen(
                 MenuRow(Icons.Filled.PlayArrow, R.string.custom_commands_title, R.string.custom_commands_menu_hint) {
                     onNavigate(SettingsNav.CustomCommands)
                 }
-                MenuRow(painterResource(R.drawable.ic_mic), R.string.builtin_commands_title, R.string.builtin_commands_hint) {
+                MenuRow(Glyph.MIC, R.string.builtin_commands_title, R.string.builtin_commands_hint) {
                     onNavigate(SettingsNav.VoiceActions)
                 }
                 MenuRow(Icons.Filled.Settings, R.string.recognition_title, R.string.recognition_hint) {
@@ -445,16 +444,16 @@ fun SettingsScreen(
                 MenuRow(Icons.Filled.Done, R.string.presets_title, R.string.presets_menu_hint) { onNavigate(SettingsNav.Presets) }
                 MenuRow(Icons.Filled.Home, R.string.section_home, R.string.section_home_hint) { onNavigate(SettingsNav.HomeScreen) }
                 MenuRow(Icons.Filled.Person, R.string.settings_profiles, R.string.section_profiles_hint) { onNavigate(SettingsNav.Profiles) }
-                MenuRow(painterResource(R.drawable.ic_timer), R.string.wb_title, R.string.wb_menu_hint) { onNavigate(SettingsNav.Wellbeing) }
+                MenuRow(Glyph.TIMER, R.string.wb_title, R.string.wb_menu_hint) { onNavigate(SettingsNav.Wellbeing) }
                 MenuRow(Icons.Filled.Star, R.string.games_title, R.string.games_menu_hint) { onNavigate(SettingsNav.Games) }
-                MenuRow(painterResource(R.drawable.ic_palette), R.string.section_appearance, R.string.section_appearance_hint) {
+                MenuRow(Glyph.PALETTE, R.string.section_appearance, R.string.section_appearance_hint) {
                     onNavigate(SettingsNav.Appearance)
                 }
                 MenuRow(Icons.Filled.Search, R.string.section_search, R.string.section_search_hint) { onNavigate(SettingsNav.Search) }
-                MenuRow(painterResource(R.drawable.ic_mic), R.string.section_voice, R.string.section_voice_hint) {
+                MenuRow(Glyph.MIC, R.string.section_voice, R.string.section_voice_hint) {
                     onNavigate(SettingsNav.Voice)
                 }
-                MenuRow(painterResource(R.drawable.ic_battery), R.string.battery_section, R.string.section_battery_hint) {
+                MenuRow(Glyph.BATTERY, R.string.battery_section, R.string.section_battery_hint) {
                     onNavigate(SettingsNav.Battery)
                 }
                 MenuRow(Icons.Filled.Info, R.string.section_monitor, R.string.section_monitor_hint) { onNavigate(SettingsNav.Monitor) }

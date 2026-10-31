@@ -15,7 +15,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -105,7 +103,7 @@ fun SearchField(
                         TextButton(onClick = { haptics.tap(); onClear() }) { Text(stringResource(R.string.clear), color = Oled.TextSecondary) }
                     } else {
                         IconButton(onClick = { haptics.tap(); onClear() }) {
-                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
+                            HandIcon(Icons.Filled.Close, contentDescription = stringResource(R.string.clear), tint = Oled.TextSecondary)
                         }
                     }
                 }
@@ -143,8 +141,8 @@ private fun MicButton(listening: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         IconButton(onClick = { haptics.tap(); onClick() }, modifier = Modifier.padding(4.dp)) {
-            Icon(
-                painter = painterResource(R.drawable.ic_mic),
+            HandGlyph(
+                Glyph.MIC,
                 contentDescription = stringResource(if (listening) R.string.voice_stop else R.string.voice_search),
                 tint = if (listening) (if (LocalSheet.current) Oled.Listening else Color.White) else Oled.Accent,
             )

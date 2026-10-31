@@ -20,7 +20,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.currentCompositeKeyHash
@@ -32,9 +31,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -252,7 +249,7 @@ internal fun ActionOption(label: String, icon: ImageVector, tone: Tone, onClick:
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = if (tone == Tone.Neutral) Oled.TextSecondary else tone.color(), modifier = Modifier.size(18.dp))
+        HandIcon(icon, contentDescription = null, tint = if (tone == Tone.Neutral) Oled.TextSecondary else tone.color(), modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(12.dp))
         Text(label, color = tone.color(), fontSize = 16.sp)
     }
@@ -261,10 +258,14 @@ internal fun ActionOption(label: String, icon: ImageVector, tone: Tone, onClick:
 /** Пункт меню налаштувань: значок, назва, коротке пояснення, стрілка. */
 @Composable
 internal fun MenuRow(icon: ImageVector, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) =
-    MenuRow(rememberVectorPainter(icon), title, hint, onClick)
+    MenuRow({ m -> HandIcon(icon, null, m, Oled.TextSecondary) }, title, hint, onClick)
 
 @Composable
-internal fun MenuRow(icon: Painter, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) {
+internal fun MenuRow(icon: Glyph, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) =
+    MenuRow({ m -> HandGlyph(icon, null, m, Oled.TextSecondary) }, title, hint, onClick)
+
+@Composable
+private fun MenuRow(icon: @Composable (Modifier) -> Unit, @StringRes title: Int, @StringRes hint: Int?, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     // «Аркуш»: пункти меню — просто написані рядки зі стрілкою, без значків.
@@ -289,7 +290,7 @@ internal fun MenuRow(icon: Painter, @StringRes title: Int, @StringRes hint: Int?
             .padding(horizontal = 6.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Oled.TextSecondary, modifier = Modifier.size(22.dp))
+        icon(Modifier.size(22.dp))
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(stringResource(title), color = Oled.TextPrimary, fontSize = 17.sp)

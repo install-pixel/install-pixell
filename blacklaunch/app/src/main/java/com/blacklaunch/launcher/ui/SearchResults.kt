@@ -41,7 +41,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -289,7 +288,7 @@ private fun EmptySearch(
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                LeadingIcon { Icon(Icons.Filled.Menu, contentDescription = null, tint = Oled.TextSecondary) }
+                LeadingIcon { HandIcon(Icons.Filled.Menu, contentDescription = null, tint = Oled.TextSecondary) }
                 Text(stringResource(R.string.all_apps, allApps.size) + if (LocalSheet.current) "  →" else "", color = Oled.TextSecondary, fontSize = 16.sp)
             }
         }
@@ -336,7 +335,7 @@ private fun AllAppsList(
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                LeadingIcon { Icon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextSecondary) }
+                LeadingIcon { HandIcon(Icons.Filled.Close, contentDescription = null, tint = Oled.TextSecondary) }
                 Text((if (LocalSheet.current) "← " else "") + stringResource(R.string.all_apps, apps.size), color = Oled.TextPrimary, fontSize = 16.sp)
             }
         }
@@ -364,7 +363,7 @@ private fun AllAppsList(
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    LeadingIcon { Icon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary) }
+                    LeadingIcon { HandIcon(Icons.Filled.Lock, contentDescription = null, tint = Oled.TextSecondary) }
                     Text(stringResource(R.string.private_space), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
                     Text(
                         stringResource(if (privateSpace.locked) R.string.private_space_unlock else R.string.private_space_lock),
@@ -410,7 +409,7 @@ private fun RecentRow(text: String, onRecent: (String) -> Unit, onRemoveRecent: 
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LeadingIcon { Icon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary) }
+        LeadingIcon { HandIcon(Icons.Filled.Refresh, contentDescription = null, tint = Oled.TextSecondary) }
         Text(text, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -505,9 +504,9 @@ private fun GlobalRow(
                 val thumb by produceState<ImageBitmap?>(null, result.uri) { value = thumbFor(result.uri) }
                 thumb?.let {
                     Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)))
-                } ?: Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
+                } ?: HandIcon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
             } else {
-                Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
+                HandIcon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
             }
         }
         if (!sheet || result is GlobalResult.Calculation || media) Spacer(Modifier.width(16.dp))
@@ -556,7 +555,7 @@ private fun RowButton(@StringRes label: Int, icon: ImageVector, onClick: () -> U
     if (LocalSheet.current) {
         TextButton(onClick = onClick) { Text(stringResource(label), color = Oled.TextPrimary, fontSize = 16.sp) }
     } else {
-        IconButton(onClick = onClick) { Icon(icon, contentDescription = stringResource(label), tint = Oled.TextPrimary) }
+        IconButton(onClick = onClick) { HandIcon(icon, contentDescription = stringResource(label), tint = Oled.TextPrimary) }
     }
 }
 
@@ -606,9 +605,9 @@ private fun ThumbRow(
                 contentAlignment = Alignment.Center,
             ) {
                 thumb?.let { Image(it, contentDescription = result.title, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize()) }
-                    ?: Icon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
+                    ?: HandIcon(result.icon(), contentDescription = null, tint = Oled.TextSecondary)
                 if (isSelected) {
-                    Icon(
+                    HandIcon(
                         Icons.Filled.CheckCircle,
                         contentDescription = stringResource(R.string.selected),
                         tint = Oled.TextPrimary,
@@ -655,7 +654,7 @@ private fun CommandRow(icon: ImageVector, title: String, subtitle: String?, onCl
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LeadingIcon { Icon(icon, contentDescription = null, tint = Oled.TextPrimary) }
+        LeadingIcon { HandIcon(icon, contentDescription = null, tint = Oled.TextPrimary) }
         Column(Modifier.weight(1f)) {
             Text(title, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             subtitle?.let {

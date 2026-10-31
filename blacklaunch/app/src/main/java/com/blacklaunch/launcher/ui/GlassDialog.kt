@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -127,7 +126,7 @@ fun DialogButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, e
         horizontalArrangement = Arrangement.Center,
     ) {
         if (tone == Tone.Confirm && !sheet) {
-            Icon(Icons.Filled.Check, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            HandIcon(Icons.Filled.Check, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }
         Text(text, color = color, fontSize = 15.sp, textAlign = TextAlign.Center)
