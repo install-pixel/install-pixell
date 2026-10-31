@@ -311,7 +311,6 @@
     <string name="contact_call">Подзвонити</string>
     <string name="contact_message">Написати</string>
     <string name="glance_alarm">Будильник %1$s</string>
-    <string name="glance_battery">%1$d%%</string>
     <string name="glance_title">Короткий огляд</string>
     <string name="glance_subtitle">Дата, найближчий будильник, подія й батарея вгорі головного екрана</string>
     <string name="all_apps_button_title">Кнопка «Усі програми»</string>

@@ -51,8 +51,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -85,7 +83,6 @@ import kotlinx.coroutines.withContext
 private val Warm = Color(0xFFC9956A)
 private val Track = Color(0x1FFFFFFF)
 /** Розряджені поділки шкали — рівні й помітні, щоб не здавалось, ніби частину кола щось закриває. */
-private val DialTrack = Color(0x40FFFFFF)
 
 /** Наш шрифт, але цифри однакової ширини — щоб значення не «стрибали» щосекунди. */
 @Composable
@@ -199,20 +196,29 @@ internal fun MonitorScreen(
         }
 
         if (MonitorTile.BATTERY in tiles) {
-            Box(
-                Modifier.size(176.dp).align(Alignment.CenterHorizontally).clip(RoundedCornerShape(88.dp)).clickable { detail = Detail.BATTERY },
-                contentAlignment = Alignment.Center,
+            // Велика батарея (як в огляді: олівцем в «Аркуші», металева у склі), під нею — заряд і струм.
+            val wave = if (s.battery.charging) {
+                rememberInfiniteTransition(label = "charge")
+                    .animateFloat(0f, 1f, infiniteRepeatable(tween(CHARGE_WAVE_MS, easing = LinearEasing)), label = "wave").value
+            } else {
+                -1f
+            }
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable { detail = Detail.BATTERY }.padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                BatteryDial(s.battery.percent / 100f, s.battery.charging, accent, Modifier.fillMaxSize())
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BatteryGauge(s.battery.percent, Modifier.size(width = 228.dp, height = 96.dp), wave)
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
                     Text("${s.battery.percent}%", style = num(40.sp, Oled.TextPrimary, FontWeight.ExtraLight))
-                    currentText?.let { Text(it, style = num(12.sp, accent)) }
-                    Text(stateText, style = num(11.sp, Oled.TextSecondary))
+                    Column(Modifier.padding(start = 12.dp, bottom = 6.dp)) {
+                        currentText?.let { Text(it, style = num(12.sp, accent)) }
+                        Text(stateText, style = num(11.sp, Oled.TextSecondary))
+                    }
                 }
             }
         }
 
-        // Батарея — одразу під шкалою: напруга й потужність, графік струму, мін/сер/макс.
+        // Батарея — одразу під батарейкою: напруга й потужність, графік струму, мін/сер/макс.
         // Картка є з першого знімка, щоб не з'являлась пізніше й не зсувала все вниз; графік домалюється.
         if (MonitorTile.CURRENT_GRAPH in tiles && currentHistory.isNotEmpty()) {
             val minText = stringResource(R.string.mon_u_ma, signed(currentHistory.min().roundToInt()))
@@ -566,57 +572,6 @@ private fun PhoneGlyph(color: Color, modifier: Modifier) {
     }
 }
 
-/** Шкала батареї з поділками: світлі — заряд, тьмяні — розряджена частина; під час заряджання світлом біжить хвиля. */
-@Composable
-private fun BatteryDial(battery: Float, charging: Boolean, accent: Color, modifier: Modifier) {
-    // Хвиля — лише поки заряджається й екран на виду (анімація не йде у фоні).
-    val wave = if (charging) {
-        rememberInfiniteTransition(label = "charge")
-            .animateFloat(0f, 1f, infiniteRepeatable(tween(CHARGE_WAVE_MS, easing = LinearEasing)), label = "wave").value
-    } else {
-        -1f
-    }
-    val sheet = LocalSheet.current
-    Canvas(modifier) {
-        val r = size.minDimension / 2
-        val c = Offset(size.width / 2, size.height / 2)
-        val lit = (battery * TICKS).roundToInt()
-        // «Аркуш»: поділки — штрихи олівцем (без світіння), коло всередині — намальоване від руки.
-        if (sheet) {
-            repeat(TICKS) { i ->
-                val boost = if (wave >= 0f && i < lit) (1f - abs(i - wave * (lit + WAVE_TAIL)) / WAVE_TAIL).coerceIn(0f, 1f) else 0f
-                val tint = if (i < lit) lerp(accent, Color.White, 0.6f * boost) else DialTrack
-                val angle = (i * 360f / TICKS - 90f) * (Math.PI.toFloat() / 180f)
-                val dir = Offset(kotlin.math.cos(angle), kotlin.math.sin(angle))
-                val outer = r - 3.dp.toPx()
-                val inner = r - (if (i % 5 == 0) 14.dp else 10.dp).toPx()
-                pencilTick(c + dir * outer, c + dir * inner, if (i < lit) 2.4.dp.toPx() else 1.5.dp.toPx(), tint, i)
-            }
-            val ring = r - 22.dp.toPx()
-            if (ring > 0f) {
-                translate(c.x - ring, c.y - ring) {
-                    drawPath(taperedPath(pencilLoop(Size(ring * 2, ring * 2), ring, 73, 1.2.dp.toPx()), 1.6.dp.toPx()), Track)
-                }
-            }
-            return@Canvas
-        }
-        repeat(TICKS) { i ->
-            // Неон: тонка світла лінія над м'яким світінням; колір плавно світлішає вздовж кола.
-            // Яскравість хвилі на цій поділці: найсильніше в її центрі, згасає за ~4 поділки.
-            val boost = if (wave >= 0f && i < lit) (1f - abs(i - wave * (lit + WAVE_TAIL)) / WAVE_TAIL).coerceIn(0f, 1f) else 0f
-            val tint = lerp(lerp(accent, Color.White, 0.35f * i / TICKS), Color.White, 0.6f * boost)
-            rotate(i * 360f / TICKS, c) {
-                val start = Offset(c.x, c.y - r + 3.dp.toPx())
-                val end = Offset(c.x, c.y - r + (if (i % 5 == 0) 13.dp else 9.dp).toPx())
-                if (i < lit) drawLine(tint.copy(alpha = 0.22f + 0.4f * boost), start, end, strokeWidth = (5f + 3f * boost).dp.toPx(), cap = StrokeCap.Round)
-                drawLine(if (i < lit) tint else DialTrack, start, end, strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round)
-            }
-        }
-        // Тонке скляне коло навколо цифр.
-        drawCircle(Track, r - 22.dp.toPx(), c, style = Stroke(1.dp.toPx()))
-    }
-}
-
 /** Лінія з м'якою заливкою під нею; [range] — фіксовані межі (інакше від найменшого до найбільшого). */
 @Composable
 private fun Sparkline(values: List<Float>, color: Color, range: Pair<Float, Float>?, modifier: Modifier) {
@@ -711,8 +666,6 @@ private fun healthLabel(health: Int): Int? = when (health) {
 private const val REFRESH_MS = 2_000L
 private const val USAGE_EVERY = 15
 private const val HISTORY = 150
-private const val TICKS = 60
 private const val SEGMENTS = 20
 private const val LONG_VALUE = 11
 private const val CHARGE_WAVE_MS = 2_200
-private const val WAVE_TAIL = 4f

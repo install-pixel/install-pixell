@@ -516,7 +516,7 @@ private fun HomeIdle(
             reservedTop = when {
                 glance != null -> GlanceSpace + ((if (showProfileLabel) GlanceProfileLine else 0.dp) +
                     (if (glance.time != null) GlanceClockLine else 0.dp) +
-                    (if (LocalSheet.current && glance.battery != null) GlanceBatteryLine else 0.dp)) * fontScale
+                    (if (glance.battery != null) GlanceBatteryLine else 0.dp)) * fontScale
                 showProfileLabel -> ProfileLabelSpace * fontScale
                 else -> 0.dp
             },
@@ -561,15 +561,9 @@ private fun HomeIdle(
                 }
                 glance.time?.let { Text(it, color = Oled.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Light) }
                 Text(glance.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                if (LocalSheet.current) {
-                    // «Аркуш»: батарейка намальована (пальчикова, з поділками), під нею — відсотки.
-                    if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)
-                    glance.battery?.let { HandBattery(it, Modifier.padding(top = 8.dp)) }
-                } else {
-                    val batteryText = glance.battery?.let { stringResource(R.string.glance_battery, it) }
-                    val details = listOfNotNull(glance.details.takeIf { it.isNotEmpty() }, batteryText).joinToString("  ·  ")
-                    if (details.isNotEmpty()) Text(details, color = Oled.TextSecondary, fontSize = 13.sp)
-                }
+                // Батарейка намальована (у «Аркуші» — олівцем, у склі — металева), під нею — відсотки.
+                if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)
+                glance.battery?.let { HandBattery(it, Modifier.padding(top = 8.dp)) }
             }
         }
         // Під час перетягування вгорі зона «Прибрати» — плашку ховаємо, щоб не накладались.

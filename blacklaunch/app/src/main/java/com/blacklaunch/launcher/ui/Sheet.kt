@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -41,8 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -55,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.R
 import com.blacklaunch.launcher.ui.theme.Oled
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
@@ -307,24 +311,40 @@ internal fun DrawScope.pencilTick(a: Offset, b: Offset, width: Float, color: Col
  * «Аркуш»: батарейка, намальована олівцем, — як пальчикова: корпус, «носик», усередині рядок рисок (заповнені — скільки
  * заряду, решта ледь видно; мало заряду — червоні), під нею — відсотки.
  */
+/** Батарейка огляду з відсотками під нею: в «Аркуші» — намальована олівцем, у склі — металева. */
 @Composable
 internal fun HandBattery(level: Int, modifier: Modifier = Modifier) {
     val low = level <= LOW_BATTERY
-    val ink = if (low) Oled.Danger else SheetInk
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(Modifier.size(width = 64.dp, height = 28.dp)) {
-            val nubW = 5.dp.toPx()
-            val bodyW = size.width - nubW - 1.dp.toPx()
-            val bodyH = size.height
-            drawPath(taperedPath(pencilLoop(Size(bodyW, bodyH), 6.dp.toPx(), 83, 0.6.dp.toPx()), 2.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-            // «Носик» праворуч.
+        BatteryGauge(level, Modifier.size(width = 64.dp, height = 28.dp))
+        Text("$level%", color = if (low) Oled.Danger else Oled.TextSecondary, fontSize = 13.sp)
+    }
+}
+
+/**
+ * Батарейка з десятьма поділками (заповнені — скільки заряду), малюється на весь розмір [modifier] (пропорції ≈ 64×28).
+ * «Аркуш» — контур і штрихи олівцем; скло — металева рамка з відблиском, усередині чорне скло і світні поділки.
+ * [wave] від 0 до 1 — світло, що біжить поділками під час заряджання (−1 — без нього).
+ */
+@Composable
+internal fun BatteryGauge(level: Int, modifier: Modifier, wave: Float = -1f) {
+    val sheet = LocalSheet.current
+    val low = level <= LOW_BATTERY
+    Canvas(modifier) {
+        val k = size.height / 28.dp.toPx()
+        val nubW = 5.dp.toPx() * k
+        val bodyW = size.width - nubW - 1.dp.toPx() * k
+        val bodyH = size.height
+        val filled = ((level + 5) / 10).coerceIn(if (level > 0) 1 else 0, BATTERY_TICKS)
+        fun boost(i: Int) = if (wave >= 0f && i < filled) (1f - abs(i - wave * (filled + 3f)) / 3f).coerceIn(0f, 1f) else 0f
+        if (sheet) {
+            val ink = if (low) Oled.Danger else SheetInk
+            drawPath(taperedPath(pencilLoop(Size(bodyW, bodyH), 6.dp.toPx() * k, 83, 0.6.dp.toPx() * k), 2.dp.toPx() * k.coerceAtMost(1.6f)), SheetInk.copy(alpha = 0.85f))
             val nubH = bodyH * 0.42f
-            translate(bodyW + 1.dp.toPx(), (bodyH - nubH) / 2f) {
-                drawPath(taperedPath(pencilLoop(Size(nubW, nubH), 2.dp.toPx(), 89, 0.3.dp.toPx()), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+            translate(bodyW + 1.dp.toPx() * k, (bodyH - nubH) / 2f) {
+                drawPath(taperedPath(pencilLoop(Size(nubW, nubH), 2.dp.toPx() * k, 89, 0.3.dp.toPx() * k), 1.6.dp.toPx() * k.coerceAtMost(1.6f)), SheetInk.copy(alpha = 0.85f))
             }
-            // Поділки всередині: заповнені — скільки заряду.
-            val pad = 5.dp.toPx()
-            val filled = ((level + 5) / 10).coerceIn(if (level > 0) 1 else 0, BATTERY_TICKS)
+            val pad = 5.dp.toPx() * k
             val step = (bodyW - 2 * pad) / BATTERY_TICKS
             repeat(BATTERY_TICKS) { i ->
                 val x = pad + step * (i + 0.5f)
@@ -333,15 +353,69 @@ internal fun HandBattery(level: Int, modifier: Modifier = Modifier) {
                 pencilTick(
                     Offset(x - lean, bodyH - pad),
                     Offset(x + lean, pad),
-                    if (on) 2.4.dp.toPx() else 1.2.dp.toPx(),
-                    if (on) ink else SheetInk.copy(alpha = 0.2f),
+                    (if (on) 2.4.dp.toPx() else 1.2.dp.toPx()) * k.coerceAtMost(1.8f),
+                    if (on) lerp(ink, Color.White, 0.5f * boost(i)) else SheetInk.copy(alpha = 0.2f),
                     i + 7,
                 )
             }
+            return@Canvas
         }
-        Text("$level%", color = if (low) Oled.Danger else Oled.TextSecondary, fontSize = 13.sp)
+        // Скло: металева рамка (світла вгорі, темніша посередині, з відбитим світлом унизу).
+        val radius = CornerRadius(bodyH * 0.26f)
+        drawRoundRect(metalBrush(bodyH), Offset.Zero, Size(bodyW, bodyH), radius)
+        val nubH = bodyH * 0.42f
+        drawRoundRect(
+            metalBrush(bodyH, top = (bodyH - nubH) / 2f, height = nubH),
+            Offset(bodyW + 0.6.dp.toPx() * k, (bodyH - nubH) / 2f),
+            Size(nubW, nubH),
+            CornerRadius(nubW * 0.45f),
+        )
+        // Усередині — чорне скло.
+        val wall = bodyH * 0.13f
+        val cavity = Size(bodyW - wall * 2, bodyH - wall * 2)
+        val inner = CornerRadius(radius.x - wall * 0.7f)
+        drawRoundRect(Brush.verticalGradient(listOf(Color(0xFF020202), Color(0xFF151515)), wall, bodyH - wall), Offset(wall, wall), cavity, inner)
+        // Поділки: світні (заряд), ледь помітні (розряджена частина).
+        val gap = cavity.height * 0.14f
+        val cellW = (cavity.width - gap * (BATTERY_TICKS + 1)) / BATTERY_TICKS
+        val cellH = cavity.height - gap * 2
+        val lit = if (low) Oled.Danger else Color.White
+        repeat(BATTERY_TICKS) { i ->
+            val x = wall + gap + i * (cellW + gap)
+            val topLeft = Offset(x, wall + gap)
+            val cell = Size(cellW, cellH)
+            val r = CornerRadius(cellW * 0.3f)
+            if (i < filled) {
+                val b = boost(i)
+                val glow = gap * 0.45f
+                drawRoundRect(lit.copy(alpha = 0.1f + 0.3f * b), topLeft - Offset(glow, glow), Size(cellW + glow * 2, cellH + glow * 2), CornerRadius(r.x + glow))
+                drawRoundRect(
+                    Brush.verticalGradient(listOf(lit, lerp(lit, Color.Black, 0.28f - 0.2f * b)), topLeft.y, topLeft.y + cellH),
+                    topLeft, cell, r,
+                )
+            } else {
+                drawRoundRect(Color(0x14FFFFFF), topLeft, cell, r)
+            }
+        }
+        // Відблиск скла на верхній половині та тонкий кант рамки.
+        drawRoundRect(
+            Brush.verticalGradient(listOf(Color(0x30FFFFFF), Color.Transparent), wall, wall + cavity.height * 0.5f),
+            Offset(wall, wall), Size(cavity.width, cavity.height * 0.5f), inner,
+        )
+        drawRoundRect(Color(0x66FFFFFF), Offset(0.5f, 0.5f), Size(bodyW - 1f, bodyH - 1f), radius, style = Stroke(1f))
     }
 }
+
+/** Метал: світлий край угорі, темна смуга нижче середини, відбите світло біля низу. */
+private fun metalBrush(h: Float, top: Float = 0f, height: Float = h) = Brush.verticalGradient(
+    0f to Color(0xFFF2F2F2),
+    0.18f to Color(0xFFB9B9B9),
+    0.5f to Color(0xFF5E5E5E),
+    0.78f to Color(0xFF2E2E2E),
+    1f to Color(0xFF9A9A9A),
+    startY = top,
+    endY = top + height,
+)
 
 private const val BATTERY_TICKS = 10
 private const val LOW_BATTERY = 15
