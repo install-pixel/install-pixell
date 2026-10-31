@@ -75,6 +75,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
@@ -85,6 +86,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -140,6 +143,11 @@ private val HOME_BLUR = 10.dp
 private const val HOME_DIM = 0.7f
 /** Скільки чекати, поки клавіатура сховається, перш ніж панель поїде вниз. */
 private const val IME_WAIT_MS = 600L
+/** Меню програми з'являється, коли клавіатура вже з'їхала. */
+private const val MENU_AFTER_KEYBOARD_MS = 220L
+/** Меню закрили — клавіатура повертається трохи згодом (щоб меню встигло зникнути). */
+private const val KEYBOARD_BACK_DELAY_MS = 120L
+private const val KEYBOARD_BACK_WAIT_MS = 700L
 /** За скільки фон проясняється, коли пошук закривається. */
 private const val BLUR_FADE_MS = 420
 /** Гумка вгору: наскільки туго й наскільки далеко панель піддається. */
@@ -905,9 +913,39 @@ private fun SearchOpen(
     val imeVisible = WindowInsets.isImeVisible
     // Скільки місця займала клавіатура над панеллю навігації — запам'ятовуємо, поки меню не відкрите.
     val navBottom = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    // Меню програми: клавіатура спершу плавно з'їжджає (сама, системною анімацією), і лише тоді — меню; закрили меню —
+    // клавіатура так само плавно повертається. Увесь цей час місце під неї тримається — поле й список не стрибають.
+    var hidingForMenu by remember { mutableStateOf(false) }
+    val holdSpace = holdKeyboardSpace || hidingForMenu
     var heldKeyboard by remember { mutableStateOf(0.dp) }
-    if (!holdKeyboardSpace) heldKeyboard = with(LocalDensity.current) { (imeNow.value - navBottom).coerceAtLeast(0).toDp() }
+    if (!holdSpace) heldKeyboard = with(LocalDensity.current) { (imeNow.value - navBottom).coerceAtLeast(0).toDp() }
+    val activity = LocalContext.current as? android.app.Activity
+    val insetsController = remember(activity, view) { activity?.window?.let { WindowCompat.getInsetsController(it, view) } }
+    val showMenu by rememberUpdatedState(onLongPress)
+    fun openMenuSmoothly(target: AppInfo) {
+        if (imeNow.value > 0 && insetsController != null) {
+            hidingForMenu = true
+            insetsController.hide(WindowInsetsCompat.Type.ime())
+            scope.launch {
+                delay(MENU_AFTER_KEYBOARD_MS)
+                showMenu(target)
+            }
+        } else {
+            showMenu(target)
+        }
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val heldPx = with(LocalDensity.current) { heldKeyboard.toPx() }
+    LaunchedEffect(holdKeyboardSpace) {
+        if (holdKeyboardSpace || !hidingForMenu) return@LaunchedEffect
+        // Меню закрили: повертаємо клавіатуру, якщо ми ще тут (не пішли в програму), і тримаємо місце, доки вона не стане на місце.
+        delay(KEYBOARD_BACK_DELAY_MS)
+        if (visible && !closing && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            insetsController?.show(WindowInsetsCompat.Type.ime())
+            withTimeoutOrNull(KEYBOARD_BACK_WAIT_MS) { snapshotFlow { imeNow.value - navBottom >= heldPx - 2f }.first { it } }
+        }
+        hidingForMenu = false
+    }
     var fieldFocused by remember { mutableStateOf(false) }
     // Пішли в іншу програму — ховаємо клавіатуру; повернулись — результати на місці, без клавіатури.
     DisposableEffect(lifecycle) {
@@ -925,7 +963,7 @@ private fun SearchOpen(
                 keyboardWasShown = true
                 imeReleased = false
             }
-        } else if (keyboardWasShown && !imeDrag.active && !imeDrag.pending && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+        } else if (keyboardWasShown && !hidingForMenu && !imeDrag.active && !imeDrag.pending && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             // Клавіатуру ведемо пальцем — це не «Назад», рішення прийме сам жест.
             keyboardWasShown = false
             if (canCloseWithKeyboard()) closeSmoothly(fromBack = true)
@@ -944,7 +982,7 @@ private fun SearchOpen(
             // Відступ під рядок стану — однаковий, видно рядок чи ні: витягнули його жестом — нічого не стрибає.
             .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
             .navigationBarsPadding()
-            .then(if (holdKeyboardSpace) Modifier.padding(bottom = heldKeyboard) else Modifier.imePadding())
+            .then(if (holdSpace) Modifier.padding(bottom = heldKeyboard) else Modifier.imePadding())
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .nestedScroll(pullToClose)
             .pointerInput(thresholdPx) {
@@ -967,7 +1005,7 @@ private fun SearchOpen(
             groups = state.groups,
             iconFor = iconFor,
             onLaunch = onLaunch,
-            onLongPress = onLongPress,
+            onLongPress = ::openMenuSmoothly,
             onGlobal = onGlobal,
             actions = state.actions,
             onAction = onAction,

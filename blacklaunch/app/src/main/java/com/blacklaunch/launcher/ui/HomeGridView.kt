@@ -193,6 +193,9 @@ fun HomeGridView(
                                 draggingChanged(false)
                             },
                             onDragCancel = {
+                                // Відпустили на місці, а «дотик» значка забрав подію відпускання собі — жест вважається
+                                // скасованим. Це те саме довге натискання без руху: відкриваємо меню.
+                                if (!moved) longPressMenu(app)
                                 dragging = null
                                 dragOffset = Offset.Zero
                                 suppressUntil = SystemClock.uptimeMillis() + SUPPRESS_TAP_MS
