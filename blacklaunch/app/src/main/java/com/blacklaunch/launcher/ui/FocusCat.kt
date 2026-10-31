@@ -198,6 +198,14 @@ private class CatSim {
     private var lastU = 1f
     private var lastFences: List<Rect> = emptyList()
 
+    /** Стінка (край екрана чи перешкода) справді прямо перед носом — є по чому гупати. */
+    private fun wallAhead(): Boolean {
+        val px = x + dirX * (CAT_HALF_WIDTH + 8f) * lastU
+        val py = y - 24f * lastU
+        if (px < 0f || px > lastW) return true
+        return lastFences.any { it.inflate(6f * lastU).contains(Offset(px, py)) }
+    }
+
     /** Відступити від стінки на [units] (якщо є куди) — щоб лапа, б'ючи по краю, була видна. */
     private fun stepBack(units: Float) {
         val back = x - dirX * units * lastU
@@ -310,7 +318,7 @@ private class CatSim {
                 val turn = { dirX = -dirX; slope = randomSlope() }
                 when {
                     // Розсердився: гупає лапою по стінці, потім струшується й іде геть.
-                    chance(0.22f) -> plan(
+                    chance(0.22f) && wallAhead() -> plan(
                         // Відсахується трохи далі — щоб лапа, б'ючи по краю, не ховалась за ним.
                         CatStep(CatAct.RECOIL, 0.6f, then = { stepBack(10f) }), CatStep(CatAct.ANGRY, span(2.5f, 5f)),
                         CatStep(CatAct.SHAKE, span(0.5f, 1f)), look(span(2.5f, 5f), then = turn),

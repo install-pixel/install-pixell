@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.blacklaunch.launcher.system.RefreshRate
+import com.blacklaunch.launcher.system.StatusBar
 import com.blacklaunch.launcher.ui.FocusTimerScreen
 import com.blacklaunch.launcher.ui.Haptics
 import com.blacklaunch.launcher.ui.LocalHaptics
@@ -107,6 +108,7 @@ class FocusActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         app.focusVisible = true
+        StatusBar.apply(this)
     }
 
     override fun onStop() {
@@ -126,6 +128,7 @@ class FocusActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         refreshPinned()
+        if (hasFocus) StatusBar.apply(this)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

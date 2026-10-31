@@ -92,6 +92,9 @@ internal class CatPose {
     var tailWag = 0f
     var tailDown = false
     var bob = 0f
+
+    /** Ближня передня лапа пряма (без згину в лікті) — коли гупає. */
+    var armStraight = 0f
 }
 
 private fun ease(t: Float) = (1f - cos(t.coerceIn(0f, 1f) * PI.toFloat())) / 2f
@@ -199,9 +202,10 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
                 1f - (cycle - 0.25f) / 0.75f
             }
             lean = 4f + 6f * swing
-            // Замах — лапа витягнута вгору над головою; удар — уперед-униз по краю.
-            armLen = 27f - 10f * swing
-            armNear = 172f - 80f * swing
+            // Замах — пряма лапа вгору над головою; удар — уперед по краю. Звичайної довжини, без згину.
+            armStraight = 1f
+            armLen = 17f
+            armNear = 160f - 70f * swing
             armFar = 20f
             legNear = 12f
             legFar = -10f
@@ -365,6 +369,7 @@ private fun mix(a: CatPose, b: CatPose, t: Float) = CatPose().apply {
     tailWag = lerp(a.tailWag, b.tailWag, t)
     tailDown = if (t < 0.5f) a.tailDown else b.tailDown
     bob = lerp(a.bob, b.bob, t)
+    armStraight = lerp(a.armStraight, b.armStraight, t)
 }
 
 private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
@@ -401,10 +406,11 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
     // Передні лапи: плече → лікоть → лапка.
     val shoulderX = hx + 3f
     val shoulderY = hy - 16f
-    fun arm(fromX: Float, angle: Float, len: Float, line: Boolean = true, paw: Boolean = true) {
+    fun arm(fromX: Float, angle: Float, len: Float, line: Boolean = true, paw: Boolean = true, straight: Float = 0f) {
         val (dx, dy) = dir(angle)
         // Опущена лапа згинається в лікті вперед; піднята — передпліччя йде назад, на маківку, а не на морду.
-        val (bx, by) = dir(angle + if (angle > 90f) -32f else 18f)
+        // Пряма ([straight] = 1) — без згину.
+        val (bx, by) = dir(angle + (if (angle > 90f) -32f else 18f) * (1f - straight))
         val ex = fromX + dx * len * 0.55f
         val ey = shoulderY + dy * len * 0.55f
         val px = ex + bx * len * 0.45f
@@ -446,7 +452,7 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
     // Ближня передня лапа: опущена — перед тілом; піднята до голови — уся малюється після голови (за потилицею,
     // не через мордочку), тож нічого не обрізається.
     val armRaised = pose.armNear > 90f
-    if (!armRaised) arm(shoulderX, pose.armNear, pose.armLen)
+    if (!armRaised) arm(shoulderX, pose.armNear, pose.armLen, straight = pose.armStraight)
 
     // Голова: нахиляється / трусить навколо шиї.
     val cx = hx + 2.5f
@@ -484,7 +490,7 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
         pen.shape(width = 1.3f) { move(ax + r, ay + r * 0.3f); cubic(ax + r * 0.3f, ay + r * 0.3f, ax + r * 0.3f, ay + r * 0.3f, ax + r * 0.3f, ay + r) }
     }
     // Ближня половина скакалки — попереду всього котика (дальня вже за тулубом).
-    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen)
+    if (armRaised) arm(shoulderX, pose.armNear, pose.armLen, straight = pose.armStraight)
     if (f.act == CatAct.JUMP_ROPE) ropeStrand(pen, nearPaw, ropeApex(f, hx, hy), front = true)
     return pen.shapes
 }

@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.blacklaunch.launcher.system.RefreshRate
+import com.blacklaunch.launcher.system.StatusBar
 import com.blacklaunch.launcher.games.GameKind
 import com.blacklaunch.launcher.ui.GameScreen
 import com.blacklaunch.launcher.ui.Haptics
@@ -65,6 +66,12 @@ class GameActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         active = true
+        StatusBar.apply(this)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) StatusBar.apply(this)
     }
 
     // Згорнули, прийшов дзвінок — гра на паузі й збережена (зберігає сам екран гри, коли стає неактивним).
