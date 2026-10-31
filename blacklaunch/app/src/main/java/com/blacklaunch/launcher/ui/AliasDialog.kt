@@ -66,7 +66,7 @@ fun AliasDialog(
                     keyboardActions = KeyboardActions(onDone = { add() }),
                     modifier = Modifier.fillMaxWidth(),
                     colors = glassFieldColors(),
-                    shape = FieldShape,
+                    shape = InputShape,
                 )
             }
         },

@@ -478,7 +478,7 @@ fun AppPickerScreen(
             placeholder = { Text(stringResource(R.string.search_hint), color = Oled.TextSecondary) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             colors = glassFieldColors(),
-            shape = FieldShape,
+            shape = InputShape,
         )
         val listState = rememberLazyListState()
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges().bounceWhenFits(listState.fits), state = listState, userScrollEnabled = !listState.fits) {
@@ -531,7 +531,7 @@ private fun NameDialog(
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.profile_name), color = Oled.TextSecondary) },
                 colors = glassFieldColors(),
-                shape = FieldShape,
+                shape = InputShape,
             )
         },
         confirmButton = { DialogButton(confirm, { onConfirm(text.trim()) }, Tone.Confirm, enabled = text.isNotBlank()) },

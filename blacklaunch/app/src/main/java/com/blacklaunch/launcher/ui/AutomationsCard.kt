@@ -163,7 +163,7 @@ private fun TimeField(@StringRes label: Int, value: String, modifier: Modifier, 
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier,
         colors = glassFieldColors(),
-        shape = FieldShape,
+        shape = InputShape,
     )
 }
 

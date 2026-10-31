@@ -302,7 +302,7 @@ private fun MenuRow(icon: @Composable (Modifier) -> Unit, @StringRes title: Int,
 }
 
 /** Поля введення — заокруглені, як решта скла: тонкий кант (яскравіший під час введення) і ледь світліший фон. */
-internal val FieldShape = RoundedCornerShape(16.dp)
+internal val InputShape = RoundedCornerShape(16.dp)
 
 @Composable
 internal fun glassFieldColors() = OutlinedTextFieldDefaults.colors(
