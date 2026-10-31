@@ -249,7 +249,7 @@ fun ProfileEditScreen(
             Text(stringResource(R.string.pinned_title), color = Oled.TextPrimary, fontSize = 17.sp)
             if (profile.pinnedAppKeys.isEmpty()) Note(stringResource(R.string.pinned_empty))
             // Багато програм не розтягує сторінку: віконце фіксованої висоти з власною прокруткою.
-            Column(Modifier.heightIn(max = PinnedListMaxHeight).verticalScroll(rememberScrollState())) {
+            Column(Modifier.heightIn(max = PinnedListMaxHeight).fadingEdges().verticalScroll(rememberScrollState()).padding(vertical = EdgeFade / 2)) {
                 profile.pinnedAppKeys.forEachIndexed { index, key ->
                     val app = appsByKey[key]
                     PinnedRow(

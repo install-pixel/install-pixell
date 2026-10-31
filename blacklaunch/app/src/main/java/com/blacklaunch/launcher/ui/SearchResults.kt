@@ -442,7 +442,8 @@ internal fun AppRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LeadingIcon(36.dp) { icon?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(36.dp)) } }
-        Text(app.label, color = Oled.TextPrimary, fontSize = 18.sp)
+        // Довга назва — в один рядок із «…», а не розривом посеред слова.
+        Text(app.label, color = Oled.TextPrimary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
