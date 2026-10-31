@@ -1684,6 +1684,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Фокус-таймер, час якого вже минув (будильник запізнився), — завершуємо зараз.
+        app.focus.restore()
         repository.refresh()
         ensureBlackWallpaper()
         enableAwaitedKind()

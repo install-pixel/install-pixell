@@ -22,6 +22,7 @@ import com.blacklaunch.launcher.ui.SheetTheme
 import com.blacklaunch.launcher.ui.PinState
 import com.blacklaunch.launcher.ui.theme.BlackLaunchTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
@@ -49,6 +50,17 @@ class FocusActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 app.focus.session.collect { if (it == null || !app.focus.running()) leave() }
+            }
+        }
+        // Час вийшов — завершуємо таймер самі, не чекаючи будильника: Android інколи відкладає його, і відлік
+        // висів на 00:00 разом із котиком.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                app.focus.session.collectLatest { session ->
+                    if (session == null) return@collectLatest
+                    kotlinx.coroutines.delay((session.endsAt - System.currentTimeMillis()).coerceAtLeast(0L) + END_GRACE_MS)
+                    app.focus.restore()
+                }
             }
         }
         // Android змінює стан закріплення трохи пізніше, ніж повертає фокус вікну, — тож поки екран видно,
@@ -151,5 +163,8 @@ class FocusActivity : ComponentActivity() {
         const val KEY_ASKED = "asked_pin"
         const val ASK_GRACE_MS = 1_500L
         const val PIN_CHECK_MS = 1_000L
+
+        /** Трохи після кінця — щоб «кінець» точно настав за годинником. */
+        const val END_GRACE_MS = 300L
     }
 }
