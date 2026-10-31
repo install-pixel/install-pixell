@@ -1,5 +1,6 @@
 package com.blacklaunch.launcher.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -26,6 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -78,11 +84,9 @@ fun GlassDialog(
                     CompositionLocalProvider(LocalContentColor provides Oled.TextSecondary) { text() }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            // Довгий вміст гортається над кнопками — тонка риска відділяє його від кнопок (олівцем чи склом).
+            if (text != null) DialogDivider()
+            DialogButtons {
                 dismissButton?.invoke()
                 confirmButton()
             }
@@ -115,12 +119,51 @@ fun DialogButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, e
             .clickable(enabled = enabled) { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
+        // Кнопці дали ширшу за напис ширину (кнопки рівні) — напис посередині.
+        horizontalArrangement = Arrangement.Center,
     ) {
         if (tone == Tone.Confirm && !sheet) {
             Icon(Icons.Filled.Check, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(text, color = color, fontSize = 15.sp)
+        Text(text, color = color, fontSize = 15.sp, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * Кнопки внизу вікна: вміщаються в рядок — праворуч, кожна свого розміру; не вміщаються — однакової ширини
+ * на весь рядок, напис переноситься лише цілими словами (не посеред слова).
+ */
+@Composable
+private fun DialogButtons(content: @Composable () -> Unit) {
+    val gap = with(LocalDensity.current) { 8.dp.roundToPx() }
+    Layout(content = content, modifier = Modifier.fillMaxWidth()) { measurables, constraints ->
+        val available = constraints.maxWidth
+        val natural = measurables.map { it.maxIntrinsicWidth(constraints.maxHeight) }
+        val fits = natural.sum() + gap * (measurables.size - 1).coerceAtLeast(0) <= available
+        val equal = if (measurables.isEmpty()) 0 else (available - gap * (measurables.size - 1)) / measurables.size
+        val placeables = measurables.mapIndexed { i, m ->
+            val w = if (fits) natural[i] else equal
+            m.measure(Constraints(minWidth = w, maxWidth = w))
+        }
+        val height = placeables.maxOfOrNull { it.height } ?: 0
+        layout(available, height) {
+            var x = if (fits) available - (placeables.sumOf { it.width } + gap * (placeables.size - 1).coerceAtLeast(0)) else 0
+            placeables.forEach { p ->
+                p.placeRelative(x, (height - p.height) / 2)
+                x += p.width + gap
+            }
+        }
+    }
+}
+
+/** Риска між вмістом вікна й кнопками: в «Аркуші» — олівцем, у склі — тонкий відблиск. */
+@Composable
+private fun DialogDivider() {
+    if (LocalSheet.current) {
+        Canvas(Modifier.fillMaxWidth().height(6.dp)) { pencilStroke(size.height / 2, 0f, size.width, seed = 5, alpha = 0.45f) }
+    } else {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Oled.Glint))
     }
 }
 

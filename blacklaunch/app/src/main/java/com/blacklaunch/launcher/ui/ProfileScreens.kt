@@ -164,9 +164,8 @@ private fun ProfileRow(profile: LauncherProfile, active: Boolean, onSetActive: (
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(if (active) Oled.Knob else Oled.Surface)
-            .border(1.dp, Oled.Glint, shape)
+            // Скло — у скляному стилі, рамка олівцем — в «Аркуші».
+            .glassBox(14.dp, seed = profile.name.length + 11, fill = if (active) Oled.Knob else Oled.Surface)
             .clickable { haptics.tap(); onSetActive() }
             .padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
