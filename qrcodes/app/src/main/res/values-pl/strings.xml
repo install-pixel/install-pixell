@@ -86,7 +86,6 @@
     <string name="label_rotate_right">Obróć w prawo</string>
     <string name="label_fill_short">Wypełnij etykietę</string>
     <string name="label_edit_short">Zmień</string>
-    <string name="label_icon_pick">Ikona — dotknij innej, aby zamienić</string>
     <string name="unfavorited">Usunięto z ulubionych</string>
     <string name="label_frame_code">Wokół kodu: %1$s</string>
     <string name="label_frame_pick_code">Aby obrysować kod, najpierw dotknij go na etykiecie</string>
@@ -100,4 +99,15 @@
     <string name="style_glass_desc">Czarne szkło, jak w Black Glass</string>
     <string name="settings_language">Język</string>
     <string name="lang_system">Jak w telefonie</string>
+    <string name="label_icon_replace">Zamień ikonę</string>
+    <string name="sticker_wifi">Wi‑Fi</string>
+    <string name="sticker_phone">Połączenie</string>
+    <string name="sticker_link">Strona</string>
+    <string name="sticker_download">Pobierz</string>
+    <string name="sticker_email">E-mail</string>
+    <string name="sticker_location">Adres</string>
+    <string name="sticker_contact">Kontakt</string>
+    <string name="sticker_scan">Skanuj</string>
+    <string name="sticker_smile">Uśmiech</string>
+    <string name="sticker_heart">Serce</string>
 </resources>

@@ -377,7 +377,11 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Tool(Glyph.ScanQr, stringResource(R.string.label_add_code)) { pickerOpen = true }
                 Tool(Glyph.TextT, stringResource(R.string.label_add_text)) { textNew = true }
-                Tool(Glyph.Star, stringResource(R.string.label_add_icon)) { stickerNew = true }
+                // Як «Рамка»: одне вікно з усіма значками — вибраний значок замінюється, інакше додається новий.
+                Tool(Glyph.Star, stringResource(R.string.label_add_icon), on = selected is Element.Icon) {
+                    val icon = selected as? Element.Icon
+                    if (icon != null) stickerFor = icon else stickerNew = true
+                }
                 Tool(Glyph.Frame, stringResource(R.string.label_frame), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
                 if (codes.size > 1) Tool(Glyph.Grid, stringResource(R.string.label_grid)) { commit(Arrange.grid(design, tw)) }
                 Tool(Glyph.Undo, stringResource(R.string.label_undo), enabled = canUndo) { undo() }
@@ -523,7 +527,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         }
     }
     if (stickerNew || stickerFor != null) {
-        StickerDialog(onDismiss = { stickerNew = false; stickerFor = null }) { sticker ->
+        StickerDialog(current = stickerFor?.sticker, onDismiss = { stickerNew = false; stickerFor = null }) { sticker ->
             val edit = stickerFor
             if (edit != null) {
                 tryChange(edit.copy(sticker = sticker))
@@ -684,16 +688,7 @@ private fun SelectedPanel(
                 }
                 if (element.frame == QrFrame.ScanMe) SheetButton(stringResource(R.string.label_edit_banner), { onEditBanner(element) })
             }
-            is Element.Icon -> {
-                Text(stringResource(R.string.label_icon_pick), color = Oled.TextPrimary, fontSize = 17.sp)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Sticker.entries.forEach { st ->
-                        Sample(null, selected = element.sticker == st, onClick = { onChange(element.copy(sticker = st)) }) {
-                            Element.Icon(0, 0f, 0f, st, 20f)
-                        }
-                    }
-                }
-            }
+            is Element.Icon -> Unit
             is Element.Text -> Unit
         }
     }
@@ -827,24 +822,36 @@ private fun TextDialog(initial: String, title: String, onDismiss: () -> Unit, on
 }
 
 /** Значки олівцем. */
+/** Усі значки зразками з підписами — так само, як вибір рамки. [current] — значок, що замінюється (або null — новий). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StickerDialog(onDismiss: () -> Unit, onPick: (Sticker) -> Unit) {
-    val haptics = LocalHaptics.current
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.label_add_icon)) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Sticker.entries.forEach { s ->
-                Box(
-                    Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .pencilFrame(16.dp, seed = s.ordinal + 20, alpha = 0.5f)
-                        .clickable { haptics.tap(); onPick(s) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    GlyphIcon(s.glyph(), null, size = 36.dp)
+private fun StickerDialog(current: Sticker?, onDismiss: () -> Unit, onPick: (Sticker) -> Unit) {
+    val title = stringResource(if (current != null) R.string.label_icon_replace else R.string.label_add_icon)
+    SheetDialog(onDismissRequest = onDismiss, title = title) {
+        FlowRow(
+            Modifier.verticalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Sticker.entries.forEach { st ->
+                Sample(stringResource(st.title()), selected = current == st, onClick = { onPick(st) }) {
+                    Element.Icon(0, 0f, 0f, st, 20f)
                 }
             }
         }
     }
+}
+
+/** Що означає значок — підпис під зразком. */
+private fun Sticker.title(): Int = when (this) {
+    Sticker.Wifi -> R.string.sticker_wifi
+    Sticker.Phone -> R.string.sticker_phone
+    Sticker.Link -> R.string.sticker_link
+    Sticker.Download -> R.string.sticker_download
+    Sticker.Email -> R.string.sticker_email
+    Sticker.Location -> R.string.sticker_location
+    Sticker.Contact -> R.string.sticker_contact
+    Sticker.ScanPhone -> R.string.sticker_scan
+    Sticker.Smile -> R.string.sticker_smile
+    Sticker.Heart -> R.string.sticker_heart
 }

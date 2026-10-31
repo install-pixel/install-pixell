@@ -86,7 +86,6 @@
     <string name="label_rotate_right">Повернути праворуч</string>
     <string name="label_fill_short">Заповнити наклейку</string>
     <string name="label_edit_short">Змінити</string>
-    <string name="label_icon_pick">Значок — торкнись іншого, щоб замінити</string>
     <string name="unfavorited">Прибрано з вибраного</string>
     <string name="label_frame_code">Навколо коду: %1$s</string>
     <string name="label_frame_pick_code">Щоб обвести код, спершу торкнись його на аркуші</string>
@@ -100,4 +99,15 @@
     <string name="style_glass_desc">Чорне скло, як у Black Glass</string>
     <string name="settings_language">Мова</string>
     <string name="lang_system">Як у телефоні</string>
+    <string name="label_icon_replace">Замінити значок</string>
+    <string name="sticker_wifi">Wi‑Fi</string>
+    <string name="sticker_phone">Дзвінок</string>
+    <string name="sticker_link">Сайт</string>
+    <string name="sticker_download">Завантажити</string>
+    <string name="sticker_email">Пошта</string>
+    <string name="sticker_location">Адреса</string>
+    <string name="sticker_contact">Контакт</string>
+    <string name="sticker_scan">Скануй</string>
+    <string name="sticker_smile">Смайлик</string>
+    <string name="sticker_heart">Серце</string>
 </resources>

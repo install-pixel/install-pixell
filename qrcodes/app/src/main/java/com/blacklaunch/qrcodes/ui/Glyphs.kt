@@ -139,8 +139,13 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     Glyph.Shutter -> listOf(arc(12f, 12f, 9f, -90f, 280f, 36), arc(12f, 12f, 5.2f, 30f, 400f, 24))
     // Хвилі Wi‑Fi і крапка.
     Glyph.Wifi -> listOf(arc(12f, 19f, 13f, 225f, 315f, 18), arc(12f, 19f, 8.6f, 228f, 312f, 14), arc(12f, 19f, 4.3f, 232f, 308f, 10), arc(12f, 18.6f, 0.9f, 0f, 360f, 8))
-    // Телефон: корпус і кнопка.
-    Glyph.Phone -> listOf(box(7f, 2.8f, 10f, 18.4f, 7, 2.2f), line(10.8f, 17.6f, 13.2f, 17.6f), line(10.5f, 5.2f, 13.5f, 5.2f))
+    // Слухавка — дзвінок (номер телефону в коді).
+    Glyph.Phone -> listOf(
+        line(
+            7.6f, 3.6f, 9.9f, 3.9f, 11f, 7.6f, 9.3f, 9.3f, 10.8f, 12.2f, 12.6f, 14.2f, 15f, 15.4f, 16.7f, 13.7f,
+            20.2f, 14.9f, 20.3f, 17.6f, 18.1f, 20.1f, 13.6f, 19.5f, 8.9f, 16.1f, 5.3f, 11.5f, 4.1f, 7.1f, 5.1f, 4.6f, 7.8f, 3.4f,
+        ),
+    )
     // Глобус — сайт, посилання.
     Glyph.Globe -> listOf(
         arc(12f, 12f, 8.6f, -90f, 275f, 32),

@@ -88,7 +88,6 @@
     <string name="label_rotate_right">Turn right</string>
     <string name="label_fill_short">Fill label</string>
     <string name="label_edit_short">Edit</string>
-    <string name="label_icon_pick">Icon — tap another to replace</string>
     <string name="unfavorited">Removed from favourites</string>
     <string name="label_frame_code">Around the code: %1$s</string>
     <string name="label_frame_pick_code">To frame a code, first tap it on the label</string>
@@ -102,4 +101,15 @@
     <string name="style_glass_desc">Black glass, like Black Glass</string>
     <string name="settings_language">Language</string>
     <string name="lang_system">As on the phone</string>
+    <string name="label_icon_replace">Replace the icon</string>
+    <string name="sticker_wifi">Wi‑Fi</string>
+    <string name="sticker_phone">Call</string>
+    <string name="sticker_link">Website</string>
+    <string name="sticker_download">Download</string>
+    <string name="sticker_email">Email</string>
+    <string name="sticker_location">Address</string>
+    <string name="sticker_contact">Contact</string>
+    <string name="sticker_scan">Scan me</string>
+    <string name="sticker_smile">Smile</string>
+    <string name="sticker_heart">Heart</string>
 </resources>
