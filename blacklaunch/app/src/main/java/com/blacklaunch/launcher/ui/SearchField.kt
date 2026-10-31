@@ -81,7 +81,7 @@ fun SearchField(
                     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
                 )
             } else {
-                androidx.compose.ui.text.TextStyle(fontSize = 18.sp)
+                androidx.compose.ui.text.TextStyle(fontSize = 18.sp, fontFamily = GlassFont)
             },
             placeholder = {
                 val hint = when (voice) {

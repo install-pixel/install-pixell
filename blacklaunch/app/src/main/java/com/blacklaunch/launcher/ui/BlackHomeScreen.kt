@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -559,7 +560,11 @@ private fun HomeIdle(
                             .padding(vertical = 2.dp),
                     )
                 }
-                glance.time?.let { Text(it, color = Oled.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Light) }
+                glance.time?.let {
+                    // «Скло»: годинник із легким світінням.
+                    val glow = if (LocalSheet.current) LocalTextStyle.current else LocalTextStyle.current.copy(shadow = GlassGlow)
+                    Text(it, color = Oled.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Light, style = glow)
+                }
                 Text(glance.date, color = Oled.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 // Батарейка намальована (у «Аркуші» — олівцем, у склі — металева), під нею — відсотки.
                 if (glance.details.isNotEmpty()) Text(glance.details, color = Oled.TextSecondary, fontSize = 13.sp)

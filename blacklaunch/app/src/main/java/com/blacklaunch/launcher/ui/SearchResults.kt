@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -493,10 +494,12 @@ private fun GlobalRow(
                 Text(
                     "=",
                     color = Oled.TextPrimary,
-                    style = TextStyle(
-                        fontSize = 26.sp,
-                        platformStyle = PlatformTextStyle(includeFontPadding = false),
-                        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+                    style = LocalTextStyle.current.merge(
+                        TextStyle(
+                            fontSize = 26.sp,
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                            lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+                        ),
                     ),
                 )
             } else if (media && result is GlobalResult.Media) {

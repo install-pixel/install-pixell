@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
@@ -80,17 +81,40 @@ val HandFont = FontFamily(
     Font(R.font.caveat_semibold, FontWeight.Bold),
 )
 
+/** Шрифт «Скла» — Exo 2 (вільна ліцензія OFL, вбудований — без мережі): чіткий, трохи технічний, з повною кирилицею. */
+val GlassFont = FontFamily(
+    Font(R.font.exo2_extralight, FontWeight.ExtraLight),
+    Font(R.font.exo2_extralight, FontWeight.Thin),
+    Font(R.font.exo2_light, FontWeight.Light),
+    Font(R.font.exo2_regular, FontWeight.Normal),
+    Font(R.font.exo2_medium, FontWeight.Medium),
+    Font(R.font.exo2_semibold, FontWeight.SemiBold),
+    Font(R.font.exo2_bold, FontWeight.Bold),
+    Font(R.font.exo2_bold, FontWeight.ExtraBold),
+    Font(R.font.exo2_bold, FontWeight.Black),
+)
+
+/** Легке світіння великих написів у «Склі» (годинник, відсотки батареї). */
+internal val GlassGlow = Shadow(Color(0x59FFFFFF), Offset.Zero, 18f)
+
 /** Шрифт від руки дрібніший на око — трохи збільшуємо, щоб читалось, як звичайний. */
 private const val HAND_SCALE = 1.22f
 
 /**
  * Обгортка теми: з «Аркушем» — шрифт від руки для всього тексту всередині й трохи більший кегль;
- * без нього — нічого не змінює.
+ * без нього («Скло») — шрифт Exo 2 для всього тексту.
  */
 @Composable
 fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
     if (!enabled) {
-        CompositionLocalProvider(LocalSheet provides false, content = content)
+        val glass = TextStyle(fontFamily = GlassFont)
+        MaterialTheme(colorScheme = MaterialTheme.colorScheme, typography = MaterialTheme.typography.withFont(glass)) {
+            CompositionLocalProvider(
+                LocalSheet provides false,
+                LocalTextStyle provides LocalTextStyle.current.merge(glass),
+                content = content,
+            )
+        }
         return
     }
     // Уже всередині «Аркуша» (налаштування поверх головного екрана) — вдруге не збільшуємо шрифт.
@@ -100,15 +124,7 @@ fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
     }
     val density = LocalDensity.current
     val hand = TextStyle(fontFamily = HandFont)
-    val base = MaterialTheme.typography
-    val typography = Typography(
-        displayLarge = base.displayLarge.merge(hand), displayMedium = base.displayMedium.merge(hand), displaySmall = base.displaySmall.merge(hand),
-        headlineLarge = base.headlineLarge.merge(hand), headlineMedium = base.headlineMedium.merge(hand), headlineSmall = base.headlineSmall.merge(hand),
-        titleLarge = base.titleLarge.merge(hand), titleMedium = base.titleMedium.merge(hand), titleSmall = base.titleSmall.merge(hand),
-        bodyLarge = base.bodyLarge.merge(hand), bodyMedium = base.bodyMedium.merge(hand), bodySmall = base.bodySmall.merge(hand),
-        labelLarge = base.labelLarge.merge(hand), labelMedium = base.labelMedium.merge(hand), labelSmall = base.labelSmall.merge(hand),
-    )
-    MaterialTheme(colorScheme = MaterialTheme.colorScheme, typography = typography) {
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme, typography = MaterialTheme.typography.withFont(hand)) {
         CompositionLocalProvider(
             LocalSheet provides true,
             LocalTextStyle provides LocalTextStyle.current.merge(hand),
@@ -117,6 +133,15 @@ fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
         )
     }
 }
+
+/** Усі стилі тексту теми — тим самим шрифтом. */
+private fun Typography.withFont(font: TextStyle) = Typography(
+    displayLarge = displayLarge.merge(font), displayMedium = displayMedium.merge(font), displaySmall = displaySmall.merge(font),
+    headlineLarge = headlineLarge.merge(font), headlineMedium = headlineMedium.merge(font), headlineSmall = headlineSmall.merge(font),
+    titleLarge = titleLarge.merge(font), titleMedium = titleMedium.merge(font), titleSmall = titleSmall.merge(font),
+    bodyLarge = bodyLarge.merge(font), bodyMedium = bodyMedium.merge(font), bodySmall = bodySmall.merge(font),
+    labelLarge = labelLarge.merge(font), labelMedium = labelMedium.merge(font), labelSmall = labelSmall.merge(font),
+)
 
 internal val SheetInk = Color(0xFFEDEDED)
 

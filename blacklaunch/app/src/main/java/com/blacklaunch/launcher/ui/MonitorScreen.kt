@@ -209,7 +209,8 @@ internal fun MonitorScreen(
             ) {
                 BatteryGauge(s.battery.percent, Modifier.size(width = 228.dp, height = 96.dp), wave)
                 Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Bottom) {
-                    Text("${s.battery.percent}%", style = num(40.sp, Oled.TextPrimary, FontWeight.ExtraLight))
+                    val big = num(40.sp, Oled.TextPrimary, FontWeight.ExtraLight)
+                    Text("${s.battery.percent}%", style = if (LocalSheet.current) big else big.copy(shadow = GlassGlow))
                     Column(Modifier.padding(start = 12.dp, bottom = 6.dp)) {
                         currentText?.let { Text(it, style = num(12.sp, accent)) }
                         Text(stateText, style = num(11.sp, Oled.TextSecondary))
