@@ -1,6 +1,8 @@
 package com.blacklaunch.launcher.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,31 +12,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.currentCompositeKeyHash
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.runtime.currentCompositeKeyHash
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.launcher.ui.theme.Oled
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 
 /** Спільні елементи екранів налаштувань: картки, перемикачі, варіанти вибору, дії. */
 
@@ -66,10 +71,50 @@ internal fun Card(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (sheet) Modifier.pencilFrame(18.dp, seed = currentCompositeKeyHash, alpha = 0.6f) else Modifier.clip(CardShape).background(Oled.Surface).border(1.dp, Oled.Glint, CardShape))
+            .then(if (sheet) Modifier.pencilFrame(18.dp, seed = currentCompositeKeyHash, alpha = 0.6f) else Modifier.clip(CardShape).background(Oled.Surface).glassSheen().border(1.dp, Oled.Glint, CardShape))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) { content() }
+}
+
+/**
+ * Скляний перемикач: капсула з чорного скла з кантом, усередині — скляна кулька зі світлом посередині. Увімкнено —
+ * капсула підсвічена, кулька праворуч і яскрава; вимкнено — темна, кулька ліворуч і тьмяна. Кулька їде плавно.
+ */
+@Composable
+internal fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val shape = RoundedCornerShape(50)
+    val position by animateFloatAsState(if (checked) 1f else 0f, tween(180), label = "switch")
+    Box(
+        Modifier
+            .size(width = 52.dp, height = 30.dp)
+            .clip(shape)
+            .background(if (checked) SwitchTrackOn else Oled.Surface)
+            .border(1.dp, if (checked) Oled.GlintBright else Oled.Glint, shape)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(3.dp),
+    ) {
+        val knob = 24.dp
+        Box(
+            Modifier
+                .offset(x = (52.dp - 6.dp - knob) * position)
+                .size(knob)
+                .clip(CircleShape)
+                .background(if (checked) SwitchKnobOn else Oled.Knob)
+                .border(1.dp, Oled.Glint, CircleShape),
+        )
+    }
+}
+
+/** Увімкнена капсула — скло, підсвічене зсередини. */
+private val SwitchTrackOn = Brush.verticalGradient(0f to Color(0xFF4A4A4A), 1f to Color(0xFF262626))
+/** Увімкнена кулька — світле скло зі світлом посередині. */
+private val SwitchKnobOn = Brush.radialGradient(listOf(Color(0xFFFFFFFF), Color(0xFFBDBDBD)))
+
+/** Відблиск на скляній поверхні: м'яке світло вгорі всередині, що тане донизу (видно на великих картках). */
+internal fun Modifier.glassSheen(): Modifier = drawBehind {
+    val h = (size.height * 0.5f).coerceAtMost(120.dp.toPx())
+    drawRect(Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = h), size = androidx.compose.ui.geometry.Size(size.width, h))
 }
 
 @Composable
@@ -107,17 +152,7 @@ internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChec
             Text(title, color = Oled.TextPrimary, fontSize = 17.sp)
             if (subtitle.isNotEmpty()) Text(subtitle, color = Oled.TextSecondary, fontSize = 13.sp)
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = { haptics.tap(); onCheckedChange(it) },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFFF2F2F2),
-                checkedTrackColor = Color(0xFF5A5A5A),
-                uncheckedThumbColor = Color(0xFF7A7A7A),
-                uncheckedTrackColor = Color(0xFF1E1E1E),
-                uncheckedBorderColor = Color(0xFF3A3A3A),
-            ),
-        )
+        GlassSwitch(checked) { haptics.tap(); onCheckedChange(it) }
     }
 }
 

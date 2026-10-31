@@ -144,7 +144,7 @@ internal fun Modifier.glassBox(radius: Dp, seed: Int = 0, fill: Brush = Oled.Sur
         // [paper] — чорне тло під рамкою, коли плашка лежить поверх чогось (фігур у грі).
         (if (paper != null) background(paper, shape) else this).pencilFrame(radius, seed, ink = ink).clip(shape)
     } else {
-        clip(shape).background(fill).border(1.dp, Oled.Glint, shape)
+        clip(shape).background(fill).glassSheen().border(1.dp, Oled.Glint, shape)
     }
 }
 
