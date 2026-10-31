@@ -36,7 +36,7 @@
     <string name="take_photo">Take photo</string>
     <string name="recognizing">Looking for text…</string>
     <string name="text_not_found">No text longer than 5 characters found</string>
-    <string name="text_pick">Tap words to add them one by one. Press and hold a word, then slide — everything up to your finger is chosen</string>
+    <string name="text_pick">Tap words to add them one by one. Press and hold a word, then slide — everything up to your finger is chosen. The square next to a line — the whole line</string>
     <string name="retake">Retake</string>
     <string name="more">More</string>
     <string name="yes">Yes</string>
@@ -96,4 +96,5 @@
     <string name="label_frame_code">Around the code: %1$s</string>
     <string name="label_frame_pick_code">To frame a code, first tap it on the label</string>
     <string name="label_frame_sheet">Around the whole label</string>
+    <string name="text_line_all">Whole line chosen</string>
 </resources>

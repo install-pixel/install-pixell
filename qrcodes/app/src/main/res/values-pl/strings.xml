@@ -36,7 +36,7 @@
     <string name="take_photo">Zrób zdjęcie</string>
     <string name="recognizing">Szukam tekstu…</string>
     <string name="text_not_found">Nie znaleziono tekstu dłuższego niż 5 znaków</string>
-    <string name="text_pick">Dotykaj słów — dodajesz po jednym. Przytrzymaj słowo i przesuń — wybierze się wszystko do palca</string>
+    <string name="text_pick">Dotykaj słów — dodajesz po jednym. Przytrzymaj słowo i przesuń — wybierze się wszystko do palca. Kwadracik przy wierszu — cały wiersz</string>
     <string name="retake">Jeszcze raz</string>
     <string name="more">Więcej</string>
     <string name="yes">Tak</string>
@@ -96,4 +96,5 @@
     <string name="label_frame_code">Wokół kodu: %1$s</string>
     <string name="label_frame_pick_code">Aby obrysować kod, najpierw dotknij go na etykiecie</string>
     <string name="label_frame_sheet">Wokół całej etykiety</string>
+    <string name="text_line_all">Wybrano cały wiersz</string>
 </resources>

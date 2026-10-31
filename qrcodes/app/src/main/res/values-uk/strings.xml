@@ -36,7 +36,7 @@
     <string name="take_photo">Сфотографувати</string>
     <string name="recognizing">Шукаю текст…</string>
     <string name="text_not_found">Тексту, довшого за 5 символів, не знайдено</string>
-    <string name="text_pick">Торкайся слів — додаєш по одному. Затисни слово й веди — вибереться все до пальця</string>
+    <string name="text_pick">Торкайся слів — додаєш по одному. Затисни слово й веди — вибереться все до пальця. Квадратик біля рядка — весь рядок</string>
     <string name="retake">Ще раз</string>
     <string name="more">Ще</string>
     <string name="yes">Так</string>
@@ -96,4 +96,5 @@
     <string name="label_frame_code">Навколо коду: %1$s</string>
     <string name="label_frame_pick_code">Щоб обвести код, спершу торкнись його на аркуші</string>
     <string name="label_frame_sheet">Навколо всього аркуша</string>
+    <string name="text_line_all">Вибрано весь рядок</string>
 </resources>

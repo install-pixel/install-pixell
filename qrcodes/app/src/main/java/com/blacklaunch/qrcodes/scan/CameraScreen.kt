@@ -420,12 +420,13 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                     val line = state.found[li]
                     val all = line.words.indices.all { WordRef(li, it) in selected }
                     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
-                        // Весь рядок одним дотиком.
+                        // Позначка «весь рядок»: порожній квадратик — не вибрано, з галочкою — вибрано цілий рядок.
                         Box(
                             Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .pencilFrame(10.dp, seed = li + 70, alpha = if (all) 0.9f else 0.4f, ink = if (all) Oled.Confirm else SheetInk)
+                                .padding(top = 2.dp)
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .pencilFrame(8.dp, seed = li + 70, alpha = if (all) 0.9f else 0.5f, ink = if (all) Oled.Confirm else SheetInk)
                                 .clickable {
                                     haptics.tap()
                                     val refs = line.words.indices.map { WordRef(li, it) }.toSet()
@@ -433,7 +434,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("≡", color = if (all) Oled.Confirm else Oled.TextSecondary, fontSize = 18.sp)
+                            if (all) com.blacklaunch.qrcodes.ui.GlyphIcon(Glyph.Save, stringResource(R.string.text_line_all), tint = Oled.Confirm, size = 20.dp)
                         }
                         androidx.compose.foundation.layout.FlowRow(
                             Modifier.weight(1f).padding(start = 8.dp),
@@ -467,15 +468,18 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
             if (chosen.isEmpty()) stringResource(R.string.text_pick_none) else chosen,
             color = if (chosen.isEmpty()) Oled.TextSecondary else Oled.TextPrimary,
             fontSize = 18.sp,
-            maxLines = 3,
+            // Завжди висотою у два рядки — щоб фото вище не стрибало, коли вибір змінюється.
+            minLines = 2,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth().padding(top = 10.dp).pencilFrame(14.dp, seed = 77, alpha = 0.5f).padding(horizontal = 14.dp, vertical = 10.dp),
         )
-        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-            SheetButton(stringResource(R.string.close), onClose)
-            SheetButton(stringResource(R.string.retake), onRetake)
-            if (selected.isNotEmpty()) SheetButton(stringResource(R.string.clear), { selected = emptySet() })
-            SheetButton(stringResource(R.string.done), { onPick(chosen) }, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm, enabled = chosen.isNotEmpty())
+        // Чотири однакові кнопки, завжди на місці (недоступна — притемнена), в один рядок — нічого не стрибає.
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            SheetButton(stringResource(R.string.close), onClose, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.retake), onRetake, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.clear), { selected = emptySet() }, enabled = selected.isNotEmpty(), modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.done), { onPick(chosen) }, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm, enabled = chosen.isNotEmpty(), modifier = Modifier.weight(1f))
         }
     }
 }

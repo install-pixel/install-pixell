@@ -328,7 +328,8 @@ fun SheetButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, en
             .padding(horizontal = 14.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = color, fontSize = 15.sp, textAlign = TextAlign.Center)
+        // Завжди один рядок: кнопка не росте в висоту й не «ламається» на два рядки.
+        Text(text, color = color, fontSize = 15.sp, textAlign = TextAlign.Center, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 
