@@ -522,7 +522,7 @@ class MainActivity : ComponentActivity() {
                                 onChange = ::changeAppearance,
                                 glanceProfileName = home.profileName,
                                 glanceInProfile = display.glance,
-                                onGlanceInProfile = { on -> app.profileDisplay.set(home.profileId, display.copy(glance = on)) },
+                                onGlanceInProfile = { on -> home.profileId?.let { app.profileDisplay.set(it, display.copy(glance = on)) } },
                                 onSetBlackWallpaperNow = { setBlackWallpaper(quiet = false) },
                                 onOpenSystemTheme = ::openSystemTheme,
                                 offlineStatus = offline,
