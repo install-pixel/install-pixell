@@ -20,7 +20,7 @@ import kotlin.math.sin
  * Сітка 24×24.
  */
 
-enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter, Box, Arrow, Wifi, Warning, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center }
+enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter, Box, Arrow, Wifi, Warning, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center, More }
 
 @Composable
 fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Modifier, tint: Color = SheetInk, size: Dp = 24.dp) {
@@ -184,6 +184,8 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     Glyph.RotateRight -> listOf(arc(12f, 12.5f, 7f, 70f, 340f, 26).reversed(), line(20.2f, 6.8f, 18.8f, 11.2f, 14.4f, 10f))
     // Приціл — по центру.
     Glyph.Center -> listOf(arc(12f, 12f, 6.5f, -90f, 275f, 26), line(12f, 2.5f, 12f, 7f), line(12f, 17f, 12f, 21.5f), line(2.5f, 12f, 7f, 12f), line(17f, 12f, 21.5f, 12f))
+    // Три крапки — меню.
+    Glyph.More -> listOf(arc(5.5f, 12f, 1.3f, 0f, 370f, 10), arc(12f, 12f, 1.3f, 0f, 370f, 10), arc(18.5f, 12f, 1.3f, 0f, 370f, 10))
     // Сітка 2×2.
     Glyph.Grid -> listOf(box(3.5f, 3.5f, 7.5f, 7.5f, 31, 1.4f), box(13f, 3.5f, 7.5f, 7.5f, 32, 1.4f), box(3.5f, 13f, 7.5f, 7.5f, 33, 1.4f), box(13f, 13f, 7.5f, 7.5f, 34, 1.4f))
     // «Т» — свій текст.

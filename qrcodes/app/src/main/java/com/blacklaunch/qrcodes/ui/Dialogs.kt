@@ -106,16 +106,20 @@ private fun displayTitleOf(code: QrCode): String = if (code.name == null) code.t
  * Код на весь екран — щоб відсканували з телефона. Яскравість екрана на цей час — максимальна.
  */
 @Composable
-fun FullscreenCode(code: QrCode, onDismiss: () -> Unit, onShare: () -> Unit, onMenu: () -> Unit) {
+fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu: () -> Unit) {
     val matrix = remember(code.content) { QrMatrix.encode(code.content) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        // Яскравість — у власному вікні діалогу (воно зверху, система бере яскравість із нього).
+        // Яскравість — у власному вікні діалогу (воно зверху, система бере яскравість із нього). Поки поверх відкрите
+        // меню — звичайна яскравість, а код розмитий і притемнений, як усе під меню.
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        DisposableEffect(window) {
-            window?.attributes = window?.attributes?.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
+        DisposableEffect(window, covered) {
+            window?.attributes = window?.attributes?.apply {
+                screenBrightness = if (covered) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+            }
             onDispose { }
         }
-        Box(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().padding(24.dp)) {
+        val blur = backdropAmount(covered)
+        Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().padding(24.dp)) {
             Column(Modifier.align(Alignment.Center).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 QrImage(matrix, Modifier.widthIn(max = 480.dp).fillMaxWidth(), seed = code.id.toInt(), radius = 18.dp)
                 Text(
@@ -126,12 +130,10 @@ fun FullscreenCode(code: QrCode, onDismiss: () -> Unit, onShare: () -> Unit, onM
                     modifier = Modifier.padding(top = 16.dp),
                 )
             }
+            // Лише «Закрити» й «Меню» — усі дії (вибране, назва, друк, копіювати, видалити) в одному місці, у меню.
             Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 RoundButton(Glyph.Close, stringResource(R.string.close), onDismiss)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RoundButton(Glyph.Edit, stringResource(R.string.more), onMenu)
-                    RoundButton(Glyph.Print, stringResource(R.string.print_share), onShare)
-                }
+                RoundButton(Glyph.More, stringResource(R.string.more), onMenu)
             }
         }
     }

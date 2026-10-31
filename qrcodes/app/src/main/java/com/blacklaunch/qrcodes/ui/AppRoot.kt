@@ -88,6 +88,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
     var camera by rememberSaveable { mutableStateOf<InputMode?>(null) }
     var pendingCamera by remember { mutableStateOf<InputMode?>(null) }
     var fullscreen by remember { mutableStateOf<QrCode?>(null) }
+    val dropZone = remember { DropZone() }
     var menuFor by remember { mutableStateOf<QrCode?>(null) }
     var renameFor by remember { mutableStateOf<QrCode?>(null) }
     var labelFor by remember { mutableStateOf<List<QrCode>?>(null) }
@@ -178,6 +179,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
                         onOpen = { fullscreen = it },
                         onMenu = { menuFor = it },
                         onReorder = { vm.reorderFavorites(it) },
+                        zone = dropZone,
                         onUnfavorite = { code ->
                             vm.unfavorite(code)
                             show(textUnfavorited, textUndo) {
@@ -237,6 +239,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
             }
         }
 
+        DropZonePill(dropZone, stringResource(R.string.favorite_remove))
+
         // Підказки — поверх усього (і камери), по центру.
         Banner(banner?.text, banner?.action, banner?.onAction ?: {})
     }
@@ -257,11 +261,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
         val code = saved?.firstOrNull { it.id == shown.id } ?: shown
         FullscreenCode(
             code,
+            covered = menuFor != null || renameFor != null,
             onDismiss = { fullscreen = null },
-            onShare = {
-                fullscreen = null
-                labelFor = listOf(code)
-            },
             onMenu = { menuFor = code },
         )
     }

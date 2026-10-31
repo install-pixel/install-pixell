@@ -77,6 +77,7 @@ fun FavoritesPage(
     onMenu: (QrCode) -> Unit,
     onReorder: (List<Long>) -> Unit,
     onUnfavorite: (QrCode) -> Unit,
+    zone: DropZone,
 ) {
     val haptics = LocalHaptics.current
     if (favorites == null) return
@@ -89,12 +90,17 @@ fun FavoritesPage(
     val grid = rememberLazyGridState()
     var draggingId by remember { mutableStateOf<Long?>(null) }
     var order by remember { mutableStateOf(favorites) }
-    if (draggingId == null) order = favorites
+    // Після перетягування тримаємо новий порядок, доки база його не поверне (інакше коди на мить стрибають назад).
+    var pending by remember { mutableStateOf<List<Long>?>(null) }
+    if (pending != null && favorites.map { it.id } == pending) pending = null
+    if (draggingId == null && pending == null) order = favorites
+    if (pending != null && draggingId == null) {
+        val byId = favorites.associateBy { it.id }
+        order = pending!!.mapNotNull { byId[it] } + favorites.filter { it.id !in pending!! }
+    }
     var finger by remember { mutableStateOf(Offset.Zero) }
     var grab by remember { mutableStateOf(Offset.Zero) }
     var gridOrigin by remember { mutableStateOf(Offset.Zero) }
-    var zoneRect by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    var overZone by remember { mutableStateOf(false) }
 
     fun itemAt(p: Offset) = grid.layoutInfo.visibleItemsInfo.firstOrNull {
         p.x >= it.offset.x && p.x <= it.offset.x + it.size.width && p.y >= it.offset.y && p.y <= it.offset.y + it.size.height
@@ -116,6 +122,7 @@ fun FavoritesPage(
                         val code = order.firstOrNull { it.id == item.key } ?: return@awaitEachGesture
                         haptics.longPress()
                         draggingId = code.id
+                        zone.visible = true
                         grab = down.position - Offset(item.offset.x.toFloat(), item.offset.y.toFloat())
                         finger = held.position
                         var moved = false
@@ -127,26 +134,39 @@ fun FavoritesPage(
                             if (!change.pressed) break
                             if ((change.position - held.position).getDistance() > viewConfiguration.touchSlop) moved = true
                             finger = change.position
-                            val over = zoneRect.contains(gridOrigin + finger)
-                            if (over != overZone) haptics.tick()
-                            overZone = over
-                            val target = itemAt(finger)
+                            val over = zone.rect.contains(gridOrigin + finger)
+                            if (over != zone.over) haptics.tick()
+                            zone.over = over
+                            // Міняємо місцями, лише коли палець у середині чужої клітинки (не на межі) — без сіпання.
+                            val target = itemAt(finger)?.takeIf { t ->
+                                val ix = t.size.width * 0.22f
+                                val iy = t.size.height * 0.22f
+                                finger.x >= t.offset.x + ix && finger.x <= t.offset.x + t.size.width - ix &&
+                                    finger.y >= t.offset.y + iy && finger.y <= t.offset.y + t.size.height - iy
+                            }
                             if (!over && target != null && target.key != code.id) {
                                 val from = order.indexOfFirst { it.id == code.id }
                                 val to = order.indexOfFirst { it.id == target.key }
                                 if (from >= 0 && to >= 0) {
+                                    // Сітка тримається за перший видимий код — без цього вона «їде» слідом за ним.
+                                    grid.requestScrollToItem(grid.firstVisibleItemIndex, grid.firstVisibleItemScrollOffset)
                                     order = order.toMutableList().apply { add(to, removeAt(from)) }
                                     haptics.tick()
                                 }
                             }
                         }
-                        draggingId = null
+                        val dropped = zone.over
+                        zone.over = false
+                        zone.visible = false
                         when {
                             !moved -> onMenu(code)
-                            overZone -> onUnfavorite(code)
-                            order.map { it.id } != favorites.map { it.id } -> onReorder(order.map { it.id })
+                            dropped -> onUnfavorite(code)
+                            order.map { it.id } != favorites.map { it.id } -> {
+                                pending = order.map { it.id }
+                                onReorder(order.map { it.id })
+                            }
                         }
-                        overZone = false
+                        draggingId = null
                     }
                 },
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -170,7 +190,7 @@ fun FavoritesPage(
                                 }
                                 scaleX = 1.06f
                                 scaleY = 1.06f
-                                alpha = if (overZone) 0.5f else 0.9f
+                                alpha = if (zone.over) 0.5f else 0.9f
                             }
                         }
                         .clip(RoundedCornerShape(16.dp))
@@ -191,23 +211,36 @@ fun FavoritesPage(
                 }
             }
         }
-        // Плашка «Прибрати з вибраного» — лише поки тягнеш.
+    }
+}
+
+/** Плашка, на яку кидають код, щоб прибрати з вибраного. Малюється вгорі екрана (над вкладками, не на кодах). */
+class DropZone {
+    var visible by mutableStateOf(false)
+    var over by mutableStateOf(false)
+    var rect by mutableStateOf(androidx.compose.ui.geometry.Rect.Zero)
+}
+
+/** Сама плашка — того ж розміру й на тому ж місці, що й сповіщення. */
+@Composable
+fun DropZonePill(zone: DropZone, text: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         AnimatedVisibility(
-            visible = draggingId != null,
+            visible = zone.visible,
             enter = fadeIn(tween(OPEN_MS)),
             exit = fadeOut(tween(CLOSE_MS)),
-            modifier = Modifier.align(Alignment.TopCenter).padding(horizontal = 20.dp, vertical = 8.dp),
+            modifier = Modifier.noticePlace(),
         ) {
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .onGloballyPositioned { zoneRect = it.boundsInRoot().inflate(24f) }
-                    .background(if (overZone) Oled.Danger.copy(alpha = 0.25f) else Oled.Black.copy(alpha = 0.92f), RoundedCornerShape(28.dp))
-                    .pencilFrame(28.dp, seed = 17, ink = if (overZone) Oled.Danger else SheetInk),
+                    .onGloballyPositioned { zone.rect = it.boundsInRoot().inflate(24f) }
+                    .background(if (zone.over) Oled.Danger.copy(alpha = 0.25f) else Oled.Black.copy(alpha = 0.92f), RoundedCornerShape(28.dp))
+                    .pencilFrame(28.dp, seed = 17, ink = if (zone.over) Oled.Danger else SheetInk),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(R.string.favorite_remove), color = Oled.Danger, fontSize = 17.sp)
+                Text(text, color = Oled.Danger, fontSize = 17.sp)
             }
         }
     }
