@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -124,7 +125,9 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
         val blur = backdropAmount(covered)
         Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().padding(24.dp)) {
             Column(Modifier.align(Alignment.Center).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                QrImage(matrix, Modifier.widthIn(max = 480.dp).fillMaxWidth(), seed = code.id.toInt(), radius = 18.dp)
+                // Той самий розмір, що й угорі на «Створити»: великий код сканер не бере зблизька.
+                val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
+                QrImage(matrix, Modifier.size(qrPreviewSide(screen - 32.dp)), seed = code.id.toInt(), radius = 14.dp)
                 Text(
                     code.title,
                     color = Oled.TextPrimary,

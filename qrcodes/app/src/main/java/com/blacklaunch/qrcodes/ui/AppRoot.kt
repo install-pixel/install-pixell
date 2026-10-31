@@ -205,6 +205,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         onModeClick = { modeMenu = true },
                         onSave = {
                             vm.save(input.text) { show(if (it == SaveResult.Saved) textSaved else textAlready) }
+                            // Збережено — назад на старт: поле порожнє, клавіатура схована, код уже в списку.
+                            input = TextFieldValue("")
+                            mode = InputMode.Manual
+                            focusManager.clearFocus()
+                            keyboard?.hide()
                         },
                         saved = saved,
                         onOpen = { fullscreen = it },

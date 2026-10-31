@@ -269,7 +269,7 @@ fun CreatePage(
     val tooLong = input.text.isNotEmpty() && matrix == null
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            val side = minOf(maxWidth * 0.62f, 260.dp)
+            val side = qrPreviewSide(maxWidth)
             if (matrix != null) {
                 QrImage(matrix, Modifier.size(side), seed = 3)
             } else {
@@ -341,6 +341,9 @@ fun CreatePage(
         )
     }
 }
+
+/** Розмір коду вгорі сторінки «Створити» — такий самий і в коду на весь екран (зручно для сканера). */
+fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp = minOf(available * 0.62f, 260.dp)
 
 /** Рядок збереженого коду: маленький код, назва (зміст ховається, якщо є своя назва), дата, зірка вибраного. */
 @Composable
