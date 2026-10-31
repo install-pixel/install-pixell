@@ -22,14 +22,19 @@ object Oled {
     val Confirm = Color(0xFF8AB4F8)
     val Danger = Color(0xFFEF8A80)
 
-    /** Поверхня: світліша вгорі, темніша внизу, але помітно світліша за чорне тло. */
-    val Surface = Brush.verticalGradient(listOf(Color(0xFF242424), Color(0xFF161616)))
+    /**
+     * Чорне скло: темне, ледь світліше вгорі (світло падає згори) і майже чорне внизу — глибина, а не сіра плашка.
+     */
+    val Surface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f to Color(0xFF0D0D0D), 1f to Color(0xFF080808))
 
-    /** Грань-відблиск: яскрава зверху, тьмяніша з боків, контур знизу лишається видимим. */
-    val Glint = Brush.verticalGradient(listOf(Color(0x4DFFFFFF), Color(0x1AFFFFFF), Color(0x2EFFFFFF)))
+    /** Кант скла: яскравий відблиск по верхній грані, по боках тьмяніє, знизу — ледь помітний контур. */
+    val Glint = Brush.verticalGradient(0f to Color(0x80FFFFFF), 0.25f to Color(0x24FFFFFF), 0.8f to Color(0x12FFFFFF), 1f to Color(0x26FFFFFF))
 
-    /** Об'ємна кругла кнопка. */
-    val Knob = Brush.radialGradient(listOf(Color(0xFF3C3C3C), Color(0xFF161616)))
+    /** Кант вибраного — яскравіший. */
+    val GlintBright = Brush.verticalGradient(0f to Color(0xB3FFFFFF), 0.3f to Color(0x40FFFFFF), 1f to Color(0x33FFFFFF))
+
+    /** Вибране / кругла кнопка: скло зі світлом посередині — видно серед інших. */
+    val Knob = Brush.radialGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)))
     val KnobListening = Brush.radialGradient(listOf(Color(0xFFC93A66), Color(0xFF4F0F24)))
 
     /** «Прибрати»/«видалити» під час перетягування — червоний, як усі дії, що видаляють. */

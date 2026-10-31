@@ -149,7 +149,7 @@ internal fun TargetOption(label: String, selected: Boolean, onClick: () -> Unit)
             .fillMaxWidth()
             .clip(shape)
             .background(if (selected) Oled.Knob else Oled.Surface)
-            .border(1.dp, Oled.Glint, shape)
+            .border(1.dp, if (selected) Oled.GlintBright else Oled.Glint, shape)
             .selectable(selected = selected, onClick = { haptics.tap(); onClick() }, role = Role.RadioButton)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
