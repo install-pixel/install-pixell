@@ -174,7 +174,7 @@ class LauncherViewModel(
     private val phraseAppLabel: (String) -> String? = { null },
     private val startShortcut: (GlobalResult.Shortcut) -> Boolean = { false },
     /** «Команди — лише програми режиму»: чи може крок команди відкрити програму з цим пакетом зараз. */
-    private val stepPackageAllowed: (String) -> Boolean = { true },
+    private val stepPackageAllowed: (String, LauncherProfile?) -> Boolean = { _, _ -> true },
     /** Гравець, якому піде «відтворити» без назви (щоб перевірити режим). */
     private val lastPlayerPackage: () -> String? = { null },
     /** Чи програма — гравець музики (для «увімкни музику в …»). */
@@ -566,6 +566,8 @@ class LauncherViewModel(
 
     /** Кроки по черзі — «Моя команда» або решта автоматизації після дотику до сповіщення. */
     fun runSteps(steps: List<String>) {
+        // Режим, у який команда щойно перемкнула (до того, як перемикання дійде до бази).
+        stepMode = null
         val (now, wait, rest) = StepCommands.splitAtWait(steps)
         if (wait != null && rest.isNotEmpty()) scheduleSteps(rest, wait)
         val speech = mutableListOf<String?>()
@@ -580,7 +582,7 @@ class LauncherViewModel(
                     return@forEach
                 }
                 StepCommand.PreviousProfile -> {
-                    previousProfileId()?.let { id -> profiles.value.firstOrNull { it.id == id } }?.let(::activate)
+                    previousProfileId()?.let { id -> profiles.value.firstOrNull { it.id == id } }?.let { target -> if (activate(target)) stepMode = target }
                     return@forEach
                 }
                 is StepCommand.Wait, null -> Unit
@@ -594,18 +596,24 @@ class LauncherViewModel(
                 is VoiceCommand.Action -> when {
                     parsed.action == VoiceAction.Time -> speech.add(null)
                     // «Грай музику» без назви: гравець, якого немає в режимі, не вмикаємо.
-                    parsed.action == VoiceAction.Media(MediaCommand.PLAY) && lastPlayerPackage()?.let { !stepPackageAllowed(it) } == true ->
+                    parsed.action == VoiceAction.Media(MediaCommand.PLAY) && lastPlayerPackage()?.let { !stepAllowed(it) } == true ->
                         _messages.trySend(UiMessage.NOT_IN_MODE)
                     else -> _voiceActions.trySend(parsed.action)
                 }
-                is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let(::activate)
+                is VoiceCommand.SwitchProfile -> findProfile(parsed.name)?.let { target -> if (activate(target)) stepMode = target }
                 VoiceCommand.OpenLast -> lastLaunched()?.let(::launchStep)
                 is VoiceCommand.Open -> index.value.search(parsed.query, launchCounts.value).firstOrNull()?.let(::launchStep)
                 null -> Unit
             }
         }
         if (speech.isNotEmpty()) speakSteps(speech)
+        stepMode = null
     }
+
+    /** Режим для перевірки кроків команди: щойно перемкнутий командою або поточний. */
+    private var stepMode: LauncherProfile? = null
+
+    private fun stepAllowed(pkg: String) = stepPackageAllowed(pkg, stepMode)
 
     /** Команду вибрали в результатах пошуку — виконує екран, як голосову. */
     fun runAction(action: VoiceAction) {
@@ -778,7 +786,7 @@ class LauncherViewModel(
 
     /** Програма з кроку команди — лише якщо дозволена в режимі («Команди — лише програми режиму»). */
     private fun launchStep(app: AppInfo) {
-        if (stepPackageAllowed(app.packageName)) launch(app, null) else _messages.trySend(UiMessage.NOT_IN_MODE)
+        if (stepAllowed(app.packageName)) launch(app, null) else _messages.trySend(UiMessage.NOT_IN_MODE)
     }
 
     /** Ярлик з фрази «відкрий <що> в <програма>»: true — оброблено (відкрито або сказано, що програма не вміє). */
@@ -788,7 +796,7 @@ class LauncherViewModel(
         val found = phraseShortcuts(text)?.firstOrNull { it.packageName in visible }
         if (found != null) {
             // Крок команди — лише програма режиму; сказане самим користувачем — завжди.
-            if (!speak && !stepPackageAllowed(found.packageName)) {
+            if (!speak && !stepAllowed(found.packageName)) {
                 _messages.trySend(UiMessage.NOT_IN_MODE)
                 return true
             }
@@ -826,7 +834,7 @@ class LauncherViewModel(
             }
             return true
         }
-        if (heard == null && !stepPackageAllowed(app.packageName)) {
+        if (heard == null && !stepAllowed(app.packageName)) {
             _messages.trySend(UiMessage.NOT_IN_MODE)
             return true
         }

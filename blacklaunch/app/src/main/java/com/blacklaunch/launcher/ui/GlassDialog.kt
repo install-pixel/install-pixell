@@ -80,12 +80,10 @@ fun GlassDialog(
             }
             if (text != null) {
                 // Довгий вміст гортається всередині; кнопки лишаються видимими.
-                Box(Modifier.weight(1f, fill = false)) {
+                Box(Modifier.weight(1f, fill = false).fadingEdges(top = EdgeFade / 2, bottom = EdgeFade)) {
                     CompositionLocalProvider(LocalContentColor provides Oled.TextSecondary) { text() }
                 }
             }
-            // Довгий вміст гортається над кнопками — тонка риска відділяє його від кнопок (олівцем чи склом).
-            if (text != null) DialogDivider()
             DialogButtons {
                 dismissButton?.invoke()
                 confirmButton()
@@ -154,16 +152,6 @@ private fun DialogButtons(content: @Composable () -> Unit) {
                 x += p.width + gap
             }
         }
-    }
-}
-
-/** Риска між вмістом вікна й кнопками: в «Аркуші» — олівцем, у склі — тонкий відблиск. */
-@Composable
-private fun DialogDivider() {
-    if (LocalSheet.current) {
-        Canvas(Modifier.fillMaxWidth().height(6.dp)) { pencilStroke(size.height / 2, 0f, size.width, seed = 5, alpha = 0.45f) }
-    } else {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Oled.Glint))
     }
 }
 

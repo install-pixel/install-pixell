@@ -96,8 +96,11 @@ internal fun SettingsPage(title: String, onBack: () -> Unit, content: @Composabl
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                // Вміст тане біля заголовка й низу, а не обрізається різкою межею.
+                .fadingEdges()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
+                .padding(top = EdgeFade / 2)
                 .navigationBarsPadding()
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -484,7 +487,7 @@ fun AppPickerScreen(
                 unfocusedBorderColor = Color(0xFF3A3A3A),
             ),
         )
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges()) {
             items(shown, key = { it.key }) { app ->
                 val selected = app.key in picked
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -597,7 +600,7 @@ fun AppListScreen(
             }
             Text(title, color = Oled.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Medium)
         }
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp).fadingEdges()) {
             item(key = "note") { Box(Modifier.padding(vertical = 8.dp)) { Note(note) } }
             items(sorted, key = { it.key }) { app ->
                 AppRow(app, iconFor = iconFor, onLaunch = onPick, onLongPress = {})

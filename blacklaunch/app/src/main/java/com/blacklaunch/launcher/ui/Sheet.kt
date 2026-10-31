@@ -32,13 +32,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -341,3 +345,33 @@ internal fun HandBattery(level: Int, modifier: Modifier = Modifier) {
 
 private const val BATTERY_TICKS = 10
 private const val LOW_BATTERY = 15
+
+/** Скільки висоти тане край прокручуваного вмісту. */
+internal val EdgeFade = 18.dp
+
+/**
+ * Розмитий край прокручуваного вмісту: те, що гортається, плавно тане біля заголовка (згори) і біля низу, а не
+ * обрізається різкою межею. Працює однаково в обох стилях.
+ */
+fun Modifier.fadingEdges(top: Dp = EdgeFade, bottom: Dp = EdgeFade): Modifier =
+    graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val t = top.toPx()
+            val b = bottom.toPx()
+            if (t > 0f) {
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, startY = 0f, endY = t),
+                    size = Size(size.width, t),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+            if (b > 0f) {
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Black, 1f to Color.Transparent, startY = size.height - b, endY = size.height),
+                    topLeft = Offset(0f, size.height - b),
+                    size = Size(size.width, b),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+        }

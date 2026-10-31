@@ -151,6 +151,9 @@ class AutomationRunner(private val app: BlackLaunchApp) {
         val later = mutableListOf<String>()
         // Фрази вголос («котра година», «скажи …») — одним мовленням, щоб наступна не обривала попередню.
         val speech = mutableListOf<String>()
+        // Крок «режим …» у цій самій команді: перемикання доходить до бази із запізненням, тож наступні кроки
+        // не перевіряємо за старим режимом (інакше — «програми немає в режимі, крок пропущено»).
+        var switchStep: String? = null
         steps.forEach { step ->
             when (val own = StepCommands.parse(step)) {
                 is StepCommand.Say -> {
@@ -179,10 +182,13 @@ class AutomationRunner(private val app: BlackLaunchApp) {
                 return@forEach
             }
             when (parsed) {
-                is VoiceCommand.SwitchProfile -> switchProfile(parsed.name)
+                is VoiceCommand.SwitchProfile -> {
+                    switchProfile(parsed.name)
+                    switchStep = step
+                }
                 is VoiceCommand.Action -> when (val action = parsed.action) {
                     // «Грай музику» без назви: гравець, якого немає в режимі, не вмикаємо.
-                    is VoiceAction.Media -> if (action.command == MediaCommand.PLAY &&
+                    is VoiceAction.Media -> if (action.command == MediaCommand.PLAY && switchStep == null &&
                         MediaKeys.lastPlayerPackage(app)?.let { !app.allowedInMode(it) } == true
                     ) {
                         notInMode()
@@ -199,7 +205,8 @@ class AutomationRunner(private val app: BlackLaunchApp) {
             }
         }
         if (speech.isNotEmpty()) runner.say(speech.joinToString(". "))
-        if (later.isNotEmpty()) finishInBlackGlass(title, later)
+        // Решта кроків виконається на екрані — разом із кроком «режим …», щоб і там перевірялись за новим режимом.
+        if (later.isNotEmpty()) finishInBlackGlass(title, listOfNotNull(switchStep) + later)
     }
 
     private fun notInMode() {

@@ -106,9 +106,15 @@ class BlackLaunchApp : Application() {
      * «Команди — лише програми режиму»: чи може крок команди відкрити (чи ввімкнути музику в) програму [pkg] зараз —
      * лише якщо вона серед програм поточного режиму. Вимкнено — завжди так.
      */
-    fun allowedInMode(pkg: String): Boolean {
+    fun allowedInMode(pkg: String): Boolean = allowedInMode(pkg, null)
+
+    /**
+     * Чи дозволена програма в режимі [mode] (null — у поточному). Команда щойно перемкнула режим — наступні кроки
+     * перевіряються вже за новим, а не за старим (перемикання записується в базу із запізненням).
+     */
+    fun allowedInMode(pkg: String, mode: com.blacklaunch.launcher.profiles.LauncherProfile?): Boolean {
         if (pkg == packageName) return true
-        val profile = activeProfile.value ?: return true
+        val profile = mode ?: activeProfile.value ?: return true
         // «Лише програми профілю» в пошуку режиму обмежує й команди — без окремого перемикача.
         val profileOnly = searchScopes.scopes.value[profile.id] == SearchScope.PROFILE_ONLY
         if (!automationSettings.modeAppsOnly.value && !profileOnly) return true

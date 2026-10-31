@@ -187,7 +187,7 @@ class MainActivity : ComponentActivity() {
                     phraseShortcuts = { text -> app.globalSearch.phraseShortcuts(text, onlyMatching = true) },
                     phraseAppLabel = app.globalSearch::phraseAppLabel,
                     startShortcut = app.globalSearch::startShortcut,
-                    stepPackageAllowed = app::allowedInMode,
+                    stepPackageAllowed = { pkg, mode -> app.allowedInMode(pkg, mode) },
                     focusGate = app.focus::switchGate,
                     launchPause = app::launchPause,
                     lastPlayerPackage = { com.blacklaunch.launcher.automation.MediaKeys.lastPlayerPackage(app) },

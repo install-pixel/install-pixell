@@ -1026,7 +1026,8 @@ private fun SearchOpen(
             canCall = state.canCall,
             canMessage = state.canMessage,
             onContentHeight = { contentHeight = it },
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            // Згори список тане, а не обрізається різко.
+            modifier = Modifier.weight(1f).fillMaxWidth().fadingEdges(bottom = 0.dp),
         )
         SearchField(
             // Де поле, коли панель на місці (у координатах екрана; зсув від пальця віднімаємо).
