@@ -174,28 +174,39 @@ internal fun catPose(f: CatFrame): CatPose = CatPose().apply {
         // Лежачи — окремий малюнок ([lyingShapes]), поза не потрібна.
         CatAct.LIE, CatAct.LIE_DOWN, CatAct.GET_UP -> Unit
         CatAct.HELD -> {
-            // Звисає: лапи витягнуті донизу й бовтаються, хвіст висить.
-            val swing = sin(f.time * 4.5f)
-            legLen = 18f
-            legNear = 6f + swing * 9f
-            legFar = -4f - swing * 7f
-            armNear = 4f + swing * 6f
-            armFar = -4f - swing * 5f
+            // Звисає за шкірку, як кошеня: тіло гойдається маятником, лапки безвольно звисають, хвіст підібганий,
+            // голова опущена.
+            val swing = sin(f.time * 3.2f)
+            lean = swing * 7f
+            legLen = 19f
+            legNear = 4f + swing * 10f
+            legFar = -4f - swing * 8f
+            armLen = 15f
+            armNear = 2f + swing * 7f
+            armFar = -2f - swing * 6f
             tailDown = true
-            tailWag = swing * 4f
-            headTilt = -6f
+            tailWag = swing * 5f
+            headTilt = 16f
+            headDrop = 2f
         }
         CatAct.ANGRY -> {
-            // Нахилився до стінки й гупає по ній ближньою лапою; хвіст сіпається.
-            val bang = sin(f.actTime * 13f)
-            lean = 6f
-            armLen = 16f
-            armNear = 72f + bang * 16f
+            // Замахується з-за голови й гупає лапою згори по краю: швидкий удар, повільніший замах назад.
+            val cycle = (f.actTime * ANGRY_BANGS) % 1f
+            val swing = if (cycle < 0.25f) {
+                val t = cycle / 0.25f
+                t * t
+            } else {
+                1f - (cycle - 0.25f) / 0.75f
+            }
+            lean = 4f + 6f * swing
+            // Замах — лапа витягнута вгору над головою; удар — уперед-униз по краю.
+            armLen = 27f - 10f * swing
+            armNear = 172f - 80f * swing
             armFar = 20f
-            legNear = 10f
-            legFar = -8f
+            legNear = 12f
+            legFar = -10f
             tailWag = sin(f.time * 9f) * 5f
-            headTilt = -4f + bang * 3f
+            headTilt = -8f + 6f * swing
         }
         CatAct.JUMP_ROPE -> {
             // Підстрибує, коли скакалка проходить під лапами; лапи з ручками — по боках.
@@ -444,7 +455,7 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
     pen.rotate(pose.headTilt, hx + 1.5f, hy - 22f)
     val eye = when {
         f.dazed && f.act == CatAct.SIT -> CatEye.DAZED
-        f.act == CatAct.DUCK -> CatEye.CLOSED
+        f.act == CatAct.DUCK || f.act == CatAct.HELD -> CatEye.CLOSED
         else -> CatEye.OPEN
     }
     pen.head(cx, cy, eye, f.time)
@@ -502,7 +513,10 @@ private fun ropeStrand(pen: CatPen, paw: Pair<Float, Float>, apex: Pair<Float, F
 }
 
 /** Наскільки тягнеться шкірка вгору до пальця, коли котика тримають. */
-internal const val HOLD_STRETCH = 26f
+internal const val HOLD_STRETCH = 44f
+
+/** Скільки ударів лапою за секунду, коли сердиться. */
+private const val ANGRY_BANGS = 1.4f
 
 /** Швидкість обертання скакалки (радіан за секунду). */
 private const val ROPE_SPEED = 6.5f

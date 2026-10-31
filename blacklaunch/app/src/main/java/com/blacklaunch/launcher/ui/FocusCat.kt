@@ -192,7 +192,23 @@ private class CatSim {
         return CatStep(CatAct.LOOK_AROUND, seconds, then = then)
     }
 
+    /** Останні розміри (для кроків, що зсувають котика поза ходою). */
+    private var lastW = 0f
+    private var lastH = 0f
+    private var lastU = 1f
+    private var lastFences: List<Rect> = emptyList()
+
+    /** Відступити від стінки на [units] (якщо є куди) — щоб лапа, б'ючи по краю, була видна. */
+    private fun stepBack(units: Float) {
+        val back = x - dirX * units * lastU
+        if (!blocked(back, y, lastW, lastH, lastU, lastFences)) x = back
+    }
+
     fun step(dt: Float, w: Float, h: Float, u: Float, fences: List<Rect>) {
+        lastW = w
+        lastH = h
+        lastU = u
+        lastFences = fences
         time += dt
         blendTime += dt
         // Розворот не миттєвий: котик ніби обертається (стискається й розгортається в інший бік).
@@ -295,7 +311,8 @@ private class CatSim {
                 when {
                     // Розсердився: гупає лапою по стінці, потім струшується й іде геть.
                     chance(0.22f) -> plan(
-                        CatStep(CatAct.RECOIL, 0.35f), CatStep(CatAct.ANGRY, span(2.5f, 5f)),
+                        // Відсахується трохи далі — щоб лапа, б'ючи по краю, не ховалась за ним.
+                        CatStep(CatAct.RECOIL, 0.6f, then = { stepBack(10f) }), CatStep(CatAct.ANGRY, span(2.5f, 5f)),
                         CatStep(CatAct.SHAKE, span(0.5f, 1f)), look(span(2.5f, 5f), then = turn),
                     )
                     // Сильно: сів на хвіст, оговтався, почухав потилицю, подумав.
