@@ -404,6 +404,15 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
     // Дальня — за тулубом: видно, лише коли вона попереду чи позаду тіла (на ходу, коли тягнеться до голови).
     // Довга лише тоді, коли тягнеться до голови (присів); інакше звичайна — не звисає нижче тулуба.
     arm(shoulderX - 2f, pose.armFar, if (pose.armFar > 90f) pose.armLen else 14f)
+    // Де лапка (кінець руки) — за тим самим розрахунком, що й [arm].
+    fun pawAt(fromX: Float, angle: Float, len: Float): Pair<Float, Float> {
+        val (dx, dy) = dir(angle)
+        val (bx, by) = dir(angle + if (angle > 90f) -32f else 18f)
+        return (fromX + dx * len * 0.55f + bx * len * 0.45f) to (shoulderY + dy * len * 0.55f + by * len * 0.45f)
+    }
+    val nearPaw = pawAt(shoulderX, pose.armNear, pose.armLen)
+    // Скакалка: дальня половина — від дальньої лапки, за тулубом (тулуб її закриє).
+    if (f.act == CatAct.JUMP_ROPE) ropeStrand(pen, pawAt(shoulderX - 2f, pose.armFar, 14f), ropeApex(f, hx, hy), front = false)
 
     // Тулуб — грушею, зафарбований чорним: закриває все, що позаду.
     pen.shape(CatFill.BLACK) {
@@ -463,24 +472,33 @@ private fun standingShapes(f: CatFrame, pose: CatPose): List<CatShape> {
         pen.shape(width = 1.3f) { move(ax - r, ay + r * 0.3f); cubic(ax - r * 0.3f, ay + r * 0.3f, ax - r * 0.3f, ay + r * 0.3f, ax - r * 0.3f, ay + r) }
         pen.shape(width = 1.3f) { move(ax + r, ay + r * 0.3f); cubic(ax + r * 0.3f, ay + r * 0.3f, ax + r * 0.3f, ay + r * 0.3f, ax + r * 0.3f, ay + r) }
     }
-    // Скакалка: ручки в лапах, мотузка описує коло довкола котика — над головою, попереду, під лапами, позаду.
-    if (f.act == CatAct.JUMP_ROPE) {
-        val rope = f.actTime * ROPE_SPEED
-        val handX = hx + 6f
-        val handY = hy - 10f
-        // Коло довкола всього котика: над вухами, попереду, під лапами, позаду.
-        val cx2 = hx + 1f + sin(rope) * 44f
-        val cy2 = hy - 14f - cos(rope) * 52f
-        pen.shape(width = 1.1f, alpha = 0.85f) {
-            move(handX, handY)
-            // Петля трохи «розкрита» вбік від напрямку — видно, що це мотузка, а не риска.
-            val px = cos(rope) * 16f
-            val py = sin(rope) * 16f
-            cubic(cx2 + px, cy2 + py, cx2 - px, cy2 - py, handX - 9f, handY + 1f)
-        }
-    }
+    // Ближня половина скакалки — попереду всього котика (дальня вже за тулубом).
     if (armRaised) arm(shoulderX, pose.armNear, pose.armLen)
+    if (f.act == CatAct.JUMP_ROPE) ropeStrand(pen, nearPaw, ropeApex(f, hx, hy), front = true)
     return pen.shapes
+}
+
+/**
+ * Найдальша точка скакалки на колі довкола котика: над вухами, попереду, під лапами, позаду — за часом.
+ */
+private fun ropeApex(f: CatFrame, hx: Float, hy: Float): Pair<Float, Float> {
+    val rope = f.actTime * ROPE_SPEED
+    return (hx + 1f + sin(rope) * 30f) to (hy - 14f - cos(rope) * 40f)
+}
+
+/** Половина скакалки від лапки до найдальшої точки, дугою назовні (ближня трохи яскравіша). */
+private fun ropeStrand(pen: CatPen, paw: Pair<Float, Float>, apex: Pair<Float, Float>, front: Boolean) {
+    val (px, py) = paw
+    val (ax, ay) = apex
+    val mx = (px + ax) / 2f
+    val my = (py + ay) / 2f
+    // Вигин убік від лінії «лапка — вершина», щоб мотузка йшла дугою, а не навпростець.
+    val nx = -(ay - py) * 0.22f
+    val ny = (ax - px) * 0.22f
+    pen.shape(width = 1.1f, alpha = if (front) 0.9f else 0.6f) {
+        move(px, py)
+        cubic(mx + nx, my + ny, ax + nx * 0.6f, ay + ny * 0.6f, ax, ay)
+    }
 }
 
 /** Наскільки тягнеться шкірка вгору до пальця, коли котика тримають. */
