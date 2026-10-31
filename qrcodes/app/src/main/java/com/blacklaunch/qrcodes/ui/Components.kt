@@ -321,7 +321,10 @@ fun SheetTextField(
     }
 }
 
-/** Підказка внизу з необов'язковою дією («Повернути»), як підказки «Аркуша». */
+/**
+ * Підказка («Збережено», «Видалено» + «Повернути») — по центру екрана, на чорному клаптику в рамці олівцем;
+ * дія — під текстом.
+ */
 @Composable
 fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
     var shown by remember { mutableStateOf("") }
@@ -330,21 +333,18 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
         shown = text
         shownAction = action
     }
-    Box(Modifier.fillMaxSize().navigationBarsPadding().imePadding(), contentAlignment = Alignment.BottomCenter) {
+    Box(Modifier.fillMaxSize().navigationBarsPadding().imePadding().padding(horizontal = 40.dp), contentAlignment = Alignment.Center) {
         AnimatedVisibility(visible = text != null, enter = fadeIn(), exit = fadeOut()) {
-            Row(
+            Column(
                 Modifier
-                    .padding(start = 24.dp, end = 24.dp, bottom = 96.dp)
-                    .background(Oled.Black, RoundedCornerShape(18.dp))
-                    .pencilFrame(18.dp, seed = shown.length)
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .background(Oled.Black, RoundedCornerShape(20.dp))
+                    .pencilFrame(20.dp, seed = shown.length)
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(shown, color = Oled.TextPrimary, fontSize = 17.sp)
-                shownAction?.let { label ->
-                    Spacer(Modifier.width(14.dp))
-                    SheetButton(label, onAction, tone = Tone.Confirm)
-                }
+                Text(shown, color = Oled.TextPrimary, fontSize = 19.sp, textAlign = TextAlign.Center)
+                shownAction?.let { label -> SheetButton(label, onAction, tone = Tone.Confirm) }
             }
         }
     }

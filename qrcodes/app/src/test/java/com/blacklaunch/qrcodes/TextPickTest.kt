@@ -29,3 +29,16 @@ class TextPickTest {
         assertEquals("a b", displayTitle("  ", "a\n b"))
     }
 }
+
+class WordJoinTest {
+    @Test
+    fun chosenWordsInReadingOrder() {
+        val lines = listOf(listOf("Paleta", "PL-0099812", "Zebra"), listOf("SKU", "445-221"))
+        val picked = setOf(
+            com.blacklaunch.qrcodes.scan.WordRef(1, 1),
+            com.blacklaunch.qrcodes.scan.WordRef(0, 1),
+        )
+        assertEquals("PL-0099812 445-221", com.blacklaunch.qrcodes.scan.TextPick.join(lines, picked))
+        assertEquals("", com.blacklaunch.qrcodes.scan.TextPick.join(lines, emptySet()))
+    }
+}

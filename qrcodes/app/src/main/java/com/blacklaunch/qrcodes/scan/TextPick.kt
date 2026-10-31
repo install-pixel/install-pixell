@@ -16,4 +16,13 @@ object TextPick {
             accept(t) && seen.add(t)
         }
     }
+
+    /** Вибрані слова — одним рядком у порядку читання (рядок за рядком, зліва направо), через пробіл. */
+    fun join(lines: List<List<String>>, selected: Set<WordRef>): String =
+        selected.sortedWith(compareBy({ it.line }, { it.word }))
+            .mapNotNull { lines.getOrNull(it.line)?.getOrNull(it.word) }
+            .joinToString(" ")
 }
+
+/** Слово з фото: номер рядка й номер слова в ньому. */
+data class WordRef(val line: Int, val word: Int)

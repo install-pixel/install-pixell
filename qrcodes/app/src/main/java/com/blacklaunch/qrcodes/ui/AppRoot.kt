@@ -177,8 +177,6 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
             }
         }
 
-        Banner(banner?.text, banner?.action, banner?.onAction ?: {})
-
         camera?.let { m ->
             CameraScreen(
                 scanQr = m == InputMode.ScanQr,
@@ -199,6 +197,9 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
         labelFor?.let { start ->
             LabelScreen(start = start, saved = saved.orEmpty(), onClose = { labelFor = null })
         }
+
+        // Підказки — поверх усього (і камери), по центру.
+        Banner(banner?.text, banner?.action, banner?.onAction ?: {})
     }
 
     if (modeMenu) {

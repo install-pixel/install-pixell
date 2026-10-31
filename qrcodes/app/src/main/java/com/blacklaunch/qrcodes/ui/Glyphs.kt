@@ -20,7 +20,7 @@ import kotlin.math.sin
  * Сітка 24×24.
  */
 
-enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter }
+enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter, Box, Arrow, Wifi, Warning, Phone, TextT, Frame }
 
 @Composable
 fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Modifier, tint: Color = SheetInk, size: Dp = 24.dp) {
@@ -41,9 +41,9 @@ fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Mo
     }
 }
 
-private val cache = HashMap<Glyph, List<List<Offset>>>()
+private val cache = java.util.concurrent.ConcurrentHashMap<Glyph, List<List<Offset>>>()
 
-private fun glyphStrokes(glyph: Glyph): List<List<Offset>> = cache.getOrPut(glyph) { strokes(glyph) }
+internal fun glyphStrokes(glyph: Glyph): List<List<Offset>> = cache.getOrPut(glyph) { strokes(glyph) }
 
 private fun line(vararg xy: Float): List<Offset> = buildList {
     add(Offset(xy[0], xy[1]))
@@ -123,4 +123,23 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     Glyph.Flash -> listOf(line(13.5f, 3f, 6.5f, 13.2f, 11.6f, 13f, 10.2f, 21f, 17.6f, 10.4f, 12.2f, 10.6f, 13.6f, 2.8f))
     // Спуск затвора: подвійне коло.
     Glyph.Shutter -> listOf(arc(12f, 12f, 9f, -90f, 280f, 36), arc(12f, 12f, 5.2f, 30f, 400f, 24))
+    // Коробка: передня грань, верх і ребро.
+    Glyph.Box -> listOf(
+        line(3.5f, 8.5f, 12f, 11.8f, 20.5f, 8.4f),
+        line(3.6f, 8.4f, 3.8f, 17.2f, 12f, 20.6f, 20.2f, 17f, 20.4f, 8.6f),
+        line(3.5f, 8.5f, 12.1f, 4.6f, 20.4f, 8.3f),
+        line(12f, 11.8f, 12f, 20.4f),
+        line(7.8f, 6.6f, 16.2f, 10.2f),
+    )
+    Glyph.Arrow -> listOf(line(3.5f, 12.2f, 19.5f, 11.8f), line(13.5f, 5.8f, 19.8f, 12f, 13.6f, 18.3f))
+    // Хвилі Wi‑Fi і крапка.
+    Glyph.Wifi -> listOf(arc(12f, 19f, 13f, 225f, 315f, 18), arc(12f, 19f, 8.6f, 228f, 312f, 14), arc(12f, 19f, 4.3f, 232f, 308f, 10), arc(12f, 18.6f, 0.9f, 0f, 360f, 8))
+    // Трикутник зі знаком оклику.
+    Glyph.Warning -> listOf(line(12f, 3.6f, 21f, 19.6f, 3f, 19.8f, 12.2f, 3.4f), line(12f, 9f, 12.1f, 14.2f), arc(12f, 17.1f, 0.6f, 0f, 360f, 6))
+    // Телефон: корпус і кнопка.
+    Glyph.Phone -> listOf(box(7f, 2.8f, 10f, 18.4f, 7, 2.2f), line(10.8f, 17.6f, 13.2f, 17.6f), line(10.5f, 5.2f, 13.5f, 5.2f))
+    // «Т» — свій текст.
+    Glyph.TextT -> listOf(line(5f, 5.6f, 19f, 5.3f), line(12f, 5.4f, 12.2f, 19.2f), line(9.6f, 19.2f, 14.6f, 19.1f))
+    // Рамка олівцем.
+    Glyph.Frame -> listOf(box(3.5f, 4f, 17f, 16f, 12, 4f), box(6.5f, 7f, 11f, 10f, 14, 2f))
 }

@@ -25,6 +25,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,12 +94,17 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 /** Рядок тексту, знайдений на фото, і де він (у пікселях фото). */
-data class FoundText(val text: String, val box: Rect)
+data class FoundWord(val text: String, val box: Rect)
+
+/** Рядок тексту з фото — словами (кожне можна вибрати окремо). */
+data class FoundLine(val words: List<FoundWord>) {
+    val text get() = words.joinToString(" ") { it.text }
+}
 
 private sealed interface PhotoState {
     data object Live : PhotoState
     data object Working : PhotoState
-    data class Done(val bitmap: Bitmap, val found: List<FoundText>) : PhotoState
+    data class Done(val bitmap: Bitmap, val found: List<FoundLine>) : PhotoState
 }
 
 /**
@@ -176,8 +182,10 @@ fun CameraScreen(scanQr: Boolean, onResult: (String) -> Unit, onClose: () -> Uni
                     .addOnFailureListener { cont.resume(null) }
             }
             val lines = text?.textBlocks.orEmpty().flatMap { block -> block.lines }.mapNotNull { line ->
-                line.boundingBox?.let { FoundText(line.text.trim(), it) }
+                val words = line.elements.mapNotNull { e -> e.boundingBox?.let { FoundWord(e.text.trim(), it) } }.filter { it.text.isNotEmpty() }
+                if (words.isEmpty()) null else FoundLine(words)
             }
+            // Рядки, коротші за 6 символів, не показуємо — у довших можна вибрати й окремі слова.
             TextPick.filter(lines) { it.text }
         }
         if (found.isEmpty()) onMessage(notFoundText)
@@ -289,12 +297,23 @@ private fun ScanFrame() {
 }
 
 /**
- * Фото зі знайденими текстами: кожен — у рамці олівцем, торкнись потрібного. Нижче — ті самі тексти списком
- * (зручніше, коли рамки дрібні).
+ * Фото з усіма знайденими словами. Торкнись слова — вибрати/зняти; веди пальцем по словах — вибрати кілька поспіль.
+ * Нижче — той самий текст рядками: слова-«таблички» і кнопка «весь рядок». Внизу — що вибрано, і «Готово»:
+ * вибране йде в поле, де його ще можна підправити.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRetake: () -> Unit, onClose: () -> Unit) {
     val haptics = LocalHaptics.current
+    var selected by remember(state) { mutableStateOf<Set<WordRef>>(emptySet()) }
+    val words = state.found.map { line -> line.words.map { it.text } }
+    val chosen = TextPick.join(words, selected)
+
+    fun toggle(ref: WordRef) {
+        haptics.tap()
+        selected = if (ref in selected) selected - ref else selected + ref
+    }
+
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
         Text(
             stringResource(if (state.found.isEmpty()) R.string.text_not_found else R.string.text_pick),
@@ -311,53 +330,121 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
             val scale = minOf(boxW / bw, boxH / bh)
             val offX = (boxW - bw * scale) / 2f
             val offY = (boxH - bh * scale) / 2f
+            val padPx = with(density) { 6.dp.toPx() }
+            fun hit(p: Offset): WordRef? {
+                state.found.forEachIndexed { li, line ->
+                    line.words.forEachIndexed { wi, w ->
+                        val r = w.box
+                        if (p.x >= offX + r.left * scale - padPx && p.x <= offX + r.right * scale + padPx &&
+                            p.y >= offY + r.top * scale - padPx && p.y <= offY + r.bottom * scale + padPx
+                        ) return WordRef(li, wi)
+                    }
+                }
+                return null
+            }
             Image(state.bitmap.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
             Canvas(
-                Modifier.fillMaxSize().pointerInput(state) {
-                    detectTapGestures { tap ->
-                        val hit = state.found.firstOrNull { f ->
-                            val r = f.box
-                            val pad = 8.dp.toPx()
-                            tap.x >= offX + r.left * scale - pad && tap.x <= offX + r.right * scale + pad &&
-                                tap.y >= offY + r.top * scale - pad && tap.y <= offY + r.bottom * scale + pad
-                        }
-                        if (hit != null) onPick(hit.text)
-                    }
-                },
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(state) { detectTapGestures { tap -> hit(tap)?.let(::toggle) } }
+                    .pointerInput(state) {
+                        // Веди пальцем: перше слово вирішує — вибирати чи знімати; далі так само з кожним словом під пальцем.
+                        var adding = true
+                        detectDragGestures(
+                            onDragStart = { p ->
+                                val ref = hit(p)
+                                adding = ref == null || ref !in selected
+                                if (ref != null) selected = if (adding) selected + ref else selected - ref
+                            },
+                            onDrag = { change, _ ->
+                                val ref = hit(change.position)
+                                if (ref != null && (ref in selected) != adding) {
+                                    haptics.tick()
+                                    selected = if (adding) selected + ref else selected - ref
+                                }
+                            },
+                        )
+                    },
             ) {
-                state.found.forEachIndexed { i, f ->
-                    val r = f.box
-                    val pad = 3.dp.toPx()
-                    val w = r.width() * scale + 2 * pad
-                    val h = r.height() * scale + 2 * pad
-                    translate(offX + r.left * scale - pad, offY + r.top * scale - pad) {
-                        drawRect(Color.Black.copy(alpha = 0.25f), size = Size(w, h))
-                        drawPath(taperedPath(pencilLoop(Size(w, h), 6.dp.toPx(), i + 50, 0.8.dp.toPx()), 2.2.dp.toPx()), Oled.Confirm)
+                state.found.forEachIndexed { li, line ->
+                    line.words.forEachIndexed { wi, w ->
+                        val on = WordRef(li, wi) in selected
+                        val r = w.box
+                        val pad = 2.dp.toPx()
+                        val ww = r.width() * scale + 2 * pad
+                        val hh = r.height() * scale + 2 * pad
+                        translate(offX + r.left * scale - pad, offY + r.top * scale - pad) {
+                            drawRect(if (on) Oled.Confirm.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.2f), size = Size(ww, hh))
+                            drawPath(
+                                taperedPath(pencilLoop(Size(ww, hh), 4.dp.toPx(), li * 31 + wi, 0.5.dp.toPx()), (if (on) 2.4 else 1.4).dp.toPx()),
+                                if (on) Oled.Confirm else SheetInk.copy(alpha = 0.6f),
+                            )
+                        }
                     }
                 }
             }
         }
         if (state.found.isNotEmpty()) {
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 200.dp).padding(top = 10.dp)) {
-                items(state.found) { f ->
-                    Text(
-                        f.text,
-                        color = Oled.TextPrimary,
-                        fontSize = 17.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { haptics.tap(); onPick(f.text) }
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
-                    )
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 210.dp).padding(top = 10.dp)) {
+                items(state.found.size) { li ->
+                    val line = state.found[li]
+                    val all = line.words.indices.all { WordRef(li, it) in selected }
+                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
+                        // Весь рядок одним дотиком.
+                        Box(
+                            Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .pencilFrame(10.dp, seed = li + 70, alpha = if (all) 0.9f else 0.4f, ink = if (all) Oled.Confirm else SheetInk)
+                                .clickable {
+                                    haptics.tap()
+                                    val refs = line.words.indices.map { WordRef(li, it) }.toSet()
+                                    selected = if (all) selected - refs else selected + refs
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("≡", color = if (all) Oled.Confirm else Oled.TextSecondary, fontSize = 18.sp)
+                        }
+                        androidx.compose.foundation.layout.FlowRow(
+                            Modifier.weight(1f).padding(start = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            line.words.forEachIndexed { wi, w ->
+                                val on = WordRef(li, wi) in selected
+                                Text(
+                                    w.text,
+                                    color = if (on) Oled.TextPrimary else Oled.TextSecondary,
+                                    fontSize = 17.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (on) Oled.Confirm.copy(alpha = 0.18f) else Color.Transparent)
+                                        .pencilFrame(10.dp, seed = li * 13 + wi, alpha = if (on) 0.9f else 0.3f, ink = if (on) Oled.Confirm else SheetInk)
+                                        .clickable { toggle(WordRef(li, wi)) }
+                                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+        // Що піде в код.
+        Text(
+            if (chosen.isEmpty()) stringResource(R.string.text_pick_none) else chosen,
+            color = if (chosen.isEmpty()) Oled.TextSecondary else Oled.TextPrimary,
+            fontSize = 18.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp).pencilFrame(14.dp, seed = 77, alpha = 0.5f).padding(horizontal = 14.dp, vertical = 10.dp),
+        )
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
             SheetButton(stringResource(R.string.close), onClose)
-            SheetButton(stringResource(R.string.retake), onRetake, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm)
+            SheetButton(stringResource(R.string.retake), onRetake)
+            if (selected.isNotEmpty()) SheetButton(stringResource(R.string.clear), { selected = emptySet() })
+            SheetButton(stringResource(R.string.done), { onPick(chosen) }, tone = com.blacklaunch.qrcodes.ui.Tone.Confirm, enabled = chosen.isNotEmpty())
         }
     }
 }
