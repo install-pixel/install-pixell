@@ -18,6 +18,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -72,7 +74,7 @@ private data class BannerMsg(val text: String, val action: String? = null, val o
  * Дві сторінки, гортаються свайпом: «Вибране» і «Створити». Поверх — камера, друк, код на весь екран, меню.
  */
 @Composable
-fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) {
+fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, onLanguageChanged: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -85,6 +87,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
     var input by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     var mode by rememberSaveable { mutableStateOf(InputMode.Manual) }
     var modeMenu by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
     var camera by rememberSaveable { mutableStateOf<InputMode?>(null) }
     var pendingCamera by remember { mutableStateOf<InputMode?>(null) }
     var fullscreen by remember { mutableStateOf<QrCode?>(null) }
@@ -162,7 +165,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
     }
 
     // Під меню, вікнами, камерою й друком — розмитий і притемнений фон, як у Black Glass.
-    val blur = backdropAmount(modeMenu || menuFor != null || renameFor != null || fullscreen != null || camera != null || labelFor != null)
+    val blur = backdropAmount(settingsOpen || modeMenu || menuFor != null || renameFor != null || fullscreen != null || camera != null || labelFor != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -171,7 +174,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
         Column(Modifier.fillMaxSize().backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
-            PageTabs(pager.currentPage) { scope.launch { pager.animateScrollToPage(it) } }
+            PageTabs(pager.currentPage, onSettings = { settingsOpen = true }) { scope.launch { pager.animateScrollToPage(it) } }
             HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
                 when (page) {
                     0 -> FavoritesPage(
@@ -245,6 +248,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
         Banner(banner?.text, banner?.action, banner?.onAction ?: {})
     }
 
+    if (settingsOpen) {
+        SettingsDialog(onDismiss = { settingsOpen = false }, onLanguageChanged = onLanguageChanged)
+    }
+
     if (modeMenu) {
         ModeMenu(onDismiss = { modeMenu = false }) { picked ->
             modeMenu = false
@@ -308,20 +315,34 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit) 
 
 /** Назви сторінок угорі: вибрана — підкреслена олівцем. Дотик — перейти. */
 @Composable
-private fun PageTabs(current: Int, onPick: (Int) -> Unit) {
+private fun PageTabs(current: Int, onSettings: () -> Unit, onPick: (Int) -> Unit) {
     val haptics = LocalHaptics.current
-    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally)) {
-        listOf(R.string.page_favorites, R.string.page_create).forEachIndexed { i, title ->
-            val selected = current == i
-            Text(
-                stringResource(title),
-                color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
-                fontSize = 20.sp,
-                modifier = Modifier
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { haptics.tap(); onPick(i) }
-                    .drawBehind { if (selected) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2) }
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-            )
+    Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp)) {
+        Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+            listOf(R.string.page_favorites, R.string.page_create).forEachIndexed { i, title ->
+                val selected = current == i
+                Text(
+                    stringResource(title),
+                    color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
+                    fontSize = 20.sp,
+                    modifier = Modifier
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { haptics.tap(); onPick(i) }
+                        .drawBehind { if (selected) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2) }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                )
+            }
+        }
+        // Налаштування (мова, стиль) — шестірня праворуч, непомітна, щоб не заважала.
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 8.dp)
+                .size(40.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .clickable { haptics.tap(); onSettings() },
+            contentAlignment = Alignment.Center,
+        ) {
+            GlyphIcon(Glyph.Settings, stringResource(R.string.settings), tint = Oled.TextSecondary, size = 22.dp)
         }
     }
 }

@@ -20,7 +20,9 @@ import kotlin.math.sin
  * Сітка 24×24.
  */
 
-enum class Glyph { Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Share, Print, Delete, Edit, Close, Back, Plus, Minus, Copy, Flash, Shutter, Box, Arrow, Wifi, Warning, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center, More }
+enum class Glyph {
+    Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Print, Delete, Edit, Close, Back, Copy, Flash, Shutter, Wifi, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center, More, Settings,
+}
 
 @Composable
 fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Modifier, tint: Color = SheetInk, size: Dp = 24.dp) {
@@ -29,10 +31,29 @@ fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Mo
     Canvas(modifier.then(described).size(size)) {
         val unit = this.size.minDimension / 24f
         val origin = Offset((this.size.width - unit * 24f) / 2f, (this.size.height - unit * 24f) / 2f)
+        val glass = AppStyle.glass
         strokes.forEach { stroke ->
-            drawPath(taperedPath(stroke.map { origin + it * unit }, 2.1f * unit), tint)
+            val points = stroke.map { origin + it * unit }
+            if (glass) {
+                // «Скло»: рівна тонка лінія із заокругленими кінцями, як системні значки.
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(points[0].x, points[0].y)
+                    for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
+                }
+                drawPath(
+                    path,
+                    tint,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        1.8f * unit,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                    ),
+                )
+            } else {
+                drawPath(taperedPath(points, 2.1f * unit), tint)
+            }
         }
-        if (glyph == Glyph.Star) {
+        if (glyph == Glyph.Star && !glass) {
             // Вибране — зірка ще й «заштрихована» кількома рисками.
             listOf(Offset(9.5f, 12f) to Offset(14.6f, 11.6f), Offset(9.6f, 14.6f) to Offset(14.2f, 14.4f)).forEachIndexed { i, (a, b) ->
                 pencilTick(origin + a * unit, origin + b * unit, 1.6f * unit, tint, i + 3)
@@ -92,11 +113,6 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     )
     Glyph.Save -> listOf(line(5f, 12.5f, 9.8f, 17.4f, 19.2f, 6.8f))
     Glyph.Star, Glyph.StarEmpty -> listOf(STAR)
-    // Три кружечки, з'єднані лініями.
-    Glyph.Share -> listOf(
-        arc(17.5f, 5.8f, 2.3f, 0f, 370f, 14), arc(6.5f, 12f, 2.3f, 0f, 370f, 14), arc(17.5f, 18.2f, 2.3f, 0f, 370f, 14),
-        line(8.6f, 10.8f, 15.4f, 7f), line(8.6f, 13.2f, 15.4f, 17f),
-    )
     // Принтер: корпус, аркуш зверху, аркуш знизу.
     Glyph.Print -> listOf(
         line(7f, 8.5f, 7.1f, 3.6f, 16.9f, 3.5f, 17f, 8.5f),
@@ -115,27 +131,14 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     )
     Glyph.Close -> listOf(line(6.2f, 5.8f, 18f, 18.3f), line(17.8f, 6f, 6f, 18f))
     Glyph.Back -> listOf(line(19.5f, 12.3f, 5.5f, 11.8f), line(11f, 5.8f, 5f, 12f, 11.2f, 18.2f))
-    Glyph.Plus -> listOf(line(12.1f, 5f, 11.9f, 19.2f), line(5f, 12.1f, 19.1f, 11.8f))
-    Glyph.Minus -> listOf(line(5f, 12.1f, 19.1f, 11.8f))
     // Два аркуші один на одному.
     Glyph.Copy -> listOf(box(8.5f, 8f, 11.5f, 12.5f, 4), line(5.5f, 15.5f, 4.2f, 15.4f, 4f, 3.8f, 14.8f, 3.6f, 15f, 5.2f))
     // Блискавка.
     Glyph.Flash -> listOf(line(13.5f, 3f, 6.5f, 13.2f, 11.6f, 13f, 10.2f, 21f, 17.6f, 10.4f, 12.2f, 10.6f, 13.6f, 2.8f))
     // Спуск затвора: подвійне коло.
     Glyph.Shutter -> listOf(arc(12f, 12f, 9f, -90f, 280f, 36), arc(12f, 12f, 5.2f, 30f, 400f, 24))
-    // Коробка: передня грань, верх і ребро.
-    Glyph.Box -> listOf(
-        line(3.5f, 8.5f, 12f, 11.8f, 20.5f, 8.4f),
-        line(3.6f, 8.4f, 3.8f, 17.2f, 12f, 20.6f, 20.2f, 17f, 20.4f, 8.6f),
-        line(3.5f, 8.5f, 12.1f, 4.6f, 20.4f, 8.3f),
-        line(12f, 11.8f, 12f, 20.4f),
-        line(7.8f, 6.6f, 16.2f, 10.2f),
-    )
-    Glyph.Arrow -> listOf(line(3.5f, 12.2f, 19.5f, 11.8f), line(13.5f, 5.8f, 19.8f, 12f, 13.6f, 18.3f))
     // Хвилі Wi‑Fi і крапка.
     Glyph.Wifi -> listOf(arc(12f, 19f, 13f, 225f, 315f, 18), arc(12f, 19f, 8.6f, 228f, 312f, 14), arc(12f, 19f, 4.3f, 232f, 308f, 10), arc(12f, 18.6f, 0.9f, 0f, 360f, 8))
-    // Трикутник зі знаком оклику.
-    Glyph.Warning -> listOf(line(12f, 3.6f, 21f, 19.6f, 3f, 19.8f, 12.2f, 3.4f), line(12f, 9f, 12.1f, 14.2f), arc(12f, 17.1f, 0.6f, 0f, 360f, 6))
     // Телефон: корпус і кнопка.
     Glyph.Phone -> listOf(box(7f, 2.8f, 10f, 18.4f, 7, 2.2f), line(10.8f, 17.6f, 13.2f, 17.6f), line(10.5f, 5.2f, 13.5f, 5.2f))
     // Глобус — сайт, посилання.
@@ -184,6 +187,14 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
     Glyph.RotateRight -> listOf(arc(12f, 12.5f, 7f, 70f, 340f, 26).reversed(), line(20.2f, 6.8f, 18.8f, 11.2f, 14.4f, 10f))
     // Приціл — по центру.
     Glyph.Center -> listOf(arc(12f, 12f, 6.5f, -90f, 275f, 26), line(12f, 2.5f, 12f, 7f), line(12f, 17f, 12f, 21.5f), line(2.5f, 12f, 7f, 12f), line(17f, 12f, 21.5f, 12f))
+    // Шестірня — налаштування: коло й вісім зубців.
+    Glyph.Settings -> listOf(arc(12f, 12f, 3f, -90f, 275f, 18), arc(12f, 12f, 6.6f, -80f, 285f, 30)) +
+        (0 until 8).map { i ->
+            val a = i * Math.PI / 4
+            val c = kotlin.math.cos(a).toFloat()
+            val sn = kotlin.math.sin(a).toFloat()
+            line(12f + 6.8f * c, 12f + 6.8f * sn, 12f + 9.4f * c, 12f + 9.4f * sn)
+        }
     // Три крапки — меню.
     Glyph.More -> listOf(arc(5.5f, 12f, 1.3f, 0f, 370f, 10), arc(12f, 12f, 1.3f, 0f, 370f, 10), arc(18.5f, 12f, 1.3f, 0f, 370f, 10))
     // Сітка 2×2.

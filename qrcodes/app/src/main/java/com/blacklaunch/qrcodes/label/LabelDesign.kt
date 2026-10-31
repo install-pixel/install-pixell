@@ -268,9 +268,6 @@ object Placement {
         return inside(b, design.size, edge(design)) && design.elements.none { it.id != e.id && it.bounds(tw).overlaps(b, GAP - 0.01f) }
     }
 
-    /** На кого налазить [e] (щоб підсвітити). */
-    fun clashes(design: LabelDesign, e: Element, tw: (String, Float) -> Float): Boolean = !fits(design, e, tw)
-
     /**
      * Найближче до ([wantX], [wantY]) вільне місце для [e]; null — на наклейці для нього немає місця.
      * Перебираємо центри з кроком 1 мм — для наклейки 150×100 це мить.

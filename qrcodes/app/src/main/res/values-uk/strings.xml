@@ -39,14 +39,11 @@
     <string name="text_pick">Торкайся слів — додаєш по одному. Затисни слово й веди — вибереться все до пальця. Квадратик біля рядка — весь рядок</string>
     <string name="retake">Ще раз</string>
     <string name="more">Ще</string>
-    <string name="yes">Так</string>
-    <string name="no">Ні</string>
     <string name="page_favorites">Вибране</string>
     <string name="page_create">Створити</string>
     <string name="print">Друк</string>
     <string name="print_share">Друк і поділитися</string>
     <string name="share">Поділитися</string>
-    <string name="remove">Прибрати</string>
     <string name="rename">Назва</string>
     <string name="rename_hint">Своя назва показується й друкується замість змісту (зручно для паролів). Порожньо — підписом буде зміст.</string>
     <string name="label_title">Друк і поділитися</string>
@@ -56,7 +53,6 @@
     <string name="label_custom_range">Від %1$d до %2$d мм</string>
     <string name="label_rotate">Повернути</string>
     <string name="label_qr_size">QR-код: %1$d мм</string>
-    <string name="label_fill_page">Заповнити наклейку</string>
     <string name="label_caption">Підпис</string>
     <string name="label_add_code">Код</string>
     <string name="text_pick_none">Ще нічого не вибрано</string>
@@ -97,4 +93,12 @@
     <string name="label_frame_pick_code">Щоб обвести код, спершу торкнись його на аркуші</string>
     <string name="label_frame_sheet">Навколо всього аркуша</string>
     <string name="text_line_all">Вибрано весь рядок</string>
+    <string name="settings">Налаштування</string>
+    <string name="settings_style">Стиль</string>
+    <string name="style_sheet">Аркуш</string>
+    <string name="style_sheet_desc">Від руки білим олівцем на чорному</string>
+    <string name="style_glass">Скло</string>
+    <string name="style_glass_desc">Чорне скло, як у Black Glass</string>
+    <string name="settings_language">Мова</string>
+    <string name="lang_system">Як у телефоні</string>
 </resources>

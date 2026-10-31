@@ -94,6 +94,10 @@ private val HandFieldStyle = TextStyle(
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
 )
 
+/** Стиль тексту в полях: «Аркуш» — від руки, «Скло» — звичайний шрифт. */
+@Composable
+private fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontSize = 18.sp)
+
 /**
  * Капсула внизу — як поле пошуку Black Glass, на тому самому місці: поле з рамкою олівцем, усередині ліворуч —
  * вибір способу (вручну / сканувати QR / текст із фото), праворуч — «Очистити»; збоку — кругла кнопка «Зберегти».
@@ -121,7 +125,7 @@ fun InputCapsule(
                 .clip(FieldShape)
                 .focusRequester(focusRequester),
             maxLines = 4,
-            textStyle = HandFieldStyle,
+            textStyle = fieldStyle(),
             placeholder = {
                 Text(stringResource(R.string.input_hint), color = Oled.TextSecondary, modifier = Modifier.padding(start = 3.dp), maxLines = 1)
             },
@@ -372,7 +376,7 @@ fun SheetTextField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = HandFieldStyle.copy(color = Oled.TextPrimary),
+            textStyle = fieldStyle().copy(color = Oled.TextPrimary),
             cursorBrush = SolidColor(Oled.TextSecondary),
             keyboardOptions = keyboardOptions,
             modifier = Modifier.fillMaxWidth().then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),

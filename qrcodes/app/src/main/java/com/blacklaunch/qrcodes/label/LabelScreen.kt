@@ -3,6 +3,7 @@ package com.blacklaunch.qrcodes.label
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -40,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,8 +88,7 @@ import com.blacklaunch.qrcodes.ui.fadingEdges
 import com.blacklaunch.qrcodes.ui.backdropAmount
 import androidx.compose.ui.graphics.graphicsLayer
 import com.blacklaunch.qrcodes.ui.pencilFrame
-import com.blacklaunch.qrcodes.ui.pencilLoop
-import com.blacklaunch.qrcodes.ui.taperedPath
+import com.blacklaunch.qrcodes.ui.outline
 import com.blacklaunch.qrcodes.ui.theme.Oled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -346,10 +345,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     val bh = b.height * k + 2 * pad
                     rotate(e.rotation, Offset(e.cx * k, e.cy * k)) {
                         translate(b.left * k - pad, b.top * k - pad) {
-                            drawPath(
-                                taperedPath(pencilLoop(Size(bw, bh), 6.dp.toPx(), e.id + 400, 0.8.dp.toPx()), 2.dp.toPx()),
-                                if (clashing || overZone) Oled.Danger else Oled.Confirm,
-                            )
+                            outline(Offset.Zero, Size(bw, bh), 6.dp.toPx(), e.id + 400, if (clashing || overZone) Oled.Danger else Oled.Confirm, 2.dp.toPx())
                         }
                     }
                 }
@@ -588,7 +584,6 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     }
 }
 
-private const val MAX_COPIES = 500
 private const val MAX_UNDO = 40
 private const val DOUBLE_TAP_MS = 320L
 private const val DEFAULT_LETTERS = 7f
@@ -733,7 +728,14 @@ private fun SampleBox(label: String?, selected: Boolean, onClick: () -> Unit, pa
                 .size(64.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(androidx.compose.ui.graphics.Color(LabelPalette.Screen.paper))
-                .then(if (selected) Modifier.pencilFrame(10.dp, seed = 9, ink = Oled.Confirm) else Modifier),
+                .then(
+                    when {
+                        !selected -> Modifier
+                        // «Скло»: тонка синя грань (скляне тло не повинно перекрити білий клаптик).
+                        com.blacklaunch.qrcodes.ui.AppStyle.glass -> Modifier.border(1.5.dp, Oled.Confirm, RoundedCornerShape(10.dp))
+                        else -> Modifier.pencilFrame(10.dp, seed = 9, ink = Oled.Confirm)
+                    },
+                ),
         ) {
             drawIntoCanvas { paint(it.nativeCanvas, size.width, size.height) }
         }

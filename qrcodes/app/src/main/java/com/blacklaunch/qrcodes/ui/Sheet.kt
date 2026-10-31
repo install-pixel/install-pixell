@@ -1,54 +1,34 @@
 package com.blacklaunch.qrcodes.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.blacklaunch.qrcodes.R
 import com.blacklaunch.qrcodes.ui.theme.Oled
 import kotlin.math.cos
@@ -57,13 +37,20 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /*
- * Тема «Аркуш» (етап 12d): усе ніби написано й намальовано від руки білим олівцем на чорному аркуші —
- * шрифт від руки (Caveat, вільна ліцензія OFL, вбудований — без мережі), рамки олівцем із легким тремтінням,
- * вимкнене — перекреслене, замість значків — лише назви. Скопійовано з Black Glass; поки що в «QR-кодах» це єдина тема (інші — після спільного модуля тем).
+ * Два стилі, як у Black Glass:
+ * - «Аркуш» — усе ніби написано й намальовано від руки білим олівцем на чорному аркуші: шрифт від руки (Caveat, OFL,
+ *   вбудований), рамки олівцем із легким тремтінням, значки — штрихами олівця;
+ * - «Скло» — чорне скло: темні плашки з м'яким градієнтом і тонким відблиском по краю, звичайний шрифт, рівні значки.
+ * Стиль перемикає все повністю: кожна рамка, значок, шрифт і підкреслення малюють себе за [AppStyle].
  */
 
-/** Чи ввімкнено «Аркуш» тут (компоненти малюють себе інакше). */
-val LocalSheet = staticCompositionLocalOf { false }
+/** Поточний стиль програми. Змінюється в Налаштуваннях; усе, що малюється, перемальовується саме. */
+object AppStyle {
+    var glass by mutableStateOf(false)
+}
+
+/** Чи зараз «Аркуш» (для тексту — шрифт від руки). */
+val LocalSheet = staticCompositionLocalOf { true }
 
 val HandFont = FontFamily(
     Font(R.font.caveat_regular, FontWeight.Normal),
@@ -75,19 +62,11 @@ val HandFont = FontFamily(
 /** Шрифт від руки дрібніший на око — трохи збільшуємо, щоб читалось, як звичайний. */
 private const val HAND_SCALE = 1.22f
 
-/**
- * Обгортка теми: з «Аркушем» — шрифт від руки для всього тексту всередині й трохи більший кегль;
- * без нього — нічого не змінює.
- */
+/** «Аркуш»: шрифт від руки для всього тексту й трохи більший кегль. «Скло»: звичайний шрифт. */
 @Composable
 fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
     if (!enabled) {
         CompositionLocalProvider(LocalSheet provides false, content = content)
-        return
-    }
-    // Уже всередині «Аркуша» (налаштування поверх головного екрана) — вдруге не збільшуємо шрифт.
-    if (LocalSheet.current) {
-        content()
         return
     }
     val density = LocalDensity.current
@@ -113,43 +92,45 @@ fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
 internal val SheetInk = Color(0xFFEDEDED)
 
 /**
- * Рамка «від руки»: заокруглений прямокутник двома штрихами олівцем, сторони ледь хвилясті (кожна рамка — трохи
- * інакша, за [seed]), щоб не виглядало як лінійка.
+ * Рамка плашки. «Аркуш»: заокруглений прямокутник двома штрихами олівцем, сторони ледь хвилясті (кожна рамка —
+ * трохи інакша, за [seed]). «Скло»: темне скло з градієнтом і тонким відблиском; кольорова рамка ([ink] — синій
+ * «вибрано», червоний «видалити») — тонкою кольоровою гранню. [alpha] — наскільки помітно (неактивне — блідіше).
  */
 fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.8f, width: Dp = 2.2.dp, ink: Color = SheetInk): Modifier =
     drawWithCache {
-        // Контур рахуємо раз на розмір, а не щокадру.
-        val w = width.toPx()
-        val main = taperedPath(pencilLoop(size, radius.toPx(), seed, 1.3.dp.toPx()), w)
-        // Другий, тьмяніший і трохи інакший штрих — як коли олівцем обводять двічі.
-        val ghost = taperedPath(pencilLoop(size, radius.toPx(), seed + 101, 1.6.dp.toPx()), w * 0.55f)
-        onDrawBehind {
-            drawPath(main, ink.copy(alpha = alpha))
-            drawPath(ghost, ink.copy(alpha = alpha * 0.35f))
+        val r = radius.toPx().coerceAtMost(size.minDimension / 2)
+        if (AppStyle.glass) {
+            val strength = (alpha / 0.8f).coerceIn(0.3f, 1f)
+            val edge: Brush = if (ink == SheetInk) Oled.Glint else SolidColor(ink.copy(alpha = 0.7f * strength))
+            val stroke = Stroke(1.dp.toPx())
+            onDrawBehind {
+                drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r), alpha = strength)
+                drawRoundRect(edge, cornerRadius = CornerRadius(r), style = stroke, alpha = strength)
+            }
+        } else {
+            // Контур рахуємо раз на розмір, а не щокадру.
+            val w = width.toPx()
+            val main = taperedPath(pencilLoop(size, r, seed, 1.3.dp.toPx()), w)
+            // Другий, тьмяніший і трохи інакший штрих — як коли олівцем обводять двічі.
+            val ghost = taperedPath(pencilLoop(size, r, seed + 101, 1.6.dp.toPx()), w * 0.55f)
+            onDrawBehind {
+                drawPath(main, ink.copy(alpha = alpha))
+                drawPath(ghost, ink.copy(alpha = alpha * 0.35f))
+            }
         }
     }
 
 /**
- * Рамка плашки: звичайно — скло (темне тло [fill] і тонкий відблиск), в «Аркуші» — рамка олівцем без тла
- * кольором [ink] (наприклад, вишневим, поки слухає мікрофон).
+ * Контур без тла (рамки на фото, вибраний елемент наклейки, видошукач): олівцем або рівною скляною лінією.
+ * [topLeft], [size] — у px.
  */
-@Composable
-internal fun Modifier.glassBox(radius: Dp, seed: Int = 0, fill: Brush = Oled.Surface, ink: Color = SheetInk, paper: Color? = null): Modifier {
-    val shape = RoundedCornerShape(radius)
-    return if (LocalSheet.current) {
-        // [paper] — чорне тло під рамкою, коли плашка лежить поверх чогось (фігур у грі).
-        (if (paper != null) background(paper, shape) else this).pencilFrame(radius, seed, ink = ink).clip(shape)
+internal fun DrawScope.outline(topLeft: Offset, size: Size, radius: Float, seed: Int, color: Color, width: Float) {
+    if (AppStyle.glass) {
+        drawRoundRect(color, topLeft, size, CornerRadius(radius), style = Stroke(width * 0.6f))
     } else {
-        clip(shape).background(fill).border(1.dp, Oled.Glint, shape)
+        val points = pencilLoop(size, radius, seed, width * 0.4f).map { it + topLeft }
+        drawPath(taperedPath(points, width), color)
     }
-}
-
-/** Значок на початку рядка (і відступ після нього). В «Аркуші» не малюється — лише назва. */
-@Composable
-internal fun LeadingIcon(size: Dp = 40.dp, content: @Composable BoxScope.() -> Unit) {
-    if (LocalSheet.current) return
-    Box(Modifier.size(size), contentAlignment = Alignment.Center, content = content)
-    Spacer(Modifier.width(16.dp))
 }
 
 /**
@@ -254,6 +235,11 @@ internal fun quadPoints(from: Offset, control: Offset, to: Offset, steps: Int = 
 
 /** Хвиляста риска олівцем (перекреслення вимкненого, підкреслення вибраного). */
 internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int, alpha: Float = 0.8f, ink: Color = SheetInk) {
+    if (AppStyle.glass) {
+        // «Скло»: рівна тонка риска.
+        drawLine(ink.copy(alpha = alpha), Offset(from + 4.dp.toPx(), y), Offset(to - 4.dp.toPx(), y), 2.dp.toPx(), cap = StrokeCap.Round)
+        return
+    }
     val wob = 1.1.dp.toPx()
     val points = quadPoints(
         Offset(from, y + sin(seed * 1.3f) * wob),
@@ -262,32 +248,6 @@ internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int,
         steps = 24,
     )
     drawPath(taperedPath(points, 2.2.dp.toPx()), ink.copy(alpha = alpha))
-}
-
-/**
- * Підказка «Аркуша» внизу екрана — замість системної спливаючої: на чорному клаптику в рамці олівцем, шрифтом від руки.
- * Сама зникає (час — у того, хто показує).
- */
-@Composable
-fun HintBanner(text: String?) {
-    // Останній текст лишається, поки плашка тане.
-    var shown by remember { mutableStateOf("") }
-    if (text != null) shown = text
-    Box(Modifier.fillMaxSize().navigationBarsPadding().imePadding(), contentAlignment = Alignment.BottomCenter) {
-        AnimatedVisibility(visible = text != null, enter = fadeIn(), exit = fadeOut()) {
-            Text(
-                shown,
-                color = Oled.TextPrimary,
-                fontSize = 17.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .padding(start = 24.dp, end = 24.dp, bottom = 96.dp)
-                    .background(Oled.Black, RoundedCornerShape(18.dp))
-                    .pencilFrame(18.dp, seed = shown.length)
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-            )
-        }
-    }
 }
 
 /** Короткий штрих олівцем від [a] до [b]: ледь вигнутий, загострений на кінцях. */

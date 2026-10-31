@@ -86,8 +86,7 @@ import com.blacklaunch.qrcodes.ui.SheetInk
 import com.blacklaunch.qrcodes.ui.pencilFrame
 import com.blacklaunch.qrcodes.ui.noticePlace
 import com.blacklaunch.qrcodes.ui.fadingEdges
-import com.blacklaunch.qrcodes.ui.pencilLoop
-import com.blacklaunch.qrcodes.ui.taperedPath
+import com.blacklaunch.qrcodes.ui.outline
 import com.blacklaunch.qrcodes.ui.theme.Oled
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -288,7 +287,7 @@ private fun ScanFrame() {
         val left = (size.width - side) / 2f
         val top = (size.height - side) / 2f
         translate(left, top) {
-            drawPath(taperedPath(pencilLoop(Size(side, side), 28.dp.toPx(), 41, 2.dp.toPx()), 3.dp.toPx()), SheetInk.copy(alpha = 0.9f))
+            outline(Offset.Zero, Size(side, side), 28.dp.toPx(), 41, SheetInk.copy(alpha = 0.9f), 3.dp.toPx())
         }
     }
 }
@@ -381,10 +380,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                         val hh = r.height() * scale + 2 * pad
                         translate(offX + r.left * scale - pad, offY + r.top * scale - pad) {
                             drawRect(if (on) Oled.Confirm.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.2f), size = Size(ww, hh))
-                            drawPath(
-                                taperedPath(pencilLoop(Size(ww, hh), 4.dp.toPx(), li * 31 + wi, 0.5.dp.toPx()), (if (on) 2.4 else 1.4).dp.toPx()),
-                                if (on) Oled.Confirm else SheetInk.copy(alpha = 0.6f),
-                            )
+                            outline(Offset.Zero, Size(ww, hh), 4.dp.toPx(), li * 31 + wi, if (on) Oled.Confirm else SheetInk.copy(alpha = 0.6f), (if (on) 2.4 else 1.4).dp.toPx())
                         }
                     }
                 }

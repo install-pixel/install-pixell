@@ -39,14 +39,11 @@
     <string name="text_pick">Tap words to add them one by one. Press and hold a word, then slide — everything up to your finger is chosen. The square next to a line — the whole line</string>
     <string name="retake">Retake</string>
     <string name="more">More</string>
-    <string name="yes">Yes</string>
-    <string name="no">No</string>
     <string name="page_favorites">Favourites</string>
     <string name="page_create">Create</string>
     <string name="print">Print</string>
     <string name="print_share">Print and share</string>
     <string name="share">Share</string>
-    <string name="remove">Remove</string>
     <string name="rename">Name</string>
     <string name="rename_hint">Your own name is shown and printed instead of the content (handy for passwords). Leave empty to use the content.</string>
     <string name="label_title">Print and share</string>
@@ -56,7 +53,6 @@
     <string name="label_custom_range">From %1$d to %2$d mm</string>
     <string name="label_rotate">Rotate</string>
     <string name="label_qr_size">QR code: %1$d mm</string>
-    <string name="label_fill_page">Fill the label</string>
     <string name="label_caption">Caption</string>
     <string name="label_add_code">Code</string>
     <string name="text_pick_none">Nothing chosen yet</string>
@@ -97,4 +93,12 @@
     <string name="label_frame_pick_code">To frame a code, first tap it on the label</string>
     <string name="label_frame_sheet">Around the whole label</string>
     <string name="text_line_all">Whole line chosen</string>
+    <string name="settings">Settings</string>
+    <string name="settings_style">Style</string>
+    <string name="style_sheet">Sheet</string>
+    <string name="style_sheet_desc">Hand-drawn with a white pencil on black</string>
+    <string name="style_glass">Glass</string>
+    <string name="style_glass_desc">Black glass, like Black Glass</string>
+    <string name="settings_language">Language</string>
+    <string name="lang_system">As on the phone</string>
 </resources>

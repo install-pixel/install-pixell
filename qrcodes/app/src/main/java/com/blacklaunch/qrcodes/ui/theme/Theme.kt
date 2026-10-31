@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * OLED-палітра: справжній чорний фон, сірі поверхні з м'якими градієнтами
+ * Палітра (з Black Glass): справжній чорний фон, сірі поверхні з м'якими градієнтами
  * та тонкою світлою гранню зверху — «відблиск» і відчуття об'єму.
  */
 object Oled {
@@ -15,8 +15,6 @@ object Oled {
     val TextPrimary = Color(0xFFE6E6E6)
     val TextSecondary = Color(0xFF8C8C8C)
     val Accent = Color(0xFFBDBDBD)
-    /** Мікрофон слухає — вишневий, щоб не плутався з червоним «видалити». */
-    val Listening = Color(0xFFB0244F)
 
     /** Стримані акценти (лише там, де важливо): що підтверджує/зберігає і що видаляє. Решта — сіра. */
     val Confirm = Color(0xFF8AB4F8)
@@ -27,13 +25,6 @@ object Oled {
 
     /** Грань-відблиск: яскрава зверху, тьмяніша з боків, контур знизу лишається видимим. */
     val Glint = Brush.verticalGradient(listOf(Color(0x4DFFFFFF), Color(0x1AFFFFFF), Color(0x2EFFFFFF)))
-
-    /** Об'ємна кругла кнопка. */
-    val Knob = Brush.radialGradient(listOf(Color(0xFF3C3C3C), Color(0xFF161616)))
-    val KnobListening = Brush.radialGradient(listOf(Color(0xFFC93A66), Color(0xFF4F0F24)))
-
-    /** «Прибрати»/«видалити» під час перетягування — червоний, як усі дії, що видаляють. */
-    val KnobDanger = Brush.radialGradient(listOf(Color(0xFFE5655A), Color(0xFF5E1D18)))
 }
 
 private val OledColors = darkColorScheme(

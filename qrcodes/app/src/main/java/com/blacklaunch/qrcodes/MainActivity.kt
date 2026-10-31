@@ -1,5 +1,6 @@
 package com.blacklaunch.qrcodes
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -17,6 +18,8 @@ import com.blacklaunch.qrcodes.ui.AppRoot
 import com.blacklaunch.qrcodes.ui.Haptics
 import com.blacklaunch.qrcodes.ui.LocalHaptics
 import com.blacklaunch.qrcodes.ui.SheetTheme
+import com.blacklaunch.qrcodes.ui.AppStyle
+import com.blacklaunch.qrcodes.settings.AppSettings
 import com.blacklaunch.qrcodes.ui.theme.QrTheme
 
 class MainActivity : ComponentActivity() {
@@ -25,7 +28,13 @@ class MainActivity : ComponentActivity() {
     /** Текст, яким поділились («Поділитися» → «QR-коди»). */
     private var shared by mutableStateOf<String?>(null)
 
+    /** Вибрана в Налаштуваннях мова — для всієї програми. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppSettings.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppStyle.glass = AppSettings(this).glass
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.BLACK),
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),
@@ -34,11 +43,11 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) shared = sharedText(intent)
         setContent {
             QrTheme {
-                // Поки що одна тема — «Аркуш» (рукописна, чорна), як у Black Glass.
-                SheetTheme(enabled = true) {
+                // Стиль — як у Black Glass: «Аркуш» (від руки) або «Скло»; перемикається в Налаштуваннях.
+                SheetTheme(enabled = !AppStyle.glass) {
                     val view = LocalView.current
                     CompositionLocalProvider(LocalHaptics provides Haptics(view, enabled = true)) {
-                        AppRoot(vm, shared, onSharedConsumed = { shared = null })
+                        AppRoot(vm, shared, onSharedConsumed = { shared = null }, onLanguageChanged = { recreate() })
                     }
                 }
             }

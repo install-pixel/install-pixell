@@ -39,14 +39,11 @@
     <string name="text_pick">Dotykaj słów — dodajesz po jednym. Przytrzymaj słowo i przesuń — wybierze się wszystko do palca. Kwadracik przy wierszu — cały wiersz</string>
     <string name="retake">Jeszcze raz</string>
     <string name="more">Więcej</string>
-    <string name="yes">Tak</string>
-    <string name="no">Nie</string>
     <string name="page_favorites">Ulubione</string>
     <string name="page_create">Utwórz</string>
     <string name="print">Drukuj</string>
     <string name="print_share">Drukuj i udostępnij</string>
     <string name="share">Udostępnij</string>
-    <string name="remove">Usuń</string>
     <string name="rename">Nazwa</string>
     <string name="rename_hint">Własna nazwa jest pokazywana i drukowana zamiast treści (wygodne dla haseł). Puste — podpisem będzie treść.</string>
     <string name="label_title">Drukuj i udostępnij</string>
@@ -56,7 +53,6 @@
     <string name="label_custom_range">Od %1$d do %2$d mm</string>
     <string name="label_rotate">Obróć</string>
     <string name="label_qr_size">Kod QR: %1$d mm</string>
-    <string name="label_fill_page">Wypełnij etykietę</string>
     <string name="label_caption">Podpis</string>
     <string name="label_add_code">Kod</string>
     <string name="text_pick_none">Nic jeszcze nie wybrano</string>
@@ -97,4 +93,12 @@
     <string name="label_frame_pick_code">Aby obrysować kod, najpierw dotknij go na etykiecie</string>
     <string name="label_frame_sheet">Wokół całej etykiety</string>
     <string name="text_line_all">Wybrano cały wiersz</string>
+    <string name="settings">Ustawienia</string>
+    <string name="settings_style">Styl</string>
+    <string name="style_sheet">Arkusz</string>
+    <string name="style_sheet_desc">Odręcznie białym ołówkiem na czarnym</string>
+    <string name="style_glass">Szkło</string>
+    <string name="style_glass_desc">Czarne szkło, jak w Black Glass</string>
+    <string name="settings_language">Język</string>
+    <string name="lang_system">Jak w telefonie</string>
 </resources>

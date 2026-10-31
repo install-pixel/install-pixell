@@ -2,6 +2,9 @@ package com.blacklaunch.qrcodes.ui
 
 import android.view.WindowManager
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -136,5 +139,66 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
                 RoundButton(Glyph.More, stringResource(R.string.more), onMenu)
             }
         }
+    }
+}
+
+/**
+ * Налаштування: мова (як у телефоні або одна з трьох) і стиль («Аркуш» — від руки, «Скло» — Black Glass).
+ * Стиль міняється одразу; мова — після короткого перезапуску екрана.
+ */
+@Composable
+fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
+    var language by remember { mutableStateOf(settings.language) }
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.settings)) {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+            Text(stringResource(R.string.settings_style), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(bottom = 4.dp))
+            ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
+                AppStyle.glass = false
+                settings.glass = false
+            }
+            ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), selected = AppStyle.glass) {
+                AppStyle.glass = true
+                settings.glass = true
+            }
+            Text(stringResource(R.string.settings_language), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+            com.blacklaunch.qrcodes.settings.AppLanguage.entries.forEach { lang ->
+                // Назви мов — кожна своєю мовою, щоб її легко знайти з будь-якої.
+                val title = when (lang) {
+                    com.blacklaunch.qrcodes.settings.AppLanguage.System -> stringResource(R.string.lang_system)
+                    com.blacklaunch.qrcodes.settings.AppLanguage.Ukrainian -> "Українська"
+                    com.blacklaunch.qrcodes.settings.AppLanguage.Polish -> "Polski"
+                    com.blacklaunch.qrcodes.settings.AppLanguage.English -> "English"
+                }
+                ChoiceRow(title, null, selected = language == lang) {
+                    if (language != lang) {
+                        language = lang
+                        settings.language = lang
+                        onLanguageChanged()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Рядок вибору: назва, пояснення і галочка, якщо вибрано. */
+@Composable
+private fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, onClick: () -> Unit) {
+    val haptics = LocalHaptics.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+            .clickable { haptics.tap(); onClick() }
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 17.sp)
+            if (subtitle != null) Text(subtitle, color = Oled.TextSecondary, fontSize = 14.sp)
+        }
+        if (selected) GlyphIcon(Glyph.Save, null, tint = Oled.Confirm)
     }
 }
