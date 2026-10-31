@@ -3,6 +3,7 @@ package com.blacklaunch.launcher.ui
 import android.os.Build
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExitTransition
@@ -75,7 +76,6 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
@@ -919,7 +919,7 @@ private fun SearchOpen(
     val holdSpace = holdKeyboardSpace || hidingForMenu
     var heldKeyboard by remember { mutableStateOf(0.dp) }
     if (!holdSpace) heldKeyboard = with(LocalDensity.current) { (imeNow.value - navBottom).coerceAtLeast(0).toDp() }
-    val activity = LocalContext.current as? android.app.Activity
+    val activity = LocalActivity.current
     val insetsController = remember(activity, view) { activity?.window?.let { WindowCompat.getInsetsController(it, view) } }
     val showMenu by rememberUpdatedState(onLongPress)
     fun openMenuSmoothly(target: AppInfo) {
