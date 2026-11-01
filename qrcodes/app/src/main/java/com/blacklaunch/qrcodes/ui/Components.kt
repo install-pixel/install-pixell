@@ -1,5 +1,17 @@
 package com.blacklaunch.qrcodes.ui
 
+import androidx.compose.foundation.layout.fillMaxHeight
+
+import kotlinx.coroutines.launch
+
+import androidx.compose.runtime.snapshotFlow
+
+import androidx.compose.runtime.rememberCoroutineScope
+
+import androidx.compose.runtime.LaunchedEffect
+
+import androidx.compose.animation.core.Animatable
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -305,6 +317,10 @@ private val QrDark = Color(0xFF000000)
 /** Час появи й зникнення вікон і розмиття — як у Black Glass. */
 const val OPEN_MS = 180
 const val CLOSE_MS = 280
+
+/** Вікна: з'являються й ховаються трохи повільніше за дрібні елементи — плавно, без ривка. */
+private const val DIALOG_OPEN_MS = 320
+private const val DIALOG_CLOSE_MS = 240
 private val BACKDROP_BLUR = 10.dp
 private const val BACKDROP_DIM = 0.7f
 
@@ -330,20 +346,51 @@ fun Modifier.backdrop(amount: State<Float>): Modifier = graphicsLayer {
  */
 @Composable
 fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) {
-    Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    val scope = rememberCoroutineScope()
+    // 0 → 1: вікно з'являється (проявляється, трохи підіймається й «доростає»), разом плавно наростає розмиття фону.
+    val shown = remember { Animatable(0f) }
+    var closing by remember { mutableStateOf(false) }
+    val dismiss: () -> Unit = {
+        // Закриття жестом «назад» чи дотиком повз вікно — спершу плавно ховаємо, потім прибираємо.
+        if (!closing) {
+            closing = true
+            scope.launch {
+                shown.animateTo(0f, tween(DIALOG_CLOSE_MS, easing = FastOutSlowInEasing))
+                onDismissRequest()
+                closing = false
+            }
+        }
+    }
+    LaunchedEffect(Unit) { shown.animateTo(1f, tween(DIALOG_OPEN_MS, easing = FastOutSlowInEasing)) }
+    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect {
             window?.setDimAmount(0f)
-            // Фон за вікном — розмитий самою системою (Android 12+), як у Black Glass.
-            if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-                window.attributes = window.attributes.also { it.blurBehindRadius = DIALOG_BLUR_PX }
+            window?.setWindowAnimations(0)
+            if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        }
+        // Фон за вікном — розмитий самою системою (Android 12+), як у Black Glass; сила розмиття йде разом з анімацією,
+        // тож воно не «вмикається» різко.
+        if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            LaunchedEffect(window) {
+                var last = -1
+                snapshotFlow { (DIALOG_BLUR_PX * shown.value).toInt() }.collect { r ->
+                    if (r != last) {
+                        last = r
+                        window.attributes = window.attributes.also { it.blurBehindRadius = r }
+                    }
+                }
             }
         }
-        val shown = remember { MutableTransitionState(false) }.apply { targetState = true }
-        AnimatedVisibility(
-            visibleState = shown,
-            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS, easing = FastOutSlowInEasing)) { it / 10 },
+        Box(
+            Modifier.graphicsLayer {
+                val k = shown.value
+                alpha = k
+                val sc = 0.94f + 0.06f * k
+                scaleX = sc
+                scaleY = sc
+                translationY = (1f - k) * 24.dp.toPx()
+            },
         ) {
             content()
         }
@@ -358,6 +405,8 @@ fun SheetDialog(
     onDismissRequest: () -> Unit,
     title: String?,
     buttons: (@Composable () -> Unit)? = null,
+    /** Вікно сталої висоти (Налаштування з довідкою): не міняє розміру, коли міняється вміст. */
+    tall: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     SmoothDialog(onDismissRequest) {
@@ -366,6 +415,7 @@ fun SheetDialog(
                 .padding(horizontal = 20.dp, vertical = 24.dp)
                 .imePadding()
                 .fillMaxWidth()
+                .then(if (tall) Modifier.fillMaxHeight(0.82f) else Modifier)
                 .heightIn(max = 680.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color(0xFF0A0A0A))
@@ -376,7 +426,7 @@ fun SheetDialog(
             if (title != null) Text(title, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             // Довгий вміст гортається всередині; біля заголовка й кнопок плавно тане, без різкої межі.
             // Плавні краї — у самій прокрутці вмісту (bouncyScroll): лише коли є що гортати.
-            Box(Modifier.weight(1f, fill = false)) {
+            Box(Modifier.weight(1f, fill = tall)) {
                 CompositionLocalProvider(LocalContentColor provides Oled.TextSecondary) { content() }
             }
             if (buttons != null) {

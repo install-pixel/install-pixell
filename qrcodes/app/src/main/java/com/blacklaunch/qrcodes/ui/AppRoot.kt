@@ -87,7 +87,6 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     // Папки: меню папки, назва нової (з двох кодів чи з «У папку…»), перейменування, вибір папки.
     var folderMenuFor by remember { mutableStateOf<com.blacklaunch.qrcodes.data.Folder?>(null) }
     var combine by remember { mutableStateOf<Pair<QrCode, QrCode>?>(null) }
-    var helpOpen by remember { mutableStateOf(false) }
     var folderDelete by remember { mutableStateOf<com.blacklaunch.qrcodes.data.Folder?>(null) }
     var folderRename by remember { mutableStateOf<com.blacklaunch.qrcodes.data.Folder?>(null) }
     var moveFor by remember { mutableStateOf<QrCode?>(null) }
@@ -220,7 +219,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(helpOpen || folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null)
+    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -382,13 +381,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 settingsOpen = false
                 importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
             },
-            onHelp = {
-                settingsOpen = false
-                helpOpen = true
-            },
         )
     }
-    if (helpOpen) HelpDialog(onDismiss = { helpOpen = false })
 
     if (modeMenu) {
         ModeMenu(

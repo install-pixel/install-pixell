@@ -1,5 +1,19 @@
 package com.blacklaunch.qrcodes.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+
+import androidx.compose.animation.core.tween
+
+import androidx.compose.animation.togetherWith
+
+import androidx.compose.animation.slideOutHorizontally
+
+import androidx.compose.animation.slideInHorizontally
+
+import androidx.compose.animation.fadeOut
+
+import androidx.compose.animation.fadeIn
+
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -170,50 +184,113 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
  * Стиль міняється одразу; мова — після короткого перезапуску екрана.
  */
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExport: () -> Unit, onImport: () -> Unit, onHelp: () -> Unit) {
+fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.settings)) {
-        Column(Modifier.bouncyScroll()) {
-            // Довідка — першою: тут усі приховані жести, розкладені за темами.
-            MenuRow(Glyph.More, stringResource(R.string.help), onHelp)
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.settings_style), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(bottom = 4.dp))
-            // Black Glass — типова, тому перша.
-            ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), selected = AppStyle.glass) {
-                AppStyle.glass = true
-                settings.glass = true
-            }
-            ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
-                AppStyle.glass = false
-                settings.glass = false
-            }
-            Text(stringResource(R.string.settings_language), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
-            com.blacklaunch.qrcodes.settings.AppLanguage.entries.forEach { lang ->
-                // Назви мов — кожна своєю мовою, щоб її легко знайти з будь-якої.
-                val title = when (lang) {
-                    com.blacklaunch.qrcodes.settings.AppLanguage.System -> stringResource(R.string.lang_system)
-                    com.blacklaunch.qrcodes.settings.AppLanguage.Ukrainian -> "Українська"
-                    com.blacklaunch.qrcodes.settings.AppLanguage.Polish -> "Polski"
-                    com.blacklaunch.qrcodes.settings.AppLanguage.English -> "English"
-                }
-                ChoiceRow(title, null, selected = language == lang) {
-                    if (language != lang) {
-                        language = lang
-                        settings.language = lang
-                        onLanguageChanged()
+    // Довідка відкривається в тому самому вікні (того самого розміру): сторінки міняються плавно, «Назад» — на крок.
+    var page by remember { mutableStateOf<SettingsPage>(SettingsPage.Main) }
+    val current = page
+    val back: (@Composable () -> Unit)? = when (current) {
+        SettingsPage.Main -> null
+        else -> { { SheetButton(stringResource(R.string.help_back), { page = current.up() }) } }
+    }
+    SheetDialog(
+        // Дотик повз вікно — закрити; «Назад» на сторінці довідки — крок назад (BackHandler нижче).
+        onDismissRequest = onDismiss,
+        title = stringResource(
+            when (current) {
+                SettingsPage.Main -> R.string.settings
+                SettingsPage.Help -> R.string.help
+                is SettingsPage.Topic -> current.topic.title
+            },
+        ),
+        buttons = back,
+        tall = true,
+    ) {
+        androidx.activity.compose.BackHandler(enabled = current != SettingsPage.Main) { page = current.up() }
+        androidx.compose.animation.AnimatedContent(
+            targetState = current,
+            transitionSpec = {
+                val forward = targetState.depth > initialState.depth
+                (fadeIn(tween(PAGE_IN_MS, delayMillis = 60)) + slideInHorizontally(tween(PAGE_IN_MS, easing = FastOutSlowInEasing)) { (if (forward) it else -it) / 8 }) togetherWith
+                    (fadeOut(tween(PAGE_OUT_MS)) + slideOutHorizontally(tween(PAGE_OUT_MS, easing = FastOutSlowInEasing)) { (if (forward) -it else it) / 8 })
+            },
+            label = "settingsPage",
+        ) { shown ->
+            when (shown) {
+                SettingsPage.Main -> Column(Modifier.fillMaxWidth().bouncyScroll()) {
+                    // Довідка — першою: тут усі приховані жести, розкладені за темами.
+                    MenuRow(Glyph.More, stringResource(R.string.help), { page = SettingsPage.Help })
+                    Spacer(Modifier.height(12.dp))
+                    Text(stringResource(R.string.settings_style), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    // Black Glass — типова, тому перша.
+                    ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), selected = AppStyle.glass) {
+                        AppStyle.glass = true
+                        settings.glass = true
                     }
+                    ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
+                        AppStyle.glass = false
+                        settings.glass = false
+                    }
+                    Text(stringResource(R.string.settings_language), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+                    com.blacklaunch.qrcodes.settings.AppLanguage.entries.forEach { lang ->
+                        // Назви мов — кожна своєю мовою, щоб її легко знайти з будь-якої.
+                        val title = when (lang) {
+                            com.blacklaunch.qrcodes.settings.AppLanguage.System -> stringResource(R.string.lang_system)
+                            com.blacklaunch.qrcodes.settings.AppLanguage.Ukrainian -> "Українська"
+                            com.blacklaunch.qrcodes.settings.AppLanguage.Polish -> "Polski"
+                            com.blacklaunch.qrcodes.settings.AppLanguage.English -> "English"
+                        }
+                        ChoiceRow(title, null, selected = language == lang) {
+                            if (language != lang) {
+                                language = lang
+                                settings.language = lang
+                                onLanguageChanged()
+                            }
+                        }
+                    }
+                    // Резервна копія: усі коди — у файл (наприклад, у «Завантаження» чи на диск) і назад.
+                    Text(stringResource(R.string.settings_backup), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+                    MenuRow(Glyph.Download, stringResource(R.string.backup_export), onExport)
+                    MenuRow(Glyph.Copy, stringResource(R.string.backup_import), onImport)
+                    Text(stringResource(R.string.backup_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
                 }
+                SettingsPage.Help -> Column(Modifier.fillMaxWidth().bouncyScroll()) {
+                    HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { page = SettingsPage.Topic(t) }) }
+                }
+                is SettingsPage.Topic -> Text(
+                    stringResource(shown.topic.body),
+                    color = Oled.TextPrimary.copy(alpha = 0.9f),
+                    fontSize = 16.sp,
+                    lineHeight = 23.sp,
+                    modifier = Modifier.fillMaxWidth().bouncyScroll(),
+                )
             }
-            // Резервна копія: усі коди — у файл (наприклад, у «Завантаження» чи на диск) і назад.
-            Text(stringResource(R.string.settings_backup), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
-            MenuRow(Glyph.Download, stringResource(R.string.backup_export), onExport)
-            MenuRow(Glyph.Copy, stringResource(R.string.backup_import), onImport)
-            Text(stringResource(R.string.backup_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
         }
     }
 }
+
+/** Сторінки вікна Налаштувань. */
+private sealed interface SettingsPage {
+    data object Main : SettingsPage
+    data object Help : SettingsPage
+    data class Topic(val topic: HelpTopic) : SettingsPage
+}
+
+private val SettingsPage.depth: Int get() = when (this) {
+    SettingsPage.Main -> 0
+    SettingsPage.Help -> 1
+    is SettingsPage.Topic -> 2
+}
+
+private fun SettingsPage.up(): SettingsPage = when (this) {
+    is SettingsPage.Topic -> SettingsPage.Help
+    else -> SettingsPage.Main
+}
+
+private const val PAGE_IN_MS = 300
+private const val PAGE_OUT_MS = 180
 
 /** Теми довідки «Як користуватися»: назва й докладний текст. */
 private enum class HelpTopic(val title: Int, val body: Int, val glyph: Glyph) {
@@ -226,36 +303,6 @@ private enum class HelpTopic(val title: Int, val body: Int, val glyph: Glyph) {
     Settings(R.string.help_settings_t, R.string.help_settings, Glyph.Settings),
 }
 
-/** «Як користуватися»: спершу список тем, дотик — тема докладно, «Назад» — знову список. */
-@Composable
-fun HelpDialog(onDismiss: () -> Unit) {
-    var topic by remember { mutableStateOf<HelpTopic?>(null) }
-    val open = topic
-    val back: (@Composable () -> Unit)? = if (open != null) {
-        { SheetButton(stringResource(R.string.help_back), { topic = null }) }
-    } else {
-        null
-    }
-    SheetDialog(
-        onDismissRequest = { if (open != null) topic = null else onDismiss() },
-        title = stringResource(open?.title ?: R.string.help),
-        buttons = back,
-    ) {
-        if (open == null) {
-            Column(Modifier.bouncyScroll()) {
-                HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { topic = t }) }
-            }
-        } else {
-            Text(
-                stringResource(open.body),
-                color = Oled.TextPrimary.copy(alpha = 0.9f),
-                fontSize = 16.sp,
-                lineHeight = 23.sp,
-                modifier = Modifier.bouncyScroll(),
-            )
-        }
-    }
-}
 
 /** Рядок вибору: назва, пояснення і галочка, якщо вибрано. */
 @Composable
