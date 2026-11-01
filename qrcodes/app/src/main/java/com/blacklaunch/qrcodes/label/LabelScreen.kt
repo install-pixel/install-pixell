@@ -234,7 +234,15 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             Box(Modifier.size(48.dp).clip(CircleShape).clickable { haptics.tap(); onClose() }, contentAlignment = Alignment.Center) {
                 GlyphIcon(Glyph.Back, stringResource(R.string.back))
             }
-            Text(stringResource(R.string.label_title), color = Oled.TextPrimary, fontSize = 22.sp, modifier = Modifier.padding(start = 8.dp).weight(1f))
+            // Назва поступається місцем кнопці розміру: один рядок, відступ від кнопки, за потреби — «…».
+            Text(
+                stringResource(R.string.label_title),
+                color = Oled.TextPrimary,
+                fontSize = 20.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 4.dp, end = 12.dp).weight(1f),
+            )
             SheetButton(
                 if (design.size.screen) stringResource(R.string.label_screen) else "${LabelRenderer.fmt(design.size.widthMm)}×${LabelRenderer.fmt(design.size.heightMm)} mm",
                 { sizeOpen = true },
