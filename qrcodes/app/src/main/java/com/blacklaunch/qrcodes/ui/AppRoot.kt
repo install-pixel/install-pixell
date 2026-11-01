@@ -128,6 +128,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     val textMovedTo = stringResource(R.string.folder_moved)
     val textNewFolder = stringResource(R.string.folder_new)
     val textFolderDefault = stringResource(R.string.folder_default_name)
+    // Типова назва нової папки: «Папка», далі «Папка 1», «Папка 2»… — перша вільна.
+    val nextFolderName = remember(folders, textFolderDefault) {
+        val taken = folders.map { it.name.trim() }.toSet()
+        if (textFolderDefault !in taken) textFolderDefault else generateSequence(1) { it + 1 }.map { "$textFolderDefault $it" }.first { it !in taken }
+    }
     val textNoCamera = stringResource(R.string.camera_denied)
 
     fun show(text: String, action: String? = null, onAction: () -> Unit = {}) {
@@ -458,7 +463,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Код кинули на інший код — нова папка з обох (назву питаємо).
     combine?.let { (dragged, target) ->
-        FolderNameDialog(textNewFolder, textFolderDefault, onDismiss = { combine = null }) { name ->
+        FolderNameDialog(textNewFolder, "", onDismiss = { combine = null }, suggested = nextFolderName) { name ->
             vm.createFolder(name, listOf(target.id, dragged.id), target.sortOrder)
             combine = null
             show(textMovedTo.format(name))
@@ -523,7 +528,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         )
     }
     newFolderFor?.let { code ->
-        FolderNameDialog(textNewFolder, textFolderDefault, onDismiss = { newFolderFor = null }) { name ->
+        FolderNameDialog(textNewFolder, "", onDismiss = { newFolderFor = null }, suggested = nextFolderName) { name ->
             vm.createFolder(name, listOf(code.id), code.sortOrder)
             newFolderFor = null
             show(textMovedTo.format(name))

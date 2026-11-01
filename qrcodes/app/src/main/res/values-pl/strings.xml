@@ -136,7 +136,6 @@
     <string name="label_template_save">Zapisz jako szablon</string>
     <string name="label_template_saved">Szablon zapisany</string>
     <string name="label_template_deleted">Szablon usunięty</string>
-    <string name="template_simple">Prosty</string>
     <string name="template_shelf">Półka</string>
     <string name="template_scanme">Zeskanuj mnie</string>
     <string name="template_copies">Arkusz kopii</string>
@@ -190,7 +189,15 @@
     <string name="help_fav_t">Ulubione</string>
     <string name="help_fav">• Gwiazdka w menu kodu — dodaj do ulubionych.\n• „Ulubione” — pierwsza strona, kody w siatce.\n• Przytrzymaj i prowadź — zmieniasz kolejność.\n• Upuść na pasek u góry — usuń z ulubionych (jest „Cofnij”).</string>
     <string name="help_print_t">Druk i etykiety</string>
-    <string name="help_print">• Przycisk rozmiaru u góry — rozmiar etykiety: gotowe, własny lub „Ekran telefonu”.\n• „Dodaj”: kod, tekst, ikona lub szablon.\n• Dotknij elementu — wybierz; pod etykietą pojawią się jego ustawienia.\n• Przeciągnij — przesuń; dwa palce — rozmiar i obrót.\n• Dwa dotknięcia — zmień tekst, podpis lub ikonę.\n• Przeciągnij na „Usuń” u góry — usuń.\n• Elementy przyciągają się do środka i krawędzi, nie nachodzą na siebie i nie wychodzą poza etykietę.\n• „Drukuj” — na drukarkę w rozmiarze etykiety; „Udostępnij” — PDF lub obraz, albo zapisz w galerii.\n• Swój układ można zapisać jako szablon.</string>
+    <string name="help_print">• Przycisk rozmiaru u góry — rozmiar etykiety: gotowe, własny lub „Ekran telefonu”.\n• „Dodaj”: kod, tekst, ikona lub szablon.\n• Dotknij elementu — wybierz; pod etykietą pojawią się jego ustawienia.\n• Przeciągnij — przesuń; dwa palce — rozmiar i obrót.\n• Dwa dotknięcia — zmień tekst, podpis lub ikonę.\n• Przeciągnij na „Usuń” u góry — usuń.\n• Elementy przyciągają się do środka i krawędzi, nie nachodzą na siebie i nie wychodzą poza etykietę.\n• „Drukuj” — na drukarkę w rozmiarze etykiety; „Udostępnij” — PDF lub obraz, albo zapisz w galerii.\n• Swój układ razem z kodami można zapisać jako szablon i potem otworzyć gotowy. Wybrany kod można zamienić na inny („Zamień kod”).\n• Przeciągany element przyciąga się do krawędzi i środków innych, a równe odstępy pokazują odcinki z kreskami.</string>
     <string name="help_settings_t">Ustawienia i kopia</string>
     <string name="help_settings">• Zębatka w prawym górnym rogu — styl (Black Glass lub Black Sketch) i język.\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
+    <string name="label_replace_code">Zamień kod</string>
+    <string name="template_poster">Plakat</string>
+    <string name="template_badge">Identyfikator</string>
+    <string name="label_template_hidden">Szablon ukryty</string>
+    <string name="label_templates_restore">Przywróć ukryte gotowe szablony</string>
+    <string name="label_frame_bold">Gruba</string>
+    <string name="label_frame_ticket">Bilet</string>
+    <string name="label_frame_dots">Kropki</string>
 </resources>

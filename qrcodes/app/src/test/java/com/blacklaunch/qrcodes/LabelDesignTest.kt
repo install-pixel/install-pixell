@@ -32,6 +32,18 @@ class LabelDesignTest {
     }
 
     @Test
+    fun snapsIntoRowWithOtherCodes() {
+        val a = qr(2, cx = 20f, cy = 30f, side = 16f).bounds(tw)
+        val b = qr(3, cx = 45f, cy = 30f, side = 16f).bounds(tw)
+        val e = qr(1, side = 16f)
+        // Ряд: той самий центр по Y і такий самий проміжок, як між двома попередніми.
+        val r = Snap.place(69f, 31.2f, e.bounds(tw), e, zebra, others = listOf(a, b))
+        assertEquals(30f, r.cy, 0.001f)
+        assertEquals(70f, r.cx, 0.001f)
+        assertTrue(r.gaps.size == 2)
+    }
+
+    @Test
     fun staysInsideLabel() {
         val e = qr(1)
         val r = Snap.place(500f, -300f, e.bounds(tw), e, zebra)

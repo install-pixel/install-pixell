@@ -179,7 +179,7 @@ class LabelRenderer(private val hand: Typeface) {
         val radius = pad * 1.6f * k
         when (e.frame) {
             QrFrame.None -> Unit
-            QrFrame.Pencil, QrFrame.Double, QrFrame.Dashed, QrFrame.Corners ->
+            QrFrame.Pencil, QrFrame.Double, QrFrame.Dashed, QrFrame.Corners, QrFrame.Bold, QrFrame.Ticket, QrFrame.Dots ->
                 drawOutline(canvas, e.frame, blockLeft, blockTop, blockW, blockH, radius, pad * 0.45f * k, seed, k, ink)
             QrFrame.ScanMe -> {
                 pencil(canvas, blockLeft, blockTop, blockW, blockH, radius, seed, k, 0.45f, ink)
@@ -242,8 +242,63 @@ class LabelRenderer(private val hand: Typeface) {
                 )
                 corners.forEach { c -> canvas.drawPath(taperedPath(densify(c), 0.7f * k).asAndroidPath(), ink) }
             }
+            QrFrame.Bold -> {
+                // Товста заокруглена рамка — як обведена маркером.
+                pencil(canvas, left, top, w, h, radius * 1.6f, seed, k, 1.1f, ink)
+            }
+            QrFrame.Ticket -> {
+                // «Квиток»: півкруглі вирізи посередині лівого й правого боку.
+                canvas.drawPath(taperedPath(ticketLoop(left, top, w, h, radius * 0.8f), 0.45f * k).asAndroidPath(), ink)
+            }
+            QrFrame.Dots -> {
+                // Крапки олівцем уздовж контуру — рівномірно.
+                val points = pencilLoop(Size(w, h), radius, seed, 0f).map { Offset(it.x + left, it.y + top) }
+                val step = 2.2f * k
+                val dot = 0.42f * k
+                // Скільки ще пройти до наступної крапки.
+                var carry = 0f
+                for (i in 1 until points.size) {
+                    val a = points[i - 1]
+                    val b = points[i]
+                    val seg = (b - a).getDistance()
+                    var pos = carry
+                    while (pos <= seg) {
+                        val p = a + (b - a) * (pos / seg.coerceAtLeast(0.001f))
+                        canvas.drawCircle(p.x, p.y, dot, ink)
+                        pos += step
+                    }
+                    carry = pos - seg
+                }
+            }
             QrFrame.None -> Unit
         }
+    }
+
+    /** Контур «квитка»: прямокутник із заокругленими кутами й півкруглими вирізами на лівому й правому боці. */
+    private fun ticketLoop(left: Float, top: Float, w: Float, h: Float, r: Float): List<Offset> {
+        val right = left + w
+        val bottom = top + h
+        val my = top + h / 2
+        val n = minOf(w, h) * 0.1f
+        val rr = r.coerceAtMost(minOf(w, h) / 4)
+        fun arc(cx: Float, cy: Float, radius: Float, from: Float, to: Float, steps: Int = 10) = (0..steps).map { i ->
+            val a = Math.toRadians((from + (to - from) * i / steps).toDouble())
+            Offset(cx + radius * kotlin.math.cos(a).toFloat(), cy + radius * kotlin.math.sin(a).toFloat())
+        }
+        val pts = ArrayList<Offset>()
+        pts += densify(listOf(Offset(left + rr, top), Offset(right - rr, top)))
+        pts += arc(right - rr, top + rr, rr, -90f, 0f)
+        pts += densify(listOf(Offset(right, top + rr), Offset(right, my - n)))
+        pts += arc(right, my, n, -90f, -270f)
+        pts += densify(listOf(Offset(right, my + n), Offset(right, bottom - rr)))
+        pts += arc(right - rr, bottom - rr, rr, 0f, 90f)
+        pts += densify(listOf(Offset(right - rr, bottom), Offset(left + rr, bottom)))
+        pts += arc(left + rr, bottom - rr, rr, 90f, 180f)
+        pts += densify(listOf(Offset(left, bottom - rr), Offset(left, my + n)))
+        pts += arc(left, my, n, 90f, -90f)
+        pts += densify(listOf(Offset(left, my - n), Offset(left, top + rr)))
+        pts += arc(left + rr, top + rr, rr, 180f, 270f)
+        return pts
     }
 
     /** Ламана, густо розбита на точки (щоб штрих рівно тоншав до кінців). */

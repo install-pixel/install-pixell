@@ -6,7 +6,7 @@ import kotlin.math.abs
  * Рамка навколо QR-коду, намальована олівцем. Як на постерах із QR: проста, подвійна, пунктир, лише кутики
  * (видошукач) і «Скануй мене» — рамка з плашкою-написом знизу.
  */
-enum class QrFrame { None, Pencil, Double, Dashed, Corners, ScanMe }
+enum class QrFrame { None, Pencil, Double, Dashed, Corners, Bold, Ticket, Dots, ScanMe }
 
 /**
  * Значки — що закодовано і що з ним робити (як біля QR на сайтах і листівках): Wi‑Fi, дзвінок, сайт, завантаження,
@@ -129,6 +129,9 @@ fun framePad(qr: Element.Qr): Float = when (qr.frame) {
     QrFrame.Pencil, QrFrame.Dashed, QrFrame.ScanMe -> (qr.side * 0.06f).coerceIn(1.5f, 5f)
     QrFrame.Double -> (qr.side * 0.09f).coerceIn(2.2f, 7f)
     QrFrame.Corners -> (qr.side * 0.07f).coerceIn(1.8f, 6f)
+    QrFrame.Bold -> (qr.side * 0.08f).coerceIn(2f, 6.5f)
+    QrFrame.Ticket -> (qr.side * 0.1f).coerceIn(2.4f, 7.5f)
+    QrFrame.Dots -> (qr.side * 0.07f).coerceIn(1.8f, 6f)
 }
 
 /**
@@ -219,45 +222,126 @@ data class LabelDesign(
     }
 }
 
-/** Куди лягає елемент, коли його тягнуть: у межах наклейки, з «прилипанням» до центру й країв. */
+/**
+ * Куди лягає елемент, коли його тягнуть: у межах наклейки, з «прилипанням» до центру й країв наклейки, а також до
+ * інших елементів — рівно в ряд (центри, верхи, низи, лівий чи правий край) і з однаковими проміжками.
+ */
 object Snap {
     /** На скільки мм центр/край «притягується». */
     const val DISTANCE = 2f
 
-    data class Result(val cx: Float, val cy: Float, val vertical: Float?, val horizontal: Float?)
+    /** Проміжок між двома елементами — для позначки «однакова відстань» ([horizontal] — уздовж осі X). */
+    data class Gap(val from: Float, val to: Float, val at: Float, val horizontal: Boolean)
+
+    data class Result(
+        val cx: Float,
+        val cy: Float,
+        val vertical: Float?,
+        val horizontal: Float?,
+        val gaps: List<Gap> = emptyList(),
+    )
+
+    private class Candidate(val shift: Float, val line: Float?, val gaps: List<Gap> = emptyList())
 
     /**
-     * [cx], [cy] — куди хоче лягти центр; [box] — межі елемента в поточному місці (для країв і розміру).
-     * vertical/horizontal — лінії, до яких прилипло (щоб показати їх на екрані).
+     * [cx], [cy] — куди хоче лягти центр; [element] — межі елемента в поточному місці (для країв і розміру);
+     * [others] — межі інших елементів. vertical/horizontal — лінії, до яких прилипло; gaps — однакові проміжки.
      */
-    fun place(cx: Float, cy: Float, element: MmRect, current: Element, size: LabelSize, margin: Float = LabelLayout.MARGIN_MM, edge: Float = Placement.EDGE): Result {
+    fun place(
+        cx: Float,
+        cy: Float,
+        element: MmRect,
+        current: Element,
+        size: LabelSize,
+        margin: Float = LabelLayout.MARGIN_MM,
+        edge: Float = Placement.EDGE,
+        others: List<MmRect> = emptyList(),
+    ): Result {
         val halfW = element.width / 2
         val halfH = element.height / 2
         // Межі елемента відносно центру можуть бути несиметричні (підпис під кодом) — враховуємо зсув.
         val offY = (element.top + element.bottom) / 2 - current.cy
         val offX = (element.left + element.right) / 2 - current.cx
-        var x = cx
-        var y = cy
-        var vertical: Float? = null
-        var horizontal: Float? = null
+        // Де б були межі, якби центр став у (cx, cy).
+        val l = cx + offX - halfW
+        val r = cx + offX + halfW
+        val t = cy + offY - halfH
+        val b = cy + offY + halfH
         val midX = size.widthMm / 2
         val midY = size.heightMm / 2
-        if (abs(x + offX - midX) < DISTANCE) { x = midX - offX; vertical = midX }
-        if (abs(y + offY - midY) < DISTANCE) { y = midY - offY; horizontal = midY }
-        // Поля по краях.
-        if (vertical == null) {
-            if (abs(x + offX - halfW - margin) < DISTANCE) { x = margin + halfW - offX; vertical = margin }
-            if (abs(x + offX + halfW - (size.widthMm - margin)) < DISTANCE) { x = size.widthMm - margin - halfW - offX; vertical = size.widthMm - margin }
+
+        // По X: кандидати — зсув, після якого щось збігається, і лінія, яку показати.
+        val xs = ArrayList<Candidate>()
+        xs += Candidate(midX - (l + r) / 2, midX)
+        xs += Candidate(margin - l, margin)
+        xs += Candidate(size.widthMm - margin - r, size.widthMm - margin)
+        val ys = ArrayList<Candidate>()
+        ys += Candidate(midY - (t + b) / 2, midY)
+        ys += Candidate(margin - t, margin)
+        ys += Candidate(size.heightMm - margin - b, size.heightMm - margin)
+        others.forEach { o ->
+            val ocx = (o.left + o.right) / 2
+            val ocy = (o.top + o.bottom) / 2
+            xs += Candidate(ocx - (l + r) / 2, ocx)
+            xs += Candidate(o.left - l, o.left)
+            xs += Candidate(o.right - r, o.right)
+            ys += Candidate(ocy - (t + b) / 2, ocy)
+            ys += Candidate(o.top - t, o.top)
+            ys += Candidate(o.bottom - b, o.bottom)
         }
-        if (horizontal == null) {
-            if (abs(y + offY - halfH - margin) < DISTANCE) { y = margin + halfH - offY; horizontal = margin }
-            if (abs(y + offY + halfH - (size.heightMm - margin)) < DISTANCE) { y = size.heightMm - margin - halfH - offY; horizontal = size.heightMm - margin }
-        }
+        xs += equalGaps(l, r, t, b, others, horizontal = true)
+        ys += equalGaps(t, b, l, r, others, horizontal = false)
+
+        val bestX = xs.filter { abs(it.shift) < DISTANCE }.minByOrNull { abs(it.shift) }
+        val bestY = ys.filter { abs(it.shift) < DISTANCE }.minByOrNull { abs(it.shift) }
+        var x = cx + (bestX?.shift ?: 0f)
+        var y = cy + (bestY?.shift ?: 0f)
         // Не виїжджати за наклейку (якщо елемент більший за неї — тримаємо центр на ній).
         val e = edge
         x = if (element.width <= size.widthMm - 2 * e) x.coerceIn(e + halfW - offX, size.widthMm - e - halfW - offX) else midX - offX
         y = if (element.height <= size.heightMm - 2 * e) y.coerceIn(e + halfH - offY, size.heightMm - e - halfH - offY) else midY - offY
-        return Result(x, y, vertical, horizontal)
+        val keptX = bestX?.takeIf { abs(x - (cx + it.shift)) < 0.01f }
+        val keptY = bestY?.takeIf { abs(y - (cy + it.shift)) < 0.01f }
+        return Result(x, y, keptX?.line, keptY?.line, keptX?.gaps.orEmpty() + keptY?.gaps.orEmpty())
+    }
+
+    /**
+     * Однакові проміжки вздовж однієї осі: [a0]..[a1] — межі елемента вздовж осі, [c0]..[c1] — поперек (щоб брати лише
+     * сусідів з того самого ряду/стовпця). Пропонує: поставити на такій самій відстані від сусіда, як між сусідами
+     * (продовжити ряд), або рівно посередині між двома.
+     */
+    private fun equalGaps(a0: Float, a1: Float, c0: Float, c1: Float, others: List<MmRect>, horizontal: Boolean): List<Candidate> {
+        fun lo(o: MmRect) = if (horizontal) o.left else o.top
+        fun hi(o: MmRect) = if (horizontal) o.right else o.bottom
+        fun clo(o: MmRect) = if (horizontal) o.top else o.left
+        fun chi(o: MmRect) = if (horizontal) o.bottom else o.right
+        val row = others.filter { minOf(chi(it), c1) - maxOf(clo(it), c0) > 0f }.sortedBy { lo(it) }
+        if (row.isEmpty()) return emptyList()
+        val at = { o: MmRect -> (maxOf(clo(o), c0) + minOf(chi(o), c1)) / 2 }
+        val out = ArrayList<Candidate>()
+        val len = a1 - a0
+        // Пари сусідів у ряду і проміжок між ними.
+        for (i in 0 until row.size - 1) {
+            val p = row[i]
+            val q = row[i + 1]
+            val g = lo(q) - hi(p)
+            if (g <= 0f) continue
+            val pairGap = Gap(hi(p), lo(q), (at(p) + at(q)) / 2, horizontal)
+            // Продовжити ряд праворуч/знизу від q і ліворуч/зверху від p.
+            out += Candidate(hi(q) + g - a0, null, listOf(pairGap, Gap(hi(q), hi(q) + g, at(q), horizontal)))
+            out += Candidate(lo(p) - g - a1, null, listOf(pairGap, Gap(lo(p) - g, lo(p), at(p), horizontal)))
+        }
+        // Посередині між двома сусідніми (якщо поміщається).
+        for (i in 0 until row.size - 1) {
+            val p = row[i]
+            val q = row[i + 1]
+            val space = lo(q) - hi(p)
+            if (space <= len) continue
+            val g = (space - len) / 2
+            val start = hi(p) + g
+            out += Candidate(start - a0, null, listOf(Gap(hi(p), start, at(p), horizontal), Gap(start + len, lo(q), at(q), horizontal)))
+        }
+        return out
     }
 }
 

@@ -134,11 +134,10 @@
     <string name="label_templates_ready">Ready-made — for this code and label size</string>
     <string name="label_templates_mine">Mine</string>
     <string name="label_templates_mine_empty">Lay out a label the way you like and save it — next time it is one tap away for any code.</string>
-    <string name="label_templates_hint">Long press — delete a template</string>
+    <string name="label_templates_hint">Long press — remove a template</string>
     <string name="label_template_save">Save as a template</string>
     <string name="label_template_saved">Template saved</string>
     <string name="label_template_deleted">Template deleted</string>
-    <string name="template_simple">Simple</string>
     <string name="template_shelf">Shelf</string>
     <string name="template_scanme">Scan me</string>
     <string name="template_copies">Sheet of copies</string>
@@ -192,7 +191,15 @@
     <string name="help_fav_t">Favourites</string>
     <string name="help_fav">• The star in a code’s menu — add to favourites.\n• “Favourites” is the first page, codes in a grid.\n• Hold and drag — change the order.\n• Drop onto the bar at the top — remove from favourites (with “Undo”).</string>
     <string name="help_print_t">Printing and labels</string>
-    <string name="help_print">• The size button at the top — label size: ready ones, your own or “Phone screen”.\n• “Add”: code, text, icon or template.\n• Tap an item — choose it; its settings appear under the label.\n• Drag — move; two fingers — size and turn.\n• Double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the centre and edges, never overlap and never leave the label.\n• “Print” — to the printer at the label size; “Share” — PDF or picture, or save to the gallery.\n• Your layout can be saved as a template.</string>
+    <string name="help_print">• The size button at the top — label size: ready ones, your own or “Phone screen”.\n• “Add”: code, text, icon or template.\n• Tap an item — choose it; its settings appear under the label.\n• Drag — move; two fingers — size and turn.\n• Double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the centre and edges, never overlap and never leave the label.\n• “Print” — to the printer at the label size; “Share” — PDF or picture, or save to the gallery.\n• Your layout, codes included, can be saved as a template and opened ready later. A chosen code can be swapped for another (“Replace code”).\n• A dragged item snaps to the edges and centres of others, and equal gaps are shown as marked segments.</string>
     <string name="help_settings_t">Settings and backup</string>
     <string name="help_settings">• The gear at the top right — style (Black Glass or Black Sketch) and language.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
+    <string name="label_replace_code">Replace code</string>
+    <string name="template_poster">Poster</string>
+    <string name="template_badge">Badge</string>
+    <string name="label_template_hidden">Template hidden</string>
+    <string name="label_templates_restore">Bring back hidden ready templates</string>
+    <string name="label_frame_bold">Bold</string>
+    <string name="label_frame_ticket">Ticket</string>
+    <string name="label_frame_dots">Dots</string>
 </resources>

@@ -397,15 +397,18 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
 
 /** Назва папки (нова чи перейменування). */
 @Composable
-fun FolderNameDialog(title: String, initial: String, onDismiss: () -> Unit, onApply: (String) -> Unit) {
+fun FolderNameDialog(title: String, initial: String, onDismiss: () -> Unit, suggested: String? = null, onApply: (String) -> Unit) {
+    // Нова папка: поле порожнє, а типова назва («Папка 2») — лише підказкою; почав писати — вона зникає, нічого не
+    // дописується. Не ввів нічого — береться саме вона.
     var name by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val result = name.trim().ifEmpty { suggested.orEmpty() }
     SheetDialog(onDismissRequest = onDismiss, title = title, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
-        SheetButton(stringResource(R.string.apply), { onApply(name.trim()) }, tone = Tone.Confirm, enabled = name.isNotBlank())
+        SheetButton(stringResource(R.string.apply), { onApply(result) }, tone = Tone.Confirm, enabled = result.isNotBlank())
     }) {
-        SheetTextField(name, { name = it }, stringResource(R.string.folder_name_hint), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), focusRequester = focus)
+        SheetTextField(name, { name = it }, suggested ?: stringResource(R.string.folder_name_hint), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), focusRequester = focus)
     }
 }
 

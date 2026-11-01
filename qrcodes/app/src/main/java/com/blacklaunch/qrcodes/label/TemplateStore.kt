@@ -29,6 +29,13 @@ class TemplateStore(context: Context) {
         return list
     }
 
+    /** Готові шаблони, які сховали (довгим натисканням). */
+    fun hiddenBuiltIns(): Set<String> = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
+
+    fun setHiddenBuiltIns(names: Set<String>) {
+        prefs.edit().putStringSet(KEY_HIDDEN, names).apply()
+    }
+
     private fun write(list: List<SavedTemplate>) {
         val arr = JSONArray()
         list.forEach { arr.put(JSONObject().put("name", it.name).put("design", designJson(it.design))) }
@@ -42,6 +49,7 @@ class TemplateStore(context: Context) {
 
     companion object {
         private const val KEY = "list"
+        private const val KEY_HIDDEN = "hidden_builtin"
         const val MAX = 12
 
         fun designJson(d: LabelDesign): JSONObject = JSONObject()

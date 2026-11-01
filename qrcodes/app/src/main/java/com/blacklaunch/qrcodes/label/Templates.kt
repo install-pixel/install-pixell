@@ -3,14 +3,15 @@ package com.blacklaunch.qrcodes.label
 /**
  * Вбудовані шаблони наклейок. Кожен будується під поточний розмір аркуша й поточний код (і ставить усе так, щоб нічого
  * не налазило й не виходило за край):
- * - [Kind.Simple] — великий код по центру з підписом;
+ * - [Kind.Poster] — «афіша»: значок, назва великими літерами й код у рамці олівцем, усе стовпчиком по центру;
+ * - [Kind.Badge] — «бейдж»: код у кутиках ліворуч, праворуч назва й підказка «Скануй мене»;
  * - [Kind.Shelf] — «полиця / склад»: код збоку, поруч великий напис (назва); штрихкод — зверху на всю ширину, напис під ним;
  * - [Kind.ScanMe] — «Скануй мене»: значок за змістом коду (Wi‑Fi, контакт, сайт…), назва великими літерами й код у рамці
  *   з плашкою;
  * - [Kind.Copies] — увесь аркуш копіями коду.
  */
 object Templates {
-    enum class Kind { Simple, Shelf, ScanMe, Copies }
+    enum class Kind { Poster, Badge, Shelf, ScanMe, Copies }
 
     /** [code] — код, з якого будуємо (зміст, назва, QR чи штрихкод); [scanMe] — напис плашки мовою телефону. */
     fun build(kind: Kind, size: LabelSize, code: Element.Qr, scanMe: String, tw: (String, Float) -> Float): LabelDesign {
@@ -19,11 +20,8 @@ object Templates {
         val w = size.widthMm - 2 * e
         val h = size.heightMm - 2 * e
         val design = when (kind) {
-            Kind.Simple -> {
-                val qr = code.copy(id = 1, caption = true, frame = QrFrame.None, rotation = 0f)
-                val sized = fitSide(qr, w * if (qr.barcode) 0.9f else 0.8f, h * 0.9f)
-                base.add(sized.moved(size.widthMm / 2, size.heightMm / 2))
-            }
+            Kind.Poster -> poster(base, size, code, e, w, h, tw) ?: simple(base, size, code, w, h)
+            Kind.Badge -> badge(base, size, code, scanMe, e, w, h, tw) ?: simple(base, size, code, w, h)
             Kind.Shelf -> if (code.barcode) {
                 val bar = fitSide(code.copy(id = 1, caption = false, frame = QrFrame.None, rotation = 0f), w * 0.92f, h * 0.5f)
                 val barH = bar.bounds(tw).height
@@ -67,6 +65,57 @@ object Templates {
             }
         }
         return settle(design, tw)
+    }
+
+    /** Великий код по центру з підписом (і запасний варіант, коли інший шаблон не вміщається). */
+    private fun simple(base: LabelDesign, size: LabelSize, code: Element.Qr, w: Float, h: Float): LabelDesign {
+        val qr = code.copy(id = 1, caption = true, frame = QrFrame.None, rotation = 0f)
+        val sized = fitSide(qr, w * if (qr.barcode) 0.9f else 0.8f, h * 0.9f)
+        return base.add(sized.moved(size.widthMm / 2, size.heightMm / 2))
+    }
+
+    /** Ставить елемент так, щоб верх його меж був на [top], а центр — на [cx]. */
+    private fun atTop(el: Element, cx: Float, top: Float, tw: (String, Float) -> Float): Element {
+        val b = el.moved(cx, 0f).bounds(tw)
+        return el.moved(cx, top - b.top)
+    }
+
+    /** «Афіша»: значок, назва й код у рамці — стовпчиком по центру. null — не вміщається (малий аркуш). */
+    private fun poster(base: LabelDesign, size: LabelSize, code: Element.Qr, e: Float, w: Float, h: Float, tw: (String, Float) -> Float): LabelDesign? {
+        val iconSide = (minOf(w, h) * 0.16f).coerceIn(Element.MIN_ICON, 30f)
+        val letters = fitLetters(code.title, w * 0.9f, (h * 0.09f).coerceIn(Element.MIN_LETTERS, 14f), tw)
+        val textH = letters * 1.35f
+        val gap = 2f
+        val qrH = h - iconSide - textH - 2 * gap
+        if (qrH < h * 0.5f) return null
+        val qr = fitSide(code.copy(id = 1, caption = false, frame = QrFrame.Pencil, rotation = 0f), w * 0.85f, qrH)
+        val blockH = iconSide + gap + textH + gap + qrBlockHeight(qr)
+        val top = e + (h - blockH) / 2
+        val mid = size.widthMm / 2
+        return base
+            .add(Element.Icon(2, mid, top + iconSide / 2, stickerFor(code.content), iconSide))
+            .add(Element.Text(3, mid, top + iconSide + gap + textH / 2, code.title, letters))
+            .add(atTop(qr, mid, top + iconSide + gap + textH + gap, tw))
+    }
+
+    /** «Бейдж»: код у кутиках ліворуч, праворуч назва великими й «Скануй мене» дрібніше. null — не вміщається. */
+    private fun badge(base: LabelDesign, size: LabelSize, code: Element.Qr, scanMe: String, e: Float, w: Float, h: Float, tw: (String, Float) -> Float): LabelDesign? {
+        if (code.barcode) return null
+        val qr = fitSide(code.copy(id = 1, caption = false, frame = QrFrame.Corners, rotation = 0f), w * 0.46f, h)
+        val qbw = qr.side + 2 * framePad(qr)
+        val rightL = e + qbw + 3f
+        val rightW = size.widthMm - e - rightL
+        if (rightW < 12f) return null
+        val letters = fitLetters(code.title, rightW, (h * 0.2f).coerceIn(Element.MIN_LETTERS, 18f), tw)
+        val small = fitLetters(scanMe, rightW, (letters * 0.6f).coerceAtLeast(Element.MIN_LETTERS), tw)
+        val gap = 1.5f
+        val blockH = letters * 1.35f + gap + small * 1.35f
+        val top = size.heightMm / 2 - blockH / 2
+        val cx = rightL + rightW / 2
+        return base
+            .add(qr.moved(e + qbw / 2, size.heightMm / 2))
+            .add(Element.Text(2, cx, top + letters * 1.35f / 2, code.title, letters))
+            .add(Element.Text(3, cx, top + letters * 1.35f + gap + small * 1.35f / 2, scanMe, small))
     }
 
     /** Найбільший розмір коду, щоб його блок (з підписом і рамкою) уміщався в [maxW]×[maxH]. */
