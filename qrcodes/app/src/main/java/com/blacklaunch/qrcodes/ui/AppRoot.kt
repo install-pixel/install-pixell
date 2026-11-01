@@ -47,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -202,7 +203,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     }
 
     BackHandler(enabled = pager.currentPage == 1 && camera == null && labelFor == null) {
-        scope.launch { pager.animateScrollToPage(0) }
+        scope.launch { pager.animateScrollToPage(0, animationSpec = PAGE_ANIM) }
     }
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
@@ -216,8 +217,25 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
         Column(Modifier.fillMaxSize().backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
-            PageTabs(pager.currentPage, onSettings = { settingsOpen = true }) { scope.launch { pager.animateScrollToPage(it) } }
-            HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
+            // Положення сторінки (0 — «Вибране», 1 — «Створити», між ними — поки їдуть): назви вгорі міняються разом із рухом.
+            val position = { pager.currentPage + pager.currentPageOffsetFraction }
+            PageTabs(position, onSettings = { settingsOpen = true }) { scope.launch { pager.animateScrollToPage(it, animationSpec = PAGE_ANIM) } }
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                beyondViewportPageCount = 1,
+                // Доїжджає м'яко, з плавним гальмуванням (і після свайпу, і після дотику на назву).
+                flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(state = pager, snapAnimationSpec = PAGE_ANIM),
+            ) { page ->
+                // Сторінка, що йде, трохи тьмяніє й зменшується; нова — проявляється.
+                val pageModifier = Modifier.graphicsLayer {
+                    val away = kotlin.math.abs((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                    alpha = 1f - 0.45f * away
+                    val sc = 1f - 0.05f * away
+                    scaleX = sc
+                    scaleY = sc
+                }
+                Box(pageModifier) {
                 when (page) {
                     0 -> FavoritesPage(
                         favorites,
@@ -269,6 +287,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         format = format,
                         onFormatChange = { format = it },
                     )
+                }
                 }
             }
         }
@@ -484,19 +503,26 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
 /** Назви сторінок угорі: вибрана — підкреслена олівцем. Дотик — перейти. */
 @Composable
-private fun PageTabs(current: Int, onSettings: () -> Unit, onPick: (Int) -> Unit) {
+private fun PageTabs(position: () -> Float, onSettings: () -> Unit, onPick: (Int) -> Unit) {
     val haptics = LocalHaptics.current
     Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp)) {
         Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
             listOf(R.string.page_favorites, R.string.page_create).forEachIndexed { i, title ->
-                val selected = current == i
                 Text(
                     stringResource(title),
-                    color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
+                    color = Oled.TextPrimary,
                     fontSize = 20.sp,
                     modifier = Modifier
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { haptics.tap(); onPick(i) }
-                        .drawBehind { if (selected) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2) }
+                        // Наскільки ця сторінка «вибрана» (плавно, поки сторінки їдуть): яскравість назви й підкреслення.
+                        .graphicsLayer {
+                            val near = 1f - kotlin.math.abs(position() - i).coerceIn(0f, 1f)
+                            alpha = 0.5f + 0.5f * near
+                        }
+                        .drawBehind {
+                            val near = 1f - kotlin.math.abs(position() - i).coerceIn(0f, 1f)
+                            if (near > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f * near)
+                        }
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 )
             }
@@ -515,6 +541,9 @@ private fun PageTabs(current: Int, onSettings: () -> Unit, onPick: (Int) -> Unit
         }
     }
 }
+
+/** Перехід між «Вибране» і «Створити»: повільніше й м'якше, з плавним гальмуванням. */
+private val PAGE_ANIM = androidx.compose.animation.core.tween<Float>(durationMillis = 420, easing = androidx.compose.animation.core.FastOutSlowInEasing)
 
 /** Копіювати зміст; якщо в коду своя назва (може бути пароль) — позначити як приватне, щоб система не показувала його. */
 private fun copy(context: Context, code: QrCode) {
