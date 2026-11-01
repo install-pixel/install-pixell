@@ -117,7 +117,7 @@ fun FavoritesPage(
             modifier = Modifier
                 .fillMaxSize()
                 .onGloballyPositioned { gridOrigin = it.positionInRoot() }
-                .fadingEdges()
+                .fadingEdges(grid)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)

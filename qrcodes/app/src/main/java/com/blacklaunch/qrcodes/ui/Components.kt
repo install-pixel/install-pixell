@@ -375,7 +375,8 @@ fun SheetDialog(
         ) {
             if (title != null) Text(title, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             // Довгий вміст гортається всередині; біля заголовка й кнопок плавно тане, без різкої межі.
-            Box(Modifier.weight(1f, fill = false).fadingEdges(top = EdgeFade / 2, bottom = EdgeFade)) {
+            // Плавні краї — у самій прокрутці вмісту (bouncyScroll): лише коли є що гортати.
+            Box(Modifier.weight(1f, fill = false)) {
                 CompositionLocalProvider(LocalContentColor provides Oled.TextSecondary) { content() }
             }
             if (buttons != null) {
@@ -572,21 +573,65 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
 val EdgeFade = 18.dp
 
 /**
- * Список, що гортається, не обрізається різко: вгорі й унизу вміст плавно тане в чорне.
+ * Список, що гортається, не обрізається різко: вгорі й унизу вміст плавно тане в чорне — але ЛИШЕ з того боку, куди
+ * ще можна гортати, і не більше, ніж уже прогорнуто. У спокої (на самому верху чи коли все вміщається) нічого не тане,
+ * тож верхній край першого поля чи рамки лишається чітким.
  */
-fun Modifier.fadingEdges(top: Dp = EdgeFade, bottom: Dp = EdgeFade): Modifier = graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+fun Modifier.fadingEdges(top: Dp = EdgeFade, bottom: Dp = EdgeFade): Modifier =
+    fadeMask({ top.toPx() }, { bottom.toPx() })
+
+/** Для [androidx.compose.foundation.ScrollState] (звичайна прокрутка). */
+fun Modifier.fadingEdges(state: androidx.compose.foundation.ScrollState, edge: Dp = EdgeFade): Modifier = fadeMask(
+    top = { minOf(state.value.toFloat(), edge.toPx()) },
+    bottom = {
+        val max = state.maxValue
+        if (max == Int.MAX_VALUE) 0f else minOf((max - state.value).toFloat(), edge.toPx())
+    },
+)
+
+/** Для списку. */
+fun Modifier.fadingEdges(state: androidx.compose.foundation.lazy.LazyListState, edge: Dp = EdgeFade): Modifier = fadeMask(
+    top = { if (state.firstVisibleItemIndex > 0) edge.toPx() else minOf(state.firstVisibleItemScrollOffset.toFloat(), edge.toPx()) },
+    bottom = {
+        val info = state.layoutInfo
+        val last = info.visibleItemsInfo.lastOrNull()
+        when {
+            last == null -> 0f
+            last.index < info.totalItemsCount - 1 -> edge.toPx()
+            else -> minOf((last.offset + last.size - info.viewportEndOffset + info.afterContentPadding).toFloat().coerceAtLeast(0f), edge.toPx())
+        }
+    },
+)
+
+/** Для сітки. */
+fun Modifier.fadingEdges(state: androidx.compose.foundation.lazy.grid.LazyGridState, edge: Dp = EdgeFade): Modifier = fadeMask(
+    top = { if (state.firstVisibleItemIndex > 0) edge.toPx() else minOf(state.firstVisibleItemScrollOffset.toFloat(), edge.toPx()) },
+    bottom = {
+        val info = state.layoutInfo
+        val last = info.visibleItemsInfo.lastOrNull()
+        when {
+            last == null -> 0f
+            last.index < info.totalItemsCount - 1 -> edge.toPx()
+            else -> minOf((last.offset.y + last.size.height - info.viewportEndOffset + info.afterContentPadding).toFloat().coerceAtLeast(0f), edge.toPx())
+        }
+    },
+)
+
+/** Маска країв: [top] і [bottom] — у px, рахуються під час малювання (не перебудовують екран при прокрутці). */
+private fun Modifier.fadeMask(top: androidx.compose.ui.unit.Density.() -> Float, bottom: androidx.compose.ui.unit.Density.() -> Float): Modifier =
+    graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
     .drawWithContent {
         drawContent()
-        val t = top.toPx().coerceAtMost(size.height / 3)
-        val b = bottom.toPx().coerceAtMost(size.height / 3)
-        if (t > 0f) {
+        val t = top().coerceIn(0f, size.height / 3)
+        val b = bottom().coerceIn(0f, size.height / 3)
+        if (t > 0.5f) {
             drawRect(
                 androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, startY = 0f, endY = t),
                 size = androidx.compose.ui.geometry.Size(size.width, t),
                 blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
             )
         }
-        if (b > 0f) {
+        if (b > 0.5f) {
             drawRect(
                 androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Black, 1f to Color.Transparent, startY = size.height - b, endY = size.height),
                 topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - b),

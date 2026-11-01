@@ -26,7 +26,8 @@ import androidx.compose.ui.unit.Velocity
 internal fun Modifier.bouncyScroll(state: ScrollState = rememberScrollState()): Modifier {
     // До першого вимірювання maxValue = Int.MAX_VALUE, тож спершу — звичайна прокрутка.
     val fits = state.maxValue == 0
-    return this.bounceWhenFits(fits).verticalScroll(state, enabled = !fits)
+    // Краї тануть лише з того боку, куди ще можна гортати (у спокої верх чіткий).
+    return this.fadingEdges(state).bounceWhenFits(fits).verticalScroll(state, enabled = !fits)
 }
 
 /** Для списків: гойдання, коли список поміщається (у самого списку тоді ставте userScrollEnabled = !fits). */

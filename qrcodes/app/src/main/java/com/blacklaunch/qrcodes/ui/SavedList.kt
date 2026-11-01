@@ -172,7 +172,7 @@ fun SavedList(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .fadingEdges()
+                .fadingEdges(list)
                 .then(
                     if (!canDrag) {
                         Modifier

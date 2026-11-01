@@ -87,7 +87,6 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import com.blacklaunch.qrcodes.ui.backdrop
-import com.blacklaunch.qrcodes.ui.fadingEdges
 import com.blacklaunch.qrcodes.ui.backdropAmount
 import androidx.compose.ui.graphics.graphicsLayer
 import com.blacklaunch.qrcodes.ui.pencilFrame
@@ -395,7 +394,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         }
 
         // Керування.
-        Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).fadingEdges(top = 16.dp, bottom = 16.dp).bouncyScroll().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).bouncyScroll().padding(horizontal = 16.dp, vertical = 8.dp)) {
             // Перші чотири — те, що додається на наклейку; підпис над ними, щоб це було зрозуміло.
             Text(stringResource(R.string.label_add_title), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

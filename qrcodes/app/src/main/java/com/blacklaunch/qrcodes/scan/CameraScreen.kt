@@ -88,7 +88,6 @@ import com.blacklaunch.qrcodes.ui.SheetButton
 import com.blacklaunch.qrcodes.ui.SheetInk
 import com.blacklaunch.qrcodes.ui.pencilFrame
 import com.blacklaunch.qrcodes.ui.noticePlace
-import com.blacklaunch.qrcodes.ui.fadingEdges
 import com.blacklaunch.qrcodes.ui.outline
 import com.blacklaunch.qrcodes.ui.theme.Oled
 import com.google.mlkit.vision.barcode.BarcodeScanner
@@ -421,7 +420,6 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                     .fillMaxWidth()
                     .heightIn(max = 220.dp)
                     .padding(top = 10.dp)
-                    .fadingEdges(top = 14.dp, bottom = 14.dp)
                     .bouncyScroll()
                     // Усередині прокрутки: після затискання тягнемо вибір, а не прокручуємо список.
                     .onGloballyPositioned { listOrigin = it.positionInRoot() }
