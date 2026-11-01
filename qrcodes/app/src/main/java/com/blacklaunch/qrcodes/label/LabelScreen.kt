@@ -2,6 +2,7 @@ package com.blacklaunch.qrcodes.label
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -173,6 +174,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     // Нижня панель: «Додати» чи «Змінити» (вибрав елемент — сама перемикається на «Змінити»).
     var editTab by remember { mutableStateOf(false) }
     var bgMenu by remember { mutableStateOf(false) }
+    // Тло вибране (як елемент): тягнеш — пересуваєш, двома пальцями — масштаб і поворот.
+    var bgSelected by remember { mutableStateOf(false) }
+    var drawNew by remember { mutableStateOf(false) }
+    var drawEdit by remember { mutableStateOf<Element.Drawing?>(null) }
 
     val selected = design.elements.firstOrNull { it.id == selectedId }
     // Кому «Рамка» міняє рамку коду: вибраному коду, а якщо код один — йому.
@@ -249,7 +254,14 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             scope.launch {
                 val path = withContext(Dispatchers.IO) { copyBackground(context, uri) }
                 busy = false
-                if (path != null) commit(design.copy(background = path)) else onMessage(bgFailed)
+                if (path != null) {
+                    commit(design.copy(background = BgImage(path, TemplateStore.imageAspect(path), 0f, 0f, 1f).fitted(design.size)))
+                    selectedId = null
+                    bgSelected = true
+                    editTab = true
+                } else {
+                    onMessage(bgFailed)
+                }
             }
         }
     }
@@ -257,7 +269,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         pickImage.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
-    val dialogOpen = bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    val dialogOpen = drawNew || drawEdit != null || bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
     Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur)) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
@@ -303,7 +315,37 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             val d = current
                             val hit = d.hit(down.position.x / k, down.position.y / k, 10.dp.toPx() / k, renderer::textWidth)
                             selectedId = hit?.id
-                            if (hit == null) return@awaitEachGesture
+                            if (hit != null) bgSelected = false
+                            val bgNow = d.background
+                            if (hit == null) {
+                                if (bgSelected && bgNow != null) {
+                                    // Вибране тло: тягнеш — пересуваєш, двома пальцями — масштаб і поворот.
+                                    var bx = bgNow.cx
+                                    var by = bgNow.cy
+                                    var bw = bgNow.width
+                                    var br = bgNow.rotation
+                                    var travel = 0f
+                                    var movedBg = false
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        val pan = event.calculatePan()
+                                        val zoom = event.calculateZoom()
+                                        val turn = event.calculateRotation()
+                                        travel += pan.getDistance()
+                                        if (travel > viewConfiguration.touchSlop || zoom != 1f || turn != 0f) {
+                                            bx += pan.x / k
+                                            by += pan.y / k
+                                            bw = (bw * zoom).coerceIn(5f, 3000f)
+                                            br += turn
+                                            design = current.copy(background = bgNow.copy(cx = bx, cy = by, width = bw, rotation = normalizeAngle(br, snap = true)))
+                                            movedBg = true
+                                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                        }
+                                    } while (event.changes.any { it.pressed })
+                                    if (movedBg) pushHistory(d) else bgSelected = false
+                                }
+                                return@awaitEachGesture
+                            }
                             haptics.tap()
                             val before = d
                             var moved = false
@@ -383,6 +425,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                         is Element.Text -> textEdit = hit
                                         is Element.Qr -> captionEdit = hit
                                         is Element.Icon -> stickerFor = hit
+                                        is Element.Drawing -> drawEdit = hit
                                     }
                                 } else {
                                     lastTap = t to hit.id
@@ -409,6 +452,20 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         drawLine(PAPER_SELECT, Offset(x, g.from * k), Offset(x, g.to * k), stroke)
                         drawLine(PAPER_SELECT, Offset(x - tick, g.from * k), Offset(x + tick, g.from * k), stroke)
                         drawLine(PAPER_SELECT, Offset(x - tick, g.to * k), Offset(x + tick, g.to * k), stroke)
+                    }
+                }
+                // Вибране тло — тонкою сірою рамкою по межах картинки (разом з поворотом).
+                val bgSel = design.background
+                if (bgSelected && bgSel != null) {
+                    rotate(bgSel.rotation, Offset(bgSel.cx * k, bgSel.cy * k)) {
+                        val bw = bgSel.width * k
+                        val bh = bgSel.height * k
+                        drawRect(
+                            PAPER_SELECT,
+                            topLeft = Offset(bgSel.cx * k - bw / 2, bgSel.cy * k - bh / 2),
+                            size = Size(bw, bh),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 6.dp.toPx()))),
+                        )
                     }
                 }
                 // Вибраний — у синій рамці олівцем (повернутій разом з ним); налазить — червоній.
@@ -454,33 +511,60 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 contentAlignment = Alignment.TopCenter,
             ) { edit ->
                 if (!edit) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Tool(Glyph.ScanQr, stringResource(R.string.label_add_code), Modifier.weight(1f)) { replaceFor = null; pickerOpen = true }
-                        Tool(Glyph.TextT, stringResource(R.string.label_add_text), Modifier.weight(1f)) { textNew = true }
-                        Tool(Glyph.Star, stringResource(R.string.label_add_icon), Modifier.weight(1f)) { stickerFor = null; stickerNew = true }
-                        Tool(Glyph.Gallery, stringResource(R.string.label_background), Modifier.weight(1f), on = design.background != null) {
-                            if (design.background != null) bgMenu = true else pickBackground()
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Tool(Glyph.ScanQr, stringResource(R.string.label_add_code), Modifier.weight(1f)) { replaceFor = null; pickerOpen = true }
+                            Tool(Glyph.TextT, stringResource(R.string.label_add_text), Modifier.weight(1f)) { textNew = true }
+                            Tool(Glyph.Star, stringResource(R.string.label_add_icon), Modifier.weight(1f)) { stickerFor = null; stickerNew = true }
+                            Tool(Glyph.Edit, stringResource(R.string.label_drawing), Modifier.weight(1f)) { drawNew = true }
                         }
-                        Tool(Glyph.Template, stringResource(R.string.label_templates), Modifier.weight(1f)) { templatesOpen = true }
-                        Tool(Glyph.Frame, stringResource(R.string.label_frame), Modifier.weight(1f), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Tool(Glyph.Gallery, stringResource(R.string.label_background), Modifier.weight(1f), on = design.background != null) { bgMenu = true }
+                            Tool(Glyph.Template, stringResource(R.string.label_templates), Modifier.weight(1f)) { templatesOpen = true }
+                            Tool(Glyph.Frame, stringResource(R.string.label_frame), Modifier.weight(1f), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
+                            Spacer(Modifier.weight(1f))
+                        }
                     }
                 } else {
                     when (val e = selected) {
-                        null -> Column {
-                            Text(
-                                stringResource(R.string.label_hint),
-                                color = Oled.TextSecondary,
-                                fontSize = 15.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            )
-                            // Нічого не вибрано — дії з усім аркушем.
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Tool(Glyph.Grid, stringResource(R.string.label_grid), Modifier.weight(1f), enabled = codes.size > 1) { commit(Arrange.grid(design, tw)) }
-                                Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = canUndo) { undo() }
-                                // Фон прибирається окремо — наклейка лишається.
-                                if (design.background != null) Tool(Glyph.Gallery, stringResource(R.string.label_bg_remove_short), Modifier.weight(1f)) { commit(design.copy(background = null)) }
-                                Tool(Glyph.Delete, stringResource(R.string.delete), Modifier.weight(1f), enabled = design.elements.isNotEmpty(), danger = true) { clearAsk = true }
+                        null -> if (bgSelected && design.background != null) {
+                            val bg = design.background!!
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(stringResource(R.string.label_bg_selected), color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Tool(Glyph.Frame, stringResource(R.string.label_bg_fit), Modifier.weight(1f)) { commit(design.copy(background = bg.fitted(design.size))) }
+                                    Tool(Glyph.Grid, stringResource(R.string.label_bg_fill), Modifier.weight(1f)) { commit(design.copy(background = bg.filled(design.size))) }
+                                    Tool(Glyph.RotateLeft, stringResource(R.string.label_rotate_left), Modifier.weight(1f)) { commit(design.copy(background = bg.copy(rotation = normalizeAngle(bg.rotation - 90f, snap = true)))) }
+                                    Tool(Glyph.RotateRight, stringResource(R.string.label_rotate_right), Modifier.weight(1f)) { commit(design.copy(background = bg.copy(rotation = normalizeAngle(bg.rotation + 90f, snap = true)))) }
+                                    Tool(Glyph.Center, stringResource(R.string.label_center), Modifier.weight(1f)) { commit(design.copy(background = bg.copy(cx = design.size.widthMm / 2, cy = design.size.heightMm / 2))) }
+                                }
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Tool(Glyph.Gallery, stringResource(R.string.label_bg_other), Modifier.weight(1f)) { bgMenu = true }
+                                    Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = canUndo) { undo() }
+                                    Tool(Glyph.Close, stringResource(R.string.label_bg_remove_short), Modifier.weight(1f)) {
+                                        commit(design.copy(background = null))
+                                        bgSelected = false
+                                    }
+                                    Tool(Glyph.Save, stringResource(R.string.done), Modifier.weight(1f)) { bgSelected = false }
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        } else {
+                            Column {
+                                Text(
+                                    stringResource(R.string.label_hint),
+                                    color = Oled.TextSecondary,
+                                    fontSize = 15.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                )
+                                // Нічого не вибрано — дії з усім аркушем; «Фон» — вибрати тло, щоб рухати його.
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Tool(Glyph.Grid, stringResource(R.string.label_grid), Modifier.weight(1f), enabled = codes.size > 1) { commit(Arrange.grid(design, tw)) }
+                                    Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = canUndo) { undo() }
+                                    if (design.background != null) Tool(Glyph.Gallery, stringResource(R.string.label_background), Modifier.weight(1f)) { bgSelected = true }
+                                    Tool(Glyph.Delete, stringResource(R.string.delete), Modifier.weight(1f), enabled = design.elements.isNotEmpty(), danger = true) { clearAsk = true }
+                                }
                             }
                         }
                         else -> SelectedPanel(
@@ -501,6 +585,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                     is Element.Qr -> e.copy(id = design.nextId)
                                     is Element.Text -> e.copy(id = design.nextId)
                                     is Element.Icon -> e.copy(id = design.nextId)
+                                    is Element.Drawing -> e.copy(id = design.nextId)
                                 }
                                 // Копія — поруч з оригіналом, на вільному місці.
                                 addElement(copy, e.cx, e.cy)
@@ -514,6 +599,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             onEditBanner = { bannerEdit = it },
                             onReplace = { replaceFor = it; pickerOpen = true },
                             onReplaceIcon = { stickerFor = it },
+                            onEditDrawing = { drawEdit = it },
                             onEditText = { textEdit = it },
                             canUndo = canUndo,
                             onUndo = { undo() },
@@ -547,18 +633,52 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     }
 
     if (bgMenu) {
+        val sceneCodes = codes.ifEmpty { listOfNotNull(start.firstOrNull()?.let { newQr(1, it, design.size) }) }
         SheetDialog(onDismissRequest = { bgMenu = false }, title = stringResource(R.string.label_background)) {
-            Column {
-                MenuRow(Glyph.Gallery, stringResource(R.string.label_bg_change), {
+            Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MenuRow(Glyph.Gallery, stringResource(R.string.label_bg_own), {
                     bgMenu = false
                     pickBackground()
                 })
-                MenuRow(Glyph.Close, stringResource(R.string.label_bg_remove), {
-                    bgMenu = false
-                    commit(design.copy(background = null))
-                })
-                Text(stringResource(R.string.label_bg_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
+                if (sceneCodes.isNotEmpty()) {
+                    // Сцени: малюнок із місцями під коди — коди самі стають у квадратики.
+                    Text(stringResource(R.string.label_scenes), color = Oled.TextPrimary, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Scenes.all.forEach { scene ->
+                            val hgt = (96f * scene.aspect).coerceIn(64f, 150f).dp
+                            SampleBox(null, selected = design.background?.source == scene.source, onClick = {
+                                commit(Scenes.apply(scene, design, sceneCodes))
+                                selectedId = null
+                                bgSelected = false
+                                openedTemplate = null
+                                bgMenu = false
+                            }, width = 96.dp, height = hgt) { canvas, w, h -> renderer.drawScenePreview(canvas, w, h, scene) }
+                        }
+                    }
+                }
+                if (design.background != null) {
+                    MenuRow(Glyph.Close, stringResource(R.string.label_bg_remove), {
+                        bgMenu = false
+                        bgSelected = false
+                        commit(design.copy(background = null))
+                    })
+                }
+                Text(stringResource(R.string.label_bg_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
             }
+        }
+    }
+    if (drawNew || drawEdit != null) {
+        DrawDialog(drawEdit, onDismiss = { drawNew = false; drawEdit = null }) { strokes, aspect, thick ->
+            val edit = drawEdit
+            if (edit != null) {
+                tryChange(edit.copy(strokes = strokes, aspect = aspect, thick = thick))
+            } else {
+                var width = minOf(50f, design.size.widthMm * 0.5f)
+                if (width * aspect > design.size.heightMm * 0.7f) width = design.size.heightMm * 0.7f / aspect
+                addElement(Element.Drawing(design.nextId, design.size.widthMm / 2, design.size.heightMm / 2, strokes, aspect, width.coerceAtLeast(Element.MIN_DRAWING), thick))
+            }
+            drawNew = false
+            drawEdit = null
         }
     }
 
@@ -871,6 +991,7 @@ private fun SelectedPanel(
     onEditBanner: (Element.Qr) -> Unit,
     onReplace: (Element.Qr) -> Unit,
     onReplaceIcon: (Element.Icon) -> Unit,
+    onEditDrawing: (Element.Drawing) -> Unit,
     canUndo: Boolean,
     onUndo: () -> Unit,
 ) {
@@ -882,6 +1003,7 @@ private fun SelectedPanel(
         }
         is Element.Text -> Triple(R.string.label_text_size, Element.MIN_LETTERS, Element.MAX_LETTERS)
         is Element.Icon -> Triple(R.string.label_icon_size, Element.MIN_ICON, minOf(Element.MAX_ICON, minOf(design.size.widthMm, design.size.heightMm)))
+        is Element.Drawing -> Triple(R.string.label_drawing_size, Element.MIN_DRAWING, minOf(Element.MAX_DRAWING, design.size.widthMm))
     }
     // Усі дії вибраного — круглими кнопками, рядками по п'ять (без прокрутки вбік і без окремих «табличок»).
     val actions = buildList {
@@ -898,6 +1020,7 @@ private fun SelectedPanel(
             }
             is Element.Text -> add(Action(Glyph.Edit, R.string.label_edit_short) { onEditText(element) })
             is Element.Icon -> add(Action(Glyph.Star, R.string.label_replace_short) { onReplaceIcon(element) })
+            is Element.Drawing -> add(Action(Glyph.Edit, R.string.label_edit_short) { onEditDrawing(element) })
         }
         add(Action(Glyph.Undo, R.string.label_undo, enabled = canUndo, run = onUndo))
         add(Action(Glyph.Delete, R.string.delete, danger = true, run = onDelete))
@@ -1188,3 +1311,97 @@ private fun copyBackground(context: android.content.Context, uri: android.net.Ur
     bitmap.recycle()
     file.absolutePath
 }.getOrNull()
+
+/**
+ * Полотно для малювання пальцем: одна лінія (тонко чи товсто), «Крок назад», «Очистити». Готово — штрихи в частках
+ * свого прямокутника й співвідношення сторін (малюнок стає елементом, що масштабується).
+ */
+@Composable
+private fun DrawDialog(initial: Element.Drawing?, onDismiss: () -> Unit, onDone: (List<List<Float>>, Float, Boolean) -> Unit) {
+    // Точки — частки ширини полотна (полотно квадратне).
+    val strokes = remember {
+        androidx.compose.runtime.mutableStateListOf<List<Offset>>().apply {
+            if (initial != null) {
+                // Наявний малюнок — уміщаємо в полотно з полем, зберігаючи пропорції.
+                val s = 0.8f / maxOf(1f, initial.aspect)
+                val w = s
+                val h = s * initial.aspect
+                val left = (1f - w) / 2f
+                val top = (1f - h) / 2f
+                initial.strokes.forEach { st -> add(st.chunked(2).filter { it.size == 2 }.map { (x, y) -> Offset(left + x * w, top + y * h) }) }
+            }
+        }
+    }
+    var current by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var thick by remember { mutableStateOf(initial?.thick ?: false) }
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.label_drawing), buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.done), {
+            val pts = strokes.flatten()
+            if (pts.isNotEmpty()) {
+                val minX = pts.minOf { it.x }
+                val maxX = pts.maxOf { it.x }
+                val minY = pts.minOf { it.y }
+                val maxY = pts.maxOf { it.y }
+                val bw = (maxX - minX).coerceAtLeast(0.02f)
+                val bh = (maxY - minY).coerceAtLeast(0.02f)
+                val norm = strokes.map { st -> st.flatMap { listOf((it.x - minX) / bw, (it.y - minY) / bh) } }
+                onDone(norm, bh / bw, thick)
+            }
+        }, tone = Tone.Confirm, enabled = strokes.isNotEmpty())
+    }) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(androidx.compose.ui.graphics.Color(LabelPalette.Screen.paper))
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            val side = size.width.toFloat().coerceAtLeast(1f)
+                            val pts = mutableListOf(down.position / side)
+                            current = pts.toList()
+                            do {
+                                val event = awaitPointerEvent()
+                                event.changes.firstOrNull()?.let { ch ->
+                                    if (ch.pressed) {
+                                        pts.add(ch.position / side)
+                                        ch.consume()
+                                    }
+                                }
+                                current = pts.toList()
+                            } while (event.changes.any { it.pressed })
+                            strokes.add(pts.toList())
+                            current = emptyList()
+                        }
+                    },
+            ) {
+                Canvas(Modifier.matchParentSize()) {
+                    val ink = androidx.compose.ui.graphics.Color(LabelPalette.Screen.ink)
+                    val width = size.width * if (thick) 0.024f else 0.012f
+                    (strokes + listOf(current)).forEach { st ->
+                        if (st.isEmpty()) return@forEach
+                        if (st.size == 1) {
+                            drawCircle(ink, width / 2, st[0] * size.width)
+                        } else {
+                            val path = androidx.compose.ui.graphics.Path()
+                            path.moveTo(st[0].x * size.width, st[0].y * size.width)
+                            st.drop(1).forEach { path.lineTo(it.x * size.width, it.y * size.width) }
+                            drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(width, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                        }
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !thick) { thick = false }
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thick), thick) { thick = true }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SheetButton(stringResource(R.string.label_undo), { strokes.removeLastOrNull() }, enabled = strokes.isNotEmpty())
+                SheetButton(stringResource(R.string.label_clear), { strokes.clear() }, enabled = strokes.isNotEmpty())
+            }
+        }
+    }
+}

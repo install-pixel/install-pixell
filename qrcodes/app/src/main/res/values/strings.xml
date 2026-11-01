@@ -188,7 +188,7 @@
     <string name="help_fav_t">Favourites</string>
     <string name="help_fav">• The star in a code’s menu — add to favourites.\n• “Favourites” is the first page, codes in a grid.\n• Hold and drag — change the order.\n• Drop onto the bar at the top — remove from favourites (with “Undo”).</string>
     <string name="help_print_t">Printing and labels</string>
-    <string name="help_print">• Top right — “Share” (picture, gallery, text) and the blue “Print”.\n• Under the label: the “Add” and “Edit” tabs, and on the right the label size (ready ones, your own, “Phone screen”).\n• “Add”: code, text, icon, backdrop (your own picture — codes sit on a solid pad; remove it with “No backdrop” under “Edit”), template, frame.\n• Tap an item — it is chosen and “Edit” opens: size, turn, centre, copy, caption, replace, undo, delete.\n• Nothing chosen — “Edit” works on the whole label: grid, undo, delete everything (it asks first).\n• Drag — move; two fingers — size and turn; double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the edges and centres of the label and of other items, equal gaps are shown as marked segments; nothing overlaps or leaves the label.\n• Your layout, codes included, can be saved as a template and opened ready later.</string>
+    <string name="help_print">• Top right — “Share” (picture, gallery, text) and the blue “Print”.\n• Under the label: the “Add” and “Edit” tabs, and on the right the label size (ready ones, your own, “Phone screen”).\n• “Add”: code, text, icon, finger drawing, backdrop (your own picture or a scene with spots for codes — codes sit on a solid pad; move, scale and turn it under “Edit” → “Backdrop”), template, frame.\n• Tap an item — it is chosen and “Edit” opens: size, turn, centre, copy, caption, replace, undo, delete.\n• Nothing chosen — “Edit” works on the whole label: grid, undo, delete everything (it asks first).\n• Drag — move; two fingers — size and turn; double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the edges and centres of the label and of other items, equal gaps are shown as marked segments; nothing overlaps or leaves the label.\n• Your layout, codes included, can be saved as a template and opened ready later.</string>
     <string name="help_settings_t">Settings and backup</string>
     <string name="help_settings">• The gear at the top right — style (Black Glass or Black Sketch) and language.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
     <string name="label_replace_code">Replace code</string>
@@ -205,9 +205,19 @@
     <string name="label_background">Backdrop</string>
     <string name="label_bg_change">Another picture</string>
     <string name="label_bg_remove">Remove backdrop</string>
-    <string name="label_bg_hint">Codes sit on a solid pad, so the picture under them never gets in the scanner’s way. You can also remove it under “Edit” when nothing is chosen.</string>
+    <string name="label_bg_hint">Codes sit on a solid pad, so the picture under them never gets in the scanner’s way. Move, enlarge or turn the backdrop under “Edit” → “Backdrop”.</string>
     <string name="label_bg_failed">Couldn’t open the picture</string>
     <string name="label_replace_short">Replace</string>
     <string name="label_banner_short">Banner</string>
     <string name="label_bg_remove_short">No backdrop</string>
+    <string name="label_drawing">Drawing</string>
+    <string name="label_drawing_size">Drawing: %1$d mm</string>
+    <string name="label_bg_selected">Backdrop chosen: drag — move, two fingers — size and turn.</string>
+    <string name="label_bg_fit">Fit</string>
+    <string name="label_bg_fill">Fill</string>
+    <string name="label_bg_other">Other backdrop</string>
+    <string name="label_bg_own">Your own picture…</string>
+    <string name="label_scenes">Scenes — codes drop into the squares</string>
+    <string name="label_draw_thin">Thin</string>
+    <string name="label_draw_thick">Thick</string>
 </resources>

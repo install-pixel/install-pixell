@@ -83,6 +83,9 @@ fun Sticker.glyph(): Glyph = when (this) {
  * Текст і підписи — шрифтом за стилем (від руки чи звичайним), рамки й значки — олівцем.
  */
 class LabelRenderer(private val hand: Typeface) {
+    /** Для вбудованих сцен («asset:…»). */
+    @Volatile var assets: android.content.res.AssetManager? = null
+
     private val measurePaint = Paint().apply { textSize = 100f; isAntiAlias = true }
     private val plain: Typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
 
@@ -115,14 +118,18 @@ class LabelRenderer(private val hand: Typeface) {
         canvas.save()
         canvas.clipRect(0f, 0f, w, h)
         canvas.drawRect(0f, 0f, w, h, Paint().apply { color = palette.paper })
-        val bg = design.background?.let { loadBackground(it) }
-        if (bg != null) {
-            // Зображення заповнює весь аркуш (обрізається по краях, без розтягування).
-            val scale = maxOf(w / bg.width, h / bg.height)
-            val dw = bg.width * scale
-            val dh = bg.height * scale
-            val dst = RectF((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f)
+        val bgImage = design.background
+        val bg = bgImage?.let { loadBackground(it.source) }
+        if (bgImage != null && bg != null) {
+            // Зображення — там, куди його поставили: центр, ширина, поворот (що за краєм — обрізається).
+            val k = pxPerMm
+            canvas.save()
+            canvas.rotate(bgImage.rotation, bgImage.cx * k, bgImage.cy * k)
+            val dw = bgImage.width * k
+            val dh = bgImage.height * k
+            val dst = RectF(bgImage.cx * k - dw / 2f, bgImage.cy * k - dh / 2f, bgImage.cx * k + dw / 2f, bgImage.cy * k + dh / 2f)
             canvas.drawBitmap(bg, null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+            canvas.restore()
         }
         drawContent(canvas, pxPerMm, design, if (bg != null) palette.copy(blockFill = palette.paper) else palette)
         canvas.restore()
@@ -149,6 +156,7 @@ class LabelRenderer(private val hand: Typeface) {
             is Element.Qr -> drawQrElement(canvas, pxPerMm, e, palette, ink)
             is Element.Text -> drawText(canvas, pxPerMm, e, ink)
             is Element.Icon -> drawIcon(canvas, pxPerMm, e, ink)
+            is Element.Drawing -> drawDrawing(canvas, pxPerMm, e, ink)
         }
         canvas.restore()
     }
@@ -338,6 +346,32 @@ class LabelRenderer(private val hand: Typeface) {
         canvas.drawText(e.text, e.cx * k, e.cy * k - (fm.ascent + fm.descent) / 2f, paint)
     }
 
+    /** Малюнок пальцем: рівні лінії з круглими кінцями, товщина — пропорційно розміру. */
+    private fun drawDrawing(canvas: Canvas, k: Float, e: Element.Drawing, ink: Paint) {
+        val paint = Paint(ink).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = e.strokeMm * k
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        val w = e.width * k
+        val h = e.width * e.aspect * k
+        val left = e.cx * k - w / 2
+        val top = e.cy * k - h / 2
+        e.strokes.forEach { st ->
+            if (st.size < 2) return@forEach
+            val path = android.graphics.Path()
+            path.moveTo(left + st[0] * w, top + st[1] * h)
+            if (st.size == 2) path.lineTo(left + st[0] * w + 0.01f, top + st[1] * h)
+            var i = 2
+            while (i + 1 < st.size) {
+                path.lineTo(left + st[i] * w, top + st[i + 1] * h)
+                i += 2
+            }
+            canvas.drawPath(path, paint)
+        }
+    }
+
     private fun drawIcon(canvas: Canvas, k: Float, e: Element.Icon, ink: Paint) {
         val unit = e.side * k / 24f
         val ox = (e.cx - e.side / 2) * k
@@ -357,18 +391,42 @@ class LabelRenderer(private val hand: Typeface) {
     /** Тло-зображення: декодується один раз (зменшене до розумного розміру), далі — з пам'яті. */
     private fun loadBackground(path: String): Bitmap? = synchronized(backgrounds) {
         backgrounds[path] ?: runCatching {
-            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            android.graphics.BitmapFactory.decodeFile(path, bounds)
-            var sample = 1
-            while (maxOf(bounds.outWidth, bounds.outHeight) / sample > BG_MAX_PX) sample *= 2
-            android.graphics.BitmapFactory.decodeFile(path, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+            if (path.startsWith("asset:")) {
+                assets?.open(path.removePrefix("asset:"))?.use { android.graphics.BitmapFactory.decodeStream(it) }
+            } else {
+                val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(path, bounds)
+                var sample = 1
+                while (maxOf(bounds.outWidth, bounds.outHeight) / sample > BG_MAX_PX) sample *= 2
+                android.graphics.BitmapFactory.decodeFile(path, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+            }
         }.getOrNull()?.also {
-            backgrounds.clear()
+            // Кілька останніх (зразки сцен у вікні вибору) — щоб не декодувати щокадру.
+            if (backgrounds.size >= 8) backgrounds.remove(backgrounds.keys.first())
             backgrounds[path] = it
         }
     }
 
-    private val backgrounds = HashMap<String, Bitmap>()
+    private val backgrounds = LinkedHashMap<String, Bitmap>()
+
+    /** Зразок сцени для вікна вибору: картинка й сірі квадратики на місцях кодів. */
+    fun drawScenePreview(canvas: Canvas, w: Float, h: Float, scene: Scenes.Scene) {
+        val bmp = loadBackground(scene.source) ?: return
+        val scale = minOf(w / bmp.width, h / bmp.height)
+        val dw = bmp.width * scale
+        val dh = bmp.height * scale
+        val left = (w - dw) / 2f
+        val top = (h - dh) / 2f
+        canvas.drawRect(0f, 0f, w, h, Paint().apply { color = 0xFFFFFFFF.toInt() })
+        canvas.drawBitmap(bmp, null, RectF(left, top, left + dw, top + dh), Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        val p = Paint().apply { color = 0xFF9A9A9A.toInt(); isAntiAlias = true }
+        scene.slots.forEach { s ->
+            val side = s.side * dw
+            val cx = left + s.fx * dw
+            val cy = top + s.fy * dh
+            canvas.drawRect(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2, p)
+        }
+    }
 
     // ——— друк і «Поділитися» ———
 
@@ -544,7 +602,8 @@ class LabelRenderer(private val hand: Typeface) {
 
         /** Один на всю програму: шрифт вантажиться раз, а закодовані QR-коди кешуються для екрана, друку й зразків. */
         fun create(context: Context): LabelRenderer = shared ?: synchronized(this) {
-            shared ?: LabelRenderer(ResourcesCompat.getFont(context.applicationContext, R.font.caveat_semibold) ?: Typeface.DEFAULT).also { shared = it }
+            (shared ?: LabelRenderer(ResourcesCompat.getFont(context.applicationContext, R.font.caveat_semibold) ?: Typeface.DEFAULT).also { shared = it })
+                .also { it.assets = context.applicationContext.assets }
         }
 
         /** Модулі коду квадратиками; сусідні в рядку — одним прямокутником (без тонких щілин між ними). */

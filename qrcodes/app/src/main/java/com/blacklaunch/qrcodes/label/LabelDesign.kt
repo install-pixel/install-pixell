@@ -87,7 +87,32 @@ sealed interface Element {
         override fun resized(size: Float) = copy(side = size.coerceIn(MIN_ICON, MAX_ICON))
     }
 
+    /**
+     * Малюнок пальцем: штрихи — точки (x, y по черзі) у частках прямокутника [width]×[width]·[aspect], тож малюнок
+     * масштабується разом з елементом. [thick] — товща лінія.
+     */
+    data class Drawing(
+        override val id: Int,
+        override val cx: Float,
+        override val cy: Float,
+        val strokes: List<List<Float>>,
+        val aspect: Float,
+        val width: Float,
+        val thick: Boolean = false,
+        override val rotation: Float = 0f,
+    ) : Element {
+        override val size get() = width
+        override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))
+        override fun moved(cx: Float, cy: Float) = copy(cx = cx, cy = cy)
+        override fun resized(size: Float) = copy(width = size.coerceIn(MIN_DRAWING, MAX_DRAWING))
+
+        /** Товщина лінії, мм — пропорційно розміру малюнка. */
+        val strokeMm: Float get() = (width * if (thick) 0.03f else 0.016f).coerceIn(0.25f, 4f)
+    }
+
     companion object {
+        const val MIN_DRAWING = 6f
+        const val MAX_DRAWING = 280f
         const val MIN_QR = 8f
         const val MAX_QR = 280f
         const val MIN_LETTERS = 2f
@@ -109,6 +134,46 @@ fun normalizeAngle(degrees: Float, snap: Boolean = false): Float {
 }
 
 const val SNAP_DEG = 6f
+
+/**
+ * Зображення на тлі наклейки: [source] — файл у пам'яті програми або «asset:…» (вбудована сцена); [aspect] — висота /
+ * ширина картинки; центр ([cx], [cy]), ширина [width] у мм і поворот — як у елемента (рухається, масштабується).
+ */
+data class BgImage(
+    val source: String,
+    val aspect: Float,
+    val cx: Float,
+    val cy: Float,
+    val width: Float,
+    val rotation: Float = 0f,
+) {
+    val height: Float get() = width * aspect
+
+    /** Повернута на 90° (або 270°) — видимі ширина й висота міняються місцями. */
+    private val sideways: Boolean get() = (kotlin.math.round(rotation / 90f).toInt() % 2) != 0
+
+    /** Уся картинка в межах наклейки, по центру. */
+    fun fitted(size: LabelSize): BgImage {
+        val w = if (sideways) minOf(size.heightMm, size.widthMm / aspect) else minOf(size.widthMm, size.heightMm / aspect)
+        return copy(cx = size.widthMm / 2, cy = size.heightMm / 2, width = w)
+    }
+
+    /** Картинка на всю наклейку (краї обрізаються), по центру. */
+    fun filled(size: LabelSize): BgImage {
+        val w = if (sideways) maxOf(size.heightMm, size.widthMm / aspect) else maxOf(size.widthMm, size.heightMm / aspect)
+        return copy(cx = size.widthMm / 2, cy = size.heightMm / 2, width = w)
+    }
+
+    /** Точка картинки (частки 0…1 її ширини й висоти) — у мм наклейки, з урахуванням повороту. */
+    fun pointMm(fx: Float, fy: Float): Pair<Float, Float> {
+        val dx = (fx - 0.5f) * width
+        val dy = (fy - 0.5f) * height
+        val a = Math.toRadians(rotation.toDouble())
+        val c = kotlin.math.cos(a).toFloat()
+        val s = kotlin.math.sin(a).toFloat()
+        return (cx + dx * c - dy * s) to (cy + dx * s + dy * c)
+    }
+}
 
 /** Прямокутник у мм. */
 data class MmRect(val left: Float, val top: Float, val right: Float, val bottom: Float) {
@@ -190,6 +255,11 @@ fun Element.baseBounds(textWidth: (String, Float) -> Float): MmRect = when (this
         MmRect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
     }
     is Element.Icon -> MmRect(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2)
+    is Element.Drawing -> {
+        val pad = strokeMm / 2
+        val h = width * aspect
+        MmRect(cx - width / 2 - pad, cy - h / 2 - pad, cx + width / 2 + pad, cy + h / 2 + pad)
+    }
 }
 
 fun MmRect.overlaps(o: MmRect, gap: Float = 0f): Boolean =
@@ -201,8 +271,8 @@ data class LabelDesign(
     val elements: List<Element> = emptyList(),
     /** Рамка по краю всього аркуша (ті самі стилі, що й у коду, крім «Скануй мене»). */
     val border: QrFrame = QrFrame.None,
-    /** Своє зображення на тлі (файл у пам'яті програми) або null. Коди лежать на суцільній підкладці поверх нього. */
-    val background: String? = null,
+    /** Зображення на тлі або null. Коди лежать на суцільній підкладці поверх нього. */
+    val background: BgImage? = null,
 ) {
     val nextId: Int get() = (elements.maxOfOrNull { it.id } ?: 0) + 1
 
@@ -220,7 +290,11 @@ data class LabelDesign(
     fun resizedTo(newSize: LabelSize): LabelDesign {
         val kx = newSize.widthMm / size.widthMm
         val ky = newSize.heightMm / size.heightMm
-        return copy(size = newSize, elements = elements.map { it.moved(it.cx * kx, it.cy * ky) })
+        return copy(
+            size = newSize,
+            elements = elements.map { it.moved(it.cx * kx, it.cy * ky) },
+            background = background?.let { it.copy(cx = it.cx * kx, cy = it.cy * ky) },
+        )
     }
 }
 
