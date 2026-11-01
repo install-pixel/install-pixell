@@ -104,6 +104,9 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
     var modeMenu by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    // Пошук у збережених — у капсулі внизу (лупа в кінці порожньої капсули).
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var searchValue by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     var formOpen by remember { mutableStateOf<FormKind?>(null) }
     var camera by rememberSaveable { mutableStateOf<InputMode?>(null) }
     var pendingCamera by remember { mutableStateOf<InputMode?>(null) }
@@ -205,7 +208,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         keyboard?.show()
     }
 
-    BackHandler(enabled = pager.currentPage == 1 && camera == null && labelFor == null) {
+    BackHandler(enabled = searching && camera == null && labelFor == null) {
+        searching = false
+        searchValue = TextFieldValue("")
+    }
+    BackHandler(enabled = !searching && pager.currentPage == 1 && camera == null && labelFor == null) {
         scope.launch { pager.animateScrollToPage(0, animationSpec = PAGE_ANIM) }
     }
 
@@ -228,7 +235,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 beyondViewportPageCount = 1,
                 // Доїжджає м'яко, з плавним гальмуванням (і після свайпу, і після дотику на назву).
-                flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(state = pager, snapAnimationSpec = PAGE_ANIM),
+                flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(state = pager, snapAnimationSpec = PAGE_FLING),
             ) { page ->
                 // Сторінка, що йде, трохи тьмяніє й зменшується; нова — проявляється.
                 val pageModifier = Modifier.graphicsLayer {
@@ -289,6 +296,19 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         focusRequester = focus,
                         format = format,
                         onFormatChange = { format = it },
+                        searching = searching,
+                        searchValue = searchValue,
+                        onSearchChange = { searchValue = it },
+                        onSearch = {
+                            searching = true
+                            focusAfterCamera++
+                        },
+                        onCloseSearch = {
+                            searching = false
+                            searchValue = TextFieldValue("")
+                            focusManager.clearFocus()
+                            keyboard?.hide()
+                        },
                     )
                 }
                 }
@@ -545,8 +565,21 @@ private fun PageTabs(position: () -> Float, onSettings: () -> Unit, onPick: (Int
     }
 }
 
-/** Перехід між «Вибране» і «Створити»: повільніше й м'якше, з плавним гальмуванням. */
-private val PAGE_ANIM = androidx.compose.animation.core.tween<Float>(durationMillis = 420, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+/**
+ * Перехід між «Вибране» і «Створити» з дотику на назву: починається повільно, розганяється й так само плавно гальмує.
+ */
+private val PAGE_ANIM = androidx.compose.animation.core.tween<Float>(
+    durationMillis = 520,
+    easing = androidx.compose.animation.core.CubicBezierEasing(0.65f, 0f, 0.35f, 1f),
+)
+
+/**
+ * Після свайпу — пружина без підскоку: підхоплює швидкість пальця (без ривка на початку) і м'яко зупиняється.
+ */
+private val PAGE_FLING = androidx.compose.animation.core.spring<Float>(
+    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+    stiffness = 220f,
+)
 
 /** Копіювати зміст; якщо в коду своя назва (може бути пароль) — позначити як приватне, щоб система не показувала його. */
 private fun copy(context: Context, code: QrCode) {

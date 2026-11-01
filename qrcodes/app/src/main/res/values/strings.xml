@@ -157,7 +157,7 @@
     <string name="form_wifi_wpa3_only">WPA3 only</string>
     <string name="saved_count">Saved: %1$d</string>
     <string name="search">Search</string>
-    <string name="search_hint">Name or content</string>
+    <string name="search_hint">Search saved: name or content</string>
     <string name="search_none">Nothing found</string>
     <string name="folder_count">Codes: %1$d</string>
     <string name="folder_move">To a folder…</string>
@@ -171,4 +171,5 @@
     <string name="folder_moved">In the folder “%1$s”</string>
     <string name="folder_drop_new">New folder</string>
     <string name="folder_drop_into">Into the folder</string>
+    <string name="search_found">Found: %1$d</string>
 </resources>

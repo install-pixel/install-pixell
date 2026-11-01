@@ -155,7 +155,7 @@
     <string name="form_wifi_wpa3_only">Лише WPA3</string>
     <string name="saved_count">Збережено: %1$d</string>
     <string name="search">Пошук</string>
-    <string name="search_hint">Назва або зміст</string>
+    <string name="search_hint">Пошук у збережених: назва або зміст</string>
     <string name="search_none">Нічого не знайдено</string>
     <string name="folder_count">Кодів: %1$d</string>
     <string name="folder_move">У папку…</string>
@@ -169,4 +169,5 @@
     <string name="folder_moved">У папці «%1$s»</string>
     <string name="folder_drop_new">Нова папка</string>
     <string name="folder_drop_into">У папку</string>
+    <string name="search_found">Знайдено: %1$d</string>
 </resources>

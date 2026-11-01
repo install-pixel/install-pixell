@@ -105,22 +105,15 @@ fun SavedList(
     folders: List<Folder>,
     actions: SavedListActions,
     modifier: Modifier = Modifier,
+    /** Що шукаємо (з капсули внизу); порожньо — звичайний список. */
+    query: String = "",
 ) {
     val haptics = LocalHaptics.current
     var openFolderId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var query by rememberSaveable { mutableStateOf("") }
-    var searchOpen by rememberSaveable { mutableStateOf(false) }
     val codes = saved.orEmpty()
     val openFolder = folders.firstOrNull { it.id == openFolderId }
     if (openFolderId != null && openFolder == null) openFolderId = null
-    BackHandler(enabled = openFolder != null || searchOpen) {
-        if (searchOpen) {
-            searchOpen = false
-            query = ""
-        } else {
-            openFolderId = null
-        }
-    }
+    BackHandler(enabled = openFolder != null) { openFolderId = null }
 
     val q = query.trim()
     val entries: List<Entry> = when {
@@ -136,7 +129,7 @@ fun SavedList(
     val canDrag = q.isEmpty()
 
     Column(modifier) {
-        // Заголовок: у папці — «назад», назва, меню папки; інакше — кількість і пошук.
+        // Заголовок: у папці — «назад», назва, меню папки; інакше — скільки збережено (чи знайдено).
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (openFolder != null) {
                 Box(Modifier.size(40.dp).clip(CircleShape).clickable { haptics.tap(); openFolderId = null }, contentAlignment = Alignment.Center) {
@@ -147,23 +140,13 @@ fun SavedList(
                 Box(Modifier.size(40.dp).clip(CircleShape).clickable { haptics.tap(); actions.onFolderMenu(openFolder) }, contentAlignment = Alignment.Center) {
                     GlyphIcon(Glyph.More, stringResource(R.string.more), tint = Oled.TextSecondary)
                 }
-            } else if (searchOpen) {
-                SheetTextField(query, { query = it }, stringResource(R.string.search_hint), modifier = Modifier.weight(1f))
-                Box(Modifier.size(40.dp).clip(CircleShape).clickable { haptics.tap(); searchOpen = false; query = "" }, contentAlignment = Alignment.Center) {
-                    GlyphIcon(Glyph.Close, stringResource(R.string.close), tint = Oled.TextSecondary)
-                }
             } else {
                 Text(
-                    stringResource(R.string.saved_count, codes.size),
+                    if (q.isNotEmpty()) stringResource(R.string.search_found, entries.size) else stringResource(R.string.saved_count, codes.size),
                     color = Oled.TextSecondary,
                     fontSize = 15.sp,
-                    modifier = Modifier.padding(start = 4.dp).weight(1f),
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp).weight(1f),
                 )
-                if (codes.isNotEmpty()) {
-                    Box(Modifier.size(40.dp).clip(CircleShape).clickable { haptics.tap(); searchOpen = true }, contentAlignment = Alignment.Center) {
-                        GlyphIcon(Glyph.Search, stringResource(R.string.search), tint = Oled.TextSecondary)
-                    }
-                }
             }
         }
 
@@ -263,7 +246,8 @@ fun SavedList(
                                 if (info != null) translationY = fingerY - grabY - info.offset
                                 scaleX = 1.02f
                                 scaleY = 1.02f
-                                alpha = 0.92f
+                                // Той, що тягнеш, — напівпрозорий: краще видно, куди ляже (над «Нова папка» — ще прозоріший).
+                                alpha = if (dropKey != null && dropKind == ListDrop.Kind.Into) 0.4f else 0.6f
                             }
                         }
                         // Куди ляже — малюємо поверх рядка (інакше чорне тло рядка закриває підказку).
@@ -371,15 +355,27 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
             Modifier
                 .graphicsLayer {
                     translationX = offset.value
+                    // Поки тягнеш — рядок трохи тьмяніє (разом із рухом).
+                    alpha = 1f - 0.35f * (-offset.value / (width * DELETE_SWIPE)).coerceIn(0f, 1f)
                     compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                 }
                 // Правий край рядка тане, щойно рядок зрушив (той самий м'який перехід, що в списку).
                 .drawWithContent {
                     drawContent()
-                    if (offset.value < -0.5f) {
-                        val f = minOf(fade, -offset.value * 1.5f)
+                    val moved = -offset.value
+                    if (moved > 0.5f) {
+                        val f = minOf(fade, moved * 1.5f)
+                        // Тане правий край (за ним проявляється «Видалити») і лівий — там, де рядок виїжджає за край
+                        // списку (інакше він обрізався б рівною лінією). Той самий м'який перехід, що й у списку.
+                        val left = moved
                         drawRect(
-                            Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - f, endX = size.width),
+                            Brush.horizontalGradient(
+                                0f to Color.Transparent,
+                                (left / size.width).coerceIn(0f, 1f) to Color.Transparent,
+                                ((left + f) / size.width).coerceIn(0f, 1f) to Color.Black,
+                                ((size.width - f) / size.width).coerceIn(0f, 1f) to Color.Black,
+                                1f to Color.Transparent,
+                            ),
                             blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
                         )
                     }

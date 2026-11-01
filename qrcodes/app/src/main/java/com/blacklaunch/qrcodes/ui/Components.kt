@@ -113,6 +113,10 @@ fun InputCapsule(
     canSave: Boolean,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    /** Пошук у збережених: та сама капсула, лупа ліворуч, кругла кнопка — «закрити пошук». */
+    searching: Boolean = false,
+    onSearch: () -> Unit = {},
+    onCloseSearch: () -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -127,7 +131,12 @@ fun InputCapsule(
             maxLines = 4,
             textStyle = fieldStyle(),
             placeholder = {
-                Text(stringResource(R.string.input_hint), color = Oled.TextSecondary, modifier = Modifier.padding(start = 3.dp), maxLines = 1)
+                Text(
+                    stringResource(if (searching) R.string.search_hint else R.string.input_hint),
+                    color = Oled.TextSecondary,
+                    modifier = Modifier.padding(start = 3.dp),
+                    maxLines = 1,
+                )
             },
             leadingIcon = {
                 Box(
@@ -135,24 +144,36 @@ fun InputCapsule(
                         .padding(start = 6.dp)
                         .size(40.dp)
                         .clip(CircleShape)
-                        .clickable { haptics.tap(); onModeClick() },
+                        .clickable(enabled = !searching) { haptics.tap(); onModeClick() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    GlyphIcon(mode.glyph(), stringResource(R.string.mode_choose), tint = Oled.TextSecondary)
+                    GlyphIcon(if (searching) Glyph.Search else mode.glyph(), stringResource(if (searching) R.string.search else R.string.mode_choose), tint = Oled.TextSecondary)
                 }
             },
-            trailingIcon = if (value.text.isNotEmpty()) {
-                {
-                    Text(
-                        stringResource(R.string.clear),
-                        color = Oled.TextSecondary,
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { haptics.tap(); onClear() }.padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
+            trailingIcon = when {
+                value.text.isNotEmpty() -> {
+                    {
+                        Text(
+                            stringResource(R.string.clear),
+                            color = Oled.TextSecondary,
+                            modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { haptics.tap(); onClear() }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        )
+                    }
                 }
-            } else {
-                null
+                // Порожня капсула — лупа в кінці: дотик — пошук у збережених (дотик у поле — створення коду).
+                !searching -> {
+                    {
+                        Box(
+                            Modifier.padding(end = 6.dp).size(40.dp).clip(CircleShape).clickable { haptics.tap(); onSearch() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            GlyphIcon(Glyph.Search, stringResource(R.string.search), tint = Oled.TextSecondary)
+                        }
+                    }
+                }
+                else -> null
             },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(imeAction = if (searching) ImeAction.Search else ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (canSave) onSave() }),
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Oled.TextPrimary,
@@ -165,13 +186,17 @@ fun InputCapsule(
             ),
         )
         Spacer(Modifier.width(10.dp))
-        RoundButton(
-            glyph = Glyph.Save,
-            description = stringResource(R.string.save),
-            onClick = onSave,
-            ink = if (canSave) Oled.Confirm else SheetInk,
-            enabled = canSave,
-        )
+        if (searching) {
+            RoundButton(glyph = Glyph.Close, description = stringResource(R.string.close), onClick = onCloseSearch)
+        } else {
+            RoundButton(
+                glyph = Glyph.Save,
+                description = stringResource(R.string.save),
+                onClick = onSave,
+                ink = if (canSave) Oled.Confirm else SheetInk,
+                enabled = canSave,
+            )
+        }
     }
 }
 

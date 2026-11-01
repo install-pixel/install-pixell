@@ -268,6 +268,12 @@ fun CreatePage(
     focusRequester: FocusRequester,
     format: CodeFormat,
     onFormatChange: (CodeFormat) -> Unit,
+    /** Пошук у збережених — у тій самій капсулі. */
+    searching: Boolean = false,
+    searchValue: TextFieldValue = TextFieldValue(""),
+    onSearchChange: (TextFieldValue) -> Unit = {},
+    onSearch: () -> Unit = {},
+    onCloseSearch: () -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
     val symbol = remember(input.text, format) { Symbol.encode(input.text, format) }
@@ -318,17 +324,20 @@ fun CreatePage(
             }
         }
         Spacer(Modifier.height(4.dp))
-        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth())
+        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth(), query = if (searching) searchValue.text else "")
         InputCapsule(
-            value = input,
-            onValueChange = onInputChange,
+            value = if (searching) searchValue else input,
+            onValueChange = if (searching) onSearchChange else onInputChange,
             mode = mode,
             onModeClick = onModeClick,
-            onClear = { onInputChange(TextFieldValue("")) },
+            onClear = { if (searching) onSearchChange(TextFieldValue("")) else onInputChange(TextFieldValue("")) },
             onSave = onSave,
             canSave = symbol != null,
             focusRequester = focusRequester,
             modifier = Modifier.padding(top = 8.dp),
+            searching = searching,
+            onSearch = onSearch,
+            onCloseSearch = onCloseSearch,
         )
     }
 }
