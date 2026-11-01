@@ -166,6 +166,12 @@
     <string name="folder_rename">Rename the folder</string>
     <string name="folder_print_all">Print and share all codes</string>
     <string name="folder_ungroup">Ungroup (codes stay)</string>
+    <string name="folder_delete">Delete the folder with its codes</string>
+    <string name="folder_delete_title">Delete “%1$s”?</string>
+    <string name="folder_delete_text">All codes in this folder (%1$d) will be deleted for good together with it. They can’t be restored.</string>
+    <string name="folder_delete_empty">The folder is empty — it will be deleted.</string>
+    <string name="folder_delete_confirm">Delete all</string>
+    <string name="folder_deleted">Folder deleted</string>
     <string name="folder_new">New folder</string>
     <string name="folder_default_name">Folder</string>
     <string name="folder_moved">In the folder “%1$s”</string>

@@ -41,6 +41,16 @@ interface QrDao {
         deleteFolderRow(folderId)
     }
 
+    /** Видалити папку разом з усіма кодами в ній. */
+    @androidx.room.Transaction
+    suspend fun deleteFolderWithCodes(folderId: Long) {
+        deleteCodesIn(folderId)
+        deleteFolderRow(folderId)
+    }
+
+    @Query("DELETE FROM codes WHERE folderId = :folderId")
+    suspend fun deleteCodesIn(folderId: Long)
+
     @Query("UPDATE codes SET folderId = NULL WHERE folderId = :folderId")
     suspend fun releaseFolder(folderId: Long)
 

@@ -38,6 +38,7 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Розпустити папку — коди лишаються в загальному списку. */
     fun ungroup(id: Long) = viewModelScope.launch { dao.ungroup(id) }
+    fun deleteFolder(id: Long) = viewModelScope.launch { dao.deleteFolderWithCodes(id) }
 
     /**
      * Зберігає код. Такий самий зміст уже є — не дублюємо, а піднімаємо його нагору списку (з новим форматом і, якщо

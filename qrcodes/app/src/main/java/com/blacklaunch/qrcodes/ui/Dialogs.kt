@@ -316,13 +316,28 @@ fun FolderNameDialog(title: String, initial: String, onDismiss: () -> Unit, onAp
 
 /** Меню папки: відкрити, назва, друк усіх її кодів, розпустити. */
 @Composable
-fun FolderMenu(folder: com.blacklaunch.qrcodes.data.Folder, onDismiss: () -> Unit, onRename: () -> Unit, onPrintAll: (() -> Unit)?, onUngroup: () -> Unit) {
+fun FolderMenu(folder: com.blacklaunch.qrcodes.data.Folder, onDismiss: () -> Unit, onRename: () -> Unit, onPrintAll: (() -> Unit)?, onUngroup: () -> Unit, onDelete: () -> Unit) {
     SheetDialog(onDismissRequest = onDismiss, title = folder.name) {
         Column {
             MenuRow(Glyph.Edit, stringResource(R.string.folder_rename), onRename)
             if (onPrintAll != null) MenuRow(Glyph.Print, stringResource(R.string.folder_print_all), onPrintAll)
             MenuRow(Glyph.Close, stringResource(R.string.folder_ungroup), onUngroup)
+            MenuRow(Glyph.Delete, stringResource(R.string.folder_delete), onDelete, tone = Tone.Danger)
         }
+    }
+}
+
+/** Попередження перед видаленням папки з усім вмістом — назавжди, тому червона кнопка й окреме питання. */
+@Composable
+fun FolderDeleteDialog(folder: com.blacklaunch.qrcodes.data.Folder, count: Int, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.folder_delete_title, folder.name), buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.folder_delete_confirm), onConfirm, tone = Tone.Danger)
+    }) {
+        Text(
+            if (count > 0) stringResource(R.string.folder_delete_text, count) else stringResource(R.string.folder_delete_empty),
+            fontSize = 16.sp,
+        )
     }
 }
 

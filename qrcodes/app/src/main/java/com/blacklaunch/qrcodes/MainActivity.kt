@@ -3,6 +3,7 @@ package com.blacklaunch.qrcodes
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),
         )
         super.onCreate(savedInstanceState)
+        useBestRefreshRate()
         if (savedInstanceState == null) shared = sharedText(intent)
         setContent {
             QrTheme {
@@ -51,6 +53,23 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Частота екрана — найвища, яку дозволяє телефон: стоїть у налаштуваннях 120 Гц — буде 120, стоїть 60 — система
+     * сама не дасть більше. Без цього багато оболонок тримають звичайні програми на 60 Гц.
+     */
+    private fun useBestRefreshRate() {
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
+        display ?: return
+        val now = display.mode
+        val best = display.supportedModes
+            .filter { it.physicalWidth == now.physicalWidth && it.physicalHeight == now.physicalHeight }
+            .maxByOrNull { it.refreshRate } ?: return
+        window.attributes = window.attributes.also {
+            it.preferredDisplayModeId = best.modeId
+            it.preferredRefreshRate = best.refreshRate
         }
     }
 

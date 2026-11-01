@@ -164,6 +164,12 @@
     <string name="folder_rename">Назва папки</string>
     <string name="folder_print_all">Друк і поділитися — усі коди</string>
     <string name="folder_ungroup">Розпустити (коди лишаються)</string>
+    <string name="folder_delete">Видалити папку з кодами</string>
+    <string name="folder_delete_title">Видалити «%1$s»?</string>
+    <string name="folder_delete_text">Разом із папкою назавжди зникнуть усі коди в ній (%1$d). Повернути їх не вийде.</string>
+    <string name="folder_delete_empty">Папка порожня — її буде видалено.</string>
+    <string name="folder_delete_confirm">Видалити все</string>
+    <string name="folder_deleted">Папку видалено</string>
     <string name="folder_new">Нова папка</string>
     <string name="folder_default_name">Папка</string>
     <string name="folder_moved">У папці «%1$s»</string>

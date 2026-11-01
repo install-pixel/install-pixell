@@ -255,7 +255,7 @@ fun SavedList(
                                 scaleX = 1.02f
                                 scaleY = 1.02f
                                 // Той, що тягнеш, — напівпрозорий: краще видно, куди ляже (над «Нова папка» — ще прозоріший).
-                                alpha = if (dropKey != null && dropKind == ListDrop.Kind.Into) 0.4f else 0.6f
+                                alpha = if (dropKey != null && dropKind == ListDrop.Kind.Into) 0.55f else 0.6f
                                 // Без гострих кутів: заокруглена плашка з м'якими (розмитими) краями.
                                 shape = RoundedCornerShape(DRAG_CORNER)
                                 clip = true
@@ -316,8 +316,10 @@ fun SavedList(
                                 .padding(end = 14.dp),
                             contentAlignment = Alignment.CenterEnd,
                         ) {
+                            // Без власного тла й не на повну яскравість: напис лежить під плашкою, яку тягнеш, і не
+                            // «проривається» крізь неї, але читається.
                             Row(
-                                Modifier.background(Oled.Black.copy(alpha = 0.85f), RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+                                Modifier.graphicsLayer { alpha = 0.7f }.padding(horizontal = 10.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 GlyphIcon(if (entry is Entry.FolderEntry) Glyph.Folder else Glyph.Plus, null, tint = SelectedInk, size = 20.dp)
@@ -373,29 +375,43 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
     Box(Modifier.fillMaxWidth().onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }) {
         // Під рядком — «Видалити», проявляється разом із рухом.
         val progress = (-offset.value / (width * DELETE_SWIPE)).coerceIn(0f, 1f)
-        Row(
+        // Плашка непрозора, тож напис не просвічує крізь неї: він видний лише праворуч від її краю й біля краю плавно
+        // з'являється (м'який перехід замість різкого обрізу).
+        Box(
             Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 20.dp)
-                .graphicsLayer {
-                    alpha = progress
-                    val sc = 0.85f + 0.15f * progress
-                    scaleX = sc
-                    scaleY = sc
+                .matchParentSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    val edge = size.width + offset.value
+                    val e0 = (edge / size.width).coerceIn(0f, 1f)
+                    val e1 = ((edge + fade) / size.width).coerceIn(0f, 1f)
+                    drawRect(
+                        Brush.horizontalGradient(0f to Color.Transparent, e0 to Color.Transparent, e1 to Color.Black, 1f to Color.Black),
+                        blendMode = BlendMode.DstIn,
+                    )
                 },
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.delete), color = if (progress >= 1f) Oled.Danger else Oled.Danger.copy(alpha = 0.75f), fontSize = 17.sp)
-            Spacer(Modifier.width(8.dp))
-            GlyphIcon(Glyph.Delete, null, tint = Oled.Danger)
+            Row(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 20.dp)
+                    .graphicsLayer {
+                        alpha = progress
+                        val sc = 0.85f + 0.15f * progress
+                        scaleX = sc
+                        scaleY = sc
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.delete), color = if (progress >= 1f) Oled.Danger else Oled.Danger.copy(alpha = 0.75f), fontSize = 17.sp)
+                Spacer(Modifier.width(8.dp))
+                GlyphIcon(Glyph.Delete, null, tint = Oled.Danger)
+            }
         }
         Box(
             Modifier
-                .graphicsLayer {
-                    translationX = offset.value
-                    // Окремий шар — щоб правий край рядка можна було зробити прозорим (м'яким), а не обрізаним.
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
+                .graphicsLayer { translationX = offset.value }
                 // Рядок лишається непрозорим (нічого не просвічує): краї й увесь рядок затемнюються в чорне разом із
                 // рухом — зірочка й текст біля краю «зафарбовуються», а не стають прозорими.
                 .drawWithContent {
@@ -411,19 +427,9 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
                                 0f to Color.Black,
                                 (moved / size.width).coerceIn(0f, 1f) to Color.Black,
                                 ((moved + f) / size.width).coerceIn(0f, 1f) to Color.Transparent,
-                                1f to Color.Transparent,
+                                ((size.width - f) / size.width).coerceIn(0f, 1f) to Color.Transparent,
+                                1f to Color.Black,
                             ),
-                        )
-                        // Правий край самої плашки розмитий: над «Видалити» вона тане поступово, без різкого обрізу.
-                        val edge = minOf(fade * 1.6f, moved * 1.5f)
-                        drawRect(
-                            Brush.horizontalGradient(
-                                0f to Color.Black,
-                                ((size.width - edge) / size.width).coerceIn(0f, 1f) to Color.Black,
-                                ((size.width - edge * 0.45f) / size.width).coerceIn(0f, 1f) to Color.Black.copy(alpha = 0.45f),
-                                1f to Color.Transparent,
-                            ),
-                            blendMode = BlendMode.DstIn,
                         )
                     }
                 }

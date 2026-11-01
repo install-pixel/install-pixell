@@ -586,10 +586,9 @@ fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (selected) {
-            GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary, size = 16.dp)
-            Spacer(Modifier.width(6.dp))
-        }
+        // Місце під ✓ є завжди (невибрана — просто невидима), тож кнопка не міняє розмір і нічого не смикається.
+        GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary.copy(alpha = if (selected) 1f else 0f), size = 16.dp)
+        Spacer(Modifier.width(6.dp))
         Text(text, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, softWrap = false)
     }
 }

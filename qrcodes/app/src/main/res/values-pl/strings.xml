@@ -164,6 +164,12 @@
     <string name="folder_rename">Nazwa folderu</string>
     <string name="folder_print_all">Drukuj i udostępnij — wszystkie kody</string>
     <string name="folder_ungroup">Rozgrupuj (kody zostają)</string>
+    <string name="folder_delete">Usuń folder z kodami</string>
+    <string name="folder_delete_title">Usunąć „%1$s”?</string>
+    <string name="folder_delete_text">Razem z folderem na zawsze znikną wszystkie kody w nim (%1$d). Nie da się ich przywrócić.</string>
+    <string name="folder_delete_empty">Folder jest pusty — zostanie usunięty.</string>
+    <string name="folder_delete_confirm">Usuń wszystko</string>
+    <string name="folder_deleted">Folder usunięty</string>
     <string name="folder_new">Nowy folder</string>
     <string name="folder_default_name">Folder</string>
     <string name="folder_moved">W folderze „%1$s”</string>
