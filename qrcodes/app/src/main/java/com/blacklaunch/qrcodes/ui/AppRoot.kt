@@ -96,7 +96,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     var input by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     var mode by rememberSaveable { mutableStateOf(InputMode.Manual) }
     // Що створюємо: QR чи штрихкод (зберігається з кодом).
-    var format by rememberSaveable { mutableStateOf(CodeFormat.QR) }
+    val appSettings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
+    var format by rememberSaveable { mutableStateOf(appSettings.lastFormat) }
+    // Запам'ятовуємо вибір — хто робить лише штрихкоди, не перемикає щоразу.
+    LaunchedEffect(format) { appSettings.lastFormat = format }
     // Назва з форми (Wi‑Fi, контакт, сайт) — стане назвою коду при збереженні.
     var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
     var modeMenu by remember { mutableStateOf(false) }

@@ -28,7 +28,13 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_GLASS, false)
         set(value) = prefs.edit().putBoolean(KEY_GLASS, value).apply()
 
+    /** Останній вибір на «Створити»: QR чи штрихкод — так і відкривається наступного разу. */
+    var lastFormat: com.blacklaunch.qrcodes.qr.CodeFormat
+        get() = if (prefs.getString(KEY_FORMAT, null) == com.blacklaunch.qrcodes.qr.CodeFormat.BARCODE.name) com.blacklaunch.qrcodes.qr.CodeFormat.BARCODE else com.blacklaunch.qrcodes.qr.CodeFormat.QR
+        set(value) = prefs.edit().putString(KEY_FORMAT, value.name).apply()
+
     companion object {
+        private const val KEY_FORMAT = "format"
         private const val KEY_LANG = "language"
         private const val KEY_GLASS = "glass"
 
