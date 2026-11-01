@@ -19,6 +19,25 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
 
     val all: StateFlow<List<QrCode>?> = dao.all().stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val favorites: StateFlow<List<QrCode>?> = dao.favorites().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val folders: StateFlow<List<com.blacklaunch.qrcodes.data.Folder>> = dao.folders().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Новий порядок у списку (ключі «f<id>» / «c<id>» зверху вниз). */
+    fun reorder(keys: List<String>) = viewModelScope.launch { dao.reorder(keys) }
+
+    /** Нова папка з кодами [ids] — на місці верхнього з них. */
+    fun createFolder(name: String, ids: List<Long>, order: Long, onDone: (Long) -> Unit = {}) = viewModelScope.launch {
+        onDone(dao.createFolder(name.trim().ifEmpty { "…" }, ids, order))
+    }
+
+    /** Код — у папку ([folderId] null — вийняти в загальний список, нагору). */
+    fun moveToFolder(code: QrCode, folderId: Long?) = viewModelScope.launch {
+        dao.update(code.copy(folderId = folderId, sortOrder = System.currentTimeMillis()))
+    }
+
+    fun renameFolder(id: Long, name: String) = viewModelScope.launch { dao.renameFolder(id, name.trim().ifEmpty { "…" }) }
+
+    /** Розпустити папку — коди лишаються в загальному списку. */
+    fun ungroup(id: Long) = viewModelScope.launch { dao.ungroup(id) }
 
     /**
      * Зберігає код. Такий самий зміст уже є — не дублюємо, а піднімаємо його нагору списку (з новим форматом і, якщо
@@ -29,7 +48,8 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val existing = dao.byContent(content)
             if (existing != null) {
-                dao.update(existing.copy(createdAt = System.currentTimeMillis(), format = format.name, name = name ?: existing.name))
+                val now = System.currentTimeMillis()
+                dao.update(existing.copy(createdAt = now, sortOrder = now, format = format.name, name = name ?: existing.name))
                 onDone(SaveResult.AlreadySaved)
             } else {
                 dao.insert(QrCode(content = content, name = name, format = format.name))
@@ -64,10 +84,12 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
      */
     suspend fun exportTo(out: java.io.OutputStream): Int = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val codes = dao.snapshot()
+        val folderNames = dao.foldersSnapshot().associate { it.id to it.name }
         val arr = org.json.JSONArray()
         codes.forEach { c ->
             arr.put(
                 org.json.JSONObject()
+                    .put("folder", c.folderId?.let { folderNames[it] } ?: org.json.JSONObject.NULL)
                     .put("content", c.content)
                     .put("name", c.name ?: org.json.JSONObject.NULL)
                     .put("format", c.format)
@@ -105,10 +127,17 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         var added = 0
+        // Папки — за назвою: є така — туди, немає — створюємо.
+        val folderIds = dao.foldersSnapshot().associate { it.name to it.id }.toMutableMap()
+        suspend fun folderFor(name: String?): Long? {
+            if (name.isNullOrBlank()) return null
+            return folderIds[name] ?: dao.insertFolder(com.blacklaunch.qrcodes.data.Folder(name = name)).also { folderIds[name] = it }
+        }
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
             val content = o.optString("content")
             if (content.isEmpty()) continue
+            val folderName = if (o.isNull("folder")) null else o.optString("folder")
             val name = if (o.isNull("name")) null else o.optString("name").ifEmpty { null }
             val existing = dao.byContent(content)
             if (existing != null) {
@@ -121,6 +150,8 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
                         format = if (o.optString("format") == CodeFormat.BARCODE.name) CodeFormat.BARCODE.name else CodeFormat.QR.name,
                         favoriteAt = if (o.isNull("favoriteAt")) null else o.optLong("favoriteAt"),
                         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+                        folderId = folderFor(folderName),
+                        sortOrder = o.optLong("createdAt", System.currentTimeMillis()),
                     ),
                 )
                 added++

@@ -19,6 +19,10 @@ data class QrCode(
     val createdAt: Long = System.currentTimeMillis(),
     /** «QR» або «BARCODE» (див. CodeFormat). Старі записи — QR. */
     @ColumnInfo(defaultValue = "QR") val format: String = "QR",
+    /** Папка (id з таблиці folders); null — у загальному списку. */
+    val folderId: Long? = null,
+    /** Місце в списку: більше — вище (нові — нагорі). Змінюється, коли перетягують. */
+    @ColumnInfo(defaultValue = "0") val sortOrder: Long = System.currentTimeMillis(),
 ) {
     val isFavorite: Boolean get() = favoriteAt != null
 
@@ -30,3 +34,12 @@ data class QrCode(
 fun displayTitle(name: String?, content: String): String =
     name?.trim()?.takeIf { it.isNotEmpty() } ?: content.trim().replace(Regex("\\s+"), " ")
 
+
+/** Папка в списку збережених (наприклад «Робота», «Склад»). */
+@Entity(tableName = "folders")
+data class Folder(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Місце серед кодів і папок верхнього рівня: більше — вище. */
+    val sortOrder: Long = System.currentTimeMillis(),
+)

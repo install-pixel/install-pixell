@@ -155,4 +155,18 @@
     <string name="share_saved_gallery">Saved to gallery (Pictures/QRaft)</string>
     <string name="share_save_failed">Could not save the picture</string>
     <string name="form_wifi_wpa3_only">WPA3 only</string>
+    <string name="saved_count">Saved: %1$d</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Name or content</string>
+    <string name="search_none">Nothing found</string>
+    <string name="folder_count">Codes: %1$d</string>
+    <string name="folder_move">To a folder…</string>
+    <string name="folder_take_out">Take out of the folder</string>
+    <string name="folder_name_hint">Folder name, e.g. Work</string>
+    <string name="folder_rename">Rename the folder</string>
+    <string name="folder_print_all">Print and share all codes</string>
+    <string name="folder_ungroup">Ungroup (codes stay)</string>
+    <string name="folder_new">New folder</string>
+    <string name="folder_default_name">Folder</string>
+    <string name="folder_moved">In the folder “%1$s”</string>
 </resources>

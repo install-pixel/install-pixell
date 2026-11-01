@@ -263,9 +263,8 @@ fun CreatePage(
     onModeClick: () -> Unit,
     onSave: () -> Unit,
     saved: List<QrCode>?,
-    onOpen: (QrCode) -> Unit,
-    onMenu: (QrCode) -> Unit,
-    onDelete: (QrCode) -> Unit,
+    folders: List<com.blacklaunch.qrcodes.data.Folder>,
+    listActions: SavedListActions,
     focusRequester: FocusRequester,
     format: CodeFormat,
     onFormatChange: (CodeFormat) -> Unit,
@@ -318,58 +317,8 @@ fun CreatePage(
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
-        LazyColumn(Modifier.weight(1f).fillMaxWidth().fadingEdges(), contentPadding = PaddingValues(vertical = 12.dp)) {
-            if (saved != null && saved.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.saved_empty),
-                        color = Oled.TextSecondary,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                    )
-                }
-            }
-            items(saved.orEmpty(), key = { it.id }) { code ->
-                // Видаляє лише довгий свайп: рядок протягнули щонайменше на [DELETE_SWIPE] ширини. Короткий змах
-                // (палець навскіс, коли гортаєш список) не видаляє — рядок повертається на місце.
-                val rowWidth = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
-                var stateRef: androidx.compose.material3.SwipeToDismissBoxState? = null
-                val state = rememberSwipeToDismissBoxState(
-                    confirmValueChange = {
-                        val pulled = runCatching { -(stateRef?.requireOffset() ?: 0f) }.getOrDefault(0f)
-                        if (it == SwipeToDismissBoxValue.EndToStart && pulled >= rowWidth * DELETE_SWIPE) {
-                            onDelete(code)
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                    positionalThreshold = { total -> total * DELETE_SWIPE },
-                )
-                stateRef = state
-                SwipeToDismissBox(
-                    state = state,
-                    enableDismissFromStartToEnd = false,
-                    backgroundContent = {
-                        Row(Modifier.fillMaxSize().padding(end = 20.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                            Text(stringResource(R.string.delete), color = Oled.Danger, fontSize = 17.sp)
-                            Spacer(Modifier.width(8.dp))
-                            GlyphIcon(Glyph.Delete, null, tint = Oled.Danger)
-                        }
-                    },
-                ) {
-                    SavedRow(
-                        code,
-                        Modifier.combinedClickable(
-                            onClick = { haptics.tap(); onOpen(code) },
-                            onLongClick = { haptics.longPress(); onMenu(code) },
-                        ),
-                    )
-                }
-            }
-        }
+        Spacer(Modifier.height(4.dp))
+        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth())
         InputCapsule(
             value = input,
             onValueChange = onInputChange,
@@ -384,9 +333,6 @@ fun CreatePage(
     }
 }
 
-/** Яку частку ширини треба протягнути рядок, щоб видалити. */
-private const val DELETE_SWIPE = 0.45f
-
 /** Ширина штрихкоду вгорі «Створити» і на весь екран: ширший за QR, щоб смуги не були надто тонкими. */
 fun barPreviewWidth(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp = minOf(available * 0.92f, 360.dp)
 
@@ -395,7 +341,7 @@ fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.u
 
 /** Рядок збереженого коду: маленький код, назва (зміст ховається, якщо є своя назва), дата, зірка вибраного. */
 @Composable
-private fun SavedRow(code: QrCode, modifier: Modifier) {
+internal fun SavedRow(code: QrCode, modifier: Modifier) {
     val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
     Row(
         Modifier

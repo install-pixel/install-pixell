@@ -82,6 +82,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     val keyboard = LocalSoftwareKeyboardController.current
     val saved by vm.all.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
+    val folders by vm.folders.collectAsStateWithLifecycle()
+    // Папки: меню папки, назва нової (з двох кодів чи з «У папку…»), перейменування, вибір папки.
+    var folderMenuFor by remember { mutableStateOf<com.blacklaunch.qrcodes.data.Folder?>(null) }
+    var combine by remember { mutableStateOf<Pair<QrCode, QrCode>?>(null) }
+    var folderRename by remember { mutableStateOf<com.blacklaunch.qrcodes.data.Folder?>(null) }
+    var moveFor by remember { mutableStateOf<QrCode?>(null) }
+    var newFolderFor by remember { mutableStateOf<QrCode?>(null) }
     val pager = rememberPagerState(initialPage = 0) { 2 }
     val focus = remember { FocusRequester() }
 
@@ -110,6 +117,9 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     val textUndo = stringResource(R.string.undo)
     val textCopied = stringResource(R.string.copied)
     val textUnfavorited = stringResource(R.string.unfavorited)
+    val textMovedTo = stringResource(R.string.folder_moved)
+    val textNewFolder = stringResource(R.string.folder_new)
+    val textFolderDefault = stringResource(R.string.folder_default_name)
     val textNoCamera = stringResource(R.string.camera_denied)
 
     fun show(text: String, action: String? = null, onAction: () -> Unit = {}) {
@@ -197,7 +207,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null)
+    val blur = backdropAmount(folderMenuFor != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -242,9 +252,19 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                             keyboard?.hide()
                         },
                         saved = saved,
-                        onOpen = { fullscreen = it },
-                        onMenu = { menuFor = it },
-                        onDelete = ::delete,
+                        folders = folders,
+                        listActions = SavedListActions(
+                            onOpen = { fullscreen = it },
+                            onCodeMenu = { menuFor = it },
+                            onFolderMenu = { folderMenuFor = it },
+                            onDelete = ::delete,
+                            onReorder = { vm.reorder(it) },
+                            onCombine = { dragged, target -> combine = dragged to target },
+                            onIntoFolder = { code, folder ->
+                                vm.moveToFolder(code, folder.id)
+                                show(textMovedTo.format(folder.name))
+                            },
+                        ),
                         focusRequester = focus,
                         format = format,
                         onFormatChange = { format = it },
@@ -378,7 +398,80 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 fullscreen = null
                 delete(code)
             },
+            onToFolder = {
+                menuFor = null
+                moveFor = code
+            },
+            onFromFolder = if (code.folderId != null) {
+                {
+                    menuFor = null
+                    vm.moveToFolder(code, null)
+                }
+            } else {
+                null
+            },
         )
+    }
+
+    // Код кинули на інший код — нова папка з обох (назву питаємо).
+    combine?.let { (dragged, target) ->
+        FolderNameDialog(textNewFolder, textFolderDefault, onDismiss = { combine = null }) { name ->
+            vm.createFolder(name, listOf(target.id, dragged.id), target.sortOrder)
+            combine = null
+            show(textMovedTo.format(name))
+        }
+    }
+    folderMenuFor?.let { folder ->
+        val inside = saved.orEmpty().filter { it.folderId == folder.id }
+        FolderMenu(
+            folder,
+            onDismiss = { folderMenuFor = null },
+            onRename = {
+                folderMenuFor = null
+                folderRename = folder
+            },
+            onPrintAll = if (inside.isNotEmpty()) {
+                {
+                    folderMenuFor = null
+                    labelFor = inside
+                }
+            } else {
+                null
+            },
+            onUngroup = {
+                folderMenuFor = null
+                vm.ungroup(folder.id)
+            },
+        )
+    }
+    folderRename?.let { folder ->
+        FolderNameDialog(stringResource(R.string.folder_rename), folder.name, onDismiss = { folderRename = null }) {
+            vm.renameFolder(folder.id, it)
+            folderRename = null
+        }
+    }
+    moveFor?.let { code ->
+        FolderPicker(
+            folders,
+            code.folderId,
+            onDismiss = { moveFor = null },
+            onPick = { folder ->
+                moveFor = null
+                vm.moveToFolder(code, folder.id)
+                show(textMovedTo.format(folder.name))
+            },
+            onNew = {
+                moveFor = null
+                newFolderFor = code
+            },
+        )
+    }
+    newFolderFor?.let { code ->
+        FolderNameDialog(textNewFolder, textFolderDefault, onDismiss = { newFolderFor = null }) { name ->
+            vm.createFolder(name, listOf(code.id), code.sortOrder)
+            newFolderFor = null
+            show(textMovedTo.format(name))
+        }
     }
 
     renameFor?.let { code ->

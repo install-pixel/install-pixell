@@ -21,7 +21,7 @@ import kotlin.math.sin
  */
 
 enum class Glyph {
-    Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Print, Delete, Edit, Close, Back, Copy, Flash, Shutter, Wifi, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center, More, Settings, Template,
+    Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Print, Delete, Edit, Close, Back, Copy, Flash, Shutter, Wifi, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center, More, Settings, Template, Folder, Search, Plus,
 }
 
 @Composable
@@ -206,6 +206,15 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
         box(5.5f, 7.5f, 6f, 6f, 42, 1f),
         line(13.5f, 8.5f, 18.5f, 8.4f), line(13.5f, 12f, 17.5f, 12f), line(5.5f, 16.2f, 18.5f, 16f),
     )
+    // Папка: корінець із «вушком» і тіло.
+    Glyph.Folder -> listOf(
+        line(3.2f, 18.6f, 3.4f, 6.2f, 9.2f, 6f, 11f, 8.2f, 20.6f, 8.1f, 20.5f, 18.8f, 3.2f, 18.6f),
+        line(3.5f, 10.6f, 20.4f, 10.5f),
+    )
+    // Плюс — нове.
+    Glyph.Plus -> listOf(line(12.1f, 5f, 11.9f, 19.2f), line(5f, 12.1f, 19.1f, 11.8f))
+    // Лупа — пошук.
+    Glyph.Search -> listOf(arc(10.2f, 10.2f, 6f, -80f, 285f, 26), line(14.6f, 14.6f, 20.2f, 20.2f))
     // Три крапки — меню.
     Glyph.More -> listOf(arc(5.5f, 12f, 1.3f, 0f, 370f, 10), arc(12f, 12f, 1.3f, 0f, 370f, 10), arc(18.5f, 12f, 1.3f, 0f, 370f, 10))
     // Сітка 2×2.

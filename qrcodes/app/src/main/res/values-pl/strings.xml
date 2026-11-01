@@ -153,4 +153,18 @@
     <string name="share_saved_gallery">Zapisano w galerii (Pictures/QRaft)</string>
     <string name="share_save_failed">Nie udało się zapisać obrazu</string>
     <string name="form_wifi_wpa3_only">Tylko WPA3</string>
+    <string name="saved_count">Zapisane: %1$d</string>
+    <string name="search">Szukaj</string>
+    <string name="search_hint">Nazwa lub treść</string>
+    <string name="search_none">Nic nie znaleziono</string>
+    <string name="folder_count">Kodów: %1$d</string>
+    <string name="folder_move">Do folderu…</string>
+    <string name="folder_take_out">Wyjmij z folderu</string>
+    <string name="folder_name_hint">Nazwa folderu, np. Praca</string>
+    <string name="folder_rename">Nazwa folderu</string>
+    <string name="folder_print_all">Drukuj i udostępnij — wszystkie kody</string>
+    <string name="folder_ungroup">Rozgrupuj (kody zostają)</string>
+    <string name="folder_new">Nowy folder</string>
+    <string name="folder_default_name">Folder</string>
+    <string name="folder_moved">W folderze „%1$s”</string>
 </resources>

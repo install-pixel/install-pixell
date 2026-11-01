@@ -72,6 +72,8 @@ fun ItemMenu(
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onDelete: () -> Unit,
+    onToFolder: () -> Unit,
+    onFromFolder: (() -> Unit)?,
 ) {
     SheetDialog(onDismissRequest = onDismiss, title = code.title) {
         Column {
@@ -83,6 +85,8 @@ fun ItemMenu(
             MenuRow(Glyph.Edit, stringResource(R.string.rename), onRename)
             MenuRow(Glyph.Print, stringResource(R.string.print_share), onShare)
             MenuRow(Glyph.Copy, stringResource(R.string.copy_text), onCopy)
+            MenuRow(Glyph.Folder, stringResource(R.string.folder_move), onToFolder)
+            if (onFromFolder != null) MenuRow(Glyph.Back, stringResource(R.string.folder_take_out), onFromFolder)
             MenuRow(Glyph.Delete, stringResource(R.string.delete), onDelete, tone = Tone.Danger)
         }
     }
@@ -293,6 +297,43 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
                 }
             }
             Text(stringResource(R.string.form_hint), fontSize = 14.sp)
+        }
+    }
+}
+
+/** Назва папки (нова чи перейменування). */
+@Composable
+fun FolderNameDialog(title: String, initial: String, onDismiss: () -> Unit, onApply: (String) -> Unit) {
+    var name by remember { mutableStateOf(initial) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    SheetDialog(onDismissRequest = onDismiss, title = title, buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.apply), { onApply(name.trim()) }, tone = Tone.Confirm, enabled = name.isNotBlank())
+    }) {
+        SheetTextField(name, { name = it }, stringResource(R.string.folder_name_hint), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), focusRequester = focus)
+    }
+}
+
+/** Меню папки: відкрити, назва, друк усіх її кодів, розпустити. */
+@Composable
+fun FolderMenu(folder: com.blacklaunch.qrcodes.data.Folder, onDismiss: () -> Unit, onRename: () -> Unit, onPrintAll: (() -> Unit)?, onUngroup: () -> Unit) {
+    SheetDialog(onDismissRequest = onDismiss, title = folder.name) {
+        Column {
+            MenuRow(Glyph.Edit, stringResource(R.string.folder_rename), onRename)
+            if (onPrintAll != null) MenuRow(Glyph.Print, stringResource(R.string.folder_print_all), onPrintAll)
+            MenuRow(Glyph.Close, stringResource(R.string.folder_ungroup), onUngroup)
+        }
+    }
+}
+
+/** «У папку…»: наявні папки й «Нова папка». */
+@Composable
+fun FolderPicker(folders: List<com.blacklaunch.qrcodes.data.Folder>, current: Long?, onDismiss: () -> Unit, onPick: (com.blacklaunch.qrcodes.data.Folder) -> Unit, onNew: () -> Unit) {
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.folder_move)) {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+            folders.filter { it.id != current }.forEach { f -> MenuRow(Glyph.Folder, f.name, { onPick(f) }) }
+            MenuRow(Glyph.Plus, stringResource(R.string.folder_new), onNew)
         }
     }
 }

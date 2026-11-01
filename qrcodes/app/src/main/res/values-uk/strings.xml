@@ -153,4 +153,18 @@
     <string name="share_saved_gallery">Збережено в галерею (Pictures/QRaft)</string>
     <string name="share_save_failed">Не вдалося зберегти картинку</string>
     <string name="form_wifi_wpa3_only">Лише WPA3</string>
+    <string name="saved_count">Збережено: %1$d</string>
+    <string name="search">Пошук</string>
+    <string name="search_hint">Назва або зміст</string>
+    <string name="search_none">Нічого не знайдено</string>
+    <string name="folder_count">Кодів: %1$d</string>
+    <string name="folder_move">У папку…</string>
+    <string name="folder_take_out">Вийняти з папки</string>
+    <string name="folder_name_hint">Назва папки, напр. Робота</string>
+    <string name="folder_rename">Назва папки</string>
+    <string name="folder_print_all">Друк і поділитися — усі коди</string>
+    <string name="folder_ungroup">Розпустити (коди лишаються)</string>
+    <string name="folder_new">Нова папка</string>
+    <string name="folder_default_name">Папка</string>
+    <string name="folder_moved">У папці «%1$s»</string>
 </resources>
