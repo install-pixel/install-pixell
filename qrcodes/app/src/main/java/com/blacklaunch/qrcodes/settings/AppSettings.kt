@@ -40,18 +40,21 @@ class AppSettings(context: Context) {
         private const val KEY_GLASS = "glass"
 
         /** Контекст із вибраною мовою (для Activity.attachBaseContext). «Як у телефоні» — без змін. */
-        fun wrap(base: Context): Context {
+        /**
+         * Мова, вибрана вручну, — як «перекриття» налаштувань активності (null — як у телефоні). Саму основу контексту не
+         * підміняємо: інакше системні служби (друк) бачать не активність і відмовляють («друкувати можна лише з
+         * активності»), і програма вилітає.
+         */
+        fun languageOverride(base: Context): Configuration? {
             val tag = AppSettings(base).language.tag
             if (tag == null) {
                 // «Як у телефоні»: повертаємо системну мову (на випадок, якщо до цього була вибрана інша).
                 Locale.setDefault(base.resources.configuration.locales[0])
-                return base
+                return null
             }
             val locale = Locale.forLanguageTag(tag)
             Locale.setDefault(locale)
-            val config = Configuration(base.resources.configuration)
-            config.setLocale(locale)
-            return base.createConfigurationContext(config)
+            return Configuration().apply { setLocale(locale) }
         }
     }
 }

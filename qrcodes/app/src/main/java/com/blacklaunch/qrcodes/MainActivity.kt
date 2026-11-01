@@ -31,7 +31,8 @@ class MainActivity : ComponentActivity() {
 
     /** Вибрана в Налаштуваннях мова — для всієї програми. */
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppSettings.wrap(newBase))
+        super.attachBaseContext(newBase)
+        AppSettings.languageOverride(newBase)?.let { applyOverrideConfiguration(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

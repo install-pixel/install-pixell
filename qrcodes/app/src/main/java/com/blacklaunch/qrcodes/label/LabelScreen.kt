@@ -715,17 +715,13 @@ private fun Tool(glyph: Glyph, label: String, on: Boolean = false, enabled: Bool
         ) {
             GlyphIcon(glyph, null, tint = if (danger) Oled.Danger else if (on) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk)
         }
-        Text(
+        // Переносимо лише між словами; задовге слово — трохи меншим шрифтом, а не розірване.
+        com.blacklaunch.qrcodes.ui.FitLabel(
             label,
             color = if (danger) Oled.Danger else Oled.TextSecondary,
             fontSize = 14.sp,
-            maxLines = 2,
             lineHeight = 15.sp,
-            textAlign = TextAlign.Center,
-            overflow = TextOverflow.Ellipsis,
-            // Переносимо лише між словами, ніколи не посеред слова.
-            style = androidx.compose.material3.LocalTextStyle.current.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Heading, hyphens = androidx.compose.ui.text.style.Hyphens.None),
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         )
     }
 }
@@ -861,16 +857,12 @@ private fun SampleBox(
             drawIntoCanvas { paint(it.nativeCanvas, size.width, size.height) }
         }
         if (label != null) {
-            Text(
+            com.blacklaunch.qrcodes.ui.FitLabel(
                 label,
                 color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
                 fontSize = 13.sp,
                 lineHeight = 15.sp,
-                maxLines = 2,
-                textAlign = TextAlign.Center,
-                overflow = TextOverflow.Ellipsis,
-                style = androidx.compose.material3.LocalTextStyle.current.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Heading, hyphens = androidx.compose.ui.text.style.Hyphens.None),
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
         }
     }

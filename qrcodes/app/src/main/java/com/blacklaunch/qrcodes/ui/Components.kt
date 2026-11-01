@@ -375,9 +375,10 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
             LaunchedEffect(window) {
                 var last = -1
                 snapshotFlow { (DIALOG_BLUR_PX * shown.value).toInt() }.collect { r ->
-                    if (r != last) {
+                    if (r != last && window.decorView.isAttachedToWindow) {
                         last = r
-                        window.attributes = window.attributes.also { it.blurBehindRadius = r }
+                        // Вікно могло вже зникнути (закрили кнопкою) — тоді просто пропускаємо.
+                        runCatching { window.attributes = window.attributes.also { it.blurBehindRadius = r } }
                     }
                 }
             }
@@ -723,5 +724,51 @@ fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
         GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary.copy(alpha = if (selected) 1f else 0f), size = 16.dp)
         Spacer(Modifier.width(6.dp))
         Text(text, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, softWrap = false)
+    }
+}
+
+/**
+ * Короткий підпис під значком/зразком: до двох рядків, переноси лише між словами. Якщо найдовше слово не вміщається
+ * в ширину (наприклад, «Завантажити»), шрифт трохи зменшується — слово не рветься посередині.
+ */
+@Composable
+fun FitLabel(
+    text: String,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+    lineHeight: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    minFontSize: androidx.compose.ui.unit.TextUnit = 9.sp,
+) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val base = androidx.compose.material3.LocalTextStyle.current.copy(
+        lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
+        hyphens = androidx.compose.ui.text.style.Hyphens.None,
+    )
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
+        val maxPx = constraints.maxWidth.toFloat()
+        val longest = remember(text) { text.split(' ', '\n').maxByOrNull { it.length }.orEmpty() }
+        val size = remember(text, maxPx, fontSize, base) {
+            var s = fontSize.value
+            if (constraints.hasBoundedWidth) {
+                while (s > minFontSize.value) {
+                    val w = measurer.measure(longest, base.copy(fontSize = s.sp), maxLines = 1, softWrap = false).size.width
+                    if (w <= maxPx) break
+                    s -= 0.5f
+                }
+            }
+            s.sp
+        }
+        val lh = if (lineHeight == androidx.compose.ui.unit.TextUnit.Unspecified) androidx.compose.ui.unit.TextUnit.Unspecified else (lineHeight.value * size.value / fontSize.value).sp
+        Text(
+            text,
+            color = color,
+            fontSize = size,
+            lineHeight = lh,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            style = base,
+        )
     }
 }
