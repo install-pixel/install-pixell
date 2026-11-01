@@ -256,11 +256,28 @@ fun SavedList(
                                 scaleY = 1.02f
                                 // Той, що тягнеш, — напівпрозорий: краще видно, куди ляже (над «Нова папка» — ще прозоріший).
                                 alpha = if (dropKey != null && dropKind == ListDrop.Kind.Into) 0.4f else 0.6f
+                                // Без гострих кутів: заокруглена плашка з м'якими (розмитими) краями.
+                                shape = RoundedCornerShape(DRAG_CORNER)
+                                clip = true
+                                compositingStrategy = CompositingStrategy.Offscreen
                             }
                         }
                         // Куди ляже — малюємо поверх рядка (інакше чорне тло рядка закриває підказку).
                         .drawWithContent {
                             drawContent()
+                            if (dragged) {
+                                val f = DRAG_FEATHER.toPx()
+                                val fx = (f / size.width).coerceIn(0f, 0.5f)
+                                val fy = (f / size.height).coerceIn(0f, 0.5f)
+                                drawRect(
+                                    Brush.horizontalGradient(0f to Color.Transparent, fx to Color.Black, 1f - fx to Color.Black, 1f to Color.Transparent),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                                drawRect(
+                                    Brush.verticalGradient(0f to Color.Transparent, fy to Color.Black, 1f - fy to Color.Black, 1f to Color.Transparent),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            }
                             if (dropHere && dropKind != ListDrop.Kind.Into) {
                                 val y = if (dropKind == ListDrop.Kind.Before) 1.5.dp.toPx() else size.height - 1.5.dp.toPx()
                                 val r = 5.dp.toPx()
@@ -448,6 +465,10 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
         }
     }
 }
+
+/** Плашка, яку тягнеш: заокруглення кутів і ширина м'якого краю. */
+private val DRAG_CORNER = 16.dp
+private val DRAG_FEATHER = 10.dp
 
 /** Наскільки розмиваються інші рядки, поки тягнуть один. */
 private val BLUR_UNDER = 3.dp
