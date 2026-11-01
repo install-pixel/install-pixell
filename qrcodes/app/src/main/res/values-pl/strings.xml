@@ -44,7 +44,7 @@
     <string name="print_share">Drukuj i udostępnij</string>
     <string name="share">Udostępnij</string>
     <string name="rename">Nazwa</string>
-    <string name="rename_hint">Własna nazwa jest pokazywana i drukowana zamiast treści (wygodne dla haseł). Puste — podpisem będzie treść.</string>
+    <string name="rename_hint">Własna nazwa jest pokazywana i drukowana zamiast treści — wygodne dla haseł. Puste — podpisem będzie treść.</string>
     <string name="label_title">Drukuj i udostępnij</string>
     <string name="label_size">Rozmiar etykiety, mm</string>
     <string name="label_width_mm">Szerokość, mm</string>
@@ -58,7 +58,7 @@
     <string name="label_add_text">Tekst</string>
     <string name="label_add_icon">Ikona</string>
     <string name="label_grid">Siatka</string>
-    <string name="label_hint">Dotknij elementu, aby go wybrać. Przeciągnij — przesuń; dwa palce — rozmiar i obrót; dwa dotknięcia — zmień; przeciągnij na „Usuń” u góry — usuń. Elementy nie nachodzą na siebie i nie wychodzą poza etykietę.</string>
+    <string name="label_hint">Dotknij — wybierz, przeciągnij — przesuń, dwa palce — rozmiar i obrót. Wszystkie gesty — w Ustawieniach → „Jak używać”.</string>
     <string name="label_text_size">Litery: %1$d mm</string>
     <string name="label_icon_size">Ikona: %1$d mm</string>
     <string name="label_frame_none">Bez ramki</string>
@@ -82,8 +82,8 @@
     <string name="share_label_image">Jako obraz — cała etykieta</string>
     <string name="share_code_text">Jako tekst — tylko zawartość kodu</string>
     <string name="label_angle">Obrót %1$d°</string>
-    <string name="label_rotate_left">Obróć w lewo</string>
-    <string name="label_rotate_right">Obróć w prawo</string>
+    <string name="label_rotate_left">W lewo</string>
+    <string name="label_rotate_right">W prawo</string>
     <string name="label_fill_short">Wypełnij etykietę</string>
     <string name="label_edit_short">Zmień</string>
     <string name="unfavorited">Usunięto z ulubionych</string>
@@ -127,7 +127,7 @@
     <string name="form_contact_email">E-mail</string>
     <string name="form_contact_org">Firma (opcjonalnie)</string>
     <string name="form_site_address">Adres, np. example.com</string>
-    <string name="form_hint">Telefon, który zeskanuje ten kod, sam zaproponuje połączenie, zapisanie kontaktu lub otwarcie strony. Kod dostanie nazwę — hasła i numery nie są podpisywane.</string>
+    <string name="form_hint">Telefon, który zeskanuje ten kod, sam zaproponuje połączenie, zapisanie kontaktu lub otwarcie strony.</string>
     <string name="label_templates">Szablon</string>
     <string name="label_templates_ready">Gotowe — dla tego kodu i rozmiaru etykiety</string>
     <string name="label_templates_mine">Moje</string>
@@ -143,7 +143,7 @@
     <string name="settings_backup">Kopia zapasowa</string>
     <string name="backup_export">Eksportuj kody do pliku</string>
     <string name="backup_import">Importuj kody z pliku</string>
-    <string name="backup_hint">Wszystkie kody z nazwami i ulubionymi oraz własne szablony etykiet w jednym pliku — na nowy telefon albo na wszelki wypadek. Import dodaje tylko nowe.</string>
+    <string name="backup_hint">Wszystkie kody, foldery i szablony w jednym pliku. Import dodaje tylko nowe.</string>
     <string name="backup_exported">Wyeksportowano kodów: %1$d</string>
     <string name="backup_imported">Dodano nowych kodów: %1$d</string>
     <string name="backup_bad_file">Nie udało się odczytać tego pliku</string>
@@ -176,4 +176,21 @@
     <string name="folder_drop_new">Nowy folder</string>
     <string name="folder_drop_into">Do folderu</string>
     <string name="search_found">Znaleziono: %1$d</string>
+    <string name="label_add_title">Dodaj</string>
+    <string name="help">Jak używać</string>
+    <string name="help_back">Wstecz</string>
+    <string name="help_create_t">Utwórz kod</string>
+    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod od razu pojawia się u góry.\n• Okrągły przycisk po prawej — zapisz; pole się czyści.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skan cudzego QR, tekst ze zdjęcia, a także Wi‑Fi, kontakt i strona.\n• „Kod QR / Kod kreskowy” nad podglądem — co tworzyć. Wybór jest zapamiętywany.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.</string>
+    <string name="help_camera_t">Aparat i tekst ze zdjęcia</string>
+    <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Latarka — przycisk na ekranie aparatu.</string>
+    <string name="help_list_t">Zapisane i szukanie</string>
+    <string name="help_list">• Dotknięcie kodu — na cały ekran, jasność na maksimum, żeby łatwo zeskanować.\n• Przesuń w lewo — usuń (jest „Cofnij”).\n• Przytrzymaj i puść — menu: do ulubionych, nazwa, druk, kopiuj, do folderu, usuń.\n• Własna nazwa ukrywa treść — wygodne dla haseł.\n• Lupa w kapsule — szukanie po nazwie lub treści.</string>
+    <string name="help_folders_t">Foldery i kolejność</string>
+    <string name="help_folders">• Przytrzymaj kod i prowadź — zmieniasz kolejność.\n• Upuść kod na inny kod — powstanie nowy folder z obu.\n• Upuść kod na folder — trafi do niego.\n• Dotknięcie folderu — otwórz; strzałka u góry lub „Wstecz” — wyjdź.\n• Przytrzymaj folder — nazwa, druk wszystkich kodów, rozgrupuj (kody zostają) albo usuń z całą zawartością.\n• W menu kodu: „Do folderu…” i „Wyjmij z folderu”.</string>
+    <string name="help_fav_t">Ulubione</string>
+    <string name="help_fav">• Gwiazdka w menu kodu — dodaj do ulubionych.\n• „Ulubione” — pierwsza strona, kody w siatce.\n• Przytrzymaj i prowadź — zmieniasz kolejność.\n• Upuść na pasek u góry — usuń z ulubionych (jest „Cofnij”).</string>
+    <string name="help_print_t">Druk i etykiety</string>
+    <string name="help_print">• Przycisk rozmiaru u góry — rozmiar etykiety: gotowe, własny lub „Ekran telefonu”.\n• „Dodaj”: kod, tekst, ikona lub szablon.\n• Dotknij elementu — wybierz; pod etykietą pojawią się jego ustawienia.\n• Przeciągnij — przesuń; dwa palce — rozmiar i obrót.\n• Dwa dotknięcia — zmień tekst, podpis lub ikonę.\n• Przeciągnij na „Usuń” u góry — usuń.\n• Elementy przyciągają się do środka i krawędzi, nie nachodzą na siebie i nie wychodzą poza etykietę.\n• „Drukuj” — na drukarkę w rozmiarze etykiety; „Udostępnij” — PDF lub obraz, albo zapisz w galerii.\n• Swój układ można zapisać jako szablon.</string>
+    <string name="help_settings_t">Ustawienia i kopia</string>
+    <string name="help_settings">• Zębatka w prawym górnym rogu — styl („Arkusz” lub „Szkło”) i język.\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
 </resources>

@@ -46,7 +46,7 @@
     <string name="print_share">Print and share</string>
     <string name="share">Share</string>
     <string name="rename">Name</string>
-    <string name="rename_hint">Your own name is shown and printed instead of the content (handy for passwords). Leave empty to use the content.</string>
+    <string name="rename_hint">Your own name is shown and printed instead of the content — handy for passwords. Leave empty to use the content.</string>
     <string name="label_title">Print and share</string>
     <string name="label_size">Label size, mm</string>
     <string name="label_width_mm">Width, mm</string>
@@ -60,7 +60,7 @@
     <string name="label_add_text">Text</string>
     <string name="label_add_icon">Icon</string>
     <string name="label_grid">Grid</string>
-    <string name="label_hint">Tap an item to choose it. Drag — move; two fingers — size and turn; double tap — edit; drag onto “Delete” at the top — remove. Items never overlap or leave the label.</string>
+    <string name="label_hint">Tap — choose, drag — move, two fingers — size and turn. All gestures — in Settings → “How to use”.</string>
     <string name="label_text_size">Letters: %1$d mm</string>
     <string name="label_icon_size">Icon: %1$d mm</string>
     <string name="label_frame_none">No frame</string>
@@ -84,8 +84,8 @@
     <string name="share_label_image">As a picture — the whole label</string>
     <string name="share_code_text">As text — only what the code contains</string>
     <string name="label_angle">Turned %1$d°</string>
-    <string name="label_rotate_left">Turn left</string>
-    <string name="label_rotate_right">Turn right</string>
+    <string name="label_rotate_left">Left</string>
+    <string name="label_rotate_right">Right</string>
     <string name="label_fill_short">Fill label</string>
     <string name="label_edit_short">Edit</string>
     <string name="unfavorited">Removed from favourites</string>
@@ -129,7 +129,7 @@
     <string name="form_contact_email">Email</string>
     <string name="form_contact_org">Company (optional)</string>
     <string name="form_site_address">Address, e.g. example.com</string>
-    <string name="form_hint">A phone that scans this code offers to connect, save the contact or open the site by itself. The code gets a name, so passwords and numbers are not shown.</string>
+    <string name="form_hint">A phone that scans this code offers to connect, save the contact or open the site by itself.</string>
     <string name="label_templates">Template</string>
     <string name="label_templates_ready">Ready-made — for this code and label size</string>
     <string name="label_templates_mine">Mine</string>
@@ -145,7 +145,7 @@
     <string name="settings_backup">Backup</string>
     <string name="backup_export">Export codes to a file</string>
     <string name="backup_import">Import codes from a file</string>
-    <string name="backup_hint">All codes with names and favourites, and your label templates, in one file — for a new phone or just in case. Import adds only what is new.</string>
+    <string name="backup_hint">All codes, folders and templates in one file. Import adds only what is new.</string>
     <string name="backup_exported">Exported codes: %1$d</string>
     <string name="backup_imported">New codes added: %1$d</string>
     <string name="backup_bad_file">This file could not be read</string>
@@ -178,4 +178,21 @@
     <string name="folder_drop_new">New folder</string>
     <string name="folder_drop_into">Into the folder</string>
     <string name="search_found">Found: %1$d</string>
+    <string name="label_add_title">Add</string>
+    <string name="help">How to use</string>
+    <string name="help_back">Back</string>
+    <string name="help_create_t">Create a code</string>
+    <string name="help_create">• Swipe left from “Favourites” or tap “Create” at the top.\n• Type in the capsule at the bottom — the code appears above at once.\n• The round button on the right — save; the field clears.\n• The icon on the left of the capsule — input mode: by hand, scan someone’s QR, text from a photo, plus Wi‑Fi, contact and site.\n• “QR code / Barcode” above the preview — what to create. The choice is remembered.\n• Text shared from another app lands in the field by itself.</string>
+    <string name="help_camera_t">Camera and text from a photo</string>
+    <string name="help_camera">• “Scan QR” — point the camera at a code, its copy appears, save it.\n• “Text from photo” — take a photo, found words get frames.\n• Tap a word — choose or drop it.\n• Hold a word and drag — everything up to your finger is chosen.\n• The square next to a line — the whole line.\n• “Done” — the choice goes into the field, where you can fix it.\n• Both modes can take a picture from the gallery. The torch is a button on the camera screen.</string>
+    <string name="help_list_t">Saved codes and search</string>
+    <string name="help_list">• Tap a code — full screen, brightness to the max so it scans easily.\n• Swipe left — delete (with “Undo”).\n• Long press and release — menu: favourite, name, print, copy, to a folder, delete.\n• Your own name hides the content — handy for passwords.\n• The magnifier in the capsule — search by name or content.</string>
+    <string name="help_folders_t">Folders and order</string>
+    <string name="help_folders">• Hold a code and drag — change the order.\n• Drop a code onto another code — a new folder with both.\n• Drop a code onto a folder — it goes inside.\n• Tap a folder — open it; the arrow at the top or “Back” — leave.\n• Long press a folder — name, print all codes, ungroup (codes stay) or delete with everything inside.\n• In a code’s menu: “To a folder…” and “Take out of the folder”.</string>
+    <string name="help_fav_t">Favourites</string>
+    <string name="help_fav">• The star in a code’s menu — add to favourites.\n• “Favourites” is the first page, codes in a grid.\n• Hold and drag — change the order.\n• Drop onto the bar at the top — remove from favourites (with “Undo”).</string>
+    <string name="help_print_t">Printing and labels</string>
+    <string name="help_print">• The size button at the top — label size: ready ones, your own or “Phone screen”.\n• “Add”: code, text, icon or template.\n• Tap an item — choose it; its settings appear under the label.\n• Drag — move; two fingers — size and turn.\n• Double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the centre and edges, never overlap and never leave the label.\n• “Print” — to the printer at the label size; “Share” — PDF or picture, or save to the gallery.\n• Your layout can be saved as a template.</string>
+    <string name="help_settings_t">Settings and backup</string>
+    <string name="help_settings">• The gear at the top right — style (“Sheet” or “Glass”) and language.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
 </resources>

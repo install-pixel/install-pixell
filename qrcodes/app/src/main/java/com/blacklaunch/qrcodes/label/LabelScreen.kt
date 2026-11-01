@@ -396,6 +396,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
 
         // Керування.
         Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).fadingEdges(top = 16.dp, bottom = 16.dp).bouncyScroll().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            // Перші чотири — те, що додається на наклейку; підпис над ними, щоб це було зрозуміло.
+            Text(stringResource(R.string.label_add_title), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Tool(Glyph.ScanQr, stringResource(R.string.label_add_code)) { pickerOpen = true }
                 Tool(Glyph.TextT, stringResource(R.string.label_add_text)) { textNew = true }
@@ -718,6 +720,8 @@ private fun Tool(glyph: Glyph, label: String, on: Boolean = false, enabled: Bool
             lineHeight = 15.sp,
             textAlign = TextAlign.Center,
             overflow = TextOverflow.Ellipsis,
+            // Переносимо лише між словами, ніколи не посеред слова.
+            style = androidx.compose.material3.LocalTextStyle.current.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Heading, hyphens = androidx.compose.ui.text.style.Hyphens.None),
             modifier = Modifier.padding(top = 4.dp),
         )
     }

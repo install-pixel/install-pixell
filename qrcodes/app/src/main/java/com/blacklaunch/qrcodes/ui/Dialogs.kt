@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -168,12 +170,15 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
  * Стиль міняється одразу; мова — після короткого перезапуску екрана.
  */
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
+fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExport: () -> Unit, onImport: () -> Unit, onHelp: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.settings)) {
         Column(Modifier.bouncyScroll()) {
+            // Довідка — першою: тут усі приховані жести, розкладені за темами.
+            MenuRow(Glyph.More, stringResource(R.string.help), onHelp)
+            Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.settings_style), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(bottom = 4.dp))
             ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
                 AppStyle.glass = false
@@ -205,6 +210,48 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
             MenuRow(Glyph.Download, stringResource(R.string.backup_export), onExport)
             MenuRow(Glyph.Copy, stringResource(R.string.backup_import), onImport)
             Text(stringResource(R.string.backup_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
+        }
+    }
+}
+
+/** Теми довідки «Як користуватися»: назва й докладний текст. */
+private enum class HelpTopic(val title: Int, val body: Int, val glyph: Glyph) {
+    Create(R.string.help_create_t, R.string.help_create, Glyph.Keyboard),
+    Camera(R.string.help_camera_t, R.string.help_camera, Glyph.ScanQr),
+    Saved(R.string.help_list_t, R.string.help_list, Glyph.Search),
+    Folders(R.string.help_folders_t, R.string.help_folders, Glyph.Folder),
+    Favorites(R.string.help_fav_t, R.string.help_fav, Glyph.Star),
+    Print(R.string.help_print_t, R.string.help_print, Glyph.Print),
+    Settings(R.string.help_settings_t, R.string.help_settings, Glyph.Settings),
+}
+
+/** «Як користуватися»: спершу список тем, дотик — тема докладно, «Назад» — знову список. */
+@Composable
+fun HelpDialog(onDismiss: () -> Unit) {
+    var topic by remember { mutableStateOf<HelpTopic?>(null) }
+    val open = topic
+    val back: (@Composable () -> Unit)? = if (open != null) {
+        { SheetButton(stringResource(R.string.help_back), { topic = null }) }
+    } else {
+        null
+    }
+    SheetDialog(
+        onDismissRequest = { if (open != null) topic = null else onDismiss() },
+        title = stringResource(open?.title ?: R.string.help),
+        buttons = back,
+    ) {
+        if (open == null) {
+            Column(Modifier.bouncyScroll()) {
+                HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { topic = t }) }
+            }
+        } else {
+            Text(
+                stringResource(open.body),
+                color = Oled.TextPrimary.copy(alpha = 0.9f),
+                fontSize = 16.sp,
+                lineHeight = 23.sp,
+                modifier = Modifier.bouncyScroll(),
+            )
         }
     }
 }

@@ -280,10 +280,15 @@ internal fun quadPoints(from: Offset, control: Offset, to: Offset, steps: Int = 
 }
 
 /** Хвиляста риска олівцем (перекреслення вимкненого, підкреслення вибраного). */
-internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int, alpha: Float = 0.8f, ink: Color = SheetInk) {
+internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int, alpha: Float = 0.8f, ink: Color = SheetInk, progress: Float = 1f) {
+    // [progress] < 1 — лінія ще «малюється»: від початку до цієї частки довжини, як рукою зліва направо.
+    val p = progress.coerceIn(0f, 1f)
+    if (p <= 0.01f) return
     if (AppStyle.glass) {
         // «Скло»: рівна тонка риска.
-        drawLine(ink.copy(alpha = alpha), Offset(from + 4.dp.toPx(), y), Offset(to - 4.dp.toPx(), y), 2.dp.toPx(), cap = StrokeCap.Round)
+        val a = from + 4.dp.toPx()
+        val b = to - 4.dp.toPx()
+        drawLine(ink.copy(alpha = alpha), Offset(a, y), Offset(a + (b - a) * p, y), 2.dp.toPx(), cap = StrokeCap.Round)
         return
     }
     val wob = 1.1.dp.toPx()
@@ -291,9 +296,10 @@ internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int,
         Offset(from, y + sin(seed * 1.3f) * wob),
         Offset((from + to) / 2, y + sin(seed * 2.1f + 1f) * wob * 2f),
         Offset(to, y + sin(seed * 0.7f + 2f) * wob),
-        steps = 24,
+        steps = 48,
     )
-    drawPath(taperedPath(points, 2.2.dp.toPx()), ink.copy(alpha = alpha))
+    val drawn = if (p >= 1f) points else points.take((points.size * p).toInt().coerceAtLeast(2))
+    drawPath(taperedPath(drawn, 2.2.dp.toPx()), ink.copy(alpha = alpha))
 }
 
 /** Короткий штрих олівцем від [a] до [b]: ледь вигнутий, загострений на кінцях. */
