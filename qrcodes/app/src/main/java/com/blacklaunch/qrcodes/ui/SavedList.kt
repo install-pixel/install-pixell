@@ -47,6 +47,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import kotlinx.coroutines.launch
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -262,8 +264,8 @@ fun SavedList(
                             if (dropHere && dropKind != ListDrop.Kind.Into) {
                                 val y = if (dropKind == ListDrop.Kind.Before) 1.5.dp.toPx() else size.height - 1.5.dp.toPx()
                                 val r = 5.dp.toPx()
-                                drawCircle(Oled.Confirm, r, Offset(r, y))
-                                drawLine(Oled.Confirm, Offset(r, y), Offset(size.width, y), 3.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                                drawCircle(SelectedInk, r, Offset(r, y))
+                                drawLine(SelectedInk, Offset(r, y), Offset(size.width, y), 3.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
                             }
                         },
                 ) {
@@ -292,8 +294,8 @@ fun SavedList(
                         Box(
                             Modifier
                                 .matchParentSize()
-                                .background(Oled.Confirm.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
-                                .border(2.5.dp, Oled.Confirm, RoundedCornerShape(12.dp))
+                                .background(SelectedInk.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
+                                .border(2.dp, SelectedInk, RoundedCornerShape(12.dp))
                                 .padding(end = 14.dp),
                             contentAlignment = Alignment.CenterEnd,
                         ) {
@@ -301,11 +303,11 @@ fun SavedList(
                                 Modifier.background(Oled.Black.copy(alpha = 0.85f), RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                GlyphIcon(if (entry is Entry.FolderEntry) Glyph.Folder else Glyph.Plus, null, tint = Oled.Confirm, size = 20.dp)
+                                GlyphIcon(if (entry is Entry.FolderEntry) Glyph.Folder else Glyph.Plus, null, tint = SelectedInk, size = 20.dp)
                                 Spacer(Modifier.width(6.dp))
                                 Text(
                                     stringResource(if (entry is Entry.FolderEntry) R.string.folder_drop_into else R.string.folder_drop_new),
-                                    color = Oled.Confirm,
+                                    color = SelectedInk,
                                     fontSize = 16.sp,
                                 )
                             }
@@ -372,7 +374,11 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
         }
         Box(
             Modifier
-                .graphicsLayer { translationX = offset.value }
+                .graphicsLayer {
+                    translationX = offset.value
+                    // Окремий шар — щоб правий край рядка можна було зробити прозорим (м'яким), а не обрізаним.
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
                 // Рядок лишається непрозорим (нічого не просвічує): краї й увесь рядок затемнюються в чорне разом із
                 // рухом — зірочка й текст біля краю «зафарбовуються», а не стають прозорими.
                 .drawWithContent {
@@ -388,9 +394,19 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
                                 0f to Color.Black,
                                 (moved / size.width).coerceIn(0f, 1f) to Color.Black,
                                 ((moved + f) / size.width).coerceIn(0f, 1f) to Color.Transparent,
-                                ((size.width - f) / size.width).coerceIn(0f, 1f) to Color.Transparent,
-                                1f to Color.Black,
+                                1f to Color.Transparent,
                             ),
+                        )
+                        // Правий край самої плашки розмитий: над «Видалити» вона тане поступово, без різкого обрізу.
+                        val edge = minOf(fade * 1.6f, moved * 1.5f)
+                        drawRect(
+                            Brush.horizontalGradient(
+                                0f to Color.Black,
+                                ((size.width - edge) / size.width).coerceIn(0f, 1f) to Color.Black,
+                                ((size.width - edge * 0.45f) / size.width).coerceIn(0f, 1f) to Color.Black.copy(alpha = 0.45f),
+                                1f to Color.Transparent,
+                            ),
+                            blendMode = BlendMode.DstIn,
                         )
                     }
                 }

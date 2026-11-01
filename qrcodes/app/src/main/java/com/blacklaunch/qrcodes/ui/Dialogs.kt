@@ -3,7 +3,6 @@ package com.blacklaunch.qrcodes.ui
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +48,7 @@ import com.blacklaunch.qrcodes.ui.theme.Oled
 @Composable
 fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.mode_choose)) {
-        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+        Column(Modifier.bouncyScroll()) {
             MenuRow(Glyph.Keyboard, stringResource(R.string.mode_manual), { onPick(InputMode.Manual) })
             MenuRow(Glyph.ScanQr, stringResource(R.string.mode_scan), { onPick(InputMode.ScanQr) })
             MenuRow(Glyph.Photo, stringResource(R.string.mode_photo), { onPick(InputMode.PhotoText) })
@@ -174,7 +173,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
     val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.settings)) {
-        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+        Column(Modifier.bouncyScroll()) {
             Text(stringResource(R.string.settings_style), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(bottom = 4.dp))
             ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
                 AppStyle.glass = false
@@ -226,7 +225,7 @@ private fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, onCli
             Text(title, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 17.sp)
             if (subtitle != null) Text(subtitle, color = Oled.TextSecondary, fontSize = 14.sp)
         }
-        if (selected) GlyphIcon(Glyph.Save, null, tint = Oled.Confirm)
+        if (selected) GlyphIcon(Glyph.Save, null, tint = SelectedInk)
     }
 }
 
@@ -271,7 +270,7 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
             }
         }, tone = Tone.Confirm, enabled = ready)
     }) {
-        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (kind) {
                 FormKind.Wifi -> {
                     SheetTextField(a, { a = it }, stringResource(R.string.form_wifi_ssid), focusRequester = focus)
@@ -331,7 +330,7 @@ fun FolderMenu(folder: com.blacklaunch.qrcodes.data.Folder, onDismiss: () -> Uni
 @Composable
 fun FolderPicker(folders: List<com.blacklaunch.qrcodes.data.Folder>, current: Long?, onDismiss: () -> Unit, onPick: (com.blacklaunch.qrcodes.data.Folder) -> Unit, onNew: () -> Unit) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.folder_move)) {
-        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+        Column(Modifier.bouncyScroll()) {
             folders.filter { it.id != current }.forEach { f -> MenuRow(Glyph.Folder, f.name, { onPick(f) }) }
             MenuRow(Glyph.Plus, stringResource(R.string.folder_new), onNew)
         }

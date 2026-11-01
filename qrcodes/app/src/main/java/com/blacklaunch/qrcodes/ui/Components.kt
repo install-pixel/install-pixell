@@ -5,6 +5,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,7 +98,7 @@ private val HandFieldStyle = TextStyle(
 
 /** Стиль тексту в полях: «Аркуш» — від руки, «Скло» — звичайний шрифт. */
 @Composable
-private fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontSize = 18.sp)
+private fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontFamily = GlassFont, fontSize = 18.sp)
 
 /**
  * Капсула внизу — як поле пошуку Black Glass, на тому самому місці: поле з рамкою олівцем, усередині ліворуч —
@@ -324,7 +326,14 @@ fun Modifier.backdrop(amount: State<Float>): Modifier = graphicsLayer {
 fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) {
     Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        SideEffect { window?.setDimAmount(0f) }
+        SideEffect {
+            window?.setDimAmount(0f)
+            // Фон за вікном — розмитий самою системою (Android 12+), як у Black Glass.
+            if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                window.attributes = window.attributes.also { it.blurBehindRadius = DIALOG_BLUR_PX }
+            }
+        }
         val shown = remember { MutableTransitionState(false) }.apply { targetState = true }
         AnimatedVisibility(
             visibleState = shown,
@@ -334,6 +343,8 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
         }
     }
 }
+
+private const val DIALOG_BLUR_PX = 48
 
 /** Вікно в стилі «Аркуша»: чорна плашка в рамці олівцем, кнопки праворуч. */
 @Composable
@@ -357,7 +368,8 @@ fun SheetDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             if (title != null) Text(title, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Box(Modifier.weight(1f, fill = false)) {
+            // Довгий вміст гортається всередині; біля заголовка й кнопок плавно тане, без різкої межі.
+            Box(Modifier.weight(1f, fill = false).fadingEdges(top = EdgeFade / 2, bottom = EdgeFade)) {
                 CompositionLocalProvider(LocalContentColor provides Oled.TextSecondary) { content() }
             }
             if (buttons != null) {
@@ -383,39 +395,56 @@ fun Tone.color(): Color = when (this) {
 fun SheetButton(text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral, enabled: Boolean = true, compact: Boolean = false, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val color = if (enabled) tone.color() else Oled.TextSecondary.copy(alpha = 0.45f)
-    Box(
+    val glass = AppStyle.glass
+    Row(
         modifier
             .clip(RoundedCornerShape(14.dp))
             .pencilFrame(14.dp, text.length, alpha = if (enabled) 0.75f else 0.3f, ink = if (tone == Tone.Neutral) SheetInk else color)
             .clickable(enabled = enabled) { haptics.tap(); onClick() }
             // Компактна — для рядка з кількох рівних кнопок: менші поля, щоб напис не обрізався.
             .padding(horizontal = if (compact) 4.dp else 14.dp, vertical = 9.dp),
-        contentAlignment = Alignment.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
+        // «Скло»: головна дія (синя) — ще й з галочкою, як у Black Glass.
+        if (tone == Tone.Confirm && glass && !compact) {
+            GlyphIcon(Glyph.Save, null, tint = color, size = 16.dp)
+            Spacer(Modifier.width(6.dp))
+        }
         // Завжди один рядок: кнопка не росте в висоту й не «ламається» на два рядки.
         Text(text, color = color, fontSize = if (compact) 14.sp else 15.sp, textAlign = TextAlign.Center, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** Рядок меню: значок олівцем і назва. */
+/**
+ * Пункт меню. «Скло»: значок, назва й «›». «Аркуш»: просто написаний рядок зі стрілкою «→», без значка
+ * (THEMES.md, розділ 4). Червоний — лише те, що безповоротно видаляє.
+ */
 @Composable
 fun MenuRow(glyph: Glyph, text: String, onClick: () -> Unit, tone: Tone = Tone.Neutral) {
     val haptics = LocalHaptics.current
+    val sheet = LocalSheet.current
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .clickable { haptics.tap(); onClick() }
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .padding(horizontal = if (sheet) 6.dp else 8.dp, vertical = if (sheet) 10.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        GlyphIcon(glyph, null, tint = if (tone == Tone.Neutral) SheetInk else tone.color())
-        Spacer(Modifier.width(16.dp))
-        Text(text, color = tone.color(), fontSize = 17.sp)
+        if (!sheet) {
+            GlyphIcon(glyph, null, tint = if (tone == Tone.Neutral) Oled.TextSecondary else tone.color(), size = 22.dp)
+            Spacer(Modifier.width(16.dp))
+        }
+        Text(text, color = if (tone == Tone.Neutral) Oled.TextPrimary else tone.color(), fontSize = if (sheet) 19.sp else 17.sp, modifier = Modifier.weight(1f))
+        Text(if (sheet) "→" else "›", color = Oled.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
     }
 }
 
-/** Поле вводу у вікні (назва, свій розмір): рядок, підкреслений олівцем. */
+/**
+ * Поле вводу у вікні (назва, свій розмір). «Аркуш» — у рамці олівцем. «Скло» — заокруглене 16 dp, тонкий кант
+ * (під час введення яскравіший), ледь світле тло, курсор — основним кольором тексту (THEMES.md, розділ 3).
+ */
 @Composable
 fun SheetTextField(
     value: String,
@@ -425,10 +454,22 @@ fun SheetTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester? = null,
 ) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier
             .fillMaxWidth()
-            .pencilFrame(14.dp, seed = 23, alpha = 0.6f)
+            .then(
+                if (AppStyle.glass) {
+                    Modifier
+                        .clip(shape)
+                        .background(if (focused) Color(0x0FFFFFFF) else Color(0x08FFFFFF))
+                        .border(1.dp, if (focused) Color(0x99FFFFFF) else Color(0x38FFFFFF), shape)
+                } else {
+                    Modifier.pencilFrame(14.dp, seed = 23, alpha = if (focused) 0.9f else 0.6f)
+                },
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         if (value.isEmpty()) Text(placeholder, color = Oled.TextSecondary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -437,8 +478,9 @@ fun SheetTextField(
             onValueChange = onValueChange,
             singleLine = true,
             textStyle = fieldStyle().copy(color = Oled.TextPrimary),
-            cursorBrush = SolidColor(Oled.TextSecondary),
+            cursorBrush = SolidColor(if (AppStyle.glass) Oled.TextPrimary else Oled.TextSecondary),
             keyboardOptions = keyboardOptions,
+            interactionSource = interaction,
             modifier = Modifier.fillMaxWidth().then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         )
     }
@@ -471,7 +513,7 @@ fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, 
         )
         if (action != null) {
             Spacer(Modifier.width(12.dp))
-            SheetButton(action, onAction, tone = Tone.Confirm)
+            SheetButton(action, onAction)
         }
     }
 }
@@ -502,35 +544,52 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
     }
 }
 
+/** Наскільки плавно тане край прокрутки (THEMES.md, розділ 5). */
+val EdgeFade = 18.dp
+
 /**
- * Список, що гортається, не обрізається різко: вгорі й унизу вміст плавно тане в чорне (на [fade] висоти).
+ * Список, що гортається, не обрізається різко: вгорі й унизу вміст плавно тане в чорне.
  */
-fun Modifier.fadingEdges(fade: Dp = 28.dp): Modifier = graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+fun Modifier.fadingEdges(top: Dp = EdgeFade, bottom: Dp = EdgeFade): Modifier = graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
     .drawWithContent {
         drawContent()
-        val f = fade.toPx().coerceAtMost(size.height / 3)
-        drawRect(
-            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                0f to Color.Transparent,
-                f / size.height to Color.Black,
-                1f - f / size.height to Color.Black,
-                1f to Color.Transparent,
-            ),
-            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
-        )
+        val t = top.toPx().coerceAtMost(size.height / 3)
+        val b = bottom.toPx().coerceAtMost(size.height / 3)
+        if (t > 0f) {
+            drawRect(
+                androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black, startY = 0f, endY = t),
+                size = androidx.compose.ui.geometry.Size(size.width, t),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+            )
+        }
+        if (b > 0f) {
+            drawRect(
+                androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Black, 1f to Color.Transparent, startY = size.height - b, endY = size.height),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - b),
+                size = androidx.compose.ui.geometry.Size(size.width, b),
+                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+            )
+        }
     }
 
-/** Вибір-«табличка» (QR / Штрихкод тощо): вибраний — синьою рамкою; текст в один рядок. */
+/**
+ * Вибір-«табличка» (QR / Штрихкод тощо). Вибраний — яскравим кантом і галочкою ✓ (не кольором); текст в один рядок.
+ */
 @Composable
 fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
-    Box(
+    Row(
         Modifier
             .clip(RoundedCornerShape(14.dp))
-            .pencilFrame(14.dp, seed = text.length + 3, alpha = if (selected) 0.9f else 0.35f, ink = if (selected) Oled.Confirm else SheetInk)
+            .pencilFrame(14.dp, seed = text.length + 3, alpha = if (selected) 0.9f else 0.35f, ink = if (selected) SelectedInk else SheetInk)
             .clickable { haptics.tap(); onClick() }
             .padding(horizontal = 14.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selected) {
+            GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary, size = 16.dp)
+            Spacer(Modifier.width(6.dp))
+        }
         Text(text, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, softWrap = false)
     }
 }

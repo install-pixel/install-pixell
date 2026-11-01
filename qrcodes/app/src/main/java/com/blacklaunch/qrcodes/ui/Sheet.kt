@@ -59,6 +59,19 @@ val HandFont = FontFamily(
     Font(R.font.caveat_semibold, FontWeight.Bold),
 )
 
+/** Шрифт «Скла» — Exo 2 (OFL, вбудований): чіткий, трохи технічний, з повною кирилицею. */
+val GlassFont = FontFamily(
+    Font(R.font.exo2_extralight, FontWeight.ExtraLight),
+    Font(R.font.exo2_extralight, FontWeight.Thin),
+    Font(R.font.exo2_light, FontWeight.Light),
+    Font(R.font.exo2_regular, FontWeight.Normal),
+    Font(R.font.exo2_medium, FontWeight.Medium),
+    Font(R.font.exo2_semibold, FontWeight.SemiBold),
+    Font(R.font.exo2_bold, FontWeight.Bold),
+    Font(R.font.exo2_bold, FontWeight.ExtraBold),
+    Font(R.font.exo2_bold, FontWeight.Black),
+)
+
 /** Шрифт від руки дрібніший на око — трохи збільшуємо, щоб читалось, як звичайний. */
 private const val HAND_SCALE = 1.22f
 
@@ -66,7 +79,11 @@ private const val HAND_SCALE = 1.22f
 @Composable
 fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
     if (!enabled) {
-        CompositionLocalProvider(LocalSheet provides false, content = content)
+        // «Скло»: Exo 2 для всього тексту.
+        val glass = TextStyle(fontFamily = GlassFont)
+        MaterialTheme(colorScheme = MaterialTheme.colorScheme, typography = MaterialTheme.typography.withFont(glass)) {
+            CompositionLocalProvider(LocalSheet provides false, LocalTextStyle provides LocalTextStyle.current.merge(glass), content = content)
+        }
         return
     }
     val density = LocalDensity.current
@@ -92,6 +109,21 @@ fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
 internal val SheetInk = Color(0xFFEDEDED)
 
 /**
+ * «Вибране» для [pencilFrame]: у «Склі» — яскравий кант, в «Аркуші» — яскравіша й товща лінія олівця.
+ * (Вибраний варіант позначається кантом і галочкою, а не кольором — THEMES.md, розділ 2.)
+ */
+internal val SelectedInk = Color(0xFFFFFFFF)
+
+/** Усі стилі тексту теми — тим самим шрифтом. */
+private fun Typography.withFont(font: TextStyle) = Typography(
+    displayLarge = displayLarge.merge(font), displayMedium = displayMedium.merge(font), displaySmall = displaySmall.merge(font),
+    headlineLarge = headlineLarge.merge(font), headlineMedium = headlineMedium.merge(font), headlineSmall = headlineSmall.merge(font),
+    titleLarge = titleLarge.merge(font), titleMedium = titleMedium.merge(font), titleSmall = titleSmall.merge(font),
+    bodyLarge = bodyLarge.merge(font), bodyMedium = bodyMedium.merge(font), bodySmall = bodySmall.merge(font),
+    labelLarge = labelLarge.merge(font), labelMedium = labelMedium.merge(font), labelSmall = labelSmall.merge(font),
+)
+
+/**
  * Рамка плашки. «Аркуш»: заокруглений прямокутник двома штрихами олівцем, сторони ледь хвилясті (кожна рамка —
  * трохи інакша, за [seed]). «Скло»: темне скло з градієнтом і тонким відблиском; кольорова рамка ([ink] — синій
  * «вибрано», червоний «видалити») — тонкою кольоровою гранню. [alpha] — наскільки помітно (неактивне — блідіше).
@@ -101,21 +133,33 @@ fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.8f,
         val r = radius.toPx().coerceAtMost(size.minDimension / 2)
         if (AppStyle.glass) {
             val strength = (alpha / 0.8f).coerceIn(0.3f, 1f)
-            val edge: Brush = if (ink == SheetInk) Oled.Glint else SolidColor(ink.copy(alpha = 0.7f * strength))
+            val selected = ink == SelectedInk
+            val edge: Brush = when {
+                selected -> Oled.GlintBright
+                ink == SheetInk -> Oled.Glint
+                else -> SolidColor(ink.copy(alpha = 0.55f * strength))
+            }
             val stroke = Stroke(1.dp.toPx())
+            // Відблиск: м'яке світло вгорі всередині, до половини висоти (не більше 120 dp).
+            val sheenH = (size.height * 0.5f).coerceAtMost(120.dp.toPx())
+            val sheen = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = sheenH)
             onDrawBehind {
                 drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r), alpha = strength)
-                drawRoundRect(edge, cornerRadius = CornerRadius(r), style = stroke, alpha = strength)
+                drawRoundRect(sheen, size = Size(size.width, sheenH), cornerRadius = CornerRadius(r), alpha = strength)
+                drawRoundRect(edge, cornerRadius = CornerRadius(r), style = stroke, alpha = if (selected) 1f else strength)
             }
         } else {
-            // Контур рахуємо раз на розмір, а не щокадру.
-            val w = width.toPx()
+            // Контур рахуємо раз на розмір, а не щокадру. Вибране — яскравіша й товща лінія.
+            val bright = ink == SelectedInk
+            val inkColor = if (bright) SheetInk else ink
+            val w = width.toPx() * if (bright) 1.25f else 1f
             val main = taperedPath(pencilLoop(size, r, seed, 1.3.dp.toPx()), w)
             // Другий, тьмяніший і трохи інакший штрих — як коли олівцем обводять двічі.
             val ghost = taperedPath(pencilLoop(size, r, seed + 101, 1.6.dp.toPx()), w * 0.55f)
+            val a = if (bright) 1f else alpha
             onDrawBehind {
-                drawPath(main, ink.copy(alpha = alpha))
-                drawPath(ghost, ink.copy(alpha = alpha * 0.35f))
+                drawPath(main, inkColor.copy(alpha = a))
+                drawPath(ghost, inkColor.copy(alpha = a * 0.35f))
             }
         }
     }

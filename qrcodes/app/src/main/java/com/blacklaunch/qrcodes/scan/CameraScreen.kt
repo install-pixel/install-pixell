@@ -27,7 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import com.blacklaunch.qrcodes.ui.bouncyScroll
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.toSize
@@ -280,7 +280,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, CodeFormat?) -> Unit, onClo
                     RoundButton(Glyph.Shutter, stringResource(R.string.take_photo), { if (photo == PhotoState.Live) takePhoto() }, size = 72.dp)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RoundButton(Glyph.Flash, stringResource(R.string.flashlight), { torch = !torch }, ink = if (torch) Oled.Confirm else SheetInk)
+                    RoundButton(Glyph.Flash, stringResource(R.string.flashlight), { torch = !torch }, ink = if (torch) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk)
                     RoundButton(Glyph.Gallery, stringResource(R.string.from_gallery), {
                         pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     })
@@ -404,8 +404,8 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                         val ww = r.width() * scale + 2 * pad
                         val hh = r.height() * scale + 2 * pad
                         translate(offX + r.left * scale - pad, offY + r.top * scale - pad) {
-                            drawRect(if (on) Oled.Confirm.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.2f), size = Size(ww, hh))
-                            outline(Offset.Zero, Size(ww, hh), 4.dp.toPx(), li * 31 + wi, if (on) Oled.Confirm else SheetInk.copy(alpha = 0.6f), (if (on) 2.4 else 1.4).dp.toPx())
+                            drawRect(if (on) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.2f), size = Size(ww, hh))
+                            outline(Offset.Zero, Size(ww, hh), 4.dp.toPx(), li * 31 + wi, if (on) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk.copy(alpha = 0.6f), (if (on) 2.4 else 1.4).dp.toPx())
                         }
                     }
                 }
@@ -421,8 +421,8 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                     .fillMaxWidth()
                     .heightIn(max = 220.dp)
                     .padding(top = 10.dp)
-                    .fadingEdges(14.dp)
-                    .verticalScroll(rememberScrollState())
+                    .fadingEdges(top = 14.dp, bottom = 14.dp)
+                    .bouncyScroll()
                     // Усередині прокрутки: після затискання тягнемо вибір, а не прокручуємо список.
                     .onGloballyPositioned { listOrigin = it.positionInRoot() }
                     .pointerInput(state) {
@@ -447,7 +447,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                                 .padding(top = 2.dp)
                                 .size(30.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .pencilFrame(8.dp, seed = li + 70, alpha = if (all) 0.9f else 0.5f, ink = if (all) Oled.Confirm else SheetInk)
+                                .pencilFrame(8.dp, seed = li + 70, alpha = if (all) 0.9f else 0.5f, ink = if (all) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk)
                                 .clickable {
                                     haptics.tap()
                                     val refs = line.words.indices.map { WordRef(li, it) }.toSet()
@@ -455,7 +455,7 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (all) com.blacklaunch.qrcodes.ui.GlyphIcon(Glyph.Save, stringResource(R.string.text_line_all), tint = Oled.Confirm, size = 20.dp)
+                            if (all) com.blacklaunch.qrcodes.ui.GlyphIcon(Glyph.Save, stringResource(R.string.text_line_all), tint = com.blacklaunch.qrcodes.ui.SelectedInk, size = 20.dp)
                         }
                         androidx.compose.foundation.layout.FlowRow(
                             Modifier.weight(1f).padding(start = 8.dp),
@@ -472,8 +472,8 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
                                     softWrap = false,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (on) Oled.Confirm.copy(alpha = 0.18f) else Color.Transparent)
-                                        .pencilFrame(10.dp, seed = li * 13 + wi, alpha = if (on) 0.9f else 0.3f, ink = if (on) Oled.Confirm else SheetInk)
+                                        .background(if (on) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+                                        .pencilFrame(10.dp, seed = li * 13 + wi, alpha = if (on) 0.9f else 0.3f, ink = if (on) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk)
                                         .onGloballyPositioned { chipBounds[WordRef(li, wi)] = androidx.compose.ui.geometry.Rect(it.positionInRoot(), it.size.toSize()) }
                                         .clickable { toggle(WordRef(li, wi)) }
                                         .padding(horizontal = 9.dp, vertical = 5.dp),

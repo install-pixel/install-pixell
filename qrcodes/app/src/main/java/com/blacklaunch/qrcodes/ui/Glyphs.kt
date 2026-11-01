@@ -35,11 +35,21 @@ fun GlyphIcon(glyph: Glyph, contentDescription: String?, modifier: Modifier = Mo
         strokes.forEach { stroke ->
             val points = stroke.map { origin + it * unit }
             if (glass) {
-                // «Скло»: рівна тонка лінія із заокругленими кінцями, як системні значки.
+                // «Скло»: рівні світлі лінії зі світінням (THEMES.md, розділ 3).
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(points[0].x, points[0].y)
                     for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
                 }
+                // М'яке світіння довкола (та сама лінія 4.4 з прозорістю 18 %), поверх — рівна лінія 1.8.
+                drawPath(
+                    path,
+                    tint.copy(alpha = tint.alpha * 0.18f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        4.4f * unit,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                    ),
+                )
                 drawPath(
                     path,
                     tint,
