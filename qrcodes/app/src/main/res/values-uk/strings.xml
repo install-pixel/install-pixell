@@ -93,10 +93,10 @@
     <string name="text_line_all">Вибрано весь рядок</string>
     <string name="settings">Налаштування</string>
     <string name="settings_style">Стиль</string>
-    <string name="style_sheet">Аркуш</string>
+    <string name="style_sheet">Black Sketch</string>
     <string name="style_sheet_desc">Від руки білим олівцем на чорному</string>
-    <string name="style_glass">Скло</string>
-    <string name="style_glass_desc">Чорне скло, як у Black Glass</string>
+    <string name="style_glass">Black Glass</string>
+    <string name="style_glass_desc">Чорне скло з м’якими відблисками</string>
     <string name="settings_language">Мова</string>
     <string name="lang_system">Як у телефоні</string>
     <string name="label_icon_replace">Замінити значок</string>
@@ -192,5 +192,5 @@
     <string name="help_print_t">Друк і наклейки</string>
     <string name="help_print">• Кнопка розміру вгорі — розмір наклейки: готові, свій або «Екран телефону».\n• «Додати»: код, текст, значок або шаблон.\n• Торкнись елемента — вибрати; під наклейкою з’являться його налаштування.\n• Тягни — пересунути; двома пальцями — розмір і поворот.\n• Два дотики — змінити текст, підпис чи значок.\n• Тягни на «Видалити» вгорі — прибрати.\n• Елементи прилипають до центру й країв, не налазять один на одного й не виходять за аркуш.\n• «Друк» — на принтер у розмірі наклейки; «Поділитися» — PDF чи картинкою, або зберегти в галерею.\n• Свою розкладку можна зберегти як шаблон.</string>
     <string name="help_settings_t">Налаштування й копія</string>
-    <string name="help_settings">• Шестірня вгорі праворуч — стиль («Аркуш» чи «Скло») і мова.\n• «Експорт» — усі коди, папки й шаблони одним файлом, наприклад для нового телефона.\n• «Імпорт» — повернути з файлу; додається лише нове.\n• Програма працює без інтернету: нічого нікуди не надсилає.</string>
+    <string name="help_settings">• Шестірня вгорі праворуч — стиль (Black Glass чи Black Sketch) і мова.\n• «Експорт» — усі коди, папки й шаблони одним файлом, наприклад для нового телефона.\n• «Імпорт» — повернути з файлу; додається лише нове.\n• Програма працює без інтернету: нічого нікуди не надсилає.</string>
 </resources>

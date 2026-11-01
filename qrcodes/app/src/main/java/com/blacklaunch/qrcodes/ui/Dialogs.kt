@@ -180,13 +180,14 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
             MenuRow(Glyph.More, stringResource(R.string.help), onHelp)
             Spacer(Modifier.height(12.dp))
             Text(stringResource(R.string.settings_style), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(bottom = 4.dp))
-            ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
-                AppStyle.glass = false
-                settings.glass = false
-            }
+            // Black Glass — типова, тому перша.
             ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), selected = AppStyle.glass) {
                 AppStyle.glass = true
                 settings.glass = true
+            }
+            ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), selected = !AppStyle.glass) {
+                AppStyle.glass = false
+                settings.glass = false
             }
             Text(stringResource(R.string.settings_language), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
             com.blacklaunch.qrcodes.settings.AppLanguage.entries.forEach { lang ->

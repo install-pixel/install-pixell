@@ -25,7 +25,8 @@ class AppSettings(context: Context) {
 
     /** true — «Скло» (Black Glass), false — «Аркуш» (від руки). */
     var glass: Boolean
-        get() = prefs.getBoolean(KEY_GLASS, false)
+        // Типово — Black Glass (на новому телефоні); вибір у Налаштуваннях запам'ятовується.
+        get() = prefs.getBoolean(KEY_GLASS, true)
         set(value) = prefs.edit().putBoolean(KEY_GLASS, value).apply()
 
     /** Останній вибір на «Створити»: QR чи штрихкод — так і відкривається наступного разу. */

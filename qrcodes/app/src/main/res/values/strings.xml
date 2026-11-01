@@ -95,10 +95,10 @@
     <string name="text_line_all">Whole line chosen</string>
     <string name="settings">Settings</string>
     <string name="settings_style">Style</string>
-    <string name="style_sheet">Sheet</string>
+    <string name="style_sheet">Black Sketch</string>
     <string name="style_sheet_desc">Hand-drawn with a white pencil on black</string>
-    <string name="style_glass">Glass</string>
-    <string name="style_glass_desc">Black glass, like Black Glass</string>
+    <string name="style_glass">Black Glass</string>
+    <string name="style_glass_desc">Black glass with soft highlights</string>
     <string name="settings_language">Language</string>
     <string name="lang_system">As on the phone</string>
     <string name="label_icon_replace">Replace the icon</string>
@@ -194,5 +194,5 @@
     <string name="help_print_t">Printing and labels</string>
     <string name="help_print">• The size button at the top — label size: ready ones, your own or “Phone screen”.\n• “Add”: code, text, icon or template.\n• Tap an item — choose it; its settings appear under the label.\n• Drag — move; two fingers — size and turn.\n• Double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the centre and edges, never overlap and never leave the label.\n• “Print” — to the printer at the label size; “Share” — PDF or picture, or save to the gallery.\n• Your layout can be saved as a template.</string>
     <string name="help_settings_t">Settings and backup</string>
-    <string name="help_settings">• The gear at the top right — style (“Sheet” or “Glass”) and language.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
+    <string name="help_settings">• The gear at the top right — style (Black Glass or Black Sketch) and language.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
 </resources>

@@ -572,14 +572,16 @@ private fun PageTabs(position: () -> Float, selected: () -> Int, onSettings: () 
                     fontSize = 20.sp,
                     modifier = Modifier
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { haptics.tap(); onPick(i) }
+                        // Підкреслення — ПОЗА шаром прозорості назви: напівпрозорий шар обрізається по межах тексту, і
+                        // лінія під ним (трохи нижче межі) зникала посередині, поки сторінки їдуть.
+                        .drawBehind {
+                            val a = shown.value
+                            if (a > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f * a, progress = grow.value)
+                        }
                         // Яскравість назви — плавно, поки сторінки їдуть.
                         .graphicsLayer {
                             val near = 1f - kotlin.math.abs(position() - i).coerceIn(0f, 1f)
                             alpha = 0.5f + 0.5f * near
-                        }
-                        .drawBehind {
-                            val a = shown.value
-                            if (a > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f * a, progress = grow.value)
                         }
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 )

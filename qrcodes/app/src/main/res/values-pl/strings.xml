@@ -93,10 +93,10 @@
     <string name="text_line_all">Wybrano cały wiersz</string>
     <string name="settings">Ustawienia</string>
     <string name="settings_style">Styl</string>
-    <string name="style_sheet">Arkusz</string>
+    <string name="style_sheet">Black Sketch</string>
     <string name="style_sheet_desc">Odręcznie białym ołówkiem na czarnym</string>
-    <string name="style_glass">Szkło</string>
-    <string name="style_glass_desc">Czarne szkło, jak w Black Glass</string>
+    <string name="style_glass">Black Glass</string>
+    <string name="style_glass_desc">Czarne szkło z miękkimi refleksami</string>
     <string name="settings_language">Język</string>
     <string name="lang_system">Jak w telefonie</string>
     <string name="label_icon_replace">Zamień ikonę</string>
@@ -192,5 +192,5 @@
     <string name="help_print_t">Druk i etykiety</string>
     <string name="help_print">• Przycisk rozmiaru u góry — rozmiar etykiety: gotowe, własny lub „Ekran telefonu”.\n• „Dodaj”: kod, tekst, ikona lub szablon.\n• Dotknij elementu — wybierz; pod etykietą pojawią się jego ustawienia.\n• Przeciągnij — przesuń; dwa palce — rozmiar i obrót.\n• Dwa dotknięcia — zmień tekst, podpis lub ikonę.\n• Przeciągnij na „Usuń” u góry — usuń.\n• Elementy przyciągają się do środka i krawędzi, nie nachodzą na siebie i nie wychodzą poza etykietę.\n• „Drukuj” — na drukarkę w rozmiarze etykiety; „Udostępnij” — PDF lub obraz, albo zapisz w galerii.\n• Swój układ można zapisać jako szablon.</string>
     <string name="help_settings_t">Ustawienia i kopia</string>
-    <string name="help_settings">• Zębatka w prawym górnym rogu — styl („Arkusz” lub „Szkło”) i język.\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
+    <string name="help_settings">• Zębatka w prawym górnym rogu — styl (Black Glass lub Black Sketch) i język.\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
 </resources>
