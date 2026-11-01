@@ -80,6 +80,8 @@ import com.blacklaunch.qrcodes.ui.SheetInk
 import com.blacklaunch.qrcodes.ui.SheetTextField
 import com.blacklaunch.qrcodes.ui.Tone
 import com.blacklaunch.qrcodes.ui.MenuRow
+import com.blacklaunch.qrcodes.ui.RoundButton
+import androidx.compose.animation.togetherWith
 import com.blacklaunch.qrcodes.ui.OPEN_MS
 import com.blacklaunch.qrcodes.ui.CLOSE_MS
 import androidx.compose.foundation.gestures.calculateRotation
@@ -167,6 +169,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     // Не null — вибір коду замінює цей код на аркуші, а не додає новий.
     var replaceFor by remember { mutableStateOf<Element.Qr?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var zoneRect by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    // Нижня панель: «Додати» чи «Змінити» (вибрав елемент — сама перемикається на «Змінити»).
+    var editTab by remember { mutableStateOf(false) }
+    var bgMenu by remember { mutableStateOf(false) }
 
     val selected = design.elements.firstOrNull { it.id == selectedId }
     // Кому «Рамка» міняє рамку коду: вибраному коду, а якщо код один — йому.
@@ -177,6 +183,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         val qr = selected as? Element.Qr
         prefs.save(LabelSettings(design.size, qr?.takeIf { !it.barcode }?.side ?: defaults.qrMm, 1, qr?.caption ?: defaults.caption))
     }
+    // Вибрав елемент на наклейці — панель сама показує «Змінити».
+    LaunchedEffect(selectedId) { if (selectedId != null) editTab = true }
     BackHandler(onBack = onClose)
 
     fun pushHistory(old: LabelDesign) {
@@ -233,27 +241,43 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val shareTitle = stringResource(R.string.share)
     val codes = design.elements.filterIsInstance<Element.Qr>()
 
-    val dialogOpen = templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    // Фон: своє зображення з галереї — копіюємо в пам'ять програми (щоб не зникло, коли фото видалять).
+    val bgFailed = stringResource(R.string.label_bg_failed)
+    val pickImage = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            busy = true
+            scope.launch {
+                val path = withContext(Dispatchers.IO) { copyBackground(context, uri) }
+                busy = false
+                if (path != null) commit(design.copy(background = path)) else onMessage(bgFailed)
+            }
+        }
+    }
+    fun pickBackground() {
+        pickImage.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    val dialogOpen = bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
-    Column(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
+    Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur)) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clip(CircleShape).clickable { haptics.tap(); onClose() }, contentAlignment = Alignment.Center) {
                 GlyphIcon(Glyph.Back, stringResource(R.string.back))
             }
-            // Назва поступається місцем кнопці розміру: один рядок, відступ від кнопки, за потреби — «…».
             Text(
-                stringResource(R.string.label_title),
+                stringResource(R.string.label_header),
                 color = Oled.TextPrimary,
                 fontSize = 20.sp,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 4.dp, end = 12.dp).weight(1f),
+                modifier = Modifier.padding(start = 4.dp, end = 8.dp).weight(1f),
             )
-            SheetButton(
-                if (design.size.screen) stringResource(R.string.label_screen) else "${LabelRenderer.fmt(design.size.widthMm)}×${LabelRenderer.fmt(design.size.heightMm)} mm",
-                { sizeOpen = true },
-                modifier = Modifier.padding(end = 8.dp),
-            )
+            // Дві головні дії — круглими кнопками в шапці, як у всій програмі: поділитися й надрукувати (синя — головна).
+            RoundButton(Glyph.Share, stringResource(R.string.share), { shareOpen = true }, enabled = !busy && design.elements.isNotEmpty(), size = 46.dp)
+            Spacer(Modifier.width(10.dp))
+            RoundButton(Glyph.Print, stringResource(R.string.print), { renderer.print(context, jobName, design, 1) }, ink = Oled.Confirm, enabled = design.elements.isNotEmpty(), size = 46.dp)
+            Spacer(Modifier.width(8.dp))
         }
 
         // Наклейка.
@@ -266,7 +290,6 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             val h = with(density) { (design.size.heightMm * k).toDp() }
             val current by rememberUpdatedState(design)
             var canvasOrigin by remember { mutableStateOf(Offset.Zero) }
-            var zoneRect by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
             var lastTap by remember { mutableStateOf(0L to -1) }
             Canvas(
                 Modifier
@@ -401,12 +424,106 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     }
                 }
             }
-            // Плашка «Видалити» вгорі — лише поки тягнеш (як «Прибрати» в Black Glass).
+        }
+
+        // Керування: розмір аркуша й дві вкладки — «Додати» (що поставити на наклейку) і «Змінити» (вибране або весь аркуш).
+        Column(Modifier.fillMaxWidth().heightIn(max = 430.dp).bouncyScroll().padding(horizontal = 16.dp, vertical = 4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_tab_add), !editTab) { editTab = false }
+                Spacer(Modifier.width(8.dp))
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_tab_edit), editTab) { editTab = true }
+                Spacer(Modifier.weight(1f))
+                SheetButton(
+                    if (design.size.screen) stringResource(R.string.label_screen) else "${LabelRenderer.fmt(design.size.widthMm)}×${LabelRenderer.fmt(design.size.heightMm)} mm",
+                    { sizeOpen = true },
+                    compact = true,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            Spacer(Modifier.size(10.dp))
+            androidx.compose.animation.AnimatedContent(
+                targetState = editTab,
+                transitionSpec = {
+                    androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220, delayMillis = 60)) togetherWith
+                        androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150))
+                },
+                label = "labelTab",
+            ) { edit ->
+                if (!edit) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Tool(Glyph.ScanQr, stringResource(R.string.label_add_code), Modifier.weight(1f)) { replaceFor = null; pickerOpen = true }
+                        Tool(Glyph.TextT, stringResource(R.string.label_add_text), Modifier.weight(1f)) { textNew = true }
+                        Tool(Glyph.Star, stringResource(R.string.label_add_icon), Modifier.weight(1f)) { stickerFor = null; stickerNew = true }
+                        Tool(Glyph.Gallery, stringResource(R.string.label_background), Modifier.weight(1f), on = design.background != null) {
+                            if (design.background != null) bgMenu = true else pickBackground()
+                        }
+                        Tool(Glyph.Template, stringResource(R.string.label_templates), Modifier.weight(1f)) { templatesOpen = true }
+                        Tool(Glyph.Frame, stringResource(R.string.label_frame), Modifier.weight(1f), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
+                    }
+                } else {
+                    when (val e = selected) {
+                        null -> Column {
+                            Text(
+                                stringResource(R.string.label_hint),
+                                color = Oled.TextSecondary,
+                                fontSize = 15.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            )
+                            // Нічого не вибрано — дії з усім аркушем.
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Tool(Glyph.Grid, stringResource(R.string.label_grid), Modifier.weight(1f), enabled = codes.size > 1) { commit(Arrange.grid(design, tw)) }
+                                Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = canUndo) { undo() }
+                                Tool(Glyph.Delete, stringResource(R.string.delete), Modifier.weight(1f), enabled = design.elements.isNotEmpty(), danger = true) { clearAsk = true }
+                            }
+                        }
+                        else -> SelectedPanel(
+                            element = e,
+                            design = design,
+                            renderer = renderer,
+                            onChange = ::tryChange,
+                            onCenter = {
+                                val b = e.bounds(tw)
+                                val offY = (b.top + b.bottom) / 2 - e.cy
+                                val cx = design.size.widthMm / 2
+                                val cy = design.size.heightMm / 2 - offY
+                                val placed = Placement.nearestFree(design, e, tw, cx, cy)
+                                if (placed == null) onMessage(noRoom) else commit(design.replace(placed))
+                            },
+                            onCopy = {
+                                val copy = when (e) {
+                                    is Element.Qr -> e.copy(id = design.nextId)
+                                    is Element.Text -> e.copy(id = design.nextId)
+                                    is Element.Icon -> e.copy(id = design.nextId)
+                                }
+                                // Копія — поруч з оригіналом, на вільному місці.
+                                addElement(copy, e.cx, e.cy)
+                            },
+                            onDelete = {
+                                commit(design.remove(e.id))
+                                selectedId = null
+                            },
+                            onFill = { qr -> commit(Arrange.fill(design, qr, tw)) },
+                            onEditCaption = { captionEdit = it },
+                            onEditBanner = { bannerEdit = it },
+                            onReplace = { replaceFor = it; pickerOpen = true },
+                            onReplaceIcon = { stickerFor = it },
+                            onEditText = { textEdit = it },
+                            canUndo = canUndo,
+                            onUndo = { undo() },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.size(8.dp))
+        }
+    }
+            // Плашка «Видалити» — на місці шапки, поки тягнеш (як «Прибрати» в Black Glass): не закриває верх наклейки.
             androidx.compose.animation.AnimatedVisibility(
                 visible = dragging,
                 enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(OPEN_MS)),
                 exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(CLOSE_MS)),
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 2.dp, start = 12.dp, end = 12.dp),
             ) {
                 Box(
                     Modifier
@@ -421,82 +538,21 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     Text(stringResource(R.string.delete), color = Oled.Danger, fontSize = 16.sp)
                 }
             }
-        }
+    }
 
-        // Керування.
-        Column(Modifier.fillMaxWidth().heightIn(max = 470.dp).bouncyScroll().padding(horizontal = 16.dp, vertical = 6.dp)) {
-            // Перші чотири — те, що додається на наклейку; підпис над ними, щоб це було зрозуміло.
-            Text(stringResource(R.string.label_add_title), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-            // Два рівні рядки без прокрутки вбік: що додати — і що зробити з усім аркушем (рамка, сітка, назад, очистити).
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Tool(Glyph.ScanQr, stringResource(R.string.label_add_code), Modifier.weight(1f)) { replaceFor = null; pickerOpen = true }
-                Tool(Glyph.TextT, stringResource(R.string.label_add_text), Modifier.weight(1f)) { textNew = true }
-                // Як «Рамка»: одне вікно з усіма значками — вибраний значок замінюється, інакше додається новий.
-                Tool(Glyph.Star, stringResource(R.string.label_add_icon), Modifier.weight(1f), on = selected is Element.Icon) {
-                    val icon = selected as? Element.Icon
-                    if (icon != null) stickerFor = icon else stickerNew = true
-                }
-                Tool(Glyph.Template, stringResource(R.string.label_templates), Modifier.weight(1f)) { templatesOpen = true }
+    if (bgMenu) {
+        SheetDialog(onDismissRequest = { bgMenu = false }, title = stringResource(R.string.label_background)) {
+            Column {
+                MenuRow(Glyph.Gallery, stringResource(R.string.label_bg_change), {
+                    bgMenu = false
+                    pickBackground()
+                })
+                MenuRow(Glyph.Close, stringResource(R.string.label_bg_remove), {
+                    bgMenu = false
+                    commit(design.copy(background = null))
+                })
+                Text(stringResource(R.string.label_bg_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
             }
-            Spacer(Modifier.size(6.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Tool(Glyph.Frame, stringResource(R.string.label_frame), Modifier.weight(1f), on = design.border != QrFrame.None || (frameTarget?.frame ?: QrFrame.None) != QrFrame.None) { frameOpen = true }
-                Tool(Glyph.Grid, stringResource(R.string.label_grid), Modifier.weight(1f), enabled = codes.size > 1) { commit(Arrange.grid(design, tw)) }
-                Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = canUndo) { undo() }
-                Tool(Glyph.Delete, stringResource(R.string.label_clear), Modifier.weight(1f), enabled = design.elements.isNotEmpty(), danger = true) { clearAsk = true }
-            }
-            Spacer(Modifier.size(10.dp))
-            when (val e = selected) {
-                null -> Text(
-                    stringResource(R.string.label_hint),
-                    color = Oled.TextSecondary,
-                    fontSize = 16.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                )
-                else -> SelectedPanel(
-                    element = e,
-                    design = design,
-                    renderer = renderer,
-                    onChange = ::tryChange,
-                    onCenter = {
-                        val b = e.bounds(tw)
-                        val offY = (b.top + b.bottom) / 2 - e.cy
-                        val cx = design.size.widthMm / 2
-                        val cy = design.size.heightMm / 2 - offY
-                        val placed = Placement.nearestFree(design, e, tw, cx, cy)
-                        if (placed == null) onMessage(noRoom) else commit(design.replace(placed))
-                    },
-                    onCopy = {
-                        val copy = when (e) {
-                            is Element.Qr -> e.copy(id = design.nextId)
-                            is Element.Text -> e.copy(id = design.nextId)
-                            is Element.Icon -> e.copy(id = design.nextId)
-                        }
-                        // Копія — поруч з оригіналом, на вільному місці.
-                        addElement(copy, e.cx, e.cy)
-                    },
-                    onDelete = {
-                        commit(design.remove(e.id))
-                        selectedId = null
-                    },
-                    onFill = { qr -> commit(Arrange.fill(design, qr, tw)) },
-                    onEditCaption = { captionEdit = it },
-                    onEditBanner = { bannerEdit = it },
-                    onReplace = { replaceFor = it; pickerOpen = true },
-                    scanMeDefault = scanMe,
-                    onEditText = { textEdit = it },
-                )
-            }
-            Spacer(Modifier.size(8.dp))
-        }
-        // Внизу — лише дві дії: поділитися (картинкою чи текстом коду) і надрукувати (копії — у вікні друку Android).
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
-        ) {
-            SheetButton(stringResource(R.string.share), { shareOpen = true }, enabled = !busy && design.elements.isNotEmpty())
-            SheetButton(stringResource(R.string.print), { renderer.print(context, jobName, design, 1) }, tone = Tone.Confirm, enabled = design.elements.isNotEmpty())
         }
     }
 
@@ -705,8 +761,9 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         }
     }
     captionEdit?.let { qr ->
-        TextDialog(qr.title, title = stringResource(R.string.label_edit_caption), onDismiss = { captionEdit = null }) {
-            tryChange(qr.copy(title = it, caption = true))
+        // Підпис: видно теперішній; «Скасувати» — лишається як був; стер усе й «Застосувати» — підпису немає.
+        TextDialog(if (qr.caption) qr.title else "", title = stringResource(R.string.label_caption), onDismiss = { captionEdit = null }, allowEmpty = true) {
+            tryChange(if (it.isEmpty()) qr.copy(caption = false) else qr.copy(title = it, caption = true))
             captionEdit = null
         }
     }
@@ -807,7 +864,9 @@ private fun SelectedPanel(
     onEditCaption: (Element.Qr) -> Unit,
     onEditBanner: (Element.Qr) -> Unit,
     onReplace: (Element.Qr) -> Unit,
-    scanMeDefault: String,
+    onReplaceIcon: (Element.Icon) -> Unit,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
 ) {
     val (label, min, max) = when (element) {
         is Element.Qr -> if (element.barcode) {
@@ -818,11 +877,30 @@ private fun SelectedPanel(
         is Element.Text -> Triple(R.string.label_text_size, Element.MIN_LETTERS, Element.MAX_LETTERS)
         is Element.Icon -> Triple(R.string.label_icon_size, Element.MIN_ICON, minOf(Element.MAX_ICON, minOf(design.size.widthMm, design.size.heightMm)))
     }
+    // Усі дії вибраного — круглими кнопками, рядками по п'ять (без прокрутки вбік і без окремих «табличок»).
+    val actions = buildList {
+        add(Action(Glyph.RotateLeft, R.string.label_rotate_left) { onChange(element.rotated(normalizeAngle(element.rotation - 90f, snap = true))) })
+        add(Action(Glyph.RotateRight, R.string.label_rotate_right) { onChange(element.rotated(normalizeAngle(element.rotation + 90f, snap = true))) })
+        add(Action(Glyph.Center, R.string.label_center, run = onCenter))
+        add(Action(Glyph.Copy, R.string.label_duplicate, run = onCopy))
+        when (element) {
+            is Element.Qr -> {
+                add(Action(Glyph.Grid, R.string.label_fill_short) { onFill(element) })
+                add(Action(Glyph.TextT, R.string.label_caption) { onEditCaption(element) })
+                add(Action(Glyph.ScanQr, R.string.label_replace_short) { onReplace(element) })
+                if (element.frame == QrFrame.ScanMe) add(Action(Glyph.Edit, R.string.label_banner_short) { onEditBanner(element) })
+            }
+            is Element.Text -> add(Action(Glyph.Edit, R.string.label_edit_short) { onEditText(element) })
+            is Element.Icon -> add(Action(Glyph.Star, R.string.label_replace_short) { onReplaceIcon(element) })
+        }
+        add(Action(Glyph.Undo, R.string.label_undo, enabled = canUndo, run = onUndo))
+        add(Action(Glyph.Delete, R.string.delete, danger = true, run = onDelete))
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // Розмір — одним рядком: назва зі значенням, «−», повзунок, «+».
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.widthIn(max = 120.dp)) {
-                Text(stringResource(label, element.size.roundToInt()), color = Oled.TextPrimary, fontSize = 15.sp, maxLines = 2, lineHeight = 17.sp)
+            Column(Modifier.widthIn(max = 150.dp)) {
+                Text(stringResource(label, element.size.roundToInt()), color = Oled.TextPrimary, fontSize = 14.sp, maxLines = 2, lineHeight = 16.sp)
                 if (element.rotation != 0f) Text(stringResource(R.string.label_angle, element.rotation.roundToInt()), color = Oled.TextSecondary, fontSize = 13.sp)
             }
             Spacer(Modifier.width(8.dp))
@@ -840,29 +918,19 @@ private fun SelectedPanel(
             )
             SheetButton("+", { onChange(element.resized((element.size + 1f).coerceAtMost(max))) }, compact = true, modifier = Modifier.width(40.dp))
         }
-        // Дії — круглими кнопками, рівно на всю ширину (без прокрутки вбік).
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Tool(Glyph.RotateLeft, stringResource(R.string.label_rotate_left), Modifier.weight(1f)) { onChange(element.rotated(normalizeAngle(element.rotation - 90f, snap = true))) }
-            Tool(Glyph.RotateRight, stringResource(R.string.label_rotate_right), Modifier.weight(1f)) { onChange(element.rotated(normalizeAngle(element.rotation + 90f, snap = true))) }
-            Tool(Glyph.Center, stringResource(R.string.label_center), Modifier.weight(1f), onClick = onCenter)
-            Tool(Glyph.Copy, stringResource(R.string.label_duplicate), Modifier.weight(1f), onClick = onCopy)
-            if (element is Element.Qr) Tool(Glyph.Grid, stringResource(R.string.label_fill_short), Modifier.weight(1f)) { onFill(element) }
-            if (element is Element.Text) Tool(Glyph.Edit, stringResource(R.string.label_edit_short), Modifier.weight(1f)) { onEditText(element) }
-            Tool(Glyph.Delete, stringResource(R.string.delete), Modifier.weight(1f), danger = true, onClick = onDelete)
-        }
-        when (element) {
-            is Element.Qr -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.label_caption), element.caption) { onChange(element.copy(caption = !element.caption)) }
-                SheetButton(stringResource(R.string.label_edit_caption), { onEditCaption(element) })
-                // Інший код на те саме місце (розмір, рамка, підпис лишаються).
-                SheetButton(stringResource(R.string.label_replace_code), { onReplace(element) })
-                if (element.frame == QrFrame.ScanMe) SheetButton(stringResource(R.string.label_edit_banner), { onEditBanner(element) })
+        actions.chunked(ACTIONS_PER_ROW).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                row.forEach { a -> Tool(a.glyph, stringResource(a.label), Modifier.weight(1f), enabled = a.enabled, danger = a.danger, onClick = a.run) }
+                repeat(ACTIONS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
             }
-            is Element.Icon -> Unit
-            is Element.Text -> Unit
         }
     }
 }
+
+private const val ACTIONS_PER_ROW = 5
+
+/** Дія з панелі вибраного елемента. */
+private class Action(val glyph: Glyph, val label: Int, val danger: Boolean = false, val enabled: Boolean = true, val run: () -> Unit)
 
 /**
  * Зразок — як це виглядатиме на наклейці: маленький білий клаптик, намальований тим самим кодом, що й друк.
@@ -1045,13 +1113,13 @@ private fun SizeDialog(current: LabelSize, onDismiss: () -> Unit, onApply: (Labe
 
 /** Свій текст на наклейку (шрифтом від руки). */
 @Composable
-private fun TextDialog(initial: String, title: String, onDismiss: () -> Unit, onApply: (String) -> Unit) {
+private fun TextDialog(initial: String, title: String, onDismiss: () -> Unit, allowEmpty: Boolean = false, onApply: (String) -> Unit) {
     var text by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     SheetDialog(onDismissRequest = onDismiss, title = title, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
-        SheetButton(stringResource(R.string.apply), { onApply(text.trim()) }, tone = Tone.Confirm, enabled = text.isNotBlank())
+        SheetButton(stringResource(R.string.apply), { onApply(text.trim()) }, tone = Tone.Confirm, enabled = allowEmpty || text.isNotBlank())
     }) {
         SheetTextField(text, { text = it }, stringResource(R.string.label_text_hint), focusRequester = focus)
     }
@@ -1091,3 +1159,22 @@ private fun Sticker.title(): Int = when (this) {
     Sticker.Smile -> R.string.sticker_smile
     Sticker.Heart -> R.string.sticker_heart
 }
+
+/**
+ * Копія вибраного зображення в пам'ять програми (зменшена до розумного розміру, JPEG) — шлях до файлу або null.
+ */
+private fun copyBackground(context: android.content.Context, uri: android.net.Uri): String? = runCatching {
+    val resolver = context.contentResolver
+    val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, bounds) }
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2400) sample *= 2
+    val bitmap = resolver.openInputStream(uri)?.use {
+        android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+    } ?: return null
+    val dir = java.io.File(context.filesDir, "backgrounds").apply { mkdirs() }
+    val file = java.io.File(dir, "bg_${System.currentTimeMillis()}.jpg")
+    java.io.FileOutputStream(file).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
+    bitmap.recycle()
+    file.absolutePath
+}.getOrNull()

@@ -58,6 +58,7 @@ class TemplateStore(context: Context) {
             .put("custom", d.size.custom)
             .put("screen", d.size.screen)
             .put("border", d.border.name)
+            .put("bg", d.background ?: "")
             .put("elements", JSONArray().apply { d.elements.forEach { put(elementJson(it)) } })
 
         private fun elementJson(e: Element): JSONObject {
@@ -75,6 +76,7 @@ class TemplateStore(context: Context) {
             LabelDesign(
                 size = LabelSize(o.getDouble("w").toFloat(), o.getDouble("h").toFloat(), o.optBoolean("custom"), o.optBoolean("screen")),
                 border = QrFrame.entries.firstOrNull { it.name == o.optString("border") } ?: QrFrame.None,
+                background = o.optString("bg").takeIf { it.isNotEmpty() && java.io.File(it).exists() },
                 elements = (0 until arr.length()).mapNotNull { i -> elementFrom(arr.getJSONObject(i)) },
             )
         }.getOrNull()

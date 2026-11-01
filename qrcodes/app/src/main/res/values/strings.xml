@@ -47,7 +47,6 @@
     <string name="share">Share</string>
     <string name="rename">Name</string>
     <string name="rename_hint">Your own name is shown and printed instead of the content — handy for passwords. Leave empty to use the content.</string>
-    <string name="label_title">Print and share</string>
     <string name="label_size">Label size, mm</string>
     <string name="label_width_mm">Width, mm</string>
     <string name="label_height_mm">Height, mm</string>
@@ -60,7 +59,7 @@
     <string name="label_add_text">Text</string>
     <string name="label_add_icon">Icon</string>
     <string name="label_grid">Grid</string>
-    <string name="label_hint">Tap — choose, drag — move, two fingers — size and turn. All gestures — in Settings → “How to use”.</string>
+    <string name="label_hint">Tap an item on the label — its actions appear here. Below — actions for the whole label.</string>
     <string name="label_text_size">Letters: %1$d mm</string>
     <string name="label_icon_size">Icon: %1$d mm</string>
     <string name="label_frame_none">No frame</string>
@@ -79,7 +78,6 @@
     <string name="label_clear">Clear</string>
     <string name="label_clear_title">Clear the label?</string>
     <string name="label_clear_text">Everything on the label will be removed. “Undo” brings it back.</string>
-    <string name="label_edit_caption">Caption text</string>
     <string name="label_edit_banner">Banner text</string>
     <string name="share_label_image">As a picture — the whole label</string>
     <string name="share_code_text">As text — only what the code contains</string>
@@ -177,7 +175,6 @@
     <string name="folder_drop_new">New folder</string>
     <string name="folder_drop_into">Into the folder</string>
     <string name="search_found">Found: %1$d</string>
-    <string name="label_add_title">Add</string>
     <string name="help">How to use</string>
     <string name="help_back">Back</string>
     <string name="help_create_t">Create a code</string>
@@ -191,7 +188,7 @@
     <string name="help_fav_t">Favourites</string>
     <string name="help_fav">• The star in a code’s menu — add to favourites.\n• “Favourites” is the first page, codes in a grid.\n• Hold and drag — change the order.\n• Drop onto the bar at the top — remove from favourites (with “Undo”).</string>
     <string name="help_print_t">Printing and labels</string>
-    <string name="help_print">• The size button at the top — label size: ready ones, your own or “Phone screen”.\n• “Add”: code, text, icon or template.\n• Tap an item — choose it; its settings appear under the label.\n• Drag — move; two fingers — size and turn.\n• Double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the centre and edges, never overlap and never leave the label.\n• “Print” — to the printer at the label size; “Share” — PDF or picture, or save to the gallery.\n• Your layout, codes included, can be saved as a template and opened ready later. A chosen code can be swapped for another (“Replace code”).\n• A dragged item snaps to the edges and centres of others, and equal gaps are shown as marked segments.</string>
+    <string name="help_print">• Top right — “Share” (picture, gallery, text) and the blue “Print”.\n• Under the label: the “Add” and “Edit” tabs, and on the right the label size (ready ones, your own, “Phone screen”).\n• “Add”: code, text, icon, backdrop (your own picture — codes sit on a solid pad), template, frame.\n• Tap an item — it is chosen and “Edit” opens: size, turn, centre, copy, caption, replace, undo, delete.\n• Nothing chosen — “Edit” works on the whole label: grid, undo, delete everything (it asks first).\n• Drag — move; two fingers — size and turn; double tap — edit the text, caption or icon.\n• Drag onto “Delete” at the top — remove.\n• Items snap to the edges and centres of the label and of other items, equal gaps are shown as marked segments; nothing overlaps or leaves the label.\n• Your layout, codes included, can be saved as a template and opened ready later.</string>
     <string name="help_settings_t">Settings and backup</string>
     <string name="help_settings">• The gear at the top right — style (Black Glass or Black Sketch) and language.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
     <string name="label_replace_code">Replace code</string>
@@ -202,4 +199,14 @@
     <string name="label_frame_bold">Bold</string>
     <string name="label_frame_ticket">Ticket</string>
     <string name="label_frame_dots">Dots</string>
+    <string name="label_header">Label</string>
+    <string name="label_tab_add">Add</string>
+    <string name="label_tab_edit">Edit</string>
+    <string name="label_background">Backdrop</string>
+    <string name="label_bg_change">Another picture</string>
+    <string name="label_bg_remove">Remove backdrop</string>
+    <string name="label_bg_hint">Codes sit on a solid pad, so the picture under them never gets in the scanner’s way.</string>
+    <string name="label_bg_failed">Couldn’t open the picture</string>
+    <string name="label_replace_short">Replace</string>
+    <string name="label_banner_short">Banner</string>
 </resources>

@@ -42,7 +42,14 @@ import java.io.FileOutputStream
  * Кольори наклейки. І на екрані, і на папері — біле тло й чорне чорнило: на чорному екрані аркуш видно цілком, з
  * чіткими межами, і він виглядає точно так, як надрукується (так читає будь-який сканер і друкує Zebra).
  */
-data class LabelPalette(val paper: Int, val ink: Int, val qrDark: Int, val qrTile: Int? = null) {
+data class LabelPalette(
+    val paper: Int,
+    val ink: Int,
+    val qrDark: Int,
+    val qrTile: Int? = null,
+    /** Суцільна підкладка під усім блоком коду (коли на тлі зображення) — щоб картинка не заважала сканеру. */
+    val blockFill: Int? = null,
+) {
     companion object {
         /**
          * «Екран телефону»: чорне тло, білі тексти й значки, код — на білій картці. На іншому телефоні галерея додасть
@@ -108,7 +115,16 @@ class LabelRenderer(private val hand: Typeface) {
         canvas.save()
         canvas.clipRect(0f, 0f, w, h)
         canvas.drawRect(0f, 0f, w, h, Paint().apply { color = palette.paper })
-        drawContent(canvas, pxPerMm, design, palette)
+        val bg = design.background?.let { loadBackground(it) }
+        if (bg != null) {
+            // Зображення заповнює весь аркуш (обрізається по краях, без розтягування).
+            val scale = maxOf(w / bg.width, h / bg.height)
+            val dw = bg.width * scale
+            val dh = bg.height * scale
+            val dst = RectF((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f)
+            canvas.drawBitmap(bg, null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+        }
+        drawContent(canvas, pxPerMm, design, if (bg != null) palette.copy(blockFill = palette.paper) else palette)
         canvas.restore()
     }
 
@@ -149,6 +165,11 @@ class LabelRenderer(private val hand: Typeface) {
         val side = e.side * k
         val symbolH = symbolHeight(e) * k
         val dark = Paint().apply { color = palette.qrDark; style = Paint.Style.FILL }
+        palette.blockFill?.let { fill ->
+            // На тлі-зображенні: увесь блок коду (з рамкою й підписом) — на суцільній підкладці з невеликим полем.
+            val m = maxOf(pad, 1f) * k
+            canvas.drawRoundRect(RectF(blockLeft - m * 0.5f, blockTop - m * 0.5f, blockLeft + blockW + m * 0.5f, blockTop + blockH + m * 0.5f), m, m, Paint().apply { color = fill; isAntiAlias = true })
+        }
         palette.qrTile?.let { tile ->
             // Біла картка під кодом (на чорному тлі) — з полем навколо, щоб сканер бачив межі коду.
             val m = side * 0.06f
@@ -333,6 +354,22 @@ class LabelRenderer(private val hand: Typeface) {
         canvas.drawPath(taperedPath(points, widthMm * k).asAndroidPath(), ink)
     }
 
+    /** Тло-зображення: декодується один раз (зменшене до розумного розміру), далі — з пам'яті. */
+    private fun loadBackground(path: String): Bitmap? = synchronized(backgrounds) {
+        backgrounds[path] ?: runCatching {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(path, bounds)
+            var sample = 1
+            while (maxOf(bounds.outWidth, bounds.outHeight) / sample > BG_MAX_PX) sample *= 2
+            android.graphics.BitmapFactory.decodeFile(path, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+        }.getOrNull()?.also {
+            backgrounds.clear()
+            backgrounds[path] = it
+        }
+    }
+
+    private val backgrounds = HashMap<String, Bitmap>()
+
     // ——— друк і «Поділитися» ———
 
     /** PDF: [copies] однакових наклейок, кожна — окрема сторінка точного розміру. */
@@ -493,6 +530,7 @@ class LabelRenderer(private val hand: Typeface) {
 
         private const val PDF_POINTS_PER_MM = 72f / 25.4f
         private const val PNG_PX_PER_MM = 300f / 25.4f
+        private const val BG_MAX_PX = 2048
 
         /** Шрифт від руки дрібніший на око (як у «Аркуші») — підпис трохи більший. */
         private const val HAND_SCALE = 1.25f

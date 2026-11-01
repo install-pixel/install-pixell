@@ -45,7 +45,6 @@
     <string name="share">Поділитися</string>
     <string name="rename">Назва</string>
     <string name="rename_hint">Своя назва показується й друкується замість змісту — зручно для паролів. Порожньо — підписом буде зміст.</string>
-    <string name="label_title">Друк і поділитися</string>
     <string name="label_size">Розмір наклейки, мм</string>
     <string name="label_width_mm">Ширина, мм</string>
     <string name="label_height_mm">Висота, мм</string>
@@ -58,7 +57,7 @@
     <string name="label_add_text">Текст</string>
     <string name="label_add_icon">Значок</string>
     <string name="label_grid">Сіткою</string>
-    <string name="label_hint">Торкнись — вибрати, тягни — пересунути, двома пальцями — розмір і поворот. Усі жести — у Налаштуваннях → «Як користуватися».</string>
+    <string name="label_hint">Торкнись елемента на наклейці — тут з\'являться його дії. Нижче — дії з усім аркушем.</string>
     <string name="label_text_size">Літери: %1$d мм</string>
     <string name="label_icon_size">Значок: %1$d мм</string>
     <string name="label_frame_none">Без рамки</string>
@@ -77,7 +76,6 @@
     <string name="label_clear">Очистити</string>
     <string name="label_clear_title">Очистити наклейку?</string>
     <string name="label_clear_text">З наклейки зникне все. «Крок назад» поверне.</string>
-    <string name="label_edit_caption">Текст підпису</string>
     <string name="label_edit_banner">Напис на плашці</string>
     <string name="share_label_image">Картинкою — увесь аркуш, як надрукується</string>
     <string name="share_code_text">Текстом — лише те, що закодовано</string>
@@ -175,7 +173,6 @@
     <string name="folder_drop_new">Нова папка</string>
     <string name="folder_drop_into">У папку</string>
     <string name="search_found">Знайдено: %1$d</string>
-    <string name="label_add_title">Додати</string>
     <string name="help">Як користуватися</string>
     <string name="help_back">Назад</string>
     <string name="help_create_t">Створити код</string>
@@ -189,7 +186,7 @@
     <string name="help_fav_t">Вибране</string>
     <string name="help_fav">• Зірочка в меню коду — додати у вибране.\n• «Вибране» — перша сторінка, коди сіткою.\n• Затисни й веди — міняєш порядок.\n• Кинь на плашку вгорі — прибрати з вибраного (є «Повернути»).</string>
     <string name="help_print_t">Друк і наклейки</string>
-    <string name="help_print">• Кнопка розміру вгорі — розмір наклейки: готові, свій або «Екран телефону».\n• «Додати»: код, текст, значок або шаблон.\n• Торкнись елемента — вибрати; під наклейкою з’являться його налаштування.\n• Тягни — пересунути; двома пальцями — розмір і поворот.\n• Два дотики — змінити текст, підпис чи значок.\n• Тягни на «Видалити» вгорі — прибрати.\n• Елементи прилипають до центру й країв, не налазять один на одного й не виходять за аркуш.\n• «Друк» — на принтер у розмірі наклейки; «Поділитися» — PDF чи картинкою, або зберегти в галерею.\n• Свою розкладку разом із кодами можна зберегти як шаблон і потім відкрити готовою. Вибраний код можна замінити іншим («Замінити код»).\n• Тягнеш елемент — він прилипає до країв і центрів інших, а рівні проміжки показуються відрізками з рисочками.</string>
+    <string name="help_print">• Угорі праворуч — «Поділитися» (картинкою, у галерею, текстом) і синя «Друк».\n• Під наклейкою: вкладки «Додати» і «Змінити», праворуч — розмір наклейки (готові, свій, «Екран телефону»).\n• «Додати»: код, текст, значок, фон (своє зображення — коди лягають на суцільну підкладку), шаблон, рамка.\n• Торкнись елемента — він вибраний, відкривається «Змінити»: розмір, поворот, по центру, копія, підпис, замінити, крок назад, видалити.\n• Нічого не вибрано — «Змінити» діє на весь аркуш: сіткою, крок назад, видалити все (з питанням).\n• Тягни — пересунути; двома пальцями — розмір і поворот; два дотики — змінити текст, підпис чи значок.\n• Тягни на «Видалити» вгорі — прибрати.\n• Елементи прилипають до країв і центрів аркуша та інших елементів, рівні проміжки показуються відрізками з рисочками; нічого не налазить і не виходить за аркуш.\n• Свою розкладку разом із кодами можна зберегти як шаблон і потім відкрити готовою.</string>
     <string name="help_settings_t">Налаштування й копія</string>
     <string name="help_settings">• Шестірня вгорі праворуч — стиль (Black Glass чи Black Sketch) і мова.\n• «Експорт» — усі коди, папки й шаблони одним файлом, наприклад для нового телефона.\n• «Імпорт» — повернути з файлу; додається лише нове.\n• Програма працює без інтернету: нічого нікуди не надсилає.</string>
     <string name="label_replace_code">Замінити код</string>
@@ -200,4 +197,14 @@
     <string name="label_frame_bold">Товста</string>
     <string name="label_frame_ticket">Квиток</string>
     <string name="label_frame_dots">Крапки</string>
+    <string name="label_header">Наклейка</string>
+    <string name="label_tab_add">Додати</string>
+    <string name="label_tab_edit">Змінити</string>
+    <string name="label_background">Фон</string>
+    <string name="label_bg_change">Інше зображення</string>
+    <string name="label_bg_remove">Прибрати фон</string>
+    <string name="label_bg_hint">Коди лежать на суцільній підкладці — зображення під ними не заважає сканеру.</string>
+    <string name="label_bg_failed">Не вдалося відкрити зображення</string>
+    <string name="label_replace_short">Замінити</string>
+    <string name="label_banner_short">Плашка</string>
 </resources>

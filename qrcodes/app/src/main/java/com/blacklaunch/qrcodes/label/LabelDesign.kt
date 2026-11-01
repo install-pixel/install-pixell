@@ -201,6 +201,8 @@ data class LabelDesign(
     val elements: List<Element> = emptyList(),
     /** Рамка по краю всього аркуша (ті самі стилі, що й у коду, крім «Скануй мене»). */
     val border: QrFrame = QrFrame.None,
+    /** Своє зображення на тлі (файл у пам'яті програми) або null. Коди лежать на суцільній підкладці поверх нього. */
+    val background: String? = null,
 ) {
     val nextId: Int get() = (elements.maxOfOrNull { it.id } ?: 0) + 1
 

@@ -45,7 +45,6 @@
     <string name="share">Udostępnij</string>
     <string name="rename">Nazwa</string>
     <string name="rename_hint">Własna nazwa jest pokazywana i drukowana zamiast treści — wygodne dla haseł. Puste — podpisem będzie treść.</string>
-    <string name="label_title">Drukuj i udostępnij</string>
     <string name="label_size">Rozmiar etykiety, mm</string>
     <string name="label_width_mm">Szerokość, mm</string>
     <string name="label_height_mm">Wysokość, mm</string>
@@ -58,7 +57,7 @@
     <string name="label_add_text">Tekst</string>
     <string name="label_add_icon">Ikona</string>
     <string name="label_grid">Siatka</string>
-    <string name="label_hint">Dotknij — wybierz, przeciągnij — przesuń, dwa palce — rozmiar i obrót. Wszystkie gesty — w Ustawieniach → „Jak używać”.</string>
+    <string name="label_hint">Dotknij elementu na etykiecie — tu pojawią się jego działania. Niżej — działania na całej etykiecie.</string>
     <string name="label_text_size">Litery: %1$d mm</string>
     <string name="label_icon_size">Ikona: %1$d mm</string>
     <string name="label_frame_none">Bez ramki</string>
@@ -77,7 +76,6 @@
     <string name="label_clear">Wyczyść</string>
     <string name="label_clear_title">Wyczyścić etykietę?</string>
     <string name="label_clear_text">Z etykiety zniknie wszystko. „Cofnij” przywróci.</string>
-    <string name="label_edit_caption">Tekst podpisu</string>
     <string name="label_edit_banner">Napis na pasku</string>
     <string name="share_label_image">Jako obraz — cała etykieta</string>
     <string name="share_code_text">Jako tekst — tylko zawartość kodu</string>
@@ -175,7 +173,6 @@
     <string name="folder_drop_new">Nowy folder</string>
     <string name="folder_drop_into">Do folderu</string>
     <string name="search_found">Znaleziono: %1$d</string>
-    <string name="label_add_title">Dodaj</string>
     <string name="help">Jak używać</string>
     <string name="help_back">Wstecz</string>
     <string name="help_create_t">Utwórz kod</string>
@@ -189,7 +186,7 @@
     <string name="help_fav_t">Ulubione</string>
     <string name="help_fav">• Gwiazdka w menu kodu — dodaj do ulubionych.\n• „Ulubione” — pierwsza strona, kody w siatce.\n• Przytrzymaj i prowadź — zmieniasz kolejność.\n• Upuść na pasek u góry — usuń z ulubionych (jest „Cofnij”).</string>
     <string name="help_print_t">Druk i etykiety</string>
-    <string name="help_print">• Przycisk rozmiaru u góry — rozmiar etykiety: gotowe, własny lub „Ekran telefonu”.\n• „Dodaj”: kod, tekst, ikona lub szablon.\n• Dotknij elementu — wybierz; pod etykietą pojawią się jego ustawienia.\n• Przeciągnij — przesuń; dwa palce — rozmiar i obrót.\n• Dwa dotknięcia — zmień tekst, podpis lub ikonę.\n• Przeciągnij na „Usuń” u góry — usuń.\n• Elementy przyciągają się do środka i krawędzi, nie nachodzą na siebie i nie wychodzą poza etykietę.\n• „Drukuj” — na drukarkę w rozmiarze etykiety; „Udostępnij” — PDF lub obraz, albo zapisz w galerii.\n• Swój układ razem z kodami można zapisać jako szablon i potem otworzyć gotowy. Wybrany kod można zamienić na inny („Zamień kod”).\n• Przeciągany element przyciąga się do krawędzi i środków innych, a równe odstępy pokazują odcinki z kreskami.</string>
+    <string name="help_print">• W prawym górnym rogu — „Udostępnij” (obraz, galeria, tekst) i niebieskie „Drukuj”.\n• Pod etykietą: karty „Dodaj” i „Zmień”, po prawej — rozmiar etykiety (gotowe, własny, „Ekran telefonu”).\n• „Dodaj”: kod, tekst, ikona, tło (własny obraz — kody leżą na jednolitym podkładzie), szablon, ramka.\n• Dotknij elementu — jest wybrany, otwiera się „Zmień”: rozmiar, obrót, na środek, kopia, podpis, zamień, cofnij, usuń.\n• Nic nie wybrano — „Zmień” działa na całą etykietę: siatka, cofnij, usuń wszystko (z pytaniem).\n• Przeciągnij — przesuń; dwa palce — rozmiar i obrót; dwa dotknięcia — zmień tekst, podpis lub ikonę.\n• Przeciągnij na „Usuń” u góry — usuń.\n• Elementy przyciągają się do krawędzi i środków etykiety oraz innych elementów, równe odstępy pokazują odcinki z kreskami; nic nie nachodzi na siebie ani nie wychodzi poza etykietę.\n• Swój układ razem z kodami można zapisać jako szablon i potem otworzyć gotowy.</string>
     <string name="help_settings_t">Ustawienia i kopia</string>
     <string name="help_settings">• Zębatka w prawym górnym rogu — styl (Black Glass lub Black Sketch) i język.\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
     <string name="label_replace_code">Zamień kod</string>
@@ -200,4 +197,14 @@
     <string name="label_frame_bold">Gruba</string>
     <string name="label_frame_ticket">Bilet</string>
     <string name="label_frame_dots">Kropki</string>
+    <string name="label_header">Etykieta</string>
+    <string name="label_tab_add">Dodaj</string>
+    <string name="label_tab_edit">Zmień</string>
+    <string name="label_background">Tło</string>
+    <string name="label_bg_change">Inny obraz</string>
+    <string name="label_bg_remove">Usuń tło</string>
+    <string name="label_bg_hint">Kody leżą na jednolitym podkładzie — obraz pod nimi nie przeszkadza skanerowi.</string>
+    <string name="label_bg_failed">Nie udało się otworzyć obrazu</string>
+    <string name="label_replace_short">Zamień</string>
+    <string name="label_banner_short">Pasek</string>
 </resources>
