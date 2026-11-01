@@ -353,30 +353,25 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
         }
         Box(
             Modifier
-                .graphicsLayer {
-                    translationX = offset.value
-                    // Поки тягнеш — рядок трохи тьмяніє (разом із рухом).
-                    alpha = 1f - 0.35f * (-offset.value / (width * DELETE_SWIPE)).coerceIn(0f, 1f)
-                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                }
-                // Правий край рядка тане, щойно рядок зрушив (той самий м'який перехід, що в списку).
+                .graphicsLayer { translationX = offset.value }
+                // Рядок лишається непрозорим (нічого не просвічує): краї й увесь рядок затемнюються в чорне разом із
+                // рухом — зірочка й текст біля краю «зафарбовуються», а не стають прозорими.
                 .drawWithContent {
                     drawContent()
                     val moved = -offset.value
                     if (moved > 0.5f) {
+                        val progress = (moved / (width * DELETE_SWIPE)).coerceIn(0f, 1f)
                         val f = minOf(fade, moved * 1.5f)
-                        // Тане правий край (за ним проявляється «Видалити») і лівий — там, де рядок виїжджає за край
-                        // списку (інакше він обрізався б рівною лінією). Той самий м'який перехід, що й у списку.
-                        val left = moved
+                        drawRect(Color.Black.copy(alpha = 0.35f * progress))
                         drawRect(
                             Brush.horizontalGradient(
-                                0f to Color.Transparent,
-                                (left / size.width).coerceIn(0f, 1f) to Color.Transparent,
-                                ((left + f) / size.width).coerceIn(0f, 1f) to Color.Black,
-                                ((size.width - f) / size.width).coerceIn(0f, 1f) to Color.Black,
-                                1f to Color.Transparent,
+                                // Лівий край — там, де рядок зараз виходить за край списку.
+                                0f to Color.Black,
+                                (moved / size.width).coerceIn(0f, 1f) to Color.Black,
+                                ((moved + f) / size.width).coerceIn(0f, 1f) to Color.Transparent,
+                                ((size.width - f) / size.width).coerceIn(0f, 1f) to Color.Transparent,
+                                1f to Color.Black,
                             ),
-                            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
                         )
                     }
                 }
