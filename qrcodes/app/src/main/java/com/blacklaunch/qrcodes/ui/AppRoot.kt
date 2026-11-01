@@ -565,7 +565,7 @@ private fun PageTabs(position: () -> Float, onSettings: () -> Unit, onPick: (Int
                         .drawBehind {
                             val near = 1f - kotlin.math.abs(position() - i).coerceIn(0f, 1f)
                             // Підкреслення домальовується від початку слова до кінця (і так само «стирається» назад).
-                            if (near > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f * (0.4f + 0.6f * near), progress = near)
+                            if (near > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f, progress = near)
                         }
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 )

@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
@@ -298,8 +299,17 @@ internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int,
         Offset(to, y + sin(seed * 0.7f + 2f) * wob),
         steps = 48,
     )
-    val drawn = if (p >= 1f) points else points.take((points.size * p).toInt().coerceAtLeast(2))
-    drawPath(taperedPath(drawn, 2.2.dp.toPx()), ink.copy(alpha = alpha))
+    // Лінія завжди повна за формою (загострена на обох кінцях), а видно лише її частину від початку до [progress]:
+    // так вона «пишеться» зліва направо. (Якщо різати саму лінію, загострені кінці ховаються — здається, що вона
+    // росте з обох боків.)
+    val path = taperedPath(points, 2.2.dp.toPx())
+    if (p >= 1f) {
+        drawPath(path, ink.copy(alpha = alpha))
+    } else {
+        clipRect(left = from - 4.dp.toPx(), top = 0f, right = from + (to - from) * p, bottom = size.height + 8.dp.toPx()) {
+            drawPath(path, ink.copy(alpha = alpha))
+        }
+    }
 }
 
 /** Короткий штрих олівцем від [a] до [b]: ледь вигнутий, загострений на кінцях. */

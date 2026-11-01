@@ -39,6 +39,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
@@ -496,7 +499,24 @@ fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, 
         modifier
             .fillMaxWidth()
             .heightIn(min = NOTICE_HEIGHT)
-            .background(Oled.Black.copy(alpha = 0.92f), RoundedCornerShape(NOTICE_HEIGHT / 2))
+            // М'яка темна «тінь» довкола: те, що під сповіщенням (кнопки, заголовок), плавно притемнюється до його краю,
+            // тож плашка лежить зверху, а не «наліплена» на чужі елементи.
+            .drawBehind {
+                // Розмиту тінь апаратне малювання вміє з Android 9; на старіших — без неї.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) drawIntoCanvas { canvas ->
+                    val halo = NOTICE_HALO.toPx()
+                    val paint = android.graphics.Paint().apply {
+                        isAntiAlias = true
+                        color = android.graphics.Color.BLACK
+                        alpha = 235
+                        maskFilter = android.graphics.BlurMaskFilter(halo, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                    }
+                    val grow = halo * 0.6f
+                    val r = size.height / 2 + grow
+                    canvas.nativeCanvas.drawRoundRect(-grow, -grow, size.width + grow, size.height + grow, r, r, paint)
+                }
+            }
+            .background(Oled.Black, RoundedCornerShape(NOTICE_HEIGHT / 2))
             .pencilFrame(NOTICE_HEIGHT / 2, seed = 17)
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -519,6 +539,7 @@ fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, 
 }
 
 private val NOTICE_HEIGHT = 56.dp
+private val NOTICE_HALO = 22.dp
 
 /** Місце сповіщень — одне на всю програму: угорі, під рядком стану. */
 fun Modifier.noticePlace(): Modifier = statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp)
