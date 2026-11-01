@@ -231,7 +231,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         Column(Modifier.fillMaxSize().backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
             // Положення сторінки (0 — «Вибране», 1 — «Створити», між ними — поки їдуть): назви вгорі міняються разом із рухом.
             val position = { pager.currentPage + pager.currentPageOffsetFraction }
-            PageTabs(position, onSettings = { settingsOpen = true }) { scope.launch { pager.animateScrollToPage(it, animationSpec = PAGE_ANIM) } }
+            PageTabs(position, selected = { pager.targetPage }, onSettings = { settingsOpen = true }) { scope.launch { pager.animateScrollToPage(it, animationSpec = PAGE_ANIM) } }
             HorizontalPager(
                 state = pager,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -546,26 +546,40 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
 /** Назви сторінок угорі: вибрана — підкреслена олівцем. Дотик — перейти. */
 @Composable
-private fun PageTabs(position: () -> Float, onSettings: () -> Unit, onPick: (Int) -> Unit) {
+private fun PageTabs(position: () -> Float, selected: () -> Int, onSettings: () -> Unit, onPick: (Int) -> Unit) {
     val haptics = LocalHaptics.current
     Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp)) {
         Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
             listOf(R.string.page_favorites, R.string.page_create).forEachIndexed { i, title ->
+                // Підкреслення — окремою анімацією, не від руху сторінок: щойно вкладку вибрано, лінія пишеться від
+                // початку слова до кінця; з попередньої вкладки — просто тане.
+                val grow = remember { androidx.compose.animation.core.Animatable(if (selected() == i) 1f else 0f) }
+                val shown = remember { androidx.compose.animation.core.Animatable(if (selected() == i) 1f else 0f) }
+                LaunchedEffect(Unit) {
+                    androidx.compose.runtime.snapshotFlow { selected() == i }.collect { on ->
+                        if (on) {
+                            shown.snapTo(1f)
+                            grow.snapTo(0f)
+                            grow.animateTo(1f, androidx.compose.animation.core.tween(UNDERLINE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        } else {
+                            shown.animateTo(0f, androidx.compose.animation.core.tween(UNDERLINE_OUT_MS))
+                        }
+                    }
+                }
                 Text(
                     stringResource(title),
                     color = Oled.TextPrimary,
                     fontSize = 20.sp,
                     modifier = Modifier
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { haptics.tap(); onPick(i) }
-                        // Наскільки ця сторінка «вибрана» (плавно, поки сторінки їдуть): яскравість назви й підкреслення.
+                        // Яскравість назви — плавно, поки сторінки їдуть.
                         .graphicsLayer {
                             val near = 1f - kotlin.math.abs(position() - i).coerceIn(0f, 1f)
                             alpha = 0.5f + 0.5f * near
                         }
                         .drawBehind {
-                            val near = 1f - kotlin.math.abs(position() - i).coerceIn(0f, 1f)
-                            // Підкреслення домальовується від початку слова до кінця (і так само «стирається» назад).
-                            if (near > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f, progress = near)
+                            val a = shown.value
+                            if (a > 0.02f) pencilStroke(size.height + 1.dp.toPx(), 0f, size.width, seed = i + 2, alpha = 0.8f * a, progress = grow.value)
                         }
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 )
@@ -585,6 +599,9 @@ private fun PageTabs(position: () -> Float, onSettings: () -> Unit, onPick: (Int
         }
     }
 }
+
+private const val UNDERLINE_MS = 420
+private const val UNDERLINE_OUT_MS = 220
 
 /**
  * Перехід між «Вибране» і «Створити» з дотику на назву: починається повільно, розганяється й так само плавно гальмує.
