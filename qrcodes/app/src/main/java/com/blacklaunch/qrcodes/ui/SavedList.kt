@@ -157,6 +157,12 @@ fun SavedList(
         var dropKey by remember { mutableStateOf<String?>(null) }
         var dropKind by remember { mutableStateOf(ListDrop.Kind.Before) }
         val current by androidx.compose.runtime.rememberUpdatedState(entries)
+        // Розмиття решти списку, поки щось тягнуть: з'являється й зникає плавно.
+        val blurUnder = androidx.compose.animation.core.animateFloatAsState(
+            if (draggingKey != null) 1f else 0f,
+            androidx.compose.animation.core.tween(if (draggingKey != null) OPEN_MS else CLOSE_MS),
+            label = "blurUnder",
+        )
         val inFolder by androidx.compose.runtime.rememberUpdatedState(openFolder != null)
 
         LazyColumn(
@@ -261,12 +267,25 @@ fun SavedList(
                             }
                         },
                 ) {
-                    when (entry) {
-                        is Entry.FolderEntry -> FolderRow(entry.folder, entry.codes.size) {
-                            haptics.tap()
-                            openFolderId = entry.folder.id
+                    // Поки тягнуть інший рядок — цей трохи розмитий (плавно), щоб той, що переноситься, і підказки
+                    // було видно чітко. Підказки «Нова папка» / синя лінія — поверх, не розмиваються.
+                    Box(
+                        Modifier.graphicsLayer {
+                            val r = if (dragged) 0f else BLUR_UNDER.toPx() * blurUnder.value
+                            renderEffect = if (r > 0.5f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                androidx.compose.ui.graphics.BlurEffect(r, r, androidx.compose.ui.graphics.TileMode.Decal)
+                            } else {
+                                null
+                            }
+                        },
+                    ) {
+                        when (entry) {
+                            is Entry.FolderEntry -> FolderRow(entry.folder, entry.codes.size) {
+                                haptics.tap()
+                                openFolderId = entry.folder.id
+                            }
+                            is Entry.CodeEntry -> SwipeRow(entry.code, actions)
                         }
-                        is Entry.CodeEntry -> SwipeRow(entry.code, actions)
                     }
                     // Код кинуть «у цей рядок»: синя підсвітка, товста рамка й напис — що саме станеться.
                     if (dropHere && dropKind == ListDrop.Kind.Into) {
@@ -413,6 +432,9 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
         }
     }
 }
+
+/** Наскільки розмиваються інші рядки, поки тягнуть один. */
+private val BLUR_UNDER = 3.dp
 
 /** Яку частку ширини треба протягнути рядок, щоб видалити. */
 private const val DELETE_SWIPE = 0.45f
