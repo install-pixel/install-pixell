@@ -841,7 +841,8 @@ private fun SampleBox(
                 onLongClick = onLongClick?.let { { haptics.longPress(); it() } },
             )
             .padding(4.dp)
-            .width(width),
+            // Підпис може бути ширшим за клаптик (довгі назви польською/англійською) — місце на два рядки.
+            .width(width + 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Canvas(
@@ -861,7 +862,17 @@ private fun SampleBox(
             drawIntoCanvas { paint(it.nativeCanvas, size.width, size.height) }
         }
         if (label != null) {
-            Text(label, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            Text(
+                label,
+                color = if (selected) Oled.TextPrimary else Oled.TextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 15.sp,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
+                overflow = TextOverflow.Ellipsis,
+                style = androidx.compose.material3.LocalTextStyle.current.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Heading, hyphens = androidx.compose.ui.text.style.Hyphens.None),
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }

@@ -133,7 +133,7 @@
     <string name="label_templates_mine">Мої</string>
     <string name="label_templates_mine_empty">Розклади наклейку як треба й збережи — наступного разу вона буде одним дотиком для будь-якого коду.</string>
     <string name="label_templates_hint">Довге натискання — видалити шаблон</string>
-    <string name="label_template_save">Зберегти цей макет як шаблон</string>
+    <string name="label_template_save">Зберегти як шаблон</string>
     <string name="label_template_saved">Шаблон збережено</string>
     <string name="label_template_deleted">Шаблон видалено</string>
     <string name="template_simple">Простий</string>
@@ -155,7 +155,7 @@
     <string name="form_wifi_wpa3_only">Лише WPA3</string>
     <string name="saved_count">Збережено: %1$d</string>
     <string name="search">Пошук</string>
-    <string name="search_hint">Пошук у збережених: назва або зміст</string>
+    <string name="search_hint">Пошук у збережених</string>
     <string name="search_none">Нічого не знайдено</string>
     <string name="folder_count">Кодів: %1$d</string>
     <string name="folder_move">У папку…</string>

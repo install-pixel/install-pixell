@@ -133,7 +133,7 @@
     <string name="label_templates_mine">Moje</string>
     <string name="label_templates_mine_empty">Ułóż etykietę po swojemu i zapisz — następnym razem będzie jednym dotknięciem dla dowolnego kodu.</string>
     <string name="label_templates_hint">Przytrzymaj — usuń szablon</string>
-    <string name="label_template_save">Zapisz ten układ jako szablon</string>
+    <string name="label_template_save">Zapisz jako szablon</string>
     <string name="label_template_saved">Szablon zapisany</string>
     <string name="label_template_deleted">Szablon usunięty</string>
     <string name="template_simple">Prosty</string>
@@ -155,7 +155,7 @@
     <string name="form_wifi_wpa3_only">Tylko WPA3</string>
     <string name="saved_count">Zapisane: %1$d</string>
     <string name="search">Szukaj</string>
-    <string name="search_hint">Szukaj w zapisanych: nazwa lub treść</string>
+    <string name="search_hint">Szukaj w zapisanych</string>
     <string name="search_none">Nic nie znaleziono</string>
     <string name="folder_count">Kodów: %1$d</string>
     <string name="folder_move">Do folderu…</string>

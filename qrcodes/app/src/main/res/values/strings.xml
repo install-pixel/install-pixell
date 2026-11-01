@@ -135,7 +135,7 @@
     <string name="label_templates_mine">Mine</string>
     <string name="label_templates_mine_empty">Lay out a label the way you like and save it — next time it is one tap away for any code.</string>
     <string name="label_templates_hint">Long press — delete a template</string>
-    <string name="label_template_save">Save this layout as a template</string>
+    <string name="label_template_save">Save as a template</string>
     <string name="label_template_saved">Template saved</string>
     <string name="label_template_deleted">Template deleted</string>
     <string name="template_simple">Simple</string>
@@ -157,7 +157,7 @@
     <string name="form_wifi_wpa3_only">WPA3 only</string>
     <string name="saved_count">Saved: %1$d</string>
     <string name="search">Search</string>
-    <string name="search_hint">Search saved: name or content</string>
+    <string name="search_hint">Search saved codes</string>
     <string name="search_none">Nothing found</string>
     <string name="folder_count">Codes: %1$d</string>
     <string name="folder_move">To a folder…</string>

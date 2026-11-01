@@ -95,13 +95,14 @@ fun InputMode.glyph(): Glyph = when (this) {
 private val HandFieldStyle = TextStyle(
     fontSize = 18.sp,
     fontFamily = HandFont,
-    lineHeight = 22.sp,
+    // Висота рядка = висота курсора: трохи менша, щоб курсор не стирчав над рукописними літерами.
+    lineHeight = 20.sp,
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
 )
 
 /** Стиль тексту в полях: «Аркуш» — від руки, «Скло» — звичайний шрифт. */
 @Composable
-private fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontFamily = GlassFont, fontSize = 18.sp)
+private fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontFamily = GlassFont, fontSize = 18.sp, lineHeight = 22.sp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both))
 
 /**
  * Капсула внизу — як поле пошуку Black Glass, на тому самому місці: поле з рамкою олівцем, усередині ліворуч —
@@ -139,8 +140,10 @@ fun InputCapsule(
                 Text(
                     stringResource(if (searching) R.string.search_hint else R.string.input_hint),
                     color = Oled.TextSecondary,
-                    modifier = Modifier.padding(start = 3.dp),
+                    // Невеликий проміжок від курсора; якщо раптом задовго — «…», а не обрізане слово.
+                    modifier = Modifier.padding(start = 4.dp),
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             },
             leadingIcon = {
@@ -183,7 +186,7 @@ fun InputCapsule(
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Oled.TextPrimary,
                 unfocusedTextColor = Oled.TextPrimary,
-                cursorColor = Oled.TextSecondary,
+                cursorColor = if (AppStyle.glass) Oled.TextPrimary else Oled.TextSecondary,
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
