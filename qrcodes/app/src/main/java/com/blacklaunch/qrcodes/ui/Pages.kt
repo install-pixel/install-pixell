@@ -278,27 +278,41 @@ fun CreatePage(
             ChoiceChip(stringResource(R.string.format_qr), !barcode) { onFormatChange(CodeFormat.QR) }
             ChoiceChip(stringResource(R.string.format_barcode), barcode) { onFormatChange(CodeFormat.BARCODE) }
         }
+        // Віконце сталого розміру — однакове для QR і штрихкоду (нічого не стрибає): біла картка, QR — квадратом по
+        // центру, штрихкод — смугою на всю ширину.
         BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            val side = qrPreviewSide(maxWidth)
-            val shape = if (barcode) Modifier.width(barPreviewWidth(maxWidth)).height(side) else Modifier.size(side)
-            Box(shape, contentAlignment = Alignment.Center) {
-                if (symbol != null) {
-                    CodeImage(symbol, if (barcode) Modifier.fillMaxWidth() else Modifier.fillMaxSize(), seed = 3)
-                } else {
-                    Box(Modifier.fillMaxSize().pencilFrame(14.dp, seed = 3, alpha = 0.35f).padding(20.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            stringResource(
-                                when {
-                                    !tooLong -> R.string.preview_hint
-                                    barcode -> R.string.barcode_invalid
-                                    else -> R.string.too_long
-                                },
-                            ),
-                            color = if (tooLong) Oled.Danger else Oled.TextSecondary,
-                            fontSize = 17.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+            val cardH = qrPreviewSide(maxWidth)
+            val cardW = minOf(maxWidth * 0.86f, cardH * 1.35f)
+            if (symbol != null) {
+                Box(
+                    Modifier
+                        .size(cardW, cardH)
+                        .pencilFrame(14.dp, seed = 3)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(QrPaper),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CodeImage(
+                        symbol,
+                        if (barcode) Modifier.width(cardW - 32.dp) else Modifier.size(cardH - 28.dp),
+                        framed = false,
+                    )
+                }
+            } else {
+                Box(Modifier.size(cardW, cardH).pencilFrame(14.dp, seed = 3, alpha = 0.35f).padding(20.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(
+                            when {
+                                !tooLong -> R.string.preview_hint
+                                barcode -> R.string.barcode_invalid
+                                else -> R.string.too_long
+                            },
+                        ),
+                        color = if (tooLong) Oled.Danger else Oled.TextSecondary,
+                        fontSize = 17.sp,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         }

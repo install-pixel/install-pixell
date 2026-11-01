@@ -198,14 +198,25 @@ fun RoundButton(glyph: Glyph, description: String, onClick: () -> Unit, ink: Col
  * [symbol] null — порожній папірець потрібної форми ([barcode]).
  */
 @Composable
-fun CodeImage(symbol: Symbol?, modifier: Modifier = Modifier, seed: Int = 5, radius: Dp = 14.dp, barcode: Boolean = symbol is Symbol.Bars) {
+fun CodeImage(
+    symbol: Symbol?,
+    modifier: Modifier = Modifier,
+    seed: Int = 5,
+    radius: Dp = 14.dp,
+    barcode: Boolean = symbol is Symbol.Bars,
+    /** false — без власної рамки й папірця (код малюється всередині чужої картки). */
+    framed: Boolean = true,
+) {
     Box(
         modifier
             .aspectRatio(if (barcode) BAR_ASPECT else 1f)
-            .pencilFrame(radius, seed = seed)
-            .padding(4.dp)
-            .clip(RoundedCornerShape(radius - 2.dp))
-            .background(QrPaper),
+            .then(
+                if (framed) {
+                    Modifier.pencilFrame(radius, seed = seed).padding(4.dp).clip(RoundedCornerShape(radius - 2.dp)).background(QrPaper)
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.Center,
     ) {
         when (symbol) {
