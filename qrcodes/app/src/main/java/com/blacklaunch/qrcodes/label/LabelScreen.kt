@@ -429,9 +429,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         // Керування: розмір аркуша й дві вкладки — «Додати» (що поставити на наклейку) і «Змінити» (вибране або весь аркуш).
         Column(Modifier.fillMaxWidth().heightIn(max = 430.dp).bouncyScroll().padding(horizontal = 16.dp, vertical = 4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_tab_add), !editTab) { editTab = false }
+                // Обидві вкладки однакової ширини — перемикання нічого не зсуває.
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_tab_add), !editTab, Modifier.widthIn(min = TAB_WIDTH)) { editTab = false }
                 Spacer(Modifier.width(8.dp))
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_tab_edit), editTab) { editTab = true }
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_tab_edit), editTab, Modifier.widthIn(min = TAB_WIDTH)) { editTab = true }
                 Spacer(Modifier.weight(1f))
                 SheetButton(
                     if (design.size.screen) stringResource(R.string.label_screen) else "${LabelRenderer.fmt(design.size.widthMm)}×${LabelRenderer.fmt(design.size.heightMm)} mm",
@@ -448,6 +449,9 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150))
                 },
                 label = "labelTab",
+                // Стала висота під обидві вкладки: панель не стрибає, коли перемикаєш чи вибираєш елемент.
+                modifier = Modifier.fillMaxWidth().heightIn(min = TAB_AREA_HEIGHT),
+                contentAlignment = Alignment.TopCenter,
             ) { edit ->
                 if (!edit) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -474,6 +478,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Tool(Glyph.Grid, stringResource(R.string.label_grid), Modifier.weight(1f), enabled = codes.size > 1) { commit(Arrange.grid(design, tw)) }
                                 Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = canUndo) { undo() }
+                                // Фон прибирається окремо — наклейка лишається.
+                                if (design.background != null) Tool(Glyph.Gallery, stringResource(R.string.label_bg_remove_short), Modifier.weight(1f)) { commit(design.copy(background = null)) }
                                 Tool(Glyph.Delete, stringResource(R.string.delete), Modifier.weight(1f), enabled = design.elements.isNotEmpty(), danger = true) { clearAsk = true }
                             }
                         }
@@ -928,6 +934,10 @@ private fun SelectedPanel(
 }
 
 private const val ACTIONS_PER_ROW = 5
+private val TAB_WIDTH = 116.dp
+
+/** Висота панелі вкладок: розмір + два рядки дій вибраного елемента (найвища з вкладок). */
+private val TAB_AREA_HEIGHT = 228.dp
 
 /** Дія з панелі вибраного елемента. */
 private class Action(val glyph: Glyph, val label: Int, val danger: Boolean = false, val enabled: Boolean = true, val run: () -> Unit)
