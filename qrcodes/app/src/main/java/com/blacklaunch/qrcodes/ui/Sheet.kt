@@ -145,7 +145,9 @@ fun Modifier.pencilFrame(radius: Dp = 14.dp, seed: Int = 0, alpha: Float = 0.8f,
             val sheen = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = sheenH)
             onDrawBehind {
                 drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r), alpha = strength)
-                drawRoundRect(sheen, size = Size(size.width, sheenH), cornerRadius = CornerRadius(r), alpha = strength)
+                // На всю форму: нижче sheenH градієнт уже прозорий. Окремий низький прямокутник із тим самим радіусом
+                // виходив за межі круглих кнопок («привид» над ними).
+                drawRoundRect(sheen, cornerRadius = CornerRadius(r), alpha = strength)
                 drawRoundRect(edge, cornerRadius = CornerRadius(r), style = stroke, alpha = if (selected) 1f else strength)
             }
         } else {
