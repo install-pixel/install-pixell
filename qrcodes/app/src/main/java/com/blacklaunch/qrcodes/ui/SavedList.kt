@@ -1,7 +1,6 @@
 package com.blacklaunch.qrcodes.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -23,11 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,13 +33,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.border
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onSizeChanged
+import kotlinx.coroutines.launch
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -260,17 +266,16 @@ fun SavedList(
                                 alpha = 0.92f
                             }
                         }
-                        // Куди ляже: на середину — рамка «в цей рядок», між — синя лінія зверху чи знизу.
-                        .then(
-                            when {
-                                !dropHere -> Modifier
-                                dropKind == ListDrop.Kind.Into -> Modifier.pencilFrame(12.dp, seed = 88, ink = Oled.Confirm)
-                                else -> Modifier.drawBehind {
-                                    val y = if (dropKind == ListDrop.Kind.Before) 0f else size.height
-                                    drawLine(Oled.Confirm, Offset(0f, y), Offset(size.width, y), 3.dp.toPx())
-                                }
-                            },
-                        ),
+                        // Куди ляже — малюємо поверх рядка (інакше чорне тло рядка закриває підказку).
+                        .drawWithContent {
+                            drawContent()
+                            if (dropHere && dropKind != ListDrop.Kind.Into) {
+                                val y = if (dropKind == ListDrop.Kind.Before) 1.5.dp.toPx() else size.height - 1.5.dp.toPx()
+                                val r = 5.dp.toPx()
+                                drawCircle(Oled.Confirm, r, Offset(r, y))
+                                drawLine(Oled.Confirm, Offset(r, y), Offset(size.width, y), 3.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                            }
+                        },
                 ) {
                     when (entry) {
                         is Entry.FolderEntry -> FolderRow(entry.folder, entry.codes.size) {
@@ -278,6 +283,30 @@ fun SavedList(
                             openFolderId = entry.folder.id
                         }
                         is Entry.CodeEntry -> SwipeRow(entry.code, actions)
+                    }
+                    // Код кинуть «у цей рядок»: синя підсвітка, товста рамка й напис — що саме станеться.
+                    if (dropHere && dropKind == ListDrop.Kind.Into) {
+                        Box(
+                            Modifier
+                                .matchParentSize()
+                                .background(Oled.Confirm.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
+                                .border(2.5.dp, Oled.Confirm, RoundedCornerShape(12.dp))
+                                .padding(end = 14.dp),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            Row(
+                                Modifier.background(Oled.Black.copy(alpha = 0.85f), RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                GlyphIcon(if (entry is Entry.FolderEntry) Glyph.Folder else Glyph.Plus, null, tint = Oled.Confirm, size = 20.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    stringResource(if (entry is Entry.FolderEntry) R.string.folder_drop_into else R.string.folder_drop_new),
+                                    color = Oled.Confirm,
+                                    fontSize = 16.sp,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -308,68 +337,89 @@ private fun FolderRow(folder: Folder, count: Int, onOpen: () -> Unit) {
 }
 
 /**
- * Рядок коду зі свайпом уліво «Видалити»: лише довгий свайп (≈ половина ширини). Поки тягнеш — від краю рядка м'яка
- * тінь, напис «Видалити» проявляється разом із рухом; відпустив раніше — рядок плавно вертається.
+ * Рядок коду зі свайпом уліво «Видалити». Реагує лише на рух уліво (управо — гортаються сторінки «Вибране» /
+ * «Створити»). Видаляє лише довгий свайп (≈ половина ширини); поки тягнеш, рядок біля краю м'яко розчиняється (як
+ * список угорі й унизу), а «Видалити» проявляється за ним. Відпустив раніше — рядок пружно вертається.
  */
 @Composable
 private fun SwipeRow(code: QrCode, actions: SavedListActions) {
     val haptics = LocalHaptics.current
-    val rowWidth = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
-    var stateRef: SwipeToDismissBoxState? = null
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            val pulled = runCatching { -(stateRef?.requireOffset() ?: 0f) }.getOrDefault(0f)
-            if (it == SwipeToDismissBoxValue.EndToStart && pulled >= rowWidth * DELETE_SWIPE) {
-                actions.onDelete(code)
-                true
-            } else {
-                false
-            }
-        },
-        positionalThreshold = { total -> total * DELETE_SWIPE },
-    )
-    stateRef = state
-    SwipeToDismissBox(
-        state = state,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            val pulled = runCatching { -state.requireOffset() }.getOrDefault(0f).coerceAtLeast(0f)
-            val progress = (pulled / (rowWidth * DELETE_SWIPE)).coerceIn(0f, 1f)
-            Box(Modifier.fillMaxSize()) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val edge = size.width - pulled
-                    // Червонуватий відблиск з'являється разом із рухом.
-                    drawRect(
-                        Brush.horizontalGradient(listOf(Color.Transparent, Oled.Danger.copy(alpha = 0.22f * progress)), startX = edge, endX = size.width),
-                    )
-                    // М'яка тінь від краю рядка — замість різкого обрізу.
-                    val shadow = 36.dp.toPx()
-                    drawRect(
-                        Brush.horizontalGradient(listOf(Oled.Black, Color.Transparent), startX = edge, endX = edge + shadow),
-                        topLeft = Offset(edge, 0f),
-                        size = androidx.compose.ui.geometry.Size(shadow.coerceAtMost(size.width - edge + 1f), size.height),
-                    )
+    val scope = rememberCoroutineScope()
+    val offset = remember { Animatable(0f) }
+    var width by remember { mutableStateOf(1f) }
+    val fade = with(LocalDensity.current) { 56.dp.toPx() }
+    Box(Modifier.fillMaxWidth().onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }) {
+        // Під рядком — «Видалити», проявляється разом із рухом.
+        val progress = (-offset.value / (width * DELETE_SWIPE)).coerceIn(0f, 1f)
+        Row(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 20.dp)
+                .graphicsLayer {
+                    alpha = progress
+                    val sc = 0.85f + 0.15f * progress
+                    scaleX = sc
+                    scaleY = sc
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.delete), color = if (progress >= 1f) Oled.Danger else Oled.Danger.copy(alpha = 0.75f), fontSize = 17.sp)
+            Spacer(Modifier.width(8.dp))
+            GlyphIcon(Glyph.Delete, null, tint = Oled.Danger)
+        }
+        Box(
+            Modifier
+                .graphicsLayer {
+                    translationX = offset.value
+                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                 }
-                Row(
-                    Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 20.dp)
-                        .graphicsLayer {
-                            alpha = progress
-                            val s = 0.85f + 0.15f * progress
-                            scaleX = s
-                            scaleY = s
-                        },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(R.string.delete), color = Oled.Danger, fontSize = 17.sp)
-                    Spacer(Modifier.width(8.dp))
-                    GlyphIcon(Glyph.Delete, null, tint = Oled.Danger)
+                // Правий край рядка тане, щойно рядок зрушив (той самий м'який перехід, що в списку).
+                .drawWithContent {
+                    drawContent()
+                    if (offset.value < -0.5f) {
+                        val f = minOf(fade, -offset.value * 1.5f)
+                        drawRect(
+                            Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - f, endX = size.width),
+                            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                        )
+                    }
                 }
-            }
-        },
-    ) {
-        SavedRow(code, Modifier.clickable { haptics.tap(); actions.onOpen(code) })
+                .pointerInput(code.id) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var start = 0f
+                        // Лише вліво: рух управо не чіпаємо — його забирають сторінки.
+                        val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                            if (over < 0f) {
+                                change.consume()
+                                start = over
+                            }
+                        } ?: return@awaitEachGesture
+                        var reached = false
+                        scope.launch { offset.snapTo((offset.value + start).coerceIn(-width, 0f)) }
+                        horizontalDrag(drag.id) { change ->
+                            val next = (offset.value + change.positionChange().x).coerceIn(-width, 0f)
+                            val now = -next >= width * DELETE_SWIPE
+                            if (now != reached) haptics.tick()
+                            reached = now
+                            scope.launch { offset.snapTo(next) }
+                            change.consume()
+                        }
+                        scope.launch {
+                            if (-offset.value >= width * DELETE_SWIPE) {
+                                offset.animateTo(-width, tween(CLOSE_MS))
+                                actions.onDelete(code)
+                            } else {
+                                offset.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))
+                            }
+                        }
+                    }
+                }
+                .clickable { haptics.tap(); actions.onOpen(code) },
+        ) {
+            // Рядок (з чорним тлом) рухається й тане весь, разом зі своїм тлом.
+            SavedRow(code, Modifier)
+        }
     }
 }
 

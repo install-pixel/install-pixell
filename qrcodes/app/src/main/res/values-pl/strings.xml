@@ -167,4 +167,6 @@
     <string name="folder_new">Nowy folder</string>
     <string name="folder_default_name">Folder</string>
     <string name="folder_moved">W folderze „%1$s”</string>
+    <string name="folder_drop_new">Nowy folder</string>
+    <string name="folder_drop_into">Do folderu</string>
 </resources>
