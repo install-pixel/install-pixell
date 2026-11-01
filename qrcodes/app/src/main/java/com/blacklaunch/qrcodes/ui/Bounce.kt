@@ -10,6 +10,10 @@ import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -26,8 +30,25 @@ import androidx.compose.ui.unit.Velocity
 internal fun Modifier.bouncyScroll(state: ScrollState = rememberScrollState()): Modifier {
     // До першого вимірювання maxValue = Int.MAX_VALUE, тож спершу — звичайна прокрутка.
     val fits = state.maxValue == 0
-    // Краї тануть лише з того боку, куди ще можна гортати (у спокої верх чіткий).
-    return this.fadingEdges(state).bounceWhenFits(fits).verticalScroll(state, enabled = !fits)
+    val dragged = remember { MutableInteractionSource() }
+    val pulling by dragged.collectIsDraggedAsState()
+    // Краї: у спокої верх чіткий; поки гортаєш чи смикаєш (і вміст гойдається) — плавно тануть.
+    val active = edgeActivity(state.isScrollInProgress || pulling)
+    return this.fadingEdges(state, active).bounceWhenFits(fits, dragged).verticalScroll(state, enabled = !fits)
+}
+
+/**
+ * 0…1: наскільки краї мають танути через сам жест (гойдання, прокрутка). Вмикається швидко, вимикається плавно —
+ * поки край повертається на місце після гойдання.
+ */
+@Composable
+internal fun edgeActivity(active: Boolean): () -> Float {
+    val k = androidx.compose.animation.core.animateFloatAsState(
+        if (active) 1f else 0f,
+        androidx.compose.animation.core.tween(if (active) 120 else 450),
+        label = "edgeActivity",
+    )
+    return { k.value }
 }
 
 /** Для списків: гойдання, коли список поміщається (у самого списку тоді ставте userScrollEnabled = !fits). */
@@ -35,7 +56,7 @@ internal val LazyListState.fits: Boolean get() = !canScrollForward && !canScroll
 
 /** Коли вміст поміщається ([fits]), вертикальний жест тягне край системним ефектом розтягування. */
 @Composable
-internal fun Modifier.bounceWhenFits(fits: Boolean): Modifier {
+internal fun Modifier.bounceWhenFits(fits: Boolean, interaction: MutableInteractionSource? = null): Modifier {
     val effect = rememberOverscrollEffect()
     val drag = rememberDraggableState { dy ->
         effect?.applyToScroll(Offset(0f, dy), NestedScrollSource.UserInput) { Offset.Zero }
@@ -46,6 +67,7 @@ internal fun Modifier.bounceWhenFits(fits: Boolean): Modifier {
         .draggable(
             drag,
             Orientation.Vertical,
+            interactionSource = interaction,
             onDragStopped = { velocity -> effect.applyToFling(Velocity(0f, velocity)) { Velocity.Zero } },
         )
 }

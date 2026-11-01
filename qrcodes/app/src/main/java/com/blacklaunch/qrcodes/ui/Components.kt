@@ -580,42 +580,56 @@ val EdgeFade = 18.dp
 fun Modifier.fadingEdges(top: Dp = EdgeFade, bottom: Dp = EdgeFade): Modifier =
     fadeMask({ top.toPx() }, { bottom.toPx() })
 
-/** Для [androidx.compose.foundation.ScrollState] (звичайна прокрутка). */
-fun Modifier.fadingEdges(state: androidx.compose.foundation.ScrollState, edge: Dp = EdgeFade): Modifier = fadeMask(
-    top = { minOf(state.value.toFloat(), edge.toPx()) },
+/**
+ * Для [androidx.compose.foundation.ScrollState] (звичайна прокрутка). [active] — 0…1, наскільки краї тануть через
+ * сам жест: так край не обрізається різко, коли вміст гойдається, хоч у спокої він чіткий.
+ */
+fun Modifier.fadingEdges(state: androidx.compose.foundation.ScrollState, active: () -> Float = { 0f }, edge: Dp = EdgeFade): Modifier = fadeMask(
+    top = { maxOf(minOf(state.value.toFloat(), edge.toPx()), edge.toPx() * active()) },
     bottom = {
         val max = state.maxValue
-        if (max == Int.MAX_VALUE) 0f else minOf((max - state.value).toFloat(), edge.toPx())
+        val left = if (max == Int.MAX_VALUE) 0f else minOf((max - state.value).toFloat(), edge.toPx())
+        maxOf(left, edge.toPx() * active())
     },
 )
 
 /** Для списку. */
-fun Modifier.fadingEdges(state: androidx.compose.foundation.lazy.LazyListState, edge: Dp = EdgeFade): Modifier = fadeMask(
-    top = { if (state.firstVisibleItemIndex > 0) edge.toPx() else minOf(state.firstVisibleItemScrollOffset.toFloat(), edge.toPx()) },
-    bottom = {
-        val info = state.layoutInfo
-        val last = info.visibleItemsInfo.lastOrNull()
-        when {
-            last == null -> 0f
-            last.index < info.totalItemsCount - 1 -> edge.toPx()
-            else -> minOf((last.offset + last.size - info.viewportEndOffset + info.afterContentPadding).toFloat().coerceAtLeast(0f), edge.toPx())
-        }
-    },
-)
+@Composable
+fun Modifier.fadingEdges(state: androidx.compose.foundation.lazy.LazyListState, edge: Dp = EdgeFade): Modifier {
+    val active = edgeActivity(state.isScrollInProgress)
+    return fadeMask(
+        top = { maxOf(if (state.firstVisibleItemIndex > 0) edge.toPx() else minOf(state.firstVisibleItemScrollOffset.toFloat(), edge.toPx()), edge.toPx() * active()) },
+        bottom = {
+            val info = state.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            val left = when {
+                last == null -> 0f
+                last.index < info.totalItemsCount - 1 -> edge.toPx()
+                else -> minOf((last.offset + last.size - info.viewportEndOffset + info.afterContentPadding).toFloat().coerceAtLeast(0f), edge.toPx())
+            }
+            maxOf(left, edge.toPx() * active())
+        },
+    )
+}
 
 /** Для сітки. */
-fun Modifier.fadingEdges(state: androidx.compose.foundation.lazy.grid.LazyGridState, edge: Dp = EdgeFade): Modifier = fadeMask(
-    top = { if (state.firstVisibleItemIndex > 0) edge.toPx() else minOf(state.firstVisibleItemScrollOffset.toFloat(), edge.toPx()) },
-    bottom = {
-        val info = state.layoutInfo
-        val last = info.visibleItemsInfo.lastOrNull()
-        when {
-            last == null -> 0f
-            last.index < info.totalItemsCount - 1 -> edge.toPx()
-            else -> minOf((last.offset.y + last.size.height - info.viewportEndOffset + info.afterContentPadding).toFloat().coerceAtLeast(0f), edge.toPx())
-        }
-    },
-)
+@Composable
+fun Modifier.fadingEdges(state: androidx.compose.foundation.lazy.grid.LazyGridState, edge: Dp = EdgeFade): Modifier {
+    val active = edgeActivity(state.isScrollInProgress)
+    return fadeMask(
+        top = { maxOf(if (state.firstVisibleItemIndex > 0) edge.toPx() else minOf(state.firstVisibleItemScrollOffset.toFloat(), edge.toPx()), edge.toPx() * active()) },
+        bottom = {
+            val info = state.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            val left = when {
+                last == null -> 0f
+                last.index < info.totalItemsCount - 1 -> edge.toPx()
+                else -> minOf((last.offset.y + last.size.height - info.viewportEndOffset + info.afterContentPadding).toFloat().coerceAtLeast(0f), edge.toPx())
+            }
+            maxOf(left, edge.toPx() * active())
+        },
+    )
+}
 
 /** Маска країв: [top] і [bottom] — у px, рахуються під час малювання (не перебудовують екран при прокрутці). */
 private fun Modifier.fadeMask(top: androidx.compose.ui.unit.Density.() -> Float, bottom: androidx.compose.ui.unit.Density.() -> Float): Modifier =
