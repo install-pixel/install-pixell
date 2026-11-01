@@ -129,6 +129,29 @@ class LabelRenderer(private val hand: Typeface) {
             val dh = bgImage.height * k
             val dst = RectF(bgImage.cx * k - dw / 2f, bgImage.cy * k - dh / 2f, bgImage.cx * k + dw / 2f, bgImage.cy * k + dh / 2f)
             canvas.drawBitmap(bg, null, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+            // Затерте гумкою — кольором паперу, разом з картинкою.
+            if (bgImage.erased.isNotEmpty()) {
+                val eraser = Paint().apply {
+                    color = palette.paper
+                    style = Paint.Style.STROKE
+                    strokeWidth = bgImage.eraseWidth * k
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                    isAntiAlias = true
+                }
+                bgImage.erased.forEach { st ->
+                    if (st.size < 2) return@forEach
+                    val path = android.graphics.Path()
+                    path.moveTo(dst.left + st[0] * dw, dst.top + st[1] * dh)
+                    if (st.size == 2) path.lineTo(dst.left + st[0] * dw + 0.01f, dst.top + st[1] * dh)
+                    var i = 2
+                    while (i + 1 < st.size) {
+                        path.lineTo(dst.left + st[i] * dw, dst.top + st[i + 1] * dh)
+                        i += 2
+                    }
+                    canvas.drawPath(path, eraser)
+                }
+            }
             canvas.restore()
         }
         drawContent(canvas, pxPerMm, design, if (bg != null) palette.copy(blockFill = palette.paper) else palette)

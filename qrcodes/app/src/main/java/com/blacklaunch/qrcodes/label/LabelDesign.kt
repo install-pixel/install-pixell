@@ -146,8 +146,27 @@ data class BgImage(
     val cy: Float,
     val width: Float,
     val rotation: Float = 0f,
+    /** Затерте гумкою: штрихи (fx, fy по черзі) у частках картинки — рухаються й масштабуються разом з нею. */
+    val erased: List<List<Float>> = emptyList(),
 ) {
     val height: Float get() = width * aspect
+
+    /** Товщина гумки — частка ширини картинки. */
+    val eraseWidth: Float get() = ERASE_FRACTION * width
+
+    /** Точка наклейки (мм) — у частках картинки (зворотне до [pointMm]). */
+    fun fractionOf(x: Float, y: Float): Pair<Float, Float> {
+        val a = Math.toRadians(-rotation.toDouble())
+        val c = kotlin.math.cos(a).toFloat()
+        val s = kotlin.math.sin(a).toFloat()
+        val dx = x - cx
+        val dy = y - cy
+        return ((dx * c - dy * s) / width + 0.5f) to ((dx * s + dy * c) / height + 0.5f)
+    }
+
+    companion object {
+        const val ERASE_FRACTION = 0.035f
+    }
 
     /** Повернута на 90° (або 270°) — видимі ширина й висота міняються місцями. */
     private val sideways: Boolean get() = (kotlin.math.round(rotation / 90f).toInt() % 2) != 0

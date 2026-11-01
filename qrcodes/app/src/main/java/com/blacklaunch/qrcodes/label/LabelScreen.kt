@@ -176,6 +176,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var bgMenu by remember { mutableStateOf(false) }
     // Тло вибране (як елемент): тягнеш — пересуваєш, двома пальцями — масштаб і поворот.
     var bgSelected by remember { mutableStateOf(false) }
+    // Гумка по фону: водиш пальцем по наклейці — картинка під пальцем затирається (кольором паперу).
+    var bgErase by remember { mutableStateOf(false) }
     var drawNew by remember { mutableStateOf(false) }
     var drawEdit by remember { mutableStateOf<Element.Drawing?>(null) }
 
@@ -188,6 +190,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         val qr = selected as? Element.Qr
         prefs.save(LabelSettings(design.size, qr?.takeIf { !it.barcode }?.side ?: defaults.qrMm, 1, qr?.caption ?: defaults.caption))
     }
+    LaunchedEffect(bgSelected) { if (!bgSelected) bgErase = false }
     // Вибрав елемент на наклейці — панель сама показує «Змінити».
     LaunchedEffect(selectedId) { if (selectedId != null) editTab = true }
     BackHandler(onBack = onClose)
@@ -314,6 +317,30 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             val down = awaitFirstDown(requireUnconsumed = false)
                             val d = current
                             val hit = d.hit(down.position.x / k, down.position.y / k, 10.dp.toPx() / k, renderer::textWidth)
+                            if (bgErase && bgSelected && d.background != null) {
+                                // Гумка: штрих у частках картинки (рухатиметься разом з нею).
+                                selectedId = null
+                                val bgE = d.background!!
+                                val stroke = ArrayList<Float>()
+                                fun addPoint(p: Offset) {
+                                    val (fx, fy) = bgE.fractionOf(p.x / k, p.y / k)
+                                    stroke.add(fx)
+                                    stroke.add(fy)
+                                    design = current.copy(background = bgE.copy(erased = bgE.erased + listOf(stroke.toList())))
+                                }
+                                addPoint(down.position)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    event.changes.firstOrNull()?.let { ch ->
+                                        if (ch.pressed) {
+                                            addPoint(ch.position)
+                                            ch.consume()
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                pushHistory(d)
+                                return@awaitEachGesture
+                            }
                             selectedId = hit?.id
                             if (hit != null) bgSelected = false
                             val bgNow = d.background
@@ -530,7 +557,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         null -> if (bgSelected && design.background != null) {
                             val bg = design.background!!
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(stringResource(R.string.label_bg_selected), color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                Text(stringResource(if (bgErase) R.string.label_bg_erasing else R.string.label_bg_selected), color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Tool(Glyph.Frame, stringResource(R.string.label_bg_fit), Modifier.weight(1f)) { commit(design.copy(background = bg.fitted(design.size))) }
                                     Tool(Glyph.Grid, stringResource(R.string.label_bg_fill), Modifier.weight(1f)) { commit(design.copy(background = bg.filled(design.size))) }
@@ -545,8 +572,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                         commit(design.copy(background = null))
                                         bgSelected = false
                                     }
-                                    Tool(Glyph.Save, stringResource(R.string.done), Modifier.weight(1f)) { bgSelected = false }
-                                    Spacer(Modifier.weight(1f))
+                                    Tool(Glyph.Eraser, stringResource(R.string.label_eraser), Modifier.weight(1f), on = bgErase) { bgErase = !bgErase }
+                                    Tool(Glyph.Save, stringResource(R.string.done), Modifier.weight(1f)) { bgSelected = false; bgErase = false }
                                 }
                             }
                         } else {
@@ -1057,6 +1084,9 @@ private fun SelectedPanel(
 }
 
 private const val ACTIONS_PER_ROW = 5
+
+/** Радіус гумки в малюнку — частка ширини полотна. */
+private const val ERASER_RADIUS = 0.035f
 private val TAB_WIDTH = 116.dp
 
 /** Висота панелі вкладок: розмір + два рядки дій вибраного елемента (найвища з вкладок). */
@@ -1334,6 +1364,30 @@ private fun DrawDialog(initial: Element.Drawing?, onDismiss: () -> Unit, onDone:
     }
     var current by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var thick by remember { mutableStateOf(initial?.thick ?: false) }
+    var erasing by remember { mutableStateOf(false) }
+    var eraserAt by remember { mutableStateOf<Offset?>(null) }
+
+    /** Гумка: прибирає точки штрихів поруч із пальцем (штрих розпадається на частини). */
+    fun eraseAt(p: Offset) {
+        val r = ERASER_RADIUS
+        val next = ArrayList<List<Offset>>()
+        strokes.forEach { st ->
+            var run = ArrayList<Offset>()
+            st.forEach { pt ->
+                if ((pt - p).getDistance() < r) {
+                    if (run.isNotEmpty()) next.add(run)
+                    run = ArrayList()
+                } else {
+                    run.add(pt)
+                }
+            }
+            if (run.isNotEmpty()) next.add(run)
+        }
+        if (next.size != strokes.size || next.sumOf { it.size } != strokes.sumOf { it.size }) {
+            strokes.clear()
+            strokes.addAll(next)
+        }
+    }
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.label_drawing), buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.done), {
@@ -1361,13 +1415,34 @@ private fun DrawDialog(initial: Element.Drawing?, onDismiss: () -> Unit, onDone:
                         awaitEachGesture {
                             val down = awaitFirstDown()
                             val side = size.width.toFloat().coerceAtLeast(1f)
+                            if (erasing) {
+                                eraserAt = down.position / side
+                                eraseAt(down.position / side)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    event.changes.firstOrNull()?.let { ch ->
+                                        if (ch.pressed) {
+                                            eraserAt = ch.position / side
+                                            eraseAt(ch.position / side)
+                                            ch.consume()
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                eraserAt = null
+                                return@awaitEachGesture
+                            }
                             val pts = mutableListOf(down.position / side)
                             current = pts.toList()
                             do {
                                 val event = awaitPointerEvent()
                                 event.changes.firstOrNull()?.let { ch ->
                                     if (ch.pressed) {
-                                        pts.add(ch.position / side)
+                                        // Густо (з проміжними точками) — щоб гумка стирала рівно, без «пропусків».
+                                        val p = ch.position / side
+                                        val last = pts.last()
+                                        val steps = ((p - last).getDistance() / 0.008f).toInt()
+                                        for (i in 1..steps) pts.add(last + (p - last) * (i / (steps + 1f)))
+                                        pts.add(p)
                                         ch.consume()
                                     }
                                 }
@@ -1392,11 +1467,14 @@ private fun DrawDialog(initial: Element.Drawing?, onDismiss: () -> Unit, onDone:
                             drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(width, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
                         }
                     }
+                    // Де зараз гумка — сірий кружечок.
+                    eraserAt?.let { drawCircle(androidx.compose.ui.graphics.Color(0x889A9A9A), ERASER_RADIUS * size.width, it * size.width, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx())) }
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !thick) { thick = false }
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thick), thick) { thick = true }
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !thick && !erasing) { thick = false; erasing = false }
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thick), thick && !erasing) { thick = true; erasing = false }
+                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_eraser), erasing) { erasing = true }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SheetButton(stringResource(R.string.label_undo), { strokes.removeLastOrNull() }, enabled = strokes.isNotEmpty())

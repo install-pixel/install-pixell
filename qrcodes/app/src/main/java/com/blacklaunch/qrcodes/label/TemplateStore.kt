@@ -60,7 +60,8 @@ class TemplateStore(context: Context) {
             .put("border", d.border.name)
             .apply {
                 d.background?.let { b ->
-                    put("bgi", JSONObject().put("src", b.source).put("a", b.aspect.toDouble()).put("cx", b.cx.toDouble()).put("cy", b.cy.toDouble()).put("w", b.width.toDouble()).put("r", b.rotation.toDouble()))
+                    put("bgi", JSONObject().put("src", b.source).put("a", b.aspect.toDouble()).put("cx", b.cx.toDouble()).put("cy", b.cy.toDouble()).put("w", b.width.toDouble()).put("r", b.rotation.toDouble())
+                        .put("e", JSONArray().apply { b.erased.forEach { st -> put(JSONArray().apply { st.forEach { v -> put(Math.round(v * 10000) / 10000.0) } }) } }))
                 }
             }
             .put("elements", JSONArray().apply { d.elements.forEach { put(elementJson(it)) } })
@@ -92,7 +93,9 @@ class TemplateStore(context: Context) {
             o.optJSONObject("bgi")?.let { b ->
                 val src = b.optString("src")
                 if (src.isEmpty() || (!src.startsWith("asset:") && !java.io.File(src).exists())) return null
-                return BgImage(src, b.optDouble("a", 1.0).toFloat(), b.optDouble("cx").toFloat(), b.optDouble("cy").toFloat(), b.optDouble("w").toFloat(), b.optDouble("r", 0.0).toFloat())
+                val er = b.optJSONArray("e") ?: JSONArray()
+                val erased = (0 until er.length()).map { i -> er.getJSONArray(i).let { st -> (0 until st.length()).map { j -> st.getDouble(j).toFloat() } } }
+                return BgImage(src, b.optDouble("a", 1.0).toFloat(), b.optDouble("cx").toFloat(), b.optDouble("cy").toFloat(), b.optDouble("w").toFloat(), b.optDouble("r", 0.0).toFloat(), erased)
             }
             val old = o.optString("bg").takeIf { it.isNotEmpty() && java.io.File(it).exists() } ?: return null
             val size = LabelSize(o.getDouble("w").toFloat(), o.getDouble("h").toFloat())
