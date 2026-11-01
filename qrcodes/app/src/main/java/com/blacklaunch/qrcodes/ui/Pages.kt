@@ -53,6 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -330,16 +332,23 @@ fun CreatePage(
                 }
             }
             items(saved.orEmpty(), key = { it.id }) { code ->
+                // Видаляє лише довгий свайп: рядок протягнули щонайменше на [DELETE_SWIPE] ширини. Короткий змах
+                // (палець навскіс, коли гортаєш список) не видаляє — рядок повертається на місце.
+                val rowWidth = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+                var stateRef: androidx.compose.material3.SwipeToDismissBoxState? = null
                 val state = rememberSwipeToDismissBoxState(
                     confirmValueChange = {
-                        if (it == SwipeToDismissBoxValue.EndToStart) {
+                        val pulled = runCatching { -(stateRef?.requireOffset() ?: 0f) }.getOrDefault(0f)
+                        if (it == SwipeToDismissBoxValue.EndToStart && pulled >= rowWidth * DELETE_SWIPE) {
                             onDelete(code)
                             true
                         } else {
                             false
                         }
                     },
+                    positionalThreshold = { total -> total * DELETE_SWIPE },
                 )
+                stateRef = state
                 SwipeToDismissBox(
                     state = state,
                     enableDismissFromStartToEnd = false,
@@ -374,6 +383,9 @@ fun CreatePage(
         )
     }
 }
+
+/** Яку частку ширини треба протягнути рядок, щоб видалити. */
+private const val DELETE_SWIPE = 0.45f
 
 /** Ширина штрихкоду вгорі «Створити» і на весь екран: ширший за QR, щоб смуги не були надто тонкими. */
 fun barPreviewWidth(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp = minOf(available * 0.92f, 360.dp)
