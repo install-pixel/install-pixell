@@ -357,8 +357,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             ) {
                 drawIntoCanvas { renderer.draw(it.nativeCanvas, k, design, LabelPalette.forView(design)) }
                 // Лінії, до яких прилипло.
-                guides.first?.let { x -> drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.55f), Offset(x * k, 0f), Offset(x * k, size.height), 1.dp.toPx()) }
-                guides.second?.let { y -> drawLine(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.55f), Offset(0f, y * k), Offset(size.width, y * k), 1.dp.toPx()) }
+                guides.first?.let { x -> drawLine(PAPER_GUIDE, Offset(x * k, 0f), Offset(x * k, size.height), 1.dp.toPx()) }
+                guides.second?.let { y -> drawLine(PAPER_GUIDE, Offset(0f, y * k), Offset(size.width, y * k), 1.dp.toPx()) }
                 // Вибраний — у синій рамці олівцем (повернутій разом з ним); налазить — червоній.
                 selected?.let { e ->
                     val b = e.baseBounds(renderer::textWidth)
@@ -367,7 +367,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     val bh = b.height * k + 2 * pad
                     rotate(e.rotation, Offset(e.cx * k, e.cy * k)) {
                         translate(b.left * k - pad, b.top * k - pad) {
-                            outline(Offset.Zero, Size(bw, bh), 6.dp.toPx(), e.id + 400, if (clashing || overZone) Oled.Danger else com.blacklaunch.qrcodes.ui.SelectedInk, 2.dp.toPx())
+                            outline(Offset.Zero, Size(bw, bh), 6.dp.toPx(), e.id + 400, if (clashing || overZone) Oled.Danger else PAPER_SELECT, 2.dp.toPx())
                         }
                     }
                 }
@@ -686,6 +686,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         }
     }
 }
+
+/** Вибраний елемент і лінії прилипання — сірим: видно і на білому аркуші, і на чорному (білим не видно на папері). */
+private val PAPER_SELECT = androidx.compose.ui.graphics.Color(0xFF8A8A8A)
+private val PAPER_GUIDE = androidx.compose.ui.graphics.Color(0xB39A9A9A)
 
 private const val MAX_UNDO = 40
 private const val DOUBLE_TAP_MS = 320L
