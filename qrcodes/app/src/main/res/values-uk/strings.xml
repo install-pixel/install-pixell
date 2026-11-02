@@ -210,7 +210,7 @@
     <string name="label_bg_remove_short">Без фону</string>
     <string name="label_drawing">Малюнок</string>
     <string name="label_drawing_size">Малюнок: %1$d мм</string>
-    <string name="label_bg_selected">Тло вибране: тягни — пересунути, двома пальцями — розмір і поворот.</string>
+    <string name="label_bg_selected">Тло вибране: тягни — пересунути, двома пальцями — збільшити, зменшити, повернути. Що за краєм — просто не видно.</string>
     <string name="label_bg_fit">Вмістити</string>
     <string name="label_bg_fill">Заповнити</string>
     <string name="label_bg_other">Інший фон</string>

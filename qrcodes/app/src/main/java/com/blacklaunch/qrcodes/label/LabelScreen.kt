@@ -433,38 +433,55 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                 pushHistory(d)
                                 return@awaitEachGesture
                             }
-                            selectedId = hit?.id
-                            if (hit != null) bgSelected = false
                             val bgNow = d.background
-                            if (hit == null) {
-                                if (bgSelected && bgNow != null) {
-                                    // Вибране тло: тягнеш — пересуваєш, двома пальцями — масштаб і поворот.
-                                    var bx = bgNow.cx
-                                    var by = bgNow.cy
-                                    var bw = bgNow.width
-                                    var br = bgNow.rotation
-                                    var travel = 0f
-                                    var movedBg = false
-                                    do {
-                                        val event = awaitPointerEvent()
-                                        val pan = event.calculatePan()
-                                        val zoom = event.calculateZoom()
-                                        val turn = event.calculateRotation()
-                                        travel += pan.getDistance()
-                                        if (travel > viewConfiguration.touchSlop || zoom != 1f || turn != 0f) {
-                                            bx += pan.x / k
-                                            by += pan.y / k
-                                            bw = (bw * zoom).coerceIn(5f, 3000f)
-                                            br += turn
-                                            design = current.copy(background = bgNow.copy(cx = bx, cy = by, width = bw, rotation = normalizeAngle(br, snap = true)))
-                                            movedBg = true
-                                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                            // Фон: вибраний — будь-який жест рухає його (дотик без руху по елементу — вибрати елемент);
+                            // не вибраний — двома пальцями по наклейці теж масштабуєш і повертаєш фон.
+                            if (bgNow != null && (bgSelected || hit == null)) {
+                                var bx = bgNow.cx
+                                var by = bgNow.cy
+                                var bw = bgNow.width
+                                var br = bgNow.rotation
+                                var travel = 0f
+                                var movedBg = false
+                                var fingers = 1
+                                do {
+                                    val event = awaitPointerEvent()
+                                    fingers = maxOf(fingers, event.changes.count { it.pressed })
+                                    val pan = event.calculatePan()
+                                    val zoom = event.calculateZoom()
+                                    val turn = event.calculateRotation()
+                                    travel += pan.getDistance()
+                                    val active = bgSelected || fingers >= 2
+                                    if (active && (travel > viewConfiguration.touchSlop || zoom != 1f || turn != 0f)) {
+                                        bx += pan.x / k
+                                        by += pan.y / k
+                                        bw = (bw * zoom).coerceIn(5f, BG_MAX_WIDTH_MM)
+                                        br += turn
+                                        design = current.copy(background = bgNow.copy(cx = bx, cy = by, width = bw, rotation = normalizeAngle(br, snap = true)))
+                                        if (!movedBg) {
+                                            selectedId = null
+                                            bgSelected = true
+                                            editTab = true
                                         }
-                                    } while (event.changes.any { it.pressed })
-                                    if (movedBg) pushHistory(d) else bgSelected = false
+                                        movedBg = true
+                                        event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                if (movedBg) {
+                                    pushHistory(d)
+                                } else if (hit != null) {
+                                    // Дотик по елементу — вибрати його (фон перестає бути вибраним).
+                                    bgSelected = false
+                                    selectedId = hit.id
+                                } else {
+                                    bgSelected = false
+                                    selectedId = null
                                 }
                                 return@awaitEachGesture
                             }
+                            selectedId = hit?.id
+                            if (hit != null) bgSelected = false
+                            if (hit == null) return@awaitEachGesture
                             haptics.tap()
                             val before = d
                             var moved = false
@@ -829,7 +846,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             SampleBox(null, selected = design.background?.source == scene.source, onClick = {
                                 commit(Scenes.apply(scene, design, sceneCodes))
                                 selectedId = null
-                                bgSelected = false
+                                bgSelected = true
+                                editTab = true
                                 openedTemplate = null
                                 bgMenu = false
                             }, width = 96.dp, height = hgt) { canvas, w, h -> renderer.drawScenePreview(canvas, w, h, scene) }
@@ -1225,6 +1243,9 @@ private fun SelectedPanel(
 
 private const val ACTIONS_PER_ROW = 5
 
+/** Наскільки можна збільшити фон (ширина картинки, мм) — що за краєм наклейки, просто не видно. */
+private const val BG_MAX_WIDTH_MM = 5000f
+
 /** Малювання на наклейці: товщина ліній і радіус гумки, мм. */
 private const val DRAW_THIN_MM = 0.7f
 private const val DRAW_THICK_MM = 1.5f
@@ -1473,7 +1494,7 @@ private fun copyBackground(context: android.content.Context, uri: android.net.Ur
     val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
     resolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, bounds) }
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2400) sample *= 2
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 3200) sample *= 2
     val bitmap = resolver.openInputStream(uri)?.use {
         android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
     } ?: return null

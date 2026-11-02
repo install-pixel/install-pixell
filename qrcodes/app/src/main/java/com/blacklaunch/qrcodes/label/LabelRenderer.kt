@@ -414,14 +414,15 @@ class LabelRenderer(private val hand: Typeface) {
     /** Тло-зображення: декодується один раз (зменшене до розумного розміру), далі — з пам'яті. */
     private fun loadBackground(path: String): Bitmap? = synchronized(backgrounds) {
         backgrounds[path] ?: runCatching {
+            // RGB_565 — удвічі менше пам'яті (фон без прозорості), тож можна тримати більшу картинку для збільшення.
             if (path.startsWith("asset:")) {
-                assets?.open(path.removePrefix("asset:"))?.use { android.graphics.BitmapFactory.decodeStream(it) }
+                assets?.open(path.removePrefix("asset:"))?.use { android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }) }
             } else {
                 val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 android.graphics.BitmapFactory.decodeFile(path, bounds)
                 var sample = 1
                 while (maxOf(bounds.outWidth, bounds.outHeight) / sample > BG_MAX_PX) sample *= 2
-                android.graphics.BitmapFactory.decodeFile(path, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+                android.graphics.BitmapFactory.decodeFile(path, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.RGB_565 })
             }
         }.getOrNull()?.also {
             // Кілька останніх (зразки сцен у вікні вибору) — щоб не декодувати щокадру.
@@ -614,7 +615,7 @@ class LabelRenderer(private val hand: Typeface) {
 
         private const val PDF_POINTS_PER_MM = 72f / 25.4f
         private const val PNG_PX_PER_MM = 300f / 25.4f
-        private const val BG_MAX_PX = 2048
+        private const val BG_MAX_PX = 3072
 
         /** Шрифт від руки дрібніший на око (як у «Аркуші») — підпис трохи більший. */
         private const val HAND_SCALE = 1.25f

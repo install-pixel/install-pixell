@@ -212,7 +212,7 @@
     <string name="label_bg_remove_short">No backdrop</string>
     <string name="label_drawing">Drawing</string>
     <string name="label_drawing_size">Drawing: %1$d mm</string>
-    <string name="label_bg_selected">Backdrop chosen: drag — move, two fingers — size and turn.</string>
+    <string name="label_bg_selected">Backdrop chosen: drag — move, two fingers — zoom in, out and turn. Whatever is past the edge is simply hidden.</string>
     <string name="label_bg_fit">Fit</string>
     <string name="label_bg_fill">Fill</string>
     <string name="label_bg_other">Other backdrop</string>

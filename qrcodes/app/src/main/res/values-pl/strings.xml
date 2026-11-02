@@ -210,7 +210,7 @@
     <string name="label_bg_remove_short">Bez tła</string>
     <string name="label_drawing">Rysunek</string>
     <string name="label_drawing_size">Rysunek: %1$d mm</string>
-    <string name="label_bg_selected">Tło wybrane: przeciągnij — przesuń, dwa palce — rozmiar i obrót.</string>
+    <string name="label_bg_selected">Tło wybrane: przeciągnij — przesuń, dwa palce — powiększ, pomniejsz, obróć. Co poza krawędzią — po prostu niewidoczne.</string>
     <string name="label_bg_fit">Zmieść</string>
     <string name="label_bg_fill">Wypełnij</string>
     <string name="label_bg_other">Inne tło</string>
