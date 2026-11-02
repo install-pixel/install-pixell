@@ -1105,7 +1105,17 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                     tryChange(replacing.copy(content = fresh.content, title = fresh.title, barcode = fresh.barcode))
                                     replaceFor = null
                                 } else {
-                                    addElement(newQr(design.nextId, code, design.size))
+                                    // Сцена з вільним квадратиком — новий код стає саме туди (розмір і нахил місця).
+                                    val slot = Scenes.freeSlot(design)
+                                    val inSlot = slot?.let { (c, side, rot) ->
+                                        newQr(design.nextId, code, design.size).copy(cx = c.first, cy = c.second, side = side, caption = false, frame = QrFrame.None, rotation = rot)
+                                    }
+                                    if (inSlot != null && Placement.fits(design, inSlot, tw)) {
+                                        commit(design.add(inSlot))
+                                        selectedId = inSlot.id
+                                    } else {
+                                        addElement(newQr(design.nextId, code, design.size))
+                                    }
                                 }
                                 pickerOpen = false
                             }

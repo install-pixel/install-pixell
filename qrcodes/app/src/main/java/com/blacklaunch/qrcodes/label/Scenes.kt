@@ -37,12 +37,28 @@ object Scenes {
             else -> design.size
         }
         val bg = BgImage(scene.source, scene.aspect, 0f, 0f, 1f).fitted(size)
-        val qrs = scene.slots.mapIndexed { i, slot ->
-            val src = codes[i % codes.size]
+        // Коди не повторюються: скільки є (зазвичай один) — стільки й місць зайнято; решта місць лишається вільною
+        // під інші коди (новий код сам стане в наступне вільне місце).
+        val qrs = scene.slots.take(codes.size).mapIndexed { i, slot ->
+            val src = codes[i]
             val (x, y) = bg.pointMm(slot.fx, slot.fy)
             val side = (slot.side * bg.width).coerceIn(Element.MIN_QR, Element.MAX_QR)
             src.copy(id = i + 1, cx = x, cy = y, side = side, caption = false, frame = QrFrame.None, rotation = normalizeAngle(slot.rot + bg.rotation))
         }
         return LabelDesign(size = size, elements = qrs, border = QrFrame.None, background = bg)
+    }
+
+    fun byBackground(bg: BgImage?): Scene? = bg?.let { b -> all.firstOrNull { it.source == b.source } }
+
+    /** Вільне місце сцени на тлі (центр, сторона, поворот у мм наклейки) або null — немає сцени чи всі місця зайняті. */
+    fun freeSlot(design: LabelDesign): Triple<Pair<Float, Float>, Float, Float>? {
+        val bg = design.background ?: return null
+        val scene = byBackground(bg) ?: return null
+        val codes = design.elements.filterIsInstance<Element.Qr>()
+        return scene.slots.asSequence().map { slot ->
+            Triple(bg.pointMm(slot.fx, slot.fy), (slot.side * bg.width).coerceIn(Element.MIN_QR, Element.MAX_QR), normalizeAngle(slot.rot + bg.rotation))
+        }.firstOrNull { (c, side, _) ->
+            codes.none { q -> kotlin.math.hypot(q.cx - c.first, q.cy - c.second) < side / 2 }
+        }
     }
 }

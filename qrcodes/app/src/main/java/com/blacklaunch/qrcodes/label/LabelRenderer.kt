@@ -117,7 +117,10 @@ class LabelRenderer(private val hand: Typeface) {
         val h = design.size.heightMm * pxPerMm
         canvas.save()
         canvas.clipRect(0f, 0f, w, h)
-        canvas.drawRect(0f, 0f, w, h, Paint().apply { color = palette.paper })
+        // З картинкою на тлі папір — чисто білий, як і сама картинка: на екрані не видно сірої смуги за її краєм
+        // (на друці папір і так білий).
+        val paper = if (design.background != null && !design.size.screen) 0xFFFFFFFF.toInt() else palette.paper
+        canvas.drawRect(0f, 0f, w, h, Paint().apply { color = paper })
         val bgImage = design.background
         val bg = bgImage?.let { loadBackground(it.source) }
         if (bgImage != null && bg != null) {
@@ -132,7 +135,7 @@ class LabelRenderer(private val hand: Typeface) {
             // Затерте гумкою — кольором паперу, разом з картинкою.
             if (bgImage.erased.isNotEmpty()) {
                 val eraser = Paint().apply {
-                    color = palette.paper
+                    color = paper
                     style = Paint.Style.STROKE
                     strokeWidth = bgImage.eraseWidth * k
                     strokeCap = Paint.Cap.ROUND
@@ -154,7 +157,7 @@ class LabelRenderer(private val hand: Typeface) {
             }
             canvas.restore()
         }
-        drawContent(canvas, pxPerMm, design, if (bg != null) palette.copy(blockFill = palette.paper) else palette)
+        drawContent(canvas, pxPerMm, design, if (bg != null) palette.copy(paper = paper, blockFill = paper) else palette)
         canvas.restore()
     }
 
