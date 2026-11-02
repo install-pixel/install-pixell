@@ -100,6 +100,8 @@ sealed interface Element {
         val width: Float,
         val thick: Boolean = false,
         override val rotation: Float = 0f,
+        /** Товщина лінії — частка ширини (малюнок на наклейці); 0 — за [thick]. */
+        val line: Float = 0f,
     ) : Element {
         override val size get() = width
         override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))
@@ -107,7 +109,7 @@ sealed interface Element {
         override fun resized(size: Float) = copy(width = size.coerceIn(MIN_DRAWING, MAX_DRAWING))
 
         /** Товщина лінії, мм — пропорційно розміру малюнка. */
-        val strokeMm: Float get() = (width * if (thick) 0.03f else 0.016f).coerceIn(0.25f, 4f)
+        val strokeMm: Float get() = if (line > 0f) (line * width).coerceIn(0.2f, 6f) else (width * if (thick) 0.03f else 0.016f).coerceIn(0.25f, 4f)
     }
 
     companion object {

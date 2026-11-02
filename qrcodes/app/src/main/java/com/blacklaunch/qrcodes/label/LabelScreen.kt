@@ -178,8 +178,12 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var bgSelected by remember { mutableStateOf(false) }
     // Гумка по фону: водиш пальцем по наклейці — картинка під пальцем затирається (кольором паперу).
     var bgErase by remember { mutableStateOf(false) }
-    var drawNew by remember { mutableStateOf(false) }
-    var drawEdit by remember { mutableStateOf<Element.Drawing?>(null) }
+    // Малювання прямо на наклейці: штрихи в мм, поки не натиснеш «Готово».
+    var drawMode by remember { mutableStateOf(false) }
+    val drawStrokes = remember { androidx.compose.runtime.mutableStateListOf<List<Offset>>() }
+    var drawThick by remember { mutableStateOf(false) }
+    var drawErase by remember { mutableStateOf(false) }
+    var drawEditId by remember { mutableStateOf<Int?>(null) }
 
     val selected = design.elements.firstOrNull { it.id == selectedId }
     // Кому «Рамка» міняє рамку коду: вибраному коду, а якщо код один — йому.
@@ -193,6 +197,32 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     LaunchedEffect(bgSelected) { if (!bgSelected) bgErase = false }
     // Вибрав елемент на наклейці — панель сама показує «Змінити».
     LaunchedEffect(selectedId) { if (selectedId != null) editTab = true }
+    /** Почати малювати на наклейці: новий малюнок або домалювати наявний (його штрихи — у мм наклейки). */
+    fun startDraw(edit: Element.Drawing?) {
+        drawStrokes.clear()
+        drawErase = false
+        drawThick = edit?.thick ?: false
+        drawEditId = edit?.id
+        if (edit != null) {
+            val w = edit.width
+            val h = edit.width * edit.aspect
+            val a = Math.toRadians(edit.rotation.toDouble())
+            val c = kotlin.math.cos(a).toFloat()
+            val sn = kotlin.math.sin(a).toFloat()
+            edit.strokes.forEach { st ->
+                drawStrokes.add(st.chunked(2).filter { it.size == 2 }.map { (u, v) ->
+                    val x = (u - 0.5f) * w
+                    val y = (v - 0.5f) * h
+                    Offset(edit.cx + x * c - y * sn, edit.cy + x * sn + y * c)
+                })
+            }
+        }
+        selectedId = null
+        bgSelected = false
+        drawMode = true
+    }
+
+    BackHandler(enabled = drawMode) { drawMode = false; drawStrokes.clear() }
     BackHandler(onBack = onClose)
 
     fun pushHistory(old: LabelDesign) {
@@ -272,7 +302,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         pickImage.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
-    val dialogOpen = drawNew || drawEdit != null || bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    val dialogOpen = bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
     Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur)) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
@@ -315,6 +345,57 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     .pointerInput(k) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
+                            if (drawMode) {
+                                // Малюємо (чи стираємо) прямо на наклейці, у мм.
+                                val first = down.position / k
+                                if (drawErase) {
+                                    fun erase(p: Offset) {
+                                        val r = DRAW_ERASER_MM
+                                        val next = ArrayList<List<Offset>>()
+                                        drawStrokes.forEach { st ->
+                                            var run = ArrayList<Offset>()
+                                            st.forEach { pt ->
+                                                if ((pt - p).getDistance() < r) {
+                                                    if (run.isNotEmpty()) next.add(run)
+                                                    run = ArrayList()
+                                                } else {
+                                                    run.add(pt)
+                                                }
+                                            }
+                                            if (run.isNotEmpty()) next.add(run)
+                                        }
+                                        if (next.sumOf { it.size } != drawStrokes.sumOf { it.size }) {
+                                            drawStrokes.clear()
+                                            drawStrokes.addAll(next)
+                                        }
+                                    }
+                                    erase(first)
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        event.changes.firstOrNull()?.let { ch -> if (ch.pressed) { erase(ch.position / k); ch.consume() } }
+                                    } while (event.changes.any { it.pressed })
+                                } else {
+                                    val pts = mutableListOf(first)
+                                    drawStrokes.add(pts.toList())
+                                    val index = drawStrokes.lastIndex
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        event.changes.firstOrNull()?.let { ch ->
+                                            if (ch.pressed) {
+                                                // Густо — щоб гумка стирала рівно.
+                                                val p = ch.position / k
+                                                val last = pts.last()
+                                                val steps = ((p - last).getDistance() / 0.4f).toInt()
+                                                for (i in 1..steps) pts.add(last + (p - last) * (i / (steps + 1f)))
+                                                pts.add(p)
+                                                drawStrokes[index] = pts.toList()
+                                                ch.consume()
+                                            }
+                                        }
+                                    } while (event.changes.any { it.pressed })
+                                }
+                                return@awaitEachGesture
+                            }
                             val d = current
                             val hit = d.hit(down.position.x / k, down.position.y / k, 10.dp.toPx() / k, renderer::textWidth)
                             if (bgErase && bgSelected && d.background != null) {
@@ -452,7 +533,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                         is Element.Text -> textEdit = hit
                                         is Element.Qr -> captionEdit = hit
                                         is Element.Icon -> stickerFor = hit
-                                        is Element.Drawing -> drawEdit = hit
+                                        is Element.Drawing -> startDraw(hit)
                                     }
                                 } else {
                                     lastTap = t to hit.id
@@ -461,7 +542,24 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         }
                     },
             ) {
-                drawIntoCanvas { renderer.draw(it.nativeCanvas, k, design, LabelPalette.forView(design)) }
+                val editingId = drawEditId
+                val shown = if (drawMode && editingId != null) design.remove(editingId) else design
+                drawIntoCanvas { renderer.draw(it.nativeCanvas, k, shown, LabelPalette.forView(design)) }
+                if (drawMode) {
+                    val inkColor = androidx.compose.ui.graphics.Color(LabelPalette.forView(design).ink)
+                    val pen = (if (drawThick) DRAW_THICK_MM else DRAW_THIN_MM) * k
+                    drawStrokes.forEach { st ->
+                        if (st.isEmpty()) return@forEach
+                        if (st.size == 1) {
+                            drawCircle(inkColor, pen / 2, st[0] * k)
+                        } else {
+                            val path = androidx.compose.ui.graphics.Path()
+                            path.moveTo(st[0].x * k, st[0].y * k)
+                            st.drop(1).forEach { path.lineTo(it.x * k, it.y * k) }
+                            drawPath(path, inkColor, style = androidx.compose.ui.graphics.drawscope.Stroke(pen, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                        }
+                    }
+                }
                 // Лінії, до яких прилипло.
                 guides.first?.let { x -> drawLine(PAPER_GUIDE, Offset(x * k, 0f), Offset(x * k, size.height), 1.dp.toPx()) }
                 guides.second?.let { y -> drawLine(PAPER_GUIDE, Offset(0f, y * k), Offset(size.width, y * k), 1.dp.toPx()) }
@@ -526,7 +624,51 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 )
             }
             Spacer(Modifier.size(10.dp))
-            androidx.compose.animation.AnimatedContent(
+            if (drawMode) {
+                // Поки малюєш: товщина / гумка й дії; наклейка вгорі — це й є полотно.
+                Column(Modifier.fillMaxWidth().heightIn(min = TAB_AREA_HEIGHT), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.label_draw_hint), color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !drawThick && !drawErase) { drawThick = false; drawErase = false }
+                        com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thick), drawThick && !drawErase) { drawThick = true; drawErase = false }
+                        com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_eraser), drawErase) { drawErase = true }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Tool(Glyph.Undo, stringResource(R.string.label_undo), Modifier.weight(1f), enabled = drawStrokes.isNotEmpty()) { drawStrokes.removeLastOrNull() }
+                        Tool(Glyph.Delete, stringResource(R.string.label_clear), Modifier.weight(1f), enabled = drawStrokes.isNotEmpty(), danger = true) { drawStrokes.clear() }
+                        Tool(Glyph.Close, stringResource(R.string.cancel), Modifier.weight(1f)) { drawMode = false; drawStrokes.clear() }
+                        Tool(Glyph.Save, stringResource(R.string.done), Modifier.weight(1f)) {
+                            val editing = drawEditId
+                            val base = if (editing != null) design.remove(editing) else design
+                            val pts = drawStrokes.flatten()
+                            if (pts.isEmpty()) {
+                                // Усе стерли — малюнка немає.
+                                if (editing != null) commit(base)
+                            } else {
+                                val pen = if (drawThick) DRAW_THICK_MM else DRAW_THIN_MM
+                                val minX = pts.minOf { it.x }
+                                val maxX = pts.maxOf { it.x }
+                                val minY = pts.minOf { it.y }
+                                val maxY = pts.maxOf { it.y }
+                                val bw = (maxX - minX).coerceAtLeast(1f)
+                                val bh = (maxY - minY).coerceAtLeast(1f)
+                                val norm = drawStrokes.map { st -> st.flatMap { listOf((it.x - minX) / bw, (it.y - minY) / bh) } }
+                                val el = Element.Drawing(editing ?: design.nextId, (minX + maxX) / 2, (minY + maxY) / 2, norm, bh / bw, bw, drawThick, line = pen / bw)
+                                // Там, де намалював; налізло на код чи за край — на найближче вільне місце.
+                                val placed = if (Placement.fits(base, el, tw)) el else Placement.nearestFree(base, el, tw, el.cx, el.cy)
+                                if (placed == null) {
+                                    onMessage(noRoom)
+                                    return@Tool
+                                }
+                                commit(base.add(placed))
+                                selectedId = placed.id
+                            }
+                            drawMode = false
+                            drawStrokes.clear()
+                        }
+                    }
+                }
+            } else androidx.compose.animation.AnimatedContent(
                 targetState = editTab,
                 transitionSpec = {
                     androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220, delayMillis = 60)) togetherWith
@@ -543,7 +685,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             Tool(Glyph.ScanQr, stringResource(R.string.label_add_code), Modifier.weight(1f)) { replaceFor = null; pickerOpen = true }
                             Tool(Glyph.TextT, stringResource(R.string.label_add_text), Modifier.weight(1f)) { textNew = true }
                             Tool(Glyph.Star, stringResource(R.string.label_add_icon), Modifier.weight(1f)) { stickerFor = null; stickerNew = true }
-                            Tool(Glyph.Edit, stringResource(R.string.label_drawing), Modifier.weight(1f)) { drawNew = true }
+                            Tool(Glyph.Edit, stringResource(R.string.label_drawing), Modifier.weight(1f)) { startDraw(null) }
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Tool(Glyph.Gallery, stringResource(R.string.label_background), Modifier.weight(1f), on = design.background != null) { bgMenu = true }
@@ -626,7 +768,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             onEditBanner = { bannerEdit = it },
                             onReplace = { replaceFor = it; pickerOpen = true },
                             onReplaceIcon = { stickerFor = it },
-                            onEditDrawing = { drawEdit = it },
+                            onEditDrawing = { startDraw(it) },
                             onEditText = { textEdit = it },
                             canUndo = canUndo,
                             onUndo = { undo() },
@@ -692,20 +834,6 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 }
                 Text(stringResource(R.string.label_bg_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
             }
-        }
-    }
-    if (drawNew || drawEdit != null) {
-        DrawDialog(drawEdit, onDismiss = { drawNew = false; drawEdit = null }) { strokes, aspect, thick ->
-            val edit = drawEdit
-            if (edit != null) {
-                tryChange(edit.copy(strokes = strokes, aspect = aspect, thick = thick))
-            } else {
-                var width = minOf(50f, design.size.widthMm * 0.5f)
-                if (width * aspect > design.size.heightMm * 0.7f) width = design.size.heightMm * 0.7f / aspect
-                addElement(Element.Drawing(design.nextId, design.size.widthMm / 2, design.size.heightMm / 2, strokes, aspect, width.coerceAtLeast(Element.MIN_DRAWING), thick))
-            }
-            drawNew = false
-            drawEdit = null
         }
     }
 
@@ -1085,8 +1213,10 @@ private fun SelectedPanel(
 
 private const val ACTIONS_PER_ROW = 5
 
-/** Радіус гумки в малюнку — частка ширини полотна. */
-private const val ERASER_RADIUS = 0.035f
+/** Малювання на наклейці: товщина ліній і радіус гумки, мм. */
+private const val DRAW_THIN_MM = 0.7f
+private const val DRAW_THICK_MM = 1.5f
+private const val DRAW_ERASER_MM = 2.5f
 private val TAB_WIDTH = 116.dp
 
 /** Висота панелі вкладок: розмір + два рядки дій вибраного елемента (найвища з вкладок). */
@@ -1342,144 +1472,3 @@ private fun copyBackground(context: android.content.Context, uri: android.net.Ur
     file.absolutePath
 }.getOrNull()
 
-/**
- * Полотно для малювання пальцем: одна лінія (тонко чи товсто), «Крок назад», «Очистити». Готово — штрихи в частках
- * свого прямокутника й співвідношення сторін (малюнок стає елементом, що масштабується).
- */
-@Composable
-private fun DrawDialog(initial: Element.Drawing?, onDismiss: () -> Unit, onDone: (List<List<Float>>, Float, Boolean) -> Unit) {
-    // Точки — частки ширини полотна (полотно квадратне).
-    val strokes = remember {
-        androidx.compose.runtime.mutableStateListOf<List<Offset>>().apply {
-            if (initial != null) {
-                // Наявний малюнок — уміщаємо в полотно з полем, зберігаючи пропорції.
-                val s = 0.8f / maxOf(1f, initial.aspect)
-                val w = s
-                val h = s * initial.aspect
-                val left = (1f - w) / 2f
-                val top = (1f - h) / 2f
-                initial.strokes.forEach { st -> add(st.chunked(2).filter { it.size == 2 }.map { (x, y) -> Offset(left + x * w, top + y * h) }) }
-            }
-        }
-    }
-    var current by remember { mutableStateOf<List<Offset>>(emptyList()) }
-    var thick by remember { mutableStateOf(initial?.thick ?: false) }
-    var erasing by remember { mutableStateOf(false) }
-    var eraserAt by remember { mutableStateOf<Offset?>(null) }
-
-    /** Гумка: прибирає точки штрихів поруч із пальцем (штрих розпадається на частини). */
-    fun eraseAt(p: Offset) {
-        val r = ERASER_RADIUS
-        val next = ArrayList<List<Offset>>()
-        strokes.forEach { st ->
-            var run = ArrayList<Offset>()
-            st.forEach { pt ->
-                if ((pt - p).getDistance() < r) {
-                    if (run.isNotEmpty()) next.add(run)
-                    run = ArrayList()
-                } else {
-                    run.add(pt)
-                }
-            }
-            if (run.isNotEmpty()) next.add(run)
-        }
-        if (next.size != strokes.size || next.sumOf { it.size } != strokes.sumOf { it.size }) {
-            strokes.clear()
-            strokes.addAll(next)
-        }
-    }
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.label_drawing), buttons = {
-        SheetButton(stringResource(R.string.cancel), onDismiss)
-        SheetButton(stringResource(R.string.done), {
-            val pts = strokes.flatten()
-            if (pts.isNotEmpty()) {
-                val minX = pts.minOf { it.x }
-                val maxX = pts.maxOf { it.x }
-                val minY = pts.minOf { it.y }
-                val maxY = pts.maxOf { it.y }
-                val bw = (maxX - minX).coerceAtLeast(0.02f)
-                val bh = (maxY - minY).coerceAtLeast(0.02f)
-                val norm = strokes.map { st -> st.flatMap { listOf((it.x - minX) / bw, (it.y - minY) / bh) } }
-                onDone(norm, bh / bw, thick)
-            }
-        }, tone = Tone.Confirm, enabled = strokes.isNotEmpty())
-    }) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(androidx.compose.ui.graphics.Color(LabelPalette.Screen.paper))
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown()
-                            val side = size.width.toFloat().coerceAtLeast(1f)
-                            if (erasing) {
-                                eraserAt = down.position / side
-                                eraseAt(down.position / side)
-                                do {
-                                    val event = awaitPointerEvent()
-                                    event.changes.firstOrNull()?.let { ch ->
-                                        if (ch.pressed) {
-                                            eraserAt = ch.position / side
-                                            eraseAt(ch.position / side)
-                                            ch.consume()
-                                        }
-                                    }
-                                } while (event.changes.any { it.pressed })
-                                eraserAt = null
-                                return@awaitEachGesture
-                            }
-                            val pts = mutableListOf(down.position / side)
-                            current = pts.toList()
-                            do {
-                                val event = awaitPointerEvent()
-                                event.changes.firstOrNull()?.let { ch ->
-                                    if (ch.pressed) {
-                                        // Густо (з проміжними точками) — щоб гумка стирала рівно, без «пропусків».
-                                        val p = ch.position / side
-                                        val last = pts.last()
-                                        val steps = ((p - last).getDistance() / 0.008f).toInt()
-                                        for (i in 1..steps) pts.add(last + (p - last) * (i / (steps + 1f)))
-                                        pts.add(p)
-                                        ch.consume()
-                                    }
-                                }
-                                current = pts.toList()
-                            } while (event.changes.any { it.pressed })
-                            strokes.add(pts.toList())
-                            current = emptyList()
-                        }
-                    },
-            ) {
-                Canvas(Modifier.matchParentSize()) {
-                    val ink = androidx.compose.ui.graphics.Color(LabelPalette.Screen.ink)
-                    val width = size.width * if (thick) 0.024f else 0.012f
-                    (strokes + listOf(current)).forEach { st ->
-                        if (st.isEmpty()) return@forEach
-                        if (st.size == 1) {
-                            drawCircle(ink, width / 2, st[0] * size.width)
-                        } else {
-                            val path = androidx.compose.ui.graphics.Path()
-                            path.moveTo(st[0].x * size.width, st[0].y * size.width)
-                            st.drop(1).forEach { path.lineTo(it.x * size.width, it.y * size.width) }
-                            drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(width, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-                        }
-                    }
-                    // Де зараз гумка — сірий кружечок.
-                    eraserAt?.let { drawCircle(androidx.compose.ui.graphics.Color(0x889A9A9A), ERASER_RADIUS * size.width, it * size.width, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx())) }
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !thick && !erasing) { thick = false; erasing = false }
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thick), thick && !erasing) { thick = true; erasing = false }
-                com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_eraser), erasing) { erasing = true }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetButton(stringResource(R.string.label_undo), { strokes.removeLastOrNull() }, enabled = strokes.isNotEmpty())
-                SheetButton(stringResource(R.string.label_clear), { strokes.clear() }, enabled = strokes.isNotEmpty())
-            }
-        }
-    }
-}

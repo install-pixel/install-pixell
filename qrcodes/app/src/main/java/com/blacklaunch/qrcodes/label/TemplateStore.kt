@@ -73,7 +73,7 @@ class TemplateStore(context: Context) {
                     .put("caption", e.caption).put("frame", e.frame.name).put("banner", e.banner).put("barcode", e.barcode)
                 is Element.Text -> o.put("t", "text").put("text", e.text).put("letters", e.letters.toDouble())
                 is Element.Icon -> o.put("t", "icon").put("sticker", e.sticker.name).put("side", e.side.toDouble())
-                is Element.Drawing -> o.put("t", "draw").put("w", e.width.toDouble()).put("a", e.aspect.toDouble()).put("thick", e.thick)
+                is Element.Drawing -> o.put("t", "draw").put("w", e.width.toDouble()).put("a", e.aspect.toDouble()).put("thick", e.thick).put("ln", e.line.toDouble())
                     .put("s", JSONArray().apply { e.strokes.forEach { st -> put(JSONArray().apply { st.forEach { v -> put(Math.round(v * 10000) / 10000.0) } }) } })
             }
         }
@@ -130,7 +130,7 @@ class TemplateStore(context: Context) {
                         val st = arr.getJSONArray(i)
                         (0 until st.length()).map { j -> st.getDouble(j).toFloat() }
                     }
-                    Element.Drawing(id, cx, cy, strokes, o.optDouble("a", 1.0).toFloat(), o.getDouble("w").toFloat(), o.optBoolean("thick"), rot)
+                    Element.Drawing(id, cx, cy, strokes, o.optDouble("a", 1.0).toFloat(), o.getDouble("w").toFloat(), o.optBoolean("thick"), rot, o.optDouble("ln", 0.0).toFloat())
                 }
                 "icon" -> Sticker.entries.firstOrNull { it.name == o.optString("sticker") }?.let { Element.Icon(id, cx, cy, it, o.getDouble("side").toFloat(), rot) }
                 else -> null
