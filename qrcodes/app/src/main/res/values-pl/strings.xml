@@ -180,7 +180,7 @@
     <string name="help_camera_t">Aparat i tekst ze zdjęcia</string>
     <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Latarka — przycisk na ekranie aparatu.</string>
     <string name="help_list_t">Zapisane i szukanie</string>
-    <string name="help_list">• Dotknięcie kodu — na cały ekran, jasność na maksimum, żeby łatwo zeskanować.\n• Przesuń w lewo — usuń (jest „Cofnij”).\n• Przytrzymaj i puść — menu: do ulubionych, nazwa, druk, kopiuj, do folderu, usuń.\n• Własna nazwa ukrywa treść — wygodne dla haseł.\n• Lupa w kapsule — szukanie po nazwie lub treści.</string>
+    <string name="help_list">• Dotknięcie kodu — na cały ekran, jasność na maksimum, żeby łatwo zeskanować.\n• Przesuń w lewo — usuń (jest „Cofnij”).\n• Przytrzymaj i puść — menu: do ulubionych, nazwa, treść (zobacz i popraw), druk, kopiuj, do folderu, usuń.\n• Własna nazwa ukrywa treść — wygodne dla haseł.\n• Lupa w kapsule — szukanie po nazwie lub treści.</string>
     <string name="help_folders_t">Foldery i kolejność</string>
     <string name="help_folders">• Przytrzymaj kod i prowadź — zmieniasz kolejność.\n• Upuść kod na inny kod — powstanie nowy folder z obu.\n• Upuść kod na folder — trafi do niego.\n• Dotknięcie folderu — otwórz; strzałka u góry lub „Wstecz” — wyjdź.\n• Przytrzymaj folder — nazwa, druk wszystkich kodów, rozgrupuj (kody zostają) albo usuń z całą zawartością.\n• W menu kodu: „Do folderu…” i „Wyjmij z folderu”.</string>
     <string name="help_fav_t">Ulubione</string>
@@ -221,4 +221,10 @@
     <string name="label_eraser">Gumka</string>
     <string name="label_bg_erasing">Gumka: prowadź palcem po etykiecie — tło pod palcem się wymazuje. „Cofnij” — przywróć.</string>
     <string name="label_draw_hint">Rysuj palcem bezpośrednio na etykiecie. Rysunek nie nachodzi na kody.</string>
+    <string name="content_edit">Treść — zobacz i popraw</string>
+    <string name="content_edit_hint">Tu jest wszystko, co zakodowane (znaków: %1$d). Popraw — kod się zmieni; nazwa, folder i ulubione zostają.</string>
+    <string name="content_invalid_qr">Tak długa treść nie zmieści się w kodzie QR</string>
+    <string name="content_invalid_bar">Kod kreskowy przyjmuje tylko litery łacińskie, cyfry i znaki (do 48) albo 13 cyfr EAN</string>
+    <string name="content_saved">Treść zmieniona</string>
+    <string name="content_exists">Taki kod już jest wśród zapisanych</string>
 </resources>

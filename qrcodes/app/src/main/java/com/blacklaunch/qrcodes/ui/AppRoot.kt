@@ -115,6 +115,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     val dropZone = remember { DropZone() }
     var menuFor by remember { mutableStateOf<QrCode?>(null) }
     var renameFor by remember { mutableStateOf<QrCode?>(null) }
+    var contentFor by remember { mutableStateOf<QrCode?>(null) }
     var labelFor by remember { mutableStateOf<List<QrCode>?>(null) }
     var banner by remember { mutableStateOf<BannerMsg?>(null) }
     var focusAfterCamera by remember { mutableIntStateOf(0) }
@@ -224,7 +225,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null)
+    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -431,6 +432,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 menuFor = null
                 renameFor = code
             },
+            onContent = {
+                menuFor = null
+                contentFor = code
+            },
             onShare = {
                 menuFor = null
                 fullscreen = null
@@ -539,6 +544,14 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         RenameDialog(code, onDismiss = { renameFor = null }) {
             vm.rename(code, it)
             renameFor = null
+        }
+    }
+    contentFor?.let { code ->
+        val changed = stringResource(R.string.content_saved)
+        val exists = stringResource(R.string.content_exists)
+        ContentDialog(code, onDismiss = { contentFor = null }) { text ->
+            vm.editContent(code, text) { ok -> show(if (ok) changed else exists) }
+            contentFor = null
         }
     }
 }

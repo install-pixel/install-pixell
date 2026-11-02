@@ -115,7 +115,7 @@ private val HandFieldStyle = TextStyle(
 
 /** Стиль тексту в полях: «Аркуш» — від руки, «Скло» — звичайний шрифт. */
 @Composable
-private fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontFamily = GlassFont, fontSize = 18.sp, lineHeight = 22.sp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both))
+internal fun fieldStyle(): TextStyle = if (LocalSheet.current) HandFieldStyle else TextStyle(fontFamily = GlassFont, fontSize = 18.sp, lineHeight = 22.sp, lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both))
 
 /**
  * Капсула внизу — як поле пошуку Black Glass, на тому самому місці: поле з рамкою олівцем, усередині ліворуч —

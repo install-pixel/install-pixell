@@ -77,6 +77,25 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
         dao.update(code.copy(name = name.trim().ifEmpty { null }))
     }
 
+    /**
+     * Виправити зміст коду (назва, папка, вибране лишаються). [onResult]: true — змінено; false — такий код уже є
+     * серед збережених.
+     */
+    fun editContent(code: QrCode, content: String, onResult: (Boolean) -> Unit) = viewModelScope.launch {
+        val text = content.trim()
+        if (text.isEmpty() || text == code.content) {
+            onResult(true)
+            return@launch
+        }
+        val other = dao.byContent(text)
+        if (other != null && other.id != code.id) {
+            onResult(false)
+        } else {
+            dao.update(code.copy(content = text))
+            onResult(true)
+        }
+    }
+
     fun delete(code: QrCode) = viewModelScope.launch { dao.delete(code.id) }
 
     /**

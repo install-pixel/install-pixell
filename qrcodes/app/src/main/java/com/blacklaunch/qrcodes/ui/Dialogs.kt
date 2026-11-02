@@ -16,6 +16,9 @@ import androidx.compose.animation.fadeIn
 
 import android.view.WindowManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +87,7 @@ fun ItemMenu(
     onDismiss: () -> Unit,
     onFavorite: () -> Unit,
     onRename: () -> Unit,
+    onContent: () -> Unit,
     onShare: () -> Unit,
     onCopy: () -> Unit,
     onDelete: () -> Unit,
@@ -98,6 +102,7 @@ fun ItemMenu(
                 onFavorite,
             )
             MenuRow(Glyph.Edit, stringResource(R.string.rename), onRename)
+            MenuRow(Glyph.TextT, stringResource(R.string.content_edit), onContent)
             MenuRow(Glyph.Print, stringResource(R.string.print_share), onShare)
             MenuRow(Glyph.Copy, stringResource(R.string.copy_text), onCopy)
             MenuRow(Glyph.Folder, stringResource(R.string.folder_move), onToFolder)
@@ -446,6 +451,58 @@ fun FolderPicker(folders: List<com.blacklaunch.qrcodes.data.Folder>, current: Lo
         Column(Modifier.bouncyScroll()) {
             folders.filter { it.id != current }.forEach { f -> MenuRow(Glyph.Folder, f.name, { onPick(f) }) }
             MenuRow(Glyph.Plus, stringResource(R.string.folder_new), onNew)
+        }
+    }
+}
+
+/**
+ * Зміст коду: усе, що закодовано, — видно цілком і можна виправити (одна буква не та — не треба створювати заново).
+ * Якщо такий зміст цим кодом не закодувати (задовгий QR, кирилиця в штрихкоді) — «Застосувати» неактивна й пояснення.
+ */
+@Composable
+fun ContentDialog(code: QrCode, onDismiss: () -> Unit, onApply: (String) -> Unit) {
+    var text by remember { mutableStateOf(code.content) }
+    val format = code.codeFormat
+    val valid = remember(text, format) { com.blacklaunch.qrcodes.qr.Symbol.encode(text.trim(), format) != null }
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.content_edit), buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.apply), { onApply(text) }, tone = Tone.Confirm, enabled = valid && text.isNotBlank())
+    }) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (AppStyle.glass) {
+                            Modifier
+                                .clip(shape)
+                                .background(if (focused) Color(0x0FFFFFFF) else Color(0x08FFFFFF))
+                                .border(1.dp, if (focused) Color(0x99FFFFFF) else Color(0x38FFFFFF), shape)
+                        } else {
+                            Modifier.pencilFrame(14.dp, seed = 29, alpha = if (focused) 0.9f else 0.6f)
+                        },
+                    )
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) {
+                androidx.compose.foundation.text.BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    textStyle = fieldStyle().copy(color = Oled.TextPrimary),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(if (AppStyle.glass) Oled.TextPrimary else Oled.TextSecondary),
+                    minLines = 3,
+                    maxLines = 12,
+                    interactionSource = interaction,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Text(
+                if (valid || text.isBlank()) stringResource(R.string.content_edit_hint, text.trim().length) else stringResource(if (format == com.blacklaunch.qrcodes.qr.CodeFormat.BARCODE) R.string.content_invalid_bar else R.string.content_invalid_qr),
+                color = if (valid || text.isBlank()) Oled.TextSecondary else Oled.Danger,
+                fontSize = 14.sp,
+            )
         }
     }
 }

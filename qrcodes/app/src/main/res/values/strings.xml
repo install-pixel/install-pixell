@@ -182,7 +182,7 @@
     <string name="help_camera_t">Camera and text from a photo</string>
     <string name="help_camera">• “Scan QR” — point the camera at a code, its copy appears, save it.\n• “Text from photo” — take a photo, found words get frames.\n• Tap a word — choose or drop it.\n• Hold a word and drag — everything up to your finger is chosen.\n• The square next to a line — the whole line.\n• “Done” — the choice goes into the field, where you can fix it.\n• Both modes can take a picture from the gallery. The torch is a button on the camera screen.</string>
     <string name="help_list_t">Saved codes and search</string>
-    <string name="help_list">• Tap a code — full screen, brightness to the max so it scans easily.\n• Swipe left — delete (with “Undo”).\n• Long press and release — menu: favourite, name, print, copy, to a folder, delete.\n• Your own name hides the content — handy for passwords.\n• The magnifier in the capsule — search by name or content.</string>
+    <string name="help_list">• Tap a code — full screen, brightness to the max so it scans easily.\n• Swipe left — delete (with “Undo”).\n• Long press and release — menu: favourite, name, content (view and fix), print, copy, to a folder, delete.\n• Your own name hides the content — handy for passwords.\n• The magnifier in the capsule — search by name or content.</string>
     <string name="help_folders_t">Folders and order</string>
     <string name="help_folders">• Hold a code and drag — change the order.\n• Drop a code onto another code — a new folder with both.\n• Drop a code onto a folder — it goes inside.\n• Tap a folder — open it; the arrow at the top or “Back” — leave.\n• Long press a folder — name, print all codes, ungroup (codes stay) or delete with everything inside.\n• In a code’s menu: “To a folder…” and “Take out of the folder”.</string>
     <string name="help_fav_t">Favourites</string>
@@ -223,4 +223,10 @@
     <string name="label_eraser">Eraser</string>
     <string name="label_bg_erasing">Eraser: run your finger over the label — the backdrop under it is wiped. “Undo” brings it back.</string>
     <string name="label_draw_hint">Draw with your finger right on the label. The drawing never covers codes.</string>
+    <string name="content_edit">Content — view and fix</string>
+    <string name="content_edit_hint">Everything encoded is here (%1$d characters). Fix it and the code changes; the name, folder and favourite stay.</string>
+    <string name="content_invalid_qr">Content this long won’t fit into a QR code</string>
+    <string name="content_invalid_bar">A barcode takes only Latin letters, digits and signs (up to 48), or 13 EAN digits</string>
+    <string name="content_saved">Content changed</string>
+    <string name="content_exists">This code is already saved</string>
 </resources>
