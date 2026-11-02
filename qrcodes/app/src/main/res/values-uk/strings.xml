@@ -235,7 +235,7 @@
     <string name="kind_hint_aztec">Квадратний без поля навколо — квитки, посадкові; будь-який текст</string>
     <string name="kind_hint_auto">Сам вибере: EAN-13, EAN-8, UPC-A для цифр із контрольною, інакше Code 128</string>
     <string name="kind_hint_code128">Склад і логістика: латиниця, цифри, знаки (до 48)</string>
-    <string name="kind_hint_code39">Старі сканери й промисловість: A–Z, 0–9, - . $ / + % пробіл</string>
+    <string name="kind_hint_code39" formatted="false">Старі сканери й промисловість: A–Z, 0–9, - . $ / + % пробіл</string>
     <string name="kind_hint_code93">Щільніший за Code 39, ті самі символи</string>
     <string name="kind_hint_ean13">Товари в магазині: 12 або 13 цифр</string>
     <string name="kind_hint_ean8">Малі товари: 7 або 8 цифр</string>

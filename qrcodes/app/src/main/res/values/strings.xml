@@ -237,7 +237,7 @@
     <string name="kind_hint_aztec">Square without a margin — tickets, boarding passes; any text</string>
     <string name="kind_hint_auto">Picks by itself: EAN-13, EAN-8, UPC-A for digits with a check digit, otherwise Code 128</string>
     <string name="kind_hint_code128">Warehouse and logistics: Latin letters, digits, signs (up to 48)</string>
-    <string name="kind_hint_code39">Older scanners and industry: A–Z, 0–9, - . $ / + % space</string>
+    <string name="kind_hint_code39" formatted="false">Older scanners and industry: A–Z, 0–9, - . $ / + % space</string>
     <string name="kind_hint_code93">Denser than Code 39, same characters</string>
     <string name="kind_hint_ean13">Shop goods: 12 or 13 digits</string>
     <string name="kind_hint_ean8">Small goods: 7 or 8 digits</string>

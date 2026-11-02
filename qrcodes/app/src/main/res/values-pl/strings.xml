@@ -235,7 +235,7 @@
     <string name="kind_hint_aztec">Kwadratowy bez marginesu — bilety, karty pokładowe; dowolny tekst</string>
     <string name="kind_hint_auto">Sam wybierze: EAN-13, EAN-8, UPC-A dla cyfr z kontrolną, inaczej Code 128</string>
     <string name="kind_hint_code128">Magazyn i logistyka: litery łacińskie, cyfry, znaki (do 48)</string>
-    <string name="kind_hint_code39">Starsze skanery i przemysł: A–Z, 0–9, - . $ / + % spacja</string>
+    <string name="kind_hint_code39" formatted="false">Starsze skanery i przemysł: A–Z, 0–9, - . $ / + % spacja</string>
     <string name="kind_hint_code93">Gęstszy niż Code 39, te same znaki</string>
     <string name="kind_hint_ean13">Towary w sklepie: 12 lub 13 cyfr</string>
     <string name="kind_hint_ean8">Małe towary: 7 lub 8 cyfr</string>
