@@ -86,6 +86,7 @@ import androidx.compose.animation.togetherWith
 import com.blacklaunch.qrcodes.ui.OPEN_MS
 import com.blacklaunch.qrcodes.ui.CLOSE_MS
 import androidx.compose.foundation.gestures.calculateRotation
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -479,9 +480,24 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                     travel += pan.getDistance()
                                     val active = bgSelected || fingers >= 2
                                     if (active && (travel > viewConfiguration.touchSlop || zoom != 1f || turn != 0f)) {
+                                        // Збільшення й поворот — навколо точки між пальцями (як фото в галереї).
+                                        val newW = (bw * zoom).coerceIn(5f, BG_MAX_WIDTH_MM)
+                                        val z = newW / bw
+                                        val cen = event.calculateCentroid(useCurrent = true)
+                                        if (cen != Offset.Unspecified && (z != 1f || turn != 0f)) {
+                                            val px = cen.x / k
+                                            val py = cen.y / k
+                                            val a = Math.toRadians(turn.toDouble())
+                                            val c = kotlin.math.cos(a).toFloat()
+                                            val sn = kotlin.math.sin(a).toFloat()
+                                            val dx = (bx - px) * z
+                                            val dy = (by - py) * z
+                                            bx = px + dx * c - dy * sn
+                                            by = py + dx * sn + dy * c
+                                        }
                                         bx += pan.x / k
                                         by += pan.y / k
-                                        bw = (bw * zoom).coerceIn(5f, BG_MAX_WIDTH_MM)
+                                        bw = newW
                                         br += turn
                                         design = current.copy(background = bgNow.copy(cx = bx, cy = by, width = bw, rotation = normalizeAngle(br, snap = true)))
                                         if (!movedBg) {
