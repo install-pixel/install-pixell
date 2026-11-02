@@ -99,6 +99,7 @@ import com.blacklaunch.qrcodes.ui.theme.Oled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
 
 /**
@@ -135,11 +136,29 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         )
     }
 
+    // Чернетка: якщо минулого разу тут була наклейка з цими самими кодами — повертаємо її, як була.
+    val draftStore = remember { DraftStore(context) }
+    val restored = remember {
+        val draft = draftStore.load()
+        val wanted = start.map { it.content }.toSet()
+        draft?.takeIf { d -> wanted.isNotEmpty() && d.elements.filterIsInstance<Element.Qr>().map { it.content }.toSet().containsAll(wanted) }
+    }
     var design by remember {
         val first = LabelDesign(size = defaults.size)
         val withCodes = start.foldIndexed(first) { i, d, code -> d.add(newQr(i + 1, code, d.size)) }
         // Кілька кодів — одразу сіткою, кожен на своєму місці.
-        mutableStateOf(if (start.size > 1) Arrange.grid(withCodes, tw) else withCodes)
+        mutableStateOf(restored ?: if (start.size > 1) Arrange.grid(withCodes, tw) else withCodes)
+    }
+    val draftRestored = stringResource(R.string.label_draft_restored)
+    LaunchedEffect(Unit) {
+        if (restored != null) onMessage(draftRestored)
+        // Старі фото фону, якими вже ніщо не користується, — геть (у фоні, щоб не гальмувати).
+        withContext(Dispatchers.IO) { BackgroundFiles.cleanup(context) }
+        // Кожна зміна — у чернетку (не частіше, ніж раз на півсекунди).
+        androidx.compose.runtime.snapshotFlow { design }.collectLatest { d ->
+            kotlinx.coroutines.delay(DRAFT_SAVE_MS)
+            withContext(Dispatchers.IO) { draftStore.save(d) }
+        }
     }
     // «Крок назад»: попередні стани наклейки.
     val history = remember { ArrayDeque<LabelDesign>() }
@@ -1252,6 +1271,7 @@ private fun SelectedPanel(
 }
 
 private const val ACTIONS_PER_ROW = 5
+private const val DRAFT_SAVE_MS = 500L
 
 /** Наскільки можна збільшити фон (ширина картинки, мм) — що за краєм наклейки, просто не видно. */
 private const val BG_MAX_WIDTH_MM = 5000f
@@ -1523,7 +1543,7 @@ private fun copyBackground(context: android.content.Context, uri: android.net.Ur
         val m = android.graphics.Matrix().apply { postRotate(degrees) }
         android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true).also { bitmap.recycle() }
     }
-    val dir = java.io.File(context.filesDir, "backgrounds").apply { mkdirs() }
+    val dir = BackgroundFiles.dir(context)
     val file = java.io.File(dir, "bg_${System.currentTimeMillis()}.jpg")
     java.io.FileOutputStream(file).use { upright.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
     upright.recycle()

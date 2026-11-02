@@ -227,4 +227,5 @@
     <string name="content_invalid_bar">Kod kreskowy przyjmuje tylko litery łacińskie, cyfry i znaki (do 48) albo 13 cyfr EAN</string>
     <string name="content_saved">Treść zmieniona</string>
     <string name="content_exists">Taki kod już jest wśród zapisanych</string>
+    <string name="label_draft_restored">Przywrócono niezapisaną etykietę — taką, jak była</string>
 </resources>

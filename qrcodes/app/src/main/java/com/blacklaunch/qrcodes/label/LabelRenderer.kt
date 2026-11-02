@@ -178,6 +178,14 @@ class LabelRenderer(private val hand: Typeface) {
     fun drawElement(canvas: Canvas, pxPerMm: Float, e: Element, palette: LabelPalette, ink: Paint = Paint().apply { color = palette.ink; style = Paint.Style.FILL; isAntiAlias = true }) {
         canvas.save()
         if (e.rotation != 0f) canvas.rotate(e.rotation, e.cx * pxPerMm, e.cy * pxPerMm)
+        // На тлі-зображенні тексти й значки — на білій підкладці, щоб їх було добре видно й на екрані, і на папері.
+        palette.blockFill?.let { fill ->
+            if (e is Element.Text || e is Element.Icon) {
+                val b = e.baseBounds(::textWidth)
+                val m = 1.2f * pxPerMm
+                canvas.drawRoundRect(RectF(b.left * pxPerMm - m, b.top * pxPerMm - m, b.right * pxPerMm + m, b.bottom * pxPerMm + m), m * 1.5f, m * 1.5f, Paint().apply { color = fill; isAntiAlias = true })
+            }
+        }
         when (e) {
             is Element.Qr -> drawQrElement(canvas, pxPerMm, e, palette, ink)
             is Element.Text -> drawText(canvas, pxPerMm, e, ink)

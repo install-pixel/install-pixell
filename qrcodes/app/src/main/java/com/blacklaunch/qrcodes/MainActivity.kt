@@ -23,6 +23,8 @@ import com.blacklaunch.qrcodes.ui.AppStyle
 import com.blacklaunch.qrcodes.settings.AppSettings
 import com.blacklaunch.qrcodes.ui.theme.QrTheme
 
+private const val MAX_FONT_SCALE = 1.15f
+
 class MainActivity : ComponentActivity() {
     private val vm: QrViewModel by viewModels()
 
@@ -49,7 +51,10 @@ class MainActivity : ComponentActivity() {
                 // Стиль — як у Black Glass: «Аркуш» (від руки) або «Скло»; перемикається в Налаштуваннях.
                 SheetTheme(enabled = !AppStyle.glass) {
                     val view = LocalView.current
-                    CompositionLocalProvider(LocalHaptics provides Haptics(view, enabled = true)) {
+                    // Дуже великий шрифт у системі ламав би рівні ряди кнопок і панелі сталої висоти — обмежуємо масштаб.
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val capped = androidx.compose.ui.unit.Density(density.density, density.fontScale.coerceAtMost(MAX_FONT_SCALE))
+                    CompositionLocalProvider(LocalHaptics provides Haptics(view, enabled = true), androidx.compose.ui.platform.LocalDensity provides capped) {
                         AppRoot(vm, shared, onSharedConsumed = { shared = null }, onLanguageChanged = { recreate() })
                     }
                 }

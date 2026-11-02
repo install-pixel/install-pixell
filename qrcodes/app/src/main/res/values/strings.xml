@@ -229,4 +229,5 @@
     <string name="content_invalid_bar">A barcode takes only Latin letters, digits and signs (up to 48), or 13 EAN digits</string>
     <string name="content_saved">Content changed</string>
     <string name="content_exists">This code is already saved</string>
+    <string name="label_draft_restored">Your unsaved label is back, just as you left it</string>
 </resources>

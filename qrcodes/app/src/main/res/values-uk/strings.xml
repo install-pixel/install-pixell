@@ -227,4 +227,5 @@
     <string name="content_invalid_bar">Штрихкод приймає лише латиницю, цифри й знаки (до 48), або 13 цифр EAN</string>
     <string name="content_saved">Зміст змінено</string>
     <string name="content_exists">Такий код уже є серед збережених</string>
+    <string name="label_draft_restored">Повернуто незбережену наклейку — така, як була</string>
 </resources>
