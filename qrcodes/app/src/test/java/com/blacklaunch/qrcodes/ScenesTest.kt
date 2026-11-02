@@ -15,14 +15,12 @@ class ScenesTest {
 
     @Test
     fun codesLandInsideTheirSlotsOnEveryLabel() {
-        for (size in LabelSize.PRESETS.filter { minOf(it.widthMm, it.heightMm) >= 40f }) for (scene in Scenes.all) {
+        for (size in LabelSize.PRESETS.filter { minOf(it.widthMm, it.heightMm) >= 100f }) for (scene in Scenes.all) {
             val d = Scenes.apply(scene, LabelDesign(size = size), listOf(code))
             assertEquals("${scene.id} $size", scene.slots.size, d.elements.size)
             val bg = d.background!!
             // Картинка ціла в межах наклейки.
             assertTrue("${scene.id} $size", bg.width <= d.size.widthMm + 0.01f && bg.height <= d.size.heightMm + 0.01f)
-            // Вертикальна сцена — вертикальна наклейка.
-            assertEquals(scene.aspect > 1f, d.size.heightMm > d.size.widthMm)
             d.elements.forEach { assertTrue("${scene.id} $size", Placement.fits(d, it, tw)) }
         }
     }

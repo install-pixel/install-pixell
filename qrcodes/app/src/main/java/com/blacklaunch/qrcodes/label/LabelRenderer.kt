@@ -447,7 +447,10 @@ class LabelRenderer(private val hand: Typeface) {
             val side = s.side * dw
             val cx = left + s.fx * dw
             val cy = top + s.fy * dh
+            canvas.save()
+            canvas.rotate(s.rot, cx, cy)
             canvas.drawRect(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2, p)
+            canvas.restore()
         }
     }
 
