@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -362,11 +363,14 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
         }
     }
     LaunchedEffect(Unit) { shown.animateTo(1f, tween(DIALOG_OPEN_MS, easing = FastOutSlowInEasing)) }
-    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // Вікно на весь екран (без системних полів): клавіатура піднімає вміст плавно, разом з анімацією системи.
+    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect {
             window?.setDimAmount(0f)
             window?.setWindowAnimations(0)
+            @Suppress("DEPRECATION")
+            window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
         }
         // Фон за вікном — розмитий самою системою (Android 12+), як у Black Glass; сила розмиття йде разом з анімацією,
@@ -383,8 +387,19 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
                 }
             }
         }
+        // Тло на весь екран: дотик повз вікно — закрити; саме вікно дотики «забирає» собі.
         Box(
-            Modifier.graphicsLayer {
+            Modifier
+                .fillMaxSize()
+                .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) { dismiss() }
+                .systemBarsPadding()
+                .imePadding(),
+            contentAlignment = Alignment.Center,
+        ) {
+        Box(
+            Modifier
+                .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
+                .graphicsLayer {
                 val k = shown.value
                 alpha = k
                 val sc = 0.94f + 0.06f * k
@@ -394,6 +409,7 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
             },
         ) {
             content()
+        }
         }
     }
 }
@@ -414,7 +430,6 @@ fun SheetDialog(
         Column(
             modifier = Modifier
                 .padding(horizontal = 20.dp, vertical = 24.dp)
-                .imePadding()
                 .fillMaxWidth()
                 .then(if (tall) Modifier.fillMaxHeight(0.82f) else Modifier)
                 .heightIn(max = 680.dp)

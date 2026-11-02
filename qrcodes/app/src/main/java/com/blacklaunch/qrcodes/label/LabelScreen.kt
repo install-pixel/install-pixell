@@ -224,6 +224,14 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         drawMode = true
     }
 
+    // Клавіатура з головного екрана (поле в капсулі) тут не потрібна — ховаємо її, щоб не стискала наклейку.
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(Unit) {
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+    }
+
     BackHandler(enabled = drawMode) { drawMode = false; drawStrokes.clear() }
     BackHandler(onBack = onClose)
 
@@ -307,7 +315,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val dialogOpen = bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
     Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur)) {
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+    // Без підлаштування під клавіатуру: на цьому екрані вона не потрібна, і наклейка не стрибає (поля вводу — у вікнах).
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clip(CircleShape).clickable { haptics.tap(); onClose() }, contentAlignment = Alignment.Center) {
                 GlyphIcon(Glyph.Back, stringResource(R.string.back))
@@ -628,7 +637,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             Spacer(Modifier.size(10.dp))
             if (drawMode) {
                 // Поки малюєш: товщина / гумка й дії; наклейка вгорі — це й є полотно.
-                Column(Modifier.fillMaxWidth().heightIn(min = TAB_AREA_HEIGHT), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth().height(TAB_AREA_HEIGHT), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.label_draw_hint), color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !drawThick && !drawErase) { drawThick = false; drawErase = false }
@@ -678,7 +687,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 },
                 label = "labelTab",
                 // Стала висота під обидві вкладки: панель не стрибає, коли перемикаєш чи вибираєш елемент.
-                modifier = Modifier.fillMaxWidth().heightIn(min = TAB_AREA_HEIGHT),
+                modifier = Modifier.fillMaxWidth().height(TAB_AREA_HEIGHT),
                 contentAlignment = Alignment.TopCenter,
             ) { edit ->
                 if (!edit) {
@@ -1223,7 +1232,7 @@ private const val DRAW_ERASER_MM = 2.5f
 private val TAB_WIDTH = 116.dp
 
 /** Висота панелі вкладок: розмір + два рядки дій вибраного елемента (найвища з вкладок). */
-private val TAB_AREA_HEIGHT = 228.dp
+private val TAB_AREA_HEIGHT = 240.dp
 
 /** Дія з панелі вибраного елемента. */
 private class Action(val glyph: Glyph, val label: Int, val danger: Boolean = false, val enabled: Boolean = true, val run: () -> Unit)
@@ -1468,10 +1477,25 @@ private fun copyBackground(context: android.content.Context, uri: android.net.Ur
     val bitmap = resolver.openInputStream(uri)?.use {
         android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
     } ?: return null
+    // Фото з камери часто лежать «боком», а поворот записаний лише в EXIF — повертаємо як треба.
+    val degrees = runCatching {
+        resolver.openInputStream(uri)?.use { s ->
+            when (android.media.ExifInterface(s).getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL)) {
+                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+        } ?: 0f
+    }.getOrDefault(0f)
+    val upright = if (degrees == 0f) bitmap else {
+        val m = android.graphics.Matrix().apply { postRotate(degrees) }
+        android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true).also { bitmap.recycle() }
+    }
     val dir = java.io.File(context.filesDir, "backgrounds").apply { mkdirs() }
     val file = java.io.File(dir, "bg_${System.currentTimeMillis()}.jpg")
-    java.io.FileOutputStream(file).use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
-    bitmap.recycle()
+    java.io.FileOutputStream(file).use { upright.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
+    upright.recycle()
     file.absolutePath
 }.getOrNull()
 
