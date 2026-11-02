@@ -176,7 +176,7 @@
     <string name="help">Jak używać</string>
     <string name="help_back">Wstecz</string>
     <string name="help_create_t">Utwórz kod</string>
-    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod od razu pojawia się u góry.\n• Okrągły przycisk po prawej — zapisz; pole się czyści.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skan cudzego QR, tekst ze zdjęcia, a także Wi‑Fi, kontakt i strona.\n• „Kod QR / Kod kreskowy” nad podglądem — co tworzyć. Wybór jest zapamiętywany.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.</string>
+    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod od razu pojawia się u góry.\n• Okrągły przycisk po prawej — zapisz; pole się czyści.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skan cudzego QR, tekst ze zdjęcia, a także Wi‑Fi, kontakt i strona.\n• „Kod QR / Kod kreskowy” nad podglądem — co tworzyć. Wybór jest zapamiętywany.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.\n• „Wiele kodów naraz” (ikona po lewej w kapsule): seria z numerami (PALETA-001…100) albo lista — wszystkie do nowego folderu; w druku — „Każdy kod na osobnej etykiecie”.\n• Przycisk rodzaju kodu obok „Kod QR / Kod kreskowy” — Data Matrix, Aztec, EAN-8, UPC, Code 39 i inne.</string>
     <string name="help_camera_t">Aparat i tekst ze zdjęcia</string>
     <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Latarka — przycisk na ekranie aparatu.</string>
     <string name="help_list_t">Zapisane i szukanie</string>
@@ -243,4 +243,24 @@
     <string name="kind_hint_upce">Krótki UPC: 6–8 cyfr</string>
     <string name="kind_hint_itf">Kartony i palety: parzysta liczba cyfr</string>
     <string name="kind_hint_codabar">Biblioteki, badania: cyfry i - $ : / . +, zaczyna i kończy się na A–D</string>
+    <string name="batch_title">Wiele kodów naraz</string>
+    <string name="batch_series">Seria z numerami</string>
+    <string name="batch_list">Z listy — każdy wiersz to osobny kod</string>
+    <string name="batch_prefix">Początek, np. PALETA-</string>
+    <string name="batch_first">Pierwszy nr</string>
+    <string name="batch_count">Ile</string>
+    <string name="batch_digits">Cyfr</string>
+    <string name="batch_numbers_hint">Pierwszy numer, ile kodów i ile cyfr w numerze (3 — 001, 002…; 0 — bez zer).</string>
+    <string name="batch_suffix">Koniec (opcjonalnie)</string>
+    <string name="batch_list_hint">Wklej lub wpisz: każdy wiersz stanie się osobnym kodem</string>
+    <string name="batch_preview">Będzie %1$d: %2$s</string>
+    <string name="batch_invalid">Nie pasują do tego rodzaju kodu: %1$d.</string>
+    <string name="batch_create">Utwórz</string>
+    <string name="batch_done">Utworzono %1$d w folderze „%2$s”</string>
+    <string name="batch_series_folder">Seria</string>
+    <string name="batch_list_folder">Lista</string>
+    <string name="print_choice_title">Co drukować?</string>
+    <string name="print_this">Tę etykietę</string>
+    <string name="print_each">Każdy kod na osobnej etykiecie (%1$d)</string>
+    <string name="print_each_hint">Według tego układu: na każdej etykiecie — inny kod. Wygodne dla serii i folderów.</string>
 </resources>

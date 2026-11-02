@@ -66,7 +66,7 @@ import com.blacklaunch.qrcodes.ui.theme.Oled
 
 /** Вибір способу вводу (кнопка всередині капсули). */
 @Composable
-fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit) {
+fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit, onBatch: (Boolean) -> Unit = {}) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.mode_choose)) {
         Column(Modifier.bouncyScroll()) {
             MenuRow(Glyph.Keyboard, stringResource(R.string.mode_manual), { onPick(InputMode.Manual) })
@@ -77,6 +77,10 @@ fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKi
             MenuRow(Glyph.Wifi, stringResource(R.string.form_wifi), { onForm(FormKind.Wifi) })
             MenuRow(Glyph.Person, stringResource(R.string.form_contact), { onForm(FormKind.Contact) })
             MenuRow(Glyph.Globe, stringResource(R.string.form_site), { onForm(FormKind.Site) })
+            // Багато кодів одразу: серія з номерами чи список — усі в одну папку.
+            Text(stringResource(R.string.batch_title), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
+            MenuRow(Glyph.Grid, stringResource(R.string.batch_series), { onBatch(false) })
+            MenuRow(Glyph.TextT, stringResource(R.string.batch_list), { onBatch(true) })
         }
     }
 }
@@ -535,4 +539,82 @@ private fun kindHint(k: com.blacklaunch.qrcodes.qr.CodeKind): Int = when (k) {
     com.blacklaunch.qrcodes.qr.CodeKind.UPCE -> R.string.kind_hint_upce
     com.blacklaunch.qrcodes.qr.CodeKind.ITF -> R.string.kind_hint_itf
     com.blacklaunch.qrcodes.qr.CodeKind.CODABAR -> R.string.kind_hint_codabar
+}
+
+/**
+ * Багато кодів одразу. Серія: початок + номер (з нулями) + кінець — напр. «ПАЛЕТА-001…100». Список: кожен рядок — код.
+ * Видно, що вийде, і скільки не підходить для вибраного виду коду; усі нові коди — в одну папку.
+ */
+@Composable
+fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDismiss: () -> Unit, onCreate: (List<String>, String) -> Unit) {
+    var prefix by remember { mutableStateOf("") }
+    var first by remember { mutableStateOf("1") }
+    var count by remember { mutableStateOf("10") }
+    var digits by remember { mutableStateOf("3") }
+    var suffix by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf("") }
+    var folder by remember { mutableStateOf("") }
+    val contents = remember(list, prefix, first, count, digits, suffix, text) {
+        if (list) {
+            com.blacklaunch.qrcodes.qr.Batch.lines(text)
+        } else {
+            com.blacklaunch.qrcodes.qr.Batch.series(prefix, first.toLongOrNull() ?: 1, count.toIntOrNull() ?: 0, digits.toIntOrNull() ?: 0, suffix)
+        }
+    }
+    val invalid = remember(contents, kind) { contents.count { com.blacklaunch.qrcodes.qr.Symbol.encode(it, kind) == null } }
+    val folderDefault = (if (list) stringResource(R.string.batch_list_folder) else prefix.trim().trimEnd('-', '_', ' ', '/', '.').ifEmpty { stringResource(R.string.batch_series_folder) })
+    val number = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, imeAction = ImeAction.Next)
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(if (list) R.string.batch_list else R.string.batch_series), buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.batch_create), { onCreate(contents, folder.trim().ifEmpty { folderDefault }) }, tone = Tone.Confirm, enabled = contents.isNotEmpty() && invalid == 0)
+    }) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (list) {
+                val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val focused by interaction.collectIsFocusedAsState()
+                val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (AppStyle.glass) {
+                                Modifier.clip(shape).background(if (focused) Color(0x0FFFFFFF) else Color(0x08FFFFFF)).border(1.dp, if (focused) Color(0x99FFFFFF) else Color(0x38FFFFFF), shape)
+                            } else {
+                                Modifier.pencilFrame(14.dp, seed = 31, alpha = if (focused) 0.9f else 0.6f)
+                            },
+                        )
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                ) {
+                    if (text.isEmpty()) Text(stringResource(R.string.batch_list_hint), color = Oled.TextSecondary, fontSize = 16.sp)
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        textStyle = fieldStyle().copy(color = Oled.TextPrimary),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(if (AppStyle.glass) Oled.TextPrimary else Oled.TextSecondary),
+                        minLines = 5,
+                        maxLines = 12,
+                        interactionSource = interaction,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                SheetTextField(prefix, { prefix = it }, stringResource(R.string.batch_prefix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SheetTextField(first, { first = it.filter(Char::isDigit).take(12) }, stringResource(R.string.batch_first), Modifier.weight(1f), keyboardOptions = number)
+                    SheetTextField(count, { count = it.filter(Char::isDigit).take(4) }, stringResource(R.string.batch_count), Modifier.weight(1f), keyboardOptions = number)
+                    SheetTextField(digits, { digits = it.filter(Char::isDigit).take(2) }, stringResource(R.string.batch_digits), Modifier.weight(1f), keyboardOptions = number)
+                }
+                Text(stringResource(R.string.batch_numbers_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+                SheetTextField(suffix, { suffix = it }, stringResource(R.string.batch_suffix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+            }
+            SheetTextField(folder, { folder = it }, folderDefault, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
+            if (contents.isNotEmpty()) {
+                val sample = if (contents.size <= 3) contents.joinToString(", ") else contents.take(2).joinToString(", ") + " … " + contents.last()
+                Text(stringResource(R.string.batch_preview, contents.size, sample), color = Oled.TextPrimary, fontSize = 15.sp)
+            }
+            if (invalid > 0) {
+                Text(stringResource(R.string.batch_invalid, invalid) + " " + stringResource(kindHint(kind)), color = Oled.Danger, fontSize = 14.sp)
+            }
+        }
+    }
 }

@@ -116,6 +116,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     var menuFor by remember { mutableStateOf<QrCode?>(null) }
     var renameFor by remember { mutableStateOf<QrCode?>(null) }
     var contentFor by remember { mutableStateOf<QrCode?>(null) }
+    // Серія (false) чи список (true); null — закрито.
+    var batchOpen by remember { mutableStateOf<Boolean?>(null) }
     var labelFor by remember { mutableStateOf<List<QrCode>?>(null) }
     var banner by remember { mutableStateOf<BannerMsg?>(null) }
     var focusAfterCamera by remember { mutableIntStateOf(0) }
@@ -225,7 +227,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null)
+    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -401,6 +403,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                     InputMode.ScanQr, InputMode.PhotoText -> openCamera(picked)
                 }
             },
+            onBatch = { list ->
+                modeMenu = false
+                batchOpen = list
+            },
             onForm = {
                 modeMenu = false
                 formOpen = it
@@ -544,6 +550,16 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         RenameDialog(code, onDismiss = { renameFor = null }) {
             vm.rename(code, it)
             renameFor = null
+        }
+    }
+    batchOpen?.let { list ->
+        val doneText = stringResource(R.string.batch_done)
+        val printText = stringResource(R.string.print)
+        BatchDialog(list, format, onDismiss = { batchOpen = null }) { contents, folderName ->
+            batchOpen = null
+            vm.createBatch(contents, format, folderName) { codes ->
+                show(doneText.format(codes.size, folderName), printText) { labelFor = codes }
+            }
         }
     }
     contentFor?.let { code ->

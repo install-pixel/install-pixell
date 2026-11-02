@@ -146,9 +146,11 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     }
     var design by remember {
         val first = LabelDesign(size = defaults.size)
-        val withCodes = start.foldIndexed(first) { i, d, code -> d.add(newQr(i + 1, code, d.size)) }
+        // Серія (багато кодів) — на наклейці перший як зразок макета; друк — кожен код окремою наклейкою.
+        val onSheet = if (start.size > MAX_ON_SHEET) start.take(1) else start
+        val withCodes = onSheet.foldIndexed(first) { i, d, code -> d.add(newQr(i + 1, code, d.size)) }
         // Кілька кодів — одразу сіткою, кожен на своєму місці.
-        mutableStateOf(restored ?: if (start.size > 1) Arrange.grid(withCodes, tw) else withCodes)
+        mutableStateOf(restored ?: if (onSheet.size > 1) Arrange.grid(withCodes, tw) else withCodes)
     }
     val draftRestored = stringResource(R.string.label_draft_restored)
     LaunchedEffect(Unit) {
@@ -195,6 +197,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     // Нижня панель: «Додати» чи «Змінити» (вибрав елемент — сама перемикається на «Змінити»).
     var editTab by remember { mutableStateOf(false) }
     var bgMenu by remember { mutableStateOf(false) }
+    var printChoice by remember { mutableStateOf(false) }
     // Тло вибране (як елемент): тягнеш — пересуваєш, двома пальцями — масштаб і поворот.
     var bgSelected by remember { mutableStateOf(false) }
     // Гумка по фону: водиш пальцем по наклейці — картинка під пальцем затирається (кольором паперу).
@@ -332,7 +335,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         pickImage.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
-    val dialogOpen = bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
+    val dialogOpen = printChoice || bgMenu || templatesOpen || templateNameOpen || frameOpen || shareOpen || sizeOpen || textNew || textEdit != null || stickerNew || stickerFor != null || pickerOpen || clearAsk || captionEdit != null || bannerEdit != null
     val blur = backdropAmount(dialogOpen)
     Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur)) {
     // Без підлаштування під клавіатуру: на цьому екрані вона не потрібна, і наклейка не стрибає (поля вводу — у вікнах).
@@ -352,7 +355,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             // Дві головні дії — круглими кнопками в шапці, як у всій програмі: поділитися й надрукувати (синя — головна).
             RoundButton(Glyph.Share, stringResource(R.string.share), { shareOpen = true }, enabled = !busy && design.elements.isNotEmpty(), size = 46.dp)
             Spacer(Modifier.width(10.dp))
-            RoundButton(Glyph.Print, stringResource(R.string.print), { renderer.print(context, jobName, design, 1) }, ink = Oled.Confirm, enabled = design.elements.isNotEmpty(), size = 46.dp)
+            RoundButton(Glyph.Print, stringResource(R.string.print), {
+                // Відкрили з кількома кодами — спитати: цю наклейку чи кожен код окремою наклейкою.
+                if (start.size > 1 && design.elements.any { it is Element.Qr }) printChoice = true else renderer.print(context, jobName, design, 1)
+            }, ink = Oled.Confirm, enabled = design.elements.isNotEmpty(), size = 46.dp)
             Spacer(Modifier.width(8.dp))
         }
 
@@ -849,6 +855,26 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             }
     }
 
+    if (printChoice) {
+        SheetDialog(onDismissRequest = { printChoice = false }, title = stringResource(R.string.print_choice_title)) {
+            Column {
+                MenuRow(Glyph.Print, stringResource(R.string.print_this), {
+                    printChoice = false
+                    renderer.print(context, jobName, design, 1)
+                })
+                MenuRow(Glyph.Grid, stringResource(R.string.print_each, start.size), {
+                    printChoice = false
+                    // Кожен код — окрема наклейка за цим макетом (усі коди на ній стають цим кодом).
+                    val pages = start.map { code ->
+                        val q = newQr(0, code, design.size)
+                        design.copy(elements = design.elements.map { e -> if (e is Element.Qr) e.copy(content = q.content, title = q.title, barcode = q.barcode, kind = q.kind) else e })
+                    }
+                    renderer.printPages(context, jobName, pages)
+                })
+                Text(stringResource(R.string.print_each_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
+            }
+        }
+    }
     if (bgMenu) {
         val sceneCodes = codes.ifEmpty { listOfNotNull(start.firstOrNull()?.let { newQr(1, it, design.size) }) }
         SheetDialog(onDismissRequest = { bgMenu = false }, title = stringResource(R.string.label_background)) {
@@ -1272,6 +1298,9 @@ private fun SelectedPanel(
 }
 
 private const val ACTIONS_PER_ROW = 5
+
+/** Більше кодів — на наклейку лише перший (як зразок), а друк — кожен окремою наклейкою. */
+private const val MAX_ON_SHEET = 12
 private const val DRAFT_SAVE_MS = 500L
 
 /** Наскільки можна збільшити фон (ширина картинки, мм) — що за краєм наклейки, просто не видно. */

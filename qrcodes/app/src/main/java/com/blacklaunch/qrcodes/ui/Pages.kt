@@ -65,6 +65,7 @@ import com.blacklaunch.qrcodes.data.QrCode
 import com.blacklaunch.qrcodes.qr.CodeFormat
 import com.blacklaunch.qrcodes.qr.Symbol
 import com.blacklaunch.qrcodes.qr.codeFormat
+import com.blacklaunch.qrcodes.qr.codeKind
 import com.blacklaunch.qrcodes.ui.theme.Oled
 import java.text.DateFormat
 import java.util.Date

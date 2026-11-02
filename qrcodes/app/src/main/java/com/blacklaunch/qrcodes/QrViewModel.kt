@@ -96,6 +96,27 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Багато кодів одразу (серія чи список) — усі в одну нову папку [folderName]. Ті, що вже є, не дублюються, а теж
+     * переходять у цю папку. [onDone] — коди в тому самому порядку.
+     */
+    fun createBatch(contents: List<String>, kind: com.blacklaunch.qrcodes.qr.CodeKind, folderName: String, onDone: (List<QrCode>) -> Unit) = viewModelScope.launch {
+        val base = System.currentTimeMillis()
+        val ids = contents.mapIndexed { i, text ->
+            val existing = dao.byContent(text)
+            // Порядок у папці — як у серії (перший — нагорі).
+            val order = base - i
+            if (existing != null) {
+                dao.update(existing.copy(sortOrder = order))
+                existing.id
+            } else {
+                dao.insert(QrCode(content = text, format = kind.storage, createdAt = base, sortOrder = order))
+            }
+        }
+        dao.createFolder(folderName.trim().ifEmpty { "…" }, ids, base + 1)
+        onDone(contents.mapNotNull { dao.byContent(it) })
+    }
+
     fun delete(code: QrCode) = viewModelScope.launch { dao.delete(code.id) }
 
     /**
