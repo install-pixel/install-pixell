@@ -37,6 +37,7 @@ class LabelPrefs(context: Context) {
         const val KEY_CUSTOM = "custom"
         const val KEY_SCREEN = "screen"
         const val KEY_QR = "qr"
-        const val KEY_CAPTION = "caption"
+        // Новий ключ: старий міг лишитися «без підпису» після сцен (вони ставлять коди без підпису).
+        const val KEY_CAPTION = "caption_v2"
     }
 }

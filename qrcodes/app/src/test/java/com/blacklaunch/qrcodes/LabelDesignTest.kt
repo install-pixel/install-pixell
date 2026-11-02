@@ -44,6 +44,28 @@ class LabelDesignTest {
     }
 
     @Test
+    fun handDrawnFrameAroundCodeIsAllowedButLineOverCodeIsNot() {
+        val code = qr(1, cx = 75f, cy = 50f, side = 20f)
+        // Рамка-квадрат 40×40 навколо коду (лінії далеко від нього).
+        val ring = listOf(listOf(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f, 0f, 0f).let { pts ->
+            val out = ArrayList<Float>()
+            for (i in 0 until pts.size - 2 step 2) for (s in 0..20) {
+                val t = s / 20f
+                out += pts[i] + (pts[i + 2] - pts[i]) * t
+                out += pts[i + 1] + (pts[i + 3] - pts[i + 1]) * t
+            }
+            out
+        })
+        val frame = com.blacklaunch.qrcodes.label.Element.Drawing(2, 75f, 50f, ring, 1f, 40f)
+        val d = com.blacklaunch.qrcodes.label.LabelDesign(size = zebra, elements = listOf(code, frame))
+        assertTrue(Placement.fits(d, frame, tw))
+        // Лінія через сам код — не можна.
+        val cross = com.blacklaunch.qrcodes.label.Element.Drawing(3, 75f, 50f, listOf(listOf(0f, 0.5f, 0.5f, 0.5f, 1f, 0.5f)), 0.05f, 40f)
+        val d2 = com.blacklaunch.qrcodes.label.LabelDesign(size = zebra, elements = listOf(code, cross))
+        assertTrue(!Placement.fits(d2, cross, tw))
+    }
+
+    @Test
     fun staysInsideLabel() {
         val e = qr(1)
         val r = Snap.place(500f, -300f, e.bounds(tw), e, zebra)

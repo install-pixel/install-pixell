@@ -115,6 +115,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val prefs = remember { LabelPrefs(context) }
     val renderer = remember { LabelRenderer.create(context) }
     val defaults = remember { prefs.load() }
+    var captionDefault by remember { mutableStateOf(defaults.caption) }
     val tw: (String, Float) -> Float = renderer::textWidth
     val noRoom = stringResource(R.string.label_no_room)
     val scanMe = stringResource(R.string.label_scan_me)
@@ -128,8 +129,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             content = code.content,
             title = code.title,
             // Штрихкод — ширший (смуги не мають бути надто тонкими), QR — останній вибраний розмір.
-            side = if (barcode) minOf(DEFAULT_BAR_MM, size.widthMm - 12f) else defaults.qrMm.coerceAtMost(LabelLayout.maxQrMm(size, defaults.caption)),
-            caption = defaults.caption,
+            side = if (barcode) minOf(DEFAULT_BAR_MM, size.widthMm - 12f) else defaults.qrMm.coerceAtMost(LabelLayout.maxQrMm(size, captionDefault)),
+            caption = captionDefault,
             barcode = barcode,
         )
     }
@@ -190,9 +191,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     val frameTarget = (selected as? Element.Qr) ?: design.elements.filterIsInstance<Element.Qr>().singleOrNull()
 
     // Розмір наклейки, розмір коду й підпис — на наступний раз.
-    LaunchedEffect(design.size, (selected as? Element.Qr)?.side, (selected as? Element.Qr)?.caption) {
+    LaunchedEffect(design.size, (selected as? Element.Qr)?.side, captionDefault) {
         val qr = selected as? Element.Qr
-        prefs.save(LabelSettings(design.size, qr?.takeIf { !it.barcode }?.side ?: defaults.qrMm, 1, qr?.caption ?: defaults.caption))
+        // Підпис як типовий запам'ятовуємо лише тоді, коли його міняють руками (не після сцени чи шаблону).
+        prefs.save(LabelSettings(design.size, qr?.takeIf { !it.barcode }?.side ?: defaults.qrMm, 1, captionDefault))
     }
     LaunchedEffect(bgSelected) { if (!bgSelected) bgErase = false }
     // Вибрав елемент на наклейці — панель сама показує «Змінити».
@@ -1045,6 +1047,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         // Підпис: видно теперішній; «Скасувати» — лишається як був; стер усе й «Застосувати» — підпису немає.
         TextDialog(if (qr.caption) qr.title else "", title = stringResource(R.string.label_caption), onDismiss = { captionEdit = null }, allowEmpty = true) {
             tryChange(if (it.isEmpty()) qr.copy(caption = false) else qr.copy(title = it, caption = true))
+            captionDefault = it.isNotEmpty()
             captionEdit = null
         }
     }

@@ -283,6 +283,44 @@ fun Element.baseBounds(textWidth: (String, Float) -> Float): MmRect = when (this
     }
 }
 
+/** Точки штрихів малюнка в мм наклейки (з поворотом), зміщені на ([dx], [dy]). */
+fun Element.Drawing.pointsMm(dx: Float = 0f, dy: Float = 0f): List<Pair<Float, Float>> {
+    val w = width
+    val h = width * aspect
+    val a = Math.toRadians(rotation.toDouble())
+    val c = kotlin.math.cos(a).toFloat()
+    val s = kotlin.math.sin(a).toFloat()
+    return strokes.flatMap { st ->
+        st.chunked(2).filter { it.size == 2 }.map { (u, v) ->
+            val x = (u - 0.5f) * w
+            val y = (v - 0.5f) * h
+            (cx + dx + x * c - y * s) to (cy + dy + x * s + y * c)
+        }
+    }
+}
+
+/** Чи лінії малюнка (а не весь його прямокутник) заходять у [r] — тож обвести код від руки можна. */
+fun Element.Drawing.strokesHit(r: MmRect, gap: Float, dx: Float = 0f, dy: Float = 0f): Boolean {
+    val pad = strokeMm / 2 + gap
+    return pointsMm(dx, dy).any { (x, y) -> x > r.left - pad && x < r.right + pad && y > r.top - pad && y < r.bottom + pad }
+}
+
+/**
+ * Чи [a], зміщений на ([dx], [dy]), налазить на [b]. Малюнок рахуємо по лініях (рамка від руки навколо коду — можна),
+ * два малюнки один одному не заважають; решта — за прямокутниками.
+ */
+fun collides(a: Element, b: Element, tw: (String, Float) -> Float, gap: Float, dx: Float = 0f, dy: Float = 0f): Boolean {
+    val ra = a.bounds(tw).let { MmRect(it.left + dx, it.top + dy, it.right + dx, it.bottom + dy) }
+    val rb = b.bounds(tw)
+    if (!ra.overlaps(rb, gap)) return false
+    return when {
+        a is Element.Drawing && b is Element.Drawing -> false
+        a is Element.Drawing -> a.strokesHit(rb, gap, dx, dy)
+        b is Element.Drawing -> b.strokesHit(ra, gap)
+        else -> true
+    }
+}
+
 fun MmRect.overlaps(o: MmRect, gap: Float = 0f): Boolean =
     left < o.right + gap && right > o.left - gap && top < o.bottom + gap && bottom > o.top - gap
 
@@ -464,7 +502,7 @@ object Placement {
     /** Чи стоїть [e] на своєму місці: всередині й ні на кого не налазить. */
     fun fits(design: LabelDesign, e: Element, tw: (String, Float) -> Float): Boolean {
         val b = e.bounds(tw)
-        return inside(b, design.size, edge(design)) && design.elements.none { it.id != e.id && it.bounds(tw).overlaps(b, GAP - 0.01f) }
+        return inside(b, design.size, edge(design)) && design.elements.none { it.id != e.id && collides(e, it, tw, GAP - 0.01f) }
     }
 
     /**
@@ -484,10 +522,14 @@ object Placement {
         val minY = edge + halfH - offY
         val maxY = size.heightMm - edge - halfH - offY
         if (minX > maxX + 0.01f || minY > maxY + 0.01f) return null
-        val others = design.elements.filter { it.id != e.id }.map { it.bounds(tw) }
+        val othersEl = design.elements.filter { it.id != e.id }
+        val others = othersEl.map { it.bounds(tw) }
+        val precise = e is Element.Drawing || othersEl.any { it is Element.Drawing }
         fun free(x: Float, y: Float): Boolean {
             val r = MmRect(x + offX - halfW, y + offY - halfH, x + offX + halfW, y + offY + halfH)
-            return others.none { it.overlaps(r, GAP - 0.01f) }
+            if (!precise) return others.none { it.overlaps(r, GAP - 0.01f) }
+            // З малюнками — спершу швидко за прямокутниками, точно (по лініях) лише там, де вони перетинаються.
+            return othersEl.indices.none { i -> others[i].overlaps(r, GAP - 0.01f) && collides(e, othersEl[i], tw, GAP - 0.01f, x - e.cx, y - e.cy) }
         }
         val x0 = wantX.coerceIn(minX, maxOf(minX, maxX))
         val y0 = wantY.coerceIn(minY, maxOf(minY, maxY))
