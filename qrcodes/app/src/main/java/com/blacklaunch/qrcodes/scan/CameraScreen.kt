@@ -124,7 +124,7 @@ private sealed interface PhotoState {
  * Усе розпізнавання — на телефоні, без мережі.
  */
 @Composable
-fun CameraScreen(scanQr: Boolean, onResult: (String, CodeFormat?) -> Unit, onClose: () -> Unit, onMessage: (String) -> Unit) {
+fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.CodeKind?) -> Unit, onClose: () -> Unit, onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptics = LocalHaptics.current
@@ -147,7 +147,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, CodeFormat?) -> Unit, onClo
     }
 
     /** [format] — що зісканували (QR чи лінійний штрихкод), щоб дубль був таким самим; null — текст із фото. */
-    fun deliver(text: String, format: CodeFormat? = null) {
+    fun deliver(text: String, format: com.blacklaunch.qrcodes.qr.CodeKind? = null) {
         if (delivered) return
         delivered = true
         haptics.longPress()
@@ -508,19 +508,20 @@ private fun FoundTextView(state: PhotoState.Done, onPick: (String) -> Unit, onRe
     }
 }
 
-/** Лінійні штрихкоди (Code128, EAN, UPC…) — «Штрихкод»; QR і інші квадратні — «QR». */
-private fun com.google.mlkit.vision.barcode.common.Barcode.codeFormat(): CodeFormat = when (format) {
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_39,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_93,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODABAR,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ITF,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A,
-    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E,
-    -> CodeFormat.BARCODE
-    else -> CodeFormat.QR
+/** Відсканований вид — той самий для дубля (EAN-8 → EAN-8, Data Matrix → Data Matrix…). */
+private fun com.google.mlkit.vision.barcode.common.Barcode.codeFormat(): com.blacklaunch.qrcodes.qr.CodeKind = when (format) {
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128 -> com.blacklaunch.qrcodes.qr.CodeKind.CODE128
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_39 -> com.blacklaunch.qrcodes.qr.CodeKind.CODE39
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_93 -> com.blacklaunch.qrcodes.qr.CodeKind.CODE93
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODABAR -> com.blacklaunch.qrcodes.qr.CodeKind.CODABAR
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13 -> com.blacklaunch.qrcodes.qr.CodeKind.EAN13
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8 -> com.blacklaunch.qrcodes.qr.CodeKind.EAN8
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ITF -> com.blacklaunch.qrcodes.qr.CodeKind.ITF
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A -> com.blacklaunch.qrcodes.qr.CodeKind.UPCA
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E -> com.blacklaunch.qrcodes.qr.CodeKind.UPCE
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_DATA_MATRIX -> com.blacklaunch.qrcodes.qr.CodeKind.DATA_MATRIX
+    com.google.mlkit.vision.barcode.common.Barcode.FORMAT_AZTEC -> com.blacklaunch.qrcodes.qr.CodeKind.AZTEC
+    else -> com.blacklaunch.qrcodes.qr.CodeKind.QR
 }
 
 /** Кадр з камери — повернутий так, як тримали телефон. */

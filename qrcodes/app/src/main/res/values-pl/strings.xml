@@ -228,4 +228,19 @@
     <string name="content_saved">Treść zmieniona</string>
     <string name="content_exists">Taki kod już jest wśród zapisanych</string>
     <string name="label_draft_restored">Przywrócono niezapisaną etykietę — taką, jak była</string>
+    <string name="kind_auto">Auto</string>
+    <string name="kind_title">Rodzaj kodu</string>
+    <string name="kind_hint_qr">Najpopularniejszy: dowolny tekst, linki, Wi‑Fi, polskie litery</string>
+    <string name="kind_hint_datamatrix">Mały kwadratowy — drobne części i medycyna; tylko alfabet łaciński</string>
+    <string name="kind_hint_aztec">Kwadratowy bez marginesu — bilety, karty pokładowe; dowolny tekst</string>
+    <string name="kind_hint_auto">Sam wybierze: EAN-13, EAN-8, UPC-A dla cyfr z kontrolną, inaczej Code 128</string>
+    <string name="kind_hint_code128">Magazyn i logistyka: litery łacińskie, cyfry, znaki (do 48)</string>
+    <string name="kind_hint_code39">Starsze skanery i przemysł: A–Z, 0–9, - . $ / + % spacja</string>
+    <string name="kind_hint_code93">Gęstszy niż Code 39, te same znaki</string>
+    <string name="kind_hint_ean13">Towary w sklepie: 12 lub 13 cyfr</string>
+    <string name="kind_hint_ean8">Małe towary: 7 lub 8 cyfr</string>
+    <string name="kind_hint_upca">Towary z USA i Kanady: 11 lub 12 cyfr</string>
+    <string name="kind_hint_upce">Krótki UPC: 6–8 cyfr</string>
+    <string name="kind_hint_itf">Kartony i palety: parzysta liczba cyfr</string>
+    <string name="kind_hint_codabar">Biblioteki, badania: cyfry i - $ : / . +, zaczyna i kończy się na A–D</string>
 </resources>

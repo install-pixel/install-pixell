@@ -370,7 +370,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             // Готовий текст — у поле (код одразу видно вгорі), назва — при збереженні. Такі коди бувають лише QR.
             input = TextFieldValue(content, TextRange(content.length))
             pendingName = name
-            format = CodeFormat.QR
+            format = com.blacklaunch.qrcodes.qr.CodeKind.QR
             mode = InputMode.Manual
         }
     }

@@ -133,6 +133,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             side = if (barcode) minOf(DEFAULT_BAR_MM, size.widthMm - 12f) else defaults.qrMm.coerceAtMost(LabelLayout.maxQrMm(size, captionDefault)),
             caption = captionDefault,
             barcode = barcode,
+            kind = code.format,
         )
     }
 
@@ -1121,7 +1122,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                 haptics.tap()
                                 if (replacing != null) {
                                     val fresh = newQr(replacing.id, code, design.size)
-                                    tryChange(replacing.copy(content = fresh.content, title = fresh.title, barcode = fresh.barcode))
+                                    tryChange(replacing.copy(content = fresh.content, title = fresh.title, barcode = fresh.barcode, kind = fresh.kind))
                                     replaceFor = null
                                 } else {
                                     // Сцена з вільним квадратиком — новий код стає саме туди (розмір і нахил місця).

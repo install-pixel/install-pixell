@@ -61,6 +61,7 @@ import com.blacklaunch.qrcodes.data.QrCode
 import com.blacklaunch.qrcodes.qr.CodeFormat
 import com.blacklaunch.qrcodes.qr.Symbol
 import com.blacklaunch.qrcodes.qr.codeFormat
+import com.blacklaunch.qrcodes.qr.codeKind
 import com.blacklaunch.qrcodes.ui.theme.Oled
 
 /** Вибір способу вводу (кнопка всередині капсули). */
@@ -143,7 +144,7 @@ private fun displayTitleOf(code: QrCode): String = if (code.name == null) code.t
  */
 @Composable
 fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu: () -> Unit) {
-    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
+    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeKind) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         // Яскравість — у власному вікні діалогу (воно зверху, система бере яскравість із нього). Поки поверх відкрите
         // меню — звичайна яскравість, а код розмитий і притемнений, як усе під меню.
@@ -463,7 +464,7 @@ fun FolderPicker(folders: List<com.blacklaunch.qrcodes.data.Folder>, current: Lo
 fun ContentDialog(code: QrCode, onDismiss: () -> Unit, onApply: (String) -> Unit) {
     var text by remember { mutableStateOf(code.content) }
     val format = code.codeFormat
-    val valid = remember(text, format) { com.blacklaunch.qrcodes.qr.Symbol.encode(text.trim(), format) != null }
+    val valid = remember(text, code.format) { com.blacklaunch.qrcodes.qr.Symbol.encode(text.trim(), code.codeKind) != null }
     val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.content_edit), buttons = {
@@ -499,10 +500,39 @@ fun ContentDialog(code: QrCode, onDismiss: () -> Unit, onApply: (String) -> Unit
                 )
             }
             Text(
-                if (valid || text.isBlank()) stringResource(R.string.content_edit_hint, text.trim().length) else stringResource(if (format == com.blacklaunch.qrcodes.qr.CodeFormat.BARCODE) R.string.content_invalid_bar else R.string.content_invalid_qr),
+                if (valid || text.isBlank()) stringResource(R.string.content_edit_hint, text.trim().length) else stringResource(kindHint(code.codeKind)),
                 color = if (valid || text.isBlank()) Oled.TextSecondary else Oled.Danger,
                 fontSize = 14.sp,
             )
         }
     }
+}
+
+/** Вибір виду коду: квадратні (QR, Data Matrix, Aztec) і штрихкоди (авто чи конкретний), з тим, що кожен приймає. */
+@Composable
+fun KindPicker(current: com.blacklaunch.qrcodes.qr.CodeKind, onDismiss: () -> Unit, onPick: (com.blacklaunch.qrcodes.qr.CodeKind) -> Unit) {
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.kind_title)) {
+        Column(Modifier.bouncyScroll()) {
+            com.blacklaunch.qrcodes.qr.CodeKind.entries.forEach { k ->
+                val title = if (k == com.blacklaunch.qrcodes.qr.CodeKind.AUTO) stringResource(R.string.kind_auto) else k.title
+                ChoiceRow(title, stringResource(kindHint(k)), selected = k == current) { onPick(k) }
+            }
+        }
+    }
+}
+
+private fun kindHint(k: com.blacklaunch.qrcodes.qr.CodeKind): Int = when (k) {
+    com.blacklaunch.qrcodes.qr.CodeKind.QR -> R.string.kind_hint_qr
+    com.blacklaunch.qrcodes.qr.CodeKind.DATA_MATRIX -> R.string.kind_hint_datamatrix
+    com.blacklaunch.qrcodes.qr.CodeKind.AZTEC -> R.string.kind_hint_aztec
+    com.blacklaunch.qrcodes.qr.CodeKind.AUTO -> R.string.kind_hint_auto
+    com.blacklaunch.qrcodes.qr.CodeKind.CODE128 -> R.string.kind_hint_code128
+    com.blacklaunch.qrcodes.qr.CodeKind.CODE39 -> R.string.kind_hint_code39
+    com.blacklaunch.qrcodes.qr.CodeKind.CODE93 -> R.string.kind_hint_code93
+    com.blacklaunch.qrcodes.qr.CodeKind.EAN13 -> R.string.kind_hint_ean13
+    com.blacklaunch.qrcodes.qr.CodeKind.EAN8 -> R.string.kind_hint_ean8
+    com.blacklaunch.qrcodes.qr.CodeKind.UPCA -> R.string.kind_hint_upca
+    com.blacklaunch.qrcodes.qr.CodeKind.UPCE -> R.string.kind_hint_upce
+    com.blacklaunch.qrcodes.qr.CodeKind.ITF -> R.string.kind_hint_itf
+    com.blacklaunch.qrcodes.qr.CodeKind.CODABAR -> R.string.kind_hint_codabar
 }

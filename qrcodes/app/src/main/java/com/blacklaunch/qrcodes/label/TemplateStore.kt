@@ -70,7 +70,7 @@ class TemplateStore(context: Context) {
             val o = JSONObject().put("id", e.id).put("cx", e.cx.toDouble()).put("cy", e.cy.toDouble()).put("rot", e.rotation.toDouble())
             return when (e) {
                 is Element.Qr -> o.put("t", "qr").put("content", e.content).put("title", e.title).put("side", e.side.toDouble())
-                    .put("caption", e.caption).put("frame", e.frame.name).put("banner", e.banner).put("barcode", e.barcode)
+                    .put("caption", e.caption).put("frame", e.frame.name).put("banner", e.banner).put("barcode", e.barcode).put("kind", e.kind)
                 is Element.Text -> o.put("t", "text").put("text", e.text).put("letters", e.letters.toDouble())
                 is Element.Icon -> o.put("t", "icon").put("sticker", e.sticker.name).put("side", e.side.toDouble())
                 is Element.Drawing -> o.put("t", "draw").put("w", e.width.toDouble()).put("a", e.aspect.toDouble()).put("thick", e.thick).put("ln", e.line.toDouble())
@@ -122,6 +122,7 @@ class TemplateStore(context: Context) {
                     banner = o.optString("banner"),
                     barcode = o.optBoolean("barcode"),
                     rotation = rot,
+                    kind = o.optString("kind"),
                 )
                 "text" -> Element.Text(id, cx, cy, o.optString("text"), o.getDouble("letters").toFloat(), rot)
                 "draw" -> {

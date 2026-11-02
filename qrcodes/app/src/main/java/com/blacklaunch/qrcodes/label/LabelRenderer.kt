@@ -107,8 +107,8 @@ class LabelRenderer(private val hand: Typeface) {
     } * letters / 100f
 
     private fun symbol(e: Element.Qr): Symbol? = synchronized(matrices) {
-        val format = if (e.barcode) CodeFormat.BARCODE else CodeFormat.QR
-        matrices.getOrPut("${format.name}|${e.content}") { Symbol.encode(e.content, format) }
+        val kind = if (e.kind.isNotEmpty()) com.blacklaunch.qrcodes.qr.CodeKind.of(e.kind) else com.blacklaunch.qrcodes.qr.CodeKind.default(if (e.barcode) CodeFormat.BARCODE else CodeFormat.QR)
+        matrices.getOrPut("${kind.name}|${e.content}") { Symbol.encode(e.content, kind) }
     }
 
     fun draw(canvas: Canvas, pxPerMm: Float, design: LabelDesign, palette: LabelPalette) {

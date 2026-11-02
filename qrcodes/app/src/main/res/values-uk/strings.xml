@@ -228,4 +228,19 @@
     <string name="content_saved">Зміст змінено</string>
     <string name="content_exists">Такий код уже є серед збережених</string>
     <string name="label_draft_restored">Повернуто незбережену наклейку — така, як була</string>
+    <string name="kind_auto">Авто</string>
+    <string name="kind_title">Вид коду</string>
+    <string name="kind_hint_qr">Найпоширеніший: будь-який текст, посилання, Wi‑Fi, кирилиця</string>
+    <string name="kind_hint_datamatrix">Дрібний квадратний — для маленьких деталей і медицини; лише латиниця</string>
+    <string name="kind_hint_aztec">Квадратний без поля навколо — квитки, посадкові; будь-який текст</string>
+    <string name="kind_hint_auto">Сам вибере: EAN-13, EAN-8, UPC-A для цифр із контрольною, інакше Code 128</string>
+    <string name="kind_hint_code128">Склад і логістика: латиниця, цифри, знаки (до 48)</string>
+    <string name="kind_hint_code39">Старі сканери й промисловість: A–Z, 0–9, - . $ / + % пробіл</string>
+    <string name="kind_hint_code93">Щільніший за Code 39, ті самі символи</string>
+    <string name="kind_hint_ean13">Товари в магазині: 12 або 13 цифр</string>
+    <string name="kind_hint_ean8">Малі товари: 7 або 8 цифр</string>
+    <string name="kind_hint_upca">Товари США й Канади: 11 або 12 цифр</string>
+    <string name="kind_hint_upce">Короткий UPC: 6–8 цифр</string>
+    <string name="kind_hint_itf">Коробки й палети: парна кількість цифр</string>
+    <string name="kind_hint_codabar">Бібліотеки, аналізи: цифри й - $ : / . +, починається й закінчується на A–D</string>
 </resources>

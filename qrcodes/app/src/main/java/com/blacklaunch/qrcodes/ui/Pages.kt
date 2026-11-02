@@ -178,7 +178,7 @@ fun FavoritesPage(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             items(order, key = { it.id }) { code ->
-                val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
+                val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeKind) }
                 val dragged = code.id == draggingId
                 Column(
                     Modifier
@@ -266,8 +266,8 @@ fun CreatePage(
     folders: List<com.blacklaunch.qrcodes.data.Folder>,
     listActions: SavedListActions,
     focusRequester: FocusRequester,
-    format: CodeFormat,
-    onFormatChange: (CodeFormat) -> Unit,
+    format: com.blacklaunch.qrcodes.qr.CodeKind,
+    onFormatChange: (com.blacklaunch.qrcodes.qr.CodeKind) -> Unit,
     /** Пошук у збережених — у тій самій капсулі. */
     searching: Boolean = false,
     searchValue: TextFieldValue = TextFieldValue(""),
@@ -278,12 +278,21 @@ fun CreatePage(
     val haptics = LocalHaptics.current
     val symbol = remember(input.text, format) { Symbol.encode(input.text, format) }
     val tooLong = input.text.isNotEmpty() && symbol == null
-    val barcode = format == CodeFormat.BARCODE
+    val barcode = format.format == CodeFormat.BARCODE
+    var kindPicker by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         // Що створюємо — вибирається раз тут і зберігається з кодом (у списку, на весь екран, на наклейці — так само).
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-            ChoiceChip(stringResource(R.string.format_qr), !barcode) { onFormatChange(CodeFormat.QR) }
-            ChoiceChip(stringResource(R.string.format_barcode), barcode) { onFormatChange(CodeFormat.BARCODE) }
+            ChoiceChip(stringResource(R.string.format_qr), !barcode) { if (barcode) onFormatChange(com.blacklaunch.qrcodes.qr.CodeKind.QR) }
+            ChoiceChip(stringResource(R.string.format_barcode), barcode) { if (!barcode) onFormatChange(com.blacklaunch.qrcodes.qr.CodeKind.AUTO) }
+            // Вид коду: типово «Авто» (або QR); інші — вибрати тут.
+            SheetButton(if (format == com.blacklaunch.qrcodes.qr.CodeKind.AUTO) stringResource(R.string.kind_auto) else format.title, { kindPicker = true }, compact = true)
+        }
+        if (kindPicker) {
+            KindPicker(format, onDismiss = { kindPicker = false }) {
+                onFormatChange(it)
+                kindPicker = false
+            }
         }
         // Віконце сталого розміру — однакове для QR і штрихкоду (нічого не стрибає): біла картка, QR — квадратом по
         // центру, штрихкод — смугою на всю ширину.
@@ -351,7 +360,7 @@ fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.u
 /** Рядок збереженого коду: маленький код, назва (зміст ховається, якщо є своя назва), дата, зірка вибраного. */
 @Composable
 internal fun SavedRow(code: QrCode, modifier: Modifier) {
-    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeFormat) }
+    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeKind) }
     Row(
         Modifier
             .fillMaxWidth()

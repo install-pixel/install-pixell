@@ -230,4 +230,19 @@
     <string name="content_saved">Content changed</string>
     <string name="content_exists">This code is already saved</string>
     <string name="label_draft_restored">Your unsaved label is back, just as you left it</string>
+    <string name="kind_auto">Auto</string>
+    <string name="kind_title">Code type</string>
+    <string name="kind_hint_qr">The most common: any text, links, Wi‑Fi, any alphabet</string>
+    <string name="kind_hint_datamatrix">Small square — tiny parts and medicine; Latin letters only</string>
+    <string name="kind_hint_aztec">Square without a margin — tickets, boarding passes; any text</string>
+    <string name="kind_hint_auto">Picks by itself: EAN-13, EAN-8, UPC-A for digits with a check digit, otherwise Code 128</string>
+    <string name="kind_hint_code128">Warehouse and logistics: Latin letters, digits, signs (up to 48)</string>
+    <string name="kind_hint_code39">Older scanners and industry: A–Z, 0–9, - . $ / + % space</string>
+    <string name="kind_hint_code93">Denser than Code 39, same characters</string>
+    <string name="kind_hint_ean13">Shop goods: 12 or 13 digits</string>
+    <string name="kind_hint_ean8">Small goods: 7 or 8 digits</string>
+    <string name="kind_hint_upca">US and Canada goods: 11 or 12 digits</string>
+    <string name="kind_hint_upce">Short UPC: 6–8 digits</string>
+    <string name="kind_hint_itf">Boxes and pallets: an even number of digits</string>
+    <string name="kind_hint_codabar">Libraries, labs: digits and - $ : / . +, starts and ends with A–D</string>
 </resources>

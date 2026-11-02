@@ -50,6 +50,8 @@ sealed interface Element {
         /** Лінійний штрихкод замість QR: [side] — ширина, висота смуг — [BAR_HEIGHT_RATIO] від неї. */
         val barcode: Boolean = false,
         override val rotation: Float = 0f,
+        /** Конкретний вид коду (як у базі: «QR», «BARCODE», «BARCODE:CODE39»…); порожньо — за [barcode]. */
+        val kind: String = "",
     ) : Element {
         override val size get() = side
         override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))

@@ -44,16 +44,16 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
      * Зберігає код. Такий самий зміст уже є — не дублюємо, а піднімаємо його нагору списку (з новим форматом і, якщо
      * дали, назвою). [name] — запропонована назва (з форми Wi‑Fi / контакту / сайту).
      */
-    fun save(content: String, format: CodeFormat, name: String?, onDone: (SaveResult) -> Unit) {
+    fun save(content: String, kind: com.blacklaunch.qrcodes.qr.CodeKind, name: String?, onDone: (SaveResult) -> Unit) {
         if (content.isEmpty()) return
         viewModelScope.launch {
             val existing = dao.byContent(content)
             if (existing != null) {
                 val now = System.currentTimeMillis()
-                dao.update(existing.copy(createdAt = now, sortOrder = now, format = format.name, name = name ?: existing.name))
+                dao.update(existing.copy(createdAt = now, sortOrder = now, format = kind.storage, name = name ?: existing.name))
                 onDone(SaveResult.AlreadySaved)
             } else {
-                dao.insert(QrCode(content = content, name = name, format = format.name))
+                dao.insert(QrCode(content = content, name = name, format = kind.storage))
                 onDone(SaveResult.Saved)
             }
         }
@@ -168,7 +168,7 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
                     QrCode(
                         content = content,
                         name = name,
-                        format = if (o.optString("format") == CodeFormat.BARCODE.name) CodeFormat.BARCODE.name else CodeFormat.QR.name,
+                        format = com.blacklaunch.qrcodes.qr.CodeKind.of(o.optString("format")).storage,
                         favoriteAt = if (o.isNull("favoriteAt")) null else o.optLong("favoriteAt"),
                         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                         folderId = folderFor(folderName),

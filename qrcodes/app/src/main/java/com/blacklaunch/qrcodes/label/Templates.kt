@@ -179,7 +179,7 @@ object Templates {
             elements = template.elements.map { el ->
                 if (el is Element.Qr) {
                     val src = codes[i++ % codes.size]
-                    el.copy(content = src.content, title = src.title, barcode = src.barcode)
+                    el.copy(content = src.content, title = src.title, barcode = src.barcode, kind = src.kind)
                 } else {
                     el
                 }
