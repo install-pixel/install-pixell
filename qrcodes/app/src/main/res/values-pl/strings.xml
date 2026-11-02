@@ -263,4 +263,11 @@
     <string name="print_this">Tę etykietę</string>
     <string name="print_each">Każdy kod na osobnej etykiecie (%1$d)</string>
     <string name="print_each_hint">Według tego układu: na każdej etykiecie — inny kod. Wygodne dla serii i folderów.</string>
+    <string name="action_open_url">Otwórz link</string>
+    <string name="action_dial">Zadzwoń</string>
+    <string name="action_mail">Napisz e-mail</string>
+    <string name="action_map">Otwórz na mapie</string>
+    <string name="action_wifi">Połącz z Wi‑Fi</string>
+    <string name="action_contact">Zapisz kontakt</string>
+    <string name="action_no_app">Na telefonie nie ma aplikacji do tego</string>
 </resources>

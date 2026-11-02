@@ -209,8 +209,11 @@ class LabelRenderer(private val hand: Typeface) {
         val dark = Paint().apply { color = palette.qrDark; style = Paint.Style.FILL }
         palette.blockFill?.let { fill ->
             // На тлі-зображенні: увесь блок коду (з рамкою й підписом) — на суцільній підкладці з невеликим полем.
+            // Штрихкод — на квадратній картці: так він повністю закриває квадратне місце сцени (без ліній зверху й знизу).
             val m = maxOf(pad, 1f) * k
-            canvas.drawRoundRect(RectF(blockLeft - m * 0.5f, blockTop - m * 0.5f, blockLeft + blockW + m * 0.5f, blockTop + blockH + m * 0.5f), m, m, Paint().apply { color = fill; isAntiAlias = true })
+            val cardH = if (e.barcode) maxOf(blockH, blockW) else blockH
+            val cy = blockTop + blockH / 2
+            canvas.drawRoundRect(RectF(blockLeft - m * 0.5f, cy - cardH / 2 - m * 0.5f, blockLeft + blockW + m * 0.5f, cy + cardH / 2 + m * 0.5f), m, m, Paint().apply { color = fill; isAntiAlias = true })
         }
         palette.qrTile?.let { tile ->
             // Біла картка під кодом (на чорному тлі) — з полем навколо, щоб сканер бачив межі коду.

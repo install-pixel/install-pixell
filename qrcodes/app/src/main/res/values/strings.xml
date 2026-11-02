@@ -265,4 +265,11 @@
     <string name="print_this">This label</string>
     <string name="print_each">Each code on its own label (%1$d)</string>
     <string name="print_each_hint">With this layout: every label gets its own code. Handy for series and folders.</string>
+    <string name="action_open_url">Open link</string>
+    <string name="action_dial">Call</string>
+    <string name="action_mail">Write an email</string>
+    <string name="action_map">Open on the map</string>
+    <string name="action_wifi">Connect to Wi‑Fi</string>
+    <string name="action_contact">Save contact</string>
+    <string name="action_no_app">No app on this phone can do that</string>
 </resources>

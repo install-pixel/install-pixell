@@ -263,4 +263,11 @@
     <string name="print_this">Цю наклейку</string>
     <string name="print_each">Кожен код окремою наклейкою (%1$d)</string>
     <string name="print_each_hint">За цим макетом: на кожній наклейці — свій код. Зручно для серій і папок.</string>
+    <string name="action_open_url">Відкрити посилання</string>
+    <string name="action_dial">Подзвонити</string>
+    <string name="action_mail">Написати листа</string>
+    <string name="action_map">Відкрити на мапі</string>
+    <string name="action_wifi">Підключитися до Wi‑Fi</string>
+    <string name="action_contact">Зберегти контакт</string>
+    <string name="action_no_app">На телефоні немає програми для цього</string>
 </resources>

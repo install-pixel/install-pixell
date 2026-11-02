@@ -99,8 +99,18 @@ fun ItemMenu(
     onToFolder: () -> Unit,
     onFromFolder: (() -> Unit)?,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val action = remember(code.content) { com.blacklaunch.qrcodes.qr.ContentAction.detect(code.content) }
+    val noApp = stringResource(R.string.action_no_app)
     SheetDialog(onDismissRequest = onDismiss, title = code.title) {
         Column {
+            // Як камера телефона: посилання — відкрити, Wi‑Fi — підключитися, контакт — зберегти…
+            if (action != null) {
+                MenuRow(action.glyph(), stringResource(action.label()), {
+                    onDismiss()
+                    if (!launch(context, action)) android.widget.Toast.makeText(context, noApp, android.widget.Toast.LENGTH_SHORT).show()
+                })
+            }
             MenuRow(
                 if (code.isFavorite) Glyph.StarEmpty else Glyph.Star,
                 stringResource(if (code.isFavorite) R.string.favorite_remove else R.string.favorite_add),

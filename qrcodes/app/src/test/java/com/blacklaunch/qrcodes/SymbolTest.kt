@@ -1,6 +1,7 @@
 package com.blacklaunch.qrcodes
 
 import com.blacklaunch.qrcodes.qr.CodeFormat
+import com.blacklaunch.qrcodes.qr.CodeKind as k
 import com.blacklaunch.qrcodes.qr.Symbol
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -24,7 +25,6 @@ class SymbolTest {
 
     @Test
     fun everyKindEncodesTypicalContent() {
-        val k = com.blacklaunch.qrcodes.qr.CodeKind
         assertTrue(Symbol.encode("https://x.pl", k.DATA_MATRIX) is Symbol.Qr)
         assertTrue(Symbol.encode("Квиток 12", k.AZTEC) is Symbol.Qr)
         assertNull(Symbol.encode("Склад", k.DATA_MATRIX))
@@ -44,7 +44,6 @@ class SymbolTest {
 
     @Test
     fun kindStorageRoundTripsAndOldValuesStay() {
-        val k = com.blacklaunch.qrcodes.qr.CodeKind
         k.entries.forEach { assertTrue(k.of(it.storage) == it) }
         assertTrue(k.of("QR") == k.QR)
         assertTrue(k.of("BARCODE") == k.AUTO)
