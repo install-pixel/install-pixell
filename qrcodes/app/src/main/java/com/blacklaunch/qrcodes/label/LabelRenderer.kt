@@ -210,7 +210,8 @@ class LabelRenderer(private val hand: Typeface) {
         palette.blockFill?.let { fill ->
             // На тлі-зображенні: увесь блок коду (з рамкою й підписом) — на суцільній підкладці з невеликим полем.
             // Штрихкод — на квадратній картці: так він повністю закриває квадратне місце сцени (без ліній зверху й знизу).
-            val m = maxOf(pad, 1f) * k
+            // Поле картки: для штрихкоду ширше — щоб лінії квадратика сцени точно сховалися під нею.
+            val m = (if (e.barcode) maxOf(pad, 1f, e.side * 0.08f) else maxOf(pad, 1f)) * k
             val cardH = if (e.barcode) maxOf(blockH, blockW) else blockH
             val cy = blockTop + blockH / 2
             canvas.drawRoundRect(RectF(blockLeft - m * 0.5f, cy - cardH / 2 - m * 0.5f, blockLeft + blockW + m * 0.5f, cy + cardH / 2 + m * 0.5f), m, m, Paint().apply { color = fill; isAntiAlias = true })
@@ -227,15 +228,25 @@ class LabelRenderer(private val hand: Typeface) {
         }
         if (e.caption) {
             val letters = captionLetters(e.side)
-            val text = TextPaint().apply { color = palette.ink; isAntiAlias = true; typeface = face(); textSize = letters * scale() * k }
             val width = ((e.side + letters * 2) * k).toInt().coerceAtLeast(1)
-            val layout = StaticLayout.Builder.obtain(e.title, 0, e.title.length, text, width)
-                .setAlignment(Layout.Alignment.ALIGN_CENTER)
-                .setMaxLines(2)
-                .setEllipsize(TextUtils.TruncateAt.END)
-                .setIncludePad(false)
-                .setLineSpacing(0f, 0.85f)
-                .build()
+            val textSize = letters * scale() * k
+            // Розкладка підпису — з пам'яті: поки тягнеш код, вона не перебудовується щокадру.
+            val key = "${e.title}|$width|$textSize|${palette.ink}|${face().hashCode()}"
+            val layout = synchronized(captions) {
+                captions[key] ?: run {
+                    val text = TextPaint().apply { color = palette.ink; isAntiAlias = true; typeface = face(); this.textSize = textSize }
+                    StaticLayout.Builder.obtain(e.title, 0, e.title.length, text, width)
+                        .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                        .setMaxLines(2)
+                        .setEllipsize(TextUtils.TruncateAt.END)
+                        .setIncludePad(false)
+                        .setLineSpacing(0f, 0.85f)
+                        .build()
+                }.also {
+                    if (captions.size > CAPTION_CACHE) captions.remove(captions.keys.first())
+                    captions[key] = it
+                }
+            }
             canvas.save()
             canvas.translate(left + side / 2 - width / 2f, top + symbolH + letters * 0.45f * k)
             layout.draw(canvas)
@@ -447,6 +458,9 @@ class LabelRenderer(private val hand: Typeface) {
 
     private val backgrounds = LinkedHashMap<String, Bitmap>()
 
+    /** Готові розкладки підписів під кодами (за текстом, шириною й розміром). */
+    private val captions = LinkedHashMap<String, StaticLayout>()
+
     /** Зразок сцени для вікна вибору: картинка й сірі квадратики на місцях кодів. */
     fun drawScenePreview(canvas: Canvas, w: Float, h: Float, scene: Scenes.Scene) {
         val bmp = loadBackground(scene.source) ?: return
@@ -641,6 +655,7 @@ class LabelRenderer(private val hand: Typeface) {
         private const val PDF_POINTS_PER_MM = 72f / 25.4f
         private const val PNG_PX_PER_MM = 300f / 25.4f
         private const val BG_MAX_PX = 3072
+        private const val CAPTION_CACHE = 64
 
         /** Шрифт від руки дрібніший на око (як у «Аркуші») — підпис трохи більший. */
         private const val HAND_SCALE = 1.25f
