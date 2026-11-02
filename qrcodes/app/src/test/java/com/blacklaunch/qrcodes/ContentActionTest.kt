@@ -18,7 +18,7 @@ class ContentActionTest {
 
     @Test
     fun parsesWifiWithEscapes() {
-        val w = ContentAction.detect("WIFI:T:WPA;S:Мій\;дім;P:pa\\:ss;H:true;;") as ContentAction.Wifi
+        val w = ContentAction.detect("WIFI:T:WPA;S:Мій\\;дім;P:pa\\:ss;H:true;;") as ContentAction.Wifi
         assertEquals("Мій;дім", w.ssid)
         assertEquals("pa:ss", w.password)
         assertEquals("WPA", w.type)
