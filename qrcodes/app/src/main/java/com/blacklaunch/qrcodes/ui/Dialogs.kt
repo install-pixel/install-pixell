@@ -535,7 +535,7 @@ fun KindPicker(current: com.blacklaunch.qrcodes.qr.CodeKind, onDismiss: () -> Un
     }
 }
 
-private fun kindHint(k: com.blacklaunch.qrcodes.qr.CodeKind): Int = when (k) {
+internal fun kindHint(k: com.blacklaunch.qrcodes.qr.CodeKind): Int = when (k) {
     com.blacklaunch.qrcodes.qr.CodeKind.QR -> R.string.kind_hint_qr
     com.blacklaunch.qrcodes.qr.CodeKind.DATA_MATRIX -> R.string.kind_hint_datamatrix
     com.blacklaunch.qrcodes.qr.CodeKind.AZTEC -> R.string.kind_hint_aztec

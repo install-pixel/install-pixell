@@ -322,8 +322,10 @@ fun CreatePage(
                         stringResource(
                             when {
                                 !tooLong -> R.string.preview_hint
-                                barcode -> R.string.barcode_invalid
-                                else -> R.string.too_long
+                                // Не підходить — підказка саме для цього виду (що він приймає).
+                                format == com.blacklaunch.qrcodes.qr.CodeKind.AUTO -> R.string.barcode_invalid
+                                format == com.blacklaunch.qrcodes.qr.CodeKind.QR -> R.string.too_long
+                                else -> kindHint(format)
                             },
                         ),
                         color = if (tooLong) Oled.Danger else Oled.TextSecondary,
