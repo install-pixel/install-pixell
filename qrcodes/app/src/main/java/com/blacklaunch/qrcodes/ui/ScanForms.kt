@@ -549,46 +549,49 @@ fun ScanFormScreen(
                 Text(form.name, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 4.dp))
                 IconSpot(Glyph.Edit, stringResource(R.string.forms_edit), onClick = onEdit)
             }
-            // Код — угорі, великий.
+            // Код — угорі, великий. Усе навколо нього має сталі місця: «‹ ›» — з боків (у режимі «Один код» місце лишається
+            // порожнім), підпис — під кодом у рядку сталої висоти, тож при перемиканні нічого не смикається.
+            val active = form.activeSteps(values.toList(), enabled.toList(), today)
+            val cur = step.coerceIn(0, (active.size - 1).coerceAtLeast(0))
+            val idx = if (steps) active.getOrNull(cur) else null
+            val stepText = idx?.let { form.part(it, values.toList(), enabled.toList(), today) }.orEmpty()
+            val stepSymbol = remember(stepText) { if (stepText.isEmpty()) null else Symbol.encode(stepText, CodeKind.QR) }
+            val shownSymbol = if (steps) stepSymbol else symbol
+            val canStep = steps && active.size > 1
+            val next = { step = if (cur >= active.lastIndex) 0 else cur + 1 }
+            val qrSide = minOf(side, width - 32.dp - 120.dp)
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (!steps) {
-                    Box(Modifier.size(side), contentAlignment = Alignment.Center) {
-                        if (symbol != null) CodeImage(symbol, Modifier.fillMaxSize())
-                        else Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, textAlign = TextAlign.Center)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(56.dp), contentAlignment = Alignment.CenterStart) {
+                        if (canStep) SheetButton("‹", { step = if (cur == 0) active.lastIndex else cur - 1 }, compact = true, modifier = Modifier.width(52.dp))
                     }
-                } else {
-                    val active = form.activeSteps(values.toList(), enabled.toList(), today)
-                    val cur = step.coerceIn(0, (active.size - 1).coerceAtLeast(0))
-                    val idx = active.getOrNull(cur)
-                    val stepText = idx?.let { form.part(it, values.toList(), enabled.toList(), today) }.orEmpty()
-                    val stepSymbol = remember(stepText) { if (stepText.isEmpty()) null else Symbol.encode(stepText, CodeKind.QR) }
-                    if (idx == null) {
-                        Box(Modifier.size(side), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.forms_step_empty), color = Oled.TextSecondary, fontSize = 16.sp, textAlign = TextAlign.Center)
+                    Box(
+                        Modifier.weight(1f).height(qrSide).clip(RoundedCornerShape(12.dp)).clickable(enabled = canStep) { next() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        when {
+                            shownSymbol != null -> CodeImage(shownSymbol, Modifier.size(qrSide))
+                            steps && idx == null -> Text(stringResource(R.string.forms_step_empty), color = Oled.TextSecondary, fontSize = 16.sp, textAlign = TextAlign.Center)
+                            else -> Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, textAlign = TextAlign.Center)
                         }
-                    } else {
-                        val label = form.fields[idx].label.ifBlank { stringResource(R.string.forms_field_n).format(idx + 1) }
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            SheetButton("‹", { step = if (cur == 0) active.lastIndex else cur - 1 }, compact = true, modifier = Modifier.width(52.dp))
-                            Text(
-                                stringResource(R.string.forms_step, cur + 1, active.size, label),
-                                color = Oled.TextPrimary, fontSize = 16.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
-                            )
-                            SheetButton("›", { step = if (cur >= active.lastIndex) 0 else cur + 1 }, compact = true, modifier = Modifier.width(52.dp))
-                        }
-                        val skip = form.skipBefore(active, cur)
-                        if (skip > 0) Text(stringResource(R.string.forms_step_skip, skip), color = Oled.TextPrimary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
-                        Box(
-                            Modifier.padding(top = 6.dp).size(side).clip(RoundedCornerShape(12.dp)).clickable { step = if (cur >= active.lastIndex) 0 else cur + 1 },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (stepSymbol != null) CodeImage(stepSymbol, Modifier.fillMaxSize())
-                            else Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, textAlign = TextAlign.Center)
-                        }
+                    }
+                    Box(Modifier.width(56.dp), contentAlignment = Alignment.CenterEnd) {
+                        if (canStep) SheetButton("›", { next() }, compact = true, modifier = Modifier.width(52.dp))
                     }
                 }
-                EqualWidthRow(Modifier.fillMaxWidth().padding(top = 10.dp), gap = 8.dp) {
+                val info = when {
+                    !steps -> stringResource(R.string.forms_one_hint)
+                    idx == null -> ""
+                    else -> {
+                        val label = form.fields[idx].label.ifBlank { stringResource(R.string.forms_field_n).format(idx + 1) }
+                        val skip = form.skipBefore(active, cur)
+                        stringResource(R.string.forms_step, cur + 1, active.size, label) + if (skip > 0) " · " + stringResource(R.string.forms_step_skip, skip) else ""
+                    }
+                }
+                Box(Modifier.fillMaxWidth().height(44.dp).padding(top = 4.dp), contentAlignment = Alignment.Center) {
+                    Text(info, color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
                     ChoiceChip(stringResource(R.string.forms_mode_one), !steps) { steps = false; onRemember(snapshot(false)) }
                     ChoiceChip(stringResource(R.string.forms_mode_steps), steps) { steps = true; step = 0; onRemember(snapshot(true)) }
                 }
@@ -613,15 +616,25 @@ fun ScanFormScreen(
                                 color = if (on) Oled.TextPrimary else Oled.TextSecondary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
+                            // Сталі поля (текст, дата, похідне, перехід) — значення тут же, в одному рядку з перемикачем.
+                            val fixed = when (f.type) {
+                                FieldType.SKIP -> moveSummary(f.move, f.moveTimes)
+                                FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> form.part(i, values.toList(), List(n) { true }, today).ifEmpty { "—" }
+                                else -> null
+                            }
+                            if (fixed != null) Text(
+                                fixed, color = Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 10.dp).widthIn(max = 150.dp).graphicsLayer { alpha = if (on) 1f else 0.4f },
+                            )
                             if (f.switchable) ChoiceChip(stringResource(if (on) R.string.forms_on else R.string.forms_off), on, Modifier.width(104.dp)) { enabled[i] = !on }
                         }
-                        if (on) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        // Поле вводу лишається на місці й тоді, коли вимкнене (лише тьмяніє) — список не стрибає.
+                        if (f.type == FieldType.SCAN || f.type == FieldType.NUMBER || f.type == FieldType.CHOICE) Row(
+                            Modifier.fillMaxWidth().graphicsLayer { alpha = if (on) 1f else 0.35f },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             when (f.type) {
-                                FieldType.SKIP -> Text(moveSummary(f.move, f.moveTimes), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                                FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> {
-                                    val value = form.part(i, values.toList(), List(n) { true }, today)
-                                    Text(value.ifEmpty { "—" }, color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                                }
+                                FieldType.SKIP, FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> {}
                                 FieldType.SCAN -> {
                                     SheetTextField(values[i], { values[i] = it.replace("\n", " ").replace("\t", " ") }, stringResource(R.string.forms_scan_placeholder), Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
                                     IconSpot(Glyph.ScanQr, stringResource(R.string.mode_scan)) { camFor = i to true }

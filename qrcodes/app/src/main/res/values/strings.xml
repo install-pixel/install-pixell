@@ -315,7 +315,7 @@
     <string name="forms_mode_one">One code</string>
     <string name="forms_mode_steps">Field by field</string>
     <string name="forms_step">Field %1$d of %2$d · %3$s</string>
-    <string name="forms_step_skip">First skip %1$d field(s) on the scanner with the down arrow, then scan.</string>
+    <string name="forms_step_skip">first ↓ ×%1$d</string>
     <string name="forms_step_tap">Scan, press the arrow on the scanner and tap the code — the next field appears.</string>
     <string name="forms_step_empty">No filled-in fields yet.</string>
     <string name="fields_down_a">↓ Arrow · 1</string>
@@ -356,4 +356,5 @@
     <string name="forms_on">On</string>
     <string name="forms_off">Off</string>
     <string name="form_entry_sub">Scanner form</string>
+    <string name="forms_one_hint">Every field is in this one code.</string>
 </resources>
