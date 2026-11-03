@@ -563,6 +563,14 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 menuFor = null
                 moveFor = code
             },
+            onBrightness = if (fullscreen != null) {
+                {
+                    menuFor = null
+                    QrBrightness.toggle()
+                }
+            } else {
+                null
+            },
             onSelect = if (code.isForm) null else {
                 {
                     menuFor = null

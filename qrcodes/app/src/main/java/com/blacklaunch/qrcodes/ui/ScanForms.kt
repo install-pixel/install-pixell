@@ -123,7 +123,7 @@ fun FormsListDialog(forms: List<ScanForm>, onDismiss: () -> Unit, onOpen: (ScanF
                     IconSpot(Glyph.Delete, stringResource(R.string.delete), tint = Oled.Danger) { deleting = f }
                 }
             }
-            Text(stringResource(R.string.forms_list_hint), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            WindowHint(stringResource(R.string.forms_list_hint))
         }
     }
     deleting?.let { f ->
@@ -255,7 +255,7 @@ private fun OptionsDialog(
         Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { (k, label) -> ChoiceChip(label, sel == k, Modifier.fillMaxWidth()) { sel = k } }
             if (times != null && timesFor(sel)) TimesStepper(n) { n = it }
-            hint(sel)?.let { Text(it, color = Oled.TextSecondary, fontSize = 13.sp) }
+            hint(sel)?.let { WindowHint(it) }
         }
     }
 }
@@ -377,7 +377,7 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                                     SheetTextField(f.datePattern, { fields[i] = f.copy(datePattern = it) }, "ddMMyyyy", Modifier.weight(1f))
                                     Text("→ «" + ScanForm.formatDate(f.datePattern, today) + "»", color = Oled.TextPrimary, fontSize = 15.sp)
                                 }
-                                Text(stringResource(R.string.forms_date_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+                                FieldHint(stringResource(R.string.forms_date_hint))
                             }
                             FieldType.SCAN, FieldType.SKIP -> {}
                         }
@@ -412,7 +412,7 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
             SettingRow(stringResource(R.string.forms_between), betweenName(separator, custom)) { pick = Pick(PickKind.BETWEEN) }
             if (separator == 2) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SheetTextField(custom, { custom = it.replace("\n", "").replace("\t", "").take(3) }, "|", Modifier.width(88.dp))
-                Text(stringResource(R.string.fields_custom_hint), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                FieldHint(stringResource(R.string.fields_custom_hint), Modifier.weight(1f))
             }
             EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
                 ChoiceChip(stringResource(R.string.fields_finish), endEnter) { endEnter = !endEnter }
@@ -527,17 +527,15 @@ fun ScanFormScreen(
     val codes = remember(saved) { saved.filter { !it.isForm } }
     androidx.activity.compose.BackHandler(enabled = camFor == null) { onClose() }
 
-    // Яскравість — на максимум, поки форма відкрита (можна вимкнути кнопкою в шапці; вибір запам'ятовується).
+    // Яскравість — на максимум, поки форма відкрита (вимкнути — у меню «⋯»; одне налаштування на всю програму).
     // Підсвітити можна лише весь екран, тож усе, крім коду, тоді приглушене — яскраво світиться саме код.
-    val fieldLabel = stringResource(R.string.forms_field_n)
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
-    var bright by remember { mutableStateOf(settings.qrBright) }
-    val dim = if (bright) FORM_DIM else 1f
+    val bright = QrBrightness.on
+    var menuOpen by remember { mutableStateOf(false) }
+    val dim = if (bright && !menuOpen) FORM_DIM else 1f
     val activity = androidx.activity.compose.LocalActivity.current
-    DisposableEffect(activity, bright, covered) {
+    DisposableEffect(activity, bright, covered, menuOpen) {
         val w = activity?.window
-        if (bright && !covered) w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
+        if (bright && !covered && !menuOpen) w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
         onDispose { w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE } }
     }
     // Пам'ять введеного — якщо так задано у формі.
@@ -558,23 +556,8 @@ fun ScanFormScreen(
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp).graphicsLayer { alpha = dim }, verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClose), contentAlignment = Alignment.Center) { GlyphIcon(Glyph.Back, stringResource(R.string.back)) }
                 Text(form.name, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 4.dp))
-                // Яскравість: увімкнено — значок яскравий, вимкнено — тьмяний.
-                IconSpot(Glyph.Flash, stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on), tint = if (bright) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.5f)) {
-                    bright = !bright
-                    settings.qrBright = bright
-                }
-                IconSpot(Glyph.Print, stringResource(R.string.print)) {
-                    if (steps) {
-                        // «По полю» — кожне поле своїм кодом, підпис — назва поля.
-                        val parts = form.activeSteps(values.toList(), enabled.toList(), today).map { i ->
-                            form.part(i, values.toList(), enabled.toList(), today) to "${form.name} · " + form.fields[i].label.ifBlank { fieldLabel.format(i + 1) }
-                        }
-                        if (parts.isNotEmpty()) onPrint(parts)
-                    } else if (symbol != null) {
-                        onPrint(listOf(content to form.name))
-                    }
-                }
-                IconSpot(Glyph.Edit, stringResource(R.string.forms_edit), onClick = onEdit)
+                // Усі дії форми — в меню «⋯», як у коду на весь екран.
+                IconSpot(Glyph.More, stringResource(R.string.more), tint = Oled.TextPrimary) { menuOpen = true }
             }
             // Код — угорі, великий. Усе навколо нього має сталі місця: «‹ ›» — з боків (у режимі «Один код» місце лишається
             // порожнім), підпис — під кодом у рядку сталої висоти, тож при перемиканні нічого не смикається.
@@ -712,6 +695,16 @@ fun ScanFormScreen(
                 onClose = { camFor = null },
                 onMessage = onMessage,
             )
+        }
+    }
+    if (menuOpen) {
+        SheetDialog(onDismissRequest = { menuOpen = false }, title = form.name) {
+            Column {
+                MenuRow(Glyph.Edit, stringResource(R.string.forms_edit), { menuOpen = false; onEdit() })
+                // Друк — спільний QR з усіх полів, такий, як зараз (з введеним).
+                if (symbol != null) MenuRow(Glyph.Print, stringResource(R.string.print), { menuOpen = false; onPrint(listOf(content to form.name)) })
+                MenuRow(Glyph.Flash, stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on), { menuOpen = false; QrBrightness.toggle() })
+            }
         }
     }
     pickFor?.let { index ->

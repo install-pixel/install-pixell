@@ -22,3 +22,22 @@ object StatusBar {
         if (hidden) controller.hide(WindowInsetsCompat.Type.statusBars()) else controller.show(WindowInsetsCompat.Type.statusBars())
     }
 }
+
+/**
+ * Підвищена яскравість для коду, який сканують з екрана (на весь екран і у формі): одне налаштування на всю програму,
+ * перемикається в меню «⋯» там, де показано код.
+ */
+object QrBrightness {
+    var on by mutableStateOf(true)
+    private var save: (Boolean) -> Unit = {}
+
+    fun init(settings: com.blacklaunch.qrcodes.settings.AppSettings) {
+        on = settings.qrBright
+        save = { settings.qrBright = it }
+    }
+
+    fun toggle() {
+        on = !on
+        save(on)
+    }
+}

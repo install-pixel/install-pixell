@@ -425,8 +425,8 @@ internal fun SizeDialog(current: LabelSize, onDismiss: () -> Unit, onApply: (Lab
             SheetTextField(w, { w = it; screen = false }, "150", keyboardOptions = numbers)
             Text(stringResource(R.string.label_height_mm), fontSize = 15.sp)
             SheetTextField(h, { h = it; screen = false }, "100", keyboardOptions = numbers)
-            if (screen) Text(stringResource(R.string.label_screen_hint), fontSize = 14.sp)
-            Text(stringResource(R.string.label_custom_range, LabelSize.MIN_MM.toInt(), LabelSize.MAX_MM.toInt()), fontSize = 14.sp)
+            if (screen) com.blacklaunch.qrcodes.ui.FieldHint(stringResource(R.string.label_screen_hint))
+            com.blacklaunch.qrcodes.ui.FieldHint(stringResource(R.string.label_custom_range, LabelSize.MIN_MM.toInt(), LabelSize.MAX_MM.toInt()))
         }
     }
 }

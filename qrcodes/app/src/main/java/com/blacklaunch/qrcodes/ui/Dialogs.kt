@@ -103,6 +103,8 @@ fun ItemMenu(
     onFromFolder: (() -> Unit)?,
     /** «Вибрати кілька» — режим вибору, цей код уже вибраний (null — пункту немає). */
     onSelect: (() -> Unit)? = null,
+    /** Меню відкрили з коду на весь екран — є перемикач яскравості (null — немає). */
+    onBrightness: (() -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val action = remember(code.content) { com.blacklaunch.qrcodes.qr.ContentAction.detect(code.content) }
@@ -116,6 +118,7 @@ fun ItemMenu(
                     if (!launch(context, action)) android.widget.Toast.makeText(context, noApp, android.widget.Toast.LENGTH_SHORT).show()
                 })
             }
+            if (onBrightness != null) MenuRow(Glyph.Flash, stringResource(if (QrBrightness.on) R.string.forms_bright_off else R.string.forms_bright_on), onBrightness)
             MenuRow(
                 if (code.isFavorite) Glyph.StarEmpty else Glyph.Star,
                 stringResource(if (code.isFavorite) R.string.favorite_remove else R.string.favorite_add),
@@ -155,7 +158,7 @@ fun RenameDialog(code: QrCode, onDismiss: () -> Unit, onApply: (String) -> Unit)
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 focusRequester = focus,
             )
-            Text(stringResource(R.string.rename_hint), fontSize = 14.sp)
+            WindowHint(stringResource(R.string.rename_hint))
         }
     }
 }
@@ -174,10 +177,8 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
         // меню — звичайна яскравість, а код розмитий і притемнений, як усе під меню.
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         LaunchedEffect(window, StatusBar.hidden) { StatusBar.apply(window) }
-        // Підвищена яскравість — спільне налаштування з формами (кнопка внизу); тоді світиться код, решта приглушена.
-        val context = androidx.compose.ui.platform.LocalContext.current
-        val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
-        var bright by remember { mutableStateOf(settings.qrBright) }
+        // Підвищена яскравість — спільне налаштування (у меню «⋯»); тоді світиться код, решта приглушена.
+        val bright = QrBrightness.on
         val dim = if (bright && !covered) FORM_DIM else 1f
         DisposableEffect(window, covered, bright) {
             window?.attributes = window?.attributes?.apply {
@@ -209,13 +210,6 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
             // Лише «Закрити» й «Меню» — усі дії (вибране, назва, друк, копіювати, видалити) в одному місці, у меню.
             Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().graphicsLayer { alpha = dim }, horizontalArrangement = Arrangement.SpaceBetween) {
                 RoundButton(Glyph.Close, stringResource(R.string.close), onDismiss)
-                // Яскравість: увімкнено — значок яскравий, вимкнено — тьмяний.
-                RoundButton(
-                    Glyph.Flash,
-                    stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on),
-                    { bright = !bright; settings.qrBright = bright },
-                    ink = if (bright) SheetInk else SheetInk.copy(alpha = 0.4f),
-                )
                 RoundButton(Glyph.More, stringResource(R.string.more), onMenu)
             }
         }
@@ -307,7 +301,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
                     Text(stringResource(R.string.settings_backup), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
                     MenuRow(Glyph.Download, stringResource(R.string.backup_export), onExport)
                     MenuRow(Glyph.Copy, stringResource(R.string.backup_import), onImport)
-                    Text(stringResource(R.string.backup_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                    WindowHint(stringResource(R.string.backup_hint))
                 }
                 SettingsPage.Help -> Column(Modifier.fillMaxWidth().bouncyScroll()) {
                     HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { page = SettingsPage.Topic(t) }) }
@@ -447,7 +441,7 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
                     SheetTextField(a, { a = it }, stringResource(R.string.form_site_address), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri), focusRequester = focus)
                 }
             }
-            Text(stringResource(R.string.form_hint), fontSize = 14.sp)
+            WindowHint(stringResource(R.string.form_hint))
         }
     }
 }
@@ -652,7 +646,7 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
                     SheetTextField(count, { count = it.filter(Char::isDigit).take(4) }, stringResource(R.string.batch_count), Modifier.weight(1f), keyboardOptions = number)
                     SheetTextField(digits, { digits = it.filter(Char::isDigit).take(2) }, stringResource(R.string.batch_digits), Modifier.weight(1f), keyboardOptions = number)
                 }
-                Text(stringResource(R.string.batch_numbers_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+                FieldHint(stringResource(R.string.batch_numbers_hint))
                 SheetTextField(suffix, { suffix = it }, stringResource(R.string.batch_suffix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
             }
             SheetTextField(folder, { folder = it }, folderDefault, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))

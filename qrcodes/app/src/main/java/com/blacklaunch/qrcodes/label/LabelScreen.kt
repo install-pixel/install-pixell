@@ -969,7 +969,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                     printChoice = false
                     renderer.printPages(context, jobName, eachPages())
                 })
-                Text(stringResource(R.string.print_each_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
+                com.blacklaunch.qrcodes.ui.WindowHint(stringResource(R.string.print_each_hint))
             }
         }
     }
@@ -1010,7 +1010,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         commit(design.copy(background = null))
                     })
                 }
-                Text(stringResource(R.string.label_bg_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                com.blacklaunch.qrcodes.ui.WindowHint(stringResource(R.string.label_bg_hint))
             }
         }
     }
@@ -1072,7 +1072,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         }
                     }
                 }
-                Text(stringResource(R.string.label_templates_hint), fontSize = 14.sp)
+                com.blacklaunch.qrcodes.ui.WindowHint(stringResource(R.string.label_templates_hint))
                 if (hiddenBuiltIns.isNotEmpty()) {
                     SheetButton(stringResource(R.string.label_templates_restore), {
                         hiddenBuiltIns = emptySet()

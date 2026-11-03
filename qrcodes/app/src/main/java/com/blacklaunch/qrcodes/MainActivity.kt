@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppStyle.glass = AppSettings(this).glass
         com.blacklaunch.qrcodes.ui.StatusBar.hidden = AppSettings(this).hideStatusBar
+        com.blacklaunch.qrcodes.ui.QrBrightness.init(AppSettings(this))
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.BLACK),
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),

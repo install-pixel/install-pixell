@@ -816,3 +816,23 @@ fun EqualWidthRow(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Compo
         }
     }
 }
+
+/*
+ * Підказки — за одним правилом:
+ *  - [WindowHint] — пояснення до всього вікна чи розділу: сірим, після всіх варіантів (унизу вмісту);
+ *  - [FieldHint] — пояснення до одного поля: дрібніше, одразу під ним;
+ *  - що вписати в порожнє поле — сірим усередині поля (placeholder);
+ *  - на панелі інструментів (малювання) — один рядок угорі панелі.
+ */
+
+/** Підказка до всього вікна чи розділу — сірим, унизу вмісту. */
+@Composable
+fun WindowHint(text: String, modifier: Modifier = Modifier) {
+    Text(text, color = Oled.TextSecondary, fontSize = 14.sp, lineHeight = 19.sp, modifier = modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp))
+}
+
+/** Підказка до одного поля — дрібніше, одразу під ним. */
+@Composable
+fun FieldHint(text: String, modifier: Modifier = Modifier) {
+    Text(text, color = Oled.TextSecondary, fontSize = 13.sp, lineHeight = 17.sp, modifier = modifier.padding(horizontal = 4.dp))
+}
