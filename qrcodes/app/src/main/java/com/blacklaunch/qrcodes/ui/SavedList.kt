@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -168,12 +170,55 @@ fun SavedList(
             label = "blurUnder",
         )
         val inFolder by androidx.compose.runtime.rememberUpdatedState(openFolder != null)
+        var dragMoved by remember { mutableStateOf(false) }
+        val density = LocalDensity.current
+        val listPad = with(density) { LIST_PAD.toPx() }
 
+        // Куди ляже рядок, що тягнуть (палець — у [fingerY]); викликається і з руху пальця, і з автопрокрутки.
+        fun updateDrop() {
+            val key = draggingKey ?: return
+            val entry = current.firstOrNull { it.key == key } ?: return
+            val y = fingerY - listPad
+            val target = list.layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y <= it.offset + it.size && it.key != key }
+            val targetEntry = target?.let { t -> current.firstOrNull { it.key == t.key } }
+            if (target != null && targetEntry != null && dragMoved) {
+                // Класти «в» можна лише код (не папку) і лише в загальному списку.
+                val canInto = entry is Entry.CodeEntry && !inFolder
+                val kind = ListDrop.decide(y, target.offset.toFloat(), target.size.toFloat(), canInto)
+                if (dropKey != targetEntry.key || dropKind != kind) haptics.tick()
+                dropKey = targetEntry.key
+                dropKind = kind
+            } else if (target == null) {
+                dropKey = null
+            }
+        }
+
+        // Палець біля верхнього чи нижнього краю — список сам повільно їде (що ближче до краю, то швидше).
+        LaunchedEffect(draggingKey) {
+            if (draggingKey == null) return@LaunchedEffect
+            val edge = with(density) { AUTO_EDGE.toPx() }
+            val maxStep = with(density) { AUTO_STEP.toPx() }
+            while (draggingKey != null) {
+                androidx.compose.runtime.withFrameNanos { }
+                val h = list.layoutInfo.viewportSize.height.toFloat()
+                val pull = when {
+                    fingerY < edge -> -((edge - fingerY) / edge)
+                    fingerY > h - edge -> (fingerY - (h - edge)) / edge
+                    else -> 0f
+                }.coerceIn(-1f, 1f)
+                if (pull != 0f && dragMoved) {
+                    // М'який старт: швидкість росте плавно (квадратично), а не стрибком.
+                    val step = maxStep * pull * kotlin.math.abs(pull)
+                    if (list.scrollBy(step) != 0f) updateDrop()
+                }
+            }
+        }
+
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             state = list,
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .fadingEdges(list)
                 .then(
                     if (!canDrag) {
@@ -182,15 +227,16 @@ fun SavedList(
                         Modifier.pointerInput(Unit) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
-                                val item = list.layoutInfo.visibleItemsInfo.firstOrNull { down.position.y >= it.offset && down.position.y <= it.offset + it.size }
+                                val item = list.layoutInfo.visibleItemsInfo.firstOrNull { down.position.y - listPad >= it.offset && down.position.y - listPad <= it.offset + it.size }
                                     ?: return@awaitEachGesture
                                 val entry = current.firstOrNull { it.key == item.key } ?: return@awaitEachGesture
                                 val held = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
                                 haptics.longPress()
                                 draggingKey = entry.key
-                                grabY = down.position.y - item.offset
+                                grabY = down.position.y - listPad - item.offset
                                 fingerY = held.position.y
                                 var moved = false
+                                dragMoved = false
                                 while (true) {
                                     // Initial — щоб після довгого натискання не спрацював ще й дотик / свайп рядка.
                                     val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -198,19 +244,9 @@ fun SavedList(
                                     event.changes.forEach { it.consume() }
                                     if (!change.pressed) break
                                     if (kotlin.math.abs(change.position.y - held.position.y) > viewConfiguration.touchSlop) moved = true
+                                    dragMoved = moved
                                     fingerY = change.position.y
-                                    val target = list.layoutInfo.visibleItemsInfo.firstOrNull { fingerY >= it.offset && fingerY <= it.offset + it.size && it.key != entry.key }
-                                    val targetEntry = target?.let { t -> current.firstOrNull { it.key == t.key } }
-                                    if (target != null && targetEntry != null && moved) {
-                                        // Класти «в» можна лише код (не папку) і лише в загальному списку.
-                                        val canInto = entry is Entry.CodeEntry && !inFolder
-                                        val kind = ListDrop.decide(fingerY, target.offset.toFloat(), target.size.toFloat(), canInto)
-                                        if (dropKey != targetEntry.key || dropKind != kind) haptics.tick()
-                                        dropKey = targetEntry.key
-                                        dropKind = kind
-                                    } else if (target == null) {
-                                        dropKey = null
-                                    }
+                                    updateDrop()
                                 }
                                 val target = dropKey?.let { k -> current.firstOrNull { it.key == k } }
                                 val kind = dropKind
@@ -230,7 +266,7 @@ fun SavedList(
                         }
                     },
                 ),
-            contentPadding = PaddingValues(vertical = 12.dp),
+            contentPadding = PaddingValues(vertical = LIST_PAD),
         ) {
             if (saved != null && entries.isEmpty()) {
                 item(key = "empty") {
@@ -250,36 +286,11 @@ fun SavedList(
                     Modifier
                         .zIndex(if (dragged) 1f else 0f)
                         .then(if (dragged) Modifier else Modifier.animateItem())
-                        .graphicsLayer {
-                            if (dragged) {
-                                val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == entry.key }
-                                if (info != null) translationY = fingerY - grabY - info.offset
-                                scaleX = 1.02f
-                                scaleY = 1.02f
-                                // Той, що тягнеш, — напівпрозорий: краще видно, куди ляже (над «Нова папка» — ще прозоріший).
-                                alpha = if (dropKey != null && dropKind == ListDrop.Kind.Into) 0.55f else 0.6f
-                                // Без гострих кутів: заокруглена плашка з м'якими (розмитими) краями.
-                                shape = RoundedCornerShape(DRAG_CORNER)
-                                clip = true
-                                compositingStrategy = CompositingStrategy.Offscreen
-                            }
-                        }
+                        // Сам рядок, що тягнуть, малюється окремо над списком (див. нижче) — тут лише його місце.
+                        .graphicsLayer { if (dragged) alpha = 0f }
                         // Куди ляже — малюємо поверх рядка (інакше чорне тло рядка закриває підказку).
                         .drawWithContent {
                             drawContent()
-                            if (dragged) {
-                                val f = DRAG_FEATHER.toPx()
-                                val fx = (f / size.width).coerceIn(0f, 0.5f)
-                                val fy = (f / size.height).coerceIn(0f, 0.5f)
-                                drawRect(
-                                    Brush.horizontalGradient(0f to Color.Transparent, fx to Color.Black, 1f - fx to Color.Black, 1f to Color.Transparent),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                                drawRect(
-                                    Brush.verticalGradient(0f to Color.Transparent, fy to Color.Black, 1f - fy to Color.Black, 1f to Color.Transparent),
-                                    blendMode = BlendMode.DstIn,
-                                )
-                            }
                             if (dropHere && dropKind != ListDrop.Kind.Into) {
                                 val y = if (dropKind == ListDrop.Kind.Before) 1.5.dp.toPx() else size.height - 1.5.dp.toPx()
                                 val r = 5.dp.toPx()
@@ -337,8 +348,54 @@ fun SavedList(
                 }
             }
         }
+            // Рядок, що тягнуть, — над списком, під пальцем: не зникає, коли список під ним прокручується.
+            val draggedEntry = draggingKey?.let { k -> current.firstOrNull { it.key == k } }
+            if (draggedEntry != null) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            translationY = fingerY - grabY
+                            scaleX = 1.02f
+                            scaleY = 1.02f
+                            // Напівпрозорий: краще видно, куди ляже (над «Нова папка» — ще прозоріший).
+                            alpha = if (dropKey != null && dropKind == ListDrop.Kind.Into) 0.55f else 0.6f
+                            // Без гострих кутів: заокруглена плашка з м'якими (розмитими) краями.
+                            shape = RoundedCornerShape(DRAG_CORNER)
+                            clip = true
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            val f = DRAG_FEATHER.toPx()
+                            val fx = (f / size.width).coerceIn(0f, 0.5f)
+                            val fy = (f / size.height).coerceIn(0f, 0.5f)
+                            drawRect(
+                                Brush.horizontalGradient(0f to Color.Transparent, fx to Color.Black, 1f - fx to Color.Black, 1f to Color.Transparent),
+                                blendMode = BlendMode.DstIn,
+                            )
+                            drawRect(
+                                Brush.verticalGradient(0f to Color.Transparent, fy to Color.Black, 1f - fy to Color.Black, 1f to Color.Transparent),
+                                blendMode = BlendMode.DstIn,
+                            )
+                        },
+                ) {
+                    when (draggedEntry) {
+                        is Entry.FolderEntry -> FolderRow(draggedEntry.folder, draggedEntry.codes.size) {}
+                        is Entry.CodeEntry -> SavedRow(draggedEntry.code, Modifier)
+                    }
+                }
+            }
+        }
     }
 }
+
+/** Відступ списку згори й знизу. */
+private val LIST_PAD = 12.dp
+
+/** Біля якого краю (від верху / низу списку) починається автопрокрутка, і найбільший крок за кадр. */
+private val AUTO_EDGE = 72.dp
+private val AUTO_STEP = 9.dp
 
 /** Рядок папки: значок, назва, скільки кодів. */
 @Composable

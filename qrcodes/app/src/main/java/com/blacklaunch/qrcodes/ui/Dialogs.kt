@@ -113,7 +113,7 @@ fun ItemMenu(
                     if (!launch(context, action)) android.widget.Toast.makeText(context, noApp, android.widget.Toast.LENGTH_SHORT).show()
                 })
             }
-            if (!isForm) MenuRow(
+            MenuRow(
                 if (code.isFavorite) Glyph.StarEmpty else Glyph.Star,
                 stringResource(if (code.isFavorite) R.string.favorite_remove else R.string.favorite_add),
                 onFavorite,

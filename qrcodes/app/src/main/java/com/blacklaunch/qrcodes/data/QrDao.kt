@@ -88,6 +88,10 @@ interface QrDao {
     @Query("SELECT * FROM codes WHERE content = :content LIMIT 1")
     suspend fun byContent(content: String): QrCode?
 
+    /** Найнижче місце в папці (щоб новий код став у її кінець). */
+    @Query("SELECT MIN(sortOrder) FROM codes WHERE folderId = :folderId")
+    suspend fun minOrderIn(folderId: Long): Long?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(code: QrCode): Long
 

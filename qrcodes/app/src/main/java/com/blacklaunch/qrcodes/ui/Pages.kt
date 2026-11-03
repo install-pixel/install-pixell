@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -203,7 +204,20 @@ fun FavoritesPage(
                         .padding(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    CodeImage(symbol, Modifier.fillMaxWidth(), seed = code.id.toInt(), barcode = code.codeFormat == CodeFormat.BARCODE)
+                    if (code.isForm) {
+                        // Форма для сканера — квадратна плитка зі значком форми (дотик — відкрити заповнення).
+                        Box(
+                            Modifier.fillMaxWidth().aspectRatio(1f).pencilFrame(16.dp, seed = code.id.toInt(), alpha = 0.7f),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                GlyphIcon(Glyph.Template, null, size = 56.dp)
+                                Text(stringResource(R.string.form_entry_sub), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                            }
+                        }
+                    } else {
+                        CodeImage(symbol, Modifier.fillMaxWidth(), seed = code.id.toInt(), barcode = code.codeFormat == CodeFormat.BARCODE)
+                    }
                     Text(
                         code.title,
                         color = Oled.TextPrimary,

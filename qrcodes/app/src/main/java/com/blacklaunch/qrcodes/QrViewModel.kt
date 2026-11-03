@@ -53,7 +53,7 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
                 dao.update(existing.copy(createdAt = now, sortOrder = now, format = kind.storage, name = name ?: existing.name))
                 onDone(SaveResult.AlreadySaved)
             } else {
-                dao.insert(QrCode(content = content, name = name, format = kind.storage, folderId = folderId))
+                dao.insert(QrCode(content = content, name = name, format = kind.storage, folderId = folderId, sortOrder = newOrder(folderId)))
                 onDone(SaveResult.Saved)
             }
         }
@@ -65,8 +65,15 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
         if (existing != null) {
             if (existing.name != form.name) dao.update(existing.copy(name = form.name))
         } else {
-            dao.insert(QrCode(content = form.link, name = form.name, format = com.blacklaunch.qrcodes.qr.ScanForm.LINK_FORMAT, folderId = folderId))
+            dao.insert(QrCode(content = form.link, name = form.name, format = com.blacklaunch.qrcodes.qr.ScanForm.LINK_FORMAT, folderId = folderId, sortOrder = newOrder(folderId)))
         }
+    }
+
+    /** Місце нового коду: у папці — в самому кінці (знизу), у загальному списку — нагорі. */
+    private suspend fun newOrder(folderId: Long?): Long {
+        val now = System.currentTimeMillis()
+        if (folderId == null) return now
+        return dao.minOrderIn(folderId)?.minus(1) ?: now
     }
 
     fun unlinkForm(id: String) = viewModelScope.launch {

@@ -282,7 +282,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 when (page) {
                     0 -> FavoritesPage(
                         favorites,
-                        onOpen = { fullscreen = it },
+                        onOpen = { openCode(it) },
                         onMenu = { menuFor = it },
                         onReorder = { vm.reorderFavorites(it) },
                         zone = dropZone,
