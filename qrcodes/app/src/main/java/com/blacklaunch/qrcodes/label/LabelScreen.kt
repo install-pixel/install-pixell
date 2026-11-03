@@ -952,6 +952,12 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             }
     }
 
+    /** Кожен код — окрема наклейка за цим макетом (усі коди на ній стають цим кодом). */
+    fun eachPages(): List<LabelDesign> = start.map { code ->
+        val q = newQr(0, code, design.size)
+        design.copy(elements = design.elements.map { e -> if (e is Element.Qr) e.copy(content = q.content, title = q.title, barcode = q.barcode, kind = q.kind) else e })
+    }
+
     if (printChoice) {
         SheetDialog(onDismissRequest = { printChoice = false }, title = stringResource(R.string.print_choice_title)) {
             Column {
@@ -961,12 +967,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 })
                 MenuRow(Glyph.Grid, stringResource(R.string.print_each, start.size), {
                     printChoice = false
-                    // Кожен код — окрема наклейка за цим макетом (усі коди на ній стають цим кодом).
-                    val pages = start.map { code ->
-                        val q = newQr(0, code, design.size)
-                        design.copy(elements = design.elements.map { e -> if (e is Element.Qr) e.copy(content = q.content, title = q.title, barcode = q.barcode, kind = q.kind) else e })
-                    }
-                    renderer.printPages(context, jobName, pages)
+                    renderer.printPages(context, jobName, eachPages())
                 })
                 Text(stringResource(R.string.print_each_hint), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
             }
@@ -1162,6 +1163,32 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             onMessage(if (ok) savedToGallery else saveFailed)
                         }
                     })
+                }
+                if (start.size > 1 && codes.isNotEmpty()) {
+                    // Кілька кодів — як і на друку: кожен окремою наклейкою за цим макетом.
+                    MenuRow(Glyph.Grid, stringResource(R.string.share_each, start.size), {
+                        shareOpen = false
+                        busy = true
+                        scope.launch {
+                            val uris = withContext(Dispatchers.Default) { renderer.renderPngs(context, eachPages()) }
+                            busy = false
+                            LabelRenderer.shareImages(context, shareTitle, uris)
+                        }
+                    })
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        MenuRow(Glyph.Download, stringResource(R.string.share_save_each, start.size), {
+                            shareOpen = false
+                            busy = true
+                            scope.launch {
+                                val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(java.util.Date())
+                                val ok = withContext(Dispatchers.IO) {
+                                    eachPages().mapIndexed { i, d -> renderer.saveToGallery(context, d, "QRaft-$stamp-%02d".format(i + 1)) }.all { it }
+                                }
+                                busy = false
+                                onMessage(if (ok) savedToGallery else saveFailed)
+                            }
+                        })
+                    }
                 }
                 if (textCode != null) {
                     MenuRow(Glyph.TextT, stringResource(R.string.share_code_text), {

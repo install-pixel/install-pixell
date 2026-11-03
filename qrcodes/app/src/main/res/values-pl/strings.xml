@@ -370,4 +370,6 @@
     <string name="cap_each">Każdy na osobnej naklejce (%1$d)</string>
     <string name="cap_first">Pierwsze %1$d na jedną naklejkę</string>
     <string name="label_room_full">Więcej się nie zmieści: można dodać tylko %1$d tego samego rozmiaru.</string>
+    <string name="share_each">Każdy kod osobnym obrazem (%1$d)</string>
+    <string name="share_save_each">Zapisz każdy w galerii (%1$d)</string>
 </resources>

@@ -372,4 +372,6 @@
     <string name="cap_each">Each one on its own label (%1$d)</string>
     <string name="cap_first">First %1$d on one label</string>
     <string name="label_room_full">You can add %1$d more of the same size — that’s all that fits.</string>
+    <string name="share_each">Each code as its own image (%1$d)</string>
+    <string name="share_save_each">Save each to the gallery (%1$d)</string>
 </resources>

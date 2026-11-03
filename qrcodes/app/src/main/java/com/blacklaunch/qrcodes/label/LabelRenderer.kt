@@ -604,6 +604,18 @@ class LabelRenderer(private val hand: Typeface) {
     }
 
     /** Картинка наклейки (PNG 300 dpi) — для «Поділитися» в будь-яку програму. */
+    /** Кілька наклейок — кожна окремою картинкою (для «Поділитися» кожним кодом окремо). */
+    fun renderPngs(context: Context, designs: List<LabelDesign>): List<Uri> {
+        val dir = File(context.cacheDir, "share").apply { deleteRecursively(); mkdirs() }
+        return designs.mapIndexed { i, d ->
+            val bitmap = renderBitmap(context, d)
+            val file = File(dir, "qr_label_%02d.png".format(i + 1))
+            FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            bitmap.recycle()
+            FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+        }
+    }
+
     fun renderPng(context: Context, design: LabelDesign): Uri {
         val dir = File(context.cacheDir, "share").apply { deleteRecursively(); mkdirs() }
         val bitmap = renderBitmap(context, design)
@@ -725,6 +737,16 @@ class LabelRenderer(private val hand: Typeface) {
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.clipData = android.content.ClipData.newRawUri(null, uri)
+            context.startActivity(Intent.createChooser(intent, chooserTitle).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        }
+
+        fun shareImages(context: Context, chooserTitle: String, uris: List<Uri>) {
+            if (uris.size == 1) return shareImage(context, chooserTitle, uris[0])
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE)
+                .setType("image/png")
+                .putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.clipData = android.content.ClipData.newRawUri(null, uris[0]).apply { uris.drop(1).forEach { addItem(android.content.ClipData.Item(it)) } }
             context.startActivity(Intent.createChooser(intent, chooserTitle).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
         }
 
