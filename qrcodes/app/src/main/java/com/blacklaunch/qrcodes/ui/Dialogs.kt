@@ -641,13 +641,24 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
 @Composable
 fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
     val fields = remember { androidx.compose.runtime.mutableStateListOf("", "") }
-    var tab by remember { mutableStateOf(false) }
+    // Перехід між полями: 0 — Enter, 1 — Tab, 2 — свій символ (сканер замінює його на потрібну клавішу, напр. ↓).
+    var mode by remember { mutableStateOf(0) }
+    var custom by remember { mutableStateOf("|") }
+    // Наприкінці — завжди Enter (підтвердити), незалежно від переходу між полями.
     var finish by remember { mutableStateOf(true) }
-    val sep = if (tab) "\t" else "\n"
-    val content = fields.joinToString(sep) + if (finish) sep else ""
+    val sep = when (mode) {
+        1 -> "\t"
+        2 -> custom.ifEmpty { "|" }
+        else -> "\n"
+    }
+    val content = fields.joinToString(sep) + if (finish) "\n" else ""
     val filled = fields.count { it.isNotBlank() }
     val skipText = stringResource(R.string.fields_skip)
-    val sepMark = if (tab) "⇥" else "⏎"
+    val sepMark = when (mode) {
+        1 -> "⇥"
+        2 -> "[" + custom.ifEmpty { "|" } + "]"
+        else -> "⏎"
+    }
     val nameText = stringResource(R.string.fields_name, fields.size)
     // У яке поле підставляємо збережений код (null — вікно вибору закрите).
     var pickFor by remember { mutableStateOf<Int?>(null) }
@@ -657,9 +668,16 @@ fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, St
     }) {
         Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.fields_hint), color = Oled.TextSecondary, fontSize = 14.sp)
+            Text(stringResource(R.string.fields_between), color = Oled.TextPrimary, fontSize = 15.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip(stringResource(R.string.fields_enter), !tab, Modifier.weight(1f)) { tab = false }
-                ChoiceChip(stringResource(R.string.fields_tab), tab, Modifier.weight(1f)) { tab = true }
+                ChoiceChip("Enter", mode == 0, Modifier.weight(1f)) { mode = 0 }
+                ChoiceChip("Tab", mode == 1, Modifier.weight(1f)) { mode = 1 }
+                ChoiceChip(stringResource(R.string.fields_custom), mode == 2, Modifier.weight(1f)) { mode = 2 }
+            }
+            // Свій символ — поле завжди на місці (нічого не стрибає), діє, коли вибрано «Свій».
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SheetTextField(custom, { custom = it.replace("\n", "").replace("\t", "").take(3) }, "|", Modifier.width(88.dp))
+                Text(stringResource(R.string.fields_custom_hint), color = if (mode == 2) Oled.TextSecondary else Oled.TextSecondary.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.weight(1f))
             }
             fields.forEachIndexed { i, v ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -680,12 +698,12 @@ fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, St
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChoiceChip(stringResource(R.string.fields_add), false, Modifier.weight(1f)) { if (fields.size < 30) fields.add("") }
-                ChoiceChip(stringResource(R.string.fields_finish, sepMark), finish, Modifier.weight(1f)) { finish = !finish }
+                ChoiceChip(stringResource(R.string.fields_finish), finish, Modifier.weight(1f)) { finish = !finish }
             }
             // Як піде в сканер: значення, «пропуск» і переходи між полями.
             Text(stringResource(R.string.fields_preview), color = Oled.TextPrimary, fontSize = 15.sp)
             Text(
-                fields.joinToString(" $sepMark ") { if (it.isBlank()) "·$skipText·" else it } + if (finish) " $sepMark" else "",
+                fields.joinToString(" $sepMark ") { if (it.isBlank()) "·$skipText·" else it } + if (finish) " ⏎" else "",
                 color = Oled.TextSecondary,
                 fontSize = 15.sp,
             )

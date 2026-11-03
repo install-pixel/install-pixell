@@ -272,14 +272,15 @@
     <string name="kind_title_qr">Вид квадратного коду</string>
     <string name="kind_title_bar">Вид штрихкоду</string>
     <string name="fields_title">Поля для сканера</string>
-    <string name="fields_hint">Один QR-код заповнює кілька полів по черзі: сканер «вписує» значення й натискає Enter (чи Tab). Порожнє поле — пропуск: сканер лише перескочить його. Значок папки біля поля — підставити один зі збережених кодів.</string>
-    <string name="fields_enter">Перехід: Enter</string>
-    <string name="fields_tab">Перехід: Tab</string>
+    <string name="fields_hint">Один QR-код заповнює кілька полів по черзі: сканер «вписує» значення й переходить далі. Порожнє поле — пропуск. Значок папки біля поля — підставити один зі збережених кодів.</string>
     <string name="fields_skip">пропуск</string>
     <string name="fields_add">Додати поле</string>
-    <string name="fields_finish">%1$s у кінці</string>
+    <string name="fields_finish">Enter у кінці</string>
     <string name="fields_preview">Як піде в сканер:</string>
     <string name="fields_count">Полів: %1$d, пропусків: %2$d</string>
     <string name="fields_name">Поля для сканера (%1$d)</string>
     <string name="fields_from_saved">Зі збережених</string>
+    <string name="fields_between">Перехід між полями:</string>
+    <string name="fields_custom">Свій</string>
+    <string name="fields_custom_hint">Символ між полями — у сканері налаштуй заміну його на клавішу (напр. ↓ стрілка вниз): Zebra — ADF, Honeywell — Data Formatter.</string>
 </resources>
