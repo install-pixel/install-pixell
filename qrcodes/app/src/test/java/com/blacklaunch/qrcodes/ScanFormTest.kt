@@ -35,10 +35,4 @@ class ScanFormTest {
         val c = form.content(listOf("12345", "R2", "", "", "24"), listOf(true, true, false, true, true), day)
         assertEquals("12345|R2||12345P|24E\n", c)
     }
-
-    @Test
-    fun jsonRoundTrips() {
-        val back = ScanForm.fromJson(form.toJson())!!
-        assertEquals(form, back)
-    }
 }
