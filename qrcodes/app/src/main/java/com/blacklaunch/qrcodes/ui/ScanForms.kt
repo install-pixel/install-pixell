@@ -104,38 +104,6 @@ private fun IconSpot(glyph: Glyph, description: String?, enabled: Boolean = true
     }
 }
 
-/** Список форм для сканера: дотик — відкрити й заповнити; олівець — змінити; кошик — видалити. */
-@Composable
-fun FormsListDialog(forms: List<ScanForm>, onDismiss: () -> Unit, onOpen: (ScanForm) -> Unit, onNew: () -> Unit, onEdit: (ScanForm) -> Unit, onDelete: (ScanForm) -> Unit) {
-    var deleting by remember { mutableStateOf<ScanForm?>(null) }
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.forms_list_title), tall = true, buttons = {
-        SheetButton(stringResource(R.string.forms_new), onNew, tone = Tone.Confirm)
-    }) {
-        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (forms.isEmpty()) Text(stringResource(R.string.forms_empty), color = Oled.TextSecondary, fontSize = 15.sp)
-            forms.forEach { f ->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onOpen(f) }.padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
-                        Text(f.name, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(stringResource(R.string.forms_fields_count, f.fields.size), color = Oled.TextSecondary, fontSize = 13.sp)
-                    }
-                    IconSpot(Glyph.Edit, stringResource(R.string.forms_edit)) { onEdit(f) }
-                    IconSpot(Glyph.Delete, stringResource(R.string.delete), tint = Oled.Danger) { deleting = f }
-                }
-            }
-            WindowHint(stringResource(R.string.forms_list_hint))
-        }
-    }
-    deleting?.let { f ->
-        SheetDialog(onDismissRequest = { deleting = null }, title = stringResource(R.string.forms_delete_title, f.name), buttons = {
-            SheetButton(stringResource(R.string.cancel), { deleting = null })
-            SheetButton(stringResource(R.string.delete), { onDelete(f); deleting = null }, tone = Tone.Danger)
-        }) {
-            Text(stringResource(R.string.forms_delete_text), fontSize = 15.sp)
-        }
-    }
-}
-
 private fun FieldType.title(): Int = when (this) {
     FieldType.TEXT -> R.string.ftype_text
     FieldType.SCAN -> R.string.ftype_scan
@@ -702,7 +670,7 @@ fun ScanFormScreen(
             Column {
                 MenuRow(Glyph.Edit, stringResource(R.string.forms_edit), { menuOpen = false; onEdit() })
                 // Друк — спільний QR з усіх полів, такий, як зараз (з введеним).
-                if (symbol != null) MenuRow(Glyph.Print, stringResource(R.string.print), { menuOpen = false; onPrint(listOf(content to form.name)) })
+                if (symbol != null) MenuRow(Glyph.Print, stringResource(R.string.sel_to_label), { menuOpen = false; onPrint(listOf(content to form.name)) })
                 MenuRow(Glyph.Flash, stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on), { menuOpen = false; QrBrightness.toggle() })
             }
         }

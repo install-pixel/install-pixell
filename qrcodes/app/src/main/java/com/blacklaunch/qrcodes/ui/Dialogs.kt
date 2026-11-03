@@ -70,17 +70,17 @@ import com.blacklaunch.qrcodes.ui.theme.Oled
 fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit, onBatch: (Boolean) -> Unit = {}, onFields: () -> Unit = {}) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.mode_choose)) {
         Column(Modifier.bouncyScroll()) {
+            // «Ввести» — як потрапляє текст у капсулу.
+            Text(stringResource(R.string.menu_input), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 2.dp, bottom = 2.dp))
             MenuRow(Glyph.Keyboard, stringResource(R.string.mode_manual), { onPick(InputMode.Manual) })
             MenuRow(Glyph.ScanQr, stringResource(R.string.mode_scan), { onPick(InputMode.ScanQr) })
             MenuRow(Glyph.Photo, stringResource(R.string.mode_photo), { onPick(InputMode.PhotoText) })
-            // Готові форми: телефон, що сканує такий код, сам пропонує підключитися, зберегти контакт, відкрити сайт.
-            Text(stringResource(R.string.forms_title), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
+            // «Створити» — готові види кодів: Wi‑Fi, контакт, сайт, форма для сканера, багато кодів одразу.
+            Text(stringResource(R.string.menu_create), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
             MenuRow(Glyph.Wifi, stringResource(R.string.form_wifi), { onForm(FormKind.Wifi) })
             MenuRow(Glyph.Person, stringResource(R.string.form_contact), { onForm(FormKind.Contact) })
             MenuRow(Glyph.Globe, stringResource(R.string.form_site), { onForm(FormKind.Site) })
-            MenuRow(Glyph.Keyboard, stringResource(R.string.forms_list_title), { onFields() })
-            // Багато кодів одразу: серія з номерами чи список — усі в одну папку.
-            Text(stringResource(R.string.batch_title), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
+            MenuRow(Glyph.Template, stringResource(R.string.form_entry_sub), { onFields() })
             MenuRow(Glyph.Grid, stringResource(R.string.batch_series), { onBatch(false) })
             MenuRow(Glyph.TextT, stringResource(R.string.batch_list), { onBatch(true) })
         }
@@ -129,7 +129,7 @@ fun ItemMenu(
                 MenuRow(Glyph.Template, stringResource(R.string.forms_edit), onContent)
             } else {
                 MenuRow(Glyph.TextT, stringResource(R.string.content_edit), onContent)
-                MenuRow(Glyph.Print, stringResource(R.string.print_share), onShare)
+                MenuRow(Glyph.Print, stringResource(R.string.sel_to_label), onShare)
                 MenuRow(Glyph.Copy, stringResource(R.string.copy_text), onCopy)
             }
             if (onSelect != null) MenuRow(Glyph.Save, stringResource(R.string.select_many), onSelect)

@@ -25,7 +25,7 @@
     <string name="too_long">Za długi na kod QR</string>
     <string name="saved_empty">Tu pojawią się zapisane kody</string>
     <string name="save">Zapisz</string>
-    <string name="mode_choose">Sposób wprowadzania</string>
+    <string name="mode_choose">Wpisz lub utwórz</string>
     <string name="mode_manual">Ręcznie</string>
     <string name="mode_scan">Skanuj kod QR — duplikat</string>
     <string name="mode_photo">Tekst ze zdjęcia</string>
@@ -159,7 +159,7 @@
     <string name="folder_take_out">Wyjmij z folderu</string>
     <string name="folder_name_hint">Nazwa folderu, np. Praca</string>
     <string name="folder_rename">Nazwa folderu</string>
-    <string name="folder_print_all">Drukuj i udostępnij — wszystkie kody</string>
+    <string name="folder_print_all">Wszystkie na naklejkę</string>
     <string name="folder_ungroup">Rozgrupuj (kody zostają)</string>
     <string name="folder_delete">Usuń folder z kodami</string>
     <string name="folder_delete_title">Usunąć „%1$s”?</string>
@@ -176,13 +176,13 @@
     <string name="help">Jak używać</string>
     <string name="help_back">Wstecz</string>
     <string name="help_create_t">Utwórz kod</string>
-    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod pojawia się u góry od razu. Okrągły przycisk po prawej — zapisz.\n• „Kod QR / Kod kreskowy” — co tworzyć; trzeci przycisk — rodzaj (QR, Data Matrix, Aztec; dla kreskowego — Auto, EAN, UPC, Code 39…). Wybór jest zapamiętany.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skanuj cudzy kod, tekst ze zdjęcia, Wi‑Fi, kontakt, strona.\n• Tam też — „Wiele kodów naraz”: seria z numerami (PALETA-001…100) lub lista — wszystkie do nowego folderu. I „Formularze skanera” — zob. osobny rozdział.\n• Otwarty folder — nowy kod zapisze się w nim, na końcu.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.</string>
+    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod pojawia się u góry od razu. Okrągły przycisk po prawej — zapisz.\n• „Kod QR / Kod kreskowy” — co tworzyć; trzeci przycisk — rodzaj (QR, Data Matrix, Aztec; dla kreskowego — Auto, EAN, UPC, Code 39…). Wybór jest zapamiętany.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skanuj cudzy kod, tekst ze zdjęcia, Wi‑Fi, kontakt, strona.\n• Tam też — „Wiele kodów naraz”: seria z numerami (PALETA-001…100) lub lista — wszystkie do nowego folderu. I „Formularz skanera” — zob. osobny rozdział.\n• Otwarty folder — nowy kod zapisze się w nim, na końcu.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.</string>
     <string name="help_camera_t">Aparat i tekst ze zdjęcia</string>
     <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Latarka — przycisk na ekranie aparatu.</string>
     <string name="help_list_t">Zapisane i szukanie</string>
-    <string name="help_list">• Dotknij kodu — na cały ekran, kod świeci jasno (reszta przygaszona). Wyłączyć — „⋯” → „Zwykła jasność”; jeden wybór na całą aplikację.\n• Przesuń w lewo — usuń (jest „Cofnij”).\n• Przytrzymaj i puść — menu: do ulubionych, nazwa, treść, druk, kopiuj, wybierz kilka, do folderu, usuń.\n• „Wybierz kilka”: dotknięciami stawiasz ✓, na dole — „Na naklejkę”, „Do folderu”, „Usuń”. Krzyżyk lub „Wstecz” — wyjście.\n• Własna nazwa ukrywa treść — wygodne dla haseł.\n• Lupa w kapsule — szukaj po nazwie lub treści.</string>
+    <string name="help_list">• Dotknij kodu — na cały ekran, kod świeci jasno (reszta przygaszona). Wyłączyć — „⋯” → „Zwykła jasność”; jeden wybór na całą aplikację.\n• Przesuń w lewo — usuń (jest „Cofnij”).\n• Przytrzymaj i puść — menu: do ulubionych, nazwa, treść, na naklejkę, kopiuj, wybierz kilka, do folderu, usuń.\n• „Wybierz kilka”: dotknięciami stawiasz ✓, na dole — „Na naklejkę”, „Do folderu”, „Usuń”. Krzyżyk lub „Wstecz” — wyjście.\n• Własna nazwa ukrywa treść — wygodne dla haseł.\n• Lupa w kapsule — szukaj po nazwie lub treści.</string>
     <string name="help_folders_t">Foldery i kolejność</string>
-    <string name="help_folders">• Przytrzymaj kod i prowadź — zmieniasz kolejność; przy krawędzi lista sama powoli się przewija.\n• Upuść kod na inny kod — nowy folder z obu; na folder — trafi do niego.\n• Dotknij folderu — otwórz; strzałka u góry lub „Wstecz” — wyjdź.\n• Przytrzymaj folder — nazwa, drukuj wszystkie, rozgrupuj (kody zostają) lub usuń z całą zawartością.\n• W menu kodu: „Do folderu…” i „Wyjmij z folderu”.</string>
+    <string name="help_folders">• Przytrzymaj kod i prowadź — zmieniasz kolejność; przy krawędzi lista sama powoli się przewija.\n• Upuść kod na inny kod — nowy folder z obu; na folder — trafi do niego.\n• Dotknij folderu — otwórz; strzałka u góry lub „Wstecz” — wyjdź.\n• Przytrzymaj folder — nazwa, wszystkie na naklejkę, rozgrupuj (kody zostają) lub usuń z całą zawartością.\n• W menu kodu: „Do folderu…” i „Wyjmij z folderu”.</string>
     <string name="help_fav_t">Ulubione</string>
     <string name="help_fav">• Gwiazdka w menu kodu lub formularza — do ulubionych.\n• „Ulubione” — pierwsza strona, siatką. Dotknij formularza — otwórz go.\n• Przytrzymaj i prowadź — kolejność; upuść na pasek u góry — usuń (jest „Cofnij”).</string>
     <string name="help_print_t">Druk i etykiety</string>
@@ -375,9 +375,11 @@
     <string name="forms_bright_on">Zwiększ jasność ekranu</string>
     <string name="forms_bright_off">Zwykła jasność</string>
     <string name="help_forms_t">Formularze skanera</string>
-    <string name="help_forms">• Formularz to „żywy” QR: jeden kod po kolei wypełnia kilka pól w aplikacji na skanerze.\n• Utwórz: ikona po lewej w kapsule → „Formularze skanera” → „Nowy formularz”. Gotowy formularz to wiersz na liście zapisanych (można go dodać też do ulubionych).\n• Każde pole to karta — dotknij, żeby ją ustawić. Typy: tekst, skan (aparat, zdjęcie, ręcznie), wybór z listy, liczba (− / +), „z pola” (wartość innego pola + końcówka, np. P), data według wzoru, przejście (tylko klawisze — przeskoczyć pole).\n• „Po polu naciśnij” — ↓, →, Tab, Enter lub nic, ile razy trzeba. „Można wyłączać” — podczas pracy przełącznik Wł / Wył; „Jeśli wyłączone” — co nacisnąć zamiast pola.\n• „Cały formularz”: przejście między polami (dla terminali — „↓ Strzałka · 1” lub „· 2”), Enter na końcu, zapamiętaj wpisane.\n• Otwierasz formularz — u góry QR, niżej tylko to, co zmieniasz. Kod odświeża się od razu — skanuj go z ekranu.\n• „Jeden kod” — wszystko jednym QR; „Pole po polu” — osobny QR na każde pole (dotknij kodu — następne).\n• „⋯” u góry — zmień formularz, druk (wspólny QR ze wszystkich pól) i jasność.</string>
+    <string name="help_forms">• Formularz to „żywy” QR: jeden kod po kolei wypełnia kilka pól w aplikacji na skanerze.\n• Utwórz: ikona po lewej w kapsule → „Formularz skanera”. Gotowy formularz to wiersz na liście zapisanych (można go dodać też do ulubionych).\n• Każde pole to karta — dotknij, żeby ją ustawić. Typy: tekst, skan (aparat, zdjęcie, ręcznie), wybór z listy, liczba (− / +), „z pola” (wartość innego pola + końcówka, np. P), data według wzoru, przejście (tylko klawisze — przeskoczyć pole).\n• „Po polu naciśnij” — ↓, →, Tab, Enter lub nic, ile razy trzeba. „Można wyłączać” — podczas pracy przełącznik Wł / Wył; „Jeśli wyłączone” — co nacisnąć zamiast pola.\n• „Cały formularz”: przejście między polami (dla terminali — „↓ Strzałka · 1” lub „· 2”), Enter na końcu, zapamiętaj wpisane.\n• Otwierasz formularz — u góry QR, niżej tylko to, co zmieniasz. Kod odświeża się od razu — skanuj go z ekranu.\n• „Jeden kod” — wszystko jednym QR; „Pole po polu” — osobny QR na każde pole (dotknij kodu — następne).\n• „⋯” u góry — zmień formularz, druk (wspólny QR ze wszystkich pól) i jasność.</string>
     <string name="settings_status">Pasek stanu</string>
     <string name="status_hide">Ukrywaj</string>
     <string name="status_hide_desc">Zegar, sieć i bateria — tylko przesunięciem z góry, we wszystkich oknach aplikacji.</string>
     <string name="status_show">Pokazuj</string>
+    <string name="menu_input">Wpisz</string>
+    <string name="menu_create">Utwórz</string>
 </resources>

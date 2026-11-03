@@ -118,7 +118,6 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     var contentFor by remember { mutableStateOf<QrCode?>(null) }
     // Серія (false) чи список (true); null — закрито.
     var batchOpen by remember { mutableStateOf<Boolean?>(null) }
-    var fieldsOpen by remember { mutableStateOf(false) }
     val formStore = remember { com.blacklaunch.qrcodes.data.FormStore(context) }
     var forms by remember { mutableStateOf(formStore.load()) }
     var formEdit by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
@@ -269,7 +268,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(capFor != null || moveMany != null || newFolderMany != null || folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || fieldsOpen || formEditing)
+    val blur = backdropAmount(capFor != null || moveMany != null || newFolderMany != null || folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || formEditing)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -497,8 +496,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 }
             },
             onFields = {
+                // Нова форма для сканера — одразу редактор; готова з'явиться в списку збережених.
                 modeMenu = false
-                fieldsOpen = true
+                formEdit = null
+                formEditing = true
             },
             onBatch = { list ->
                 modeMenu = false
@@ -713,17 +714,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             renameFor = null
         }
     }
-    // Форми для сканера: список, редактор, заповнення.
-    if (fieldsOpen) {
-        FormsListDialog(
-            forms,
-            onDismiss = { fieldsOpen = false },
-            onOpen = { f -> fieldsOpen = false; formFill = f },
-            onNew = { fieldsOpen = false; formEdit = null; formEditing = true },
-            onEdit = { f -> fieldsOpen = false; formEdit = f; formEditing = true },
-            onDelete = { f -> forms = formStore.remove(f.id); vm.unlinkForm(f.id) },
-        )
-    }
+    // Форми для сканера: редактор (заповнення — на весь екран, вище).
     if (formEditing) {
         FormEditorDialog(formEdit, onDismiss = { formEditing = false }) { f ->
             forms = formStore.save(f)
@@ -736,7 +727,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     }
     batchOpen?.let { list ->
         val doneText = stringResource(R.string.batch_done)
-        val printText = stringResource(R.string.print)
+        val printText = stringResource(R.string.sel_to_label)
         BatchDialog(list, format, onDismiss = { batchOpen = null }) { contents, folderName ->
             batchOpen = null
             vm.createBatch(contents, format, folderName) { codes ->
