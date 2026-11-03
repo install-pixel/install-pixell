@@ -188,7 +188,7 @@
     <string name="help_print_t">Druk i etykiety</string>
     <string name="help_print">• U góry po prawej — „Udostępnij” (obrazem, do galerii, tekstem; kilka kodów — każdy osobnym obrazem) i niebieski „Druk”.\n• Pod naklejką — karty „Dodaj” i „Zmień”, po prawej — rozmiar naklejki.\n• „Dodaj” → „Kod” — można wybrać kilka (✓); u góry widać, ile jeszcze się zmieści.\n• Także: tekst, ikona, rysunek palcem (3 grubości, linia gładka i cieńsza na końcach), tło (własne zdjęcie lub scena z miejscami na kody), szablon, ramka.\n• Dotknij elementu — „Zmień”: rozmiar (skala lub − / +), obrót, na środek, kopia, podpis, zamień, usuń.\n• Przeciągnij — przesuń; dwoma palcami — rozmiar i obrót; na „Usuń” u góry — usuń. Elementy przyklejają się i nie nachodzą na siebie.\n• Kilka kodów układa się siatką z podpisami. Nie mieszczą się — aplikacja zaproponuje każdy na osobnej naklejce. Więcej kodów niż miejsc w scenie — nadmiarowe lądują obok, przestawisz jak chcesz.\n• Własny układ można zapisać jako szablon.</string>
     <string name="help_settings_t">Ustawienia i kopia</string>
-    <string name="help_settings">• Zębatka w prawym górnym rogu — styl (Black Glass lub Black Sketch) i język.\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
+    <string name="help_settings">• Zębatka w prawym górnym rogu — styl (Black Glass lub Black Sketch), język i pasek stanu (ukryj — zegar i bateria tylko przesunięciem z góry).\n• „Eksport” — wszystkie kody, foldery i szablony w jednym pliku, np. na nowy telefon.\n• „Import” — przywróć z pliku; dodaje się tylko nowe.\n• Aplikacja działa bez internetu: nic nigdzie nie wysyła.</string>
     <string name="label_replace_code">Zamień kod</string>
     <string name="template_poster">Plakat</string>
     <string name="template_badge">Identyfikator</string>
@@ -376,4 +376,8 @@
     <string name="forms_bright_off">Zwykła jasność</string>
     <string name="help_forms_t">Formularze skanera</string>
     <string name="help_forms">• Formularz to „żywy” QR: jeden kod po kolei wypełnia kilka pól w aplikacji na skanerze.\n• Utwórz: ikona po lewej w kapsule → „Formularze skanera” → „Nowy formularz”. Gotowy formularz to wiersz na liście zapisanych (można go dodać też do ulubionych).\n• Każde pole to karta — dotknij, żeby ją ustawić. Typy: tekst, skan (aparat, zdjęcie, ręcznie), wybór z listy, liczba (− / +), „z pola” (wartość innego pola + końcówka, np. P), data według wzoru, przejście (tylko klawisze — przeskoczyć pole).\n• „Po polu naciśnij” — ↓, →, Tab, Enter lub nic, ile razy trzeba. „Można wyłączać” — podczas pracy przełącznik Wł / Wył; „Jeśli wyłączone” — co nacisnąć zamiast pola.\n• „Cały formularz”: przejście między polami (dla terminali — „↓ Strzałka · 1” lub „· 2”), Enter na końcu, zapamiętaj wpisane.\n• Otwierasz formularz — u góry QR, niżej tylko to, co zmieniasz. Kod odświeża się od razu — skanuj go z ekranu.\n• „Jeden kod” — wszystko jednym QR; „Pole po polu” — osobny QR na każde pole (dotknij kodu — następne).\n• U góry: błyskawica — jasność, drukarka — wydrukuj kod (w „Pole po polu” — każde pole osobnym kodem), ołówek — zmień formularz.</string>
+    <string name="settings_status">Pasek stanu</string>
+    <string name="status_hide">Ukrywaj</string>
+    <string name="status_hide_desc">Zegar, sieć i bateria — tylko przesunięciem z góry, we wszystkich oknach aplikacji.</string>
+    <string name="status_show">Pokazuj</string>
 </resources>

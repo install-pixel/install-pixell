@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppStyle.glass = AppSettings(this).glass
+        com.blacklaunch.qrcodes.ui.StatusBar.hidden = AppSettings(this).hideStatusBar
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.BLACK),
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),
@@ -51,6 +52,8 @@ class MainActivity : ComponentActivity() {
                 // Стиль — як у Black Glass: «Аркуш» (від руки) або «Скло»; перемикається в Налаштуваннях.
                 SheetTheme(enabled = !AppStyle.glass) {
                     val view = LocalView.current
+                    // Рядок стану — за Налаштуваннями (міняється одразу).
+                    androidx.compose.runtime.LaunchedEffect(com.blacklaunch.qrcodes.ui.StatusBar.hidden) { com.blacklaunch.qrcodes.ui.StatusBar.apply(window) }
                     // Дуже великий шрифт у системі ламав би рівні ряди кнопок і панелі сталої висоти — обмежуємо масштаб.
                     val density = androidx.compose.ui.platform.LocalDensity.current
                     val capped = androidx.compose.ui.unit.Density(density.density, density.fontScale.coerceAtMost(MAX_FONT_SCALE))
@@ -60,6 +63,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Повернулись (зі шторки, з іншої програми) — рядок стану знову як задано.
+        if (hasFocus) com.blacklaunch.qrcodes.ui.StatusBar.apply(window)
     }
 
     /**

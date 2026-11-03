@@ -38,12 +38,18 @@ class AppSettings(context: Context) {
      * Код для сканування (на весь екран чи у формі): яскравість на максимум (решта екрана тоді приглушена — світиться
      * код). Одне налаштування на всю програму: вимкнув в одному місці — вимкнено скрізь.
      */
+    /** Ховати рядок стану (годинник, мережа, батарея) — лише свайпом згори, як у лаунчері. Типово — сховано. */
+    var hideStatusBar: Boolean
+        get() = prefs.getBoolean(KEY_HIDE_STATUS, true)
+        set(value) = prefs.edit().putBoolean(KEY_HIDE_STATUS, value).apply()
+
     var qrBright: Boolean
         get() = prefs.getBoolean(KEY_FORM_BRIGHT, true)
         set(value) = prefs.edit().putBoolean(KEY_FORM_BRIGHT, value).apply()
 
     companion object {
         private const val KEY_FORM_BRIGHT = "form_bright"
+        private const val KEY_HIDE_STATUS = "hide_status"
         private const val KEY_FORMAT = "format"
         private const val KEY_LANG = "language"
         private const val KEY_GLASS = "glass"

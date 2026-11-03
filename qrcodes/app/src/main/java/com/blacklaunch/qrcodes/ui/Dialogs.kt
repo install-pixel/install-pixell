@@ -173,6 +173,7 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
         // Яскравість — у власному вікні діалогу (воно зверху, система бере яскравість із нього). Поки поверх відкрите
         // меню — звичайна яскравість, а код розмитий і притемнений, як усе під меню.
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(window, StatusBar.hidden) { StatusBar.apply(window) }
         // Підвищена яскравість — спільне налаштування з формами (кнопка внизу); тоді світиться код, решта приглушена.
         val context = androidx.compose.ui.platform.LocalContext.current
         val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
@@ -291,6 +292,16 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
                                 onLanguageChanged()
                             }
                         }
+                    }
+                    // Рядок стану (годинник, мережа, батарея): сховати — як у лаунчері, лише свайпом згори.
+                    Text(stringResource(R.string.settings_status), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+                    ChoiceRow(stringResource(R.string.status_hide), stringResource(R.string.status_hide_desc), selected = StatusBar.hidden) {
+                        StatusBar.hidden = true
+                        settings.hideStatusBar = true
+                    }
+                    ChoiceRow(stringResource(R.string.status_show), null, selected = !StatusBar.hidden) {
+                        StatusBar.hidden = false
+                        settings.hideStatusBar = false
                     }
                     // Резервна копія: усі коди — у файл (наприклад, у «Завантаження» чи на диск) і назад.
                     Text(stringResource(R.string.settings_backup), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))

@@ -373,6 +373,8 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
             window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
         }
+        // Рядок стану і у вікні — як у всій програмі (сховано — лише свайпом згори).
+        androidx.compose.runtime.LaunchedEffect(window, StatusBar.hidden) { StatusBar.apply(window) }
         // Фон за вікном — розмитий самою системою (Android 12+), як у Black Glass; сила розмиття йде разом з анімацією,
         // тож воно не «вмикається» різко.
         if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
