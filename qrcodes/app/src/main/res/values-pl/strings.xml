@@ -272,7 +272,7 @@
     <string name="kind_title_qr">Rodzaj kodu kwadratowego</string>
     <string name="kind_title_bar">Rodzaj kodu kreskowego</string>
     <string name="fields_title">Pola dla skanera</string>
-    <string name="fields_hint">Jeden kod QR wypełnia kilka pól po kolei: skaner „wpisuje” wartość i naciska Enter (lub Tab). Puste pole — pominięcie: skaner tylko je przeskoczy.</string>
+    <string name="fields_hint">Jeden kod QR wypełnia kilka pól po kolei: skaner „wpisuje” wartość i naciska Enter (lub Tab). Puste pole — pominięcie: skaner tylko je przeskoczy. Ikona folderu przy polu — wstaw jeden z zapisanych kodów.</string>
     <string name="fields_enter">Przejście: Enter</string>
     <string name="fields_tab">Przejście: Tab</string>
     <string name="fields_skip">pominięcie</string>
@@ -281,4 +281,5 @@
     <string name="fields_preview">Jak trafi do skanera:</string>
     <string name="fields_count">Pól: %1$d, pominięć: %2$d</string>
     <string name="fields_name">Pola dla skanera (%1$d)</string>
+    <string name="fields_from_saved">Z zapisanych</string>
 </resources>

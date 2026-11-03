@@ -637,7 +637,7 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
  * Порожнє поле — пропуск (сканер лише перескочить його). Видно, що саме вийде: значення, пропуски й переходи.
  */
 @Composable
-fun FieldsDialog(onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
+fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
     val fields = remember { androidx.compose.runtime.mutableStateListOf("", "") }
     var tab by remember { mutableStateOf(false) }
     var finish by remember { mutableStateOf(true) }
@@ -647,6 +647,8 @@ fun FieldsDialog(onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
     val skipText = stringResource(R.string.fields_skip)
     val sepMark = if (tab) "⇥" else "⏎"
     val nameText = stringResource(R.string.fields_name, fields.size)
+    // У яке поле підставляємо збережений код (null — вікно вибору закрите).
+    var pickFor by remember { mutableStateOf<Int?>(null) }
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.fields_title), tall = true, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.done), { onDone(content, nameText) }, tone = Tone.Confirm, enabled = filled > 0)
@@ -661,6 +663,12 @@ fun FieldsDialog(onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("${i + 1}", color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.width(28.dp))
                     SheetTextField(v, { fields[i] = it.replace("\n", " ").replace("\t", " ") }, skipText, Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+                    // Підставити зміст одного зі збережених кодів.
+                    if (saved.isNotEmpty()) {
+                        Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { pickFor = i }, contentAlignment = Alignment.Center) {
+                            GlyphIcon(Glyph.Folder, stringResource(R.string.fields_from_saved), tint = Oled.TextSecondary, size = 20.dp)
+                        }
+                    }
                     if (fields.size > 1) {
                         Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { fields.removeAt(i) }, contentAlignment = Alignment.Center) {
                             GlyphIcon(Glyph.Close, null, tint = Oled.TextSecondary, size = 18.dp)
@@ -680,6 +688,42 @@ fun FieldsDialog(onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
                 fontSize = 15.sp,
             )
             Text(stringResource(R.string.fields_count, fields.size, fields.size - filled), color = Oled.TextSecondary, fontSize = 13.sp)
+        }
+    }
+    pickFor?.let { index ->
+        SavedCodePicker(saved, onDismiss = { pickFor = null }) { code ->
+            if (index < fields.size) fields[index] = code.content.replace("\n", " ").replace("\t", " ")
+            pickFor = null
+        }
+    }
+}
+
+/** Вибір одного зі збережених кодів (з пошуком за назвою чи змістом). */
+@Composable
+fun SavedCodePicker(saved: List<QrCode>, onDismiss: () -> Unit, onPick: (QrCode) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val shown = remember(saved, query) {
+        val q = query.trim()
+        if (q.isEmpty()) saved else saved.filter { it.title.contains(q, ignoreCase = true) || it.content.contains(q, ignoreCase = true) }
+    }
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.fields_from_saved), tall = true) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SheetTextField(query, { query = it }, stringResource(R.string.search_hint))
+            Column(Modifier.bouncyScroll()) {
+                shown.forEach { code ->
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .clickable { onPick(code) }
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                    ) {
+                        Text(code.title, color = Oled.TextPrimary, fontSize = 16.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        // Своя назва ховає зміст — покажемо, що саме підставиться.
+                        if (code.name != null) Text(code.content, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                }
+            }
         }
     }
 }

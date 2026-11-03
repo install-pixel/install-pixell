@@ -558,7 +558,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         }
     }
     if (fieldsOpen) {
-        FieldsDialog(onDismiss = { fieldsOpen = false }) { content, name ->
+        FieldsDialog(saved.orEmpty(), onDismiss = { fieldsOpen = false }) { content, name ->
             fieldsOpen = false
             // Готовий текст — у поле (код видно вгорі), назва — при збереженні. Переходи Enter/Tab уміє лише QR.
             input = TextFieldValue(content, TextRange(content.length))

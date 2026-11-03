@@ -274,7 +274,7 @@
     <string name="kind_title_qr">Square code type</string>
     <string name="kind_title_bar">Barcode type</string>
     <string name="fields_title">Fields for a scanner</string>
-    <string name="fields_hint">One QR code fills several fields in turn: the scanner “types” a value and presses Enter (or Tab). An empty field is a skip: the scanner just jumps over it.</string>
+    <string name="fields_hint">One QR code fills several fields in turn: the scanner “types” a value and presses Enter (or Tab). An empty field is a skip: the scanner just jumps over it. The folder icon next to a field puts in one of your saved codes.</string>
     <string name="fields_enter">Next: Enter</string>
     <string name="fields_tab">Next: Tab</string>
     <string name="fields_skip">skip</string>
@@ -283,4 +283,5 @@
     <string name="fields_preview">What the scanner will type:</string>
     <string name="fields_count">Fields: %1$d, skips: %2$d</string>
     <string name="fields_name">Scanner fields (%1$d)</string>
+    <string name="fields_from_saved">From saved codes</string>
 </resources>
