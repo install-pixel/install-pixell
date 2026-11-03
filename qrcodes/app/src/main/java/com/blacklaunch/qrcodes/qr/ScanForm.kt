@@ -45,7 +45,12 @@ data class FormField(
     /** Якщо поле вимкнене: -1 — як зазвичай (лише перехід після нього), інакше клавіша й кількість натискань. */
     val offKey: Int = -1,
     val offTimes: Int = 1,
-)
+    /** На екрані заповнення є перемикач «вкл / вимк» (інакше поле завжди увімкнене). */
+    val switchable: Boolean = true,
+) {
+    /** Що показувати на екрані заповнення: поля, які треба вводити, або ті, що можна вимикати. */
+    val shownWhenFilling: Boolean get() = switchable || type == FieldType.SCAN || type == FieldType.CHOICE || type == FieldType.NUMBER
+}
 
 data class ScanForm(
     val id: String,
@@ -85,7 +90,7 @@ data class ScanForm(
     /** Готове значення поля (з префіксом і дописом) або порожньо — пропуск. */
     fun part(i: Int, values: List<String>, enabled: List<Boolean>, today: java.util.Date): String {
         val f = fields.getOrNull(i) ?: return ""
-        if (enabled.getOrElse(i) { f.onByDefault }.not()) return ""
+        if (f.switchable && enabled.getOrElse(i) { f.onByDefault }.not()) return ""
         val r = raw(i, values, today)
         return if (r.isEmpty()) "" else f.prefix + r + f.suffix
     }
@@ -105,7 +110,7 @@ data class ScanForm(
     /** Що натискається після поля [i] (з урахуванням вимкнення). */
     fun tail(i: Int, enabled: List<Boolean>): String {
         val f = fields[i]
-        val on = enabled.getOrElse(i) { f.onByDefault }
+        val on = !f.switchable || enabled.getOrElse(i) { f.onByDefault }
         return when {
             !on && f.offKey >= 0 -> key(f.offKey).repeat(f.offTimes.coerceIn(0, 99))
             !on && f.type == FieldType.SKIP -> ""
@@ -147,12 +152,21 @@ data class ScanForm(
                     JSONObject().put("label", f.label).put("type", f.type.name).put("value", f.value).put("options", JSONArray(f.options))
                         .put("manual", f.allowManual).put("saved", f.allowSaved).put("source", f.source).put("date", f.datePattern)
                         .put("prefix", f.prefix).put("suffix", f.suffix).put("on", f.onByDefault)
-                        .put("move", f.move).put("moveN", f.moveTimes).put("off", f.offKey).put("offN", f.offTimes),
+                        .put("move", f.move).put("moveN", f.moveTimes).put("off", f.offKey).put("offN", f.offTimes).put("sw", f.switchable),
                 )
             }
         })
 
+    /** Зміст рядка-посилання на цю форму в списку збережених. */
+    val link: String get() = LINK_PREFIX + id
+
     companion object {
+        /** Рядок у списку збережених, що відкриває форму (format = [LINK_FORMAT], content = [LINK_PREFIX] + id). */
+        const val LINK_PREFIX = "qraft-form:"
+        const val LINK_FORMAT = "FORM"
+
+        fun idFromLink(content: String): String? = if (content.startsWith(LINK_PREFIX)) content.removePrefix(LINK_PREFIX) else null
+
         fun formatDate(pattern: String, date: java.util.Date): String = runCatching {
             java.text.SimpleDateFormat(pattern, java.util.Locale.ROOT).format(date)
         }.getOrDefault(pattern)
@@ -180,6 +194,7 @@ data class ScanForm(
                         moveTimes = f.optInt("moveN", 1),
                         offKey = f.optInt("off", -1),
                         offTimes = f.optInt("offN", 1),
+                        switchable = f.optBoolean("sw", true),
                     )
                 },
                 separator = o.optInt("sep"),

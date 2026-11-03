@@ -90,6 +90,7 @@ fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKi
 @Composable
 fun ItemMenu(
     code: QrCode,
+    isForm: Boolean = false,
     onDismiss: () -> Unit,
     onFavorite: () -> Unit,
     onRename: () -> Unit,
@@ -106,21 +107,25 @@ fun ItemMenu(
     SheetDialog(onDismissRequest = onDismiss, title = code.title) {
         Column {
             // Як камера телефона: посилання — відкрити, Wi‑Fi — підключитися, контакт — зберегти…
-            if (action != null) {
+            if (action != null && !isForm) {
                 MenuRow(action.glyph(), stringResource(action.label()), {
                     onDismiss()
                     if (!launch(context, action)) android.widget.Toast.makeText(context, noApp, android.widget.Toast.LENGTH_SHORT).show()
                 })
             }
-            MenuRow(
+            if (!isForm) MenuRow(
                 if (code.isFavorite) Glyph.StarEmpty else Glyph.Star,
                 stringResource(if (code.isFavorite) R.string.favorite_remove else R.string.favorite_add),
                 onFavorite,
             )
             MenuRow(Glyph.Edit, stringResource(R.string.rename), onRename)
-            MenuRow(Glyph.TextT, stringResource(R.string.content_edit), onContent)
-            MenuRow(Glyph.Print, stringResource(R.string.print_share), onShare)
-            MenuRow(Glyph.Copy, stringResource(R.string.copy_text), onCopy)
+            if (isForm) {
+                MenuRow(Glyph.Template, stringResource(R.string.forms_edit), onContent)
+            } else {
+                MenuRow(Glyph.TextT, stringResource(R.string.content_edit), onContent)
+                MenuRow(Glyph.Print, stringResource(R.string.print_share), onShare)
+                MenuRow(Glyph.Copy, stringResource(R.string.copy_text), onCopy)
+            }
             MenuRow(Glyph.Folder, stringResource(R.string.folder_move), onToFolder)
             if (onFromFolder != null) MenuRow(Glyph.Back, stringResource(R.string.folder_take_out), onFromFolder)
             MenuRow(Glyph.Delete, stringResource(R.string.delete), onDelete, tone = Tone.Danger)

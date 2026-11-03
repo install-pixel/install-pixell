@@ -72,4 +72,17 @@ class ScanFormTest {
         assertEquals("24E${d}REC154$d$d" + "ONEWAY$r$r" + r.repeat(9) + "4933492825P", f.content(v, listOf(true, true, true, true, false, true), day))
         assertEquals("24E${d}REC154$d$d" + "ONEWAY$r$r" + "0311 2026", f.content(v, listOf(true, true, true, true, true, false), day))
     }
+
+    @Test
+    fun fieldWithoutSwitchIsAlwaysOn() {
+        val f = ScanForm("s", "s", listOf(FormField("a", FieldType.TEXT, "A", switchable = false), FormField("b", FieldType.TEXT, "B")), separator = 1, endEnter = false)
+        assertEquals("A\tB", f.content(listOf("", ""), listOf(false, true), day))
+        assertEquals("A", f.content(listOf("", ""), listOf(false, false), day))
+    }
+
+    @Test
+    fun formLinkRoundTrips() {
+        assertEquals("abc", ScanForm.idFromLink(ScanForm("abc", "n", emptyList()).link))
+        assertEquals(null, ScanForm.idFromLink("https://example.com"))
+    }
 }

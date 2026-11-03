@@ -44,7 +44,7 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
      * Зберігає код. Такий самий зміст уже є — не дублюємо, а піднімаємо його нагору списку (з новим форматом і, якщо
      * дали, назвою). [name] — запропонована назва (з форми Wi‑Fi / контакту / сайту).
      */
-    fun save(content: String, kind: com.blacklaunch.qrcodes.qr.CodeKind, name: String?, onDone: (SaveResult) -> Unit) {
+    fun save(content: String, kind: com.blacklaunch.qrcodes.qr.CodeKind, name: String?, folderId: Long? = null, onDone: (SaveResult) -> Unit) {
         if (content.isEmpty()) return
         viewModelScope.launch {
             val existing = dao.byContent(content)
@@ -53,10 +53,24 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
                 dao.update(existing.copy(createdAt = now, sortOrder = now, format = kind.storage, name = name ?: existing.name))
                 onDone(SaveResult.AlreadySaved)
             } else {
-                dao.insert(QrCode(content = content, name = name, format = kind.storage))
+                dao.insert(QrCode(content = content, name = name, format = kind.storage, folderId = folderId))
                 onDone(SaveResult.Saved)
             }
         }
+    }
+
+    /** Форма для сканера — рядком у списку збережених (нова — у папку [folderId]; є — лише нова назва). */
+    fun linkForm(form: com.blacklaunch.qrcodes.qr.ScanForm, folderId: Long?) = viewModelScope.launch {
+        val existing = dao.byContent(form.link)
+        if (existing != null) {
+            if (existing.name != form.name) dao.update(existing.copy(name = form.name))
+        } else {
+            dao.insert(QrCode(content = form.link, name = form.name, format = com.blacklaunch.qrcodes.qr.ScanForm.LINK_FORMAT, folderId = folderId))
+        }
+    }
+
+    fun unlinkForm(id: String) = viewModelScope.launch {
+        dao.byContent(com.blacklaunch.qrcodes.qr.ScanForm.LINK_PREFIX + id)?.let { dao.delete(it.id) }
     }
 
     fun toggleFavorite(code: QrCode) = viewModelScope.launch {

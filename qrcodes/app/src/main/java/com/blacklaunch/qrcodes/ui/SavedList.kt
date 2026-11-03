@@ -109,13 +109,15 @@ fun SavedList(
     modifier: Modifier = Modifier,
     /** Що шукаємо (з капсули внизу); порожньо — звичайний список. */
     query: String = "",
+    /** Відкрита папка (тримає екран: нові коди створюються саме в ній). */
+    openFolderId: Long? = null,
+    onOpenFolder: (Long?) -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
-    var openFolderId by rememberSaveable { mutableStateOf<Long?>(null) }
     val codes = saved.orEmpty()
     val openFolder = folders.firstOrNull { it.id == openFolderId }
-    if (openFolderId != null && openFolder == null) openFolderId = null
-    BackHandler(enabled = openFolder != null) { openFolderId = null }
+    if (openFolderId != null && openFolder == null) androidx.compose.runtime.SideEffect { onOpenFolder(null) }
+    BackHandler(enabled = openFolder != null) { onOpenFolder(null) }
 
     val q = query.trim()
     val entries: List<Entry> = when {
@@ -134,7 +136,7 @@ fun SavedList(
         // Заголовок: у папці — «назад», назва, меню папки; інакше — скільки збережено (чи знайдено).
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (openFolder != null) {
-                Box(Modifier.size(40.dp).clip(CircleShape).clickable { haptics.tap(); openFolderId = null }, contentAlignment = Alignment.Center) {
+                Box(Modifier.size(40.dp).clip(CircleShape).clickable { haptics.tap(); onOpenFolder(null) }, contentAlignment = Alignment.Center) {
                     GlyphIcon(Glyph.Back, stringResource(R.string.back), tint = Oled.TextSecondary)
                 }
                 GlyphIcon(Glyph.Folder, null, tint = Oled.TextSecondary, size = 20.dp)
@@ -301,7 +303,7 @@ fun SavedList(
                         when (entry) {
                             is Entry.FolderEntry -> FolderRow(entry.folder, entry.codes.size) {
                                 haptics.tap()
-                                openFolderId = entry.folder.id
+                                onOpenFolder(entry.folder.id)
                             }
                             is Entry.CodeEntry -> SwipeRow(entry.code, actions)
                         }

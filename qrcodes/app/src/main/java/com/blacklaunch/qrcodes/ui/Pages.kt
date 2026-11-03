@@ -275,6 +275,8 @@ fun CreatePage(
     onSearchChange: (TextFieldValue) -> Unit = {},
     onSearch: () -> Unit = {},
     onCloseSearch: () -> Unit = {},
+    openFolderId: Long? = null,
+    onOpenFolder: (Long?) -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
     val symbol = remember(input.text, format) { Symbol.encode(input.text, format) }
@@ -336,7 +338,7 @@ fun CreatePage(
             }
         }
         Spacer(Modifier.height(4.dp))
-        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth(), query = if (searching) searchValue.text else "")
+        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth(), query = if (searching) searchValue.text else "", openFolderId = openFolderId, onOpenFolder = onOpenFolder)
         InputCapsule(
             value = if (searching) searchValue else input,
             onValueChange = if (searching) onSearchChange else onInputChange,
@@ -373,14 +375,22 @@ internal fun SavedRow(code: QrCode, modifier: Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(60.dp), contentAlignment = Alignment.Center) {
-            val bars = code.codeFormat == CodeFormat.BARCODE
-            CodeImage(symbol, Modifier.width(if (bars) 60.dp else 48.dp), seed = code.id.toInt(), radius = 8.dp, barcode = bars)
+            if (code.isForm) {
+                // Форма для сканера — значок форми, а не код.
+                Box(Modifier.size(48.dp).pencilFrame(10.dp, seed = code.id.toInt(), alpha = 0.7f), contentAlignment = Alignment.Center) {
+                    GlyphIcon(Glyph.Template, null, size = 26.dp)
+                }
+            } else {
+                val bars = code.codeFormat == CodeFormat.BARCODE
+                CodeImage(symbol, Modifier.width(if (bars) 60.dp else 48.dp), seed = code.id.toInt(), radius = 8.dp, barcode = bars)
+            }
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(code.title, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(code.createdAt)),
+                (if (code.isForm) stringResource(R.string.form_entry_sub) + " · " else "") +
+                    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(code.createdAt)),
                 color = Oled.TextSecondary,
                 fontSize = 13.sp,
             )

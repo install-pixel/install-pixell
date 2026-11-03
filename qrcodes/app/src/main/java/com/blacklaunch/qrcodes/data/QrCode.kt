@@ -26,6 +26,9 @@ data class QrCode(
 ) {
     val isFavorite: Boolean get() = favoriteAt != null
 
+    /** Рядок-посилання на форму для сканера (не код). */
+    val isForm: Boolean get() = format == com.blacklaunch.qrcodes.qr.ScanForm.LINK_FORMAT
+
     /** Що показувати й друкувати під кодом. */
     val title: String get() = displayTitle(name, content)
 }

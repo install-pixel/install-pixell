@@ -124,6 +124,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     var formEdit by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
     var formEditing by remember { mutableStateOf(false) }
     var formFill by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
+    // Відкрита папка у списку — нові коди й форми створюються в ній.
+    var currentFolder by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Форми, створені раніше, — теж рядками в списку.
+    LaunchedEffect(Unit) { formStore.load().forEach { vm.linkForm(it, null) } }
     var labelFor by remember { mutableStateOf<List<QrCode>?>(null) }
     var banner by remember { mutableStateOf<BannerMsg?>(null) }
     var focusAfterCamera by remember { mutableIntStateOf(0) }
@@ -153,10 +157,22 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         if (banner?.id == b.id) banner = null
     }
 
+    fun formOf(code: QrCode): com.blacklaunch.qrcodes.qr.ScanForm? =
+        com.blacklaunch.qrcodes.qr.ScanForm.idFromLink(code.content)?.let { id -> forms.firstOrNull { it.id == id } }
+
+    /** Дотик у списку: код — на весь екран, форма — відкрити заповнення. */
+    fun openCode(code: QrCode) {
+        if (code.isForm) formOf(code)?.let { formFill = it } else fullscreen = code
+    }
+
     fun delete(code: QrCode) {
         vm.delete(code)
+        // Рядок-форма: видаляється й сама форма (з можливістю повернути).
+        val form = if (code.isForm) formOf(code) else null
+        if (form != null) forms = formStore.remove(form.id)
         show(textDeleted, textUndo) {
             vm.restore(code)
+            if (form != null) forms = formStore.save(form)
             banner = null
         }
     }
@@ -288,7 +304,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         mode = mode,
                         onModeClick = { modeMenu = true },
                         onSave = {
-                            vm.save(input.text, format, pendingName) { show(if (it == SaveResult.Saved) textSaved else textAlready) }
+                            vm.save(input.text, format, pendingName, currentFolder) { show(if (it == SaveResult.Saved) textSaved else textAlready) }
                             // Збережено — назад на старт: поле порожнє, клавіатура схована, код уже в списку.
                             input = TextFieldValue("")
                             pendingName = null
@@ -299,7 +315,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         saved = saved,
                         folders = folders,
                         listActions = SavedListActions(
-                            onOpen = { fullscreen = it },
+                            onOpen = { openCode(it) },
                             onCodeMenu = { menuFor = it },
                             onFolderMenu = { folderMenuFor = it },
                             onDelete = ::delete,
@@ -326,6 +342,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                             focusManager.clearFocus()
                             keyboard?.hide()
                         },
+                        openFolderId = currentFolder,
+                        onOpenFolder = { currentFolder = it },
                     )
                 }
                 }
@@ -376,13 +394,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         ) {
             lastFormFill?.let { f ->
                 androidx.compose.runtime.key(f.id, f.fields) {
-                    val savedText = stringResource(R.string.saved)
                     ScanFormScreen(
                         form = f,
                         saved = saved.orEmpty(),
                         onClose = { formFill = null },
                         onEdit = { formEdit = f; formEditing = true },
-                        onSaveCode = { content, name -> vm.save(content, com.blacklaunch.qrcodes.qr.CodeKind.QR, name) { show(savedText) } },
                         onRemember = { updated -> forms = formStore.save(updated); if (formFill?.id == updated.id) formFill = updated },
                         onMessage = { show(it) },
                     )
@@ -463,6 +479,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         val code = saved?.firstOrNull { it.id == shown.id } ?: shown
         ItemMenu(
             code,
+            isForm = code.isForm,
             onDismiss = { menuFor = null },
             onFavorite = {
                 vm.toggleFavorite(code)
@@ -474,7 +491,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             },
             onContent = {
                 menuFor = null
-                contentFor = code
+                if (code.isForm) {
+                    formOf(code)?.let { formEdit = it; formEditing = true }
+                } else {
+                    contentFor = code
+                }
             },
             onShare = {
                 menuFor = null
@@ -583,6 +604,8 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     renameFor?.let { code ->
         RenameDialog(code, onDismiss = { renameFor = null }) {
             vm.rename(code, it)
+            // Форма — та сама назва і в самій формі.
+            if (code.isForm && it.isNotBlank()) formOf(code)?.let { f -> forms = formStore.save(f.copy(name = it.trim())) }
             renameFor = null
         }
     }
@@ -594,15 +617,17 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             onOpen = { f -> fieldsOpen = false; formFill = f },
             onNew = { fieldsOpen = false; formEdit = null; formEditing = true },
             onEdit = { f -> fieldsOpen = false; formEdit = f; formEditing = true },
-            onDelete = { f -> forms = formStore.remove(f.id) },
+            onDelete = { f -> forms = formStore.remove(f.id); vm.unlinkForm(f.id) },
         )
     }
     if (formEditing) {
-        FormEditorDialog(formEdit, onDismiss = { formEditing = false; if (formFill == null) fieldsOpen = true }) { f ->
+        FormEditorDialog(formEdit, onDismiss = { formEditing = false }) { f ->
             forms = formStore.save(f)
+            // Нова форма — рядком у список (у відкриту папку); наявна — лише нова назва.
+            vm.linkForm(f, currentFolder)
             formEditing = false
             // Відкрили редактор із заповнення — повертаємось до нього вже з новою формою.
-            if (formFill != null) formFill = f else fieldsOpen = true
+            formFill = f
         }
     }
     batchOpen?.let { list ->
