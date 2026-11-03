@@ -358,7 +358,7 @@
     <string name="forms_one_hint">Wszystkie pola są w tym jednym kodzie.</string>
     <string name="label_not_fit">Nie zmieściło się kodów: %1$d — powiększ naklejkę albo dodaj je później.</string>
     <string name="label_capacity">Na tę naklejkę zmieści się do %1$d kodów (25 mm, z podpisem).</string>
-    <string name="label_pick_room">Możesz dodać jeszcze %1$d (25 mm, z podpisem).</string>
+    <string name="label_pick_room">Możesz dodać jeszcze %1$d (tego samego rozmiaru co kody na naklejce).</string>
     <string name="label_add_n">Dodaj (%1$d)</string>
     <string name="select_many">Wybierz kilka</string>
     <string name="selected_n">Wybrano: %1$d</string>
@@ -369,4 +369,5 @@
     <string name="cap_text">Na naklejce %1$d×%2$d mm zmieści się do %3$d kodów (25 mm, z podpisem). Wybrano: %4$d.</string>
     <string name="cap_each">Każdy na osobnej naklejce (%1$d)</string>
     <string name="cap_first">Pierwsze %1$d na jedną naklejkę</string>
+    <string name="label_room_full">Więcej się nie zmieści: można dodać tylko %1$d tego samego rozmiaru.</string>
 </resources>

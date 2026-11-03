@@ -358,7 +358,7 @@
     <string name="forms_one_hint">Усі поля — в одному коді.</string>
     <string name="label_not_fit">Не вмістилось кодів: %1$d — збільш наклейку або додай їх пізніше.</string>
     <string name="label_capacity">На цю наклейку вміщається до %1$d кодів (25 мм, з підписом).</string>
-    <string name="label_pick_room">Можна додати ще %1$d (25 мм, з підписом).</string>
+    <string name="label_pick_room">Можна додати ще %1$d (такого ж розміру, як коди на наклейці).</string>
     <string name="label_add_n">Додати (%1$d)</string>
     <string name="select_many">Вибрати кілька</string>
     <string name="selected_n">Вибрано: %1$d</string>
@@ -369,4 +369,5 @@
     <string name="cap_text">На наклейку %1$d×%2$d мм вміщається до %3$d кодів (25 мм, з підписом). Вибрано: %4$d.</string>
     <string name="cap_each">Кожен — окремою наклейкою (%1$d)</string>
     <string name="cap_first">Перші %1$d — на одну наклейку</string>
+    <string name="label_room_full">Більше не вміститься: можна додати лише %1$d такого ж розміру.</string>
 </resources>

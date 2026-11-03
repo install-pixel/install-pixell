@@ -14,8 +14,8 @@ android {
         applicationId = "com.blacklaunch.qrcodes"
         minSdk = 26
         targetSdk = 36
-        versionCode = 80
-        versionName = "1.21.1"
+        versionCode = 81
+        versionName = "1.21.2"
 
         // Вбудовані моделі ML Kit мають нативні бібліотеки; лишаємо лише ARM — це всі реальні телефони (як у Black Glass).
         ndk {

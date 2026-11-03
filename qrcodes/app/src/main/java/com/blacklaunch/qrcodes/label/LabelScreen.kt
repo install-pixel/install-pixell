@@ -1237,8 +1237,24 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         val pickable = remember(saved) { saved.filter { !it.isForm } }
         // Додаємо — можна вибрати кілька (✓), але не більше, ніж уміщається читабельних кодів (25 мм із підписом).
         val picked = remember { androidx.compose.runtime.mutableStateListOf<Long>() }
-        val room = (LabelLayout.capacity(design.size) - codes.size).coerceAtLeast(0)
-        val capacityText = stringResource(R.string.label_capacity, LabelLayout.capacity(design.size))
+        // Нові коди — такого ж розміру, як ті, що вже на наклейці (середній з них); порожня — звичайний розмір.
+        val sampleSide = remember(design) {
+            val sides = codes.filter { !it.barcode }.map { it.side }.sorted()
+            if (sides.isEmpty()) defaults.qrMm.coerceAtMost(LabelLayout.maxQrMm(design.size, captionDefault)) else sides[sides.size / 2]
+        }
+        // Скільки ще реально вміщається: «приміряємо» такі коди (з підписом) у вільне місце, доки є куди.
+        val room = remember(design, sampleSide) {
+            var d = design
+            var n = 0
+            val probe = Element.Qr(id = 0, cx = design.size.widthMm / 2, cy = design.size.heightMm / 2, content = "probe", title = "Probe 123", side = sampleSide, caption = captionDefault)
+            while (n < MAX_PROBE) {
+                val p = Placement.nearestFree(d, probe.copy(id = d.nextId), tw, d.size.widthMm / 2, d.size.heightMm / 2) ?: break
+                d = d.add(p)
+                n++
+            }
+            n
+        }
+        var warn by remember { mutableStateOf(false) }
         val close = { pickerOpen = false; picked.clear() }
         SheetDialog(
             onDismissRequest = close,
@@ -1251,8 +1267,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         stringResource(R.string.label_add_n, picked.size),
                         {
                             val chosen = picked.mapNotNull { id -> pickable.firstOrNull { it.id == id } }
-                            val fresh = chosen.mapIndexed { i, code -> newQr(design.nextId + i, code, design.size) }
-                            if (design.background == null && codes.size + fresh.size > 1) {
+                            val fresh = chosen.mapIndexed { i, code -> newQr(design.nextId + i, code, design.size).let { q -> if (q.barcode) q else q.copy(side = sampleSide) } }
+                            if (design.background == null && codes.size <= 1 && codes.size + fresh.size > 1) {
                                 // Без фону — усі коди рівною сіткою (самі розкидаються по наклейці).
                                 commit(Arrange.grid(fresh.fold(design) { d, q -> d.add(q) }, tw))
                                 selectedId = null
@@ -1272,9 +1288,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         ) {
             Column {
                 if (replacing == null) {
+                    // Підказка — тут же, у вікні (не розмитим повідомленням під ним); більше не влазить — яскравіше.
                     Text(
-                        stringResource(R.string.label_pick_room, room),
-                        color = Oled.TextSecondary, fontSize = 14.sp,
+                        stringResource(if (warn) R.string.label_room_full else R.string.label_pick_room, room),
+                        color = if (warn) Oled.TextPrimary else Oled.TextSecondary, fontSize = 14.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     )
                 }
@@ -1294,9 +1311,10 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                         close()
                                     } else if (on) {
                                         picked.remove(code.id)
+                                        warn = false
                                     } else if (picked.size >= room) {
                                         haptics.longPress()
-                                        onMessage(capacityText)
+                                        warn = true
                                     } else {
                                         picked.add(code.id)
                                     }
