@@ -406,8 +406,25 @@ class LabelRenderer(private val hand: Typeface) {
         val h = e.width * e.aspect * k
         val left = e.cx * k - w / 2
         val top = e.cy * k - h / 2
-        e.strokes.forEach { st ->
-            if (st.size < 2) return@forEach
+        e.strokes.forEachIndexed { si, st ->
+            if (st.size < 2) return@forEachIndexed
+            val factors = e.widths.getOrNull(si)
+            if (factors != null && factors.size * 2 == st.size) {
+                // «Живе перо»: товщина міняється вздовж штриха — короткими відрізками з круглими кінцями.
+                val n = st.size / 2
+                val xs = FloatArray(n) { left + st[it * 2] * w }
+                val ys = FloatArray(n) { top + st[it * 2 + 1] * h }
+                val ws = Ink.widths(xs, ys, factors, e.strokeMm * k)
+                if (n == 1) {
+                    canvas.drawCircle(xs[0], ys[0], ws[0] / 2, Paint(ink).apply { style = Paint.Style.FILL })
+                } else {
+                    for (i in 1 until n) {
+                        paint.strokeWidth = (ws[i - 1] + ws[i]) / 2
+                        canvas.drawLine(xs[i - 1], ys[i - 1], xs[i], ys[i], paint)
+                    }
+                }
+                return@forEachIndexed
+            }
             val path = android.graphics.Path()
             path.moveTo(left + st[0] * w, top + st[1] * h)
             if (st.size == 2) path.lineTo(left + st[0] * w + 0.01f, top + st[1] * h)

@@ -219,6 +219,7 @@
     <string name="label_bg_own">Your own picture…</string>
     <string name="label_scenes">Scenes — codes drop into the squares</string>
     <string name="label_draw_thin">Thin</string>
+    <string name="label_draw_medium">Medium</string>
     <string name="label_draw_thick">Thick</string>
     <string name="label_eraser">Eraser</string>
     <string name="label_bg_erasing">Eraser: run your finger over the label — the backdrop under it is wiped. “Undo” brings it back.</string>

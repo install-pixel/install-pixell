@@ -217,6 +217,7 @@
     <string name="label_bg_own">Własny obraz…</string>
     <string name="label_scenes">Sceny — kody same staną w kwadratach</string>
     <string name="label_draw_thin">Cienko</string>
+    <string name="label_draw_medium">Średnio</string>
     <string name="label_draw_thick">Grubo</string>
     <string name="label_eraser">Gumka</string>
     <string name="label_bg_erasing">Gumka: prowadź palcem po etykiecie — tło pod palcem się wymazuje. „Cofnij” — przywróć.</string>

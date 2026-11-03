@@ -217,6 +217,7 @@
     <string name="label_bg_own">Своє зображення…</string>
     <string name="label_scenes">Сцени — коди самі стануть у квадратики</string>
     <string name="label_draw_thin">Тонко</string>
+    <string name="label_draw_medium">Середньо</string>
     <string name="label_draw_thick">Товсто</string>
     <string name="label_eraser">Гумка</string>
     <string name="label_bg_erasing">Гумка: веди пальцем по наклейці — фон під пальцем затирається. «Крок назад» — повернути.</string>

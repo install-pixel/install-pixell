@@ -104,6 +104,8 @@ sealed interface Element {
         override val rotation: Float = 0f,
         /** Товщина лінії — частка ширини (малюнок на наклейці); 0 — за [thick]. */
         val line: Float = 0f,
+        /** «Живе перо»: множник товщини для кожної точки кожного штриха; порожньо — рівна лінія (старі малюнки). */
+        val widths: List<List<Float>> = emptyList(),
     ) : Element {
         override val size get() = width
         override fun rotated(degrees: Float) = copy(rotation = normalizeAngle(degrees))

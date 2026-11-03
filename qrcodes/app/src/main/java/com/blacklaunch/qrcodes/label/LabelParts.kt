@@ -238,8 +238,12 @@ internal const val DRAFT_SAVE_MS = 500L
 internal const val BG_MAX_WIDTH_MM = 5000f
 
 /** Малювання на наклейці: товщина ліній і радіус гумки, мм. */
-internal const val DRAW_THIN_MM = 0.7f
-internal const val DRAW_THICK_MM = 1.5f
+internal const val DRAW_THIN_MM = 0.6f
+internal const val DRAW_MEDIUM_MM = 1.1f
+internal const val DRAW_THICK_MM = 1.8f
+
+/** Три товщини пера: тонко, середньо, товсто (мм). */
+internal val DRAW_PENS_MM = floatArrayOf(DRAW_THIN_MM, DRAW_MEDIUM_MM, DRAW_THICK_MM)
 internal const val DRAW_ERASER_MM = 2.5f
 internal val TAB_WIDTH = 116.dp
 

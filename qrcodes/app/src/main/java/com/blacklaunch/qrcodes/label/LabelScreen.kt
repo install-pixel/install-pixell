@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -205,8 +206,9 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var bgErase by remember { mutableStateOf(false) }
     // Малювання прямо на наклейці: штрихи в мм, поки не натиснеш «Готово».
     var drawMode by remember { mutableStateOf(false) }
-    val drawStrokes = remember { androidx.compose.runtime.mutableStateListOf<List<Offset>>() }
-    var drawThick by remember { mutableStateOf(false) }
+    val drawStrokes = remember { androidx.compose.runtime.mutableStateListOf<InkStroke>() }
+    // Товщина: 0 — тонко, 1 — середньо, 2 — товсто.
+    var drawLevel by remember { mutableIntStateOf(0) }
     var drawErase by remember { mutableStateOf(false) }
     var drawEditId by remember { mutableStateOf<Int?>(null) }
 
@@ -227,7 +229,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     fun startDraw(edit: Element.Drawing?) {
         drawStrokes.clear()
         drawErase = false
-        drawThick = edit?.thick ?: false
+        // Домальовуємо — тією ж товщиною, що й була (найближча з трьох).
+        drawLevel = if (edit == null) drawLevel else DRAW_PENS_MM.indices.minByOrNull { kotlin.math.abs(DRAW_PENS_MM[it] - edit.strokeMm) } ?: 0
         drawEditId = edit?.id
         if (edit != null) {
             val w = edit.width
@@ -235,12 +238,13 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
             val a = Math.toRadians(edit.rotation.toDouble())
             val c = kotlin.math.cos(a).toFloat()
             val sn = kotlin.math.sin(a).toFloat()
-            edit.strokes.forEach { st ->
-                drawStrokes.add(st.chunked(2).filter { it.size == 2 }.map { (u, v) ->
+            edit.strokes.forEachIndexed { si, st ->
+                val pts = st.chunked(2).filter { it.size == 2 }.map { (u, v) ->
                     val x = (u - 0.5f) * w
                     val y = (v - 0.5f) * h
                     Offset(edit.cx + x * c - y * sn, edit.cy + x * sn + y * c)
-                })
+                }
+                drawStrokes.add(InkStroke(pts, edit.widths.getOrNull(si)?.takeIf { it.size == pts.size }.orEmpty()))
             }
         }
         selectedId = null
@@ -389,20 +393,24 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                 if (drawErase) {
                                     fun erase(p: Offset) {
                                         val r = DRAW_ERASER_MM
-                                        val next = ArrayList<List<Offset>>()
+                                        val next = ArrayList<InkStroke>()
                                         drawStrokes.forEach { st ->
+                                            val pen = st.factors.size == st.points.size
                                             var run = ArrayList<Offset>()
-                                            st.forEach { pt ->
+                                            var runF = ArrayList<Float>()
+                                            st.points.forEachIndexed { i, pt ->
                                                 if ((pt - p).getDistance() < r) {
-                                                    if (run.isNotEmpty()) next.add(run)
+                                                    if (run.isNotEmpty()) next.add(InkStroke(run, if (pen) runF else emptyList()))
                                                     run = ArrayList()
+                                                    runF = ArrayList()
                                                 } else {
                                                     run.add(pt)
+                                                    if (pen) runF.add(st.factors[i])
                                                 }
                                             }
-                                            if (run.isNotEmpty()) next.add(run)
+                                            if (run.isNotEmpty()) next.add(InkStroke(run, if (pen) runF else emptyList()))
                                         }
-                                        if (next.sumOf { it.size } != drawStrokes.sumOf { it.size }) {
+                                        if (next.sumOf { it.points.size } != drawStrokes.sumOf { it.points.size }) {
                                             drawStrokes.clear()
                                             drawStrokes.addAll(next)
                                         }
@@ -413,24 +421,54 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                                         event.changes.firstOrNull()?.let { ch -> if (ch.pressed) { erase(ch.position / k); ch.consume() } }
                                     } while (event.changes.any { it.pressed })
                                 } else {
+                                    // «Живе перо» (Ink): лінія згладжена, товщина — від швидкості, кінці звужуються.
                                     val pts = mutableListOf(first)
-                                    drawStrokes.add(pts.toList())
+                                    val fs = mutableListOf(1f)
+                                    drawStrokes.add(InkStroke(pts.toList(), fs.toList()))
                                     val index = drawStrokes.lastIndex
+                                    var smooth = first
+                                    var lastRaw = first
+                                    var lastTime = down.uptimeMillis
+                                    var factor = 1f
+                                    // Густо (через STEP_MM) — щоб гумка стирала рівно; товщина між точками — плавно.
+                                    fun addPoint(p: Offset, f: Float) {
+                                        val last = pts.last()
+                                        val lf = fs.last()
+                                        val dist = (p - last).getDistance()
+                                        if (dist < 0.05f) return
+                                        val steps = (dist / Ink.STEP_MM).toInt()
+                                        for (i in 1..steps) {
+                                            val t = i / (steps + 1f)
+                                            pts.add(last + (p - last) * t)
+                                            fs.add(lf + (f - lf) * t)
+                                        }
+                                        pts.add(p)
+                                        fs.add(f)
+                                    }
                                     do {
                                         val event = awaitPointerEvent()
                                         event.changes.firstOrNull()?.let { ch ->
                                             if (ch.pressed) {
-                                                // Густо — щоб гумка стирала рівно.
-                                                val p = ch.position / k
-                                                val last = pts.last()
-                                                val steps = ((p - last).getDistance() / 0.4f).toInt()
-                                                for (i in 1..steps) pts.add(last + (p - last) * (i / (steps + 1f)))
-                                                pts.add(p)
-                                                drawStrokes[index] = pts.toList()
+                                                // Усі проміжні дотики (а не лише останній) — рух рівніший.
+                                                val samples = ch.historical.map { it.position to it.uptimeMillis } + (ch.position to ch.uptimeMillis)
+                                                samples.forEach { (pos, t) ->
+                                                    val raw = pos / k
+                                                    val dt = (t - lastTime).coerceAtLeast(1L).toFloat()
+                                                    val speed = (raw - lastRaw).getDistance() / dt
+                                                    lastRaw = raw
+                                                    lastTime = t
+                                                    factor += (Ink.targetFactor(speed) - factor) * Ink.FACTOR_EASE
+                                                    smooth += (raw - smooth) * (1f - Ink.SMOOTH)
+                                                    addPoint(smooth, factor)
+                                                }
+                                                drawStrokes[index] = InkStroke(pts.toList(), fs.toList())
                                                 ch.consume()
                                             }
                                         }
                                     } while (event.changes.any { it.pressed })
+                                    // Відпустив — лінія дотягується до місця, де був палець.
+                                    addPoint(lastRaw, factor)
+                                    drawStrokes[index] = InkStroke(pts.toList(), fs.toList())
                                 }
                                 return@awaitEachGesture
                             }
@@ -617,10 +655,23 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 drawIntoCanvas { renderer.draw(it.nativeCanvas, k, shown, LabelPalette.forView(design)) }
                 if (drawMode) {
                     val inkColor = androidx.compose.ui.graphics.Color(LabelPalette.forView(design).ink)
-                    val pen = (if (drawThick) DRAW_THICK_MM else DRAW_THIN_MM) * k
-                    drawStrokes.forEach { st ->
+                    val pen = DRAW_PENS_MM[drawLevel] * k
+                    drawStrokes.forEach { stroke ->
+                        val st = stroke.points
                         if (st.isEmpty()) return@forEach
-                        if (st.size == 1) {
+                        if (stroke.factors.size == st.size) {
+                            // Як надрукується: товщина вздовж штриха міняється (Ink.widths).
+                            val xs = FloatArray(st.size) { st[it].x * k }
+                            val ys = FloatArray(st.size) { st[it].y * k }
+                            val ws = Ink.widths(xs, ys, stroke.factors, pen)
+                            if (st.size == 1) {
+                                drawCircle(inkColor, ws[0] / 2, st[0] * k)
+                            } else {
+                                for (i in 1 until st.size) {
+                                    drawLine(inkColor, Offset(xs[i - 1], ys[i - 1]), Offset(xs[i], ys[i]), (ws[i - 1] + ws[i]) / 2, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                                }
+                            }
+                        } else if (st.size == 1) {
                             drawCircle(inkColor, pen / 2, st[0] * k)
                         } else {
                             val path = androidx.compose.ui.graphics.Path()
@@ -698,9 +749,11 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                 // Поки малюєш: товщина / гумка й дії; наклейка вгорі — це й є полотно.
                 Column(Modifier.fillMaxWidth().height(TAB_AREA_HEIGHT), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.label_draw_hint), color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thin), !drawThick && !drawErase) { drawThick = false; drawErase = false }
-                        com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_draw_thick), drawThick && !drawErase) { drawThick = true; drawErase = false }
+                    // Чотири однакові кнопки: три товщини пера й гумка.
+                    com.blacklaunch.qrcodes.ui.EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
+                        listOf(R.string.label_draw_thin, R.string.label_draw_medium, R.string.label_draw_thick).forEachIndexed { level, text ->
+                            com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(text), drawLevel == level && !drawErase) { drawLevel = level; drawErase = false }
+                        }
                         com.blacklaunch.qrcodes.ui.ChoiceChip(stringResource(R.string.label_eraser), drawErase) { drawErase = true }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -710,20 +763,22 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         Tool(Glyph.Save, stringResource(R.string.done), Modifier.weight(1f)) {
                             val editing = drawEditId
                             val base = if (editing != null) design.remove(editing) else design
-                            val pts = drawStrokes.flatten()
+                            val pts = drawStrokes.flatMap { it.points }
                             if (pts.isEmpty()) {
                                 // Усе стерли — малюнка немає.
                                 if (editing != null) commit(base)
                             } else {
-                                val pen = if (drawThick) DRAW_THICK_MM else DRAW_THIN_MM
+                                val pen = DRAW_PENS_MM[drawLevel]
                                 val minX = pts.minOf { it.x }
                                 val maxX = pts.maxOf { it.x }
                                 val minY = pts.minOf { it.y }
                                 val maxY = pts.maxOf { it.y }
                                 val bw = (maxX - minX).coerceAtLeast(1f)
                                 val bh = (maxY - minY).coerceAtLeast(1f)
-                                val norm = drawStrokes.map { st -> st.flatMap { listOf((it.x - minX) / bw, (it.y - minY) / bh) } }
-                                val el = Element.Drawing(editing ?: design.nextId, (minX + maxX) / 2, (minY + maxY) / 2, norm, bh / bw, bw, drawThick, line = pen / bw)
+                                val norm = drawStrokes.map { st -> st.points.flatMap { listOf((it.x - minX) / bw, (it.y - minY) / bh) } }
+                                // Множники товщини — для всіх штрихів або ні для якого (старі рівні лінії лишаються рівними).
+                                val widths = if (drawStrokes.all { it.factors.size == it.points.size }) drawStrokes.map { it.factors } else emptyList()
+                                val el = Element.Drawing(editing ?: design.nextId, (minX + maxX) / 2, (minY + maxY) / 2, norm, bh / bw, bw, drawLevel == 2, line = pen / bw, widths = widths)
                                 // Там, де намалював; налізло на код чи за край — на найближче вільне місце.
                                 val placed = if (Placement.fits(base, el, tw)) el else Placement.nearestFree(base, el, tw, el.cx, el.cy)
                                 if (placed == null) {
