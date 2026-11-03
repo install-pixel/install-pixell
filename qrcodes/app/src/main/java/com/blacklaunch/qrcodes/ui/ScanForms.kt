@@ -498,6 +498,10 @@ fun ScanFormScreen(
     onEdit: () -> Unit,
     onRemember: (ScanForm) -> Unit,
     onMessage: (String) -> Unit,
+    /** Поверх відкрито друк — яскравість звичайна. */
+    covered: Boolean = false,
+    /** Надрукувати: коди (зміст і підпис) — один на всю форму або по коду на поле. */
+    onPrint: (List<Pair<String, String>>) -> Unit = {},
 ) {
     val n = form.fields.size
     val values = remember(form.id) {
@@ -525,14 +529,15 @@ fun ScanFormScreen(
 
     // Яскравість — на максимум, поки форма відкрита (можна вимкнути кнопкою в шапці; вибір запам'ятовується).
     // Підсвітити можна лише весь екран, тож усе, крім коду, тоді приглушене — яскраво світиться саме код.
+    val fieldLabel = stringResource(R.string.forms_field_n)
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
     var bright by remember { mutableStateOf(settings.qrBright) }
     val dim = if (bright) FORM_DIM else 1f
     val activity = androidx.activity.compose.LocalActivity.current
-    DisposableEffect(activity, bright) {
+    DisposableEffect(activity, bright, covered) {
         val w = activity?.window
-        if (bright) w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
+        if (bright && !covered) w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
         onDispose { w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE } }
     }
     // Пам'ять введеного — якщо так задано у формі.
@@ -557,6 +562,17 @@ fun ScanFormScreen(
                 IconSpot(Glyph.Flash, stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on), tint = if (bright) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.5f)) {
                     bright = !bright
                     settings.qrBright = bright
+                }
+                IconSpot(Glyph.Print, stringResource(R.string.print)) {
+                    if (steps) {
+                        // «По полю» — кожне поле своїм кодом, підпис — назва поля.
+                        val parts = form.activeSteps(values.toList(), enabled.toList(), today).map { i ->
+                            form.part(i, values.toList(), enabled.toList(), today) to "${form.name} · " + form.fields[i].label.ifBlank { fieldLabel.format(i + 1) }
+                        }
+                        if (parts.isNotEmpty()) onPrint(parts)
+                    } else if (symbol != null) {
+                        onPrint(listOf(content to form.name))
+                    }
                 }
                 IconSpot(Glyph.Edit, stringResource(R.string.forms_edit), onClick = onEdit)
             }

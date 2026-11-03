@@ -415,18 +415,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             )
         }
 
-        AnimatedVisibility(
-            visible = labelFor != null,
-            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
-            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
-        ) {
-            // Новий набір кодів — новий макет наклейки.
-            androidx.compose.runtime.key(lastLabel) {
-                LabelScreen(start = lastLabel, saved = saved.orEmpty(), onClose = { labelFor = null }, onMessage = { show(it) })
-            }
-        }
-
-        // Заповнення форми для сканера — на весь екран (поверх усього, крім сповіщень).
+        // Заповнення форми для сканера — на весь екран (друк із форми відкривається поверх неї).
         AnimatedVisibility(
             visible = formFill != null,
             enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
@@ -441,8 +430,26 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         onEdit = { formEdit = f; formEditing = true },
                         onRemember = { updated -> forms = formStore.save(updated); if (formFill?.id == updated.id) formFill = updated },
                         onMessage = { show(it) },
+                        covered = labelFor != null,
+                        // Друк форми: коди такі, як зараз на екрані (не зберігаються в списку).
+                        onPrint = { parts ->
+                            labelFor = parts.mapIndexed { i, (content, title) ->
+                                QrCode(id = -(i + 1).toLong(), content = content, name = title, format = com.blacklaunch.qrcodes.qr.CodeKind.QR.storage)
+                            }
+                        },
                     )
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = labelFor != null,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
+        ) {
+            // Новий набір кодів — новий макет наклейки.
+            androidx.compose.runtime.key(lastLabel) {
+                LabelScreen(start = lastLabel, saved = saved.orEmpty(), onClose = { labelFor = null }, onMessage = { show(it) })
             }
         }
 
