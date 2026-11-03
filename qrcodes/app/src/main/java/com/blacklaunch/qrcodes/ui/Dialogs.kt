@@ -337,6 +337,7 @@ private const val PAGE_OUT_MS = 180
 /** Теми довідки «Як користуватися»: назва й докладний текст. */
 private enum class HelpTopic(val title: Int, val body: Int, val glyph: Glyph) {
     Create(R.string.help_create_t, R.string.help_create, Glyph.Keyboard),
+    Forms(R.string.help_forms_t, R.string.help_forms, Glyph.Template),
     Camera(R.string.help_camera_t, R.string.help_camera, Glyph.ScanQr),
     Saved(R.string.help_list_t, R.string.help_list, Glyph.Search),
     Folders(R.string.help_folders_t, R.string.help_folders, Glyph.Folder),
