@@ -204,4 +204,16 @@ class LabelDesignTest {
             0.001f,
         )
     }
+
+    @Test
+    fun gridOfSeveralCodesGrowsToTheBiggestThatFits() {
+        val size = com.blacklaunch.qrcodes.label.LabelSize(165f, 102f)
+        val d = (1..10).fold(com.blacklaunch.qrcodes.label.LabelDesign(size = size)) { acc, i -> acc.add(qr(i, side = 9f)) }
+        val g = com.blacklaunch.qrcodes.label.Arrange.grid(d, tw, grow = true)
+        val codes = g.elements.filterIsInstance<Element.Qr>()
+        assertEquals(10, codes.size)
+        // Дрібний останній розмір (9 мм) не лишається дрібним — на 165×102 усі 10 стають щонайменше по 20 мм.
+        assertTrue(codes.all { it.side >= 20f })
+        codes.forEach { assertTrue(com.blacklaunch.qrcodes.label.Placement.fits(g, it, tw)) }
+    }
 }

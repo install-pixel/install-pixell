@@ -154,7 +154,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
         val onSheet = if (start.size > MAX_ON_SHEET || start.size > LabelLayout.capacity(defaults.size)) start.take(1) else start
         val withCodes = onSheet.foldIndexed(first) { i, d, code -> d.add(newQr(i + 1, code, d.size)) }
         // Кілька кодів — одразу сіткою, кожен на своєму місці.
-        mutableStateOf(restored ?: if (onSheet.size > 1) Arrange.grid(withCodes, tw) else withCodes)
+        mutableStateOf(restored ?: if (onSheet.size > 1) Arrange.grid(withCodes, tw, grow = true) else withCodes)
     }
     val draftRestored = stringResource(R.string.label_draft_restored)
     LaunchedEffect(Unit) {
@@ -1270,7 +1270,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                             val fresh = chosen.mapIndexed { i, code -> newQr(design.nextId + i, code, design.size).let { q -> if (q.barcode) q else q.copy(side = sampleSide) } }
                             if (design.background == null && codes.size <= 1 && codes.size + fresh.size > 1) {
                                 // Без фону — усі коди рівною сіткою (самі розкидаються по наклейці).
-                                commit(Arrange.grid(fresh.fold(design) { d, q -> d.add(q) }, tw))
+                                commit(Arrange.grid(fresh.fold(design) { d, q -> d.add(q) }, tw, grow = true))
                                 selectedId = null
                             } else {
                                 val (d, dropped) = placeCodes(design, fresh)

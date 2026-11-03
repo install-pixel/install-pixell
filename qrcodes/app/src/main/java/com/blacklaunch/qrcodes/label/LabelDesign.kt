@@ -589,10 +589,12 @@ object Arrange {
      * Усі коди — сіткою по центру. Якщо не вміщаються — коди зменшуються, поки не влізуть. Текст і значки потім
      * переїжджають на найближче вільне місце.
      */
-    fun grid(design: LabelDesign, tw: (String, Float) -> Float): LabelDesign {
+    fun grid(design: LabelDesign, tw: (String, Float) -> Float, grow: Boolean = false): LabelDesign {
         val codes = design.elements.filterIsInstance<Element.Qr>()
         if (codes.isEmpty()) return design
-        var side = codes.maxOf { it.side }
+        // [grow] — нова наклейка з кількох кодів: починаємо з найбільшого коду, що вміщається на аркуш, і зменшуємо,
+        // доки всі не влізуть (інакше дрібний останній розмір лишився б дрібним, хоча місця вистачає на більші).
+        var side = if (grow) maxOf(codes.maxOf { it.side }, LabelLayout.maxQrMm(design.size, codes.any { it.caption })).coerceAtMost(Element.MAX_QR) else codes.maxOf { it.side }
         while (true) {
             val sample = codes.maxBy { qrBlockHeight(it.copy(side = side)) }.copy(side = side)
             val (cw, ch) = cell(sample, tw)
