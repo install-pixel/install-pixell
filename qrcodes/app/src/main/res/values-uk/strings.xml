@@ -316,4 +316,7 @@
     <string name="forms_step_skip">Спершу пропустіть полів: %1$d (стрілка вниз на сканері), потім скануйте.</string>
     <string name="forms_step_tap">Скануйте, натисніть стрілку на сканері й торкніться коду — з’явиться наступне поле.</string>
     <string name="forms_step_empty">Поки немає заповнених полів.</string>
+    <string name="fields_down_a">↓ Стрілка · 1</string>
+    <string name="fields_down_b">↓ Стрілка · 2</string>
+    <string name="fields_down_hint">Між полями йде код клавіші «стрілка вниз» для термінала (VT100). Термінали приймають його одним із двох способів — спробуй 1, а якщо курсор не перейшов, 2.</string>
 </resources>

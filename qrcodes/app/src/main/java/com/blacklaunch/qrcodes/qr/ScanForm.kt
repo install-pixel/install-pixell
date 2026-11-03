@@ -35,7 +35,7 @@ data class ScanForm(
     val id: String,
     val name: String,
     val fields: List<FormField>,
-    /** 0 — Enter, 1 — Tab, 2 — свій символ [custom]. */
+    /** 0 — Enter, 1 — Tab, 2 — свій символ [custom], 3 / 4 — стрілка вниз терміналу (ESC [ B / ESC O B). */
     val separator: Int = 0,
     val custom: String = "|",
     val endEnter: Boolean = true,
@@ -49,6 +49,8 @@ data class ScanForm(
     val sep: String get() = when (separator) {
         1 -> "\t"
         2 -> custom.ifEmpty { "|" }
+        3 -> "\u001B[B"
+        4 -> "\u001BOB"
         else -> "\n"
     }
 

@@ -233,7 +233,12 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                 ChoiceChip("Tab", separator == 1, Modifier.weight(1f)) { separator = 1 }
                 ChoiceChip(stringResource(R.string.fields_custom), separator == 2, Modifier.weight(1f)) { separator = 2 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(stringResource(R.string.fields_down_a), separator == 3, Modifier.weight(1f)) { separator = 3 }
+                ChoiceChip(stringResource(R.string.fields_down_b), separator == 4, Modifier.weight(1f)) { separator = 4 }
+            }
+            if (separator >= 3) Text(stringResource(R.string.fields_down_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+            if (separator == 2) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SheetTextField(custom, { custom = it.replace("\n", "").replace("\t", "").take(3) }, "|", Modifier.width(88.dp))
                 Text(stringResource(R.string.fields_custom_hint), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
             }

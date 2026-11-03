@@ -44,4 +44,10 @@ class ScanFormTest {
         assertEquals(0, form.skipBefore(active, 0))
         assertEquals(1, form.skipBefore(active, 1))
     }
+
+    @Test
+    fun terminalDownArrowSeparator() {
+        val form = ScanForm("t", "t", listOf(FormField("a", FieldType.TEXT, "A"), FormField("b", FieldType.TEXT, "B")), separator = 3, endEnter = false)
+        assertEquals("A\u001B[BB", form.content(listOf("", ""), listOf(true, true), java.util.Date(0)))
+    }
 }

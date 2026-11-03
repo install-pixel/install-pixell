@@ -316,4 +316,7 @@
     <string name="forms_step_skip">Najpierw pomiń pól: %1$d (strzałka w dół na skanerze), potem skanuj.</string>
     <string name="forms_step_tap">Zeskanuj, naciśnij strzałkę na skanerze i dotknij kodu — pojawi się następne pole.</string>
     <string name="forms_step_empty">Brak wypełnionych pól.</string>
+    <string name="fields_down_a">↓ Strzałka · 1</string>
+    <string name="fields_down_b">↓ Strzałka · 2</string>
+    <string name="fields_down_hint">Między polami trafia kod klawisza „strzałka w dół” dla terminala (VT100). Terminale przyjmują go na jeden z dwóch sposobów — spróbuj 1, a jeśli kursor nie przeszedł, 2.</string>
 </resources>
