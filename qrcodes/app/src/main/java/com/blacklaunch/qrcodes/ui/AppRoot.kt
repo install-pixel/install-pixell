@@ -119,6 +119,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     // Серія (false) чи список (true); null — закрито.
     var batchOpen by remember { mutableStateOf<Boolean?>(null) }
     var fieldsOpen by remember { mutableStateOf(false) }
+    val formStore = remember { com.blacklaunch.qrcodes.data.FormStore(context) }
+    var forms by remember { mutableStateOf(formStore.load()) }
+    var formEdit by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
+    var formEditing by remember { mutableStateOf(false) }
+    var formFill by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
     var labelFor by remember { mutableStateOf<List<QrCode>?>(null) }
     var banner by remember { mutableStateOf<BannerMsg?>(null) }
     var focusAfterCamera by remember { mutableIntStateOf(0) }
@@ -228,12 +233,14 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || fieldsOpen)
+    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || fieldsOpen || formEditing)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
     var lastLabel by remember { mutableStateOf<List<QrCode>>(emptyList()) }
+    var lastFormFill by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
     labelFor?.let { lastLabel = it }
+    formFill?.let { lastFormFill = it }
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
         Column(Modifier.fillMaxSize().backdrop(blur).statusBarsPadding().navigationBarsPadding().imePadding()) {
@@ -358,6 +365,28 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             // Новий набір кодів — новий макет наклейки.
             androidx.compose.runtime.key(lastLabel) {
                 LabelScreen(start = lastLabel, saved = saved.orEmpty(), onClose = { labelFor = null }, onMessage = { show(it) })
+            }
+        }
+
+        // Заповнення форми для сканера — на весь екран (поверх усього, крім сповіщень).
+        AnimatedVisibility(
+            visible = formFill != null,
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { it / 10 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { it / 6 },
+        ) {
+            lastFormFill?.let { f ->
+                androidx.compose.runtime.key(f.id, f.fields) {
+                    val savedText = stringResource(R.string.saved)
+                    ScanFormScreen(
+                        form = f,
+                        saved = saved.orEmpty(),
+                        onClose = { formFill = null },
+                        onEdit = { formEdit = f; formEditing = true },
+                        onSaveCode = { content, name -> vm.save(content, com.blacklaunch.qrcodes.qr.CodeKind.QR, name) { show(savedText) } },
+                        onRemember = { updated -> forms = formStore.save(updated) },
+                        onMessage = { show(it) },
+                    )
+                }
             }
         }
 
@@ -557,14 +586,23 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             renameFor = null
         }
     }
+    // Форми для сканера: список, редактор, заповнення.
     if (fieldsOpen) {
-        FieldsDialog(saved.orEmpty(), onDismiss = { fieldsOpen = false }) { content, name ->
-            fieldsOpen = false
-            // Готовий текст — у поле (код видно вгорі), назва — при збереженні. Переходи Enter/Tab уміє лише QR.
-            input = TextFieldValue(content, TextRange(content.length))
-            pendingName = name
-            format = com.blacklaunch.qrcodes.qr.CodeKind.QR
-            mode = InputMode.Manual
+        FormsListDialog(
+            forms,
+            onDismiss = { fieldsOpen = false },
+            onOpen = { f -> fieldsOpen = false; formFill = f },
+            onNew = { fieldsOpen = false; formEdit = null; formEditing = true },
+            onEdit = { f -> fieldsOpen = false; formEdit = f; formEditing = true },
+            onDelete = { f -> forms = formStore.remove(f.id) },
+        )
+    }
+    if (formEditing) {
+        FormEditorDialog(formEdit, onDismiss = { formEditing = false; if (formFill == null) fieldsOpen = true }) { f ->
+            forms = formStore.save(f)
+            formEditing = false
+            // Відкрили редактор із заповнення — повертаємось до нього вже з новою формою.
+            if (formFill != null) formFill = f else fieldsOpen = true
         }
     }
     batchOpen?.let { list ->

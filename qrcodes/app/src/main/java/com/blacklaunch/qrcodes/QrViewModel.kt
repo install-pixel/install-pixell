@@ -144,7 +144,9 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
             // Разом із фото фону (base64) — інакше на новому телефоні шаблон відкрився б без картинки.
             templates.put(org.json.JSONObject().put("name", t.name).put("design", com.blacklaunch.qrcodes.label.BackgroundFiles.embed(com.blacklaunch.qrcodes.label.TemplateStore.designJson(t.design))))
         }
-        val root = org.json.JSONObject().put("app", "QRaft").put("version", 1).put("codes", arr).put("templates", templates)
+        // Форми для сканера — теж у файл.
+        val forms = org.json.JSONArray().apply { com.blacklaunch.qrcodes.data.FormStore(getApplication()).load().forEach { put(it.toJson()) } }
+        val root = org.json.JSONObject().put("app", "QRaft").put("version", 1).put("codes", arr).put("templates", templates).put("forms", forms)
         out.bufferedWriter(Charsets.UTF_8).use { it.write(root.toString(2)) }
         codes.size
     }
@@ -166,6 +168,15 @@ class QrViewModel(app: Application) : AndroidViewModel(app) {
                 val name = o.optString("name")
                 val design = o.optJSONObject("design")?.let { com.blacklaunch.qrcodes.label.TemplateStore.designFrom(com.blacklaunch.qrcodes.label.BackgroundFiles.unpack(getApplication(), it)) } ?: continue
                 if (name.isNotEmpty() && name !in have) store.save(name, design)
+            }
+        }
+        // Форми для сканера: додаємо ті, яких ще немає (за id).
+        root.optJSONArray("forms")?.let { list ->
+            val store = com.blacklaunch.qrcodes.data.FormStore(getApplication())
+            val have = store.load().map { it.id }.toSet()
+            for (i in 0 until list.length()) {
+                val f = list.optJSONObject(i)?.let(com.blacklaunch.qrcodes.qr.ScanForm::fromJson) ?: continue
+                if (f.id !in have) store.save(f)
             }
         }
         var added = 0

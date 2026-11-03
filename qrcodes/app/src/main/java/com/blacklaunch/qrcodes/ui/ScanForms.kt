@@ -1,0 +1,394 @@
+package com.blacklaunch.qrcodes.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.blacklaunch.qrcodes.R
+import com.blacklaunch.qrcodes.data.QrCode
+import com.blacklaunch.qrcodes.qr.CodeKind
+import com.blacklaunch.qrcodes.qr.FieldType
+import com.blacklaunch.qrcodes.qr.FormField
+import com.blacklaunch.qrcodes.qr.ScanForm
+import com.blacklaunch.qrcodes.qr.Symbol
+import com.blacklaunch.qrcodes.ui.theme.Oled
+
+/** Багаторядкове поле (варіанти вибору тощо) — у стилі інших полів вводу. */
+@Composable
+private fun AreaField(value: String, onChange: (String) -> Unit, placeholder: String, minLines: Int = 3) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .then(
+                if (AppStyle.glass) {
+                    Modifier.clip(shape).background(if (focused) Color(0x0FFFFFFF) else Color(0x08FFFFFF)).border(1.dp, if (focused) Color(0x99FFFFFF) else Color(0x38FFFFFF), shape)
+                } else {
+                    Modifier.pencilFrame(14.dp, seed = 41, alpha = if (focused) 0.9f else 0.6f)
+                },
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        if (value.isEmpty()) Text(placeholder, color = Oled.TextSecondary, fontSize = 16.sp)
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            textStyle = fieldStyle().copy(color = Oled.TextPrimary),
+            cursorBrush = SolidColor(if (AppStyle.glass) Oled.TextPrimary else Oled.TextSecondary),
+            minLines = minLines,
+            maxLines = 10,
+            interactionSource = interaction,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Маленька кругла кнопка-значок (у рядках полів). */
+@Composable
+private fun IconSpot(glyph: Glyph, description: String?, enabled: Boolean = true, tint: Color = Oled.TextSecondary, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick).graphicsLayer { alpha = if (enabled) 1f else 0.3f },
+        contentAlignment = Alignment.Center,
+    ) {
+        GlyphIcon(glyph, description, tint = tint, size = 20.dp)
+    }
+}
+
+/** Список форм для сканера: дотик — відкрити й заповнити; олівець — змінити; кошик — видалити. */
+@Composable
+fun FormsListDialog(forms: List<ScanForm>, onDismiss: () -> Unit, onOpen: (ScanForm) -> Unit, onNew: () -> Unit, onEdit: (ScanForm) -> Unit, onDelete: (ScanForm) -> Unit) {
+    var deleting by remember { mutableStateOf<ScanForm?>(null) }
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.forms_list_title), tall = true, buttons = {
+        SheetButton(stringResource(R.string.forms_new), onNew, tone = Tone.Confirm)
+    }) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (forms.isEmpty()) Text(stringResource(R.string.forms_empty), color = Oled.TextSecondary, fontSize = 15.sp)
+            forms.forEach { f ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onOpen(f) }.padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+                        Text(f.name, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.forms_fields_count, f.fields.size), color = Oled.TextSecondary, fontSize = 13.sp)
+                    }
+                    IconSpot(Glyph.Edit, stringResource(R.string.forms_edit)) { onEdit(f) }
+                    IconSpot(Glyph.Delete, stringResource(R.string.delete), tint = Oled.Danger) { deleting = f }
+                }
+            }
+            Text(stringResource(R.string.forms_list_hint), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+    deleting?.let { f ->
+        SheetDialog(onDismissRequest = { deleting = null }, title = stringResource(R.string.forms_delete_title, f.name), buttons = {
+            SheetButton(stringResource(R.string.cancel), { deleting = null })
+            SheetButton(stringResource(R.string.delete), { onDelete(f); deleting = null }, tone = Tone.Danger)
+        }) {
+            Text(stringResource(R.string.forms_delete_text), fontSize = 15.sp)
+        }
+    }
+}
+
+private fun FieldType.title(): Int = when (this) {
+    FieldType.TEXT -> R.string.ftype_text
+    FieldType.SCAN -> R.string.ftype_scan
+    FieldType.CHOICE -> R.string.ftype_choice
+    FieldType.NUMBER -> R.string.ftype_number
+    FieldType.DERIVED -> R.string.ftype_derived
+    FieldType.DATE -> R.string.ftype_date
+}
+
+/**
+ * Редактор форми: назва, поля (тип, підпис, значення, варіанти, джерело, дата, префікс і допис), переходи між полями,
+ * Enter у кінці, пам'ять введеного.
+ */
+@Composable
+fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanForm) -> Unit) {
+    val fieldLabel = stringResource(R.string.forms_field_n)
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    val fields = remember { mutableStateListOf<FormField>().apply { addAll(initial?.fields ?: listOf(FormField("", FieldType.SCAN))) } }
+    var separator by remember { mutableStateOf(initial?.separator ?: 0) }
+    var custom by remember { mutableStateOf(initial?.custom ?: "|") }
+    var endEnter by remember { mutableStateOf(initial?.endEnter ?: true) }
+    var keepValues by remember { mutableStateOf(initial?.remember ?: false) }
+    val today = remember { java.util.Date() }
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(if (initial == null) R.string.forms_new else R.string.forms_edit), tall = true, buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.forms_save), {
+            onSave(
+                ScanForm(
+                    id = initial?.id ?: java.util.UUID.randomUUID().toString(),
+                    name = name.trim(),
+                    fields = fields.toList(),
+                    separator = separator,
+                    custom = custom,
+                    endEnter = endEnter,
+                    remember = keepValues,
+                    // Поля змінились — старі значення вже не відповідають своїм місцям.
+                    lastValues = if (initial?.fields?.size == fields.size) initial.lastValues else emptyList(),
+                    lastEnabled = if (initial?.fields?.size == fields.size) initial.lastEnabled else emptyList(),
+                ),
+            )
+        }, tone = Tone.Confirm, enabled = name.isNotBlank() && fields.isNotEmpty())
+    }) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SheetTextField(name, { name = it }, stringResource(R.string.forms_name_hint))
+            fields.forEachIndexed { i, f ->
+                Column(
+                    Modifier.fillMaxWidth().pencilFrame(16.dp, seed = 50 + i, alpha = 0.45f).padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i + 1}", color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.width(24.dp))
+                        SheetTextField(f.label, { fields[i] = f.copy(label = it) }, fieldLabel.format(i + 1), Modifier.weight(1f))
+                        IconSpot(Glyph.RotateLeft, null, enabled = i > 0) { fields.add(i - 1, fields.removeAt(i)) }
+                        IconSpot(Glyph.Close, stringResource(R.string.delete), enabled = fields.size > 1) { fields.removeAt(i) }
+                    }
+                    // Тип поля — шість однакових кнопок (2 ряди по 3).
+                    FieldType.entries.chunked(3).forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            row.forEach { t -> ChoiceChip(stringResource(t.title()), f.type == t, Modifier.weight(1f)) { fields[i] = f.copy(type = t) } }
+                        }
+                    }
+                    when (f.type) {
+                        FieldType.TEXT -> SheetTextField(f.value, { fields[i] = f.copy(value = it) }, stringResource(R.string.forms_text_value))
+                        FieldType.SCAN -> Text(stringResource(R.string.forms_scan_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+                        FieldType.NUMBER -> SheetTextField(f.value, { fields[i] = f.copy(value = it.filter { c -> c.isDigit() || c == '.' || c == ',' }) }, stringResource(R.string.forms_number_default), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        FieldType.CHOICE -> {
+                            AreaField(f.options.joinToString("\n"), { fields[i] = f.copy(options = it.split('\n')) }, stringResource(R.string.forms_options_hint))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                ChoiceChip(stringResource(R.string.forms_allow_manual), f.allowManual, Modifier.weight(1f)) { fields[i] = f.copy(allowManual = !f.allowManual) }
+                                ChoiceChip(stringResource(R.string.forms_allow_saved), f.allowSaved, Modifier.weight(1f)) { fields[i] = f.copy(allowSaved = !f.allowSaved) }
+                            }
+                        }
+                        FieldType.DERIVED -> {
+                            Text(stringResource(R.string.forms_derived_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+                            fields.indices.filter { it != i }.chunked(4).forEach { row ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    row.forEach { j -> ChoiceChip("${j + 1}", f.source == j, Modifier.weight(1f)) { fields[i] = f.copy(source = j) } }
+                                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                                }
+                            }
+                        }
+                        FieldType.DATE -> {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SheetTextField(f.datePattern, { fields[i] = f.copy(datePattern = it) }, "ddMMyyyy", Modifier.weight(1f))
+                                Text("→ «" + ScanForm.formatDate(f.datePattern, today) + "»", color = Oled.TextPrimary, fontSize = 15.sp)
+                            }
+                            Text(stringResource(R.string.forms_date_hint), color = Oled.TextSecondary, fontSize = 13.sp)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SheetTextField(f.prefix, { fields[i] = f.copy(prefix = it) }, stringResource(R.string.forms_prefix), Modifier.weight(1f))
+                        SheetTextField(f.suffix, { fields[i] = f.copy(suffix = it) }, stringResource(R.string.forms_suffix), Modifier.weight(1f))
+                    }
+                    ChoiceChip(stringResource(R.string.forms_on_default), f.onByDefault, Modifier.fillMaxWidth()) { fields[i] = f.copy(onByDefault = !f.onByDefault) }
+                }
+            }
+            ChoiceChip(stringResource(R.string.fields_add), false, Modifier.fillMaxWidth()) { if (fields.size < 40) fields.add(FormField("", FieldType.SCAN)) }
+            Text(stringResource(R.string.fields_between), color = Oled.TextPrimary, fontSize = 15.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip("Enter", separator == 0, Modifier.weight(1f)) { separator = 0 }
+                ChoiceChip("Tab", separator == 1, Modifier.weight(1f)) { separator = 1 }
+                ChoiceChip(stringResource(R.string.fields_custom), separator == 2, Modifier.weight(1f)) { separator = 2 }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SheetTextField(custom, { custom = it.replace("\n", "").replace("\t", "").take(3) }, "|", Modifier.width(88.dp))
+                Text(stringResource(R.string.fields_custom_hint), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(stringResource(R.string.fields_finish), endEnter, Modifier.weight(1f)) { endEnter = !endEnter }
+                ChoiceChip(stringResource(R.string.forms_remember), keepValues, Modifier.weight(1f)) { keepValues = !keepValues }
+            }
+        }
+    }
+}
+
+/**
+ * Заповнення форми перед скануванням: зверху — поля (кожне можна вимкнути — тоді пропуск), знизу — QR, що одразу
+ * змінюється. Яскравість — на максимум, щоб сканер брав код з екрана.
+ */
+@Composable
+fun ScanFormScreen(
+    form: ScanForm,
+    saved: List<QrCode>,
+    onClose: () -> Unit,
+    onEdit: () -> Unit,
+    onSaveCode: (String, String) -> Unit,
+    onRemember: (ScanForm) -> Unit,
+    onMessage: (String) -> Unit,
+) {
+    val n = form.fields.size
+    val values = remember(form.id) {
+        mutableStateListOf<String>().apply {
+            addAll(
+                if (form.remember && form.lastValues.size == n) form.lastValues
+                else form.fields.map { f -> if (f.type == FieldType.CHOICE && f.value.isEmpty()) f.options.firstOrNull { it.isNotBlank() }.orEmpty() else f.value },
+            )
+        }
+    }
+    val enabled = remember(form.id) {
+        mutableStateListOf<Boolean>().apply { addAll(if (form.remember && form.lastEnabled.size == n) form.lastEnabled else form.fields.map { it.onByDefault }) }
+    }
+    val today = remember { java.util.Date() }
+    val content = form.content(values.toList(), enabled.toList(), today)
+    val symbol = remember(content) { Symbol.encode(content, CodeKind.QR) }
+    var camFor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
+    var pickFor by remember { mutableStateOf<Int?>(null) }
+    var choiceFor by remember { mutableStateOf<Int?>(null) }
+    androidx.activity.compose.BackHandler(enabled = camFor == null) { onClose() }
+
+    // Яскравість — на максимум, поки форма відкрита.
+    val activity = LocalContext.current as? android.app.Activity
+    DisposableEffect(activity) {
+        val w = activity?.window
+        w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
+        onDispose { w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE } }
+    }
+    // Пам'ять введеного — якщо так задано у формі.
+    if (form.remember) {
+        LaunchedEffect(content) {
+            kotlinx.coroutines.delay(500)
+            onRemember(form.copy(lastValues = values.toList(), lastEnabled = enabled.toList()))
+        }
+    }
+
+    Box(Modifier.fillMaxSize().background(Oled.Black)) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClose), contentAlignment = Alignment.Center) { GlyphIcon(Glyph.Back, stringResource(R.string.back)) }
+                Text(form.name, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 4.dp))
+                IconSpot(Glyph.Edit, stringResource(R.string.forms_edit), onClick = onEdit)
+                IconSpot(Glyph.Save, stringResource(R.string.forms_save_code), enabled = symbol != null) { onSaveCode(content, form.name) }
+            }
+            // Поля.
+            Column(Modifier.weight(1f).fillMaxWidth().bouncyScroll().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                form.fields.forEachIndexed { i, f ->
+                    val on = enabled.getOrElse(i) { true }
+                    Column(Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ChoiceChip(f.label.ifBlank { stringResource(R.string.forms_field_n).format(i + 1) }, on, Modifier.weight(1f)) { enabled[i] = !on }
+                        }
+                        Row(Modifier.fillMaxWidth().padding(top = 4.dp).graphicsLayer { alpha = if (on) 1f else 0.35f }, verticalAlignment = Alignment.CenterVertically) {
+                            when (f.type) {
+                                FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> {
+                                    val shown = form.part(i, values.toList(), List(n) { true }, today)
+                                    Text(shown.ifEmpty { "—" }, color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp))
+                                }
+                                FieldType.SCAN -> {
+                                    SheetTextField(values[i], { values[i] = it.replace("\n", " ").replace("\t", " ") }, stringResource(R.string.forms_scan_placeholder), Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
+                                    IconSpot(Glyph.ScanQr, stringResource(R.string.mode_scan), enabled = on) { camFor = i to true }
+                                    IconSpot(Glyph.Photo, stringResource(R.string.mode_photo), enabled = on) { camFor = i to false }
+                                }
+                                FieldType.NUMBER -> {
+                                    SheetTextField(values[i], { values[i] = it.filter { c -> c.isDigit() || c == '.' || c == ',' } }, "0", Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done))
+                                    SheetButton("−", { values[i] = ((values[i].toIntOrNull() ?: 0) - 1).coerceAtLeast(0).toString() }, compact = true, modifier = Modifier.width(44.dp).padding(start = 6.dp))
+                                    SheetButton("+", { values[i] = ((values[i].toIntOrNull() ?: 0) + 1).toString() }, compact = true, modifier = Modifier.width(44.dp).padding(start = 6.dp))
+                                }
+                                FieldType.CHOICE -> {
+                                    val opts = f.options.filter { it.isNotBlank() }
+                                    IconSpot(Glyph.Back, null, enabled = on && opts.size > 1) {
+                                        val k = opts.indexOf(values[i]); values[i] = opts[if (k <= 0) opts.lastIndex else k - 1]
+                                    }
+                                    if (f.allowManual) {
+                                        SheetTextField(values[i], { values[i] = it.replace("\n", " ").replace("\t", " ") }, stringResource(R.string.forms_choice_placeholder), Modifier.weight(1f))
+                                    } else {
+                                        Text(
+                                            values[i].ifEmpty { "—" },
+                                            color = Oled.TextPrimary,
+                                            fontSize = 17.sp,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(enabled = opts.isNotEmpty()) { choiceFor = i }.padding(vertical = 10.dp),
+                                        )
+                                    }
+                                    IconSpot(Glyph.RotateRight, null, enabled = on && opts.size > 1) {
+                                        val k = opts.indexOf(values[i]); values[i] = opts[if (k < 0 || k >= opts.lastIndex) 0 else k + 1]
+                                    }
+                                    if (opts.isNotEmpty()) IconSpot(Glyph.More, stringResource(R.string.forms_choose), enabled = on) { choiceFor = i }
+                                    if (f.allowSaved && saved.isNotEmpty()) IconSpot(Glyph.Folder, stringResource(R.string.fields_from_saved), enabled = on) { pickFor = i }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            // QR — одразу з усіма змінами.
+            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                val side = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp * 0.66f, 300.dp)
+                if (symbol != null) {
+                    CodeImage(symbol, Modifier.size(side))
+                } else {
+                    Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, modifier = Modifier.height(side), textAlign = TextAlign.Center)
+                }
+            }
+        }
+        camFor?.let { (index, qr) ->
+            com.blacklaunch.qrcodes.scan.CameraScreen(
+                scanQr = qr,
+                onResult = { text, _ ->
+                    if (index < values.size) values[index] = text.replace("\n", " ").replace("\t", " ").trim()
+                    camFor = null
+                },
+                onClose = { camFor = null },
+                onMessage = onMessage,
+            )
+        }
+    }
+    pickFor?.let { index ->
+        SavedCodePicker(saved, onDismiss = { pickFor = null }) { code ->
+            if (index < values.size) values[index] = code.content.replace("\n", " ").replace("\t", " ")
+            pickFor = null
+        }
+    }
+    choiceFor?.let { index ->
+        val f = form.fields[index]
+        SheetDialog(onDismissRequest = { choiceFor = null }, title = f.label.ifBlank { stringResource(R.string.forms_choose) }, tall = true) {
+            Column(Modifier.bouncyScroll()) {
+                f.options.filter { it.isNotBlank() }.forEach { o ->
+                    MenuRow(Glyph.Save, o, { values[index] = o; choiceFor = null })
+                }
+            }
+        }
+    }
+}

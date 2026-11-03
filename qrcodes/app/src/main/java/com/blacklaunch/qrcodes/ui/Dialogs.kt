@@ -77,7 +77,7 @@ fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKi
             MenuRow(Glyph.Wifi, stringResource(R.string.form_wifi), { onForm(FormKind.Wifi) })
             MenuRow(Glyph.Person, stringResource(R.string.form_contact), { onForm(FormKind.Contact) })
             MenuRow(Glyph.Globe, stringResource(R.string.form_site), { onForm(FormKind.Site) })
-            MenuRow(Glyph.Keyboard, stringResource(R.string.fields_title), { onFields() })
+            MenuRow(Glyph.Keyboard, stringResource(R.string.forms_list_title), { onFields() })
             // Багато кодів одразу: серія з номерами чи список — усі в одну папку.
             Text(stringResource(R.string.batch_title), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
             MenuRow(Glyph.Grid, stringResource(R.string.batch_series), { onBatch(false) })
@@ -634,89 +634,6 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
     }
 }
 
-/**
- * Поля для сканера: один QR-код, що «вписує» по черзі кілька полів — між ними Enter (чи Tab), як натискав би сам.
- * Порожнє поле — пропуск (сканер лише перескочить його). Видно, що саме вийде: значення, пропуски й переходи.
- */
-@Composable
-fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
-    val fields = remember { androidx.compose.runtime.mutableStateListOf("", "") }
-    // Перехід між полями: 0 — Enter, 1 — Tab, 2 — свій символ (сканер замінює його на потрібну клавішу, напр. ↓).
-    var mode by remember { mutableStateOf(0) }
-    var custom by remember { mutableStateOf("|") }
-    // Наприкінці — завжди Enter (підтвердити), незалежно від переходу між полями.
-    var finish by remember { mutableStateOf(true) }
-    val sep = when (mode) {
-        1 -> "\t"
-        2 -> custom.ifEmpty { "|" }
-        else -> "\n"
-    }
-    val content = fields.joinToString(sep) + if (finish) "\n" else ""
-    val filled = fields.count { it.isNotBlank() }
-    val skipText = stringResource(R.string.fields_skip)
-    val sepMark = when (mode) {
-        1 -> "⇥"
-        2 -> "[" + custom.ifEmpty { "|" } + "]"
-        else -> "⏎"
-    }
-    val nameText = stringResource(R.string.fields_name, fields.size)
-    // У яке поле підставляємо збережений код (null — вікно вибору закрите).
-    var pickFor by remember { mutableStateOf<Int?>(null) }
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.fields_title), tall = true, buttons = {
-        SheetButton(stringResource(R.string.cancel), onDismiss)
-        SheetButton(stringResource(R.string.done), { onDone(content, nameText) }, tone = Tone.Confirm, enabled = filled > 0)
-    }) {
-        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.fields_hint), color = Oled.TextSecondary, fontSize = 14.sp)
-            Text(stringResource(R.string.fields_between), color = Oled.TextPrimary, fontSize = 15.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip("Enter", mode == 0, Modifier.weight(1f)) { mode = 0 }
-                ChoiceChip("Tab", mode == 1, Modifier.weight(1f)) { mode = 1 }
-                ChoiceChip(stringResource(R.string.fields_custom), mode == 2, Modifier.weight(1f)) { mode = 2 }
-            }
-            // Свій символ — поле завжди на місці (нічого не стрибає), діє, коли вибрано «Свій».
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetTextField(custom, { custom = it.replace("\n", "").replace("\t", "").take(3) }, "|", Modifier.width(88.dp))
-                Text(stringResource(R.string.fields_custom_hint), color = if (mode == 2) Oled.TextSecondary else Oled.TextSecondary.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.weight(1f))
-            }
-            fields.forEachIndexed { i, v ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${i + 1}", color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.width(28.dp))
-                    SheetTextField(v, { fields[i] = it.replace("\n", " ").replace("\t", " ") }, skipText, Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
-                    // Підставити зміст одного зі збережених кодів.
-                    if (saved.isNotEmpty()) {
-                        Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { pickFor = i }, contentAlignment = Alignment.Center) {
-                            GlyphIcon(Glyph.Folder, stringResource(R.string.fields_from_saved), tint = Oled.TextSecondary, size = 20.dp)
-                        }
-                    }
-                    if (fields.size > 1) {
-                        Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { fields.removeAt(i) }, contentAlignment = Alignment.Center) {
-                            GlyphIcon(Glyph.Close, null, tint = Oled.TextSecondary, size = 18.dp)
-                        }
-                    }
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip(stringResource(R.string.fields_add), false, Modifier.weight(1f)) { if (fields.size < 30) fields.add("") }
-                ChoiceChip(stringResource(R.string.fields_finish), finish, Modifier.weight(1f)) { finish = !finish }
-            }
-            // Як піде в сканер: значення, «пропуск» і переходи між полями.
-            Text(stringResource(R.string.fields_preview), color = Oled.TextPrimary, fontSize = 15.sp)
-            Text(
-                fields.joinToString(" $sepMark ") { if (it.isBlank()) "·$skipText·" else it } + if (finish) " ⏎" else "",
-                color = Oled.TextSecondary,
-                fontSize = 15.sp,
-            )
-            Text(stringResource(R.string.fields_count, fields.size, fields.size - filled), color = Oled.TextSecondary, fontSize = 13.sp)
-        }
-    }
-    pickFor?.let { index ->
-        SavedCodePicker(saved, onDismiss = { pickFor = null }) { code ->
-            if (index < fields.size) fields[index] = code.content.replace("\n", " ").replace("\t", " ")
-            pickFor = null
-        }
-    }
-}
 
 /** Вибір одного зі збережених кодів (з пошуком за назвою чи змістом). */
 @Composable
