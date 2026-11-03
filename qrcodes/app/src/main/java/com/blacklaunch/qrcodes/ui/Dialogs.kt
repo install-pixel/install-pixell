@@ -100,6 +100,8 @@ fun ItemMenu(
     onDelete: () -> Unit,
     onToFolder: () -> Unit,
     onFromFolder: (() -> Unit)?,
+    /** «Вибрати кілька» — режим вибору, цей код уже вибраний (null — пункту немає). */
+    onSelect: (() -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val action = remember(code.content) { com.blacklaunch.qrcodes.qr.ContentAction.detect(code.content) }
@@ -126,6 +128,7 @@ fun ItemMenu(
                 MenuRow(Glyph.Print, stringResource(R.string.print_share), onShare)
                 MenuRow(Glyph.Copy, stringResource(R.string.copy_text), onCopy)
             }
+            if (onSelect != null) MenuRow(Glyph.Save, stringResource(R.string.select_many), onSelect)
             MenuRow(Glyph.Folder, stringResource(R.string.folder_move), onToFolder)
             if (onFromFolder != null) MenuRow(Glyph.Back, stringResource(R.string.folder_take_out), onFromFolder)
             MenuRow(Glyph.Delete, stringResource(R.string.delete), onDelete, tone = Tone.Danger)

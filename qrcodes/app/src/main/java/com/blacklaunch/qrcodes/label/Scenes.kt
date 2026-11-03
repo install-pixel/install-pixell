@@ -24,10 +24,11 @@ object Scenes {
 
     /**
      * Сцена на наклейці: аркуш повертається так само, як картинка (вертикальна — вертикально), картинка — ціла по центру,
-     * коди з [codes] (по черзі, якщо їх менше, ніж місць) — у її квадратиках, без підпису й рамки. Інші елементи
-     * прибираються, щоб не налазили на малюнок.
+     * коди з [codes] (по черзі, якщо їх менше, ніж місць) — у її квадратиках, без рамки (підпис — [caption]). Інші
+     * елементи прибираються, щоб не налазили на малюнок. Кодів більше, ніж місць, — зайві тут не ставляться (їх
+     * розкладає екран наклейки на вільне місце поруч, див. [extra]).
      */
-    fun apply(scene: Scene, design: LabelDesign, codes: List<Element.Qr>): LabelDesign {
+    fun apply(scene: Scene, design: LabelDesign, codes: List<Element.Qr>, caption: Boolean = true, tw: ((String, Float) -> Float)? = null): LabelDesign {
         if (codes.isEmpty()) return design
         // Помітно вертикальна чи горизонтальна сцена — аркуш повертаємо так само; майже квадратна — лишаємо як є.
         val size = when {
@@ -39,15 +40,22 @@ object Scenes {
         val bg = BgImage(scene.source, scene.aspect, 0f, 0f, 1f).fitted(size)
         // Коди не повторюються: скільки є (зазвичай один) — стільки й місць зайнято; решта місць лишається вільною
         // під інші коди (новий код сам стане в наступне вільне місце).
-        val qrs = scene.slots.take(codes.size).mapIndexed { i, slot ->
+        var result = LabelDesign(size = size, elements = emptyList(), border = QrFrame.None, background = bg)
+        scene.slots.take(codes.size).forEachIndexed { i, slot ->
             val src = codes[i]
             val (x, y) = bg.pointMm(slot.fx, slot.fy)
             // Трохи більший за квадратик (разом із білою підкладкою) — лінії місця не видно.
             val side = (slot.side * bg.width * SLOT_COVER).coerceIn(Element.MIN_QR, Element.MAX_QR)
-            src.copy(id = i + 1, cx = x, cy = y, side = side, caption = false, frame = QrFrame.None, rotation = normalizeAngle(slot.rot + bg.rotation))
+            val qr = src.copy(id = i + 1, cx = x, cy = y, side = side, caption = caption, frame = QrFrame.None, rotation = normalizeAngle(slot.rot + bg.rotation))
+            // Підпис лишаємо, якщо він вміщається (не за краєм і не на сусідньому коді); інакше — код без підпису.
+            val placed = if (caption && tw != null && !Placement.fits(result, qr, tw)) qr.copy(caption = false) else qr
+            result = result.add(placed)
         }
-        return LabelDesign(size = size, elements = qrs, border = QrFrame.None, background = bg)
+        return result
     }
+
+    /** Коди, яким у сцені [scene] не вистачило місця (у [apply] вони не потрапили). */
+    fun extra(scene: Scene, codes: List<Element.Qr>): List<Element.Qr> = codes.drop(scene.slots.size)
 
     /** Наскільки код більший за квадратик сцени. */
     private const val SLOT_COVER = 1.06f

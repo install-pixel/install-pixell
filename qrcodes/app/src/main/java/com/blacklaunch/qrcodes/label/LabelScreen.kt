@@ -121,6 +121,7 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var captionDefault by remember { mutableStateOf(defaults.caption) }
     val tw: (String, Float) -> Float = renderer::textWidth
     val noRoom = stringResource(R.string.label_no_room)
+    val notFitText = stringResource(R.string.label_not_fit)
     val scanMe = stringResource(R.string.label_scan_me)
 
     fun newQr(id: Int, code: QrCode, size: LabelSize): Element.Qr {
@@ -149,7 +150,8 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     var design by remember {
         val first = LabelDesign(size = defaults.size)
         // Серія (багато кодів) — на наклейці перший як зразок макета; друк — кожен код окремою наклейкою.
-        val onSheet = if (start.size > MAX_ON_SHEET) start.take(1) else start
+        // Більше, ніж уміщається читабельних кодів (25 мм із підписом), — теж лише зразок.
+        val onSheet = if (start.size > MAX_ON_SHEET || start.size > LabelLayout.capacity(defaults.size)) start.take(1) else start
         val withCodes = onSheet.foldIndexed(first) { i, d, code -> d.add(newQr(i + 1, code, d.size)) }
         // Кілька кодів — одразу сіткою, кожен на своєму місці.
         mutableStateOf(restored ?: if (onSheet.size > 1) Arrange.grid(withCodes, tw) else withCodes)
@@ -302,6 +304,30 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     }
 
     /** Новий елемент — на найближче до [wantX], [wantY] вільне місце (типово — центр наклейки). */
+    /**
+     * Коди [qrs] — на вільні місця наклейки [base]: спершу у вільні квадратики сцени, далі — поруч, де є місце
+     * (зменшуючись не дрібніше, ніж до 25 мм). Повертає наклейку і скільки кодів не вмістилось.
+     */
+    fun placeCodes(base: LabelDesign, qrs: List<Element.Qr>): Pair<LabelDesign, Int> {
+        var d = base
+        var dropped = 0
+        qrs.forEach { q0 ->
+            val q = q0.copy(id = d.nextId)
+            val inSlot = Scenes.freeSlot(d)?.let { (c, side, rot) ->
+                val s = q.copy(cx = c.first, cy = c.second, side = side, frame = QrFrame.None, rotation = rot)
+                if (s.caption && !Placement.fits(d, s, tw)) s.copy(caption = false) else s
+            }
+            if (inSlot != null && Placement.fits(d, inSlot, tw)) {
+                d = d.add(inSlot)
+                return@forEach
+            }
+            val sides = listOf(q.side, minOf(q.side, LabelLayout.READABLE_QR_MM)).distinct()
+            val placed = sides.firstNotNullOfOrNull { side -> Placement.nearestFree(d, q.copy(side = side), tw, d.size.widthMm / 2, d.size.heightMm / 2) }
+            if (placed != null) d = d.add(placed) else dropped++
+        }
+        return d to dropped
+    }
+
     fun addElement(e: Element, wantX: Float = design.size.widthMm / 2, wantY: Float = design.size.heightMm / 2) {
         val placed = Placement.nearestFree(design, e, tw, wantX, wantY)
         if (placed == null) {
@@ -961,7 +987,12 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
                         Scenes.all.forEach { scene ->
                             val hgt = (96f * scene.aspect).coerceIn(64f, 150f).dp
                             SampleBox(null, selected = design.background?.source == scene.source, onClick = {
-                                commit(Scenes.apply(scene, design, sceneCodes))
+                                // Підпис — як і скрізь (не вміщається біля квадратика — без нього); кодів більше, ніж
+                                // місць, — зайві лягають поруч на вільне місце, їх можна переставити.
+                                val applied = Scenes.apply(scene, design, sceneCodes.map { it.copy(caption = captionDefault) }, captionDefault, tw)
+                                val (withExtra, dropped) = placeCodes(applied, Scenes.extra(scene, sceneCodes).map { it.copy(caption = captionDefault) })
+                                commit(withExtra)
+                                if (dropped > 0) onMessage(notFitText.format(dropped))
                                 selectedId = null
                                 bgSelected = true
                                 editTab = true
@@ -1203,41 +1234,89 @@ fun LabelScreen(start: List<QrCode>, saved: List<QrCode>, onClose: () -> Unit, o
     }
     if (pickerOpen) {
         val replacing = replaceFor
-        SheetDialog(onDismissRequest = { pickerOpen = false }, title = stringResource(if (replacing != null) R.string.label_replace_code else R.string.label_add_code)) {
-            LazyColumn {
-                items(saved, key = { it.id }) { code ->
+        val pickable = remember(saved) { saved.filter { !it.isForm } }
+        // Додаємо — можна вибрати кілька (✓), але не більше, ніж уміщається читабельних кодів (25 мм із підписом).
+        val picked = remember { androidx.compose.runtime.mutableStateListOf<Long>() }
+        val room = (LabelLayout.capacity(design.size) - codes.size).coerceAtLeast(0)
+        val capacityText = stringResource(R.string.label_capacity, LabelLayout.capacity(design.size))
+        val close = { pickerOpen = false; picked.clear() }
+        SheetDialog(
+            onDismissRequest = close,
+            title = stringResource(if (replacing != null) R.string.label_replace_code else R.string.label_add_code),
+            tall = true,
+            buttons = if (replacing != null) null else {
+                {
+                    com.blacklaunch.qrcodes.ui.SheetButton(stringResource(R.string.cancel), close)
+                    com.blacklaunch.qrcodes.ui.SheetButton(
+                        stringResource(R.string.label_add_n, picked.size),
+                        {
+                            val chosen = picked.mapNotNull { id -> pickable.firstOrNull { it.id == id } }
+                            val fresh = chosen.mapIndexed { i, code -> newQr(design.nextId + i, code, design.size) }
+                            if (design.background == null && codes.size + fresh.size > 1) {
+                                // Без фону — усі коди рівною сіткою (самі розкидаються по наклейці).
+                                commit(Arrange.grid(fresh.fold(design) { d, q -> d.add(q) }, tw))
+                                selectedId = null
+                            } else {
+                                val (d, dropped) = placeCodes(design, fresh)
+                                commit(d)
+                                selectedId = null
+                                if (dropped > 0) onMessage(notFitText.format(dropped))
+                            }
+                            close()
+                        },
+                        tone = com.blacklaunch.qrcodes.ui.Tone.Confirm,
+                        enabled = picked.isNotEmpty(),
+                    )
+                }
+            },
+        ) {
+            Column {
+                if (replacing == null) {
                     Text(
-                        code.title,
-                        color = Oled.TextPrimary,
-                        fontSize = 17.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                haptics.tap()
-                                if (replacing != null) {
-                                    val fresh = newQr(replacing.id, code, design.size)
-                                    tryChange(replacing.copy(content = fresh.content, title = fresh.title, barcode = fresh.barcode, kind = fresh.kind))
-                                    replaceFor = null
-                                } else {
-                                    // Сцена з вільним квадратиком — новий код стає саме туди (розмір і нахил місця).
-                                    val slot = Scenes.freeSlot(design)
-                                    val inSlot = slot?.let { (c, side, rot) ->
-                                        newQr(design.nextId, code, design.size).copy(cx = c.first, cy = c.second, side = side, caption = false, frame = QrFrame.None, rotation = rot)
-                                    }
-                                    if (inSlot != null && Placement.fits(design, inSlot, tw)) {
-                                        commit(design.add(inSlot))
-                                        selectedId = inSlot.id
+                        stringResource(R.string.label_pick_room, room),
+                        color = Oled.TextSecondary, fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+                LazyColumn {
+                    items(pickable, key = { it.id }) { code ->
+                        val on = code.id in picked
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    haptics.tap()
+                                    if (replacing != null) {
+                                        val fresh = newQr(replacing.id, code, design.size)
+                                        tryChange(replacing.copy(content = fresh.content, title = fresh.title, barcode = fresh.barcode, kind = fresh.kind))
+                                        replaceFor = null
+                                        close()
+                                    } else if (on) {
+                                        picked.remove(code.id)
+                                    } else if (picked.size >= room) {
+                                        haptics.longPress()
+                                        onMessage(capacityText)
                                     } else {
-                                        addElement(newQr(design.nextId, code, design.size))
+                                        picked.add(code.id)
                                     }
                                 }
-                                pickerOpen = false
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (replacing == null) {
+                                // Вибрано — галочка (як скрізь: яскравий кант і ✓, не колір).
+                                Box(
+                                    Modifier.size(26.dp).pencilFrame(13.dp, seed = code.id.toInt(), alpha = if (on) 0.9f else 0.35f, ink = if (on) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (on) GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary, size = 16.dp)
+                                }
+                                Spacer(Modifier.width(12.dp))
                             }
-                            .padding(horizontal = 8.dp, vertical = 12.dp),
-                    )
+                            Text(code.title, color = Oled.TextPrimary, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }

@@ -120,6 +120,15 @@ class LabelLayout(val settings: LabelSettings, itemCount: Int) {
             return max(MIN_QR_MM, min(byWidth, lo))
         }
 
+        /** Найменший код, який сканер упевнено бере з наклейки (мм). */
+        const val READABLE_QR_MM = 25f
+
+        /**
+         * Скільки кодів уміщається на одну наклейку [size], якщо кожен — [READABLE_QR_MM] мм із підписом (сіткою,
+         * з полями й проміжками). Не менше одного.
+         */
+        fun capacity(size: LabelSize): Int = LabelLayout(LabelSettings(size, READABLE_QR_MM, 1, true), 1).perPage
+
         fun captionLetters(qrMm: Float): Float = (qrMm * 0.11f).coerceIn(2.2f, 6f)
 
         fun captionArea(qrMm: Float, caption: Boolean): Float = if (caption) captionLetters(qrMm) * 3.1f else 0f

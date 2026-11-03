@@ -16,7 +16,7 @@ class ScenesTest {
     @Test
     fun codesLandInsideTheirSlotsOnEveryLabel() {
         for (size in LabelSize.PRESETS.filter { minOf(it.widthMm, it.heightMm) >= 100f }) for (scene in Scenes.all) {
-            val d = Scenes.apply(scene, LabelDesign(size = size), listOf(code))
+            val d = Scenes.apply(scene, LabelDesign(size = size), listOf(code), tw = tw)
             // Один код — одне місце; решта вільні й знаходяться для наступного коду.
             assertEquals("${scene.id} $size", 1, d.elements.size)
             assertEquals("${scene.id} $size", scene.slots.size > 1, Scenes.freeSlot(d) != null)

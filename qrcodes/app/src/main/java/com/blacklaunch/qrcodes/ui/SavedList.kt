@@ -96,6 +96,9 @@ class SavedListActions(
     val onCombine: (dragged: QrCode, target: QrCode) -> Unit,
     /** Код кинули на папку. */
     val onIntoFolder: (QrCode, Folder) -> Unit,
+    /** Режим «Вибрати кілька»: id вибраних (null — звичайний список); дотик — поставити / зняти ✓. */
+    val selection: Set<Long>? = null,
+    val onToggle: (QrCode) -> Unit = {},
 )
 
 /**
@@ -132,7 +135,7 @@ fun SavedList(
         }
     }
     // Перетягувати можна лише у звичайному списку чи в папці (не в результатах пошуку).
-    val canDrag = q.isEmpty()
+    val canDrag = q.isEmpty() && actions.selection == null
 
     Column(modifier) {
         // Заголовок: у папці — «назад», назва, меню папки; інакше — скільки збережено (чи знайдено).
@@ -492,7 +495,9 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
                         )
                     }
                 }
-                .pointerInput(code.id) {
+                .pointerInput(code.id, actions.selection != null) {
+                    // Під час вибору кількох свайп-видалення вимкнене.
+                    if (actions.selection != null) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var start = 0f
@@ -523,10 +528,10 @@ private fun SwipeRow(code: QrCode, actions: SavedListActions) {
                         }
                     }
                 }
-                .clickable { haptics.tap(); actions.onOpen(code) },
+                .clickable { haptics.tap(); if (actions.selection != null) actions.onToggle(code) else actions.onOpen(code) },
         ) {
             // Рядок (з чорним тлом) рухається й тане весь, разом зі своїм тлом.
-            SavedRow(code, Modifier)
+            SavedRow(code, Modifier, checked = actions.selection?.let { sel -> if (code.isForm) null else code.id in sel })
         }
     }
 }

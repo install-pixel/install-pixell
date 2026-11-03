@@ -358,4 +358,17 @@
     <string name="forms_off">Off</string>
     <string name="form_entry_sub">Scanner form</string>
     <string name="forms_one_hint">Every field is in this one code.</string>
+    <string name="label_not_fit">Did not fit: %1$d — make the label bigger or add them later.</string>
+    <string name="label_capacity">Up to %1$d codes fit on this label (25 mm, with a caption).</string>
+    <string name="label_pick_room">You can add %1$d more (25 mm, with a caption).</string>
+    <string name="label_add_n">Add (%1$d)</string>
+    <string name="select_many">Select several</string>
+    <string name="selected_n">Selected: %1$d</string>
+    <string name="sel_to_label">To label</string>
+    <string name="sel_to_folder">To folder</string>
+    <string name="deleted_n">Deleted: %1$d</string>
+    <string name="cap_title">Won’t fit on one label</string>
+    <string name="cap_text">A %1$d×%2$d mm label fits up to %3$d codes (25 mm, with a caption). Selected: %4$d.</string>
+    <string name="cap_each">Each one on its own label (%1$d)</string>
+    <string name="cap_first">First %1$d on one label</string>
 </resources>

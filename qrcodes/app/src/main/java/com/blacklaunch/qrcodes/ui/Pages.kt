@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
@@ -291,6 +292,12 @@ fun CreatePage(
     onCloseSearch: () -> Unit = {},
     openFolderId: Long? = null,
     onOpenFolder: (Long?) -> Unit = {},
+    /** Режим «Вибрати кілька»: скільки вибрано (null — звичайна капсула внизу). */
+    selectionCount: Int? = null,
+    onSelectionClose: () -> Unit = {},
+    onSelectionLabel: () -> Unit = {},
+    onSelectionFolder: () -> Unit = {},
+    onSelectionDelete: () -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
     val symbol = remember(input.text, format) { Symbol.encode(input.text, format) }
@@ -353,7 +360,9 @@ fun CreatePage(
         }
         Spacer(Modifier.height(4.dp))
         SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth(), query = if (searching) searchValue.text else "", openFolderId = openFolderId, onOpenFolder = onOpenFolder)
-        InputCapsule(
+        if (selectionCount != null) {
+            SelectionBar(selectionCount, onSelectionClose, onSelectionLabel, onSelectionFolder, onSelectionDelete)
+        } else InputCapsule(
             value = if (searching) searchValue else input,
             onValueChange = if (searching) onSearchChange else onInputChange,
             mode = mode,
@@ -370,6 +379,24 @@ fun CreatePage(
     }
 }
 
+/** Нижня панель режиму вибору: скільки вибрано, «скасувати» і дії з вибраними. */
+@Composable
+private fun SelectionBar(count: Int, onClose: () -> Unit, onLabel: () -> Unit, onFolder: () -> Unit, onDelete: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
+                GlyphIcon(Glyph.Close, stringResource(R.string.cancel))
+            }
+            Text(stringResource(R.string.selected_n, count), color = Oled.TextPrimary, fontSize = 17.sp, modifier = Modifier.padding(start = 6.dp).weight(1f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SheetButton(stringResource(R.string.sel_to_label), onLabel, tone = Tone.Confirm, enabled = count > 0, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.sel_to_folder), onFolder, enabled = count > 0, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.delete), onDelete, tone = Tone.Danger, enabled = count > 0, compact = true, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
 /** Ширина штрихкоду вгорі «Створити» і на весь екран: ширший за QR, щоб смуги не були надто тонкими. */
 fun barPreviewWidth(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp = minOf(available * 0.92f, 360.dp)
 
@@ -378,7 +405,7 @@ fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.u
 
 /** Рядок збереженого коду: маленький код, назва (зміст ховається, якщо є своя назва), дата, зірка вибраного. */
 @Composable
-internal fun SavedRow(code: QrCode, modifier: Modifier) {
+internal fun SavedRow(code: QrCode, modifier: Modifier, checked: Boolean? = null) {
     val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeKind) }
     Row(
         Modifier
@@ -411,6 +438,15 @@ internal fun SavedRow(code: QrCode, modifier: Modifier) {
         }
         if (code.isFavorite) {
             GlyphIcon(Glyph.Star, stringResource(R.string.in_favorites), tint = Oled.TextSecondary, size = 20.dp)
+        }
+        if (checked != null) {
+            // Режим вибору: кружечок, вибраний — яскравий кант і ✓.
+            Box(
+                Modifier.padding(start = 10.dp).size(28.dp).pencilFrame(14.dp, seed = code.id.toInt(), alpha = if (checked) 0.95f else 0.35f, ink = if (checked) SelectedInk else SheetInk),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (checked) GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary, size = 16.dp)
+            }
         }
     }
 }

@@ -214,7 +214,8 @@ class LabelRenderer(private val hand: Typeface) {
             val m = (if (e.barcode) maxOf(pad, 1f, e.side * 0.08f) else maxOf(pad, 1f)) * k
             val cardH = if (e.barcode) maxOf(blockH, blockW) else blockH
             val cy = blockTop + blockH / 2
-            canvas.drawRoundRect(RectF(blockLeft - m * 0.5f, cy - cardH / 2 - m * 0.5f, blockLeft + blockW + m * 0.5f, cy + cardH / 2 + m * 0.5f), m, m, Paint().apply { color = fill; isAntiAlias = true })
+            // Аркуш «Екран телефону» (чорний): картка під кодом — біла, як і плитка коду, без чорних смуг над і під штрихкодом.
+            canvas.drawRoundRect(RectF(blockLeft - m * 0.5f, cy - cardH / 2 - m * 0.5f, blockLeft + blockW + m * 0.5f, cy + cardH / 2 + m * 0.5f), m, m, Paint().apply { color = palette.qrTile ?: fill; isAntiAlias = true })
         }
         palette.qrTile?.let { tile ->
             // Біла картка під кодом (на чорному тлі) — з полем навколо, щоб сканер бачив межі коду.
@@ -231,10 +232,12 @@ class LabelRenderer(private val hand: Typeface) {
             val width = ((e.side + letters * 2) * k).toInt().coerceAtLeast(1)
             val textSize = letters * scale() * k
             // Розкладка підпису — з пам'яті: поки тягнеш код, вона не перебудовується щокадру.
-            val key = "${e.title}|$width|$textSize|${palette.ink}|${face().hashCode()}"
+            // На білій картці (тло-зображення на аркуші «Екран телефону») — темний підпис, інакше його не видно.
+            val captionInk = if (palette.blockFill != null && palette.qrTile != null) palette.qrDark else palette.ink
+            val key = "${e.title}|$width|$textSize|$captionInk|${face().hashCode()}"
             val layout = synchronized(captions) {
                 captions[key] ?: run {
-                    val text = TextPaint().apply { color = palette.ink; isAntiAlias = true; typeface = face(); this.textSize = textSize }
+                    val text = TextPaint().apply { color = captionInk; isAntiAlias = true; typeface = face(); this.textSize = textSize }
                     StaticLayout.Builder.obtain(e.title, 0, e.title.length, text, width)
                         .setAlignment(Layout.Alignment.ALIGN_CENTER)
                         .setMaxLines(2)

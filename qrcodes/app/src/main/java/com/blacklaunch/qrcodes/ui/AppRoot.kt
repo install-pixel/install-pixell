@@ -124,6 +124,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     var formEdit by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
     var formEditing by remember { mutableStateOf(false) }
     var formFill by remember { mutableStateOf<com.blacklaunch.qrcodes.qr.ScanForm?>(null) }
+    // «Вибрати кілька»: id вибраних кодів (null — звичайний список).
+    var selection by remember { mutableStateOf<Set<Long>?>(null) }
+    // Вибрали більше, ніж уміщається на наклейку, — питаємо, що робити.
+    var capFor by remember { mutableStateOf<List<QrCode>?>(null) }
+    var moveMany by remember { mutableStateOf<List<QrCode>?>(null) }
+    var newFolderMany by remember { mutableStateOf<List<QrCode>?>(null) }
+    val labelPrefs = remember { com.blacklaunch.qrcodes.label.LabelPrefs(context) }
     // Відкрита папка у списку — нові коди й форми створюються в ній.
     var currentFolder by rememberSaveable { mutableStateOf<Long?>(null) }
     // Форми, створені раніше, — теж рядками в списку.
@@ -136,6 +143,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     val textAlready = stringResource(R.string.already_saved)
     val textDeleted = stringResource(R.string.deleted)
     val textUndo = stringResource(R.string.undo)
+    val deletedManyText = stringResource(R.string.deleted_n)
     val textCopied = stringResource(R.string.copied)
     val textUnfavorited = stringResource(R.string.unfavorited)
     val textMovedTo = stringResource(R.string.folder_moved)
@@ -164,6 +172,16 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     fun openCode(code: QrCode) {
         if (code.isForm) formOf(code)?.let { formFill = it } else fullscreen = code
     }
+
+    /** Коди — на наклейку; більше, ніж уміщається читабельних (25 мм із підписом), — спершу питаємо. */
+    fun openLabel(list: List<QrCode>) {
+        val codes = list.filter { !it.isForm }
+        if (codes.isEmpty()) return
+        val size = labelPrefs.load().size
+        if (codes.size > 1 && codes.size > com.blacklaunch.qrcodes.label.LabelLayout.capacity(size)) capFor = codes else labelFor = codes
+    }
+
+    fun selectedCodes(): List<QrCode> = selection?.let { sel -> saved.orEmpty().filter { it.id in sel } }.orEmpty()
 
     fun delete(code: QrCode) {
         vm.delete(code)
@@ -246,10 +264,12 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     BackHandler(enabled = !searching && pager.currentPage == 1 && camera == null && labelFor == null) {
         scope.launch { pager.animateScrollToPage(0, animationSpec = PAGE_ANIM) }
     }
+    // «Назад» у режимі вибору — просто вийти з нього.
+    BackHandler(enabled = selection != null && camera == null && labelFor == null) { selection = null }
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || fieldsOpen || formEditing)
+    val blur = backdropAmount(capFor != null || moveMany != null || newFolderMany != null || folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || fieldsOpen || formEditing)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -325,6 +345,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                                 vm.moveToFolder(code, folder.id)
                                 show(textMovedTo.format(folder.name))
                             },
+                            selection = selection,
+                            onToggle = { code ->
+                                if (!code.isForm) selection = selection?.let { if (code.id in it) it - code.id else it + code.id }
+                            },
                         ),
                         focusRequester = focus,
                         format = format,
@@ -344,6 +368,22 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         },
                         openFolderId = currentFolder,
                         onOpenFolder = { currentFolder = it },
+                        selectionCount = selection?.size,
+                        onSelectionClose = { selection = null },
+                        onSelectionLabel = {
+                            openLabel(selectedCodes())
+                            selection = null
+                        },
+                        onSelectionFolder = { moveMany = selectedCodes() },
+                        onSelectionDelete = {
+                            val gone = selectedCodes()
+                            gone.forEach { vm.delete(it) }
+                            selection = null
+                            show(deletedManyText.format(gone.size), textUndo) {
+                                gone.forEach { vm.restore(it) }
+                                banner = null
+                            }
+                        },
                     )
                 }
                 }
@@ -516,6 +556,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                 menuFor = null
                 moveFor = code
             },
+            onSelect = if (code.isForm) null else {
+                {
+                    menuFor = null
+                    fullscreen = null
+                    selection = setOf(code.id)
+                }
+            },
             onFromFolder = if (code.folderId != null) {
                 {
                     menuFor = null
@@ -547,7 +594,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             onPrintAll = if (inside.isNotEmpty()) {
                 {
                     folderMenuFor = null
-                    labelFor = inside
+                    openLabel(inside)
                 }
             } else {
                 null
@@ -575,6 +622,48 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         FolderNameDialog(stringResource(R.string.folder_rename), folder.name, onDismiss = { folderRename = null }) {
             vm.renameFolder(folder.id, it)
             folderRename = null
+        }
+    }
+    // Вибрані — у папку (наявну чи нову).
+    moveMany?.let { list ->
+        FolderPicker(
+            folders,
+            null,
+            onDismiss = { moveMany = null },
+            onPick = { folder ->
+                moveMany = null
+                list.forEach { vm.moveToFolder(it, folder.id) }
+                selection = null
+                show(textMovedTo.format(folder.name))
+            },
+            onNew = {
+                moveMany = null
+                newFolderMany = list
+            },
+        )
+    }
+    newFolderMany?.let { list ->
+        FolderNameDialog(textNewFolder, "", onDismiss = { newFolderMany = null }, suggested = nextFolderName) { name ->
+            vm.createFolder(name, list.map { it.id }, list.maxOf { it.sortOrder })
+            newFolderMany = null
+            selection = null
+            show(textMovedTo.format(name))
+        }
+    }
+    // Вибрали більше, ніж уміщається на одну наклейку.
+    capFor?.let { list ->
+        val size = remember { labelPrefs.load().size }
+        val cap = com.blacklaunch.qrcodes.label.LabelLayout.capacity(size)
+        SheetDialog(onDismissRequest = { capFor = null }, title = stringResource(R.string.cap_title)) {
+            Column {
+                Text(
+                    stringResource(R.string.cap_text, Math.round(size.widthMm), Math.round(size.heightMm), cap, list.size),
+                    fontSize = 15.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+                MenuRow(Glyph.Grid, stringResource(R.string.cap_each, list.size), { capFor = null; labelFor = list })
+                MenuRow(Glyph.Print, stringResource(R.string.cap_first, cap), { capFor = null; labelFor = list.take(cap) })
+                MenuRow(Glyph.Close, stringResource(R.string.cancel), { capFor = null })
+            }
         }
     }
     moveFor?.let { code ->
