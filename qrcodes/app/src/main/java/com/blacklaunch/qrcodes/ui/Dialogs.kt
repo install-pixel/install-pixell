@@ -391,16 +391,18 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
             when (kind) {
                 FormKind.Wifi -> {
                     SheetTextField(a, { a = it }, stringResource(R.string.form_wifi_ssid), focusRequester = focus)
-                    if (security != com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE) {
-                        SheetTextField(b, { b = it }, stringResource(R.string.form_wifi_password), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password))
+                    // Поле пароля — завжди на місці (без пароля просто не враховується): нічого не стрибає.
+                    SheetTextField(b, { b = it }, stringResource(R.string.form_wifi_password), keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password))
+                    // Кнопки — рівними парами на всю ширину.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip("WPA/WPA2/WPA3", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA, Modifier.weight(1f)) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA }
+                        ChoiceChip(stringResource(R.string.form_wifi_wpa3_only), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA3, Modifier.weight(1f)) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA3 }
                     }
-                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ChoiceChip("WPA/WPA2/WPA3", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA }
-                        ChoiceChip(stringResource(R.string.form_wifi_wpa3_only), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA3) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WPA3 }
-                        ChoiceChip("WEP", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP }
-                        ChoiceChip(stringResource(R.string.form_wifi_open), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE }
-                        ChoiceChip(stringResource(R.string.form_wifi_hidden), hidden) { hidden = !hidden }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip("WEP", security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP, Modifier.weight(1f)) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.WEP }
+                        ChoiceChip(stringResource(R.string.form_wifi_open), security == com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE, Modifier.weight(1f)) { security = com.blacklaunch.qrcodes.qr.Payloads.WifiSecurity.NONE }
                     }
+                    ChoiceChip(stringResource(R.string.form_wifi_hidden), hidden, Modifier.fillMaxWidth()) { hidden = !hidden }
                 }
                 FormKind.Contact -> {
                     SheetTextField(a, { a = it }, stringResource(R.string.form_contact_name), focusRequester = focus)
@@ -655,9 +657,9 @@ fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, St
     }) {
         Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.fields_hint), color = Oled.TextSecondary, fontSize = 14.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip(stringResource(R.string.fields_enter), !tab) { tab = false }
-                ChoiceChip(stringResource(R.string.fields_tab), tab) { tab = true }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(stringResource(R.string.fields_enter), !tab, Modifier.weight(1f)) { tab = false }
+                ChoiceChip(stringResource(R.string.fields_tab), tab, Modifier.weight(1f)) { tab = true }
             }
             fields.forEachIndexed { i, v ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -676,9 +678,9 @@ fun FieldsDialog(saved: List<QrCode>, onDismiss: () -> Unit, onDone: (String, St
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SheetButton(stringResource(R.string.fields_add), { if (fields.size < 30) fields.add("") }, compact = true)
-                ChoiceChip(stringResource(R.string.fields_finish, sepMark), finish) { finish = !finish }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(stringResource(R.string.fields_add), false, Modifier.weight(1f)) { if (fields.size < 30) fields.add("") }
+                ChoiceChip(stringResource(R.string.fields_finish, sepMark), finish, Modifier.weight(1f)) { finish = !finish }
             }
             // Як піде в сканер: значення, «пропуск» і переходи між полями.
             Text(stringResource(R.string.fields_preview), color = Oled.TextPrimary, fontSize = 15.sp)

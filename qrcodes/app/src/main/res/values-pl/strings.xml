@@ -276,7 +276,7 @@
     <string name="fields_enter">Przejście: Enter</string>
     <string name="fields_tab">Przejście: Tab</string>
     <string name="fields_skip">pominięcie</string>
-    <string name="fields_add">+ Pole</string>
+    <string name="fields_add">Dodaj pole</string>
     <string name="fields_finish">%1$s na końcu</string>
     <string name="fields_preview">Jak trafi do skanera:</string>
     <string name="fields_count">Pól: %1$d, pominięć: %2$d</string>

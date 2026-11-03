@@ -278,7 +278,7 @@
     <string name="fields_enter">Next: Enter</string>
     <string name="fields_tab">Next: Tab</string>
     <string name="fields_skip">skip</string>
-    <string name="fields_add">+ Field</string>
+    <string name="fields_add">Add a field</string>
     <string name="fields_finish">%1$s at the end</string>
     <string name="fields_preview">What the scanner will type:</string>
     <string name="fields_count">Fields: %1$d, skips: %2$d</string>
