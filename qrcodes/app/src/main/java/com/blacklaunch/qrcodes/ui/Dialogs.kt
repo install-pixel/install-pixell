@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -172,9 +173,14 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
         // Яскравість — у власному вікні діалогу (воно зверху, система бере яскравість із нього). Поки поверх відкрите
         // меню — звичайна яскравість, а код розмитий і притемнений, як усе під меню.
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        DisposableEffect(window, covered) {
+        // Підвищена яскравість — спільне налаштування з формами (кнопка внизу); тоді світиться код, решта приглушена.
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
+        var bright by remember { mutableStateOf(settings.qrBright) }
+        val dim = if (bright && !covered) FORM_DIM else 1f
+        DisposableEffect(window, covered, bright) {
             window?.attributes = window?.attributes?.apply {
-                screenBrightness = if (covered) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+                screenBrightness = if (covered || !bright) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
             }
             onDispose { }
         }
@@ -196,12 +202,19 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
                     color = Oled.TextPrimary,
                     fontSize = 22.sp,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 16.dp),
+                    modifier = Modifier.padding(top = 16.dp).graphicsLayer { alpha = dim },
                 )
             }
             // Лише «Закрити» й «Меню» — усі дії (вибране, назва, друк, копіювати, видалити) в одному місці, у меню.
-            Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().graphicsLayer { alpha = dim }, horizontalArrangement = Arrangement.SpaceBetween) {
                 RoundButton(Glyph.Close, stringResource(R.string.close), onDismiss)
+                // Яскравість: увімкнено — значок яскравий, вимкнено — тьмяний.
+                RoundButton(
+                    Glyph.Flash,
+                    stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on),
+                    { bright = !bright; settings.qrBright = bright },
+                    ink = if (bright) SheetInk else SheetInk.copy(alpha = 0.4f),
+                )
                 RoundButton(Glyph.More, stringResource(R.string.more), onMenu)
             }
         }

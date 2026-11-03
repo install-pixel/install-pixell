@@ -527,7 +527,7 @@ fun ScanFormScreen(
     // Підсвітити можна лише весь екран, тож усе, крім коду, тоді приглушене — яскраво світиться саме код.
     val context = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
-    var bright by remember { mutableStateOf(settings.formBright) }
+    var bright by remember { mutableStateOf(settings.qrBright) }
     val dim = if (bright) FORM_DIM else 1f
     val activity = androidx.activity.compose.LocalActivity.current
     DisposableEffect(activity, bright) {
@@ -556,7 +556,7 @@ fun ScanFormScreen(
                 // Яскравість: увімкнено — значок яскравий, вимкнено — тьмяний.
                 IconSpot(Glyph.Flash, stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on), tint = if (bright) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.5f)) {
                     bright = !bright
-                    settings.formBright = bright
+                    settings.qrBright = bright
                 }
                 IconSpot(Glyph.Edit, stringResource(R.string.forms_edit), onClick = onEdit)
             }
@@ -717,4 +717,4 @@ fun ScanFormScreen(
 }
 
 /** Наскільки приглушене все, крім коду, поки яскравість на максимумі (на повній яскравості це приблизно звичайна). */
-private const val FORM_DIM = 0.5f
+internal const val FORM_DIM = 0.5f

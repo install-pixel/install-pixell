@@ -34,8 +34,11 @@ class AppSettings(context: Context) {
         get() = com.blacklaunch.qrcodes.qr.CodeKind.of(prefs.getString(KEY_FORMAT, null))
         set(value) = prefs.edit().putString(KEY_FORMAT, value.storage).apply()
 
-    /** Форма для сканера: яскравість на максимум, поки відкрита (решта екрана тоді приглушена — світиться код). */
-    var formBright: Boolean
+    /**
+     * Код для сканування (на весь екран чи у формі): яскравість на максимум (решта екрана тоді приглушена — світиться
+     * код). Одне налаштування на всю програму: вимкнув в одному місці — вимкнено скрізь.
+     */
+    var qrBright: Boolean
         get() = prefs.getBoolean(KEY_FORM_BRIGHT, true)
         set(value) = prefs.edit().putBoolean(KEY_FORM_BRIGHT, value).apply()
 
