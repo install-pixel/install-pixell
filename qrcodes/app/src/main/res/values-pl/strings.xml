@@ -372,4 +372,6 @@
     <string name="label_room_full">Więcej się nie zmieści: można dodać tylko %1$d tego samego rozmiaru.</string>
     <string name="share_each">Każdy kod osobnym obrazem (%1$d)</string>
     <string name="share_save_each">Zapisz każdy w galerii (%1$d)</string>
+    <string name="forms_bright_on">Zwiększ jasność ekranu</string>
+    <string name="forms_bright_off">Zwykła jasność</string>
 </resources>

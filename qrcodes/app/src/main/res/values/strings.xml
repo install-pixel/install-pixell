@@ -374,4 +374,6 @@
     <string name="label_room_full">You can add %1$d more of the same size — that’s all that fits.</string>
     <string name="share_each">Each code as its own image (%1$d)</string>
     <string name="share_save_each">Save each to the gallery (%1$d)</string>
+    <string name="forms_bright_on">Turn screen brightness up</string>
+    <string name="forms_bright_off">Normal brightness</string>
 </resources>

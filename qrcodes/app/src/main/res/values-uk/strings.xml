@@ -372,4 +372,6 @@
     <string name="label_room_full">Більше не вміститься: можна додати лише %1$d такого ж розміру.</string>
     <string name="share_each">Кожен код окремою картинкою (%1$d)</string>
     <string name="share_save_each">Зберегти кожен у галерею (%1$d)</string>
+    <string name="forms_bright_on">Підвищити яскравість екрана</string>
+    <string name="forms_bright_off">Звичайна яскравість</string>
 </resources>

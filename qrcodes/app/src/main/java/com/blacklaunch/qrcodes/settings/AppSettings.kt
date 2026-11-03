@@ -34,7 +34,13 @@ class AppSettings(context: Context) {
         get() = com.blacklaunch.qrcodes.qr.CodeKind.of(prefs.getString(KEY_FORMAT, null))
         set(value) = prefs.edit().putString(KEY_FORMAT, value.storage).apply()
 
+    /** Форма для сканера: яскравість на максимум, поки відкрита (решта екрана тоді приглушена — світиться код). */
+    var formBright: Boolean
+        get() = prefs.getBoolean(KEY_FORM_BRIGHT, true)
+        set(value) = prefs.edit().putBoolean(KEY_FORM_BRIGHT, value).apply()
+
     companion object {
+        private const val KEY_FORM_BRIGHT = "form_bright"
         private const val KEY_FORMAT = "format"
         private const val KEY_LANG = "language"
         private const val KEY_GLASS = "glass"

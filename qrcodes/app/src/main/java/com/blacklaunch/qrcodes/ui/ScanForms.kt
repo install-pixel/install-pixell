@@ -523,11 +523,16 @@ fun ScanFormScreen(
     val codes = remember(saved) { saved.filter { !it.isForm } }
     androidx.activity.compose.BackHandler(enabled = camFor == null) { onClose() }
 
-    // Яскравість — на максимум, поки форма відкрита.
+    // Яскравість — на максимум, поки форма відкрита (можна вимкнути кнопкою в шапці; вибір запам'ятовується).
+    // Підсвітити можна лише весь екран, тож усе, крім коду, тоді приглушене — яскраво світиться саме код.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val settings = remember { com.blacklaunch.qrcodes.settings.AppSettings(context) }
+    var bright by remember { mutableStateOf(settings.formBright) }
+    val dim = if (bright) FORM_DIM else 1f
     val activity = androidx.activity.compose.LocalActivity.current
-    DisposableEffect(activity) {
+    DisposableEffect(activity, bright) {
         val w = activity?.window
-        w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
+        if (bright) w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
         onDispose { w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE } }
     }
     // Пам'ять введеного — якщо так задано у формі.
@@ -545,9 +550,14 @@ fun ScanFormScreen(
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp).graphicsLayer { alpha = dim }, verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClose), contentAlignment = Alignment.Center) { GlyphIcon(Glyph.Back, stringResource(R.string.back)) }
                 Text(form.name, color = Oled.TextPrimary, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 4.dp))
+                // Яскравість: увімкнено — значок яскравий, вимкнено — тьмяний.
+                IconSpot(Glyph.Flash, stringResource(if (bright) R.string.forms_bright_off else R.string.forms_bright_on), tint = if (bright) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.5f)) {
+                    bright = !bright
+                    settings.formBright = bright
+                }
                 IconSpot(Glyph.Edit, stringResource(R.string.forms_edit), onClick = onEdit)
             }
             // Код — угорі, великий. Усе навколо нього має сталі місця: «‹ ›» — з боків (у режимі «Один код» місце лишається
@@ -563,7 +573,7 @@ fun ScanFormScreen(
             val qrSide = minOf(side, width - 32.dp - 120.dp)
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(56.dp), contentAlignment = Alignment.CenterStart) {
+                    Box(Modifier.width(56.dp).graphicsLayer { alpha = dim }, contentAlignment = Alignment.CenterStart) {
                         if (canStep) SheetButton("‹", { step = if (cur == 0) active.lastIndex else cur - 1 }, compact = true, modifier = Modifier.width(52.dp))
                     }
                     Box(
@@ -576,7 +586,7 @@ fun ScanFormScreen(
                             else -> Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, textAlign = TextAlign.Center)
                         }
                     }
-                    Box(Modifier.width(56.dp), contentAlignment = Alignment.CenterEnd) {
+                    Box(Modifier.width(56.dp).graphicsLayer { alpha = dim }, contentAlignment = Alignment.CenterEnd) {
                         if (canStep) SheetButton("›", { next() }, compact = true, modifier = Modifier.width(52.dp))
                     }
                 }
@@ -589,10 +599,10 @@ fun ScanFormScreen(
                         stringResource(R.string.forms_step, cur + 1, active.size, label) + if (skip > 0) " · " + stringResource(R.string.forms_step_skip, skip) else ""
                     }
                 }
-                Box(Modifier.fillMaxWidth().height(44.dp).padding(top = 4.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().height(44.dp).padding(top = 4.dp).graphicsLayer { alpha = dim }, contentAlignment = Alignment.Center) {
                     Text(info, color = Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
-                EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
+                EqualWidthRow(Modifier.fillMaxWidth().graphicsLayer { alpha = dim }, gap = 8.dp) {
                     ChoiceChip(stringResource(R.string.forms_mode_one), !steps) { steps = false; onRemember(snapshot(false)) }
                     ChoiceChip(stringResource(R.string.forms_mode_steps), steps) { steps = true; step = 0; onRemember(snapshot(true)) }
                 }
@@ -600,7 +610,7 @@ fun ScanFormScreen(
             // Те, що міняєш під час роботи.
             val shown = form.fields.indices.filter { form.fields[it].shownWhenFilling }
             Column(
-                Modifier.weight(1f).fillMaxWidth().bouncyScroll().padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.weight(1f).fillMaxWidth().graphicsLayer { alpha = dim }.bouncyScroll().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (shown.isEmpty()) Text(stringResource(R.string.forms_nothing_to_fill), color = Oled.TextSecondary, fontSize = 15.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -705,3 +715,6 @@ fun ScanFormScreen(
         }
     }
 }
+
+/** Наскільки приглушене все, крім коду, поки яскравість на максимумі (на повній яскравості це приблизно звичайна). */
+private const val FORM_DIM = 0.5f
