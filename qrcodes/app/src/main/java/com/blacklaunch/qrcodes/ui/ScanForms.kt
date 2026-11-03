@@ -279,7 +279,7 @@ fun ScanFormScreen(
     androidx.activity.compose.BackHandler(enabled = camFor == null) { onClose() }
 
     // Яскравість — на максимум, поки форма відкрита.
-    val activity = LocalContext.current as? android.app.Activity
+    val activity = androidx.activity.compose.LocalActivity.current
     DisposableEffect(activity) {
         val w = activity?.window
         w?.attributes = w?.attributes?.apply { screenBrightness = android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL }
