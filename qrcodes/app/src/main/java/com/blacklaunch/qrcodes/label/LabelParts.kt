@@ -206,16 +206,12 @@ internal fun SelectedPanel(
             }
             Spacer(Modifier.width(8.dp))
             SheetButton("−", { onChange(element.resized((element.size - 1f).coerceAtLeast(min))) }, compact = true, modifier = Modifier.width(40.dp))
-            Slider(
+            // Шкала від руки (олівцем / склом — за стилем), як у лаунчері.
+            com.blacklaunch.qrcodes.ui.HandSlider(
                 value = element.size.coerceIn(min, max),
-                onValueChange = { onChange(element.resized(it.roundToInt().toFloat())) },
+                onValueChange = { v -> val r = v.roundToInt().toFloat(); if (r != element.size) onChange(element.resized(r)) },
                 valueRange = min..maxOf(max, min + 1f),
-                colors = SliderDefaults.colors(
-                    thumbColor = SheetInk,
-                    activeTrackColor = SheetInk.copy(alpha = 0.8f),
-                    inactiveTrackColor = SheetInk.copy(alpha = 0.2f),
-                ),
-                modifier = Modifier.weight(1f).height(36.dp).padding(horizontal = 6.dp),
+                modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
             )
             SheetButton("+", { onChange(element.resized((element.size + 1f).coerceAtMost(max))) }, compact = true, modifier = Modifier.width(40.dp))
         }
