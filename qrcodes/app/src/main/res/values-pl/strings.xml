@@ -310,4 +310,10 @@
     <string name="forms_scan_placeholder">Zeskanuj, sfotografuj lub wpisz</string>
     <string name="forms_choice_placeholder">Wybierz lub wpisz</string>
     <string name="forms_choose">Wybierz</string>
+    <string name="forms_mode_one">Jeden kod</string>
+    <string name="forms_mode_steps">Pole po polu</string>
+    <string name="forms_step">Pole %1$d z %2$d · %3$s</string>
+    <string name="forms_step_skip">Najpierw pomiń pól: %1$d (strzałka w dół na skanerze), potem skanuj.</string>
+    <string name="forms_step_tap">Zeskanuj, naciśnij strzałkę na skanerze i dotknij kodu — pojawi się następne pole.</string>
+    <string name="forms_step_empty">Brak wypełnionych pól.</string>
 </resources>

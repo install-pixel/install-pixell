@@ -312,4 +312,10 @@
     <string name="forms_scan_placeholder">Scan, photograph or type</string>
     <string name="forms_choice_placeholder">Pick or type</string>
     <string name="forms_choose">Choose</string>
+    <string name="forms_mode_one">One code</string>
+    <string name="forms_mode_steps">Field by field</string>
+    <string name="forms_step">Field %1$d of %2$d · %3$s</string>
+    <string name="forms_step_skip">First skip %1$d field(s) on the scanner with the down arrow, then scan.</string>
+    <string name="forms_step_tap">Scan, press the arrow on the scanner and tap the code — the next field appears.</string>
+    <string name="forms_step_empty">No filled-in fields yet.</string>
 </resources>

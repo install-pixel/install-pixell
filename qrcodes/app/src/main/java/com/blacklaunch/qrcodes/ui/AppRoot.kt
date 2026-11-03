@@ -383,7 +383,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                         onClose = { formFill = null },
                         onEdit = { formEdit = f; formEditing = true },
                         onSaveCode = { content, name -> vm.save(content, com.blacklaunch.qrcodes.qr.CodeKind.QR, name) { show(savedText) } },
-                        onRemember = { updated -> forms = formStore.save(updated) },
+                        onRemember = { updated -> forms = formStore.save(updated); if (formFill?.id == updated.id) formFill = updated },
                         onMessage = { show(it) },
                     )
                 }

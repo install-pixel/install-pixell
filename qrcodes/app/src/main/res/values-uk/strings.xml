@@ -310,4 +310,10 @@
     <string name="forms_scan_placeholder">Скануй, сфотографуй або впиши</string>
     <string name="forms_choice_placeholder">Вибери або впиши</string>
     <string name="forms_choose">Вибрати</string>
+    <string name="forms_mode_one">Один код</string>
+    <string name="forms_mode_steps">По полю</string>
+    <string name="forms_step">Поле %1$d з %2$d · %3$s</string>
+    <string name="forms_step_skip">Спершу пропустіть полів: %1$d (стрілка вниз на сканері), потім скануйте.</string>
+    <string name="forms_step_tap">Скануйте, натисніть стрілку на сканері й торкніться коду — з’явиться наступне поле.</string>
+    <string name="forms_step_empty">Поки немає заповнених полів.</string>
 </resources>

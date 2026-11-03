@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -273,6 +274,9 @@ fun ScanFormScreen(
     val today = remember { java.util.Date() }
     val content = form.content(values.toList(), enabled.toList(), today)
     val symbol = remember(content) { Symbol.encode(content, CodeKind.QR) }
+    var steps by remember(form.id) { mutableStateOf(form.steps) }
+    var step by remember(form.id) { mutableIntStateOf(0) }
+    fun snapshot(st: Boolean) = form.copy(lastValues = values.toList(), lastEnabled = enabled.toList(), steps = st)
     var camFor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
     var pickFor by remember { mutableStateOf<Int?>(null) }
     var choiceFor by remember { mutableStateOf<Int?>(null) }
@@ -289,7 +293,7 @@ fun ScanFormScreen(
     if (form.remember) {
         LaunchedEffect(content) {
             kotlinx.coroutines.delay(500)
-            onRemember(form.copy(lastValues = values.toList(), lastEnabled = enabled.toList()))
+            onRemember(snapshot(steps))
         }
     }
 
@@ -353,13 +357,55 @@ fun ScanFormScreen(
                 }
                 Spacer(Modifier.height(8.dp))
             }
-            // QR — одразу з усіма змінами.
-            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                val side = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp * 0.66f, 300.dp)
-                if (symbol != null) {
-                    CodeImage(symbol, Modifier.size(side))
-                } else {
-                    Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, modifier = Modifier.height(side), textAlign = TextAlign.Center)
+            // Режим: один код на всю форму або по коду на поле.
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(stringResource(R.string.forms_mode_one), !steps, Modifier.weight(1f)) { steps = false; onRemember(snapshot(false)) }
+                ChoiceChip(stringResource(R.string.forms_mode_steps), steps, Modifier.weight(1f)) { steps = true; step = 0; onRemember(snapshot(true)) }
+            }
+            val side = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp * 0.62f, 290.dp)
+            if (!steps) {
+                // QR — одразу з усіма змінами.
+                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    if (symbol != null) {
+                        CodeImage(symbol, Modifier.size(side))
+                    } else {
+                        Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, modifier = Modifier.height(side), textAlign = TextAlign.Center)
+                    }
+                }
+            } else {
+                val active = form.activeSteps(values.toList(), enabled.toList(), today)
+                val cur = step.coerceIn(0, (active.size - 1).coerceAtLeast(0))
+                val idx = active.getOrNull(cur)
+                val stepText = idx?.let { form.part(it, values.toList(), enabled.toList(), today) }.orEmpty()
+                val stepSymbol = remember(stepText) { if (stepText.isEmpty()) null else Symbol.encode(stepText, CodeKind.QR) }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (idx == null) {
+                        Text(stringResource(R.string.forms_step_empty), color = Oled.TextSecondary, fontSize = 16.sp, textAlign = TextAlign.Center, modifier = Modifier.height(side))
+                    } else {
+                        val label = form.fields[idx].label.ifBlank { stringResource(R.string.forms_field_n).format(idx + 1) }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            SheetButton("‹", { step = if (cur == 0) active.lastIndex else cur - 1 }, compact = true, modifier = Modifier.width(48.dp))
+                            Text(
+                                stringResource(R.string.forms_step, cur + 1, active.size, label),
+                                color = Oled.TextPrimary, fontSize = 17.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                            )
+                            SheetButton("›", { step = if (cur >= active.lastIndex) 0 else cur + 1 }, compact = true, modifier = Modifier.width(48.dp))
+                        }
+                        val skip = form.skipBefore(active, cur)
+                        Text(
+                            if (skip > 0) stringResource(R.string.forms_step_skip, skip) else stringResource(R.string.forms_step_tap),
+                            color = if (skip > 0) Oled.TextPrimary else Oled.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        )
+                        Box(
+                            Modifier.size(side).clip(RoundedCornerShape(12.dp)).clickable { step = if (cur >= active.lastIndex) 0 else cur + 1 },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (stepSymbol != null) CodeImage(stepSymbol, Modifier.fillMaxSize())
+                            else Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, textAlign = TextAlign.Center)
+                        }
+                    }
                 }
             }
         }

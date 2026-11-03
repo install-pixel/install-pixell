@@ -35,4 +35,13 @@ class ScanFormTest {
         val c = form.content(listOf("12345", "R2", "", "", "24"), listOf(true, true, false, true, true), day)
         assertEquals("12345|R2||12345P|24E\n", c)
     }
+
+    @Test
+    fun stepsSkipSwitchedOffFields() {
+        val form = ScanForm("t", "t", listOf(FormField("a", FieldType.TEXT, "A"), FormField("b", FieldType.TEXT, "B"), FormField("c", FieldType.TEXT, "C")))
+        val active = form.activeSteps(listOf("", "", ""), listOf(true, false, true), java.util.Date(0))
+        assertEquals(listOf(0, 2), active)
+        assertEquals(0, form.skipBefore(active, 0))
+        assertEquals(1, form.skipBefore(active, 1))
+    }
 }

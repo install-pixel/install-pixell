@@ -43,6 +43,8 @@ data class ScanForm(
     val remember: Boolean = false,
     val lastValues: List<String> = emptyList(),
     val lastEnabled: List<Boolean> = emptyList(),
+    /** Показувати по одному QR на поле (для сканерів, що не приймають Tab/Enter у коді). */
+    val steps: Boolean = false,
 ) {
     val sep: String get() = when (separator) {
         1 -> "\t"
@@ -73,8 +75,19 @@ data class ScanForm(
     fun content(values: List<String>, enabled: List<Boolean>, today: java.util.Date): String =
         fields.indices.joinToString(sep) { part(it, values, enabled, today) } + if (endEnter) "\n" else ""
 
+    /** Поля, які треба вводити покроково: увімкнені й не порожні. */
+    fun activeSteps(values: List<String>, enabled: List<Boolean>, today: java.util.Date): List<Int> =
+        fields.indices.filter { part(it, values, enabled, today).isNotEmpty() }
+
+    /** Скільки полів пропустити (стрілкою) перед кроком [step]. */
+    fun skipBefore(active: List<Int>, step: Int): Int {
+        val cur = active.getOrNull(step) ?: return 0
+        val prev = if (step == 0) -1 else active[step - 1]
+        return cur - prev - 1
+    }
+
     fun toJson(): JSONObject = JSONObject()
-        .put("id", id).put("name", name).put("sep", separator).put("custom", custom).put("end", endEnter).put("remember", remember)
+        .put("id", id).put("name", name).put("sep", separator).put("custom", custom).put("end", endEnter).put("remember", remember).put("steps", steps)
         .put("last", JSONArray(lastValues)).put("lastOn", JSONArray(lastEnabled))
         .put("fields", JSONArray().apply {
             fields.forEach { f ->
@@ -116,6 +129,7 @@ data class ScanForm(
                 custom = o.optString("custom", "|"),
                 endEnter = o.optBoolean("end", true),
                 remember = o.optBoolean("remember"),
+                steps = o.optBoolean("steps"),
                 lastValues = o.optJSONArray("last")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty(),
                 lastEnabled = o.optJSONArray("lastOn")?.let { a -> (0 until a.length()).map { a.optBoolean(it, true) } }.orEmpty(),
             )
