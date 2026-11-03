@@ -176,7 +176,7 @@
     <string name="help">Jak używać</string>
     <string name="help_back">Wstecz</string>
     <string name="help_create_t">Utwórz kod</string>
-    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod od razu pojawia się u góry.\n• Okrągły przycisk po prawej — zapisz; pole się czyści.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skan cudzego QR, tekst ze zdjęcia, a także Wi‑Fi, kontakt i strona.\n• „Kod QR / Kod kreskowy” nad podglądem — co tworzyć. Wybór jest zapamiętywany.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.\n• „Wiele kodów naraz” (ikona po lewej w kapsule): seria z numerami (PALETA-001…100) albo lista — wszystkie do nowego folderu; w druku — „Każdy kod na osobnej etykiecie”.\n• Przycisk rodzaju kodu obok „Kod QR / Kod kreskowy” — Data Matrix, Aztec, EAN-8, UPC, Code 39 i inne.</string>
+    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod od razu pojawia się u góry.\n• Okrągły przycisk po prawej — zapisz; pole się czyści.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skan cudzego QR, tekst ze zdjęcia, a także Wi‑Fi, kontakt i strona.\n• „Kod QR / Kod kreskowy” nad podglądem — co tworzyć. Wybór jest zapamiętywany.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.\n• „Wiele kodów naraz” (ikona po lewej w kapsule): seria z numerami (PALETA-001…100) albo lista — wszystkie do nowego folderu; w druku — „Każdy kod na osobnej etykiecie”.\n• Trzeci przycisk obok „Kod QR / Kod kreskowy” — rodzaj wybranego: dla QR — QR, Data Matrix, Aztec; dla kodu kreskowego — Auto, EAN-8, UPC, Code 39 i inne.\n• „Pola dla skanera”: jeden QR wypełnia kilka pól po kolei (Enter lub Tab między nimi), puste pole — pominięcie.</string>
     <string name="help_camera_t">Aparat i tekst ze zdjęcia</string>
     <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Latarka — przycisk na ekranie aparatu.</string>
     <string name="help_list_t">Zapisane i szukanie</string>
@@ -229,7 +229,6 @@
     <string name="content_exists">Taki kod już jest wśród zapisanych</string>
     <string name="label_draft_restored">Przywrócono niezapisaną etykietę — taką, jak była</string>
     <string name="kind_auto">Auto</string>
-    <string name="kind_title">Rodzaj kodu</string>
     <string name="kind_hint_qr">Najpopularniejszy: dowolny tekst, linki, Wi‑Fi, polskie litery</string>
     <string name="kind_hint_datamatrix">Mały kwadratowy — drobne części i medycyna; tylko alfabet łaciński</string>
     <string name="kind_hint_aztec">Kwadratowy bez marginesu — bilety, karty pokładowe; dowolny tekst</string>
@@ -270,4 +269,16 @@
     <string name="action_wifi">Połącz z Wi‑Fi</string>
     <string name="action_contact">Zapisz kontakt</string>
     <string name="action_no_app">Na telefonie nie ma aplikacji do tego</string>
+    <string name="kind_title_qr">Rodzaj kodu kwadratowego</string>
+    <string name="kind_title_bar">Rodzaj kodu kreskowego</string>
+    <string name="fields_title">Pola dla skanera</string>
+    <string name="fields_hint">Jeden kod QR wypełnia kilka pól po kolei: skaner „wpisuje” wartość i naciska Enter (lub Tab). Puste pole — pominięcie: skaner tylko je przeskoczy.</string>
+    <string name="fields_enter">Przejście: Enter</string>
+    <string name="fields_tab">Przejście: Tab</string>
+    <string name="fields_skip">pominięcie</string>
+    <string name="fields_add">+ Pole</string>
+    <string name="fields_finish">%1$s na końcu</string>
+    <string name="fields_preview">Jak trafi do skanera:</string>
+    <string name="fields_count">Pól: %1$d, pominięć: %2$d</string>
+    <string name="fields_name">Pola dla skanera (%1$d)</string>
 </resources>

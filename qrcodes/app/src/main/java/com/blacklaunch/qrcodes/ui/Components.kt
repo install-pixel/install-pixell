@@ -739,7 +739,7 @@ fun ChoiceChip(text: String, selected: Boolean, modifier: Modifier = Modifier, o
         // Місце під ✓ є завжди (невибрана — просто невидима), тож кнопка не міняє розмір і нічого не смикається.
         GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary.copy(alpha = if (selected) 1f else 0f), size = 16.dp)
         Spacer(Modifier.width(6.dp))
-        Text(text, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, softWrap = false)
+        Text(text, color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -786,5 +786,31 @@ fun FitLabel(
             overflow = TextOverflow.Ellipsis,
             style = base,
         )
+    }
+}
+
+/**
+ * Ряд однакових за шириною кнопок: кожна — як найширша з них (але всі разом не ширші за ряд), по центру.
+ * Перемикання чи зміна напису не змінює їхніх розмірів.
+ */
+@Composable
+fun EqualWidthRow(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val n = measurables.size.coerceAtLeast(1)
+        val widest = measurables.maxOfOrNull { it.maxIntrinsicWidth(constraints.maxHeight) } ?: 0
+        val limit = if (constraints.hasBoundedWidth) (constraints.maxWidth - gapPx * (n - 1)) / n else widest
+        val w = minOf(widest, limit).coerceAtLeast(0)
+        val placeables = measurables.map { it.measure(androidx.compose.ui.unit.Constraints.fixedWidth(w)) }
+        val h = placeables.maxOfOrNull { it.height } ?: 0
+        val total = w * n + gapPx * (n - 1)
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else total
+        layout(width, h) {
+            var x = (width - total) / 2
+            placeables.forEach { p ->
+                p.placeRelative(x, (h - p.height) / 2)
+                x += w + gapPx
+            }
+        }
     }
 }

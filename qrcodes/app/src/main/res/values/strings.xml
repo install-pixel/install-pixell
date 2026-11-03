@@ -178,7 +178,7 @@
     <string name="help">How to use</string>
     <string name="help_back">Back</string>
     <string name="help_create_t">Create a code</string>
-    <string name="help_create">• Swipe left from “Favourites” or tap “Create” at the top.\n• Type in the capsule at the bottom — the code appears above at once.\n• The round button on the right — save; the field clears.\n• The icon on the left of the capsule — input mode: by hand, scan someone’s QR, text from a photo, plus Wi‑Fi, contact and site.\n• “QR code / Barcode” above the preview — what to create. The choice is remembered.\n• Text shared from another app lands in the field by itself.\n• “Many codes at once” (the icon on the left of the capsule): a numbered series (PALLET-001…100) or a list — all into a new folder; when printing — “Each code on its own label”.\n• The code type button next to “QR code / Barcode” — Data Matrix, Aztec, EAN-8, UPC, Code 39 and more.</string>
+    <string name="help_create">• Swipe left from “Favourites” or tap “Create” at the top.\n• Type in the capsule at the bottom — the code appears above at once.\n• The round button on the right — save; the field clears.\n• The icon on the left of the capsule — input mode: by hand, scan someone’s QR, text from a photo, plus Wi‑Fi, contact and site.\n• “QR code / Barcode” above the preview — what to create. The choice is remembered.\n• Text shared from another app lands in the field by itself.\n• “Many codes at once” (the icon on the left of the capsule): a numbered series (PALLET-001…100) or a list — all into a new folder; when printing — “Each code on its own label”.\n• The third button next to “QR code / Barcode” — the type of the chosen one: for QR — QR, Data Matrix, Aztec; for barcodes — Auto, EAN-8, UPC, Code 39 and more.\n• “Fields for a scanner”: one QR fills several fields in turn (Enter or Tab between them), an empty field is a skip.</string>
     <string name="help_camera_t">Camera and text from a photo</string>
     <string name="help_camera">• “Scan QR” — point the camera at a code, its copy appears, save it.\n• “Text from photo” — take a photo, found words get frames.\n• Tap a word — choose or drop it.\n• Hold a word and drag — everything up to your finger is chosen.\n• The square next to a line — the whole line.\n• “Done” — the choice goes into the field, where you can fix it.\n• Both modes can take a picture from the gallery. The torch is a button on the camera screen.</string>
     <string name="help_list_t">Saved codes and search</string>
@@ -231,7 +231,6 @@
     <string name="content_exists">This code is already saved</string>
     <string name="label_draft_restored">Your unsaved label is back, just as you left it</string>
     <string name="kind_auto">Auto</string>
-    <string name="kind_title">Code type</string>
     <string name="kind_hint_qr">The most common: any text, links, Wi‑Fi, any alphabet</string>
     <string name="kind_hint_datamatrix">Small square — tiny parts and medicine; Latin letters only</string>
     <string name="kind_hint_aztec">Square without a margin — tickets, boarding passes; any text</string>
@@ -272,4 +271,16 @@
     <string name="action_wifi">Connect to Wi‑Fi</string>
     <string name="action_contact">Save contact</string>
     <string name="action_no_app">No app on this phone can do that</string>
+    <string name="kind_title_qr">Square code type</string>
+    <string name="kind_title_bar">Barcode type</string>
+    <string name="fields_title">Fields for a scanner</string>
+    <string name="fields_hint">One QR code fills several fields in turn: the scanner “types” a value and presses Enter (or Tab). An empty field is a skip: the scanner just jumps over it.</string>
+    <string name="fields_enter">Next: Enter</string>
+    <string name="fields_tab">Next: Tab</string>
+    <string name="fields_skip">skip</string>
+    <string name="fields_add">+ Field</string>
+    <string name="fields_finish">%1$s at the end</string>
+    <string name="fields_preview">What the scanner will type:</string>
+    <string name="fields_count">Fields: %1$d, skips: %2$d</string>
+    <string name="fields_name">Scanner fields (%1$d)</string>
 </resources>

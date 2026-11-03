@@ -66,7 +66,7 @@ import com.blacklaunch.qrcodes.ui.theme.Oled
 
 /** Вибір способу вводу (кнопка всередині капсули). */
 @Composable
-fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit, onBatch: (Boolean) -> Unit = {}) {
+fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit, onBatch: (Boolean) -> Unit = {}, onFields: () -> Unit = {}) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.mode_choose)) {
         Column(Modifier.bouncyScroll()) {
             MenuRow(Glyph.Keyboard, stringResource(R.string.mode_manual), { onPick(InputMode.Manual) })
@@ -77,6 +77,7 @@ fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKi
             MenuRow(Glyph.Wifi, stringResource(R.string.form_wifi), { onForm(FormKind.Wifi) })
             MenuRow(Glyph.Person, stringResource(R.string.form_contact), { onForm(FormKind.Contact) })
             MenuRow(Glyph.Globe, stringResource(R.string.form_site), { onForm(FormKind.Site) })
+            MenuRow(Glyph.Keyboard, stringResource(R.string.fields_title), { onFields() })
             // Багато кодів одразу: серія з номерами чи список — усі в одну папку.
             Text(stringResource(R.string.batch_title), color = Oled.TextSecondary, fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 2.dp))
             MenuRow(Glyph.Grid, stringResource(R.string.batch_series), { onBatch(false) })
@@ -374,7 +375,8 @@ fun PayloadForm(kind: FormKind, onDismiss: () -> Unit, onDone: (String, String) 
         FormKind.Contact -> a.isNotBlank() && (b.isNotBlank() || c.isNotBlank())
         FormKind.Site -> a.isNotBlank()
     }
-    SheetDialog(onDismissRequest = onDismiss, title = title, buttons = {
+    // Усі форми — вікнами однакової сталої висоти (не ростуть і не стрибають, коли додаєш поля).
+    SheetDialog(onDismissRequest = onDismiss, title = title, tall = true, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.done), {
             val p = com.blacklaunch.qrcodes.qr.Payloads
@@ -525,9 +527,10 @@ fun ContentDialog(code: QrCode, onDismiss: () -> Unit, onApply: (String) -> Unit
 /** Вибір виду коду: квадратні (QR, Data Matrix, Aztec) і штрихкоди (авто чи конкретний), з тим, що кожен приймає. */
 @Composable
 fun KindPicker(current: com.blacklaunch.qrcodes.qr.CodeKind, onDismiss: () -> Unit, onPick: (com.blacklaunch.qrcodes.qr.CodeKind) -> Unit) {
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.kind_title)) {
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(if (current.format == com.blacklaunch.qrcodes.qr.CodeFormat.BARCODE) R.string.kind_title_bar else R.string.kind_title_qr), tall = true) {
         Column(Modifier.bouncyScroll()) {
-            com.blacklaunch.qrcodes.qr.CodeKind.entries.forEach { k ->
+            // Лише види вибраної категорії: для QR — квадратні, для штрихкоду — лінійні (типово «Авто»).
+            com.blacklaunch.qrcodes.qr.CodeKind.entries.filter { it.format == current.format }.forEach { k ->
                 val title = if (k == com.blacklaunch.qrcodes.qr.CodeKind.AUTO) stringResource(R.string.kind_auto) else k.title
                 ChoiceRow(title, stringResource(kindHint(k)), selected = k == current) { onPick(k) }
             }
@@ -574,7 +577,7 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
     val invalid = remember(contents, kind) { contents.count { com.blacklaunch.qrcodes.qr.Symbol.encode(it, kind) == null } }
     val folderDefault = (if (list) stringResource(R.string.batch_list_folder) else prefix.trim().trimEnd('-', '_', ' ', '/', '.').ifEmpty { stringResource(R.string.batch_series_folder) })
     val number = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, imeAction = ImeAction.Next)
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(if (list) R.string.batch_list else R.string.batch_series), buttons = {
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(if (list) R.string.batch_list else R.string.batch_series), tall = true, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.batch_create), { onCreate(contents, folder.trim().ifEmpty { folderDefault }) }, tone = Tone.Confirm, enabled = contents.isNotEmpty() && invalid == 0)
     }) {
@@ -625,6 +628,58 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
             if (invalid > 0) {
                 Text(stringResource(R.string.batch_invalid, invalid) + " " + stringResource(kindHint(kind)), color = Oled.Danger, fontSize = 14.sp)
             }
+        }
+    }
+}
+
+/**
+ * Поля для сканера: один QR-код, що «вписує» по черзі кілька полів — між ними Enter (чи Tab), як натискав би сам.
+ * Порожнє поле — пропуск (сканер лише перескочить його). Видно, що саме вийде: значення, пропуски й переходи.
+ */
+@Composable
+fun FieldsDialog(onDismiss: () -> Unit, onDone: (String, String) -> Unit) {
+    val fields = remember { androidx.compose.runtime.mutableStateListOf("", "") }
+    var tab by remember { mutableStateOf(false) }
+    var finish by remember { mutableStateOf(true) }
+    val sep = if (tab) "\t" else "\n"
+    val content = fields.joinToString(sep) + if (finish) sep else ""
+    val filled = fields.count { it.isNotBlank() }
+    val skipText = stringResource(R.string.fields_skip)
+    val sepMark = if (tab) "⇥" else "⏎"
+    val nameText = stringResource(R.string.fields_name, fields.size)
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.fields_title), tall = true, buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(stringResource(R.string.done), { onDone(content, nameText) }, tone = Tone.Confirm, enabled = filled > 0)
+    }) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.fields_hint), color = Oled.TextSecondary, fontSize = 14.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChoiceChip(stringResource(R.string.fields_enter), !tab) { tab = false }
+                ChoiceChip(stringResource(R.string.fields_tab), tab) { tab = true }
+            }
+            fields.forEachIndexed { i, v ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${i + 1}", color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.width(28.dp))
+                    SheetTextField(v, { fields[i] = it.replace("\n", " ").replace("\t", " ") }, skipText, Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+                    if (fields.size > 1) {
+                        Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { fields.removeAt(i) }, contentAlignment = Alignment.Center) {
+                            GlyphIcon(Glyph.Close, null, tint = Oled.TextSecondary, size = 18.dp)
+                        }
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SheetButton(stringResource(R.string.fields_add), { if (fields.size < 30) fields.add("") }, compact = true)
+                ChoiceChip(stringResource(R.string.fields_finish, sepMark), finish) { finish = !finish }
+            }
+            // Як піде в сканер: значення, «пропуск» і переходи між полями.
+            Text(stringResource(R.string.fields_preview), color = Oled.TextPrimary, fontSize = 15.sp)
+            Text(
+                fields.joinToString(" $sepMark ") { if (it.isBlank()) "·$skipText·" else it } + if (finish) " $sepMark" else "",
+                color = Oled.TextSecondary,
+                fontSize = 15.sp,
+            )
+            Text(stringResource(R.string.fields_count, fields.size, fields.size - filled), color = Oled.TextSecondary, fontSize = 13.sp)
         }
     }
 }

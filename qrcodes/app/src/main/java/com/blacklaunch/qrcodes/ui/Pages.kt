@@ -283,11 +283,11 @@ fun CreatePage(
     var kindPicker by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         // Що створюємо — вибирається раз тут і зберігається з кодом (у списку, на весь екран, на наклейці — так само).
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+        // Три однакові кнопки: QR-код, Штрихкод і вид кодування (для вибраного з них — «▾» відкриває список саме його видів).
+        EqualWidthRow(Modifier.fillMaxWidth().padding(bottom = 10.dp), gap = 8.dp) {
             ChoiceChip(stringResource(R.string.format_qr), !barcode) { if (barcode) onFormatChange(com.blacklaunch.qrcodes.qr.CodeKind.QR) }
             ChoiceChip(stringResource(R.string.format_barcode), barcode) { if (!barcode) onFormatChange(com.blacklaunch.qrcodes.qr.CodeKind.AUTO) }
-            // Вид коду: типово «Авто» (або QR); інші — вибрати тут.
-            SheetButton(if (format == com.blacklaunch.qrcodes.qr.CodeKind.AUTO) stringResource(R.string.kind_auto) else format.title, { kindPicker = true }, compact = true)
+            ChoiceChip((if (format == com.blacklaunch.qrcodes.qr.CodeKind.AUTO) stringResource(R.string.kind_auto) else format.title) + " ▾", false) { kindPicker = true }
         }
         if (kindPicker) {
             KindPicker(format, onDismiss = { kindPicker = false }) {
