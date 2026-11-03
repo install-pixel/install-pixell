@@ -540,7 +540,8 @@ fun ScanFormScreen(
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val width = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
     // Поки відкрита клавіатура, код менший — щоб поле, яке вводиш, було видно.
-    val side = if (imeOpen) 150.dp else minOf(width * 0.68f, 300.dp)
+    // Той самий розмір коду, що й скрізь (угорі на «Створити», на весь екран) — сканер бере його однаково.
+    val side = if (imeOpen) 150.dp else qrPreviewSide(width - 32.dp)
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
@@ -570,7 +571,7 @@ fun ScanFormScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         when {
-                            shownSymbol != null -> CodeImage(shownSymbol, Modifier.size(qrSide))
+                            shownSymbol != null -> CodeImage(shownSymbol, Modifier.size(qrSide), radius = 14.dp)
                             steps && idx == null -> Text(stringResource(R.string.forms_step_empty), color = Oled.TextSecondary, fontSize = 16.sp, textAlign = TextAlign.Center)
                             else -> Text(stringResource(R.string.too_long), color = Oled.Danger, fontSize = 16.sp, textAlign = TextAlign.Center)
                         }
