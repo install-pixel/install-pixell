@@ -319,4 +319,15 @@
     <string name="fields_down_a">↓ Стрілка · 1</string>
     <string name="fields_down_b">↓ Стрілка · 2</string>
     <string name="fields_down_hint">Між полями йде код клавіші «стрілка вниз» для термінала (VT100). Термінали приймають його одним із двох способів — спробуй 1, а якщо курсор не перейшов, 2.</string>
+    <string name="ftype_skip">Перехід</string>
+    <string name="forms_skip_hint">Нічого не вводить — лише натискає клавіші (напр. ↓ один раз), щоб перескочити поле й не перезаписати його.</string>
+    <string name="forms_moves">Переходи: %1$s</string>
+    <string name="forms_after">Після поля натиснути:</string>
+    <string name="forms_skip_keys">Які клавіші натиснути:</string>
+    <string name="forms_when_off">Якщо вимкнене:</string>
+    <string name="forms_move_form">Як у формі</string>
+    <string name="forms_off_same">Як зазвичай</string>
+    <string name="forms_off_short">вимк.:</string>
+    <string name="forms_times">Разів: %1$d</string>
+    <string name="forms_off_hint">Напр. дата вимкнена — натисни → стільки разів, скільки в ній символів, щоб курсор пройшов далі.</string>
 </resources>

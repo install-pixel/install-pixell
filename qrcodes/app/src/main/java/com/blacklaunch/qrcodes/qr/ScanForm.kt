@@ -8,7 +8,17 @@ import org.json.JSONObject
  * рахується сама (похідне поле, дата). Між полями — Enter, Tab чи свій символ; вимкнене поле — пропуск (курсор
  * у системі просто перескакує на наступне).
  */
-enum class FieldType { TEXT, SCAN, CHOICE, NUMBER, DERIVED, DATE }
+enum class FieldType { TEXT, SCAN, CHOICE, NUMBER, DERIVED, DATE, SKIP }
+
+/** Клавіші переходу: -1 — як у формі; 0 Enter, 1 Tab, 2 ↓, 3 →, 4 — нічого. */
+object MoveKey {
+    const val FORM = -1
+    const val ENTER = 0
+    const val TAB = 1
+    const val DOWN = 2
+    const val RIGHT = 3
+    const val NONE = 4
+}
 
 data class FormField(
     val label: String,
@@ -29,6 +39,12 @@ data class FormField(
     val suffix: String = "",
     /** Увімкнене, коли відкриваєш форму. */
     val onByDefault: Boolean = true,
+    /** Що натиснути після поля ([MoveKey]) і скільки разів. */
+    val move: Int = MoveKey.FORM,
+    val moveTimes: Int = 1,
+    /** Якщо поле вимкнене: -1 — як зазвичай (лише перехід після нього), інакше клавіша й кількість натискань. */
+    val offKey: Int = -1,
+    val offTimes: Int = 1,
 )
 
 data class ScanForm(
@@ -61,6 +77,7 @@ data class ScanForm(
             FieldType.TEXT -> f.value
             FieldType.DERIVED -> if (depth > fields.size || f.source == i) "" else raw(f.source, values, today, depth + 1)
             FieldType.DATE -> formatDate(f.datePattern, today)
+            FieldType.SKIP -> ""
             else -> values.getOrNull(i).orEmpty()
         }
     }
@@ -73,9 +90,42 @@ data class ScanForm(
         return if (r.isEmpty()) "" else f.prefix + r + f.suffix
     }
 
-    /** Увесь зміст QR: поля через розділювач (вимкнені — пропуском), у кінці Enter, якщо треба. */
-    fun content(values: List<String>, enabled: List<Boolean>, today: java.util.Date): String =
-        fields.indices.joinToString(sep) { part(it, values, enabled, today) } + if (endEnter) "\n" else ""
+    private val arrowPrefix: String get() = if (separator == 4) "\u001BO" else "\u001B["
+
+    /** Символи клавіші [k] ([MoveKey]) для термінала. */
+    fun key(k: Int): String = when (k) {
+        MoveKey.FORM -> sep
+        MoveKey.ENTER -> "\n"
+        MoveKey.TAB -> "\t"
+        MoveKey.DOWN -> arrowPrefix + "B"
+        MoveKey.RIGHT -> arrowPrefix + "C"
+        else -> ""
+    }
+
+    /** Що натискається після поля [i] (з урахуванням вимкнення). */
+    fun tail(i: Int, enabled: List<Boolean>): String {
+        val f = fields[i]
+        val on = enabled.getOrElse(i) { f.onByDefault }
+        return when {
+            !on && f.offKey >= 0 -> key(f.offKey).repeat(f.offTimes.coerceIn(0, 99))
+            !on && f.type == FieldType.SKIP -> ""
+            else -> key(f.move).repeat(f.moveTimes.coerceIn(0, 99))
+        }
+    }
+
+    /**
+     * Увесь зміст QR: кожне поле + його перехід (вимкнені — лише перехід або свої клавіші). Переходи після останнього
+     * заповненого поля відкидаються; у кінці Enter, якщо треба.
+     */
+    fun content(values: List<String>, enabled: List<Boolean>, today: java.util.Date): String {
+        val texts = fields.indices.map { part(it, values, enabled, today) }
+        val last = texts.indexOfLast { it.isNotEmpty() }
+        val body = if (last < 0) "" else buildString {
+            for (i in 0 until last) append(texts[i]).append(tail(i, enabled))
+            append(texts[last])
+        }
+        return body + if (endEnter) "\n" else ""
+    }
 
     /** Поля, які треба вводити покроково: увімкнені й не порожні. */
     fun activeSteps(values: List<String>, enabled: List<Boolean>, today: java.util.Date): List<Int> =
@@ -96,7 +146,8 @@ data class ScanForm(
                 put(
                     JSONObject().put("label", f.label).put("type", f.type.name).put("value", f.value).put("options", JSONArray(f.options))
                         .put("manual", f.allowManual).put("saved", f.allowSaved).put("source", f.source).put("date", f.datePattern)
-                        .put("prefix", f.prefix).put("suffix", f.suffix).put("on", f.onByDefault),
+                        .put("prefix", f.prefix).put("suffix", f.suffix).put("on", f.onByDefault)
+                        .put("move", f.move).put("moveN", f.moveTimes).put("off", f.offKey).put("offN", f.offTimes),
                 )
             }
         })
@@ -125,6 +176,10 @@ data class ScanForm(
                         prefix = f.optString("prefix"),
                         suffix = f.optString("suffix"),
                         onByDefault = f.optBoolean("on", true),
+                        move = f.optInt("move", MoveKey.FORM),
+                        moveTimes = f.optInt("moveN", 1),
+                        offKey = f.optInt("off", -1),
+                        offTimes = f.optInt("offN", 1),
                     )
                 },
                 separator = o.optInt("sep"),

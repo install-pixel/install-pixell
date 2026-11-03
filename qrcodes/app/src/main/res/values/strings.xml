@@ -321,4 +321,15 @@
     <string name="fields_down_a">↓ Arrow · 1</string>
     <string name="fields_down_b">↓ Arrow · 2</string>
     <string name="fields_down_hint">The down-arrow key code of a terminal (VT100) goes between fields. Terminals take it in one of two ways — try 1, and if the cursor does not move, 2.</string>
+    <string name="ftype_skip">Move</string>
+    <string name="forms_skip_hint">Enters nothing — only presses keys (e.g. ↓ once) to jump over a field without overwriting it.</string>
+    <string name="forms_moves">Moves: %1$s</string>
+    <string name="forms_after">After the field press:</string>
+    <string name="forms_skip_keys">Keys to press:</string>
+    <string name="forms_when_off">If switched off:</string>
+    <string name="forms_move_form">As in form</string>
+    <string name="forms_off_same">As usual</string>
+    <string name="forms_off_short">off:</string>
+    <string name="forms_times">Times: %1$d</string>
+    <string name="forms_off_hint">E.g. the date is off — press → as many times as it has characters, so the cursor goes past it.</string>
 </resources>

@@ -51,6 +51,7 @@ import com.blacklaunch.qrcodes.data.QrCode
 import com.blacklaunch.qrcodes.qr.CodeKind
 import com.blacklaunch.qrcodes.qr.FieldType
 import com.blacklaunch.qrcodes.qr.FormField
+import com.blacklaunch.qrcodes.qr.MoveKey
 import com.blacklaunch.qrcodes.qr.ScanForm
 import com.blacklaunch.qrcodes.qr.Symbol
 import com.blacklaunch.qrcodes.ui.theme.Oled
@@ -137,6 +138,41 @@ private fun FieldType.title(): Int = when (this) {
     FieldType.NUMBER -> R.string.ftype_number
     FieldType.DERIVED -> R.string.ftype_derived
     FieldType.DATE -> R.string.ftype_date
+    FieldType.SKIP -> R.string.ftype_skip
+}
+
+@Composable
+private fun moveName(k: Int): String = when (k) {
+    MoveKey.FORM -> stringResource(R.string.forms_move_form)
+    MoveKey.ENTER -> "Enter"
+    MoveKey.TAB -> "Tab"
+    MoveKey.DOWN -> "↓"
+    MoveKey.RIGHT -> "→"
+    else -> "—"
+}
+
+/** Короткий опис переходів поля, напр. «↓ ×1 · вимк.: → ×9». */
+@Composable
+private fun moveSummary(f: FormField): String {
+    val after = moveName(f.move) + if (f.move in MoveKey.ENTER..MoveKey.RIGHT && f.moveTimes != 1) " ×${f.moveTimes}" else ""
+    val off = if (f.offKey >= 0) " · " + stringResource(R.string.forms_off_short) + " " + moveName(f.offKey) + " ×${f.offTimes}" else ""
+    return after + off
+}
+
+/** Ряд кнопок-клавіш і лічильник «скільки разів». */
+@Composable
+private fun KeyPicker(keys: List<Int>, selected: Int, times: Int, showTimes: Boolean, labelFor: @Composable (Int) -> String, onKey: (Int) -> Unit, onTimes: (Int) -> Unit) {
+    keys.chunked(3).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            row.forEach { k -> ChoiceChip(labelFor(k), selected == k, Modifier.weight(1f)) { onKey(k) } }
+            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+    if (showTimes) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.forms_times, times), color = Oled.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        SheetButton("−", { onTimes((times - 1).coerceAtLeast(1)) }, compact = true, modifier = Modifier.width(48.dp))
+        SheetButton("+", { onTimes((times + 1).coerceAtMost(99)) }, compact = true, modifier = Modifier.width(48.dp))
+    }
 }
 
 /**
@@ -153,6 +189,7 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
     var endEnter by remember { mutableStateOf(initial?.endEnter ?: true) }
     var keepValues by remember { mutableStateOf(initial?.remember ?: false) }
     val today = remember { java.util.Date() }
+    val movesOpen = remember { mutableStateListOf<Int>() }
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(if (initial == null) R.string.forms_new else R.string.forms_edit), tall = true, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.forms_save), {
@@ -185,14 +222,20 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                         IconSpot(Glyph.RotateLeft, null, enabled = i > 0) { fields.add(i - 1, fields.removeAt(i)) }
                         IconSpot(Glyph.Close, stringResource(R.string.delete), enabled = fields.size > 1) { fields.removeAt(i) }
                     }
-                    // Тип поля — шість однакових кнопок (2 ряди по 3).
-                    FieldType.entries.chunked(3).forEach { row ->
+                    // Тип поля — однакові кнопки по 4 в ряд.
+                    FieldType.entries.chunked(4).forEach { row ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            row.forEach { t -> ChoiceChip(stringResource(t.title()), f.type == t, Modifier.weight(1f)) { fields[i] = f.copy(type = t) } }
+                            row.forEach { t ->
+                                ChoiceChip(stringResource(t.title()), f.type == t, Modifier.weight(1f)) {
+                                    fields[i] = if (t == FieldType.SKIP && f.type != t && f.move == MoveKey.FORM) f.copy(type = t, move = MoveKey.DOWN) else f.copy(type = t)
+                                }
+                            }
+                            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                     when (f.type) {
                         FieldType.TEXT -> SheetTextField(f.value, { fields[i] = f.copy(value = it) }, stringResource(R.string.forms_text_value))
+                        FieldType.SKIP -> Text(stringResource(R.string.forms_skip_hint), color = Oled.TextSecondary, fontSize = 13.sp)
                         FieldType.SCAN -> Text(stringResource(R.string.forms_scan_hint), color = Oled.TextSecondary, fontSize = 13.sp)
                         FieldType.NUMBER -> SheetTextField(f.value, { fields[i] = f.copy(value = it.filter { c -> c.isDigit() || c == '.' || c == ',' }) }, stringResource(R.string.forms_number_default), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                         FieldType.CHOICE -> {
@@ -219,9 +262,30 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                             Text(stringResource(R.string.forms_date_hint), color = Oled.TextSecondary, fontSize = 13.sp)
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (f.type != FieldType.SKIP) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         SheetTextField(f.prefix, { fields[i] = f.copy(prefix = it) }, stringResource(R.string.forms_prefix), Modifier.weight(1f))
                         SheetTextField(f.suffix, { fields[i] = f.copy(suffix = it) }, stringResource(R.string.forms_suffix), Modifier.weight(1f))
+                    }
+                    // Переходи: що натиснути після поля і що — замість вимкненого.
+                    val open = i in movesOpen || f.type == FieldType.SKIP
+                    ChoiceChip(stringResource(R.string.forms_moves, moveSummary(f)), open, Modifier.fillMaxWidth()) {
+                        if (i in movesOpen) movesOpen.remove(i) else movesOpen.add(i)
+                    }
+                    if (open) {
+                        Text(stringResource(if (f.type == FieldType.SKIP) R.string.forms_skip_keys else R.string.forms_after), color = Oled.TextPrimary, fontSize = 15.sp)
+                        KeyPicker(
+                            listOf(MoveKey.FORM, MoveKey.DOWN, MoveKey.RIGHT, MoveKey.TAB, MoveKey.ENTER, MoveKey.NONE), f.move, f.moveTimes,
+                            showTimes = f.move in MoveKey.ENTER..MoveKey.RIGHT, labelFor = { moveName(it) },
+                            onKey = { fields[i] = fields[i].copy(move = it) }, onTimes = { fields[i] = fields[i].copy(moveTimes = it) },
+                        )
+                        Text(stringResource(R.string.forms_when_off), color = Oled.TextPrimary, fontSize = 15.sp)
+                        val offLabel = stringResource(R.string.forms_off_same)
+                        KeyPicker(
+                            listOf(-1, MoveKey.DOWN, MoveKey.RIGHT, MoveKey.TAB), f.offKey, f.offTimes,
+                            showTimes = f.offKey >= 0, labelFor = { if (it < 0) offLabel else moveName(it) },
+                            onKey = { fields[i] = fields[i].copy(offKey = it) }, onTimes = { fields[i] = fields[i].copy(offTimes = it) },
+                        )
+                        Text(stringResource(R.string.forms_off_hint), color = Oled.TextSecondary, fontSize = 13.sp)
                     }
                     ChoiceChip(stringResource(R.string.forms_on_default), f.onByDefault, Modifier.fillMaxWidth()) { fields[i] = f.copy(onByDefault = !f.onByDefault) }
                 }
@@ -320,6 +384,7 @@ fun ScanFormScreen(
                         }
                         Row(Modifier.fillMaxWidth().padding(top = 4.dp).graphicsLayer { alpha = if (on) 1f else 0.35f }, verticalAlignment = Alignment.CenterVertically) {
                             when (f.type) {
+                                FieldType.SKIP -> Text(moveSummary(f), color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp))
                                 FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> {
                                     val shown = form.part(i, values.toList(), List(n) { true }, today)
                                     Text(shown.ifEmpty { "—" }, color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.weight(1f).padding(start = 8.dp, top = 4.dp, bottom = 4.dp))

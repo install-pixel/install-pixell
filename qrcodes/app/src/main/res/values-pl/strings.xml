@@ -319,4 +319,15 @@
     <string name="fields_down_a">↓ Strzałka · 1</string>
     <string name="fields_down_b">↓ Strzałka · 2</string>
     <string name="fields_down_hint">Między polami trafia kod klawisza „strzałka w dół” dla terminala (VT100). Terminale przyjmują go na jeden z dwóch sposobów — spróbuj 1, a jeśli kursor nie przeszedł, 2.</string>
+    <string name="ftype_skip">Przejście</string>
+    <string name="forms_skip_hint">Nic nie wpisuje — tylko naciska klawisze (np. ↓ raz), żeby przeskoczyć pole i go nie nadpisać.</string>
+    <string name="forms_moves">Przejścia: %1$s</string>
+    <string name="forms_after">Po polu naciśnij:</string>
+    <string name="forms_skip_keys">Jakie klawisze nacisnąć:</string>
+    <string name="forms_when_off">Jeśli wyłączone:</string>
+    <string name="forms_move_form">Jak w formularzu</string>
+    <string name="forms_off_same">Jak zwykle</string>
+    <string name="forms_off_short">wył.:</string>
+    <string name="forms_times">Razy: %1$d</string>
+    <string name="forms_off_hint">Np. data wyłączona — naciśnij → tyle razy, ile ma znaków, żeby kursor przeszedł dalej.</string>
 </resources>
