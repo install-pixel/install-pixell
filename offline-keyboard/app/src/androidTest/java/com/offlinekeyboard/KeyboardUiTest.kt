@@ -445,7 +445,7 @@ class KeyboardUiTest {
                     Thread.sleep(1500)
                     assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
                     screenshot("settings-$tag-${page.ifEmpty { "main" }}")
-                    shell("input swipe 160 560 160 140 400")
+                    scrollContent()
                     Thread.sleep(600)
                     screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
                 }
@@ -474,7 +474,7 @@ class KeyboardUiTest {
                 val tag = locale.ifEmpty { "default" }
                 screenshot("settings-$tag-1")
                 for (page in 2..5) {
-                    shell("input swipe 160 560 160 140 400")
+                    scrollContent()
                     Thread.sleep(600)
                     screenshot("settings-$tag-$page")
                 }
@@ -735,6 +735,13 @@ class KeyboardUiTest {
         // The keyboard window may still show the previous frame (a theme switch looked unchanged).
         Thread.sleep(300)
         shell("screencap -p $SCREENS/$name.png")
+    }
+
+    /** Scroll the page up by a screen half, well clear of the gesture-navigation strip at the bottom. */
+    private fun scrollContent() {
+        val metrics = instrumentation.targetContext.resources.displayMetrics
+        val x = metrics.widthPixels / 2
+        shell("input swipe $x ${metrics.heightPixels * 70 / 100} $x ${metrics.heightPixels * 20 / 100} 400")
     }
 
     private fun shell(command: String) {
