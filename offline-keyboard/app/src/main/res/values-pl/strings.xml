@@ -56,12 +56,12 @@
     <string name="search">Szukaj</string>
     <string name="section_features">Funkcje</string>
     <string name="page_shortcuts">Skróty klawiszowe</string>
-    <string name="page_shortcuts_summary">Skróty: %1$d · klawiatura komputerowa</string>
+    <string name="page_shortcuts_summary">Dla trybu komputerowego · %1$d</string>
     <string name="page_dictionary">Mój słownik</string>
-    <string name="page_dictionary_summary_on">Nauka włączona · słów: %1$d</string>
-    <string name="page_dictionary_summary_off">Nauka wyłączona · słów: %1$d</string>
+    <string name="page_dictionary_summary_on">Nauka włączona · %1$d słów</string>
+    <string name="page_dictionary_summary_off">Nauka wyłączona · %1$d słów</string>
     <string name="page_models">Modele offline</string>
-    <string name="page_models_summary">Zainstalowano %1$d z %2$d (głos i tłumaczenie dla Укр/Pol/Eng)</string>
+    <string name="page_models_summary">Zainstalowano %1$d z %2$d</string>
     <string name="language_switch_hint">Zmiana języka: klawisz języka (klawiatura mobilna), przesunięcie spacji lub Win+Space na komputerowej. Bieżący język jest napisany na spacji.</string>
     <string name="shortcuts_intro">Skróty działają tylko w trybie komputerowym klawiatury (przycisk z klawiaturą na pasku u góry), gdzie są klawisze Ctrl, Alt, Shift i Win. Stuknij modyfikator, a potem klawisz: np. Win, potem spacja zmienia język. Ctrl+C, Ctrl+V i inne skróty samej aplikacji (Excel, Vim…) działają tam, gdzie aplikacja je obsługuje. Skrót z samych modyfikatorów (np. Alt+Shift) działa, gdy przez pół sekundy nie zostanie naciśnięty inny klawisz.</string>
     <string name="shortcuts_list">Twoje skróty</string>
@@ -177,9 +177,9 @@
     <string name="bluetooth_not_connected">Komputer niepodłączony — stuknij, aby otworzyć ustawienia</string>
     <string name="bluetooth_typing_here">Znów piszesz na telefonie</string>
     <string name="bluetooth_typing_there">Piszesz na %1$s</string>
-    <string name="page_bluetooth">Klawiatura Bluetooth dla komputera</string>
+    <string name="page_bluetooth">Klawiatura Bluetooth</string>
     <string name="page_bluetooth_on">Włączona</string>
-    <string name="page_bluetooth_off">Wyłączona · pisz telefonem na komputerze</string>
+    <string name="page_bluetooth_off">Wyłączona</string>
     <string name="bluetooth_intro">Telefon staje się klawiaturą Bluetooth dla komputera, jak prawdziwa: na komputerze nic nie trzeba instalować, internet niepotrzebny.</string>
     <string name="bluetooth_unsupported_android">Wymaga Androida 9 lub nowszego.</string>
     <string name="bluetooth_section_switch">1. Włącz</string>
@@ -203,8 +203,8 @@
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
     <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma (np. ы po ukraińsku), nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
     <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
-    <string name="page_glossary">Słownik tłumaczenia (Twoje poprawki)</string>
-    <string name="page_glossary_summary">Wpisów: %1$d · słowa i zwroty, które tłumaczenie ma oddać dokładnie tak</string>
+    <string name="page_glossary">Słownik tłumaczenia</string>
+    <string name="page_glossary_summary">Twoje poprawki · %1$d</string>
     <string name="glossary_intro">Jeśli tłumaczenie myli się w słowie (np. w terminach magazynowych), wpisz tu poprawne tłumaczenie. Klawiatura sama wstawi te słowa do tłumaczenia; wiersz będący całym zdaniem jest używany jako tłumaczenie tego zdania.</string>
     <string name="glossary_format">Jeden wiersz — jedno słowo: українська | polski | English. Kilka form przez «/»: pierwsza trafia do tłumaczenia. «*» na końcu — dowolna końcówka, np. palet* = paleta, palety, paletach. Wiersze z # to notatki.</string>
     <string name="glossary_field">Słownik</string>
@@ -236,7 +236,7 @@
     <string name="sticker_boy_description">Chłopiec</string>
     <string name="sticker_girl_description">Dziewczynka</string>
     <string name="page_stickers">Emoji i naklejki</string>
-    <string name="page_stickers_summary">Własne emoji i obrazki, ulubione, chłopiec czy dziewczynka</string>
+    <string name="page_stickers_summary">Własne emoji, obrazki, naklejki</string>
     <string name="own_emoji_title">Moje emoji</string>
     <string name="own_emoji_hint">Emoji lub tekstowe buźki oddzielone spacjami, np. 🦄 🐙 ¯\\_(ツ)_/¯. Dostaną własną stronę ★ w panelu emoji.</string>
     <string name="own_emoji_field">Moje emoji</string>
@@ -266,4 +266,22 @@
     <string name="models_variant_installed">✓ zainstalowany</string>
     <string name="models_download_standard">Pobierz standardowy</string>
     <string name="models_download_accurate_short">Pobierz dokładniejszy</string>
+    <string name="section_menu">Ustawienia</string>
+    <string name="page_look">Wygląd</string>
+    <string name="page_look_summary">Motyw, jasność, rozmiar</string>
+    <string name="page_typing">Pisanie</string>
+    <string name="page_typing_summary">Poprawki, wielkie litery, wibracje</string>
+    <string name="page_languages">Języki i układy</string>
+    <string name="page_languages_summary">Języki, tryb, kursor, gesty</string>
+    <string name="page_voice">Głos i tłumaczenie</string>
+    <string name="page_voice_summary">Modele: %1$d z %2$d</string>
+    <string name="page_about">O aplikacji</string>
+    <string name="page_about_summary">Wersja %1$s · prywatność, reset</string>
+    <string name="key_brightness">Jasność klawiszy: %1$d%%</string>
+    <string name="key_brightness_hint">Ramki i poświata; litery zostają wyraźne</string>
+    <string name="key_height_hint">Wysokość rzędów; klawiatura nie skacze podczas pisania</string>
+    <string name="page_look_size">Jasność i rozmiar</string>
+    <string name="page_typing_text">Tekst</string>
+    <string name="page_typing_keys">Klawisze</string>
+    <string name="page_typing_vibration">Wibracje</string>
 </resources>

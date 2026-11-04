@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.offlinekeyboard.R
@@ -169,9 +170,11 @@ internal fun NavRow(title: String, subtitle: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Tone.TextPrimary, fontSize = if (sheet) 19.sp else 17.sp)
-            Text(subtitle, color = Tone.TextSecondary, fontSize = 13.sp)
+            // A name never pushes the arrow away; the hint stays on one line (… if a language makes it long).
+            Text(title, color = Tone.TextPrimary, fontSize = if (sheet) 19.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = Tone.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(8.dp))
         Text(if (sheet) "→" else "›", color = Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
     }
 }

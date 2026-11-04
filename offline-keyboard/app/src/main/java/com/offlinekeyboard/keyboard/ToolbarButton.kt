@@ -56,6 +56,7 @@ class ToolbarButton(context: Context) : View(context) {
     /** The theme's surface style and font; colours are set by the owner. */
     fun applyStyle(theme: KeyboardTheme) {
         style = theme.style
+        surfaces.brightness = theme.brightness
         textScale = theme.textScale
         fun font(id: Int) = runCatching { ResourcesCompat.getFont(context, id) }.getOrNull()
         when (theme.style) {

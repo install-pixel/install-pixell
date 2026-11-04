@@ -105,6 +105,7 @@ class KeyboardView(context: Context) : View(context) {
         set(value) {
             if (field == value) return
             field = value
+            surfaces.brightness = value.brightness
             setBackgroundColor(value.background)
             val (letters, labels) = faces(value)
             letterFace = letters
@@ -438,7 +439,13 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             val chosen = i == p.selected && !t.styled
-            drawLabel(canvas, cell, p.options[i], if (chosen) t.onAccent else t.text, p.key)
+            // The option under the finger is full bright; the others a little quieter, so the choice is plain.
+            val color = when {
+                chosen -> t.onAccent
+                i == p.selected -> t.text
+                else -> (t.text and 0x00FFFFFF) or 0xA6000000.toInt()
+            }
+            drawLabel(canvas, cell, p.options[i], color, p.key)
         }
         canvas.restoreToCount(layer)
     }
@@ -591,15 +598,19 @@ class KeyboardView(context: Context) : View(context) {
     private fun openPopup(pointerId: Int, key: Key) {
         val anchor = keyRects.firstOrNull { it.first === key }?.second ?: return
         val options = key.alternatives
-        val cellWidth = maxOf(anchor.width(), dp(36f))
+        // The same place and size as the enlarged letter: above the key (over the toolbar for the top row,
+        // never under the finger), as tall as the letter, each option as wide as a key and a bit.
+        val cellWidth = maxOf(anchor.width() * 1.2f, dp(40f))
         val total = cellWidth * options.size
         var left = anchor.centerX() - cellWidth / 2
         left = left.coerceIn(0f, maxOf(0f, width - total))
-        val top = maxOf(0f, anchor.top - keyHeightPx * 1.1f)
+        val height = keyHeightPx * 1.2f
+        val bottom = anchor.top + keyGap
+        val top = bottom - height
         val cells = options.indices.map { i ->
-            RectF(left + i * cellWidth, top, left + (i + 1) * cellWidth, top + keyHeightPx)
+            RectF(left + i * cellWidth, top, left + (i + 1) * cellWidth, bottom)
         }
-        popup = Popup(key, options, RectF(left, top, left + total, top + keyHeightPx), cells, pointerId)
+        popup = Popup(key, options, RectF(left, top, left + total, bottom), cells, pointerId)
         popupAt = SystemClock.uptimeMillis()
         feedback()
     }

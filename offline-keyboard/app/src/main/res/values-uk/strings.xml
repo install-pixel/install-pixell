@@ -56,12 +56,12 @@
     <string name="search">Пошук</string>
     <string name="section_features">Функції</string>
     <string name="page_shortcuts">Комбінації клавіш</string>
-    <string name="page_shortcuts_summary">Комбінацій: %1$d · комп\'ютерна клавіатура</string>
+    <string name="page_shortcuts_summary">Для комп\'ютерного режиму · %1$d</string>
     <string name="page_dictionary">Мій словник</string>
-    <string name="page_dictionary_summary_on">Навчання ввімкнено · слів: %1$d</string>
-    <string name="page_dictionary_summary_off">Навчання вимкнено · слів: %1$d</string>
+    <string name="page_dictionary_summary_on">Навчання ввімкнено · %1$d слів</string>
+    <string name="page_dictionary_summary_off">Навчання вимкнено · %1$d слів</string>
     <string name="page_models">Офлайн-моделі</string>
-    <string name="page_models_summary">Встановлено %1$d з %2$d (голос і переклад для Укр/Pol/Eng)</string>
+    <string name="page_models_summary">Встановлено %1$d з %2$d</string>
     <string name="language_switch_hint">Зміна мови: клавіша мови (мобільна клавіатура), свайп по пробілу або Win+Space на комп\'ютерній. Поточна мова написана на пробілі.</string>
     <string name="shortcuts_intro">Комбінації працюють лише в комп\'ютерному режимі клавіатури (кнопка з клавіатурою на панелі зверху), де є клавіші Ctrl, Alt, Shift і Win. Стукніть модифікатор, а потім клавішу: наприклад, Win, потім пробіл перемикає мову. Ctrl+C, Ctrl+V та інші комбінації самого додатка (Excel, Vim…) працюють там, де додаток їх підтримує. Комбінація лише з модифікаторів (наприклад, Alt+Shift) спрацьовує, якщо протягом пів секунди не натиснуто іншої клавіші.</string>
     <string name="shortcuts_list">Ваші комбінації</string>
@@ -177,9 +177,9 @@
     <string name="bluetooth_not_connected">Комп\'ютер не підключено — дотик відкриє налаштування</string>
     <string name="bluetooth_typing_here">Знову друкуєте на телефоні</string>
     <string name="bluetooth_typing_there">Друкуєте на %1$s</string>
-    <string name="page_bluetooth">Bluetooth-клавіатура для комп\'ютера</string>
+    <string name="page_bluetooth">Bluetooth-клавіатура</string>
     <string name="page_bluetooth_on">Увімкнено</string>
-    <string name="page_bluetooth_off">Вимкнено · друкуйте телефоном на комп\'ютері</string>
+    <string name="page_bluetooth_off">Вимкнено</string>
     <string name="bluetooth_intro">Телефон стає Bluetooth-клавіатурою для комп\'ютера, як справжня: на комп\'ютері нічого встановлювати не треба, інтернет не потрібен.</string>
     <string name="bluetooth_unsupported_android">Потрібен Android 9 або новіший.</string>
     <string name="bluetooth_section_switch">1. Увімкніть</string>
@@ -203,8 +203,8 @@
     <string name="bluetooth_section_notes">Варто знати</string>
     <string name="bluetooth_notes">Клавіатура надсилає клавіші, як справжня: на комп\'ютері має бути та сама мова, що й на телефоні (Укр/Pol/Eng). Win+Space перемикає обидві. Комп\'ютерна розкладка дає Ctrl, Alt, Win, F1–F12 і стрілки. Символи, яких немає в розкладці комп\'ютера (наприклад, ы в українській), не надсилаються. Підказки, переклад і голос працюють лише на телефоні.</string>
     <string name="translation_direction_hint">З мови клавіатури на цю мову. Кнопка перекладу над клавішами перемикає між двома іншими мовами.</string>
-    <string name="page_glossary">Словник перекладу (ваші виправлення)</string>
-    <string name="page_glossary_summary">Записів: %1$d · слова й фрази, які переклад має передати саме так</string>
+    <string name="page_glossary">Словник перекладу</string>
+    <string name="page_glossary_summary">Ваші виправлення · %1$d</string>
     <string name="glossary_intro">Якщо переклад помиляється в слові (наприклад, у складських термінах), запишіть тут правильний переклад. Клавіатура сама підставить ці слова в переклад; рядок, що є цілим реченням, використовується як переклад цього речення.</string>
     <string name="glossary_format">Один рядок — одне слово: українська | polski | English. Кілька форм — через «/»: перша підставляється в переклад. «*» у кінці — будь-яке закінчення, наприклад палет* = палета, палети, палетах. Рядки з # — примітки.</string>
     <string name="glossary_field">Словник</string>
@@ -236,7 +236,7 @@
     <string name="sticker_boy_description">Хлопчик</string>
     <string name="sticker_girl_description">Дівчинка</string>
     <string name="page_stickers">Емодзі та стікери</string>
-    <string name="page_stickers_summary">Свої емодзі й картинки, улюблені, хлопчик чи дівчинка</string>
+    <string name="page_stickers_summary">Свої емодзі, картинки, стікери</string>
     <string name="own_emoji_title">Мої емодзі</string>
     <string name="own_emoji_hint">Емодзі або текстові смайлики через пробіл, напр. 🦄 🐙 ¯\\_(ツ)_/¯. Вони матимуть свою сторінку ★ у панелі емодзі.</string>
     <string name="own_emoji_field">Мої емодзі</string>
@@ -266,4 +266,22 @@
     <string name="models_variant_installed">✓ встановлена</string>
     <string name="models_download_standard">Завантажити звичайну</string>
     <string name="models_download_accurate_short">Завантажити точнішу</string>
+    <string name="section_menu">Налаштування</string>
+    <string name="page_look">Вигляд</string>
+    <string name="page_look_summary">Тема, яскравість, розмір</string>
+    <string name="page_typing">Набір</string>
+    <string name="page_typing_summary">Виправлення, великі літери, вібрація</string>
+    <string name="page_languages">Мови й розкладки</string>
+    <string name="page_languages_summary">Мови, режим, курсор, свайпи</string>
+    <string name="page_voice">Голос і переклад</string>
+    <string name="page_voice_summary">Моделі: %1$d з %2$d</string>
+    <string name="page_about">Про застосунок</string>
+    <string name="page_about_summary">Версія %1$s · приватність, скидання</string>
+    <string name="key_brightness">Яскравість клавіш: %1$d%%</string>
+    <string name="key_brightness_hint">Рамки й підсвітка; літери лишаються чіткими</string>
+    <string name="key_height_hint">Висота рядів; клавіатура не стрибає під час набору</string>
+    <string name="page_look_size">Яскравість і розмір</string>
+    <string name="page_typing_text">Текст</string>
+    <string name="page_typing_keys">Клавіші</string>
+    <string name="page_typing_vibration">Вібрація</string>
 </resources>

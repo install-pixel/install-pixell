@@ -182,10 +182,18 @@ object LayoutProvider {
         val narrow = 0.95f
         val bottomLetters = letterRows[2].map { it.copy(width = narrow) }
         val backspace = edge + letterRows[2].size * (1f - narrow)
+        // A shorter home row (asdfghjkl under qwertyuiop) gets its edge keys widened, as Samsung and SwiftKey
+        // do, instead of a half-key hole at each side: straight edges, bigger A and L, letters in place.
+        val home = letterRows[1].let { row ->
+            val missing = letterRows[0].size - row.size
+            if (missing <= 0) row else row.mapIndexed { i, key ->
+                if (i == 0 || i == row.lastIndex) key.copy(width = 1f + missing / 2f) else key
+            }
+        }
         return KeyboardLayout(
             listOf(
                 letterRows[0],
-                letterRows[1],
+                home,
                 listOf(mod(SHIFT, edge)) + bottomLetters + fn(BACKSPACE, backspace, repeatable = true),
                 mobileBottomRow(language, LAYER_SYMBOLS),
             ),

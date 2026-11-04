@@ -14,6 +14,7 @@ import com.offlinekeyboard.core.Shortcut
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
+import com.offlinekeyboard.keyboard.KeyboardTheme
 import com.offlinekeyboard.keyboard.ThemeMode
 import com.offlinekeyboard.keyboard.StickerCharacter
 import com.offlinekeyboard.keyboard.VibrationStrength
@@ -28,6 +29,8 @@ data class KeyboardSettings(
     val enabledLanguages: List<Language> = Language.entries,
     val mobileCursorRow: Boolean = false,
     val keyHeightScale: Float = 1f,
+    /** How bright frames, rims and light of the keys are, 0.4–1 (labels dim only a little). */
+    val keyBrightness: Float = KeyboardTheme.DEFAULT_BRIGHTNESS,
     val autoCapitalize: Boolean = true,
     val spaceSwipeSwitchesLanguage: Boolean = true,
     /** The pressed letter is shown enlarged above the finger. */
@@ -71,6 +74,8 @@ data class KeyboardSettings(
     companion object {
         const val MIN_KEY_HEIGHT_SCALE = 0.7f
         const val MAX_KEY_HEIGHT_SCALE = 1.4f
+        const val MIN_KEY_BRIGHTNESS = 0.4f
+        const val MAX_KEY_BRIGHTNESS = 1f
     }
 }
 
@@ -97,6 +102,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.ENABLED_LANGUAGES] = updated.enabledLanguages.map { it.name }.toSet()
             prefs[Keys.MOBILE_CURSOR_ROW] = updated.mobileCursorRow
             prefs[Keys.KEY_HEIGHT_SCALE] = updated.keyHeightScale
+            prefs[Keys.KEY_BRIGHTNESS] = updated.keyBrightness
             prefs[Keys.AUTO_CAPITALIZE] = updated.autoCapitalize
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.KEY_PREVIEW] = updated.keyPreview
@@ -143,6 +149,8 @@ class SettingsRepository(context: Context) {
             mobileCursorRow = this[Keys.MOBILE_CURSOR_ROW] ?: defaults.mobileCursorRow,
             keyHeightScale = (this[Keys.KEY_HEIGHT_SCALE] ?: defaults.keyHeightScale)
                 .coerceIn(KeyboardSettings.MIN_KEY_HEIGHT_SCALE, KeyboardSettings.MAX_KEY_HEIGHT_SCALE),
+            keyBrightness = (this[Keys.KEY_BRIGHTNESS] ?: defaults.keyBrightness)
+                .coerceIn(KeyboardSettings.MIN_KEY_BRIGHTNESS, KeyboardSettings.MAX_KEY_BRIGHTNESS),
             autoCapitalize = this[Keys.AUTO_CAPITALIZE] ?: defaults.autoCapitalize,
             spaceSwipeSwitchesLanguage = this[Keys.SPACE_SWIPE] ?: defaults.spaceSwipeSwitchesLanguage,
             keyPreview = this[Keys.KEY_PREVIEW] ?: defaults.keyPreview,
@@ -183,6 +191,7 @@ class SettingsRepository(context: Context) {
         val ENABLED_LANGUAGES = stringSetPreferencesKey("enabled_languages")
         val MOBILE_CURSOR_ROW = booleanPreferencesKey("mobile_cursor_row")
         val KEY_HEIGHT_SCALE = floatPreferencesKey("key_height_scale")
+        val KEY_BRIGHTNESS = floatPreferencesKey("key_brightness")
         val AUTO_CAPITALIZE = booleanPreferencesKey("auto_capitalize")
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val KEY_PREVIEW = booleanPreferencesKey("key_preview")
