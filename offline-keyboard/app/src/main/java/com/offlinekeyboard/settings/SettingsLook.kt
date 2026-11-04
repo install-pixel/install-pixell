@@ -107,7 +107,7 @@ internal fun SettingsTheme(mode: ThemeMode?, accent: Accent, content: @Composabl
         outline = Color(0x38FFFFFF), outlineVariant = Color(0x24FFFFFF),
         error = Tone.Danger,
     )
-    val font = TextStyle(fontFamily = if (look == Look.SHEET) HandFont else GlassFont)
+    val font = if (LookDebug.level >= 1) TextStyle(fontFamily = if (look == Look.SHEET) HandFont else GlassFont) else TextStyle()
     val density = LocalDensity.current
     // Fields and small surfaces are rounded 16 dp (THEMES.md: no rectangular frames).
     val shapes = MaterialTheme.shapes.copy(
@@ -135,6 +135,11 @@ private fun Typography.withFont(font: TextStyle) = Typography(
 )
 
 // ------------------------------------------------------------------ surfaces
+
+/** Temporary: how much of the styled look is drawn (0 colours only, 1 + font, 2 + surfaces, 3 all); CI bisect. */
+internal object LookDebug {
+    @Volatile var level = 3
+}
 
 private val GlassSurface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f to Color(0xFF0D0D0D), 1f to Color(0xFF080808))
 private val GlassRim = Brush.verticalGradient(
@@ -172,7 +177,7 @@ private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Mo
 internal fun Modifier.lookSurface(radius: Dp, seed: Int = 0, chosen: Boolean = false, sheen: Boolean = false, ink: Color = Tone.Ink): Modifier =
     when (LocalLook.current) {
         Look.PLAIN -> this
-        Look.GLASS -> glassFrame(radius, chosen, sheen)
+        Look.GLASS -> if (LookDebug.level >= 2) glassFrame(radius, chosen, sheen) else this
         Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else 0.8f, if (chosen) 2.6.dp else 2.2.dp, ink)
     }
 
@@ -213,7 +218,9 @@ internal fun LookSwitch(checked: Boolean) {
             val pad = (size.height - ball) / 2
             val x = if (checked) size.width - pad - ball else pad
             val capsule = CornerRadius(size.height / 2)
-            if (look == Look.GLASS) {
+            if (look == Look.GLASS && LookDebug.level < 3) {
+                onDrawBehind { }
+            } else if (look == Look.GLASS) {
                 val body = if (checked) {
                     Brush.verticalGradient(listOf(Color(0xFF4A4A4A), Color(0xFF262626)))
                 } else {
