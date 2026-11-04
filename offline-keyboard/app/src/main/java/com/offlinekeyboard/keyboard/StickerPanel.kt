@@ -121,7 +121,7 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         val t = theme ?: return
         for ((b, c) in listOf(boyButton to StickerCharacter.BOY, girlButton to StickerCharacter.GIRL)) {
             val active = c == character
-            b.selected = active && t.styled
+            b.chosen = active && t.styled
             b.fill = if (active && !t.styled) t.accent else t.function
             b.pressedFill = t.pressed
             b.foreground = if (active && !t.styled) t.onAccent else t.text

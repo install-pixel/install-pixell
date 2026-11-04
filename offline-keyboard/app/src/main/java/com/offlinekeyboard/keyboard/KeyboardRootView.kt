@@ -232,7 +232,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val sending = state.bluetooth == BluetoothButton.SENDING
         if (theme.styled) {
             bluetoothButton.fill = if (sending) theme.function else 0
-            bluetoothButton.selected = sending
+            bluetoothButton.chosen = sending
             bluetoothButton.foreground = theme.text
         } else {
             bluetoothButton.fill = if (sending) theme.accent else 0
@@ -358,7 +358,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private fun styleChip(view: ToolbarButton, active: Boolean, enabled: Boolean) {
         // Glass and sheet mark the active mode with a brighter rim, not a colour.
-        view.selected = active && theme.styled
+        view.chosen = active && theme.styled
         view.fill = if (active && !theme.styled) theme.accent else theme.function
         view.pressedFill = theme.pressed
         view.foreground = if (active && !theme.styled) theme.onAccent else theme.text

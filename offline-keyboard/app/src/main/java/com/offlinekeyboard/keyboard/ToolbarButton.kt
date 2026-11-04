@@ -29,7 +29,7 @@ class ToolbarButton(context: Context) : View(context) {
         set(value) { if (field != value) { field = value; invalidate() } }
     var pressedFill: Int = 0
     /** Chosen (an active mode, the selected character): glass and sheet show it with a brighter rim. */
-    var selected = false
+    var chosen = false
         set(value) { if (field != value) { field = value; invalidate() } }
     private var style = SurfaceStyle.FLAT
     private var regular: Typeface = Typeface.DEFAULT
@@ -80,7 +80,7 @@ class ToolbarButton(context: Context) : View(context) {
             val r = 12f * density
             val state = when {
                 pressed -> SurfaceState.PRESSED
-                selected -> SurfaceState.SELECTED
+                chosen -> SurfaceState.SELECTED
                 else -> SurfaceState.NORMAL
             }
             surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground)
