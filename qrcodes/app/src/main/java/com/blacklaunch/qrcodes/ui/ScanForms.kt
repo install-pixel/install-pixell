@@ -473,15 +473,10 @@ fun ScanFormScreen(
 ) {
     val n = form.fields.size
     val values = remember(form.id) {
-        mutableStateListOf<String>().apply {
-            addAll(
-                if (form.remember && form.lastValues.size == n) form.lastValues
-                else form.fields.map { f -> if (f.type == FieldType.CHOICE && f.value.isEmpty()) f.options.firstOrNull { it.isNotBlank() }.orEmpty() else f.value },
-            )
-        }
+        mutableStateListOf<String>().apply { addAll(form.startValues()) }
     }
     val enabled = remember(form.id) {
-        mutableStateListOf<Boolean>().apply { addAll(if (form.remember && form.lastEnabled.size == n) form.lastEnabled else form.fields.map { it.onByDefault }) }
+        mutableStateListOf<Boolean>().apply { addAll(form.startEnabled()) }
     }
     val today = remember { java.util.Date() }
     val content = form.content(values.toList(), enabled.toList(), today)

@@ -548,7 +548,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             onShare = {
                 menuFor = null
                 fullscreen = null
-                labelFor = listOf(code)
+                val form = if (code.isForm) formOf(code) else null
+                labelFor = if (form != null) {
+                    // Форма — її спільний QR з усіх полів (як відкривається), підпис — назва форми.
+                    listOf(QrCode(id = -1, content = form.content(form.startValues(), form.startEnabled(), java.util.Date()), name = form.name, format = com.blacklaunch.qrcodes.qr.CodeKind.QR.storage))
+                } else {
+                    listOf(code)
+                }
             },
             onCopy = {
                 copy(context, code)

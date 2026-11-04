@@ -132,6 +132,14 @@ data class ScanForm(
         return body + if (endEnter) "\n" else ""
     }
 
+    /** Значення, з якими форма відкривається: запам'ятовані (якщо так задано) або типові. */
+    fun startValues(): List<String> =
+        if (remember && lastValues.size == fields.size) lastValues
+        else fields.map { f -> if (f.type == FieldType.CHOICE && f.value.isEmpty()) f.options.firstOrNull { it.isNotBlank() }.orEmpty() else f.value }
+
+    fun startEnabled(): List<Boolean> =
+        if (remember && lastEnabled.size == fields.size) lastEnabled else fields.map { it.onByDefault }
+
     /** Поля, які треба вводити покроково: увімкнені й не порожні. */
     fun activeSteps(values: List<String>, enabled: List<Boolean>, today: java.util.Date): List<Int> =
         fields.indices.filter { part(it, values, enabled, today).isNotEmpty() }

@@ -127,6 +127,8 @@ fun ItemMenu(
             MenuRow(Glyph.Edit, stringResource(R.string.rename), onRename)
             if (isForm) {
                 MenuRow(Glyph.Template, stringResource(R.string.forms_edit), onContent)
+                // Спільний QR форми — такий, з яким вона відкривається (запам'ятоване або типове).
+                MenuRow(Glyph.Print, stringResource(R.string.sel_to_label), onShare)
             } else {
                 MenuRow(Glyph.TextT, stringResource(R.string.content_edit), onContent)
                 MenuRow(Glyph.Print, stringResource(R.string.sel_to_label), onShare)
