@@ -34,7 +34,8 @@ enum class SurfaceState { NORMAL, PRESSED, SELECTED }
  *   chosen is a denser stroke, pressed a faint graphite shade.
  *
  * Gradients are made once over a 0..1 square and stretched onto each surface; pencil outlines are made once
- * per size and seed. Drawing allocates nothing in the usual case.
+ * per size and seed. Drawing allocates nothing in the usual case. [frosted] glass is partly transparent, for
+ * bubbles drawn over the blurred keys (see [Frost]).
  */
 class SurfacePainter(private val density: Float) {
 
@@ -86,6 +87,7 @@ class SurfacePainter(private val density: Float) {
         seed: Int = 0,
         inkColor: Int = 0xFFEDEDED.toInt(),
         sheen: Boolean = false,
+        frosted: Boolean = false,
     ) {
         when (style) {
             SurfaceStyle.FLAT -> {
@@ -93,7 +95,7 @@ class SurfacePainter(private val density: Float) {
                 fill.color = color
                 canvas.drawRoundRect(rect, radius, radius, fill)
             }
-            SurfaceStyle.GLASS -> drawGlass(canvas, rect, radius, state, sheen)
+            SurfaceStyle.GLASS -> drawGlass(canvas, rect, radius, state, sheen, frosted)
             SurfaceStyle.SHEET -> drawSheet(canvas, rect, radius, state, seed, inkColor)
         }
     }
@@ -104,11 +106,14 @@ class SurfacePainter(private val density: Float) {
         shader.setLocalMatrix(matrix)
     }
 
-    private fun drawGlass(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, withSheen: Boolean) {
+    private fun drawGlass(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, withSheen: Boolean, frosted: Boolean) {
         val body = if (state == SurfaceState.PRESSED) glassPressed else glassFill
         stretch(body, rect)
         fill.shader = body
+        // Frosted (over blurred keys): the dark glass lets a little of what is behind show through.
+        if (frosted) fill.alpha = 0xB8
         canvas.drawRoundRect(rect, radius, radius, fill)
+        fill.alpha = 0xFF
         if (withSheen) {
             // Soft light inside the top, gone by half height (at most 120 dp).
             stretch(sheen, rect, minOf(rect.height() / 2, 120 * density))

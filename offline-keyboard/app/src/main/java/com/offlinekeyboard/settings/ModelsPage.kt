@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -127,7 +126,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
             }
             Text(stringResource(R.string.models_speech_hint), style = MaterialTheme.typography.bodySmall)
             for (language in Language.entries) {
-                HorizontalDivider()
+                RowDivider()
                 val model = remember(refresh, modelsVersion, language) { store.speechModel(language) }
                 val file = SPEECH_FILES.getValue(language)
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -155,7 +154,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
         Section(stringResource(R.string.models_translation)) {
             Text(stringResource(R.string.models_translation_hint), style = MaterialTheme.typography.bodySmall)
             for (direction in TranslationDirection.entries) {
-                HorizontalDivider()
+                RowDivider()
                 val model = remember(refresh, modelsVersion, direction) { store.translationModel(direction) }
                 val isAccurate = remember(model) { model != null && store.isAccurate(model) }
                 val file = TRANSLATION_FILES.getValue(direction)

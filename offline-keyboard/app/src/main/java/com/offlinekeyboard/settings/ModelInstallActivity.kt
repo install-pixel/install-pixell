@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.offlinekeyboard.R
-import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.models.ModelEvents
 import com.offlinekeyboard.models.ModelStore
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +45,7 @@ class ModelInstallActivity : ComponentActivity() {
         val repository = SettingsRepository(this)
         setContent {
             val current by repository.settings.collectAsStateWithLifecycle(initialValue = null)
-            SettingsTheme(current?.themeMode, current?.accent ?: Accent.SKY) {
+            SettingsTheme(current?.themeMode) {
                 Surface(shape = MaterialTheme.shapes.large) {
                     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(stringResource(R.string.models_install_title), style = MaterialTheme.typography.titleLarge)

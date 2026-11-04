@@ -15,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -90,7 +89,7 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
         Section(stringResource(R.string.shortcuts_list)) {
             if (s.shortcuts.isEmpty()) Text(stringResource(R.string.shortcuts_empty))
             s.shortcuts.forEachIndexed { index, shortcut ->
-                if (index > 0) HorizontalDivider()
+                if (index > 0) RowDivider()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(shortcut.describe(), style = MaterialTheme.typography.titleSmall)
@@ -117,10 +116,10 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
             Text(stringResource(R.string.presets_intro), style = MaterialTheme.typography.bodySmall)
             presetMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
             presets.forEachIndexed { index, preset ->
-                if (index > 0) HorizontalDivider()
+                if (index > 0) RowDivider()
                 PresetRow(preset, onAdd = { addPreset(preset) })
             }
-            HorizontalDivider()
+            RowDivider()
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
                     Text(stringResource(R.string.presets_import))

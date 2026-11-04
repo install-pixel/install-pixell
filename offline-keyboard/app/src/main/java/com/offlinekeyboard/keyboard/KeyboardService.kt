@@ -183,7 +183,7 @@ class KeyboardService : InputMethodService(),
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
         }
-        if (old.themeMode != new.themeMode || old.accent != new.accent) rootView?.applyTheme(currentTheme())
+        if (old.themeMode != new.themeMode) rootView?.applyTheme(currentTheme())
         if (!new.translateEnabled && old.translateEnabled) leaveSegment()
         updateSuggestions()
         render()
@@ -200,7 +200,7 @@ class KeyboardService : InputMethodService(),
         return root
     }
 
-    private fun currentTheme() = KeyboardTheme.resolve(this, settings.themeMode, settings.accent)
+    private fun currentTheme() = KeyboardTheme.resolve(settings.themeMode)
 
     // Never take over the screen with the extract-text window: typing must happen in the app's own field.
     override fun onEvaluateFullscreenMode(): Boolean = false

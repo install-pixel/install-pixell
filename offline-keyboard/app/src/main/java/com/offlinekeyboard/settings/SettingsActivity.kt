@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -53,7 +52,6 @@ import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.translation.TranslationDirection
 import com.offlinekeyboard.dictionary.UserDictionaryStore
-import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.KeyboardService
 import com.offlinekeyboard.keyboard.ThemeMode
 import com.offlinekeyboard.keyboard.VibrationStrength
@@ -70,7 +68,11 @@ class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Both styles are black: light status and navigation bar icons whatever the phone's theme.
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         val repository = SettingsRepository(this)
         // After a crash, show the error first (plain views, nothing that could fail again) so it can be
         // copied and sent; "Continue" opens the normal settings.
@@ -84,7 +86,7 @@ class SettingsActivity : ComponentActivity() {
         }
         setContent {
             val current by repository.settings.collectAsStateWithLifecycle(initialValue = null)
-            SettingsTheme(current?.themeMode, current?.accent ?: Accent.SKY) {
+            SettingsTheme(current?.themeMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val startPage = when (intent.getStringExtra(EXTRA_PAGE)) {
                         "bluetooth" -> Page.BLUETOOTH
@@ -289,7 +291,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 stringResource(R.string.page_shortcuts),
                 stringResource(R.string.page_shortcuts_summary, s.shortcuts.size),
             ) { onOpen(Page.SHORTCUTS) }
-            HorizontalDivider()
+            RowDivider()
             val words = remember(dictionaryVersion) { Language.entries.sumOf { dictionary.dictionary.size(it) } }
             NavRow(
                 stringResource(R.string.page_dictionary),
@@ -298,7 +300,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                     words,
                 ),
             ) { onOpen(Page.DICTIONARY) }
-            HorizontalDivider()
+            RowDivider()
             val modelsVersion by com.offlinekeyboard.models.ModelEvents.version.collectAsStateWithLifecycle()
             val installed = remember(models, modelsVersion, resumeCount) {
                 Language.entries.count { models.speechModel(it) != null } +
@@ -308,16 +310,16 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, total)) {
                 onOpen(Page.MODELS)
             }
-            HorizontalDivider()
+            RowDivider()
             val glossarySize = remember { com.offlinekeyboard.translation.GlossaryStore.get(context).glossary.size }
             NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) {
                 onOpen(Page.GLOSSARY)
             }
-            HorizontalDivider()
+            RowDivider()
             NavRow(stringResource(R.string.page_stickers), stringResource(R.string.page_stickers_summary)) {
                 onOpen(Page.STICKERS)
             }
-            HorizontalDivider()
+            RowDivider()
             NavRow(
                 stringResource(R.string.page_bluetooth),
                 stringResource(if (s.bluetoothKeyboard) R.string.page_bluetooth_on else R.string.page_bluetooth_off),
@@ -327,16 +329,11 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
         Section(stringResource(R.string.section_appearance)) {
             Text(stringResource(R.string.theme_title), style = MaterialTheme.typography.titleSmall)
             for ((mode, label) in listOf(
-                ThemeMode.SYSTEM to R.string.theme_system,
-                ThemeMode.LIGHT to R.string.theme_light,
-                ThemeMode.DARK to R.string.theme_dark,
                 ThemeMode.GLASS to R.string.theme_glass,
                 ThemeMode.SHEET to R.string.theme_sheet,
             )) {
                 RadioRow(stringResource(label), s.themeMode == mode) { update { it.copy(themeMode = mode) } }
             }
-            Text(stringResource(R.string.accent_title), style = MaterialTheme.typography.titleSmall)
-            AccentPicker(s.accent) { a -> update { it.copy(accent = a) } }
         }
 
         Section(stringResource(R.string.section_keyboard)) {
@@ -350,7 +347,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
                 update { it.copy(rememberLastMode = v) }
             }
-            HorizontalDivider()
+            RowDivider()
             Text(stringResource(R.string.input_languages), style = MaterialTheme.typography.titleSmall)
             for (language in Language.entries) {
                 CheckRow(languageName(language), language in s.enabledLanguages) { v ->
@@ -362,7 +359,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 }
             }
             Text(stringResource(R.string.language_switch_hint), style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider()
+            RowDivider()
             Text(
                 stringResource(R.string.key_height, (s.keyHeightScale * 100).toInt()),
                 style = MaterialTheme.typography.titleSmall,

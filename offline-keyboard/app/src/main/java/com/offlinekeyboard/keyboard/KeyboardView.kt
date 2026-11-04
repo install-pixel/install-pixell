@@ -90,10 +90,11 @@ class KeyboardView(context: Context) : View(context) {
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.RIGHT }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val surfaces = SurfacePainter(resources.displayMetrics.density)
+    private val frost = Frost()
     private var letterFace: Typeface = Typeface.DEFAULT
     private var labelFace: Typeface = Typeface.DEFAULT_BOLD
 
-    var theme: KeyboardTheme = KeyboardTheme.create(dark = false, accent = Accent.SKY)
+    var theme: KeyboardTheme = KeyboardTheme.glass()
         set(value) {
             if (field == value) return
             field = value
@@ -187,6 +188,14 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         val ctx = labelContext ?: return
+        drawKeys(canvas, ctx)
+        val p = popup
+        val bubbles = if (p != null) emptyList() else previewBubbles(ctx)
+        if (theme.style == SurfaceStyle.GLASS && (p != null || bubbles.isNotEmpty())) frost.capture(this) { drawKeys(it, ctx) }
+        if (p != null) drawPopup(canvas, p) else drawPreviews(canvas, bubbles)
+    }
+
+    private fun drawKeys(canvas: Canvas, ctx: LabelContext) {
         val pressedKeys = HashSet<Key>()
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
 
@@ -238,11 +247,12 @@ class KeyboardView(context: Context) : View(context) {
                 canvas.drawCircle(inner.centerX(), inner.bottom - dp(5f), dp(2.5f), dotPaint)
             }
         }
-        popup?.let { drawPopup(canvas, it) } ?: drawPreviews(canvas, ctx)
     }
 
-    private fun drawPreviews(canvas: Canvas, ctx: LabelContext) {
-        if (!keyPreview) return
+    /** The enlarged letters above the pressed keys: bubble and label. */
+    private fun previewBubbles(ctx: LabelContext): List<Pair<RectF, String>> {
+        if (!keyPreview) return emptyList()
+        val out = ArrayList<Pair<RectF, String>>(2)
         for (i in 0 until pointers.size()) {
             val state = pointers.valueAt(i)
             val key = state.key ?: continue
@@ -254,11 +264,36 @@ class KeyboardView(context: Context) : View(context) {
             val h = keyHeightPx * 1.2f
             val left = (anchor.centerX() - w / 2).coerceIn(0f, maxOf(0f, width - w))
             val bottom = anchor.top + keyGap
-            val bubble = RectF(left, bottom - h, left + w, bottom)
-            surfaces.draw(canvas, bubble, radius * 1.5f, theme.style, theme.popup, seed = label.hashCode(), inkColor = theme.text, sheen = true)
+            out += RectF(left, bottom - h, left + w, bottom) to label
+        }
+        return out
+    }
+
+    /**
+     * A bubble or popup surface that hides what is under it: frosted glass (the keys underneath, blurred, seen
+     * through dark glass) or black paper under the pencil frame.
+     */
+    private fun drawOverlaySurface(canvas: Canvas, rect: RectF, r: Float, seed: Int) {
+        val t = theme
+        when (t.style) {
+            SurfaceStyle.GLASS -> {
+                frost.drawBehind(canvas, rect, r, t.background)
+                surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, inkColor = t.text, sheen = true, frosted = true)
+            }
+            SurfaceStyle.SHEET -> {
+                surfaces.draw(canvas, rect, r, SurfaceStyle.FLAT, t.background)
+                surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, inkColor = t.text)
+            }
+            SurfaceStyle.FLAT -> surfaces.draw(canvas, rect, r, t.style, t.popup)
+        }
+    }
+
+    private fun drawPreviews(canvas: Canvas, bubbles: List<Pair<RectF, String>>) {
+        for ((bubble, label) in bubbles) {
+            drawOverlaySurface(canvas, bubble, radius * 1.5f, label.hashCode())
             textPaint.color = theme.text
             textPaint.typeface = letterFace
-            textPaint.textSize = h * 0.5f * theme.textScale
+            textPaint.textSize = bubble.height() * 0.5f * theme.textScale
             val y = bubble.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
             canvas.drawText(label, bubble.centerX(), y, textPaint)
         }
@@ -317,7 +352,7 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun drawPopup(canvas: Canvas, p: Popup) {
         val t = theme
-        surfaces.draw(canvas, p.bounds, radius, t.style, t.popup, seed = 7, inkColor = t.text, sheen = true)
+        drawOverlaySurface(canvas, p.bounds, radius, 7)
         p.cells.forEachIndexed { i, cell ->
             if (i == p.selected) {
                 if (t.styled) {

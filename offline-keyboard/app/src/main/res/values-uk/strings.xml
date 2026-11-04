@@ -152,17 +152,8 @@
     <string name="setup_ready">Усе готово. Торкніться будь-якого поля, щоб писати.</string>
     <string name="section_appearance">Вигляд</string>
     <string name="theme_title">Тема</string>
-    <string name="theme_system">Як у телефоні</string>
-    <string name="theme_light">Світла</string>
-    <string name="theme_dark">Темна</string>
     <string name="theme_glass">Скло · Темна</string>
     <string name="theme_sheet">Аркуш · Темна (від руки)</string>
-    <string name="accent_title">Колір</string>
-    <string name="accent_sky">Блакитний</string>
-    <string name="accent_mint">М\'ятний</string>
-    <string name="accent_lavender">Лавандовий</string>
-    <string name="accent_peach">Персиковий</string>
-    <string name="accent_rose">Пудровий</string>
     <string name="no_browser">Не знайдено браузер, щоб відкрити посилання.</string>
     <string name="models_how">Як: 1) «Завантажити» біля потрібної моделі — браузер збереже файл. 2) Коли завантажиться, торкніться в браузері «Відкрити» й виберіть OffKey — модель встановиться сама. Або натисніть «Встановити завантажені файли» й виберіть один чи кілька файлів — клавіатура сама розпізнає кожен.</string>
     <string name="models_download">Завантажити</string>
@@ -212,7 +203,6 @@
     <string name="bluetooth_section_notes">Варто знати</string>
     <string name="bluetooth_notes">Клавіатура надсилає клавіші, як справжня: на комп\'ютері має бути та сама мова, що й на телефоні (Укр/Pol/Eng). Win+Space перемикає обидві. Комп\'ютерна розкладка дає Ctrl, Alt, Win, F1–F12 і стрілки. Символи, яких немає в розкладці комп\'ютера (наприклад, ы в українській), не надсилаються. Підказки, переклад і голос працюють лише на телефоні.</string>
     <string name="translation_direction_hint">З мови клавіатури на цю мову. Кнопка перекладу над клавішами перемикає між двома іншими мовами.</string>
-    <string name="accent_grey">Сірий</string>
     <string name="page_glossary">Словник перекладу (ваші виправлення)</string>
     <string name="page_glossary_summary">Записів: %1$d · слова й фрази, які переклад має передати саме так</string>
     <string name="glossary_intro">Якщо переклад помиляється в слові (наприклад, у складських термінах), запишіть тут правильний переклад. Клавіатура сама підставить ці слова в переклад; рядок, що є цілим реченням, використовується як переклад цього речення.</string>

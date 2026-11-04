@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -112,7 +111,7 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
 
                 val devices = remember(refresh, status) { Bluetooth.pairedDevices(context) }
                 if (devices.isNotEmpty()) {
-                    HorizontalDivider()
+                    RowDivider()
                     Text(stringResource(R.string.bluetooth_paired), style = MaterialTheme.typography.titleSmall)
                     for (device in devices) {
                         val name = Bluetooth.deviceName(device)

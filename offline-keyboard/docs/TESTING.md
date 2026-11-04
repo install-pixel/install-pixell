@@ -95,6 +95,6 @@
 | `passwordFieldShowsNoSuggestions` | без підказок у паролях |
 | `enterStartsANewLineInMultiLineFields` | Enter у багаторядковому полі |
 | `computerKeyboardHasNoLanguageOrModeKeyAndWinSpaceSwitches` | ПК-розкладка, Win+Space, Ctrl+A + Backspace |
-| `everyThemeRenders` | 10 тем (світла/темна × 5 кольорів) |
+| `everyThemeRenders` | «Скло» і «Аркуш»: клавіатура і збільшена літера |
 
 Скриншоти кожного стану — в artifact `offline-keyboard-ui-tests`.
