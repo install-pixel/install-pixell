@@ -55,15 +55,17 @@ class SurfacePainter(private val density: Float) {
         Shader.TileMode.CLAMP,
     )
     private val glassPressed = RadialGradient(0.5f, 0.35f, 0.8f, 0xFF3A3A3A.toInt(), 0xFF101010.toInt(), Shader.TileMode.CLAMP)
+    // The rim of THEMES.md (white at 50/14/7/15 %, chosen 70/25/20 %) flattened onto the black keyboard as opaque
+    // greys and at most three stops: the Android 14/15 emulator renderer dies on four-stop gradients.
     private val glassRim = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0x80FFFFFF.toInt(), 0x24FFFFFF, 0x12FFFFFF, 0x26FFFFFF),
-        floatArrayOf(0f, 0.25f, 0.8f, 1f),
+        intArrayOf(0xFF808080.toInt(), 0xFF242424.toInt(), 0xFF1A1A1A.toInt()),
+        floatArrayOf(0f, 0.25f, 1f),
         Shader.TileMode.CLAMP,
     )
     private val glassRimChosen = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xB3FFFFFF.toInt(), 0x40FFFFFF, 0x33FFFFFF),
+        intArrayOf(0xFFB3B3B3.toInt(), 0xFF404040.toInt(), 0xFF333333.toInt()),
         floatArrayOf(0f, 0.3f, 1f),
         Shader.TileMode.CLAMP,
     )
