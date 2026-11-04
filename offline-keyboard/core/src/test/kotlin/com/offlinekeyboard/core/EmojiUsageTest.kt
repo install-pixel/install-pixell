@@ -51,7 +51,7 @@ class EmojiUsageTest {
 
         val c = KeyboardController(KeyboardMode.MOBILE, Language.UK, Language.entries)
         c.emojiPages = pages
-        c.onKey(c.layout(false).allKeys().first { (it.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI })
+        c.onAlternative(com.offlinekeyboard.core.layout.LayoutProvider.EMOJI_OPTION)
         val first = c.layout(false).allKeys().first { it.action is KeyAction.Text }
         assertEquals("👍", (first.action as KeyAction.Text).text)
     }

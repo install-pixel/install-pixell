@@ -109,6 +109,12 @@ class KeyboardController(
 
     /** User picked a long-press option. */
     fun onAlternative(text: String): List<EditorCommand> {
+        if (text == LayoutProvider.EMOJI_OPTION) {
+            // The emoji option of ",": opens the panel on its first page, like the emoji key did.
+            layer = Layer.EMOJI
+            emojiPage = 0
+            return emptyList()
+        }
         val shift = modifiers.isActive(ModifierKey.SHIFT)
         val out = if (text.length == 1 && text[0].isLetter() && shift != modifiers.capsLock) {
             text.uppercase(language.locale)

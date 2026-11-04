@@ -473,6 +473,13 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onAlternative(text: String) {
+        if (text == com.offlinekeyboard.core.layout.LayoutProvider.EMOJI_OPTION) {
+            // The comma's first option opens the emoji panel (never typed, not even to a computer).
+            if (controller.layer != Layer.EMOJI) refreshEmojiPages()
+            execute(controller.onAlternative(text))
+            render()
+            return
+        }
         if (sendToComputer(null, text)) return
         execute(controller.onAlternative(text))
         render()

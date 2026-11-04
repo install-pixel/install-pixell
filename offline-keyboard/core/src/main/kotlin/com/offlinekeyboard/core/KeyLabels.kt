@@ -43,15 +43,15 @@ object KeyLabels {
     }
 
     /**
-     * Small corner hint: the Shift symbol on PC keys, otherwise the first long-press option of a letter or
-     * digit key. Punctuation keys show no hint (their options are still on long press) to keep the
-     * keyboard free of characters that look duplicated.
+     * Small corner hint: the Shift symbol on PC keys, otherwise only the digit a letter key gives on long
+     * press (the top row). Letters with accents (ґ, ą, é) and punctuation keep their options on long
+     * press but show no hint, so the keys stay clean and the hint never runs into a capital letter.
      */
     fun hint(key: Key, ctx: LabelContext): String? {
         val action = key.action as? KeyAction.Text ?: return null
         if (action.shifted != null && !ctx.shift) return action.shifted
-        if (!action.text.first().isLetterOrDigit()) return null
-        return key.alternatives.firstOrNull()
+        if (!action.text.first().isLetter()) return null
+        return key.alternatives.firstOrNull { it.length == 1 && it[0].isDigit() }
     }
 
     private fun specialLabel(key: SpecialKey, ctx: LabelContext): String = when (key) {

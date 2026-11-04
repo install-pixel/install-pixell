@@ -82,6 +82,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         isHorizontalScrollBarEnabled = false
         isFillViewport = true
         overScrollMode = View.OVER_SCROLL_NEVER
+        // Text that runs past the edge fades out softly instead of being cut off (as in the launcher).
+        isHorizontalFadingEdgeEnabled = true
+        setFadingEdgeLength(dp(18))
         addView(status, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.MATCH_PARENT))
     }
     private val undoButton = button(R.string.toolbar_undo_translation_description) { toolbarListener?.onUndoTranslation() }
@@ -279,7 +282,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         modesButton.visibility = if (compact) View.VISIBLE else View.GONE
         // Lit while translating or dictating even when folded, so the mode is not forgotten.
         modesButton.fill = if (compact && (open || busy)) theme.function else 0
-        modeRow.visibility = if (!compact || open) View.VISIBLE else View.GONE
+        val showRow = !compact || open
+        if (showRow && modeRow.visibility != View.VISIBLE) fadeIn(modeRow)
+        modeRow.visibility = if (showRow) View.VISIBLE else View.GONE
     }
 
     /** Swaps the keys for the sticker panel (same height, so nothing jumps) or back. */
@@ -289,10 +294,19 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             stickerPanel.layoutParams = stickerPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(120)) }
             keyboardView.visibility = View.GONE
             stickerPanel.visibility = View.VISIBLE
+            fadeIn(stickerPanel)
         } else {
             stickerPanel.visibility = View.GONE
             keyboardView.visibility = View.VISIBLE
+            fadeIn(keyboardView)
         }
+    }
+
+    /** Lets a panel that just took the place of another come in softly instead of popping up. */
+    private fun fadeIn(view: View) {
+        view.animate().cancel()
+        view.alpha = 0f
+        view.animate().alpha(1f).setDuration(180).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
     }
 
     /** Short, non-blocking message. [onTap] makes it tappable (e.g. "restore original"). */
@@ -344,7 +358,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         if (text.toString() != status.text.toString()) {
             status.text = text
             // Newest text in view; earlier parts are a swipe away.
-            statusScroll.post { statusScroll.fullScroll(View.FOCUS_RIGHT) }
+            statusScroll.post { statusScroll.smoothScrollTo(status.width, 0) }
         }
         status.setTextColor(theme.text)
         statusScroll.visibility = if (showSuggestions) View.GONE else View.VISIBLE

@@ -10,6 +10,7 @@ import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -82,6 +83,12 @@ class KeyboardView(context: Context) : View(context) {
     private val handler = Handler(Looper.getMainLooper())
 
     private var popup: Popup? = null
+    private var popupAt = 0L
+    private var closingPopup: Popup? = null
+    private var closingAt = 0L
+
+    /** When each key was let go, for the soft fade of its pressed glow. */
+    private val released = HashMap<Key, Long>()
 
     private val keyGap = dp(3f)
     private val corner = dp(6f)
@@ -188,16 +195,28 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         val ctx = labelContext ?: return
-        drawKeys(canvas, ctx)
+        val now = SystemClock.uptimeMillis()
+        drawKeys(canvas, ctx, now)
         val p = popup
-        val bubbles = if (p != null) emptyList() else previewBubbles(ctx)
-        if (theme.style == SurfaceStyle.GLASS && (p != null || bubbles.isNotEmpty())) frost.capture(this) { drawKeys(it, ctx) }
-        if (p != null) drawPopup(canvas, p) else drawPreviews(canvas, bubbles)
+        updateBubbles(if (p != null) emptyList() else previewBubbles(ctx), now)
+        val closing = closingPopup?.takeIf { now - closingAt < POPUP_FADE_MS }
+        if (closing == null) closingPopup = null
+        if (theme.style == SurfaceStyle.GLASS && (p != null || closing != null || bubbles.isNotEmpty())) {
+            frost.capture(this) { drawKeys(it, ctx, now) }
+        }
+        for (b in bubbles) drawBubble(canvas, b)
+        if (closing != null) drawPopup(canvas, closing, 1f - (now - closingAt) / POPUP_FADE_MS.toFloat())
+        if (p != null) drawPopup(canvas, p, ((now - popupAt) / POPUP_FADE_MS.toFloat()).coerceAtMost(1f))
+        // Keep drawing while something fades or grows; nothing is redrawn once it all stands still.
+        val moving = bubbles.isNotEmpty() || closing != null || (p != null && now - popupAt < POPUP_FADE_MS) ||
+            released.values.any { now - it < RELEASE_FADE_MS }
+        if (moving) postInvalidateOnAnimation()
     }
 
-    private fun drawKeys(canvas: Canvas, ctx: LabelContext) {
+    private fun drawKeys(canvas: Canvas, ctx: LabelContext, now: Long) {
         val pressedKeys = HashSet<Key>()
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
+        released.entries.removeAll { now - it.value >= RELEASE_FADE_MS }
 
         for ((index, entry) in keyRects.withIndex()) {
             val (key, rect) = entry
@@ -217,6 +236,13 @@ class KeyboardView(context: Context) : View(context) {
                 }
                 color = if (isAction) t.confirm else t.text
                 surfaces.draw(canvas, inner, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                // A released key lets its pressed glow go softly instead of switching it off.
+                val fade = released[key]?.let { 1f - (now - it) / RELEASE_FADE_MS.toFloat() }
+                if (!pressed && fade != null && fade > 0f) {
+                    val layer = canvas.saveLayerAlpha(inner, (fade * fade * 255).toInt())
+                    surfaces.draw(canvas, inner, radius, t.style, t.key, SurfaceState.PRESSED, seed = index, inkColor = color)
+                    canvas.restoreToCount(layer)
+                }
             } else {
                 val fill = when {
                     pressed -> t.pressed
@@ -238,9 +264,10 @@ class KeyboardView(context: Context) : View(context) {
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
-                hintPaint.color = t.hint
-                hintPaint.textSize = inner.height() * 0.24f * theme.textScale
-                canvas.drawText(hint, inner.right - inner.width() * 0.1f, inner.top + hintPaint.textSize * 1.05f, hintPaint)
+                // The digit sits small and quiet in the top corner, clear of the letter even in capitals.
+                hintPaint.color = (t.hint and 0x00FFFFFF) or 0xB3000000.toInt()
+                hintPaint.textSize = inner.height() * 0.19f * (1f + (theme.textScale - 1f) / 2f)
+                canvas.drawText(hint, inner.right - minOf(inner.width() * 0.12f, dp(5f)), inner.top + hintPaint.textSize + dp(2.5f), hintPaint)
             }
             if (state == KeyHighlight.LOCKED && icon != Icon.CAPS) {
                 dotPaint.color = color
@@ -250,9 +277,9 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     /** The enlarged letters above the pressed keys: bubble and label. */
-    private fun previewBubbles(ctx: LabelContext): List<Pair<RectF, String>> {
+    private fun previewBubbles(ctx: LabelContext): List<Triple<Key, RectF, String>> {
         if (!keyPreview) return emptyList()
-        val out = ArrayList<Pair<RectF, String>>(2)
+        val out = ArrayList<Triple<Key, RectF, String>>(2)
         for (i in 0 until pointers.size()) {
             val state = pointers.valueAt(i)
             val key = state.key ?: continue
@@ -264,7 +291,7 @@ class KeyboardView(context: Context) : View(context) {
             val h = keyHeightPx * 1.2f
             val left = (anchor.centerX() - w / 2).coerceIn(0f, maxOf(0f, width - w))
             val bottom = anchor.top + keyGap
-            out += RectF(left, bottom - h, left + w, bottom) to label
+            out += Triple(key, RectF(left, bottom - h, left + w, bottom), label)
         }
         return out
     }
@@ -288,15 +315,56 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private fun drawPreviews(canvas: Canvas, bubbles: List<Pair<RectF, String>>) {
-        for ((bubble, label) in bubbles) {
-            drawOverlaySurface(canvas, bubble, radius * 1.5f, label.hashCode())
-            textPaint.color = theme.text
-            textPaint.typeface = letterFace
-            textPaint.textSize = bubble.height() * 0.5f * theme.textScale
-            val y = bubble.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
-            canvas.drawText(label, bubble.centerX(), y, textPaint)
+    /** An enlarged letter on its way in (while pressed) or out (after release); [shown] runs 0 → 1. */
+    private class Bubble(val key: Key, var rect: RectF, var label: String, var at: Long) {
+        var shown = 0f
+        var pressed = true
+    }
+
+    private val bubbles = ArrayList<Bubble>(2)
+
+    /** Grows the bubbles of pressed keys and fades out the others, by the time passed since the last frame. */
+    private fun updateBubbles(live: List<Triple<Key, RectF, String>>, now: Long) {
+        for (b in bubbles) b.pressed = false
+        for ((key, rect, label) in live) {
+            // Pressing a key again while its letter still fades brings that letter back instead of a new one.
+            val b = bubbles.firstOrNull { it.key === key } ?: Bubble(key, rect, label, now).also { bubbles += it }
+            b.pressed = true
+            b.rect = rect
+            b.label = label
         }
+        val it = bubbles.iterator()
+        while (it.hasNext()) {
+            val b = it.next()
+            val dt = (now - b.at).coerceAtLeast(0L)
+            b.at = now
+            b.shown = if (b.pressed) {
+                (b.shown + dt / BUBBLE_IN_MS.toFloat()).coerceAtMost(1f)
+            } else {
+                (b.shown - dt / BUBBLE_OUT_MS.toFloat()).coerceAtLeast(0f)
+            }
+            if (!b.pressed && b.shown <= 0f) it.remove()
+        }
+    }
+
+    private fun drawBubble(canvas: Canvas, b: Bubble) {
+        // Eased in and out: rises a little from the key, grows from 88 % and fades, with no jump at either end.
+        val e = 1f - (1f - b.shown) * (1f - b.shown) * (1f - b.shown)
+        if (e <= 0.01f) return
+        val bubble = b.rect
+        val scale = 0.88f + 0.12f * e
+        val layer = canvas.saveLayerAlpha(
+            bubble.left - dp(4f), bubble.top - dp(4f), bubble.right + dp(4f), bubble.bottom + dp(10f), (e * 255).toInt(),
+        )
+        canvas.translate(0f, (1f - e) * dp(6f))
+        canvas.scale(scale, scale, bubble.centerX(), bubble.bottom)
+        drawOverlaySurface(canvas, bubble, radius * 1.5f, b.label.hashCode())
+        textPaint.color = theme.text
+        textPaint.typeface = letterFace
+        textPaint.textSize = bubble.height() * 0.5f * theme.textScale
+        val y = bubble.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
+        canvas.drawText(b.label, bubble.centerX(), y, textPaint)
+        canvas.restoreToCount(layer)
     }
 
     private fun drawLabel(canvas: Canvas, rect: RectF, label: String, color: Int, key: Key) {
@@ -350,8 +418,15 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private fun drawPopup(canvas: Canvas, p: Popup) {
+    private fun drawPopup(canvas: Canvas, p: Popup, shown: Float) {
         val t = theme
+        // Fades and grows in (and out) like the enlarged letter.
+        val e = 1f - (1f - shown) * (1f - shown) * (1f - shown)
+        if (e <= 0.01f) return
+        val b = p.bounds
+        val layer = canvas.saveLayerAlpha(b.left - dp(4f), b.top - dp(4f), b.right + dp(4f), b.bottom + dp(10f), (e * 255).toInt())
+        val scale = 0.92f + 0.08f * e
+        canvas.scale(scale, scale, b.centerX(), b.bottom)
         drawOverlaySurface(canvas, p.bounds, radius, 7)
         p.cells.forEachIndexed { i, cell ->
             if (i == p.selected) {
@@ -364,6 +439,7 @@ class KeyboardView(context: Context) : View(context) {
             val chosen = i == p.selected && !t.styled
             drawLabel(canvas, cell, p.options[i], if (chosen) t.onAccent else t.text, p.key)
         }
+        canvas.restoreToCount(layer)
     }
 
     // ------------------------------------------------------------------ touch
@@ -493,9 +569,12 @@ class KeyboardView(context: Context) : View(context) {
         val state = pointers[id] ?: return
         pointers.remove(id)
         state.cancelCallbacks()
+        state.key?.let { released[it] = SystemClock.uptimeMillis() }
         val p = popup
         if (p != null && p.pointerId == id) {
             popup = null
+            closingPopup = p
+            closingAt = SystemClock.uptimeMillis()
             listener?.onAlternative(p.options[p.selected])
         } else {
             val key = state.key
@@ -520,6 +599,7 @@ class KeyboardView(context: Context) : View(context) {
             RectF(left + i * cellWidth, top, left + (i + 1) * cellWidth, top + keyHeightPx)
         }
         popup = Popup(key, options, RectF(left, top, left + total, top + keyHeightPx), cells, pointerId)
+        popupAt = SystemClock.uptimeMillis()
         feedback()
     }
 
@@ -567,5 +647,11 @@ class KeyboardView(context: Context) : View(context) {
         const val SPACE_SWIPE_DP = 60f
         const val BACKSPACE_SWIPE_START_DP = 28f
         const val BACKSPACE_SWIPE_STEP_DP = 30f
+
+        // Soft timings: quick enough to follow fast typing, long enough that nothing pops.
+        const val BUBBLE_IN_MS = 70L
+        const val BUBBLE_OUT_MS = 150L
+        const val POPUP_FADE_MS = 130L
+        const val RELEASE_FADE_MS = 170L
     }
 }

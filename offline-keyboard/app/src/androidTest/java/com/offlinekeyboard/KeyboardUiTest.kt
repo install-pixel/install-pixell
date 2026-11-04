@@ -145,7 +145,7 @@ class KeyboardUiTest {
     fun emojiPanelTypesEmoji() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        tapSpecial(SpecialKey.LAYER_EMOJI)
+        openEmoji()
         screenshot("emoji")
         tapText(com.offlinekeyboard.core.layout.EmojiSet.pages[0].items[0])
         tapSpecial(SpecialKey.EMOJI_NEXT)
@@ -154,7 +154,7 @@ class KeyboardUiTest {
         tapText("а")
         assertEquals(com.offlinekeyboard.core.layout.EmojiSet.pages[0].items[0] + "а", text(activity.plain))
         // Opened again, the panel starts on the most used page.
-        tapSpecial(SpecialKey.LAYER_EMOJI)
+        openEmoji()
         screenshot("emoji-frequent")
         assertTrue(keyCenter { it.special == SpecialKey.EMOJI_NEXT && it.label?.startsWith("🕘") == true } != null)
         tapSpecial(SpecialKey.LAYER_LETTERS)
@@ -217,12 +217,12 @@ class KeyboardUiTest {
         focus(activity.chat)
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        tapSpecial(SpecialKey.LAYER_EMOJI)
+        openEmoji()
         // The sticker panel is open once its boy/girl buttons show.
         repeat(3) {
             if (findView { v -> v is ToolbarButton && v.isShown && v.text == "👦" } != null) return@repeat
             if (service().inputRootForTest?.stickersShown != true) {
-                runCatching { tapSpecial(SpecialKey.STICKERS) }.onFailure { tapSpecial(SpecialKey.LAYER_EMOJI) }
+                runCatching { tapSpecial(SpecialKey.STICKERS) }.onFailure { openEmoji() }
             }
             Thread.sleep(800)
         }
@@ -652,6 +652,12 @@ class KeyboardUiTest {
     private fun longPressText(text: String, screenshotName: String? = null) {
         val point = keyCenter { (it.action as? KeyAction.Text)?.text == text } ?: throw AssertionError("no key «$text»")
         touch(point.x, point.y, holdMs = 700, whileHeld = { screenshotName?.let(::screenshot) })
+    }
+
+    /** Emoji live on a long press of ",": holding it and letting go picks the first option, the panel. */
+    private fun openEmoji() {
+        longPressText(",")
+        instrumentation.waitForIdleSync()
     }
 
     private fun tapView(view: View) {
