@@ -107,7 +107,7 @@ internal fun SettingsTheme(mode: ThemeMode?, accent: Accent, content: @Composabl
         outline = Color(0x38FFFFFF), outlineVariant = Color(0x24FFFFFF),
         error = Tone.Danger,
     )
-    val font = if (LookDebug.level >= 1) TextStyle(fontFamily = if (look == Look.SHEET) HandFont else GlassFont) else TextStyle()
+    val font = TextStyle(fontFamily = if (look == Look.SHEET) HandFont else GlassFont)
     val density = LocalDensity.current
     // Fields and small surfaces are rounded 16 dp (THEMES.md: no rectangular frames).
     val shapes = MaterialTheme.shapes.copy(
@@ -136,11 +136,6 @@ private fun Typography.withFont(font: TextStyle) = Typography(
 
 // ------------------------------------------------------------------ surfaces
 
-/** Temporary: how much of the styled look is drawn (0 colours, 1 + font, 2 + solid body, 3 gradient body, 4 + sheen, 5 + rim, 6 all); CI bisect. */
-internal object LookDebug {
-    @Volatile var level = 6
-}
-
 private val GlassSurface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f to Color(0xFF0D0D0D), 1f to Color(0xFF080808))
 private val GlassRim = Brush.verticalGradient(
     0f to Color(0x80FFFFFF), 0.25f to Color(0x24FFFFFF), 0.8f to Color(0x12FFFFFF), 1f to Color(0x26FFFFFF),
@@ -148,24 +143,21 @@ private val GlassRim = Brush.verticalGradient(
 private val GlassRimChosen = Brush.verticalGradient(0f to Color(0xB3FFFFFF), 0.3f to Color(0x40FFFFFF), 1f to Color(0x33FFFFFF))
 
 /**
- * Glass drawn in one pass behind the content, as the keyboard draws its keys: the body, the top light of
- * large surfaces ([sheen]) and the 1 dp rim, all as rounded rectangles (no clipping layer).
+ * Glass drawn in one pass behind the content: the 1 dp rim as a filled rounded rectangle with the body
+ * (and the top light of large surfaces, [sheen]) filled 1 dp inside it. No stroke: on the Android 14/15
+ * emulator a gradient-brushed rounded stroke kills the renderer while the page scrolls.
  */
 private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Modifier = drawWithCache {
-    val r = CornerRadius(radius.toPx())
+    val r = radius.toPx()
     val rim = 1.dp.toPx()
+    val inner = CornerRadius(maxOf(0f, r - rim))
+    val innerSize = androidx.compose.ui.geometry.Size(size.width - 2 * rim, size.height - 2 * rim)
     val light = minOf(size.height / 2, 120.dp.toPx())
     val sheenBrush = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = light)
     onDrawBehind {
-        if (LookDebug.level >= 3) drawRoundRect(GlassSurface, cornerRadius = r) else drawRoundRect(Color(0xFF0D0D0D), cornerRadius = r)
-        if (sheen && LookDebug.level >= 4) drawRoundRect(sheenBrush, cornerRadius = r)
-        if (LookDebug.level >= 5) drawRoundRect(
-            if (chosen) GlassRimChosen else GlassRim,
-            topLeft = Offset(rim / 2, rim / 2),
-            size = androidx.compose.ui.geometry.Size(size.width - rim, size.height - rim),
-            cornerRadius = CornerRadius(maxOf(0f, radius.toPx() - rim / 2)),
-            style = Stroke(rim),
-        )
+        drawRoundRect(if (chosen) GlassRimChosen else GlassRim, cornerRadius = CornerRadius(r))
+        drawRoundRect(GlassSurface, Offset(rim, rim), innerSize, inner)
+        if (sheen) drawRoundRect(sheenBrush, Offset(rim, rim), innerSize, inner)
     }
 }
 
@@ -177,7 +169,7 @@ private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Mo
 internal fun Modifier.lookSurface(radius: Dp, seed: Int = 0, chosen: Boolean = false, sheen: Boolean = false, ink: Color = Tone.Ink): Modifier =
     when (LocalLook.current) {
         Look.PLAIN -> this
-        Look.GLASS -> if (LookDebug.level >= 2) glassFrame(radius, chosen, sheen) else this
+        Look.GLASS -> glassFrame(radius, chosen, sheen)
         Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else 0.8f, if (chosen) 2.6.dp else 2.2.dp, ink)
     }
 
@@ -218,9 +210,7 @@ internal fun LookSwitch(checked: Boolean) {
             val pad = (size.height - ball) / 2
             val x = if (checked) size.width - pad - ball else pad
             val capsule = CornerRadius(size.height / 2)
-            if (look == Look.GLASS && LookDebug.level < 6) {
-                onDrawBehind { }
-            } else if (look == Look.GLASS) {
+            if (look == Look.GLASS) {
                 val body = if (checked) {
                     Brush.verticalGradient(listOf(Color(0xFF4A4A4A), Color(0xFF262626)))
                 } else {
@@ -231,9 +221,12 @@ internal fun LookSwitch(checked: Boolean) {
                 } else {
                     Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = pad, endY = pad + ball)
                 }
+                val rim = 1.dp.toPx()
+                val innerSize = androidx.compose.ui.geometry.Size(size.width - 2 * rim, size.height - 2 * rim)
                 onDrawBehind {
-                    drawRoundRect(body, cornerRadius = capsule)
-                    drawRoundRect(if (checked) GlassRimChosen else GlassRim, cornerRadius = capsule, style = Stroke(1.dp.toPx()))
+                    // Rim as a fill under the body, not a stroke (see glassFrame).
+                    drawRoundRect(if (checked) GlassRimChosen else GlassRim, cornerRadius = capsule)
+                    drawRoundRect(body, Offset(rim, rim), innerSize, CornerRadius(innerSize.height / 2))
                     drawCircle(knob, ball / 2, Offset(x + ball / 2, pad + ball / 2))
                 }
             } else {
