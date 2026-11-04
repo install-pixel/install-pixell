@@ -107,7 +107,8 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         this.theme = theme
         setBackgroundColor(theme.background)
         title.setTextColor(theme.hint)
-        for (b in listOf(lettersButton, emojiButton, boyButton, girlButton)) b.glossy = theme.glossy
+        title.typeface = theme.typeface(context)
+        for (b in listOf(lettersButton, emojiButton, boyButton, girlButton)) b.applyStyle(theme)
         for (b in listOf(lettersButton, emojiButton)) {
             b.fill = theme.function
             b.pressedFill = theme.pressed
@@ -120,9 +121,10 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         val t = theme ?: return
         for ((b, c) in listOf(boyButton to StickerCharacter.BOY, girlButton to StickerCharacter.GIRL)) {
             val active = c == character
-            b.fill = if (active) t.accent else t.function
+            b.chosen = active && t.styled
+            b.fill = if (active && !t.styled) t.accent else t.function
             b.pressedFill = t.pressed
-            b.foreground = if (active) t.onAccent else t.text
+            b.foreground = if (active && !t.styled) t.onAccent else t.text
         }
     }
 

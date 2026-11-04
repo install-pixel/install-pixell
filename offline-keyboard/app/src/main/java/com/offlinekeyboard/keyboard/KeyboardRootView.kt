@@ -207,12 +207,18 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keyboardView.theme = value
         stickerPanel.applyTheme(value)
         setBackgroundColor(value.background)
-        suggestionViews.forEach { it.setTextColor(value.text) }
-        for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.glossy = value.glossy
+        Icons.style = value.style
+        val face = value.typeface(context)
+        suggestionViews.forEach {
+            it.setTextColor(value.text)
+            it.typeface = face
+        }
+        status.typeface = face
+        for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.applyStyle(value)
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
-            b.glossy = value.glossy
+            b.applyStyle(value)
         }
         lastState?.let { updateToolbar(it) }
         refreshCentre()
@@ -224,8 +230,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
         bluetoothButton.visibility = if (state.bluetooth == BluetoothButton.HIDDEN) View.GONE else View.VISIBLE
         val sending = state.bluetooth == BluetoothButton.SENDING
-        bluetoothButton.fill = if (sending) theme.accent else 0
-        bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
+        if (theme.styled) {
+            bluetoothButton.fill = if (sending) theme.function else 0
+            bluetoothButton.chosen = sending
+            bluetoothButton.foreground = theme.text
+        } else {
+            bluetoothButton.fill = if (sending) theme.accent else 0
+            bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
+        }
         settingsButton.icon = if (state.recording) Icon.CLOSE else Icon.GEAR
         settingsButton.contentDescription = context.getString(
             if (state.recording) R.string.toolbar_voice_cancel_description else R.string.toolbar_settings_description,
@@ -241,6 +253,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         voiceChip.icon = if (state.recording) Icon.STOP else Icon.MIC
         voiceChip.text = context.getString(if (state.recording) R.string.mode_voice_stop else R.string.mode_voice)
         styleChip(voiceChip, active = state.recording, enabled = state.voiceOffered)
+        // Glass and sheet: the listening microphone is cherry, so it is not mistaken for a red "delete".
+        if (theme.styled && state.recording) voiceChip.foreground = theme.listening
         refreshModesRow()
         refreshCentre()
     }
@@ -343,9 +357,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private fun styleChip(view: ToolbarButton, active: Boolean, enabled: Boolean) {
-        view.fill = if (active) theme.accent else theme.function
+        // Glass and sheet mark the active mode with a brighter rim, not a colour.
+        view.chosen = active && theme.styled
+        view.fill = if (active && !theme.styled) theme.accent else theme.function
         view.pressedFill = theme.pressed
-        view.foreground = if (active) theme.onAccent else theme.text
+        view.foreground = if (active && !theme.styled) theme.onAccent else theme.text
         view.bold = active
         view.alpha = if (enabled) 1f else 0.4f
     }

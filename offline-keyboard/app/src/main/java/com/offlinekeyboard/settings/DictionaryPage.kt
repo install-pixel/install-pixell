@@ -88,7 +88,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(e.word, modifier = Modifier.weight(1f))
                     Text("×${e.count}", style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = {
+                    TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                         store.dictionary.remove(language, e.word)
                         store.changed()
                     }) { Text(stringResource(R.string.delete)) }
@@ -97,7 +97,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             if (entries.size > MAX_SHOWN) {
                 Text(stringResource(R.string.dictionary_more, entries.size - MAX_SHOWN), style = MaterialTheme.typography.bodySmall)
             }
-            ActionButton(onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
+            ActionButton(tone = ButtonTone.DANGER, onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
         }
     }
 
@@ -107,7 +107,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             title = { Text(stringResource(R.string.dictionary_clear)) },
             text = { Text(stringResource(R.string.dictionary_clear_confirm)) },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                     store.dictionary.clear()
                     store.changed()
                     store.saveNow()

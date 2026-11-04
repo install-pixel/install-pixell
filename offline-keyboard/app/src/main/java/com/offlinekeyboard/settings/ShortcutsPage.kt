@@ -100,14 +100,14 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    TextButton(onClick = {
+                    TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                         update { it.copy(shortcuts = it.shortcuts.filterIndexed { i, _ -> i != index }) }
                     }) { Text(stringResource(R.string.delete)) }
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionButton(onClick = { editing = true }) { Text(stringResource(R.string.shortcut_add)) }
-                ActionButton(onClick = { update { it.copy(shortcuts = Shortcut.defaults) } }) {
+                ActionButton(tone = ButtonTone.DANGER, onClick = { update { it.copy(shortcuts = Shortcut.defaults) } }) {
                     Text(stringResource(R.string.shortcuts_restore_defaults))
                 }
             }
@@ -248,7 +248,7 @@ private fun ShortcutEditor(existing: List<Shortcut>, onDismiss: () -> Unit, onSa
             }
         },
         confirmButton = {
-            TextButton(enabled = candidate.isValid && !duplicate, onClick = { onSave(candidate) }) {
+            TextButton(enabled = candidate.isValid && !duplicate, colors = toneTextColors(ButtonTone.CONFIRM), onClick = { onSave(candidate) }) {
                 Text(stringResource(R.string.save))
             }
         },

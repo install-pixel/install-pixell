@@ -411,15 +411,49 @@ class KeyboardUiTest {
                 screenshot("theme-${if (dark) "dark" else "light"}-${accent.name.lowercase()}")
             }
         }
-        for (accent in listOf(Accent.GREY, Accent.SKY)) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet())) {
             val keyboard = service()
-            instrumentation.runOnMainSync { keyboard.applyThemeForTest(KeyboardTheme.oled(accent)) }
+            instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
-            screenshot("theme-oled-${accent.name.lowercase()}")
+            // The first frame after a style change can still be the previous theme on the emulator.
+            Thread.sleep(1_000)
+            screenshot("theme-$name")
         }
         // Fourteen redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
         focus(activity.plain)
         typeWord(activity.plain, "а")
+    }
+
+    /** The settings follow the glass style (cards, buttons, switches, font): screenshots. */
+    @Test
+    fun settingsInGlass() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.GLASS)
+
+    /** The settings follow the sheet style (pencil frames, Caveat): screenshots. */
+    @Test
+    fun settingsInSheet() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.SHEET)
+
+    private fun settingsIn(mode: com.offlinekeyboard.keyboard.ThemeMode) {
+        scenario.close()
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        try {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+            val tag = mode.name.lowercase()
+            for (page in listOf("", "models")) {
+                val intent = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                    .putExtra("page", page)
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->
+                    Thread.sleep(1500)
+                    assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
+                    screenshot("settings-$tag-${page.ifEmpty { "main" }}")
+                    scrollContent()
+                    Thread.sleep(600)
+                    screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
+                }
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.SYSTEM) } }
+        }
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
     }
 
     @Test
@@ -440,7 +474,7 @@ class KeyboardUiTest {
                 val tag = locale.ifEmpty { "default" }
                 screenshot("settings-$tag-1")
                 for (page in 2..5) {
-                    shell("input swipe 160 560 160 140 400")
+                    scrollContent()
                     Thread.sleep(600)
                     screenshot("settings-$tag-$page")
                 }
@@ -701,6 +735,13 @@ class KeyboardUiTest {
         // The keyboard window may still show the previous frame (a theme switch looked unchanged).
         Thread.sleep(300)
         shell("screencap -p $SCREENS/$name.png")
+    }
+
+    /** Scroll the page up by a screen half, well clear of the gesture-navigation strip at the bottom. */
+    private fun scrollContent() {
+        val metrics = instrumentation.targetContext.resources.displayMetrics
+        val x = metrics.widthPixels / 2
+        shell("input swipe $x ${metrics.heightPixels * 70 / 100} $x ${metrics.heightPixels * 20 / 100} 400")
     }
 
     private fun shell(command: String) {

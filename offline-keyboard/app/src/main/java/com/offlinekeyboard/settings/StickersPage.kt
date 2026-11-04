@@ -60,7 +60,7 @@ internal fun StickersPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
                     .heightIn(min = 96.dp),
                 label = { Text(stringResource(R.string.own_emoji_field)) },
             )
-            ActionButton(onClick = {
+            ActionButton(tone = ButtonTone.CONFIRM, onClick = {
                 update { it.copy(ownEmoji = ownEmoji.trim()) }
                 message = context.getString(R.string.own_emoji_saved, EmojiSet.parseOwn(ownEmoji).size)
             }) { Text(stringResource(R.string.save)) }
@@ -85,7 +85,7 @@ internal fun StickersPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
                             Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
                                 if (bitmap != null) Image(bitmap.asImageBitmap(), contentDescription = null, Modifier.size(88.dp))
                             }
-                            TextButton(onClick = { Stickers.delete(context, name) }) {
+                            TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = { Stickers.delete(context, name) }) {
                                 Text(stringResource(R.string.delete))
                             }
                         }

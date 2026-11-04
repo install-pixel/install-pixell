@@ -13,7 +13,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -85,13 +84,7 @@ class SettingsActivity : ComponentActivity() {
         }
         setContent {
             val current by repository.settings.collectAsStateWithLifecycle(initialValue = null)
-            val dark = when (current?.themeMode ?: ThemeMode.SYSTEM) {
-                ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK, ThemeMode.OLED -> true
-            }
-            val oled = current?.themeMode == ThemeMode.OLED
-            MaterialTheme(colorScheme = settingsColors(dark, current?.accent ?: Accent.SKY, oled)) {
+            SettingsTheme(current?.themeMode, current?.accent ?: Accent.SKY) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val startPage = when (intent.getStringExtra(EXTRA_PAGE)) {
                         "bluetooth" -> Page.BLUETOOTH
@@ -337,7 +330,8 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 ThemeMode.SYSTEM to R.string.theme_system,
                 ThemeMode.LIGHT to R.string.theme_light,
                 ThemeMode.DARK to R.string.theme_dark,
-                ThemeMode.OLED to R.string.theme_oled,
+                ThemeMode.GLASS to R.string.theme_glass,
+                ThemeMode.SHEET to R.string.theme_sheet,
             )) {
                 RadioRow(stringResource(label), s.themeMode == mode) { update { it.copy(themeMode = mode) } }
             }
@@ -487,7 +481,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                     clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
                 }) { Text(stringResource(R.string.about_copy_crash)) }
             }
-            ActionButton(onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
+            ActionButton(tone = ButtonTone.DANGER, onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
         }
     }
 
@@ -497,7 +491,7 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             title = { Text(stringResource(R.string.reset_settings)) },
             text = { Text(stringResource(R.string.reset_confirm)) },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                     showResetDialog = false
                     onReset()
                 }) { Text(stringResource(R.string.reset)) }

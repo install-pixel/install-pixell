@@ -142,7 +142,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
                             Text(stringResource(R.string.models_download))
                         }
                     } else {
-                        ActionButton(enabled = busy == null, onClick = {
+                        ActionButton(enabled = busy == null, tone = ButtonTone.DANGER, onClick = {
                             store.deleteSpeech(language)
                             refresh++
                             ModelEvents.modelsChanged()
@@ -185,7 +185,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
                         )
                     }
                     if (model != null) {
-                        ActionButton(enabled = busy == null, onClick = {
+                        ActionButton(enabled = busy == null, tone = ButtonTone.DANGER, onClick = {
                             store.deleteTranslation(direction)
                             refresh++
                             ModelEvents.modelsChanged()

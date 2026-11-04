@@ -6,12 +6,10 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.offlinekeyboard.R
 import com.offlinekeyboard.keyboard.Accent
@@ -44,8 +43,10 @@ class ModelInstallActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val uris = urisOf(intent)
+        val repository = SettingsRepository(this)
         setContent {
-            MaterialTheme(colorScheme = settingsColors(isSystemInDarkTheme(), Accent.SKY)) {
+            val current by repository.settings.collectAsStateWithLifecycle(initialValue = null)
+            SettingsTheme(current?.themeMode, current?.accent ?: Accent.SKY) {
                 Surface(shape = MaterialTheme.shapes.large) {
                     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(stringResource(R.string.models_install_title), style = MaterialTheme.typography.titleLarge)
@@ -57,7 +58,7 @@ class ModelInstallActivity : ComponentActivity() {
                         }
                         state?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
                         if (!busy) {
-                            Button(onClick = { finish() }) { Text(stringResource(R.string.setup_done)) }
+                            ActionButton(onClick = { finish() }) { Text(stringResource(R.string.setup_done)) }
                         }
                     }
                 }

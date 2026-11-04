@@ -155,7 +155,8 @@
     <string name="theme_system">Як у телефоні</string>
     <string name="theme_light">Світла</string>
     <string name="theme_dark">Темна</string>
-    <string name="theme_oled">OLED (чорна, сірі градієнти)</string>
+    <string name="theme_glass">Скло · Темна</string>
+    <string name="theme_sheet">Аркуш · Темна (від руки)</string>
     <string name="accent_title">Колір</string>
     <string name="accent_sky">Блакитний</string>
     <string name="accent_mint">М\'ятний</string>
