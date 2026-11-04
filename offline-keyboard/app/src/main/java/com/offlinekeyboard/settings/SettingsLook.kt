@@ -112,7 +112,14 @@ internal fun SettingsTheme(mode: ThemeMode?, accent: Accent, content: @Composabl
     )
     val font = TextStyle(fontFamily = if (look == Look.SHEET) HandFont else GlassFont)
     val density = LocalDensity.current
-    MaterialTheme(colorScheme = colors, typography = MaterialTheme.typography.withFont(font)) {
+    // Fields and small surfaces are rounded 16 dp (THEMES.md: no rectangular frames).
+    val shapes = MaterialTheme.shapes.copy(
+        extraSmall = RoundedCornerShape(16.dp),
+        small = RoundedCornerShape(16.dp),
+        medium = RoundedCornerShape(20.dp),
+        large = RoundedCornerShape(24.dp),
+    )
+    MaterialTheme(colorScheme = colors, typography = MaterialTheme.typography.withFont(font), shapes = shapes) {
         CompositionLocalProvider(
             LocalLook provides look,
             LocalTextStyle provides LocalTextStyle.current.merge(font),

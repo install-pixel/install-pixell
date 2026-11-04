@@ -415,6 +415,8 @@ class KeyboardUiTest {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
+            // The first frame after a style change can still be the previous theme on the emulator.
+            Thread.sleep(1_000)
             screenshot("theme-$name")
         }
         // Fourteen redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
