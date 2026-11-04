@@ -9,6 +9,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -53,31 +59,25 @@ internal fun languageName(language: Language): String = stringResource(
 
 @Composable
 internal fun Section(title: String, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    val body: @Composable () -> Unit = {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             content()
         }
     }
+    if (LocalLook.current == Look.PLAIN) {
+        Card(modifier = Modifier.fillMaxWidth()) { body() }
+    } else {
+        // Glass card (rounded 20 dp, with the top light) or a pencil frame.
+        Box(Modifier.fillMaxWidth().lookSurface(20.dp, seed = title.hashCode(), sheen = true)) { body() }
+    }
 }
 
 /** Light/dark Material colours tinted with the keyboard's pastel accent; text on the accent stays dark. */
-internal fun settingsColors(dark: Boolean, accent: Accent, oled: Boolean = false): ColorScheme {
+internal fun settingsColors(dark: Boolean, accent: Accent): ColorScheme {
     val a = Color(accent.color)
     val onAccent = Color(0xFF1E2128)
-    return if (oled) {
-        // The OLED theme: black page, grey cards, the accent only on controls.
-        darkColorScheme(
-            primary = a, onPrimary = onAccent,
-            primaryContainer = Color(0xFF2B2B2B), onPrimaryContainer = Color(0xFFE6E6E6),
-            secondaryContainer = Color(0xFF242424),
-            background = Color.Black, surface = Color.Black,
-            surfaceVariant = Color(0xFF1D1D1D), surfaceContainer = Color(0xFF161616),
-            surfaceContainerHigh = Color(0xFF1C1C1C), surfaceContainerHighest = Color(0xFF242424),
-            onBackground = Color(0xFFE6E6E6), onSurface = Color(0xFFE6E6E6), onSurfaceVariant = Color(0xFF8C8C8C),
-            outline = Color(0xFF3A3A3A),
-        )
-    } else if (dark) {
+    return if (dark) {
         darkColorScheme(
             primary = a, onPrimary = onAccent,
             primaryContainer = a.copy(alpha = 0.35f).compositeOver(Color(0xFF1C1D21)), onPrimaryContainer = Color(0xFFEDEEF0),
@@ -98,14 +98,57 @@ internal fun settingsColors(dark: Boolean, accent: Accent, oled: Boolean = false
  * inside its own button instead of squeezing a neighbour. Several actions stack one under another.
  */
 @Composable
-internal fun ActionButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
-    OutlinedButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth(), content = content)
+internal fun ActionButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    tone: ButtonTone = ButtonTone.NEUTRAL,
+    content: @Composable RowScope.() -> Unit,
+) {
+    LookButton(onClick, enabled, tone, Modifier.fillMaxWidth(), content)
 }
 
 /** The same button for a row that also holds text (a setup step, a device, a word field). */
 @Composable
-internal fun InlineButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
-    OutlinedButton(onClick = onClick, enabled = enabled, content = content)
+internal fun InlineButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    tone: ButtonTone = ButtonTone.NEUTRAL,
+    content: @Composable RowScope.() -> Unit,
+) {
+    LookButton(onClick, enabled, tone, Modifier, content)
+}
+
+/**
+ * Outlined Material button in the plain look; a glass "pill" or a pencil-framed one in glass and sheet. The
+ * text colour says what it does ([ButtonTone]); a disabled button fades instead of disappearing.
+ */
+@Composable
+private fun LookButton(onClick: () -> Unit, enabled: Boolean, tone: ButtonTone, modifier: Modifier, content: @Composable RowScope.() -> Unit) {
+    val color = toneColor(tone)
+    if (LocalLook.current == Look.PLAIN) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+            colors = if (tone == ButtonTone.NEUTRAL) ButtonDefaults.outlinedButtonColors() else ButtonDefaults.outlinedButtonColors(contentColor = color),
+            content = content,
+        )
+        return
+    }
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .alpha(if (enabled) 1f else 0.4f)
+            .lookSurface(24.dp, seed = tone.ordinal * 31 + 7, ink = if (tone == ButtonTone.NEUTRAL) Tone.Ink else color)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides color) {
+            ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(textAlign = TextAlign.Center)) { content() }
+        }
+    }
 }
 
 /** One setup step: a button while it is to do, a check mark once done. */
@@ -127,7 +170,9 @@ internal fun SetupStep(title: String, done: Boolean, action: String, onClick: ()
 /** Six round colour swatches, each a 40 dp touch target (they fit a 320 dp wide screen). */
 @Composable
 internal fun AccentPicker(selected: Accent, onSelect: (Accent) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Glass and sheet have no colour accent (THEMES.md): the swatches fade but keep their place.
+    val styled = LocalLook.current != Look.PLAIN
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.alpha(if (styled) 0.35f else 1f)) {
         for (accent in Accent.entries) {
             val name = stringResource(
                 when (accent) {
@@ -150,7 +195,7 @@ internal fun AccentPicker(selected: Accent, onSelect: (Accent) -> Unit) {
                         shape = CircleShape,
                     )
                     .semantics { contentDescription = name }
-                    .selectable(selected = accent == selected, role = Role.RadioButton) { onSelect(accent) },
+                    .selectable(selected = accent == selected, enabled = !styled, role = Role.RadioButton) { onSelect(accent) },
                 contentAlignment = Alignment.Center,
             ) {
                 if (accent == selected) Text("✓", color = Color(0xFF1E2128), style = MaterialTheme.typography.titleMedium)
@@ -164,7 +209,11 @@ internal fun StatusLine(label: String, ok: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             if (ok) "✓" else "!",
-            color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            color = when {
+                !ok -> MaterialTheme.colorScheme.error
+                LocalLook.current == Look.PLAIN -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurface
+            },
             style = MaterialTheme.typography.titleMedium,
         )
         Spacer(Modifier.width(8.dp))
@@ -199,7 +248,7 @@ internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> U
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null)
+        if (LocalLook.current == Look.PLAIN) Switch(checked = checked, onCheckedChange = null) else LookSwitch(checked)
     }
 }
 
@@ -211,7 +260,7 @@ internal fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = checked, onCheckedChange = null)
+        if (LocalLook.current == Look.PLAIN) Checkbox(checked = checked, onCheckedChange = null) else LookMark(checked, round = false)
         Spacer(Modifier.width(8.dp))
         Text(label)
     }
@@ -225,7 +274,7 @@ internal fun RadioRow(label: String, selected: Boolean, onSelect: () -> Unit) {
             .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = null)
+        if (LocalLook.current == Look.PLAIN) RadioButton(selected = selected, onClick = null) else LookMark(selected, round = true)
         Spacer(Modifier.width(8.dp))
         Text(label)
     }

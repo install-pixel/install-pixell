@@ -411,15 +411,43 @@ class KeyboardUiTest {
                 screenshot("theme-${if (dark) "dark" else "light"}-${accent.name.lowercase()}")
             }
         }
-        for (accent in listOf(Accent.GREY, Accent.SKY)) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet())) {
             val keyboard = service()
-            instrumentation.runOnMainSync { keyboard.applyThemeForTest(KeyboardTheme.oled(accent)) }
+            instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
-            screenshot("theme-oled-${accent.name.lowercase()}")
+            screenshot("theme-$name")
         }
         // Fourteen redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
         focus(activity.plain)
         typeWord(activity.plain, "а")
+    }
+
+    /** The settings follow the glass and sheet styles (cards, buttons, switches, fonts): screenshots of both. */
+    @Test
+    fun settingsInGlassAndSheet() {
+        scenario.close()
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        try {
+            for (mode in listOf(com.offlinekeyboard.keyboard.ThemeMode.GLASS, com.offlinekeyboard.keyboard.ThemeMode.SHEET)) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                val tag = mode.name.lowercase()
+                for (page in listOf("", "models")) {
+                    val intent = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                        .putExtra("page", page)
+                    ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->
+                        Thread.sleep(1500)
+                        assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
+                        screenshot("settings-$tag-${page.ifEmpty { "main" }}")
+                        shell("input swipe 160 560 160 140 400")
+                        Thread.sleep(600)
+                        screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
+                    }
+                }
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.SYSTEM) } }
+        }
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
     }
 
     @Test

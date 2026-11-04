@@ -1,6 +1,10 @@
 package com.offlinekeyboard.keyboard
 
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.ComposePathEffect
+import android.graphics.CornerPathEffect
+import android.graphics.DiscretePathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -28,6 +32,14 @@ object Icons {
         strokeJoin = Paint.Join.ROUND
     }
 
+    /**
+     * The theme's line style: plain; glass (1.8 lines with a soft glow of the same line 4.4 wide at 18 %); or
+     * sheet (a pencil line that trembles a little). Set when the keyboard's theme changes.
+     */
+    var style: SurfaceStyle = SurfaceStyle.FLAT
+
+    private val tremble = ComposePathEffect(CornerPathEffect(0.6f), DiscretePathEffect(1.6f, 0.45f))
+
     /** Draws [icon] centred at ([cx], [cy]) in a square of [size] pixels. */
     fun draw(canvas: Canvas, icon: Icon, cx: Float, cy: Float, size: Float, color: Int) {
         val (stroke, fill) = paths.getOrPut(icon) { build(icon) }
@@ -36,14 +48,30 @@ object Icons {
         canvas.translate(cx - size / 2, cy - size / 2)
         canvas.scale(scale, scale)
         paint.color = color
+        paint.pathEffect = if (style == SurfaceStyle.SHEET) tremble else null
+        val width = when (style) {
+            SurfaceStyle.FLAT -> STROKE
+            SurfaceStyle.GLASS -> 1.8f
+            SurfaceStyle.SHEET -> 2.2f
+        }
+        if (style == SurfaceStyle.GLASS) {
+            // The glow: the same line, wider and faint.
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 4.4f
+            paint.alpha = (Color.alpha(color) * 0.18f).toInt()
+            fill?.let { canvas.drawPath(it, paint) }
+            canvas.drawPath(stroke, paint)
+            paint.color = color
+        }
         if (fill != null) {
             paint.style = Paint.Style.FILL_AND_STROKE
-            paint.strokeWidth = STROKE
+            paint.strokeWidth = width
             canvas.drawPath(fill, paint)
         }
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = STROKE
+        paint.strokeWidth = width
         canvas.drawPath(stroke, paint)
+        paint.pathEffect = null
         canvas.restore()
     }
 

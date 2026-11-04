@@ -66,7 +66,7 @@ internal fun GlossaryPage(onBack: () -> Unit) {
         )
         message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ActionButton(onClick = {
+            ActionButton(tone = ButtonTone.CONFIRM, onClick = {
                 store.save(text)
                 message = context.getString(R.string.glossary_saved, Glossary.parse(text).size)
             }) { Text(stringResource(R.string.save)) }

@@ -17,6 +17,8 @@ import android.util.SparseArray
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.content.res.ResourcesCompat
+import com.offlinekeyboard.R
 import com.offlinekeyboard.core.KeyLabels
 import com.offlinekeyboard.core.LabelContext
 import com.offlinekeyboard.core.layout.Key
@@ -84,19 +86,38 @@ class KeyboardView(context: Context) : View(context) {
     private val keyGap = dp(3f)
     private val corner = dp(6f)
 
-    private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.RIGHT }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val gloss = Gloss(resources.displayMetrics.density)
+    private val surfaces = SurfacePainter(resources.displayMetrics.density)
+    private var letterFace: Typeface = Typeface.DEFAULT
+    private var labelFace: Typeface = Typeface.DEFAULT_BOLD
 
     var theme: KeyboardTheme = KeyboardTheme.create(dark = false, accent = Accent.SKY)
         set(value) {
             if (field == value) return
             field = value
             setBackgroundColor(value.background)
+            val (letters, labels) = faces(value)
+            letterFace = letters
+            labelFace = labels
+            hintPaint.typeface = letters
             invalidate()
         }
+
+    /** Letters and word labels in the theme's built-in font (Exo 2, Caveat) or the system one. */
+    private fun faces(theme: KeyboardTheme): Pair<Typeface, Typeface> {
+        fun font(id: Int) = runCatching { ResourcesCompat.getFont(context, id) }.getOrNull()
+        return when (theme.style) {
+            SurfaceStyle.FLAT -> Typeface.DEFAULT to Typeface.DEFAULT_BOLD
+            SurfaceStyle.GLASS ->
+                (font(R.font.exo2_regular) ?: Typeface.DEFAULT) to (font(R.font.exo2_semibold) ?: Typeface.DEFAULT_BOLD)
+            SurfaceStyle.SHEET -> (font(R.font.caveat_semibold) ?: Typeface.DEFAULT).let { it to it }
+        }
+    }
+
+    /** Keys of the glass and sheet styles are rounder (THEMES.md: items 14–16 dp, scaled to a key). */
+    private val radius: Float get() = if (theme.styled) dp(9f) else corner
 
     init {
         setBackgroundColor(theme.background)
@@ -169,22 +190,36 @@ class KeyboardView(context: Context) : View(context) {
         val pressedKeys = HashSet<Key>()
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
 
-        for ((key, rect) in keyRects) {
+        for ((index, entry) in keyRects.withIndex()) {
+            val (key, rect) = entry
             if (key.style == KeyStyle.SPACER) continue
             val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
             val state = highlight(key)
             val t = theme
-            val fill = when {
-                key in pressedKeys -> t.pressed
-                state != KeyHighlight.NONE -> t.accent
-                key.style == KeyStyle.ACTION -> t.accent
-                key.style == KeyStyle.FUNCTION || key.style == KeyStyle.MODIFIER -> t.function
-                else -> t.key
+            val pressed = key in pressedKeys
+            val isAction = key.style == KeyStyle.ACTION
+            val color: Int
+            if (t.styled) {
+                // Glass and sheet: an active key gets a brighter rim, Enter is written in the confirm blue.
+                val surface = when {
+                    pressed -> SurfaceState.PRESSED
+                    state != KeyHighlight.NONE -> SurfaceState.SELECTED
+                    else -> SurfaceState.NORMAL
+                }
+                color = if (isAction) t.confirm else t.text
+                surfaces.draw(canvas, inner, radius, t.style, t.key, surface, seed = index, inkColor = color)
+            } else {
+                val fill = when {
+                    pressed -> t.pressed
+                    state != KeyHighlight.NONE -> t.accent
+                    isAction -> t.accent
+                    key.style == KeyStyle.FUNCTION || key.style == KeyStyle.MODIFIER -> t.function
+                    else -> t.key
+                }
+                surfaces.draw(canvas, inner, corner, SurfaceStyle.FLAT, fill)
+                val onAccent = isAction || state != KeyHighlight.NONE
+                color = if (onAccent && !pressed) t.onAccent else t.text
             }
-            drawSurface(canvas, inner, corner, fill)
-
-            val onAccent = key.style == KeyStyle.ACTION || state != KeyHighlight.NONE
-            val color = if (onAccent && key !in pressedKeys) t.onAccent else t.text
             val icon = iconFor(key, ctx, state)
             if (icon != null) {
                 val size = minOf(inner.height() * 0.48f, inner.width() * 0.62f, dp(26f))
@@ -195,7 +230,7 @@ class KeyboardView(context: Context) : View(context) {
 
             KeyLabels.hint(key, ctx)?.let { hint ->
                 hintPaint.color = t.hint
-                hintPaint.textSize = inner.height() * 0.24f
+                hintPaint.textSize = inner.height() * 0.24f * theme.textScale
                 canvas.drawText(hint, inner.right - inner.width() * 0.1f, inner.top + hintPaint.textSize * 1.05f, hintPaint)
             }
             if (state == KeyHighlight.LOCKED && icon != Icon.CAPS) {
@@ -220,21 +255,12 @@ class KeyboardView(context: Context) : View(context) {
             val left = (anchor.centerX() - w / 2).coerceIn(0f, maxOf(0f, width - w))
             val bottom = anchor.top + keyGap
             val bubble = RectF(left, bottom - h, left + w, bottom)
-            drawSurface(canvas, bubble, corner * 1.5f, theme.popup)
+            surfaces.draw(canvas, bubble, radius * 1.5f, theme.style, theme.popup, seed = label.hashCode(), inkColor = theme.text, sheen = true)
             textPaint.color = theme.text
-            textPaint.typeface = Typeface.DEFAULT
-            textPaint.textSize = h * 0.5f
+            textPaint.typeface = letterFace
+            textPaint.textSize = h * 0.5f * theme.textScale
             val y = bubble.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
             canvas.drawText(label, bubble.centerX(), y, textPaint)
-        }
-    }
-
-    private fun drawSurface(canvas: Canvas, rect: RectF, radius: Float, color: Int) {
-        if (theme.glossy) {
-            gloss.draw(canvas, rect, radius, color)
-        } else {
-            keyPaint.color = color
-            canvas.drawRoundRect(rect, radius, radius, keyPaint)
         }
     }
 
@@ -242,8 +268,8 @@ class KeyboardView(context: Context) : View(context) {
         if (label.isEmpty()) return
         textPaint.color = color
         val isLetter = key.action is KeyAction.Text && label.length <= 2
-        textPaint.typeface = if (isLetter) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
-        var size = rect.height() * if (isLetter) 0.46f else 0.30f
+        textPaint.typeface = if (isLetter) letterFace else labelFace
+        var size = rect.height() * (if (isLetter) 0.46f else 0.30f) * theme.textScale
         textPaint.textSize = size
         val maxWidth = rect.width() * 0.86f
         val measured = textPaint.measureText(label)
@@ -290,13 +316,18 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private fun drawPopup(canvas: Canvas, p: Popup) {
-        drawSurface(canvas, p.bounds, corner, theme.popup)
+        val t = theme
+        surfaces.draw(canvas, p.bounds, radius, t.style, t.popup, seed = 7, inkColor = t.text, sheen = true)
         p.cells.forEachIndexed { i, cell ->
             if (i == p.selected) {
-                keyPaint.color = theme.accent
-                canvas.drawRoundRect(cell, corner, corner, keyPaint)
+                if (t.styled) {
+                    surfaces.draw(canvas, cell, radius, t.style, t.popup, SurfaceState.SELECTED, seed = i, inkColor = t.text)
+                } else {
+                    surfaces.draw(canvas, cell, corner, SurfaceStyle.FLAT, t.accent)
+                }
             }
-            drawLabel(canvas, cell, p.options[i], if (i == p.selected) theme.onAccent else theme.text, p.key)
+            val chosen = i == p.selected && !t.styled
+            drawLabel(canvas, cell, p.options[i], if (chosen) t.onAccent else t.text, p.key)
         }
     }
 

@@ -10,6 +10,8 @@ import android.text.TextPaint
 import android.text.TextUtils
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.content.res.ResourcesCompat
+import com.offlinekeyboard.R
 
 /**
  * A toolbar button: an [Icon], a short text, or both, on an optional rounded background. The whole
@@ -26,9 +28,13 @@ class ToolbarButton(context: Context) : View(context) {
     var fill: Int = 0
         set(value) { if (field != value) { field = value; invalidate() } }
     var pressedFill: Int = 0
-    /** Draws the fill the OLED way ([Gloss]). */
-    var glossy = false
+    /** Chosen (an active mode, the selected character): glass and sheet show it with a brighter rim. */
+    var selected = false
         set(value) { if (field != value) { field = value; invalidate() } }
+    private var style = SurfaceStyle.FLAT
+    private var regular: Typeface = Typeface.DEFAULT
+    private var boldFace: Typeface = Typeface.DEFAULT_BOLD
+    private var textScale = 1f
     var foreground: Int = 0
         set(value) { if (field != value) { field = value; invalidate() } }
     var textSizeSp: Float = 15f
@@ -37,8 +43,7 @@ class ToolbarButton(context: Context) : View(context) {
 
     private val density = resources.displayMetrics.density
     private val scaledDensity = density * resources.configuration.fontScale
-    private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val gloss by lazy { Gloss(density) }
+    private val surfaces by lazy { SurfacePainter(density) }
     private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val bounds = RectF()
     private var pressed = false
@@ -48,28 +53,47 @@ class ToolbarButton(context: Context) : View(context) {
         isFocusable = false
     }
 
+    /** The theme's surface style and font; colours are set by the owner. */
+    fun applyStyle(theme: KeyboardTheme) {
+        style = theme.style
+        textScale = theme.textScale
+        fun font(id: Int) = runCatching { ResourcesCompat.getFont(context, id) }.getOrNull()
+        when (theme.style) {
+            SurfaceStyle.FLAT -> { regular = Typeface.DEFAULT; boldFace = Typeface.DEFAULT_BOLD }
+            SurfaceStyle.GLASS -> {
+                regular = font(R.font.exo2_regular) ?: Typeface.DEFAULT
+                boldFace = font(R.font.exo2_semibold) ?: Typeface.DEFAULT_BOLD
+            }
+            SurfaceStyle.SHEET -> {
+                regular = font(R.font.caveat_semibold) ?: Typeface.DEFAULT
+                boldFace = regular
+            }
+        }
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         val inset = if (fill != 0) 0f else 3f * density
         bounds.set(inset, inset, width - inset, height - inset)
         val background = if (pressed) pressedFill else fill
         if (background != 0) {
             val r = 12f * density
-            if (glossy) {
-                gloss.draw(canvas, bounds, r, background)
-            } else {
-                bgPaint.color = background
-                canvas.drawRoundRect(bounds, r, r, bgPaint)
+            val state = when {
+                pressed -> SurfaceState.PRESSED
+                selected -> SurfaceState.SELECTED
+                else -> SurfaceState.NORMAL
             }
+            surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground)
         }
 
         val iconSize = minOf(height * 0.56f, 24f * density)
         textPaint.color = foreground
-        textPaint.textSize = textSizeSp * scaledDensity
-        textPaint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        textPaint.textSize = textSizeSp * textScale * scaledDensity
+        textPaint.typeface = if (bold) boldFace else regular
         val gap = 5f * density
         val available = width - 10f * density - (if (icon != null) iconSize + gap else 0f)
         // Shrink a little before cutting the text, so narrow phones still show whole words.
-        var size = textSizeSp
+        var size = textSizeSp * textScale
         while (size > MIN_TEXT_SP && textPaint.measureText(text) > available) {
             size -= 0.5f
             textPaint.textSize = size * scaledDensity

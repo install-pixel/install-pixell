@@ -169,7 +169,8 @@ class SettingsRepository(context: Context) {
             translationAuto = this[Keys.TRANSLATION_AUTO] ?: defaults.translationAuto,
             translationPauseMs = this[Keys.TRANSLATION_PAUSE] ?: defaults.translationPauseMs,
             translationAccurate = this[Keys.TRANSLATION_ACCURATE] ?: defaults.translationAccurate,
-            themeMode = enumOrNull<ThemeMode>(this[Keys.THEME_MODE]) ?: defaults.themeMode,
+            themeMode = (if (this[Keys.THEME_MODE] == "OLED") ThemeMode.GLASS else enumOrNull<ThemeMode>(this[Keys.THEME_MODE]))
+                ?: defaults.themeMode,
             accent = enumOrNull<Accent>(this[Keys.ACCENT]) ?: defaults.accent,
             bluetoothKeyboard = this[Keys.BLUETOOTH_KEYBOARD] ?: defaults.bluetoothKeyboard,
         )
