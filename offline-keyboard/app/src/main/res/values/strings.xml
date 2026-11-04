@@ -152,17 +152,8 @@
     <string name="setup_ready">All set. Tap any text field to type.</string>
     <string name="section_appearance">Look</string>
     <string name="theme_title">Theme</string>
-    <string name="theme_system">Like the phone</string>
-    <string name="theme_light">Light</string>
-    <string name="theme_dark">Dark</string>
     <string name="theme_glass">Glass · Dark</string>
     <string name="theme_sheet">Sheet · Dark (hand-drawn)</string>
-    <string name="accent_title">Colour</string>
-    <string name="accent_sky">Sky</string>
-    <string name="accent_mint">Mint</string>
-    <string name="accent_lavender">Lavender</string>
-    <string name="accent_peach">Peach</string>
-    <string name="accent_rose">Rose</string>
     <string name="no_browser">No browser found to open the link.</string>
     <string name="models_how">How: 1) «Download» next to a model — the browser saves the file. 2) When it is done, tap «Open» in the browser and choose OffKey: the model installs by itself. Or tap «Install downloaded files» below and pick one or several files — the keyboard recognises each one.</string>
     <string name="models_download">Download</string>
@@ -212,7 +203,6 @@
     <string name="bluetooth_section_notes">Good to know</string>
     <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for (for example ы in Ukrainian) are not sent. Suggestions, translation and voice work only on the phone.</string>
     <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
-    <string name="accent_grey">Grey</string>
     <string name="page_glossary">Translation glossary (your corrections)</string>
     <string name="page_glossary_summary">Entries: %1$d · words and phrases the translation must keep</string>
     <string name="glossary_intro">If the translation gets a word wrong (for example warehouse terms), write the right translation here. The keyboard puts these words into the translation itself; a line that is a whole sentence is used as the translation of that sentence.</string>

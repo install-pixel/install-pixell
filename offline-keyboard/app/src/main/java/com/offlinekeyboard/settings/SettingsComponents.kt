@@ -1,52 +1,38 @@
 package com.offlinekeyboard.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.layout.Language
-import com.offlinekeyboard.keyboard.Accent
 
 @Composable
 internal fun languageName(language: Language): String = stringResource(
@@ -57,45 +43,28 @@ internal fun languageName(language: Language): String = stringResource(
     },
 )
 
+/**
+ * A settings card, as in the launcher: black glass rounded 20 dp with the top light and a bright top rim, or
+ * (sheet) only a pencil frame on the black paper.
+ */
 @Composable
 internal fun Section(title: String, content: @Composable () -> Unit) {
-    val body: @Composable () -> Unit = {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            content()
-        }
-    }
-    if (LocalLook.current == Look.PLAIN) {
-        Card(modifier = Modifier.fillMaxWidth()) { body() }
-    } else {
-        // Glass card (rounded 20 dp, with the top light) or a pencil frame.
-        Box(Modifier.fillMaxWidth().lookSurface(20.dp, seed = title.hashCode(), sheen = true)) { body() }
-    }
-}
-
-/** Light/dark Material colours tinted with the keyboard's pastel accent; text on the accent stays dark. */
-internal fun settingsColors(dark: Boolean, accent: Accent): ColorScheme {
-    val a = Color(accent.color)
-    val onAccent = Color(0xFF1E2128)
-    return if (dark) {
-        darkColorScheme(
-            primary = a, onPrimary = onAccent,
-            primaryContainer = a.copy(alpha = 0.35f).compositeOver(Color(0xFF1C1D21)), onPrimaryContainer = Color(0xFFEDEEF0),
-            secondaryContainer = a.copy(alpha = 0.25f).compositeOver(Color(0xFF1C1D21)),
-        )
-    } else {
-        lightColorScheme(
-            primary = a.copy(alpha = 0.85f).compositeOver(Color(0xFF3A3F4A)), onPrimary = Color.White,
-            primaryContainer = a, onPrimaryContainer = onAccent,
-            secondaryContainer = a.copy(alpha = 0.45f).compositeOver(Color.White),
-            surfaceVariant = a.copy(alpha = 0.14f).compositeOver(Color(0xFFF4F5F7)),
-        )
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .lookSurface(20.dp, seed = title.hashCode(), sheen = true, alpha = 0.6f)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(title, color = Tone.TextPrimary, fontSize = 19.sp)
+        content()
     }
 }
 
 /**
- * The one button of the settings screens: outlined and as wide as the screen, so a long label wraps
- * inside its own button instead of squeezing a neighbour. Several actions stack one under another.
+ * The one button of the settings screens, as wide as the card, so a long label wraps inside its own button.
+ * Glass: a row of black glass rounded 14 dp; sheet: the label underlined with a pencil. The text colour says
+ * what it does ([ButtonTone]); a disabled button fades instead of disappearing.
  */
 @Composable
 internal fun ActionButton(
@@ -104,10 +73,39 @@ internal fun ActionButton(
     tone: ButtonTone = ButtonTone.NEUTRAL,
     content: @Composable RowScope.() -> Unit,
 ) {
-    LookButton(onClick, enabled, tone, Modifier.fillMaxWidth(), content)
+    val color = toneColor(tone)
+    val sheet = LocalLook.current == Look.SHEET
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .alpha(if (enabled) 1f else 0.4f)
+            .then(if (sheet) Modifier else Modifier.lookSurface(14.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = if (sheet) 6.dp else 16.dp, vertical = if (sheet) 8.dp else 12.dp)
+            .then(
+                if (sheet) {
+                    Modifier.drawWithContent {
+                        drawContent()
+                        pencilStroke(size.height - 2.dp.toPx(), 0f, size.width * 0.6f, seed = tone.ordinal + 3, alpha = 0.45f, ink = if (tone == ButtonTone.NEUTRAL) Tone.Ink else color)
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides color) {
+            ProvideTextStyle(MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)) { content() }
+        }
+    }
 }
 
-/** The same button for a row that also holds text (a setup step, a device, a word field). */
+/**
+ * A small button in a row that also holds text (a setup step, a device, a word field): lit glass rounded
+ * 12 dp, or a pencil frame.
+ */
 @Composable
 internal fun InlineButton(
     onClick: () -> Unit,
@@ -115,38 +113,20 @@ internal fun InlineButton(
     tone: ButtonTone = ButtonTone.NEUTRAL,
     content: @Composable RowScope.() -> Unit,
 ) {
-    LookButton(onClick, enabled, tone, Modifier, content)
-}
-
-/**
- * Outlined Material button in the plain look; a glass "pill" or a pencil-framed one in glass and sheet. The
- * text colour says what it does ([ButtonTone]); a disabled button fades instead of disappearing.
- */
-@Composable
-private fun LookButton(onClick: () -> Unit, enabled: Boolean, tone: ButtonTone, modifier: Modifier, content: @Composable RowScope.() -> Unit) {
     val color = toneColor(tone)
-    if (LocalLook.current == Look.PLAIN) {
-        OutlinedButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = modifier,
-            colors = if (tone == ButtonTone.NEUTRAL) ButtonDefaults.outlinedButtonColors() else ButtonDefaults.outlinedButtonColors(contentColor = color),
-            content = content,
-        )
-        return
-    }
     Row(
-        modifier = modifier
-            .heightIn(min = 48.dp)
+        modifier = Modifier
+            .heightIn(min = 40.dp)
             .alpha(if (enabled) 1f else 0.4f)
-            .lookSurface(24.dp, seed = tone.ordinal * 31 + 7, ink = if (tone == ButtonTone.NEUTRAL) Tone.Ink else color)
+            .lookSurface(12.dp, seed = tone.ordinal * 31 + 7, ink = if (tone == ButtonTone.NEUTRAL) Tone.Ink else color, lit = true)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CompositionLocalProvider(LocalContentColor provides color) {
-            ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(textAlign = TextAlign.Center)) { content() }
+            ProvideTextStyle(MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, textAlign = TextAlign.Center)) { content() }
         }
     }
 }
@@ -158,48 +138,11 @@ internal fun SetupStep(title: String, done: Boolean, action: String, onClick: ()
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Text(title, modifier = Modifier.weight(1f), color = Tone.TextPrimary, fontSize = 17.sp)
         if (done) {
-            Text("✓ " + stringResource(R.string.setup_done), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall)
+            Text("✓ " + stringResource(R.string.setup_done), color = Tone.TextSecondary, fontSize = 15.sp)
         } else {
             InlineButton(onClick = onClick) { Text(action) }
-        }
-    }
-}
-
-/** Six round colour swatches, each a 40 dp touch target (they fit a 320 dp wide screen). */
-@Composable
-internal fun AccentPicker(selected: Accent, onSelect: (Accent) -> Unit) {
-    // Glass and sheet have no colour accent (THEMES.md): the swatches fade but keep their place.
-    val styled = LocalLook.current != Look.PLAIN
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.alpha(if (styled) 0.35f else 1f)) {
-        for (accent in Accent.entries) {
-            val name = stringResource(
-                when (accent) {
-                    Accent.SKY -> R.string.accent_sky
-                    Accent.MINT -> R.string.accent_mint
-                    Accent.LAVENDER -> R.string.accent_lavender
-                    Accent.PEACH -> R.string.accent_peach
-                    Accent.ROSE -> R.string.accent_rose
-                    Accent.GREY -> R.string.accent_grey
-                },
-            )
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(accent.color))
-                    .border(
-                        width = if (accent == selected) 3.dp else 0.dp,
-                        color = if (accent == selected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                        shape = CircleShape,
-                    )
-                    .semantics { contentDescription = name }
-                    .selectable(selected = accent == selected, enabled = !styled, role = Role.RadioButton) { onSelect(accent) },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (accent == selected) Text("✓", color = Color(0xFF1E2128), style = MaterialTheme.typography.titleMedium)
-            }
         }
     }
 }
@@ -207,77 +150,150 @@ internal fun AccentPicker(selected: Accent, onSelect: (Accent) -> Unit) {
 @Composable
 internal fun StatusLine(label: String, ok: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            if (ok) "✓" else "!",
-            color = when {
-                !ok -> MaterialTheme.colorScheme.error
-                LocalLook.current == Look.PLAIN -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.onSurface
-            },
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Text(if (ok) "✓" else "!", color = if (ok) Tone.TextPrimary else Tone.Danger, fontSize = 17.sp)
         Spacer(Modifier.width(8.dp))
-        Text(label)
+        Text(label, color = Tone.TextPrimary, fontSize = 17.sp)
     }
 }
 
-/** A row that opens another settings page. */
+/** A row that opens another settings page: name, short hint and an arrow («›», or «→» on the sheet). */
 @Composable
 internal fun NavRow(title: String, subtitle: String, onClick: () -> Unit) {
+    val sheet = LocalLook.current == Look.SHEET
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = if (sheet) 10.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+            Text(title, color = Tone.TextPrimary, fontSize = if (sheet) 19.sp else 17.sp)
+            Text(subtitle, color = Tone.TextSecondary, fontSize = 13.sp)
         }
-        Text("›", style = MaterialTheme.typography.titleLarge)
+        Text(if (sheet) "→" else "›", color = Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
     }
 }
 
+/**
+ * An on/off setting. Glass: the label and the glass switch. Sheet (as the launcher): no switch — a setting
+ * that is on is simply written, one that is off is crossed out with a pencil; a tap does the opposite.
+ */
 @Composable
 internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    if (LocalLook.current == Look.SHEET) {
+        CrossedRow(label, checked, Role.Switch, onChange)
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 44.dp)
             .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f))
-        if (LocalLook.current == Look.PLAIN) Switch(checked = checked, onCheckedChange = null) else LookSwitch(checked)
+        Text(label, modifier = Modifier.weight(1f), color = Tone.TextPrimary, fontSize = 17.sp)
+        Spacer(Modifier.width(12.dp))
+        LookSwitch(checked)
     }
 }
 
+/** A multiple-choice item (languages, modifier keys): a glass check box, or written / crossed out on the sheet. */
 @Composable
 internal fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    if (LocalLook.current == Look.SHEET) {
+        CrossedRow(label, checked, Role.Checkbox, onChange)
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 44.dp)
             .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (LocalLook.current == Look.PLAIN) Checkbox(checked = checked, onCheckedChange = null) else LookMark(checked, round = false)
-        Spacer(Modifier.width(8.dp))
-        Text(label)
+        LookMark(checked)
+        Spacer(Modifier.width(12.dp))
+        Text(label, color = Tone.TextPrimary, fontSize = 17.sp)
     }
 }
 
+/** The sheet's switch: the label, dimmed and crossed out with a wavy pencil line while it is off. */
+@Composable
+private fun CrossedRow(label: String, checked: Boolean, role: Role, onChange: (Boolean) -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .toggleable(value = checked, role = role, onValueChange = onChange)
+            .padding(vertical = 6.dp),
+    ) {
+        Text(
+            label,
+            color = if (checked) Tone.TextPrimary else Tone.TextSecondary,
+            fontSize = 18.sp,
+            modifier = if (checked) {
+                Modifier
+            } else {
+                Modifier.drawWithContent {
+                    drawContent()
+                    // One line through the first line of text, as far as the text goes.
+                    val line = minOf(size.height, 30.sp.toPx())
+                    pencilStroke(line * 0.55f, -2f, size.width + 2f, seed = label.length)
+                }
+            },
+        )
+    }
+}
+
+/**
+ * One option of a choice, as in the launcher. Glass: options are equal rounded rows one under another; the
+ * chosen one is lit glass with a brighter rim and a filled radio dot. Sheet: the chosen one is circled with a
+ * pencil, the others are just written, dimmer.
+ */
 @Composable
 internal fun RadioRow(label: String, selected: Boolean, onSelect: () -> Unit) {
+    val sheet = LocalLook.current == Look.SHEET
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
+            .then(
+                when {
+                    sheet && selected -> Modifier.pencilFrame(14.dp, label.length, alpha = 0.9f)
+                    sheet -> Modifier
+                    else -> Modifier.lookSurface(14.dp, chosen = selected, lit = selected)
+                },
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .padding(horizontal = 14.dp, vertical = if (sheet) 10.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (LocalLook.current == Look.PLAIN) RadioButton(selected = selected, onClick = null) else LookMark(selected, round = true)
-        Spacer(Modifier.width(8.dp))
-        Text(label)
+        if (!sheet) {
+            RadioDot(selected)
+            Spacer(Modifier.width(12.dp))
+        }
+        Text(label, color = if (selected) Tone.TextPrimary else Tone.TextSecondary, fontSize = if (sheet) 17.sp else 16.sp)
+    }
+}
+
+/** The ring of a glass option, with a dot inside when chosen. */
+@Composable
+private fun RadioDot(selected: Boolean) {
+    androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
+        val color = if (selected) Tone.TextPrimary else Tone.TextSecondary
+        val r = size.minDimension / 2
+        drawCircle(color, r - 1.dp.toPx(), style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+        if (selected) drawCircle(color, 4.dp.toPx())
     }
 }
 
 internal fun formatMb(bytes: Long): String = "%.0f MB".format(bytes / 1_000_000.0)
+
+/** A thin line between rows of a glass card; the sheet has none (its rows are just written on the paper). */
+@Composable
+internal fun RowDivider() {
+    if (LocalLook.current == Look.SHEET) return
+    androidx.compose.material3.HorizontalDivider(color = androidx.compose.ui.graphics.Color(0x1FFFFFFF))
+}

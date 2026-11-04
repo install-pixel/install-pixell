@@ -152,17 +152,8 @@
     <string name="setup_ready">Wszystko gotowe. Stuknij dowolne pole, aby pisać.</string>
     <string name="section_appearance">Wygląd</string>
     <string name="theme_title">Motyw</string>
-    <string name="theme_system">Jak w telefonie</string>
-    <string name="theme_light">Jasny</string>
-    <string name="theme_dark">Ciemny</string>
     <string name="theme_glass">Szkło · Ciemny</string>
     <string name="theme_sheet">Kartka · Ciemny (odręczny)</string>
-    <string name="accent_title">Kolor</string>
-    <string name="accent_sky">Błękitny</string>
-    <string name="accent_mint">Miętowy</string>
-    <string name="accent_lavender">Lawendowy</string>
-    <string name="accent_peach">Brzoskwiniowy</string>
-    <string name="accent_rose">Pudrowy róż</string>
     <string name="no_browser">Nie znaleziono przeglądarki, aby otworzyć link.</string>
     <string name="models_how">Jak: 1) «Pobierz» przy modelu — przeglądarka zapisze plik. 2) Po pobraniu stuknij w przeglądarce «Otwórz» i wybierz OffKey — model zainstaluje się sam. Albo stuknij «Zainstaluj pobrane pliki» i wybierz jeden lub kilka plików — klawiatura sama rozpozna każdy.</string>
     <string name="models_download">Pobierz</string>
@@ -212,7 +203,6 @@
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
     <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma (np. ы po ukraińsku), nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
     <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
-    <string name="accent_grey">Szary</string>
     <string name="page_glossary">Słownik tłumaczenia (Twoje poprawki)</string>
     <string name="page_glossary_summary">Wpisów: %1$d · słowa i zwroty, które tłumaczenie ma oddać dokładnie tak</string>
     <string name="glossary_intro">Jeśli tłumaczenie myli się w słowie (np. w terminach magazynowych), wpisz tu poprawne tłumaczenie. Klawiatura sama wstawi te słowa do tłumaczenia; wiersz będący całym zdaniem jest używany jako tłumaczenie tego zdania.</string>

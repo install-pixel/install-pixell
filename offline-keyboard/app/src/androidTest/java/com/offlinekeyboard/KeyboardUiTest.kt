@@ -21,7 +21,6 @@ import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.layout.SpecialKey
 import com.offlinekeyboard.debug.KeyboardTestActivity
-import com.offlinekeyboard.keyboard.Accent
 import com.offlinekeyboard.keyboard.KeyboardService
 import com.offlinekeyboard.keyboard.KeyboardTheme
 import com.offlinekeyboard.keyboard.ToolbarButton
@@ -403,14 +402,6 @@ class KeyboardUiTest {
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        for (dark in listOf(false, true)) {
-            for (accent in Accent.entries) {
-                val keyboard = service()
-                instrumentation.runOnMainSync { keyboard.applyThemeForTest(KeyboardTheme.create(dark, accent)) }
-                instrumentation.waitForIdleSync()
-                screenshot("theme-${if (dark) "dark" else "light"}-${accent.name.lowercase()}")
-            }
-        }
         for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet())) {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
@@ -418,8 +409,11 @@ class KeyboardUiTest {
             // The first frame after a style change can still be the previous theme on the emulator.
             Thread.sleep(1_000)
             screenshot("theme-$name")
+            // The enlarged letter over the keys: frosted glass, or black paper (never see-through).
+            val point = keyCenter { (it.action as? KeyAction.Text)?.text == "в" } ?: throw AssertionError("no key «в»")
+            touch(point.x, point.y, holdMs = 120, whileHeld = { screenshot("theme-$name-preview") })
         }
-        // Fourteen redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
+        // Redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
         focus(activity.plain)
         typeWord(activity.plain, "а")
     }
@@ -451,7 +445,7 @@ class KeyboardUiTest {
                 }
             }
         } finally {
-            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.SYSTEM) } }
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS) } }
         }
         scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
     }

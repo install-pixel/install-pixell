@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -84,7 +83,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             }
             if (entries.isEmpty()) Text(stringResource(R.string.dictionary_empty), style = MaterialTheme.typography.bodySmall)
             entries.take(MAX_SHOWN).forEachIndexed { i, e ->
-                if (i > 0) HorizontalDivider()
+                if (i > 0) RowDivider()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(e.word, modifier = Modifier.weight(1f))
                     Text("×${e.count}", style = MaterialTheme.typography.bodySmall)

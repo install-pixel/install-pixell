@@ -34,7 +34,8 @@ enum class SurfaceState { NORMAL, PRESSED, SELECTED }
  *   chosen is a denser stroke, pressed a faint graphite shade.
  *
  * Gradients are made once over a 0..1 square and stretched onto each surface; pencil outlines are made once
- * per size and seed. Drawing allocates nothing in the usual case.
+ * per size and seed. Drawing allocates nothing in the usual case. [frosted] glass is partly transparent, for
+ * bubbles drawn over the blurred keys (see [Frost]).
  */
 class SurfacePainter(private val density: Float) {
 
@@ -54,15 +55,17 @@ class SurfacePainter(private val density: Float) {
         Shader.TileMode.CLAMP,
     )
     private val glassPressed = RadialGradient(0.5f, 0.35f, 0.8f, 0xFF3A3A3A.toInt(), 0xFF101010.toInt(), Shader.TileMode.CLAMP)
+    // The rim of THEMES.md (white at 50/14/7/15 %, chosen 70/25/20 %) flattened onto the black keyboard as opaque
+    // greys and at most three stops: the Android 14/15 emulator renderer dies on four-stop gradients.
     private val glassRim = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0x80FFFFFF.toInt(), 0x24FFFFFF, 0x12FFFFFF, 0x26FFFFFF),
-        floatArrayOf(0f, 0.25f, 0.8f, 1f),
+        intArrayOf(0xFF808080.toInt(), 0xFF242424.toInt(), 0xFF1A1A1A.toInt()),
+        floatArrayOf(0f, 0.25f, 1f),
         Shader.TileMode.CLAMP,
     )
     private val glassRimChosen = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xB3FFFFFF.toInt(), 0x40FFFFFF, 0x33FFFFFF),
+        intArrayOf(0xFFB3B3B3.toInt(), 0xFF404040.toInt(), 0xFF333333.toInt()),
         floatArrayOf(0f, 0.3f, 1f),
         Shader.TileMode.CLAMP,
     )
@@ -86,6 +89,7 @@ class SurfacePainter(private val density: Float) {
         seed: Int = 0,
         inkColor: Int = 0xFFEDEDED.toInt(),
         sheen: Boolean = false,
+        frosted: Boolean = false,
     ) {
         when (style) {
             SurfaceStyle.FLAT -> {
@@ -93,7 +97,7 @@ class SurfacePainter(private val density: Float) {
                 fill.color = color
                 canvas.drawRoundRect(rect, radius, radius, fill)
             }
-            SurfaceStyle.GLASS -> drawGlass(canvas, rect, radius, state, sheen)
+            SurfaceStyle.GLASS -> drawGlass(canvas, rect, radius, state, sheen, frosted)
             SurfaceStyle.SHEET -> drawSheet(canvas, rect, radius, state, seed, inkColor)
         }
     }
@@ -104,11 +108,14 @@ class SurfacePainter(private val density: Float) {
         shader.setLocalMatrix(matrix)
     }
 
-    private fun drawGlass(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, withSheen: Boolean) {
+    private fun drawGlass(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, withSheen: Boolean, frosted: Boolean) {
         val body = if (state == SurfaceState.PRESSED) glassPressed else glassFill
         stretch(body, rect)
         fill.shader = body
+        // Frosted (over blurred keys): the dark glass lets a little of what is behind show through.
+        if (frosted) fill.alpha = 0xB8
         canvas.drawRoundRect(rect, radius, radius, fill)
+        fill.alpha = 0xFF
         if (withSheen) {
             // Soft light inside the top, gone by half height (at most 120 dp).
             stretch(sheen, rect, minOf(rect.height() / 2, 120 * density))
