@@ -18,5 +18,6 @@ object Batch {
 
     /** Список: кожен непорожній рядок — окремий код; повтори прибираються, порядок лишається. */
     fun lines(text: String): List<String> =
-        text.lines().map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(MAX)
+        // Послідовністю: величезний вставлений текст не розбирається весь — лише до першої тисячі.
+        text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(MAX).toList()
 }

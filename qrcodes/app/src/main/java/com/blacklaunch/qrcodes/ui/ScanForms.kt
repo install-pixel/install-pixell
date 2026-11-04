@@ -295,7 +295,7 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
         }, tone = Tone.Confirm, enabled = name.isNotBlank() && fields.isNotEmpty())
     }) {
         Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SheetTextField(name, { name = it }, stringResource(R.string.forms_name_hint))
+            SheetTextField(name, { name = it.take(Limits.NAME) }, stringResource(R.string.forms_name_hint))
             Text(stringResource(R.string.forms_fields_header), color = Oled.TextSecondary, fontSize = 13.sp)
             fields.forEachIndexed { i, f ->
                 val open = expanded == i
@@ -321,13 +321,13 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                         Text(if (open) "▴" else "▾", color = Oled.TextSecondary, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 8.dp))
                     }
                     if (open) {
-                        SheetTextField(f.label, { fields[i] = f.copy(label = it) }, stringResource(R.string.forms_label_hint))
+                        SheetTextField(f.label, { fields[i] = f.copy(label = it.take(Limits.FIELD_LABEL)) }, stringResource(R.string.forms_label_hint))
                         SettingRow(stringResource(R.string.forms_type), stringResource(f.type.title())) { pick = Pick(PickKind.TYPE, i) }
                         when (f.type) {
                             FieldType.TEXT -> SheetTextField(f.value, { fields[i] = f.copy(value = it) }, stringResource(R.string.forms_text_value))
                             FieldType.NUMBER -> SheetTextField(f.value, { fields[i] = f.copy(value = it.filter { c -> c.isDigit() || c == '.' || c == ',' }) }, stringResource(R.string.forms_number_default), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                             FieldType.CHOICE -> {
-                                AreaField(f.options.joinToString("\n"), { fields[i] = f.copy(options = it.split('\n')) }, stringResource(R.string.forms_options_hint))
+                                AreaField(f.options.joinToString("\n"), { fields[i] = f.copy(options = it.split('\n').take(Limits.OPTIONS).map { o -> o.take(Limits.NAME) }) }, stringResource(R.string.forms_options_hint))
                                 EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
                                     ChoiceChip(stringResource(R.string.forms_allow_manual), f.allowManual) { fields[i] = f.copy(allowManual = !f.allowManual) }
                                     ChoiceChip(stringResource(R.string.forms_allow_saved), f.allowSaved) { fields[i] = f.copy(allowSaved = !f.allowSaved) }

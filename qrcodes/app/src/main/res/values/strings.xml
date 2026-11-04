@@ -384,4 +384,6 @@
     <string name="status_show">Show</string>
     <string name="menu_input">Enter</string>
     <string name="menu_create">Create</string>
+    <string name="batch_capped">At most %1$d at a time — the first %1$d are taken.</string>
+    <string name="many_codes">You already have over %1$d codes — the list may work a bit slower. Old ones can be deleted or exported.</string>
 </resources>

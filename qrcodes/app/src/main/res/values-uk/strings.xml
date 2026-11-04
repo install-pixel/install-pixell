@@ -382,4 +382,6 @@
     <string name="status_show">Показувати</string>
     <string name="menu_input">Ввести</string>
     <string name="menu_create">Створити</string>
+    <string name="batch_capped">За раз — не більше %1$d: беруться перші %1$d.</string>
+    <string name="many_codes">У вас уже понад %1$d кодів — список може працювати трохи повільніше. Старі можна видалити або зберегти в копію.</string>
 </resources>

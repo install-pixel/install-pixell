@@ -155,7 +155,7 @@ fun RenameDialog(code: QrCode, onDismiss: () -> Unit, onApply: (String) -> Unit)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SheetTextField(
                 name,
-                { name = it },
+                { name = it.take(Limits.NAME) },
                 placeholder = displayTitleOf(code),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 focusRequester = focus,
@@ -189,7 +189,7 @@ fun FullscreenCode(code: QrCode, covered: Boolean, onDismiss: () -> Unit, onMenu
             onDispose { }
         }
         val blur = backdropAmount(covered)
-        Box(Modifier.fillMaxSize().background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().padding(24.dp)) {
+        Box(Modifier.fillMaxSize().boostFrameRate(window).background(Oled.Black).backdrop(blur).statusBarsPadding().navigationBarsPadding().padding(24.dp)) {
             Column(Modifier.align(Alignment.Center).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 // Той самий розмір, що й угорі на «Створити»: великий код сканер не бере зблизька.
                 val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
@@ -461,7 +461,7 @@ fun FolderNameDialog(title: String, initial: String, onDismiss: () -> Unit, sugg
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.apply), { onApply(result) }, tone = Tone.Confirm, enabled = result.isNotBlank())
     }) {
-        SheetTextField(name, { name = it }, suggested ?: stringResource(R.string.folder_name_hint), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), focusRequester = focus)
+        SheetTextField(name, { name = it.take(Limits.NAME) }, suggested ?: stringResource(R.string.folder_name_hint), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), focusRequester = focus)
     }
 }
 
@@ -632,7 +632,7 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
                     if (text.isEmpty()) Text(stringResource(R.string.batch_list_hint), color = Oled.TextSecondary, fontSize = 16.sp)
                     androidx.compose.foundation.text.BasicTextField(
                         value = text,
-                        onValueChange = { text = it },
+                        onValueChange = { text = it.take(Limits.LIST_TEXT) },
                         textStyle = fieldStyle().copy(color = Oled.TextPrimary),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(if (AppStyle.glass) Oled.TextPrimary else Oled.TextSecondary),
                         minLines = 5,
@@ -642,16 +642,19 @@ fun BatchDialog(list: Boolean, kind: com.blacklaunch.qrcodes.qr.CodeKind, onDism
                     )
                 }
             } else {
-                SheetTextField(prefix, { prefix = it }, stringResource(R.string.batch_prefix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+                SheetTextField(prefix, { prefix = it.take(Limits.NAME) }, stringResource(R.string.batch_prefix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SheetTextField(first, { first = it.filter(Char::isDigit).take(12) }, stringResource(R.string.batch_first), Modifier.weight(1f), keyboardOptions = number)
                     SheetTextField(count, { count = it.filter(Char::isDigit).take(4) }, stringResource(R.string.batch_count), Modifier.weight(1f), keyboardOptions = number)
                     SheetTextField(digits, { digits = it.filter(Char::isDigit).take(2) }, stringResource(R.string.batch_digits), Modifier.weight(1f), keyboardOptions = number)
                 }
                 FieldHint(stringResource(R.string.batch_numbers_hint))
-                SheetTextField(suffix, { suffix = it }, stringResource(R.string.batch_suffix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
+                SheetTextField(suffix, { suffix = it.take(Limits.NAME) }, stringResource(R.string.batch_suffix), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next))
             }
-            SheetTextField(folder, { folder = it }, folderDefault, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
+            SheetTextField(folder, { folder = it.take(Limits.NAME) }, folderDefault, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
+            // Більше, ніж можна за раз, — береться перша тисяча, і про це видно.
+            val wanted = if (list) remember(text) { text.lineSequence().count { it.isNotBlank() } } else count.toIntOrNull() ?: 0
+            if (wanted > com.blacklaunch.qrcodes.qr.Batch.MAX) FieldHint(stringResource(R.string.batch_capped, com.blacklaunch.qrcodes.qr.Batch.MAX))
             if (contents.isNotEmpty()) {
                 val sample = if (contents.size <= 3) contents.joinToString(", ") else contents.take(2).joinToString(", ") + " … " + contents.last()
                 Text(stringResource(R.string.batch_preview, contents.size, sample), color = Oled.TextPrimary, fontSize = 15.sp)

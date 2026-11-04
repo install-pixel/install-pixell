@@ -382,4 +382,6 @@
     <string name="status_show">Pokazuj</string>
     <string name="menu_input">Wpisz</string>
     <string name="menu_create">Utwórz</string>
+    <string name="batch_capped">Naraz najwyżej %1$d — bierze się pierwsze %1$d.</string>
+    <string name="many_codes">Masz już ponad %1$d kodów — lista może działać trochę wolniej. Stare można usunąć lub wyeksportować.</string>
 </resources>

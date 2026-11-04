@@ -156,7 +156,10 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.
 
     // Розмір екрана камери — щоб знати, де рамка (код зчитується лише в ній).
     val previewSize = remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-    DisposableEffect(scanQr) {
+    // Поки відкритий вибір фото з галереї — камера вимкнена (не працює даремно й не видно під вікном вибору).
+    var picking by remember { mutableStateOf(false) }
+    DisposableEffect(scanQr, picking) {
+        if (picking) return@DisposableEffect onDispose { }
         val executor = ContextCompat.getMainExecutor(context)
         if (scanQr) {
             controller.setEnabledUseCases(CameraController.IMAGE_ANALYSIS)
@@ -211,6 +214,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.
     }
 
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        picking = false
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             if (scanQr) {
@@ -253,7 +257,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
         if (done == null) {
-            AndroidView(
+            if (!picking) AndroidView(
                 factory = { ctx -> PreviewView(ctx).apply { this.controller = controller; scaleType = PreviewView.ScaleType.FILL_CENTER } },
                 modifier = Modifier.fillMaxSize().onSizeChanged { previewSize.value = it },
             )
@@ -281,6 +285,7 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     RoundButton(Glyph.Flash, stringResource(R.string.flashlight), { torch = !torch }, ink = if (torch) com.blacklaunch.qrcodes.ui.SelectedInk else SheetInk)
                     RoundButton(Glyph.Gallery, stringResource(R.string.from_gallery), {
+                        picking = true
                         pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     })
                 }
@@ -291,12 +296,30 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.
     }
 }
 
-/** Рамка-видошукач олівцем посередині. */
+/**
+ * Видошукач: усе довкола рамки — чорне, як тло програми (видно лише те, що зчитується), а сама рамка — у стилі:
+ * «Аркуш» — двома штрихами олівцем, «Скло» — тонкою скляною гранню з відблиском.
+ */
 @Composable
 private fun ScanFrame() {
+    val glass = com.blacklaunch.qrcodes.ui.AppStyle.glass
     Canvas(Modifier.fillMaxSize()) {
         val f = scanFrame(size.width, size.height)
-        outline(Offset(f.left, f.top), Size(f.width(), f.height()), 28.dp.toPx(), 41, SheetInk.copy(alpha = 0.9f), 3.dp.toPx())
+        val r = 28.dp.toPx()
+        val hole = androidx.compose.ui.graphics.Path().apply {
+            fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
+            addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+            addRoundRect(androidx.compose.ui.geometry.RoundRect(f.left, f.top, f.right, f.bottom, androidx.compose.ui.geometry.CornerRadius(r)))
+        }
+        drawPath(hole, Oled.Black)
+        val topLeft = Offset(f.left, f.top)
+        val box = Size(f.width(), f.height())
+        if (glass) {
+            drawRoundRect(Oled.GlintBright, topLeft, box, androidx.compose.ui.geometry.CornerRadius(r), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+        } else {
+            outline(topLeft, box, r, 41, SheetInk.copy(alpha = 0.95f), 3.dp.toPx())
+            outline(topLeft, box, r, 142, SheetInk.copy(alpha = 0.35f), 1.6.dp.toPx())
+        }
     }
 }
 

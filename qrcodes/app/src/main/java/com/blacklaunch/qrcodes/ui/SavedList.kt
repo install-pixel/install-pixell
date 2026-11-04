@@ -125,13 +125,17 @@ fun SavedList(
     BackHandler(enabled = openFolder != null) { onOpenFolder(null) }
 
     val q = query.trim()
-    val entries: List<Entry> = when {
-        q.isNotEmpty() -> codes.filter { it.content.contains(q, ignoreCase = true) || it.name.orEmpty().contains(q, ignoreCase = true) }.map { Entry.CodeEntry(it) }
-        openFolder != null -> codes.filter { it.folderId == openFolder.id }.map { Entry.CodeEntry(it) }
-        else -> {
-            val byFolder = codes.filter { it.folderId != null }.groupBy { it.folderId }
-            (folders.map { Entry.FolderEntry(it, byFolder[it.id].orEmpty()) } + codes.filter { it.folderId == null || folders.none { f -> f.id == it.folderId } }.map { Entry.CodeEntry(it) })
-                .sortedByDescending { it.order }
+    // Рахується раз на зміну (коди, папки, пошук), а не на кожне перемальовування.
+    val entries: List<Entry> = remember(codes, folders, q, openFolder?.id) {
+        when {
+            q.isNotEmpty() -> codes.filter { it.content.contains(q, ignoreCase = true) || it.name.orEmpty().contains(q, ignoreCase = true) }.map { Entry.CodeEntry(it) }
+            openFolder != null -> codes.filter { it.folderId == openFolder.id }.map { Entry.CodeEntry(it) }
+            else -> {
+                val byFolder = codes.filter { it.folderId != null }.groupBy { it.folderId }
+                val folderIds = folders.mapTo(HashSet()) { it.id }
+                (folders.map { Entry.FolderEntry(it, byFolder[it.id].orEmpty()) } + codes.filter { it.folderId == null || it.folderId !in folderIds }.map { Entry.CodeEntry(it) })
+                    .sortedByDescending { it.order }
+            }
         }
     }
     // Перетягувати можна лише у звичайному списку чи в папці (не в результатах пошуку).

@@ -441,7 +441,7 @@ internal fun TextDialog(initial: String, title: String, onDismiss: () -> Unit, a
         SheetButton(stringResource(R.string.cancel), onDismiss)
         SheetButton(stringResource(R.string.apply), { onApply(text.trim()) }, tone = Tone.Confirm, enabled = allowEmpty || text.isNotBlank())
     }) {
-        SheetTextField(text, { text = it }, stringResource(R.string.label_text_hint), focusRequester = focus)
+        SheetTextField(text, { text = it.take(com.blacklaunch.qrcodes.ui.Limits.LABEL_TEXT) }, stringResource(R.string.label_text_hint), focusRequester = focus)
     }
 }
 

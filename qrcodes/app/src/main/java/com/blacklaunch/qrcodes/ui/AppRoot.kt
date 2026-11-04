@@ -164,6 +164,17 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         if (banner?.id == b.id) banner = null
     }
 
+    // Дуже багато кодів — один раз попереджаємо, що список може працювати повільніше (без заборони).
+    val manyText = stringResource(R.string.many_codes, Limits.MANY_CODES)
+    var warnedMany by rememberSaveable { mutableStateOf(false) }
+    val tooMany = (saved?.size ?: 0) >= Limits.MANY_CODES
+    LaunchedEffect(tooMany) {
+        if (tooMany && !warnedMany) {
+            warnedMany = true
+            show(manyText)
+        }
+    }
+
     fun formOf(code: QrCode): com.blacklaunch.qrcodes.qr.ScanForm? =
         com.blacklaunch.qrcodes.qr.ScanForm.idFromLink(code.content)?.let { id -> forms.firstOrNull { it.id == id } }
 

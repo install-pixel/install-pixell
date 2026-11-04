@@ -46,7 +46,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),
         )
         super.onCreate(savedInstanceState)
-        useBestRefreshRate()
+        // Плавний старт (поява першого екрана) — на високій частоті; далі — лише поки щось рухається.
+        com.blacklaunch.qrcodes.ui.FrameRate.boost(window)
         if (savedInstanceState == null) shared = sharedText(intent)
         setContent {
             QrTheme {
@@ -72,21 +73,10 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) com.blacklaunch.qrcodes.ui.StatusBar.apply(window)
     }
 
-    /**
-     * Частота екрана — найвища, яку дозволяє телефон: стоїть у налаштуваннях 120 Гц — буде 120, стоїть 60 — система
-     * сама не дасть більше. Без цього багато оболонок тримають звичайні програми на 60 Гц.
-     */
-    private fun useBestRefreshRate() {
-        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
-        display ?: return
-        val now = display.mode
-        val best = display.supportedModes
-            .filter { it.physicalWidth == now.physicalWidth && it.physicalHeight == now.physicalHeight }
-            .maxByOrNull { it.refreshRate } ?: return
-        window.attributes = window.attributes.also {
-            it.preferredDisplayModeId = best.modeId
-            it.preferredRefreshRate = best.refreshRate
-        }
+    /** Дотик — висока частота екрана на час руху (у спокої програма її не тримає, див. FrameRate). */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        com.blacklaunch.qrcodes.ui.FrameRate.boost(window)
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onNewIntent(intent: Intent) {

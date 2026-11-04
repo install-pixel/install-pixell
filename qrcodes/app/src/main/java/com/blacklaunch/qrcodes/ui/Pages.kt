@@ -181,7 +181,7 @@ fun FavoritesPage(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             items(order, key = { it.id }) { code ->
-                val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeKind) }
+                val symbol = remember(code.content, code.format) { SymbolCache.get(code.content, code.codeKind) }
                 val dragged = code.id == draggingId
                 Column(
                     Modifier
@@ -406,7 +406,7 @@ fun qrPreviewSide(available: androidx.compose.ui.unit.Dp): androidx.compose.ui.u
 /** Рядок збереженого коду: маленький код, назва (зміст ховається, якщо є своя назва), дата, зірка вибраного. */
 @Composable
 internal fun SavedRow(code: QrCode, modifier: Modifier, checked: Boolean? = null) {
-    val symbol = remember(code.content, code.format) { Symbol.encode(code.content, code.codeKind) }
+    val symbol = remember(code.content, code.format) { SymbolCache.get(code.content, code.codeKind) }
     Row(
         Modifier
             .fillMaxWidth()

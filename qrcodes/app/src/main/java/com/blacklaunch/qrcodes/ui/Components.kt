@@ -375,6 +375,8 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
         }
         // Рядок стану і у вікні — як у всій програмі (сховано — лише свайпом згори).
         androidx.compose.runtime.LaunchedEffect(window, StatusBar.hidden) { StatusBar.apply(window) }
+        // Вікно відкривається плавно — висока частота на час анімації; далі — на час дотиків (Modifier.boostFrameRate).
+        androidx.compose.runtime.LaunchedEffect(window) { FrameRate.boost(window) }
         // Фон за вікном — розмитий самою системою (Android 12+), як у Black Glass; сила розмиття йде разом з анімацією,
         // тож воно не «вмикається» різко.
         if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -393,6 +395,7 @@ fun SmoothDialog(onDismissRequest: () -> Unit, content: @Composable () -> Unit) 
         Box(
             Modifier
                 .fillMaxSize()
+                .boostFrameRate(window)
                 .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) { dismiss() }
                 .systemBarsPadding()
                 .imePadding(),
