@@ -99,6 +99,18 @@ jobs:
             https://github.com/${{ github.repository }}/releases/download/keyboard-latest/OfflineKeyboard.apk
             Моделі: https://github.com/${{ github.repository }}/releases/tag/keyboard-models
 
+      # A model upload that GitHub broke off (a 500 mid-upload) leaves an asset that is neither replaced nor
+      # downloadable, and every later upload of that file fails. Remove such leftovers first.
+      - name: Drop half-uploaded model files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/tags/keyboard-models" \
+            --jq '.assets[] | select(.state != "uploaded") | "\(.id) \(.name) \(.state)"' | while read -r id name state; do
+            echo "Removing $name ($state)"
+            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$id"
+          done || true
+
       # Fixed address for the app's "Download" buttons: …/releases/download/keyboard-models/<file>.zip
       - name: Update the permanent model release
         uses: softprops/action-gh-release@v2
