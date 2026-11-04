@@ -137,15 +137,17 @@ private fun Typography.withFont(font: TextStyle) = Typography(
 // ------------------------------------------------------------------ surfaces
 
 private val GlassSurface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f to Color(0xFF0D0D0D), 1f to Color(0xFF080808))
+// The rim colours of THEMES.md (white at 50/14/7/15 % and 70/25/20 %) flattened onto the black page:
+// opaque greys look the same there, and the Android 14/15 emulator renderer dies on translucent
+// multi-stop gradients while the page scrolls.
 private val GlassRim = Brush.verticalGradient(
-    0f to Color(0x80FFFFFF), 0.25f to Color(0x24FFFFFF), 0.8f to Color(0x12FFFFFF), 1f to Color(0x26FFFFFF),
+    0f to Color(0xFF808080), 0.25f to Color(0xFF242424), 0.8f to Color(0xFF121212), 1f to Color(0xFF262626),
 )
-private val GlassRimChosen = Brush.verticalGradient(0f to Color(0xB3FFFFFF), 0.3f to Color(0x40FFFFFF), 1f to Color(0x33FFFFFF))
+private val GlassRimChosen = Brush.verticalGradient(0f to Color(0xFFB3B3B3), 0.3f to Color(0xFF404040), 1f to Color(0xFF333333))
 
 /**
  * Glass drawn in one pass behind the content: the 1 dp rim as a filled rounded rectangle with the body
- * (and the top light of large surfaces, [sheen]) filled 1 dp inside it. No stroke: on the Android 14/15
- * emulator a gradient-brushed rounded stroke kills the renderer while the page scrolls.
+ * (and the top light of large surfaces, [sheen]) filled 1 dp inside it.
  */
 private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Modifier = drawWithCache {
     val r = radius.toPx()
