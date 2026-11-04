@@ -208,7 +208,8 @@ class KeyboardView(context: Context) : View(context) {
         if (closing != null) drawPopup(canvas, closing, 1f - (now - closingAt) / POPUP_FADE_MS.toFloat())
         if (p != null) drawPopup(canvas, p, ((now - popupAt) / POPUP_FADE_MS.toFloat()).coerceAtMost(1f))
         // Keep drawing while something fades or grows; nothing is redrawn once it all stands still.
-        val moving = bubbles.isNotEmpty() || closing != null || (p != null && now - popupAt < POPUP_FADE_MS) ||
+        // A letter that has fully grown and is still held stands still: no more frames until something changes.
+        val moving = bubbles.any { !it.pressed || it.shown < 1f } || closing != null || (p != null && now - popupAt < POPUP_FADE_MS) ||
             released.values.any { now - it < RELEASE_FADE_MS }
         if (moving) postInvalidateOnAnimation()
     }
