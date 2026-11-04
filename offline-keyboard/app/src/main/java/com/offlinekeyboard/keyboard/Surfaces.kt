@@ -39,6 +39,9 @@ enum class SurfaceState { NORMAL, PRESSED, SELECTED }
  */
 class SurfacePainter(private val density: Float) {
 
+    /** 0.4–1: how bright rims, the top light and pencil frames are drawn (the keyboard brightness setting). */
+    var brightness = 1f
+
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -120,12 +123,15 @@ class SurfacePainter(private val density: Float) {
             // Soft light inside the top, gone by half height (at most 120 dp).
             stretch(sheen, rect, minOf(rect.height() / 2, 120 * density))
             fill.shader = sheen
+            fill.alpha = (255 * brightness).toInt()
             canvas.drawRoundRect(rect, radius, radius, fill)
+            fill.alpha = 0xFF
         }
         fill.shader = null
         val edge = if (state == SurfaceState.SELECTED) glassRimChosen else glassRim
         stretch(edge, rect)
         rim.shader = edge
+        rim.alpha = (255 * brightness).toInt()
         val half = rim.strokeWidth / 2
         inner.set(rect.left + half, rect.top + half, rect.right - half, rect.bottom - half)
         canvas.drawRoundRect(inner, radius - half, radius - half, rim)
@@ -150,9 +156,9 @@ class SurfacePainter(private val density: Float) {
         canvas.save()
         canvas.translate(rect.left, rect.top)
         ink.color = inkColor
-        ink.alpha = if (chosen) 255 else 205
+        ink.alpha = ((if (chosen) 255 else 205) * brightness).toInt()
         canvas.drawPath(main, ink)
-        ink.alpha = if (chosen) 130 else 80
+        ink.alpha = ((if (chosen) 130 else 80) * brightness).toInt()
         canvas.drawPath(ghost, ink)
         canvas.restore()
     }

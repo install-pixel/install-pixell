@@ -27,8 +27,8 @@ class EmojiTest {
             val left = bottom.take(space).sumOf { it.width.toDouble() }
             val right = bottom.drop(space + 1).sumOf { it.width.toDouble() }
             assertEquals("$language", left, right, 0.01)
-            // The Shift/Backspace row and the bottom row are as wide as the widest one.
-            for (row in layout.rows.takeLast(2)) assertEquals("$language", layout.maxRowUnits.toDouble(), row.sumOf { it.width.toDouble() }, 0.01)
+            // Every row is as wide as the widest one: no holes at the edges.
+            for (row in layout.rows) assertEquals("$language", layout.maxRowUnits.toDouble(), row.sumOf { it.width.toDouble() }, 0.01)
         }
         val c = KeyboardController(KeyboardMode.MOBILE, Language.UK, Language.entries)
         assertEquals(emptyList<Any>(), c.onAlternative(LayoutProvider.EMOJI_OPTION))

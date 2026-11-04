@@ -34,15 +34,33 @@ data class KeyboardTheme(
     val fontRes: Int = 0,
     /** Handwriting reads smaller: its labels are drawn this much larger. */
     val textScale: Float = 1f,
+    /** How bright frames, rims and the light of glass are (0.4–1); see [withBrightness]. */
+    val brightness: Float = 1f,
 ) {
+    /**
+     * The same theme dimmed to [value]: the painters scale frames, rims and light by it, labels and icons
+     * dim only a quarter as much, so the keys stay easy to read at the lowest setting.
+     */
+    fun withBrightness(value: Float): KeyboardTheme {
+        fun fade(color: Int, keep: Float) = (color and 0x00FFFFFF) or ((((color ushr 24) and 0xFF) * keep).toInt() shl 24)
+        val labels = 0.75f + 0.25f * value
+        return copy(brightness = value, text = fade(text, labels), hint = fade(hint, labels), confirm = fade(confirm, labels))
+    }
+
     /** Glass and sheet mark active keys with a brighter rim, not a colour (THEMES.md, section 2). */
     val styled: Boolean get() = style != SurfaceStyle.FLAT
 
     companion object {
-        fun resolve(mode: ThemeMode): KeyboardTheme = when (mode) {
+        fun resolve(mode: ThemeMode, brightness: Float = DEFAULT_BRIGHTNESS): KeyboardTheme = when (mode) {
             ThemeMode.GLASS -> glass()
             ThemeMode.SHEET -> sheet()
-        }
+        }.withBrightness(brightness)
+
+        /**
+         * A keyboard is forty frames side by side, far denser than a launcher card: at full strength it reads
+         * brighter than the other apps, so it starts at 70 % (the pencil then matches the launcher's 0.6).
+         */
+        const val DEFAULT_BRIGHTNESS = 0.7f
 
         /**
          * «Скло · Темна»: true black, keys of black glass lit from above with a bright top rim, Exo 2. No

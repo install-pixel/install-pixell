@@ -56,12 +56,12 @@
     <string name="search">Search</string>
     <string name="section_features">Features</string>
     <string name="page_shortcuts">Shortcuts</string>
-    <string name="page_shortcuts_summary">Shortcuts: %1$d · computer keyboard</string>
+    <string name="page_shortcuts_summary">For computer mode · %1$d</string>
     <string name="page_dictionary">My dictionary</string>
     <string name="page_dictionary_summary_on">Learning on · %1$d words</string>
     <string name="page_dictionary_summary_off">Learning off · %1$d words</string>
     <string name="page_models">Offline models</string>
-    <string name="page_models_summary">Installed %1$d of %2$d (voice and translation for Укр/Pol/Eng)</string>
+    <string name="page_models_summary">Installed %1$d of %2$d</string>
     <string name="language_switch_hint">Change language: the language key (mobile keyboard), swiping the space bar, or Win+Space on the computer keyboard. The current language is written on the space bar.</string>
     <string name="shortcuts_intro">Shortcuts work only in the keyboard\'s computer mode (the keyboard button on the top bar), which has Ctrl, Alt, Shift and Win keys. Tap a modifier, then the key: for example Win, then Space switches the language. Ctrl+C, Ctrl+V and other shortcuts of the app itself (Excel, Vim…) work where that app supports them. A combination of modifiers only (for example Alt+Shift) runs when no other key follows within half a second.</string>
     <string name="shortcuts_list">Your shortcuts</string>
@@ -177,9 +177,9 @@
     <string name="bluetooth_not_connected">Computer not connected — tap for Bluetooth settings</string>
     <string name="bluetooth_typing_here">Typing on the phone again</string>
     <string name="bluetooth_typing_there">Typing on %1$s</string>
-    <string name="page_bluetooth">Bluetooth keyboard for a computer</string>
+    <string name="page_bluetooth">Bluetooth keyboard</string>
     <string name="page_bluetooth_on">On</string>
-    <string name="page_bluetooth_off">Off · type on a computer with the phone</string>
+    <string name="page_bluetooth_off">Off</string>
     <string name="bluetooth_intro">The phone becomes a Bluetooth keyboard for your computer, like a real one: no app or internet needed on the computer.</string>
     <string name="bluetooth_unsupported_android">Needs Android 9 or newer.</string>
     <string name="bluetooth_section_switch">1. Turn on</string>
@@ -203,8 +203,8 @@
     <string name="bluetooth_section_notes">Good to know</string>
     <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for (for example ы in Ukrainian) are not sent. Suggestions, translation and voice work only on the phone.</string>
     <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
-    <string name="page_glossary">Translation glossary (your corrections)</string>
-    <string name="page_glossary_summary">Entries: %1$d · words and phrases the translation must keep</string>
+    <string name="page_glossary">Translation glossary</string>
+    <string name="page_glossary_summary">Your corrections · %1$d</string>
     <string name="glossary_intro">If the translation gets a word wrong (for example warehouse terms), write the right translation here. The keyboard puts these words into the translation itself; a line that is a whole sentence is used as the translation of that sentence.</string>
     <string name="glossary_format">One line per word: українська | polski | English. Several forms with «/»: the first is used in translations. «*» at the end matches any ending, e.g. палет* = палета, палети, палетах. Lines starting with # are notes.</string>
     <string name="glossary_field">Glossary</string>
@@ -236,7 +236,7 @@
     <string name="sticker_boy_description">Boy</string>
     <string name="sticker_girl_description">Girl</string>
     <string name="page_stickers">Emoji and stickers</string>
-    <string name="page_stickers_summary">Your own emoji and pictures, favourites, boy or girl</string>
+    <string name="page_stickers_summary">Own emoji, pictures, stickers</string>
     <string name="own_emoji_title">My emoji</string>
     <string name="own_emoji_hint">Emoji or text smileys separated by spaces, e.g. 🦄 🐙 ¯\\_(ツ)_/¯. They get their own ★ page in the emoji panel.</string>
     <string name="own_emoji_field">My emoji</string>
@@ -266,4 +266,22 @@
     <string name="models_variant_installed">✓ installed</string>
     <string name="models_download_standard">Download standard</string>
     <string name="models_download_accurate_short">Download more accurate</string>
+    <string name="section_menu">Settings</string>
+    <string name="page_look">Look</string>
+    <string name="page_look_summary">Theme, brightness, size</string>
+    <string name="page_typing">Typing</string>
+    <string name="page_typing_summary">Corrections, capitals, vibration</string>
+    <string name="page_languages">Languages and layouts</string>
+    <string name="page_languages_summary">Languages, mode, cursor, swipes</string>
+    <string name="page_voice">Voice and translation</string>
+    <string name="page_voice_summary">Models: %1$d of %2$d</string>
+    <string name="page_about">About</string>
+    <string name="page_about_summary">Version %1$s · privacy, reset</string>
+    <string name="key_brightness">Key brightness: %1$d%%</string>
+    <string name="key_brightness_hint">Frames and glow; letters stay clear</string>
+    <string name="key_height_hint">Row height; the keyboard does not jump while typing</string>
+    <string name="page_look_size">Brightness and size</string>
+    <string name="page_typing_text">Text</string>
+    <string name="page_typing_keys">Keys</string>
+    <string name="page_typing_vibration">Vibration</string>
 </resources>

@@ -27,7 +27,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +58,7 @@ import com.offlinekeyboard.keyboard.VibrationStrength
 import com.offlinekeyboard.models.ModelStore
 import com.offlinekeyboard.privacy.OfflinePolicy
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class SettingsActivity : ComponentActivity() {
 
@@ -93,6 +93,8 @@ class SettingsActivity : ComponentActivity() {
                         "bluetooth" -> Page.BLUETOOTH
                         "models" -> Page.MODELS
                         "stickers" -> Page.STICKERS
+                        "look" -> Page.LOOK
+                        "typing" -> Page.TYPING
                         else -> Page.MAIN
                     }
                     SettingsApp(repository, startPage)
@@ -168,7 +170,16 @@ private fun previewVibration(context: Context, strength: VibrationStrength) {
     }
 }
 
-internal enum class Page { MAIN, SHORTCUTS, DICTIONARY, MODELS, BLUETOOTH, GLOSSARY, STICKERS }
+internal enum class Page(val depth: Int) {
+    MAIN(0), LOOK(1), TYPING(1), LANGUAGES(1), VOICE(1), ABOUT(1),
+    SHORTCUTS(1), DICTIONARY(1), BLUETOOTH(1), STICKERS(1), MODELS(2), GLOSSARY(2);
+
+    /** One step back: the models and the glossary live inside «Voice and translation». */
+    val up: Page get() = when (this) {
+        MODELS, GLOSSARY -> VOICE
+        else -> MAIN
+    }
+}
 
 internal typealias UpdateSettings = ((KeyboardSettings) -> KeyboardSettings) -> Unit
 
@@ -193,32 +204,51 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
     var page by rememberSaveable { mutableStateOf(startPage) }
     val update: UpdateSettings = { transform -> scope.launch { repository.update(transform) } }
 
-    BackHandler(enabled = page != Page.MAIN) { page = Page.MAIN }
+    BackHandler(enabled = page != Page.MAIN) { page = page.up }
 
     val s = settings ?: return
-    // Pages change softly: the old one fades out, the new one fades in and settles from 98 %.
+    // As in QRAFT: the new page slides in a little from the side it comes from and fades in, the old one
+    // slides out the other way; deeper pages come from the right, going back from the left.
     androidx.compose.animation.AnimatedContent(
         targetState = page,
         transitionSpec = {
+            val forward = targetState.depth > initialState.depth
+            val ease = androidx.compose.animation.core.FastOutSlowInEasing
             (
-                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220, delayMillis = 60)) +
-                    androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(220, delayMillis = 60), initialScale = 0.98f)
-                ) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120))
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(PAGE_IN_MS, delayMillis = 60)) +
+                    androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(PAGE_IN_MS, easing = ease)) {
+                        (if (forward) it else -it) / 8
+                    }
+                ) togetherWith (
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(PAGE_OUT_MS)) +
+                    androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(PAGE_OUT_MS, easing = ease)) {
+                        (if (forward) -it else it) / 8
+                    }
+                )
         },
         label = "page",
     ) { shown -> PageContent(shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } }) }
 }
 
+private const val PAGE_IN_MS = 300
+private const val PAGE_OUT_MS = 180
+
 @Composable
 private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: () -> Unit) {
+    val back = { onOpen(page.up) }
     when (page) {
-        Page.MAIN -> MainPage(s, update, onOpen = onOpen, onReset = onReset)
-        Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = { onOpen(Page.MAIN) })
-        Page.DICTIONARY -> DictionaryPage(s, update, onBack = { onOpen(Page.MAIN) })
-        Page.MODELS -> ModelsPage(onBack = { onOpen(Page.MAIN) })
-        Page.BLUETOOTH -> BluetoothPage(s, update, onBack = { onOpen(Page.MAIN) })
-        Page.GLOSSARY -> GlossaryPage(onBack = { onOpen(Page.MAIN) })
-        Page.STICKERS -> StickersPage(s, update, onBack = { onOpen(Page.MAIN) })
+        Page.MAIN -> MainPage(s, onOpen = onOpen)
+        Page.LOOK -> LookPage(s, update, back)
+        Page.TYPING -> TypingPage(s, update, back)
+        Page.LANGUAGES -> LanguagesPage(s, update, back)
+        Page.VOICE -> VoicePage(s, update, onOpen, back)
+        Page.ABOUT -> AboutPage(onReset, back)
+        Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = back)
+        Page.DICTIONARY -> DictionaryPage(s, update, onBack = back)
+        Page.MODELS -> ModelsPage(onBack = back)
+        Page.BLUETOOTH -> BluetoothPage(s, update, onBack = back)
+        Page.GLOSSARY -> GlossaryPage(onBack = back)
+        Page.STICKERS -> StickersPage(s, update, onBack = back)
     }
 }
 
@@ -245,11 +275,10 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
 }
 
 @Composable
-private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: () -> Unit) {
+private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
     val context = LocalContext.current
     var enabled by remember { mutableStateOf(isKeyboardEnabled(context)) }
     var selected by remember { mutableStateOf(isKeyboardSelected(context)) }
-    var showResetDialog by remember { mutableStateOf(false) }
     val models = remember { ModelStore(context) }
     val dictionary = remember { UserDictionaryStore.get(context) }
     val dictionaryVersion by dictionary.changes.collectAsStateWithLifecycle()
@@ -277,17 +306,20 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
     }
 
     PageScaffold(stringResource(R.string.app_name), onBack = null) {
-        Section(stringResource(R.string.section_setup)) {
-            SetupStep(stringResource(R.string.setup_step_enable), enabled, stringResource(R.string.setup_enable_button)) {
-                context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+        // The setup steps only until the keyboard is on and chosen; then the page starts with the test field.
+        if (!(enabled && selected)) {
+            Section(stringResource(R.string.section_setup)) {
+                SetupStep(stringResource(R.string.setup_step_enable), enabled, stringResource(R.string.setup_enable_button)) {
+                    context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+                }
+                SetupStep(stringResource(R.string.setup_step_select), selected, stringResource(R.string.setup_select_button)) {
+                    context.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+                }
+                Text(
+                    stringResource(if (enabled && selected) R.string.setup_ready else R.string.setup_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
-            SetupStep(stringResource(R.string.setup_step_select), selected, stringResource(R.string.setup_select_button)) {
-                context.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
-            }
-            Text(
-                stringResource(if (enabled && selected) R.string.setup_ready else R.string.setup_hint),
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
 
         Section(stringResource(R.string.section_try)) {
@@ -302,20 +334,12 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             )
         }
 
-        Section(stringResource(R.string.section_features)) {
-            NavRow(
-                stringResource(R.string.page_shortcuts),
-                stringResource(R.string.page_shortcuts_summary, s.shortcuts.size),
-            ) { onOpen(Page.SHORTCUTS) }
+        Section(stringResource(R.string.section_menu)) {
+            NavRow(stringResource(R.string.page_look), stringResource(R.string.page_look_summary)) { onOpen(Page.LOOK) }
             RowDivider()
-            val words = remember(dictionaryVersion) { Language.entries.sumOf { dictionary.dictionary.size(it) } }
-            NavRow(
-                stringResource(R.string.page_dictionary),
-                stringResource(
-                    if (s.learnWords) R.string.page_dictionary_summary_on else R.string.page_dictionary_summary_off,
-                    words,
-                ),
-            ) { onOpen(Page.DICTIONARY) }
+            NavRow(stringResource(R.string.page_typing), stringResource(R.string.page_typing_summary)) { onOpen(Page.TYPING) }
+            RowDivider()
+            NavRow(stringResource(R.string.page_languages), stringResource(R.string.page_languages_summary)) { onOpen(Page.LANGUAGES) }
             RowDivider()
             val modelsVersion by com.offlinekeyboard.models.ModelEvents.version.collectAsStateWithLifecycle()
             val installed = remember(models, modelsVersion, resumeCount) {
@@ -323,27 +347,33 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                     TranslationDirection.entries.count { models.translationModel(it) != null }
             }
             val total = Language.entries.size + TranslationDirection.entries.size
-            NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, total)) {
-                onOpen(Page.MODELS)
-            }
+            NavRow(stringResource(R.string.page_voice), stringResource(R.string.page_voice_summary, installed, total)) { onOpen(Page.VOICE) }
             RowDivider()
-            val glossarySize = remember { com.offlinekeyboard.translation.GlossaryStore.get(context).glossary.size }
-            NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) {
-                onOpen(Page.GLOSSARY)
-            }
+            NavRow(stringResource(R.string.page_stickers), stringResource(R.string.page_stickers_summary)) { onOpen(Page.STICKERS) }
             RowDivider()
-            NavRow(stringResource(R.string.page_stickers), stringResource(R.string.page_stickers_summary)) {
-                onOpen(Page.STICKERS)
-            }
+            val words = remember(dictionaryVersion) { Language.entries.sumOf { dictionary.dictionary.size(it) } }
+            NavRow(
+                stringResource(R.string.page_dictionary),
+                stringResource(if (s.learnWords) R.string.page_dictionary_summary_on else R.string.page_dictionary_summary_off, words),
+            ) { onOpen(Page.DICTIONARY) }
+            RowDivider()
+            NavRow(stringResource(R.string.page_shortcuts), stringResource(R.string.page_shortcuts_summary, s.shortcuts.size)) { onOpen(Page.SHORTCUTS) }
             RowDivider()
             NavRow(
                 stringResource(R.string.page_bluetooth),
                 stringResource(if (s.bluetoothKeyboard) R.string.page_bluetooth_on else R.string.page_bluetooth_off),
             ) { onOpen(Page.BLUETOOTH) }
+            RowDivider()
+            NavRow(stringResource(R.string.page_about), stringResource(R.string.page_about_summary, BuildConfig.VERSION_NAME)) { onOpen(Page.ABOUT) }
         }
+    }
+}
 
-        Section(stringResource(R.string.section_appearance)) {
-            Text(stringResource(R.string.theme_title), style = MaterialTheme.typography.titleSmall)
+/** Theme, key brightness and key size: everything about how the keyboard looks. */
+@Composable
+private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
+    PageScaffold(stringResource(R.string.page_look), onBack) {
+        Section(stringResource(R.string.theme_title)) {
             for ((mode, label) in listOf(
                 ThemeMode.GLASS to R.string.theme_glass,
                 ThemeMode.SHEET to R.string.theme_sheet,
@@ -351,65 +381,71 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 RadioRow(stringResource(label), s.themeMode == mode) { update { it.copy(themeMode = mode) } }
             }
         }
-
-        Section(stringResource(R.string.section_keyboard)) {
-            Text(stringResource(R.string.default_mode), style = MaterialTheme.typography.titleSmall)
-            RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
-                update { it.copy(defaultMode = KeyboardMode.MOBILE) }
-            }
-            RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
-                update { it.copy(defaultMode = KeyboardMode.COMPUTER) }
-            }
-            SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
-                update { it.copy(rememberLastMode = v) }
-            }
-            RowDivider()
-            Text(stringResource(R.string.input_languages), style = MaterialTheme.typography.titleSmall)
-            for (language in Language.entries) {
-                CheckRow(languageName(language), language in s.enabledLanguages) { v ->
-                    update {
-                        val next = if (v) it.enabledLanguages + language else it.enabledLanguages - language
-                        // At least one layout must stay enabled.
-                        if (next.isEmpty()) it else it.copy(enabledLanguages = Language.entries.filter { l -> l in next })
-                    }
-                }
-            }
-            Text(stringResource(R.string.language_switch_hint), style = MaterialTheme.typography.bodySmall)
-            RowDivider()
+        Section(stringResource(R.string.page_look_size)) {
             Text(
-                stringResource(R.string.key_height, (s.keyHeightScale * 100).toInt()),
+                stringResource(R.string.key_brightness, (s.keyBrightness * 100).roundToInt()),
                 style = MaterialTheme.typography.titleSmall,
             )
-            Slider(
+            HandSlider(
+                value = s.keyBrightness,
+                onValueChange = { v -> update { it.copy(keyBrightness = v) } },
+                valueRange = KeyboardSettings.MIN_KEY_BRIGHTNESS..KeyboardSettings.MAX_KEY_BRIGHTNESS,
+                steps = 11,
+            )
+            Text(stringResource(R.string.key_brightness_hint), style = MaterialTheme.typography.bodySmall)
+            RowDivider()
+            Text(
+                stringResource(R.string.key_height, (s.keyHeightScale * 100).roundToInt()),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            HandSlider(
                 value = s.keyHeightScale,
                 onValueChange = { v -> update { it.copy(keyHeightScale = v) } },
                 valueRange = KeyboardSettings.MIN_KEY_HEIGHT_SCALE..KeyboardSettings.MAX_KEY_HEIGHT_SCALE,
                 steps = 6,
             )
-            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
-                update { it.copy(mobileCursorRow = v) }
+            Text(stringResource(R.string.key_height_hint), style = MaterialTheme.typography.bodySmall)
+        }
+        Section(stringResource(R.string.section_try)) {
+            var sample by rememberSaveable { mutableStateOf("") }
+            OutlinedTextField(
+                value = sample,
+                onValueChange = { sample = it },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
+                label = { Text(stringResource(R.string.try_hint)) },
+            )
+        }
+    }
+}
+
+/** How typing behaves: corrections, capitals, punctuation help, gestures, the enlarged letter, vibration. */
+@Composable
+private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
+    val context = LocalContext.current
+    PageScaffold(stringResource(R.string.page_typing), onBack) {
+        Section(stringResource(R.string.page_typing_text)) {
+            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v ->
+                update { it.copy(autoCorrect = v) }
             }
             SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v ->
                 update { it.copy(autoCapitalize = v) }
             }
-            SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
-                update { it.copy(spaceSwipeSwitchesLanguage = v) }
+            SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
+                update { it.copy(doubleSpacePeriod = v) }
             }
-            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
-                update { it.copy(compactToolbar = v) }
-            }
-            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v ->
-                update { it.copy(autoCorrect = v) }
+        }
+        Section(stringResource(R.string.page_typing_keys)) {
+            SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
+                update { it.copy(keyPreview = v) }
             }
             SwitchRow(stringResource(R.string.backspace_swipe), s.backspaceSwipe) { v ->
                 update { it.copy(backspaceSwipe = v) }
             }
-            SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
-                update { it.copy(keyPreview = v) }
+            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
+                update { it.copy(compactToolbar = v) }
             }
-            SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
-                update { it.copy(doubleSpacePeriod = v) }
-            }
+        }
+        Section(stringResource(R.string.page_typing_vibration)) {
             SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v ->
                 update { it.copy(hapticFeedback = v) }
             }
@@ -426,7 +462,62 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
                 }
             }
         }
+    }
+}
 
+/** Input languages, the default mode (phone or computer) and the layout extras. */
+@Composable
+private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
+    PageScaffold(stringResource(R.string.page_languages), onBack) {
+        Section(stringResource(R.string.input_languages)) {
+            for (language in Language.entries) {
+                CheckRow(languageName(language), language in s.enabledLanguages) { v ->
+                    update {
+                        val next = if (v) it.enabledLanguages + language else it.enabledLanguages - language
+                        // At least one layout must stay enabled.
+                        if (next.isEmpty()) it else it.copy(enabledLanguages = Language.entries.filter { l -> l in next })
+                    }
+                }
+            }
+            Text(stringResource(R.string.language_switch_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
+                update { it.copy(spaceSwipeSwitchesLanguage = v) }
+            }
+        }
+        Section(stringResource(R.string.default_mode)) {
+            RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
+                update { it.copy(defaultMode = KeyboardMode.MOBILE) }
+            }
+            RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
+                update { it.copy(defaultMode = KeyboardMode.COMPUTER) }
+            }
+            SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
+                update { it.copy(rememberLastMode = v) }
+            }
+            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
+                update { it.copy(mobileCursorRow = v) }
+            }
+        }
+    }
+}
+
+/** Voice input and translation, with the offline models and the translation glossary. */
+@Composable
+private fun VoicePage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val models = remember { ModelStore(context) }
+    val modelsVersion by com.offlinekeyboard.models.ModelEvents.version.collectAsStateWithLifecycle()
+    val installed = remember(models, modelsVersion) {
+        Language.entries.count { models.speechModel(it) != null } + TranslationDirection.entries.count { models.translationModel(it) != null }
+    }
+    val total = Language.entries.size + TranslationDirection.entries.size
+    PageScaffold(stringResource(R.string.page_voice), onBack) {
+        Section(stringResource(R.string.page_models)) {
+            NavRow(stringResource(R.string.page_models), stringResource(R.string.page_models_summary, installed, total)) { onOpen(Page.MODELS) }
+            RowDivider()
+            val glossarySize = remember { com.offlinekeyboard.translation.GlossaryStore.get(context).glossary.size }
+            NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) { onOpen(Page.GLOSSARY) }
+        }
         Section(stringResource(R.string.section_voice)) {
             Text(stringResource(R.string.voice_language), style = MaterialTheme.typography.titleSmall)
             RadioRow(stringResource(R.string.voice_language_follow), s.voiceLanguage == null) {
@@ -476,7 +567,15 @@ private fun MainPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page)
             }
             Text(stringResource(R.string.translation_direction_hint), style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
 
+/** Version, privacy, the last crash and resetting the settings. */
+@Composable
+private fun AboutPage(onReset: () -> Unit, onBack: () -> Unit) {
+    val context = LocalContext.current
+    var showResetDialog by remember { mutableStateOf(false) }
+    PageScaffold(stringResource(R.string.page_about), onBack) {
         Section(stringResource(R.string.section_privacy)) {
             val networkPermissions = remember { OfflinePolicy.requestedNetworkPermissions(context) }
             StatusLine(stringResource(R.string.privacy_no_network), networkPermissions.isEmpty())
