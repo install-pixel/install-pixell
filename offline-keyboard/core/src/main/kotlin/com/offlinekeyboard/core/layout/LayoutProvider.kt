@@ -9,6 +9,9 @@ import com.offlinekeyboard.core.layout.SpecialKey.*
  */
 object LayoutProvider {
 
+    /** The first long-press option of ",": opens the emoji panel instead of typing anything. */
+    const val EMOJI_OPTION = "😊"
+
     fun layout(
         mode: KeyboardMode,
         language: Language,
@@ -174,11 +177,16 @@ object LayoutProvider {
             }
         }
         val edge = if (language == Language.UK) 1f else 1.5f
+        // Backspace is a little wider than Shift: the letters of its row give up 5 % each, which the eye
+        // does not notice, so the row keeps the width of the others.
+        val narrow = 0.95f
+        val bottomLetters = letterRows[2].map { it.copy(width = narrow) }
+        val backspace = edge + letterRows[2].size * (1f - narrow)
         return KeyboardLayout(
             listOf(
                 letterRows[0],
                 letterRows[1],
-                listOf(mod(SHIFT, edge)) + letterRows[2] + fn(BACKSPACE, edge, repeatable = true),
+                listOf(mod(SHIFT, edge)) + bottomLetters + fn(BACKSPACE, backspace, repeatable = true),
                 mobileBottomRow(language, LAYER_SYMBOLS),
             ),
         )
@@ -241,13 +249,17 @@ object LayoutProvider {
     }
 
     private fun mobileBottomRow(language: Language, layerKey: SpecialKey): List<Key> {
-        // The apostrophe lives on a long press of "." (and ʼ on ь), so the space bar stays wide.
-        val spaceWidth = if (language == Language.UK) 4f else 3f
-        return listOf(mod(layerKey, 1.5f), fn(LANGUAGE), fn(LAYER_EMOJI)) + listOf(
-            Key(KeyAction.Text(","), alternatives = punctuationAlternatives(",")),
+        // The apostrophe lives on a long press of "." (and ʼ on ь), the emoji panel on a long press of ","
+        // (its first option, so holding "," and letting go opens it). Both sides of the space bar are
+        // equally wide, so it sits in the middle; Enter takes the room the emoji key left.
+        val spaceWidth = if (language == Language.UK) 4.5f else 3.5f
+        return listOf(
+            mod(layerKey, 1.25f),
+            fn(LANGUAGE),
+            Key(KeyAction.Text(","), alternatives = listOf(EMOJI_OPTION) + punctuationAlternatives(",")),
             Key(KeyAction.Special(SPACE), width = spaceWidth, style = KeyStyle.SPACE),
             Key(KeyAction.Text("."), alternatives = punctuationAlternatives(".")),
-            action(ENTER, 1.5f),
+            action(ENTER, 2.25f),
         )
     }
 

@@ -32,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -195,14 +196,29 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
     BackHandler(enabled = page != Page.MAIN) { page = Page.MAIN }
 
     val s = settings ?: return
+    // Pages change softly: the old one fades out, the new one fades in and settles from 98 %.
+    androidx.compose.animation.AnimatedContent(
+        targetState = page,
+        transitionSpec = {
+            (
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220, delayMillis = 60)) +
+                    androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(220, delayMillis = 60), initialScale = 0.98f)
+                ) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120))
+        },
+        label = "page",
+    ) { shown -> PageContent(shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } }) }
+}
+
+@Composable
+private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: () -> Unit) {
     when (page) {
-        Page.MAIN -> MainPage(s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } })
-        Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = { page = Page.MAIN })
-        Page.DICTIONARY -> DictionaryPage(s, update, onBack = { page = Page.MAIN })
-        Page.MODELS -> ModelsPage(onBack = { page = Page.MAIN })
-        Page.BLUETOOTH -> BluetoothPage(s, update, onBack = { page = Page.MAIN })
-        Page.GLOSSARY -> GlossaryPage(onBack = { page = Page.MAIN })
-        Page.STICKERS -> StickersPage(s, update, onBack = { page = Page.MAIN })
+        Page.MAIN -> MainPage(s, update, onOpen = onOpen, onReset = onReset)
+        Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = { onOpen(Page.MAIN) })
+        Page.DICTIONARY -> DictionaryPage(s, update, onBack = { onOpen(Page.MAIN) })
+        Page.MODELS -> ModelsPage(onBack = { onOpen(Page.MAIN) })
+        Page.BLUETOOTH -> BluetoothPage(s, update, onBack = { onOpen(Page.MAIN) })
+        Page.GLOSSARY -> GlossaryPage(onBack = { onOpen(Page.MAIN) })
+        Page.STICKERS -> StickersPage(s, update, onBack = { onOpen(Page.MAIN) })
     }
 }
 

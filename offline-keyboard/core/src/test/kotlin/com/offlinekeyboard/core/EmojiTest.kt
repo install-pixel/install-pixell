@@ -16,11 +16,23 @@ class EmojiTest {
     private fun special(key: SpecialKey) = { k: com.offlinekeyboard.core.layout.Key -> (k.action as? KeyAction.Special)?.key == key }
 
     @Test
-    fun `every mobile letters layout has an emoji key`() {
+    fun `every mobile letters layout opens emoji from a long press of the comma`() {
         for (language in Language.entries) {
-            val keys = LayoutProvider.layout(KeyboardMode.MOBILE, language, Layer.LETTERS).allKeys()
-            assertTrue("$language", keys.any(special(SpecialKey.LAYER_EMOJI)))
+            val layout = LayoutProvider.layout(KeyboardMode.MOBILE, language, Layer.LETTERS)
+            val comma = layout.allKeys().first { (it.action as? KeyAction.Text)?.text == "," }
+            assertEquals("$language", LayoutProvider.EMOJI_OPTION, comma.alternatives.first())
+            // The space bar sits in the middle of the bottom row.
+            val bottom = layout.rows.last()
+            val space = bottom.indexOfFirst(special(SpecialKey.SPACE))
+            val left = bottom.take(space).sumOf { it.width.toDouble() }
+            val right = bottom.drop(space + 1).sumOf { it.width.toDouble() }
+            assertEquals("$language", left, right, 0.01)
+            // The Shift/Backspace row and the bottom row are as wide as the widest one.
+            for (row in layout.rows.takeLast(2)) assertEquals("$language", layout.maxRowUnits.toDouble(), row.sumOf { it.width.toDouble() }, 0.01)
         }
+        val c = KeyboardController(KeyboardMode.MOBILE, Language.UK, Language.entries)
+        assertEquals(emptyList<Any>(), c.onAlternative(LayoutProvider.EMOJI_OPTION))
+        assertEquals(Layer.EMOJI, c.layer)
     }
 
     @Test
@@ -29,7 +41,7 @@ class EmojiTest {
         assertTrue(layout.allKeys().any(special(SpecialKey.STICKERS)))
         assertEquals(8f, layout.rows.last().sumOf { it.width.toDouble() }.toFloat(), 0.01f)
         val c = KeyboardController(KeyboardMode.MOBILE, Language.UK, Language.entries)
-        c.onKey(c.layout(false).allKeys().first(special(SpecialKey.LAYER_EMOJI)))
+        c.onAlternative(LayoutProvider.EMOJI_OPTION)
         val commands = c.onKey(c.layout(false).allKeys().first(special(SpecialKey.STICKERS)))
         assertEquals(listOf(com.offlinekeyboard.core.input.EditorCommand.OpenStickers), commands)
     }
@@ -46,10 +58,10 @@ class EmojiTest {
     }
 
     @Test
-    fun `emoji key opens the panel, arrows turn pages, emoji are typed, ABC goes back`() {
+    fun `the comma's emoji option opens the panel, arrows turn pages, emoji are typed, ABC goes back`() {
         val c = KeyboardController(KeyboardMode.MOBILE, Language.UK, Language.entries)
         fun press(key: SpecialKey) = c.onKey(c.layout(false).allKeys().first(special(key)))
-        press(SpecialKey.LAYER_EMOJI)
+        c.onAlternative(LayoutProvider.EMOJI_OPTION)
         assertEquals(Layer.EMOJI, c.layer)
         val first = c.layout(false).allKeys().first { it.action is KeyAction.Text }
         assertEquals(EmojiSet.pages[0].items[0], (first.action as KeyAction.Text).text)
