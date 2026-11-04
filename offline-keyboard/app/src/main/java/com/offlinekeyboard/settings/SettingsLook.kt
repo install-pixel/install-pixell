@@ -136,6 +136,11 @@ private fun Typography.withFont(font: TextStyle) = Typography(
 
 // ------------------------------------------------------------------ surfaces
 
+/** Temporary CI bisect: 0 solid rim, 1 two-stop rim, 2 three-stop, 3 four-stop, 4 + switch. */
+internal object LookDebug {
+    @Volatile var level = 4
+}
+
 private val GlassSurface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f to Color(0xFF0D0D0D), 1f to Color(0xFF080808))
 // The rim colours of THEMES.md (white at 50/14/7/15 % and 70/25/20 %) flattened onto the black page:
 // opaque greys look the same there, and the Android 14/15 emulator renderer dies on translucent
@@ -157,7 +162,12 @@ private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Mo
     val light = minOf(size.height / 2, 120.dp.toPx())
     val sheenBrush = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = light)
     onDrawBehind {
-        drawRoundRect(if (chosen) GlassRimChosen else GlassRim, cornerRadius = CornerRadius(r))
+        when (LookDebug.level) {
+            0 -> drawRoundRect(Color(0xFF404040), cornerRadius = CornerRadius(r))
+            1 -> drawRoundRect(Brush.verticalGradient(listOf(Color(0xFF808080), Color(0xFF262626))), cornerRadius = CornerRadius(r))
+            2 -> drawRoundRect(GlassRimChosen, cornerRadius = CornerRadius(r))
+            else -> drawRoundRect(if (chosen) GlassRimChosen else GlassRim, cornerRadius = CornerRadius(r))
+        }
         drawRoundRect(GlassSurface, Offset(rim, rim), innerSize, inner)
         if (sheen) drawRoundRect(sheenBrush, Offset(rim, rim), innerSize, inner)
     }
@@ -212,7 +222,9 @@ internal fun LookSwitch(checked: Boolean) {
             val pad = (size.height - ball) / 2
             val x = if (checked) size.width - pad - ball else pad
             val capsule = CornerRadius(size.height / 2)
-            if (look == Look.GLASS) {
+            if (look == Look.GLASS && LookDebug.level < 4) {
+                onDrawBehind { }
+            } else if (look == Look.GLASS) {
                 val body = if (checked) {
                     Brush.verticalGradient(listOf(Color(0xFF4A4A4A), Color(0xFF262626)))
                 } else {
