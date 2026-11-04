@@ -440,7 +440,7 @@ class KeyboardUiTest {
             val tag = mode.name.lowercase()
             // Temporary bisect: the Android 14/15 emulator dies on the glass settings; draw more each step.
             if (mode == com.offlinekeyboard.keyboard.ThemeMode.GLASS) {
-                for (level in 0..3) {
+                for (level in 2..6) {
                     android.util.Log.i("LOOKBISECT", "level=$level start")
                     val intent = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
                         .putExtra("page", "").putExtra("lookLevel", level)

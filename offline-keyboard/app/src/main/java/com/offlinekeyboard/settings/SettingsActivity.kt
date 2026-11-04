@@ -70,7 +70,7 @@ class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LookDebug.level = intent.getIntExtra("lookLevel", 3)
+        LookDebug.level = intent.getIntExtra("lookLevel", 6)
         enableEdgeToEdge()
         val repository = SettingsRepository(this)
         // After a crash, show the error first (plain views, nothing that could fail again) so it can be

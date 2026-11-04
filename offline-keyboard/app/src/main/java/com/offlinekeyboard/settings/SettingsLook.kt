@@ -136,9 +136,9 @@ private fun Typography.withFont(font: TextStyle) = Typography(
 
 // ------------------------------------------------------------------ surfaces
 
-/** Temporary: how much of the styled look is drawn (0 colours only, 1 + font, 2 + surfaces, 3 all); CI bisect. */
+/** Temporary: how much of the styled look is drawn (0 colours, 1 + font, 2 + solid body, 3 gradient body, 4 + sheen, 5 + rim, 6 all); CI bisect. */
 internal object LookDebug {
-    @Volatile var level = 3
+    @Volatile var level = 6
 }
 
 private val GlassSurface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f to Color(0xFF0D0D0D), 1f to Color(0xFF080808))
@@ -157,9 +157,9 @@ private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Mo
     val light = minOf(size.height / 2, 120.dp.toPx())
     val sheenBrush = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = light)
     onDrawBehind {
-        drawRoundRect(GlassSurface, cornerRadius = r)
-        if (sheen) drawRoundRect(sheenBrush, cornerRadius = r)
-        drawRoundRect(
+        if (LookDebug.level >= 3) drawRoundRect(GlassSurface, cornerRadius = r) else drawRoundRect(Color(0xFF0D0D0D), cornerRadius = r)
+        if (sheen && LookDebug.level >= 4) drawRoundRect(sheenBrush, cornerRadius = r)
+        if (LookDebug.level >= 5) drawRoundRect(
             if (chosen) GlassRimChosen else GlassRim,
             topLeft = Offset(rim / 2, rim / 2),
             size = androidx.compose.ui.geometry.Size(size.width - rim, size.height - rim),
@@ -218,7 +218,7 @@ internal fun LookSwitch(checked: Boolean) {
             val pad = (size.height - ball) / 2
             val x = if (checked) size.width - pad - ball else pad
             val capsule = CornerRadius(size.height / 2)
-            if (look == Look.GLASS && LookDebug.level < 3) {
+            if (look == Look.GLASS && LookDebug.level < 6) {
                 onDrawBehind { }
             } else if (look == Look.GLASS) {
                 val body = if (checked) {
