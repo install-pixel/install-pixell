@@ -424,26 +424,30 @@ class KeyboardUiTest {
         typeWord(activity.plain, "а")
     }
 
-    /** The settings follow the glass and sheet styles (cards, buttons, switches, fonts): screenshots of both. */
+    /** The settings follow the glass style (cards, buttons, switches, font): screenshots. */
     @Test
-    fun settingsInGlassAndSheet() {
+    fun settingsInGlass() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.GLASS)
+
+    /** The settings follow the sheet style (pencil frames, Caveat): screenshots. */
+    @Test
+    fun settingsInSheet() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.SHEET)
+
+    private fun settingsIn(mode: com.offlinekeyboard.keyboard.ThemeMode) {
         scenario.close()
         val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
         try {
-            for (mode in listOf(com.offlinekeyboard.keyboard.ThemeMode.GLASS, com.offlinekeyboard.keyboard.ThemeMode.SHEET)) {
-                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
-                val tag = mode.name.lowercase()
-                for (page in listOf("", "models")) {
-                    val intent = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
-                        .putExtra("page", page)
-                    ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->
-                        Thread.sleep(1500)
-                        assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
-                        screenshot("settings-$tag-${page.ifEmpty { "main" }}")
-                        shell("input swipe 160 560 160 140 400")
-                        Thread.sleep(600)
-                        screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
-                    }
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+            val tag = mode.name.lowercase()
+            for (page in listOf("", "models")) {
+                val intent = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                    .putExtra("page", page)
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->
+                    Thread.sleep(1500)
+                    assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
+                    screenshot("settings-$tag-${page.ifEmpty { "main" }}")
+                    shell("input swipe 160 560 160 140 400")
+                    Thread.sleep(600)
+                    screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
                 }
             }
         } finally {
