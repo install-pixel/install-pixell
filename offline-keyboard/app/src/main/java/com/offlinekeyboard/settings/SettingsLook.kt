@@ -1,7 +1,5 @@
 package com.offlinekeyboard.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -14,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -145,13 +142,25 @@ private val GlassRim = Brush.verticalGradient(
 )
 private val GlassRimChosen = Brush.verticalGradient(0f to Color(0xB3FFFFFF), 0.3f to Color(0x40FFFFFF), 1f to Color(0x33FFFFFF))
 
-/** Soft light inside the top of a large glass surface, gone by half height (at most 120 dp). */
-private fun Modifier.glassSheen(): Modifier = drawWithCache {
-    val h = minOf(size.height / 2, 120.dp.toPx())
-    val brush = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = h)
-    onDrawWithContent {
-        drawRect(brush, size = size.copy(height = h))
-        drawContent()
+/**
+ * Glass drawn in one pass behind the content, as the keyboard draws its keys: the body, the top light of
+ * large surfaces ([sheen]) and the 1 dp rim, all as rounded rectangles (no clipping layer).
+ */
+private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean): Modifier = drawWithCache {
+    val r = CornerRadius(radius.toPx())
+    val rim = 1.dp.toPx()
+    val light = minOf(size.height / 2, 120.dp.toPx())
+    val sheenBrush = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = light)
+    onDrawBehind {
+        drawRoundRect(GlassSurface, cornerRadius = r)
+        if (sheen) drawRoundRect(sheenBrush, cornerRadius = r)
+        drawRoundRect(
+            if (chosen) GlassRimChosen else GlassRim,
+            topLeft = Offset(rim / 2, rim / 2),
+            size = androidx.compose.ui.geometry.Size(size.width - rim, size.height - rim),
+            cornerRadius = CornerRadius(maxOf(0f, radius.toPx() - rim / 2)),
+            style = Stroke(rim),
+        )
     }
 }
 
@@ -163,11 +172,7 @@ private fun Modifier.glassSheen(): Modifier = drawWithCache {
 internal fun Modifier.lookSurface(radius: Dp, seed: Int = 0, chosen: Boolean = false, sheen: Boolean = false, ink: Color = Tone.Ink): Modifier =
     when (LocalLook.current) {
         Look.PLAIN -> this
-        Look.GLASS -> {
-            val shape = RoundedCornerShape(radius)
-            clip(shape).background(GlassSurface).let { if (sheen) it.glassSheen() else it }
-                .border(1.dp, if (chosen) GlassRimChosen else GlassRim, shape)
-        }
+        Look.GLASS -> glassFrame(radius, chosen, sheen)
         Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else 0.8f, if (chosen) 2.6.dp else 2.2.dp, ink)
     }
 
