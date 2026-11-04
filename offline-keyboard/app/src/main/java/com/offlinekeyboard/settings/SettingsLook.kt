@@ -220,9 +220,9 @@ internal fun LookSwitch(checked: Boolean) {
                     Brush.verticalGradient(listOf(Color(0xFF141414), Color(0xFF080808)))
                 }
                 val knob = if (checked) {
-                    Brush.radialGradient(listOf(Color.White, Color(0xFFBDBDBD)), Offset(x + ball / 2, pad + ball / 2), ball / 2)
+                    Brush.verticalGradient(listOf(Color.White, Color(0xFFBDBDBD)), startY = pad, endY = pad + ball)
                 } else {
-                    Brush.radialGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), Offset(x + ball / 2, pad + ball / 2), ball / 2)
+                    Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = pad, endY = pad + ball)
                 }
                 onDrawBehind {
                     drawRoundRect(body, cornerRadius = capsule)
