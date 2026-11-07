@@ -189,6 +189,16 @@ class KeyboardControllerTest {
     }
 
     @Test
+    fun `the automatic sentence Shift does not turn arrows into a selection`() {
+        val c = controller(mode = KeyboardMode.MOBILE)
+        c.setAutoShift(true)
+        assertEquals(listOf(EditorCommand.Move(Direction.RIGHT)), c.press(SpecialKey.RIGHT))
+        // A Shift the user tapped still selects.
+        c.press(SpecialKey.SHIFT)
+        assertEquals(listOf(EditorCommand.Move(Direction.RIGHT, select = true)), c.press(SpecialKey.RIGHT))
+    }
+
+    @Test
     fun `long press alternative follows shift`() {
         val c = controller(mode = KeyboardMode.MOBILE, language = Language.PL)
         c.press(SpecialKey.SHIFT)

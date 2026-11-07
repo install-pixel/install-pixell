@@ -98,6 +98,7 @@ class SettingsActivity : ComponentActivity() {
                         "stickers" -> Page.STICKERS
                         "look" -> Page.LOOK
                         "typing" -> Page.TYPING
+                        "help" -> Page.HELP
                         else -> Page.MAIN
                     }
                     SettingsApp(repository, startPage)
@@ -161,11 +162,12 @@ private fun previewVibration(context: Context, strength: VibrationStrength) {
 
 internal enum class Page(val depth: Int) {
     MAIN(0), LOOK(1), TYPING(1), LANGUAGES(1), VOICE(1), ABOUT(1),
-    SHORTCUTS(1), DICTIONARY(1), BLUETOOTH(1), STICKERS(1), MODELS(2), GLOSSARY(2);
+    SHORTCUTS(1), DICTIONARY(1), BLUETOOTH(1), STICKERS(1), MODELS(2), GLOSSARY(2), HELP(1), HELP_TOPIC(2);
 
-    /** One step back: the models and the glossary live inside «Voice and translation». */
+    /** One step back: the models and the glossary live inside «Voice and translation», topics in the help. */
     val up: Page get() = when (this) {
         MODELS, GLOSSARY -> VOICE
+        HELP_TOPIC -> HELP
         else -> MAIN
     }
 }
@@ -238,6 +240,8 @@ private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings,
         Page.BLUETOOTH -> BluetoothPage(s, update, onBack = back)
         Page.GLOSSARY -> GlossaryPage(onBack = back)
         Page.STICKERS -> StickersPage(s, update, onBack = back)
+        Page.HELP -> HelpPage(onOpen, back)
+        Page.HELP_TOPIC -> HelpTopicPage(back)
     }
 }
 
@@ -330,6 +334,9 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
         }
 
         Section(stringResource(R.string.section_menu)) {
+            // As in QRAFT: the help comes first.
+            NavRow(stringResource(R.string.page_help), subtitle = null, leading = "•••") { onOpen(Page.HELP) }
+            RowDivider()
             NavRow(stringResource(R.string.page_look), stringResource(R.string.page_look_summary)) { onOpen(Page.LOOK) }
             RowDivider()
             NavRow(stringResource(R.string.page_typing), stringResource(R.string.page_typing_summary)) { onOpen(Page.TYPING) }
@@ -369,11 +376,11 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
     PageScaffold(stringResource(R.string.page_look), onBack) {
         Section(stringResource(R.string.theme_title)) {
-            for ((mode, label) in listOf(
-                ThemeMode.GLASS to R.string.theme_glass,
-                ThemeMode.SHEET to R.string.theme_sheet,
+            for ((mode, label, description) in listOf(
+                Triple(ThemeMode.GLASS, R.string.theme_glass, R.string.theme_glass_desc),
+                Triple(ThemeMode.SHEET, R.string.theme_sheet, R.string.theme_sheet_desc),
             )) {
-                RadioRow(stringResource(label), s.themeMode == mode) { update { it.copy(themeMode = mode) } }
+                RadioRow(stringResource(label), s.themeMode == mode, stringResource(description)) { update { it.copy(themeMode = mode) } }
             }
         }
         Section(stringResource(R.string.page_look_size)) {
