@@ -371,7 +371,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     private fun uniformChanged(u: Boolean) = layoutUniform != null && layoutUniform != u
 
     /** Поставити коробку саме так (0 — як вписано, 1 — на боці, 2 — сторч), якщо так вона поміщається. */
-    fun setOrientation(i: Int) {
+    fun chooseOrientation(i: Int) {
         val d = dims ?: return
         if (i == orientation) return
         if (i !in orientations) {

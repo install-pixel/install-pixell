@@ -237,7 +237,7 @@ fun EditorPage(
             EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
                 listOf(R.string.orient_flat_btn, R.string.orient_side_btn, R.string.orient_up_btn).forEachIndexed { i, t ->
                     Box(Modifier.alpha(if (i in vm.orientations) 1f else 0.4f)) {
-                        ChoiceChip(stringResource(t), selected = vm.orientation == i) { vm.setOrientation(i) }
+                        ChoiceChip(stringResource(t), selected = vm.orientation == i) { vm.chooseOrientation(i) }
                     }
                 }
             }
