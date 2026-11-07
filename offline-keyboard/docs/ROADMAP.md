@@ -3,6 +3,11 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.8 — the same scrolling everywhere
+
+- [x] Every scrolling list fades at its edges: the add-shortcut dialog (also springs) and the sticker
+      panel on the keyboard.
+
 ## 1.6.7 — «Back» in its own strip
 
 - [x] «Back» sits in a strip at the very bottom, as in QRAFT; the page scrolls only above it, so nothing

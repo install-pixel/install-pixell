@@ -87,6 +87,9 @@ class StickerPanel(context: Context) : LinearLayout(context) {
         orientation = VERTICAL
         val scroll = ScrollView(context).apply {
             isFillViewport = true
+            // Stickers that run past the edge fade out softly, as every scrolling list does.
+            isVerticalFadingEdgeEnabled = true
+            setFadingEdgeLength(dp(18))
             addView(grid)
         }
         val bar = LinearLayout(context).apply {
