@@ -137,9 +137,21 @@ fun EditorPage(
             LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxH))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabeledField(stringResource(R.string.f_box_weight), vm.boxKg, { vm.boxKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal, Modifier.weight(1f), error = vm.badWeight(vm.boxKg))
-            LabeledField(stringResource(R.string.f_units), vm.units, { vm.units = it.filter(Char::isDigit).take(6) }, "1", stringResource(R.string.unit_pcs), number, Modifier.weight(1f), error = vm.badCount(vm.units))
+            if (vm.palletBox) {
+                // Коробка на всю палету: вага й штуки — рахуються зі штуки (поля лише показують, тьмяніші).
+                LabeledField(stringResource(R.string.f_box_weight), vm.boxG?.let { Num.kilos(it, comma) }.orEmpty(), {}, "—", stringResource(R.string.unit_kg), decimal, Modifier.weight(1f).alpha(0.6f))
+                LabeledField(stringResource(R.string.f_units), vm.fitUnits?.toString().orEmpty(), {}, "—", stringResource(R.string.unit_pcs), number, Modifier.weight(1f).alpha(0.6f))
+            } else {
+                LabeledField(stringResource(R.string.f_box_weight), vm.boxKg, { vm.boxKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal, Modifier.weight(1f), error = vm.badWeight(vm.boxKg))
+                LabeledField(stringResource(R.string.f_units), vm.units, { vm.units = it.filter(Char::isDigit).take(6) }, "1", stringResource(R.string.unit_pcs), number, Modifier.weight(1f), error = vm.badCount(vm.units))
+            }
         }
+        SwitchRow(
+            stringResource(R.string.pallet_box_title),
+            vm.palletBox,
+            Modifier.padding(horizontal = 6.dp),
+            subtitle = stringResource(if (vm.palletBox) R.string.pallet_box_on else R.string.pallet_box_off),
+        ) { vm.setPalletBox(it); if (it) unitOpen = true }
         // Сантиметри зрозуміли як сантиметри — показуємо, що вийшло.
         val cmHint = listOf(vm.boxL, vm.boxW, vm.boxH).filter { Num.isCentimetres(it) }.mapNotNull { Num.lengthMm(it) }
         FieldHint(
@@ -174,7 +186,10 @@ fun EditorPage(
                     LabeledField(stringResource(R.string.f_height), vm.unitH, { vm.unitH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.unitH))
                 }
                 LabeledField(stringResource(R.string.f_unit_weight), vm.unitKg, { vm.unitKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal.copy(imeAction = ImeAction.Done), Modifier.fillMaxWidth(0.5f), error = vm.badWeight(vm.unitKg))
-                FieldHint(stringResource(R.string.unit_hint))
+                FieldHint(
+                    if (vm.palletBox) vm.fitUnits?.let { stringResource(R.string.pallet_box_fit, it) } ?: stringResource(R.string.pallet_box_need)
+                    else stringResource(R.string.unit_hint),
+                )
             }
         }
 
@@ -243,7 +258,7 @@ fun EditorPage(
         // Кнопки підписані висотою, з якою коробка стоїть («↕ 0,30 м»): одразу видно, що буде. Лише різні положення,
         // у яких коробка поміщається.
         val d = vm.dims
-        if (d != null && !vm.arrows && vm.orientations.size >= 2) {
+        if (d != null && !vm.arrows && !vm.palletBox && vm.orientations.size >= 2) {
             val options = vm.orientations.map { it to com.blacklaunch.paleta.pack.Orient.of(d.first, d.second, d.third, it).height }.sortedBy { it.second }
             EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
                 options.forEach { (i, h) ->
@@ -403,8 +418,11 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         check != null && check.lonely.isNotEmpty() -> stringResource(R.string.status_lonely, check.lonely.size) to true
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true
         else -> {
-            val base = if (vm.editLayer == 1) stringResource(R.string.status_layer2, n)
-            else if (vm.custom) stringResource(R.string.status_custom, n)
+            // Коли шари різні — спереду, який це шар; другий шар — дзеркало першого чи свій.
+            val prefix = if (vm.sameAll) "" else stringResource(R.string.status_layer_prefix, vm.editLayer + 1)
+            val base = prefix + if (vm.editLayer == 1) {
+                if (vm.layer2Mirror) stringResource(R.string.status_mirror, n) else stringResource(R.string.status_custom, n)
+            } else if (vm.custom) stringResource(R.string.status_custom, n)
             else if (vm.variants.size > 1) stringResource(R.string.status_auto_variant, n, vm.variantIndex + 1, vm.variants.size)
             else stringResource(R.string.status_auto, n)
             val over = check?.overhangUsed ?: 0
@@ -421,7 +439,7 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         }
     }
     Text(
-        text,
+        text.replaceFirstChar { it.uppercase() },
         color = if (danger) Oled.Danger else Oled.TextPrimary.copy(alpha = 0.9f),
         fontSize = 15.sp,
         maxLines = 2,
@@ -450,10 +468,10 @@ private fun StackSummary(vm: PaletaViewModel, comma: Boolean) {
         st.boxes == 0 -> stringResource(R.string.summary_too_heavy)
         st.partial -> stringResource(R.string.summary_partial, st.boxes)
         st.limit == com.blacklaunch.paleta.pack.Limit.Weight -> stringResource(
-            R.string.summary_weight, st.layers, Num.metres(st.heightMm, comma),
+            R.string.summary_weight, st.layers, st.boxes, Num.metres(st.heightMm, comma),
             (vm.weightLimitG / 1000.0).let { if (it % 1.0 == 0.0) it.toLong().toString() else Num.kilos(vm.weightLimitG, comma) },
         )
-        else -> stringResource(R.string.summary_height, st.layers, Num.metres(st.heightMm, comma), Num.metres(vm.effectiveHeight, comma))
+        else -> stringResource(R.string.summary_height, st.layers, st.boxes, Num.metres(st.heightMm, comma), Num.metres(vm.effectiveHeight, comma))
     }
     Text(text, color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 4.dp))
 }

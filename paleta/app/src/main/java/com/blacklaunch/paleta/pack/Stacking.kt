@@ -129,3 +129,13 @@ object Num {
         return if (comma) s.replace('.', ',') else s
     }
 }
+
+/** Скільки штук влазить у коробку (рядами, будь-яким боком — береться найкращий з 6 способів). */
+object Fit {
+    fun units(box: Triple<Int, Int, Int>, unit: Triple<Int, Int, Int>): Int {
+        val (a, b, c) = unit
+        if (a <= 0 || b <= 0 || c <= 0) return 0
+        val perms = listOf(Triple(a, b, c), Triple(a, c, b), Triple(b, a, c), Triple(b, c, a), Triple(c, a, b), Triple(c, b, a))
+        return perms.maxOf { (x, y, z) -> (box.first / x) * (box.second / y) * (box.third / z) }
+    }
+}

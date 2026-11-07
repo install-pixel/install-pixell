@@ -13,6 +13,7 @@ import com.blacklaunch.paleta.data.CardDatabase
 import com.blacklaunch.paleta.data.ProductCard
 import com.blacklaunch.paleta.pack.ADR_HEIGHT_MM
 import com.blacklaunch.paleta.pack.BoxSize
+import com.blacklaunch.paleta.pack.Fit
 import com.blacklaunch.paleta.pack.Layout
 import com.blacklaunch.paleta.pack.LayoutCheck
 import com.blacklaunch.paleta.pack.Limit
@@ -140,6 +141,30 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Стрілки ↑↑ на коробці — не перевертати (висота лише як вписали). */
     var arrows by mutableStateOf(false)
 
+    /**
+     * «Коробка на всю палету» (1,20 × 0,80): штук у коробці й вага коробки рахуються самі — зі штуки (розміри й вага),
+     * скільки її влізе в коробку.
+     */
+    var palletBox by mutableStateOf(false)
+        private set
+    fun setPalletBox(on: Boolean) {
+        palletBox = on
+        if (on) {
+            val comma = boxL.contains(',') || boxW.contains(',') || java.text.DecimalFormatSymbols.getInstance().decimalSeparator == ','
+            boxL = Num.metres(PALLET_L, comma)
+            boxW = Num.metres(PALLET_W, comma)
+        }
+    }
+
+    /** Скільки штук влазить у коробку на всю палету (null — не все вписано). */
+    val fitUnits: Int?
+        get() {
+            if (!palletBox) return null
+            val h = len(boxH) ?: return null
+            val u = unitTriple ?: return null
+            return Fit.units(Triple(PALLET_L, PALLET_W, h), u).takeIf { it > 0 }
+        }
+
     // --- Обмеження: запам'ятовуються ---
     var heightLimit by mutableIntStateOf(settings.heightLimit)
         private set
@@ -251,8 +276,15 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     fun badCount(t: String) = t.isNotBlank() && (Num.count(t)?.let { it !in 1..100_000 } ?: true)
 
     val boxHmm: Int? get() = dims?.let { Orient.of(it.first, it.second, it.third, orientation).height }
-    val boxG: Long? get() = Num.grams(boxKg)?.takeIf { it in 1..1_000_000 }
-    val unitsPerBox: Int get() = Num.count(units) ?: 1
+    val boxG: Long?
+        get() = if (palletBox) {
+            val n = fitUnits ?: return null
+            val g = Num.grams(unitKg) ?: return null
+            (n * g).takeIf { it in 1..1_000_000 }
+        } else {
+            Num.grams(boxKg)?.takeIf { it in 1..1_000_000 }
+        }
+    val unitsPerBox: Int get() = if (palletBox) fitUnits ?: 1 else Num.count(units) ?: 1
     val unitTriple: Triple<Int, Int, Int>?
         get() {
             val l = Num.lengthMm(unitL) ?: return null
@@ -350,7 +382,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
             snapshotFlow {
                 AutoKey(
                     len(boxL), len(boxW), len(boxH),
-                    arrows, overhang, effectiveHeight, boxG, weightLimitG, if (palletOn) palletG else 0, manualOrientation, uniform,
+                    arrows || palletBox, overhang, effectiveHeight, boxG, weightLimitG, if (palletOn) palletG else 0, manualOrientation, uniform,
                 )
             }
                 .distinctUntilChanged()
@@ -523,6 +555,9 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         followFirst()
     }
 
+    /** Другий шар — дзеркало першого (ще не правили руками). */
+    val layer2Mirror: Boolean get() = layout2 != null && !layer2Custom
+
     /** Другий шар правили руками — він більше не повторює перший дзеркально. */
     private var layer2Custom = false
 
@@ -633,7 +668,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Почати новий товар: поля порожні, обмеження лишаються. */
     fun clearAll() {
         sku = ""; boxL = ""; boxW = ""; boxH = ""; boxKg = ""; units = ""
-        unitL = ""; unitW = ""; unitH = ""; unitKg = ""; adr = false; arrows = false; manualOrientation = null
+        unitL = ""; unitW = ""; unitH = ""; unitKg = ""; adr = false; arrows = false; palletBox = false; manualOrientation = null
         layout = emptyList(); custom = false; layoutBox = null; layoutOverhang = -1; selected = null
         layout2 = null; editLayer = 0; parked1 = 0; parked2 = 0
     }
@@ -650,6 +685,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         unitKg = card.unitG?.let { Num.kilos(it, comma) }.orEmpty()
         adr = card.adr
         arrows = false
+        palletBox = false
         // Збережено так, як коробка стояла (основа + висота) — лишаємо саме це положення.
         manualOrientation = Triple(card.boxL, card.boxW, card.boxH) to 0
         orientation = 0

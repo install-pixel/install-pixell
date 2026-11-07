@@ -97,8 +97,10 @@ fun DetailScreen(card: ProductCard, onBack: () -> Unit, onDuplicate: () -> Unit,
                     }
                 }
                 Text(
-                    (if (card.customLayout) stringResource(R.string.status_custom, card.perLayer) else stringResource(R.string.status_auto, card.perLayer)) +
-                        (if (card.overhang > 0) " · " + stringResource(R.string.overhang_option, Num.cm(card.overhang, comma)) else ""),
+                    (
+                        (if (card.customLayout) stringResource(R.string.status_custom, card.perLayer) else stringResource(R.string.status_auto, card.perLayer)) +
+                            (if (card.overhang > 0) " · " + stringResource(R.string.overhang_option, Num.cm(card.overhang, comma)) else "")
+                        ).replaceFirstChar { it.uppercase() },
                     color = Oled.TextPrimary.copy(alpha = 0.9f),
                     fontSize = 15.sp,
                     modifier = Modifier.padding(horizontal = 4.dp),

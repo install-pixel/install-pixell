@@ -70,4 +70,12 @@ class StackingTest {
         assertEquals(29, w.boxes)
         assertEquals(Limit.Weight, w.limit)
     }
+
+    @Test
+    fun unitsInPalletBox() {
+        // Коробка на всю палету 1,20 × 0,80 × 1,00, штука 0,40 × 0,20 × 0,25 → 3×4×4 = 48.
+        assertEquals(48, com.blacklaunch.paleta.pack.Fit.units(Triple(1200, 800, 1000), Triple(400, 200, 250)))
+        // Штука більша за коробку — 0.
+        assertEquals(0, com.blacklaunch.paleta.pack.Fit.units(Triple(300, 300, 300), Triple(400, 100, 100)))
+    }
 }

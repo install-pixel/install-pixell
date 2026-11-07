@@ -75,9 +75,9 @@
     <string name="status_empty">Pallet is empty — “Auto” or “Add”</string>
     <string name="status_overlap">Boxes overlap (%1$d) — not allowed</string>
     <string name="status_outside">Sticks out %1$s cm more than allowed</string>
-    <string name="status_custom">Own layout · %1$d boxes per layer</string>
-    <string name="status_auto">Auto layout · %1$d boxes per layer</string>
-    <string name="status_auto_variant">Auto layout · %1$d boxes per layer · variant %2$d of %3$d</string>
+    <string name="status_custom">own layout · %1$d boxes per layer</string>
+    <string name="status_auto">auto layout · %1$d boxes per layer</string>
+    <string name="status_auto_variant">auto layout · %1$d boxes per layer · variant %2$d of %3$d</string>
     <string name="status_overhang">overhang up to %1$s cm</string>
 
     <!-- Form -->
@@ -212,11 +212,10 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="uniform_off">Boxes may face different ways: “Auto” fits as many as possible; an asymmetric layer — the next one mirrored (interlocking)</string>
     <string name="layer_1">Layer 1</string>
     <string name="layer_2">Layer 2</string>
-    <string name="status_layer2">Layer 2 (even layers) · %1$d boxes</string>
     <string name="tray_n">Tray · %1$d — tap to bring back</string>
     <string name="tray_empty">Tray — drag a spare box here</string>
-    <string name="summary_height">%1$d layers · pallet %2$s m · limit — height %3$s m</string>
-    <string name="summary_weight">%1$d layers · pallet %2$s m · limit — weight %3$s kg</string>
+    <string name="summary_height">On the pallet: %1$d layers, %2$d boxes · height %3$s m (limit — height %4$s m)</string>
+    <string name="summary_weight">On the pallet: %1$d layers, %2$d boxes · height %3$s m (limit — weight %4$s kg)</string>
     <string name="summary_partial">Partial layer: %1$d boxes — weight allows no more</string>
     <string name="summary_too_heavy">The box is heavier than the weight limit — none fit</string>
     <string name="orientation_no_fit">The box does not fit on the pallet that way</string>
@@ -229,4 +228,12 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="same_layers_off">Layer 2 mirrors the first (interlocking); you can edit it separately. Layers alternate 1, 2, 1, 2…</string>
     <string name="status_unsupported">Box without support (%1$d) — it will fall. Put it over first-layer boxes (dashed)</string>
     <string name="status_gaps_third">Boxes of the third layer (%1$d) would stand over empty space here — add a box (dashed — first layer)</string>
+    <string name="pallet_box_title">Box the size of the pallet</string>
+    <string name="pallet_box_on">1.20 × 0.80 — enter the box height and the piece (size, weight): pieces and weight are calculated</string>
+    <string name="pallet_box_off">One big 1.20 × 0.80 box — pieces in it are calculated from the piece size</string>
+    <string name="pallet_box_fit">%1$d pcs fit in the box — pieces and box weight calculated from the piece</string>
+    <string name="pallet_box_need">Enter the box height and the piece size and weight — I’ll work out how many fit</string>
+    <string name="history_title">Saved</string>
+    <string name="status_layer_prefix">Layer %1$d · </string>
+    <string name="status_mirror">mirror of layer 1 (interlocking) · %1$d boxes</string>
 </resources>

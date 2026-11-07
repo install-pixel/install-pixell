@@ -75,9 +75,9 @@
     <string name="status_empty">Paleta pusta — „Auto” lub „Dodaj”</string>
     <string name="status_overlap">Kartony nachodzą na siebie (%1$d) — tak nie można</string>
     <string name="status_outside">Wystaje o %1$s cm więcej, niż wolno</string>
-    <string name="status_custom">Własne ułożenie · %1$d kart. na warstwie</string>
-    <string name="status_auto">Autoułożenie · %1$d kart. na warstwie</string>
-    <string name="status_auto_variant">Autoułożenie · %1$d kart. na warstwie · wariant %2$d z %3$d</string>
+    <string name="status_custom">własne ułożenie · %1$d kart. na warstwie</string>
+    <string name="status_auto">autoułożenie · %1$d kart. na warstwie</string>
+    <string name="status_auto_variant">autoułożenie · %1$d kart. na warstwie · wariant %2$d z %3$d</string>
     <string name="status_overhang">nawis do %1$s cm</string>
 
     <!-- Karta -->
@@ -212,11 +212,10 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="uniform_off">Można kłaść w różne strony: „Auto” szuka, jak zmieścić najwięcej; niesymetryczna warstwa — następna lustrzanie (przewiązanie)</string>
     <string name="layer_1">Warstwa 1</string>
     <string name="layer_2">Warstwa 2</string>
-    <string name="status_layer2">Warstwa 2 (parzyste) · %1$d kart.</string>
     <string name="tray_n">Kosz · %1$d — dotknij, by przywrócić</string>
     <string name="tray_empty">Kosz — przeciągnij tu zbędny karton</string>
-    <string name="summary_height">%1$d warstw · paleta %2$s m · limit — wysokość %3$s m</string>
-    <string name="summary_weight">%1$d warstw · paleta %2$s m · limit — waga %3$s kg</string>
+    <string name="summary_height">Na palecie: warstw %1$d, kartonów %2$d · wysokość %3$s m (limit — wysokość %4$s m)</string>
+    <string name="summary_weight">Na palecie: warstw %1$d, kartonów %2$d · wysokość %3$s m (limit — waga %4$s kg)</string>
     <string name="summary_partial">Niepełna warstwa: %1$d kart. — więcej nie pozwala waga</string>
     <string name="summary_too_heavy">Karton cięższy niż limit wagi — nie mieści się żaden</string>
     <string name="orientation_no_fit">Tak karton nie mieści się na palecie</string>
@@ -229,4 +228,12 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="same_layers_off">Warstwa 2 — lustro pierwszej (przewiązanie); można edytować osobno. Na przemian 1, 2, 1, 2…</string>
     <string name="status_unsupported">Karton bez podparcia (%1$d) — spadnie. Postaw nad kartonami pierwszej warstwy (przerywana linia)</string>
     <string name="status_gaps_third">Pod kartonami trzeciej warstwy (%1$d) jest tu pustka — podstaw karton (przerywana linia — pierwsza warstwa)</string>
+    <string name="pallet_box_title">Karton na całą paletę</string>
+    <string name="pallet_box_on">1,20 × 0,80 — wpisz wysokość kartonu i sztukę (wymiary, waga): sztuki i waga liczą się same</string>
+    <string name="pallet_box_off">Jeden duży karton 1,20 × 0,80 — liczba sztuk w nim z wymiarów sztuki</string>
+    <string name="pallet_box_fit">W kartonie mieści się %1$d szt — sztuki i waga kartonu policzone ze sztuki</string>
+    <string name="pallet_box_need">Wpisz wysokość kartonu, wymiary i wagę sztuki — policzę, ile się zmieści</string>
+    <string name="history_title">Zapisane</string>
+    <string name="status_layer_prefix">Warstwa %1$d · </string>
+    <string name="status_mirror">lustro warstwy 1 (przewiązanie) · %1$d kart.</string>
 </resources>

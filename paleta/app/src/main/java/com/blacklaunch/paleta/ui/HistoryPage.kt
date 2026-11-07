@@ -86,6 +86,17 @@ fun HistoryPage(
     val q = query.trim()
     val shown = remember(cards, q) { cards.orEmpty().filter { q.isEmpty() || it.sku.contains(q, ignoreCase = true) } }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        // Заголовок рядком, як на сторінці «Новий» («Товар · Очистити») — сторінки починаються на одній висоті.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionTitle(stringResource(R.string.history_title), Modifier.weight(1f))
+            Text(
+                cards?.size?.toString().orEmpty(),
+                color = Oled.TextSecondary,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+        }
+        Spacer(Modifier.size(10.dp))
         SheetTextField(
             value = query,
             onValueChange = { onQuery(it.take(40)) },
