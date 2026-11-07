@@ -100,11 +100,6 @@
     <string name="layers_partial">niepełna</string>
     <string name="yes">TAK</string>
     <string name="no">NIE</string>
-    <string name="note_weight_limited">Ograniczone wagą: %2$d warstw zamiast %1$d.</string>
-    <string name="note_partial">Waga nie pozwala nawet na jedną pełną warstwę.</string>
-    <string name="note_pallet_included">W wadze palety jest sama paleta (%1$s kg).</string>
-    <string name="note_adr">ADR: wysokość palety najwyżej 1,20 m.</string>
-    <string name="note_heavy">Karton powyżej 25 kg — zmierzyć taśmą mierniczą, zważyć na wadze kartonowej.</string>
     <string name="save">Zapisz w historii</string>
     <string name="save_blocked">Najpierw popraw ułożenie — czerwone kartony.</string>
 
@@ -171,7 +166,7 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="help_layout_t">Ułożenie warstwy</string>
     <string name="help_layout">Paleta 1,20 × 0,80 z góry, kartony w prawdziwych proporcjach.\n\n„Auto” szuka ułożenia z największą liczbą kartonów: proste rzędy, rzędy w różnych kierunkach i „wiatraczek” (bloki wokół środka). Jeśli najlepszych ułożeń jest kilka — „Auto” jeszcze raz pokazuje następne.\n\nWłasne ułożenie: przeciągnij karton palcem — przykleja się do krawędzi palety i sąsiednich kartonów. Obrót — przekręć dwoma palcami (co ~90° — obrót) albo podwójne dotknięcie. Dotknięcie — zaznacz; „Obróć” i „Usuń” działają na zaznaczony. „Dodaj” stawia karton w pierwszym wolnym miejscu.\n\nW menu „⋯”: „Uzupełnij wolne miejsce” — ułóż pierwszy rząd po swojemu, a resztę wypełni samo.\n\nCzerwony karton nachodzi na inny albo wystaje bardziej, niż wolno; dopóki są czerwone, nie można zapisać. Liczy się dokładnie ułożenie z rysunku.\n\nPołożenie: jeśli na kartonie nie ma strzałek ↑↑, aplikacja próbuje położyć go na boku lub postawić pionowo i wybiera to, przy którym na palecie mieści się najwięcej (wysokość w karcie — wg ułożenia na palecie). „⋯ → Inne położenie kartonu” — wybierz sam. Są strzałki — włącz „Strzałki ↑↑ na kartonie”.\n\n3D — cała paleta ze wszystkimi warstwami: przeciągnij palcem, by obrócić i pochylić (tylko podgląd).</string>
     <string name="help_result_t">Karta</string>
-    <string name="help_result">Karta wygląda jak papierowa — łatwo przepisać. Data wpisuje się sama.\n\nKolumny: Sztuka (jeśli wpisana), Karton, Paleta. Paleta: wysokość razem z paletą, liczba kartonów, waga towaru (i palety, jeśli dodana).\n\nNa warstwie — sztuk i kartonów na warstwie; warstw na palecie.\n\nOznaczenia liczą się same: gabaryt (sztuka większa niż 50×30 cm — dłuższy bok ponad 50 i drugi ponad 30), awkward (ponad 1,2 m), two men lift (karton ponad 35 kg), struktura szacowana (waga nie pozwala nawet na jedną warstwę). Karton powyżej 25 kg — przypomnienie, by mierzyć taśmą.</string>
+    <string name="help_result">Karta wygląda jak papierowa — łatwo przepisać. Data wpisuje się sama.\n\nKolumny: Sztuka (jeśli wpisana), Karton, Paleta. Paleta: wysokość razem z paletą, liczba kartonów, waga towaru (i palety, jeśli dodana).\n\nNa warstwie — sztuk i kartonów na warstwie; warstw na palecie.\n\nOznaczenia liczą się same: gabaryt (sztuka większa niż 50×30 cm — dłuższy bok ponad 50 i drugi ponad 30), awkward (ponad 1,2 m), two men lift (karton ponad 35 kg), struktura szacowana (waga nie pozwala nawet na jedną warstwę).</string>
     <string name="help_history_t">Historia</string>
     <string name="help_history">„Zapisz w historii” zapisuje wszystko: wpisane dane, ograniczenia, samo ułożenie i wynik.\n\nDotknij karty — otworzy się w całości. „Duplikuj” przenosi wszystko do nowego wyliczenia: zmieniasz, co trzeba (np. wagę), i zapisujesz nową kartę — stara zostaje.\n\nDługie przytrzymanie — menu (otwórz, duplikuj, udostępnij, usuń). Przesunięcie w lewo — usuń, z „Cofnij”.\n\nSzukanie po SKU, można zeskanować.</string>
     <string name="standard">Standard</string>
@@ -198,7 +193,6 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="form_sign_struct">Czytelny podpis opisującego strukturę (nazwisko i imię)</string>
     <string name="form_sign_wms">Czytelny podpis wprowadzającego do WMS</string>
     <string name="form_sign_dok">Czytelny podpis weryfikującego (DOK)</string>
-    <string name="note_nothing_fits">Karton jest cięższy niż limit wagi — na paletę nie mieści się żaden.</string>
     <string name="settings_form">Karta</string>
     <string name="signer_hint">Imię i nazwisko</string>
     <string name="signer_desc">Wpisze się w wiersz „podpis opisującego strukturę”, żeby nie zapomnieć.</string>

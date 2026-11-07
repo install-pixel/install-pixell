@@ -29,8 +29,13 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-private const val DEFAULT_YAW = -35f
-private const val DEFAULT_PITCH = 26f
+/** Початковий вигляд — класичний «три чверті»: довгий бік зліва, видно верх. */
+private const val DEFAULT_YAW = 38f
+private const val DEFAULT_PITCH = 30f
+
+/** Швидкість обертання: градусів на піксель руху пальця (повільно, щоб точно керувати). */
+private const val YAW_PER_PX = 0.18f
+private const val PITCH_PER_PX = 0.14f
 
 /** Коробка в просторі (мм): від (x0, y0, z0) до (x1, y1, z1); [layer] — номер шару. */
 private class Cuboid(val x0: Float, val y0: Float, val z0: Float, val x1: Float, val y1: Float, val z1: Float, val layer: Int)
@@ -72,10 +77,12 @@ fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra
             .fillMaxWidth()
             .aspectRatio(PALLET_ASPECT)
             .pointerInput(Unit) {
+                // «Береш і крутиш»: палець управо — передній бік їде вправо; униз — палета нахиляється до тебе
+                // (видно більше верху).
                 detectDragGestures { change, drag ->
                     change.consume()
-                    yaw.floatValue = (yaw.floatValue + drag.x * 0.35f) % 360f
-                    pitch.floatValue = (pitch.floatValue - drag.y * 0.3f).coerceIn(4f, 85f)
+                    yaw.floatValue = (yaw.floatValue + drag.x * YAW_PER_PX) % 360f
+                    pitch.floatValue = (pitch.floatValue + drag.y * PITCH_PER_PX).coerceIn(4f, 85f)
                 }
             }
             .pointerInput(Unit) {
@@ -105,10 +112,9 @@ fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra
 
         // Основа палети — завжди під усім, тож першою.
         drawCuboid(camera, Cuboid(0f, 0f, 0f, PALLET_L.toFloat(), PALLET_W.toFloat(), PALLET_HEIGHT_MM.toFloat(), -1), glass, pallet = true)
-        // Нижні шари — раніше (згори їх не видно крізь верхні); у шарі — від дальніх до ближчих.
-        val sorted = cuboids.sortedWith(compareBy<Cuboid> { it.layer }.thenByDescending { camera.depthXY((it.x0 + it.x1) / 2f, (it.y0 + it.y1) / 2f) })
-        val thin = sorted.size > 600
-        sorted.forEach { drawCuboid(camera, it, glass, pallet = false, thin = thin) }
+        // Точний порядок малювання: що за чим стоїть (див. drawOrder), щоб ближні коробки завжди закривали дальні.
+        val thin = cuboids.size > 600
+        drawOrder(cuboids, camera).forEach { drawCuboid(camera, cuboids[it], glass, pallet = false, thin = thin) }
     }
 }
 
@@ -128,8 +134,11 @@ private class Camera(
         return Offset(mid.x + x1 * scale, mid.y - up * scale)
     }
 
-    /** Глибина в площині (без висоти): більше — далі від глядача. */
-    fun depthXY(x: Float, y: Float): Float = (x - cx) * st + (y - cy) * ct
+    /** Глибина точки: більше — далі від глядача. */
+    fun depth(x: Float, y: Float, z: Float): Float = ((x - cx) * st + (y - cy) * ct) * cp - (z - cz) * sp
+
+    /** Напрямок до глядача у світових осях (x, y, z): з якого боку дивимось. */
+    val toViewer: FloatArray get() = floatArrayOf(-st * cp, -ct * cp, sp)
 
     /** Чи грань з нормаллю (nx, ny, nz) дивиться на глядача. */
     fun facing(nx: Float, ny: Float, nz: Float): Float {
@@ -169,4 +178,64 @@ private fun DrawScope.drawCuboid(cam: Camera, c: Cuboid, glass: Boolean, pallet:
             drawPath(path, SheetInk.copy(alpha = if (pallet) 0.4f else (0.55f + 0.35f * l)), style = stroke)
         }
     }
+}
+
+/**
+ * Порядок малювання коробок (індекси): спершу ті, що позаду. Для двох коробок, що на екрані перекриваються, беремо
+ * вісь, уздовж якої вони розділені (коробки не перетинаються, тож така є): та, що з дальнього від глядача боку
+ * площини розділу, закрити іншу не може — її малюємо раніше. Далі — топологічне сортування (за рівності — за глибиною).
+ */
+private fun drawOrder(c: List<Cuboid>, cam: Camera): IntArray {
+    val n = c.size
+    if (n == 0) return IntArray(0)
+    val view = cam.toViewer
+    // Рамки на екрані — перевіряти лише пари, що можуть перекриватися.
+    val minX = FloatArray(n); val maxX = FloatArray(n); val minY = FloatArray(n); val maxY = FloatArray(n)
+    val depth = FloatArray(n)
+    for (i in 0 until n) {
+        val b = c[i]
+        var x0 = Float.MAX_VALUE; var x1 = -Float.MAX_VALUE; var y0 = Float.MAX_VALUE; var y1 = -Float.MAX_VALUE
+        for (k in 0 until 8) {
+            val p = cam.project(if (k and 1 == 0) b.x0 else b.x1, if (k and 2 == 0) b.y0 else b.y1, if (k and 4 == 0) b.z0 else b.z1)
+            if (p.x < x0) x0 = p.x
+            if (p.x > x1) x1 = p.x
+            if (p.y < y0) y0 = p.y
+            if (p.y > y1) y1 = p.y
+        }
+        minX[i] = x0; maxX[i] = x1; minY[i] = y0; maxY[i] = y1
+        depth[i] = cam.depth((b.x0 + b.x1) / 2f, (b.y0 + b.y1) / 2f, (b.z0 + b.z1) / 2f)
+    }
+    val eps = 0.5f
+    val after = Array(n) { ArrayList<Int>(4) }
+    val incoming = IntArray(n)
+    fun edge(first: Int, second: Int) { after[first] += second; incoming[second]++ }
+    for (i in 0 until n) for (j in i + 1 until n) {
+        if (maxX[i] <= minX[j] + 0.5f || maxX[j] <= minX[i] + 0.5f || maxY[i] <= minY[j] + 0.5f || maxY[j] <= minY[i] + 0.5f) continue
+        val a = c[i]; val b = c[j]
+        // Вісь розділу і з якого боку глядач.
+        val rel = when {
+            a.z1 <= b.z0 + eps -> if (view[2] > 0) 1 else -1
+            b.z1 <= a.z0 + eps -> if (view[2] > 0) -1 else 1
+            a.x1 <= b.x0 + eps -> if (view[0] > 0) 1 else -1
+            b.x1 <= a.x0 + eps -> if (view[0] > 0) -1 else 1
+            a.y1 <= b.y0 + eps -> if (view[1] > 0) 1 else -1
+            b.y1 <= a.y0 + eps -> if (view[1] > 0) -1 else 1
+            else -> if (depth[i] >= depth[j]) 1 else -1
+        }
+        if (rel > 0) edge(i, j) else edge(j, i)
+    }
+    // Kahn: серед готових — найдальша першою; якщо раптом цикл — беремо найдальшу з решти.
+    val done = BooleanArray(n)
+    val ready = java.util.PriorityQueue<Int>(compareByDescending { depth[it] })
+    for (i in 0 until n) if (incoming[i] == 0) ready += i
+    val out = IntArray(n)
+    var k = 0
+    while (k < n) {
+        val next = ready.poll() ?: (0 until n).filter { !done[it] }.maxBy { depth[it] }
+        if (done[next]) continue
+        done[next] = true
+        out[k++] = next
+        for (m in after[next]) if (--incoming[m] == 0 && !done[m]) ready += m
+    }
+    return out
 }

@@ -106,7 +106,7 @@ fun ResultCard(view: CardView, modifier: Modifier = Modifier) {
             FormRow(top, ROW_HEAD) { i ->
                 when (i) {
                     0 -> Label(stringResource(R.string.form_sku), "(SKU)")
-                    1 -> Value(view.sku, big = true)
+                    1 -> Value(view.sku)
                     2 -> Label(stringResource(R.string.form_ean))
                 }
             }
@@ -187,19 +187,6 @@ fun ResultCard(view: CardView, modifier: Modifier = Modifier) {
             }
             FormRow(sign, ROW_HEAD) { i -> if (i == 0) Label(stringResource(R.string.form_sign_wms)) }
             FormRow(sign, ROW_HEAD) { i -> if (i == 0) Label(stringResource(R.string.form_sign_dok)) }
-        }
-        // Пояснення під бланком: що обмежило, палета у вазі, важкий картон.
-        val notes = buildList {
-            if (s != null && s.limit == Limit.Weight && !s.partial && s.boxes > 0) add(stringResource(R.string.note_weight_limited, s.layersByHeight, s.layers))
-            if (s?.partial == true) add(stringResource(R.string.note_partial))
-            if (s != null && s.boxes == 0) add(stringResource(R.string.note_nothing_fits))
-            if (view.palletG > 0) add(stringResource(R.string.note_pallet_included, Num.kilos(view.palletG, comma)))
-            if (view.adr) add(stringResource(R.string.note_adr))
-            if (view.flags.heavy) add(stringResource(R.string.note_heavy))
-        }
-        if (notes.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { notes.forEach { FieldHint(it) } }
         }
     }
 }

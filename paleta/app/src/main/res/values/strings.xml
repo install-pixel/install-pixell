@@ -100,11 +100,6 @@
     <string name="layers_partial">partial</string>
     <string name="yes">YES</string>
     <string name="no">NO</string>
-    <string name="note_weight_limited">Limited by weight: %2$d layers instead of %1$d.</string>
-    <string name="note_partial">The weight does not allow even one full layer.</string>
-    <string name="note_pallet_included">Pallet weight includes the pallet itself (%1$s kg).</string>
-    <string name="note_adr">ADR: pallet height at most 1.20 m.</string>
-    <string name="note_heavy">Carton over 25 kg — measure with a tape, weigh on the carton scale.</string>
     <string name="save">Save to history</string>
     <string name="save_blocked">Fix the layout first — the red boxes.</string>
 
@@ -171,7 +166,7 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="help_layout_t">Layer layout</string>
     <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Rotate — twist with two fingers (every ~90° turns it) or double tap. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.\n\nPosition: if the box has no ↑↑ arrows, the app tries laying it on its side or standing it up and picks whatever fits the most on the pallet (the form height is as the box stands). “⋯ → Other box position” — choose yourself. If there are arrows, switch on “Arrows ↑↑ on the box”.\n\n3D — the whole pallet with all layers: drag to turn and tilt (view only).</string>
     <string name="help_result_t">Form</string>
-    <string name="help_result">The form looks like the paper card so it is easy to copy. The date is filled in automatically.\n\nColumns: Piece (if entered), Carton, Pallet. Pallet: height including the pallet, number of boxes, goods weight (plus the pallet if added).\n\nPer layer — pieces and boxes in a layer; layers on the pallet.\n\nFlags are set automatically: oversize (piece over 50×30 cm — longer side over 50 and the other over 30), awkward (over 1.2 m), two men lift (box over 35 kg), estimated structure (weight does not allow even one layer). Carton over 25 kg — a reminder to measure with a tape.</string>
+    <string name="help_result">The form looks like the paper card so it is easy to copy. The date is filled in automatically.\n\nColumns: Piece (if entered), Carton, Pallet. Pallet: height including the pallet, number of boxes, goods weight (plus the pallet if added).\n\nPer layer — pieces and boxes in a layer; layers on the pallet.\n\nFlags are set automatically: oversize (piece over 50×30 cm — longer side over 50 and the other over 30), awkward (over 1.2 m), two men lift (box over 35 kg), estimated structure (weight does not allow even one layer).</string>
     <string name="help_history_t">History</string>
     <string name="help_history">“Save to history” keeps everything: what you entered, the limits, the layout itself and the result.\n\nTap a card to open it in full. “Duplicate” copies everything into a new calculation: change what you need (the weight, say) and save a new card — the old one stays.\n\nLong press — menu (open, duplicate, share, delete). Swipe left — delete, with “Undo”.\n\nSearch by SKU; you can scan it.</string>
     <string name="standard">Standard</string>
@@ -198,7 +193,6 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="form_sign_struct">Signature: structure described by (surname, name)</string>
     <string name="form_sign_wms">Signature: entered into WMS by</string>
     <string name="form_sign_dok">Signature: verified by (DOK)</string>
-    <string name="note_nothing_fits">The box is heavier than the weight limit — not a single one fits on the pallet.</string>
     <string name="settings_form">Form</string>
     <string name="signer_hint">First name and surname</string>
     <string name="signer_desc">Goes into the “signature of the person describing the structure” row, so you don’t forget.</string>
