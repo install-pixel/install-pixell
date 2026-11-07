@@ -35,12 +35,14 @@ class LayoutProviderTest {
     fun `every layer of every mode can reach letters, delete and enter`() {
         for (mode in KeyboardMode.entries) for (language in Language.entries) {
             val layers = if (mode == KeyboardMode.COMPUTER) listOf(Layer.LETTERS, Layer.SYMBOLS, Layer.FUNCTION)
-            else listOf(Layer.LETTERS, Layer.SYMBOLS, Layer.SYMBOLS_MORE)
+            else listOf(Layer.LETTERS, Layer.SYMBOLS, Layer.SYMBOLS_MORE, Layer.NUMPAD)
             for (layer in layers) {
                 val s = specials(mode, language, layer)
                 assertTrue("$mode $language $layer backspace", SpecialKey.BACKSPACE in s)
                 assertTrue("$mode $language $layer enter", SpecialKey.ENTER in s)
-                if (mode == KeyboardMode.MOBILE) assertTrue("$mode $language $layer language", SpecialKey.LANGUAGE in s)
+                // On the mobile symbols the key next to ABC opens the number pad instead of switching language.
+                if (mode == KeyboardMode.MOBILE && layer == Layer.SYMBOLS) assertTrue("$mode $language $layer number pad", SpecialKey.LAYER_NUMPAD in s)
+                else if (mode == KeyboardMode.MOBILE) assertTrue("$mode $language $layer language", SpecialKey.LANGUAGE in s)
                 else assertTrue("PC layouts have no language key", SpecialKey.LANGUAGE !in s && SpecialKey.MODE !in s)
             }
         }

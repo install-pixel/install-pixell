@@ -284,4 +284,5 @@
     <string name="page_typing_text">Текст</string>
     <string name="page_typing_keys">Клавіші</string>
     <string name="page_typing_vibration">Вібрація</string>
+    <string name="smart_punctuation">Розумна пунктуація: без пробілу перед комою, з пробілом після</string>
 </resources>

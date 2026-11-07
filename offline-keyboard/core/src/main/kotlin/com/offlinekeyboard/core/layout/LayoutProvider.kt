@@ -19,12 +19,13 @@ object LayoutProvider {
         mobileCursorRow: Boolean = false,
         emojiPage: Int = 0,
         emojiPages: List<EmojiSet.Page> = EmojiSet.pages,
+        phonePad: Boolean = false,
     ): KeyboardLayout = withoutDuplicateAlternatives(
         when (mode) {
         KeyboardMode.COMPUTER -> when (layer) {
             Layer.FUNCTION -> computerFunction()
             Layer.SYMBOLS, Layer.SYMBOLS_MORE -> computerSymbols()
-            Layer.LETTERS, Layer.EMOJI -> computerLetters(language)
+            Layer.LETTERS, Layer.EMOJI, Layer.NUMPAD -> computerLetters(language)
         }
         KeyboardMode.MOBILE -> {
             val base = when (layer) {
@@ -32,6 +33,7 @@ object LayoutProvider {
                 Layer.SYMBOLS_MORE -> mobileSymbolsMore(language)
                 Layer.LETTERS -> mobileLetters(language)
                 Layer.EMOJI -> mobileEmoji(language, emojiPage, emojiPages)
+                Layer.NUMPAD -> mobileNumpad(language, phonePad)
             }
             if (mobileCursorRow && layer != Layer.EMOJI) withCursorRow(base) else base
         }
@@ -212,10 +214,40 @@ object LayoutProvider {
                 texts("1 2 3 4 5 6 7 8 9 0"),
                 texts("@ #") + currency + texts("_ & - + ( ) /"),
                 listOf(mod(LAYER_SYMBOLS_MORE, 1.5f)) + texts("* \" ' : ; ! ?") + fn(BACKSPACE, 1.5f, repeatable = true),
-                mobileBottomRow(language, LAYER_LETTERS),
+                mobileBottomRow(language, LAYER_LETTERS, LAYER_NUMPAD),
             ),
         )
     }
+
+    /**
+     * The number pad for number and phone fields (or chosen by hand from the symbols): digits large as on a
+     * calculator, signs on the left, Backspace, space and Enter on the right, the same four rows as the letters
+     * so the keyboard keeps its height. ABC goes back to the letters, ?123 opens all the symbols.
+     */
+    private fun mobileNumpad(language: Language, phone: Boolean): KeyboardLayout {
+        val decimal = if (language == Language.EN) "." else ","
+        val other = if (decimal == ",") "." else ","
+        fun digit(d: String) = Key(KeyAction.Text(d), width = DIGIT)
+        fun sign(t: String, alts: List<String> = emptyList()) = Key(KeyAction.Text(t), width = SIDE, alternatives = alts, style = KeyStyle.FUNCTION)
+        val signs = if (phone) listOf(sign("+"), sign("*"), sign("#")) else listOf(sign("-", listOf("+")), sign("+", listOf("±")), sign("/", listOf("*", "%", "=")))
+        return KeyboardLayout(
+            listOf(
+                listOf(signs[0], digit("1"), digit("2"), digit("3"), fn(BACKSPACE, SIDE, repeatable = true)),
+                listOf(signs[1], digit("4"), digit("5"), digit("6"), Key(KeyAction.Special(SPACE), width = SIDE, style = KeyStyle.SPACE, label = "␣")),
+                listOf(signs[2], digit("7"), digit("8"), digit("9"), action(ENTER, SIDE)),
+                listOf(
+                    mod(LAYER_LETTERS, SIDE),
+                    mod(LAYER_SYMBOLS, DIGIT),
+                    digit("0"),
+                    if (phone) Key(KeyAction.Text("-"), width = DIGIT, alternatives = listOf("(", ")", " ")) else Key(KeyAction.Text(decimal), width = DIGIT, alternatives = listOf(other)),
+                    fn(LANGUAGE, SIDE),
+                ),
+            ),
+        )
+    }
+
+    private const val DIGIT = 1.5f
+    private const val SIDE = 1.2f
 
     private fun mobileSymbolsMore(language: Language): KeyboardLayout {
         fun texts(s: String) = s.split(" ").map { Key(KeyAction.Text(it)) }
@@ -256,14 +288,15 @@ object LayoutProvider {
         return KeyboardLayout(rows + listOf(bottom))
     }
 
-    private fun mobileBottomRow(language: Language, layerKey: SpecialKey): List<Key> {
+    /** [second] is the key next to the layer key: the language on the letters, the number pad on the symbols. */
+    private fun mobileBottomRow(language: Language, layerKey: SpecialKey, second: SpecialKey = LANGUAGE): List<Key> {
         // The apostrophe lives on a long press of "." (and ʼ on ь), the emoji panel on a long press of ","
         // (its first option, so holding "," and letting go opens it). Both sides of the space bar are
         // equally wide, so it sits in the middle; Enter takes the room the emoji key left.
         val spaceWidth = if (language == Language.UK) 4.5f else 3.5f
         return listOf(
             mod(layerKey, 1.25f),
-            fn(LANGUAGE),
+            if (second == LANGUAGE) fn(LANGUAGE) else mod(second),
             Key(KeyAction.Text(","), alternatives = listOf(EMOJI_OPTION) + punctuationAlternatives(",")),
             Key(KeyAction.Special(SPACE), width = spaceWidth, style = KeyStyle.SPACE),
             Key(KeyAction.Text("."), alternatives = punctuationAlternatives(".")),

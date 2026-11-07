@@ -37,6 +37,8 @@ data class KeyboardSettings(
     val keyPreview: Boolean = true,
     /** Two quick spaces after a word put ". " (mobile mode), as on most phone keyboards. */
     val doubleSpacePeriod: Boolean = true,
+    /** No space before a comma, one after it, none after an opening bracket (mobile mode). */
+    val smartPunctuation: Boolean = true,
     /** One row above the keys; the input modes open from a button (and show while translating). */
     val compactToolbar: Boolean = true,
     /** Dragging Backspace to the left deletes whole words. */
@@ -107,6 +109,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.KEY_PREVIEW] = updated.keyPreview
             prefs[Keys.DOUBLE_SPACE_PERIOD] = updated.doubleSpacePeriod
+            prefs[Keys.SMART_PUNCTUATION] = updated.smartPunctuation
             prefs[Keys.COMPACT_TOOLBAR] = updated.compactToolbar
             prefs[Keys.BACKSPACE_SWIPE] = updated.backspaceSwipe
             prefs[Keys.AUTO_CORRECT] = updated.autoCorrect
@@ -155,6 +158,7 @@ class SettingsRepository(context: Context) {
             spaceSwipeSwitchesLanguage = this[Keys.SPACE_SWIPE] ?: defaults.spaceSwipeSwitchesLanguage,
             keyPreview = this[Keys.KEY_PREVIEW] ?: defaults.keyPreview,
             doubleSpacePeriod = this[Keys.DOUBLE_SPACE_PERIOD] ?: defaults.doubleSpacePeriod,
+            smartPunctuation = this[Keys.SMART_PUNCTUATION] ?: defaults.smartPunctuation,
             compactToolbar = this[Keys.COMPACT_TOOLBAR] ?: defaults.compactToolbar,
             backspaceSwipe = this[Keys.BACKSPACE_SWIPE] ?: defaults.backspaceSwipe,
             autoCorrect = this[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
@@ -196,6 +200,7 @@ class SettingsRepository(context: Context) {
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val KEY_PREVIEW = booleanPreferencesKey("key_preview")
         val DOUBLE_SPACE_PERIOD = booleanPreferencesKey("double_space_period")
+        val SMART_PUNCTUATION = booleanPreferencesKey("smart_punctuation")
         val COMPACT_TOOLBAR = booleanPreferencesKey("compact_toolbar")
         val BACKSPACE_SWIPE = booleanPreferencesKey("backspace_swipe")
         val AUTO_CORRECT = booleanPreferencesKey("auto_correct")

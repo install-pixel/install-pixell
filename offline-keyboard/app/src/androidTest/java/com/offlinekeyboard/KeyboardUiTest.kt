@@ -142,6 +142,44 @@ class KeyboardUiTest {
     }
 
     @Test
+    fun numberPadTypesDigits() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        focus(activity.plain)
+        clear(activity.plain)
+        tapSpecial(SpecialKey.LAYER_SYMBOLS)
+        tapSpecial(SpecialKey.LAYER_NUMPAD)
+        screenshot("numpad")
+        tapText("5")
+        tapText("0")
+        assertEquals("50", text(activity.plain))
+        tapSpecial(SpecialKey.LAYER_LETTERS)
+        clear(activity.plain)
+    }
+
+    @Test
+    fun punctuationRulesAndCapitalsAfterSwitching() {
+        useMode(KeyboardMode.MOBILE)
+        useLanguage(Language.UK)
+        focus(activity.plain)
+        clear(activity.plain)
+        // "а ," → "а, ": the space moves after the comma.
+        typeWord(activity.plain, "а")
+        tapSpecial(SpecialKey.SPACE)
+        tapText(",")
+        assertEquals("а, ", text(activity.plain))
+        // "." after that space also moves before it; the next letter is a capital, also after a trip to the
+        // symbols and back.
+        tapText(".")
+        assertEquals("а,. ", text(activity.plain))
+        tapSpecial(SpecialKey.LAYER_SYMBOLS)
+        tapSpecial(SpecialKey.LAYER_LETTERS)
+        tapText("б")
+        assertEquals("а,. Б", text(activity.plain))
+        clear(activity.plain)
+    }
+
+    @Test
     fun emojiPanelTypesEmoji() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)

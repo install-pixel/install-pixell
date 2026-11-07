@@ -433,6 +433,9 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
             SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
                 update { it.copy(doubleSpacePeriod = v) }
             }
+            SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation) { v ->
+                update { it.copy(smartPunctuation = v) }
+            }
         }
         Section(stringResource(R.string.page_typing_keys)) {
             SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
