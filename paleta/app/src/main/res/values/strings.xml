@@ -231,4 +231,5 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="status_layer_prefix">Layer %1$d · </string>
     <string name="status_mirror">mirror of layer 1 (interlocking) · %1$d boxes</string>
     <string name="tray_all">All to tray</string>
+    <string name="same_layers_one">Only one layer — there is no second layer on this pallet (weight or height)</string>
 </resources>

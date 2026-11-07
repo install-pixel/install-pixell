@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -237,12 +238,15 @@ fun EditorPage(
             Modifier.padding(horizontal = 6.dp),
             subtitle = stringResource(if (vm.uniform) R.string.uniform_on else R.string.uniform_off),
         ) { vm.setUniformRows(it) }
+        // Лише один шар (вага чи висота не пускають другий) — перемикач шарів тьмяний і не натискається.
+        val twoLayers = vm.canTwoLayers
+        LaunchedEffect(twoLayers) { if (!twoLayers) vm.selectLayer(0) }
         SwitchRow(
             stringResource(R.string.same_layers_title),
             vm.sameAll,
-            Modifier.padding(horizontal = 6.dp),
-            subtitle = stringResource(if (vm.sameAll) R.string.same_layers_on else R.string.same_layers_off),
-        ) { vm.setSameAll(it) }
+            Modifier.padding(horizontal = 6.dp).alpha(if (twoLayers) 1f else 0.4f),
+            subtitle = stringResource(if (!twoLayers) R.string.same_layers_one else if (vm.sameAll) R.string.same_layers_on else R.string.same_layers_off),
+        ) { if (twoLayers) vm.setSameAll(it) }
 
         // --- Розкладка шару ---
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -268,7 +272,7 @@ fun EditorPage(
         }
         // Шар: перший (непарні) чи другий (парні) — другий можна розкласти інакше («навхрест»).
         // «Шар 1 / Шар 2» — лише коли шари різні; інакше тьмяні (місце лишається — нічого не стрибає).
-        EqualWidthRow(Modifier.fillMaxWidth().alpha(if (vm.sameAll) 0.35f else 1f)) {
+        EqualWidthRow(Modifier.fillMaxWidth().alpha(if (vm.sameAll || !twoLayers) 0.35f else 1f)) {
             ChoiceChip(stringResource(R.string.layer_1), selected = vm.editLayer == 0) { vm.selectLayer(0) }
             ChoiceChip(stringResource(R.string.layer_2), selected = vm.editLayer == 1) { vm.selectLayer(1) }
         }
@@ -286,7 +290,7 @@ fun EditorPage(
                 }
             } else if (view3d) {
                 val st = vm.stack
-                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, highlight = vm.editLayer, aspect = PALLET_EDIT_ASPECT, heightLimit = vm.effectiveHeight, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
+                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, highlight = if (twoLayers && !vm.sameAll) vm.editLayer else null, aspect = PALLET_EDIT_ASPECT, heightLimit = vm.effectiveHeight, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
             } else PalletView(
                 layout = vm.current,
                 box = vm.box,
@@ -420,7 +424,7 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true
         else -> {
             // Коли шари різні — спереду, який це шар; другий шар — дзеркало першого чи свій.
-            val prefix = if (vm.sameAll) "" else stringResource(R.string.status_layer_prefix, vm.editLayer + 1)
+            val prefix = if (vm.sameAll || !vm.canTwoLayers) "" else stringResource(R.string.status_layer_prefix, vm.editLayer + 1)
             val base = prefix + if (vm.editLayer == 1) {
                 if (vm.layer2Mirror) stringResource(R.string.status_mirror, n) else stringResource(R.string.status_custom, n)
             } else if (vm.custom) stringResource(R.string.status_custom, n)

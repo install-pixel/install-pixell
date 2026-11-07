@@ -494,10 +494,13 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Вибрати шар для редагування (другий — лише коли шари різні). */
+    /** Чи на палеті щонайменше два шари (інакше «Шар 2» не існує — і кнопки шарів неактивні). */
+    val canTwoLayers: Boolean get() = stack?.let { it.layers + (if (it.partial) 1 else 0) >= 2 } ?: true
+
+    /** Вибрати шар для редагування (другий — лише коли шари різні й другий шар справді є). */
     fun selectLayer(i: Int) {
         if (box == null) return
-        if (i == 1 && layout2 == null) return
+        if (i == 1 && (layout2 == null || !canTwoLayers)) return
         editLayer = i
         selected = null
     }

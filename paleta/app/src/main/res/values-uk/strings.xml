@@ -231,4 +231,5 @@ ADR (небезпечний товар) — висота лише 1,20 м.
     <string name="status_layer_prefix">Шар %1$d · </string>
     <string name="status_mirror">дзеркало шару 1 (перев’язка) · %1$d кор.</string>
     <string name="tray_all">Усе в кошик</string>
+    <string name="same_layers_one">Лише один шар — другого на палеті немає (не пускає вага чи висота)</string>
 </resources>

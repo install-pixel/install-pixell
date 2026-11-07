@@ -231,4 +231,5 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="status_layer_prefix">Warstwa %1$d · </string>
     <string name="status_mirror">lustro warstwy 1 (przewiązanie) · %1$d kart.</string>
     <string name="tray_all">Wszystko do kosza</string>
+    <string name="same_layers_one">Tylko jedna warstwa — drugiej na palecie nie ma (nie pozwala waga lub wysokość)</string>
 </resources>
