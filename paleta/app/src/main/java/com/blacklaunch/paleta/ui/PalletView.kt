@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.blacklaunch.paleta.pack.BoxSize
 import com.blacklaunch.paleta.pack.LayoutCheck
 import com.blacklaunch.paleta.pack.PALLET_L
@@ -49,6 +51,12 @@ private const val TWIST_DEG = 40f
 /** Співвідношення сторін малюнка палети — однакове скрізь (редактор, картка в історії). */
 const val PALLET_ASPECT = (PALLET_L + 2f * MARGIN_MM) / (PALLET_W + 2f * MARGIN_MM)
 
+/** Висота смуги «кошика» під палетою в редакторі (мм у масштабі малюнка). */
+private const val TRAY_MM = 190
+
+/** Співвідношення сторін у редакторі — з кошиком (і для 3D там же, щоб вікно не стрибало). */
+const val PALLET_EDIT_ASPECT = (PALLET_L + 2f * MARGIN_MM) / (PALLET_W + 2f * MARGIN_MM + TRAY_MM)
+
 /**
  * Палета зверху в правильних пропорціях з коробками шару. [editable]: дотик — вибрати коробку, тягнути — пересунути
  * (прилипає до країв і сусідів), подвійний дотик — повернути. Коробки, що накладаються чи виступають більше, ніж
@@ -68,6 +76,13 @@ fun PalletView(
     onSelect: (Int?) -> Unit = {},
     onMove: (index: Int, x: Int, y: Int) -> Unit = { _, _, _ -> },
     onRotate: (Int) -> Unit = {},
+    /** Кошик під палетою (редактор): скільки коробок відкладено; null — без кошика. */
+    tray: Int? = null,
+    trayLabel: String = "",
+    /** Коробку перетягнули в кошик. */
+    onPark: (Int) -> Unit = {},
+    /** Дотик по кошику — повернути одну коробку на палету. */
+    onUnpark: () -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
     val scale = remember { mutableFloatStateOf(1f) }
@@ -94,6 +109,19 @@ fun PalletView(
     }
 
     val currentSelected by rememberUpdatedState(selected)
+    val park by rememberUpdatedState(onPark)
+    val unpark by rememberUpdatedState(onUnpark)
+    val hasTray = tray != null
+    // Коробку тягнуть над кошиком — кошик підсвічується.
+    val overTray = remember { androidx.compose.runtime.mutableStateOf(false) }
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val trayStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+    /** Чи точка (px) — у смузі кошика. */
+    fun inTray(p: Offset): Boolean {
+        if (!hasTray) return false
+        val k = scale.floatValue
+        return p.y > (PALLET_W + 2 * MARGIN_MM) * k
+    }
     // Поки крутять двома пальцями — коробка видимо повертається за пальцями (кут, яка коробка).
     val twistAngle = remember { mutableFloatStateOf(0f) }
     val twistIndex = remember { androidx.compose.runtime.mutableIntStateOf(-1) }
@@ -156,17 +184,31 @@ fun PalletView(
                 acc += c.positionChange()
                 c.consume()
                 if (!dragging && acc.getDistance() > slop) dragging = true
-                if (dragging) emit()
+                if (dragging) {
+                    val over = inTray(c.position)
+                    if (over != overTray.value) { overTray.value = over; if (over) haptics.tick() }
+                    if (!over) emit()
+                }
             }
             twistAngle.floatValue = 0f
             twistIndex.intValue = -1
+            val dropped = overTray.value
+            overTray.value = false
+            if (dragging && dropped && index != null) {
+                // Відпустили над кошиком — коробку відкладено.
+                park(index)
+                lastTapAt = 0L
+                return@awaitEachGesture
+            }
             if (twoFingers || dragging) {
                 lastTapAt = 0L
                 return@awaitEachGesture
             }
             if (index == null) {
-                // Дотик повз коробки (не прокрутка) — зняти вибір.
-                if (!handedOff) select(null)
+                // Дотик по кошику — повернути коробку; повз коробки (не прокрутка) — зняти вибір.
+                if (!handedOff) {
+                    if (inTray(down.position)) { haptics.tap(); unpark() } else select(null)
+                }
                 return@awaitEachGesture
             }
             // Дотик без руху: другий швидкий дотик по тій самій — повернути.
@@ -184,7 +226,7 @@ fun PalletView(
     Canvas(
         modifier
             .fillMaxWidth()
-            .aspectRatio(PALLET_ASPECT)
+            .aspectRatio(if (hasTray) PALLET_EDIT_ASPECT else PALLET_ASPECT)
             .onSizeChanged { scale.floatValue = it.width / (PALLET_L + 2f * MARGIN_MM) }
             .then(gestures),
     ) {
@@ -223,6 +265,24 @@ fun PalletView(
             drawRoundRect(Oled.TextSecondary.copy(alpha = 0.55f), tl, sz, CornerRadius(4.dp.toPx()), style = Stroke(1.dp.toPx() * line, pathEffect = dash))
         }
 
+        // --- Кошик під палетою ---
+        if (tray != null) {
+            val top = (PALLET_W + 2 * MARGIN_MM) * s + 4.dp.toPx()
+            val tl = Offset(px(-MARGIN_MM) + 6.dp.toPx(), top)
+            val sz = Size(size.width - 12.dp.toPx(), size.height - top - 4.dp.toPx())
+            val hot = overTray.value
+            val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))
+            val ink = if (hot) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = if (tray > 0) 0.9f else 0.5f)
+            if (glass) {
+                if (hot) drawRoundRect(Color(0x1AFFFFFF), tl, sz, CornerRadius(12.dp.toPx()))
+                drawRoundRect(ink, tl, sz, CornerRadius(12.dp.toPx()), style = Stroke(1.dp.toPx(), pathEffect = dash))
+            } else {
+                outline(tl, sz, 12.dp.toPx(), 303, ink.copy(alpha = if (hot) 0.95f else 0.55f), (if (hot) 2.2f else 1.5f).dp.toPx())
+            }
+            val m = measurer.measure(trayLabel, trayStyle.copy(color = ink))
+            drawText(m, topLeft = Offset(tl.x + (sz.width - m.size.width) / 2, tl.y + (sz.height - m.size.height) / 2))
+        }
+
         // --- Коробки ---
         val b = box ?: return@Canvas
         val bad = check?.bad.orEmpty()
@@ -239,6 +299,15 @@ fun PalletView(
             val angle = if (i == twistIndex.intValue) twistAngle.floatValue else 0f
             rotate(angle, pivot = at + Offset(sz.width / 2, sz.height / 2)) {
                 if (glass) drawGlassBox(at, sz, isSel, isBad, line) else drawPencilBox(at, sz, i, isSel, isBad, line, pencilCache)
+                // Вибрана серед червоних — ще й яскравий світлий кант довкола: видно, яку тягнеш.
+                if (isSel && isBad) {
+                    val g = 2.5.dp.toPx()
+                    if (glass) {
+                        drawRoundRect(Color.White, at - Offset(g, g), Size(sz.width + 2 * g, sz.height + 2 * g), CornerRadius(6.dp.toPx()), style = Stroke(1.8.dp.toPx()))
+                    } else {
+                        outline(at - Offset(g, g), Size(sz.width + 2 * g, sz.height + 2 * g), 5.dp.toPx(), 404 + i, SelectedInk, 2.4.dp.toPx())
+                    }
+                }
             }
         }
     }

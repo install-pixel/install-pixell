@@ -56,7 +56,18 @@ private val FACES = listOf(
  * коробок розкладки. Кольори — з токенів теми.
  */
 @Composable
-fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra: Int, modifier: Modifier = Modifier, layout2: List<Placed>? = null) {
+fun Pallet3D(
+    layout: List<Placed>,
+    box: BoxSize?,
+    boxH: Int?,
+    layers: Int,
+    extra: Int,
+    modifier: Modifier = Modifier,
+    layout2: List<Placed>? = null,
+    /** Підсвітити шари: 0 — непарні (шар 1), 1 — парні (шар 2); інші тьмяніші. null — усі однаково. */
+    highlight: Int? = null,
+    aspect: Float = PALLET_ASPECT,
+) {
     val yaw = remember { mutableFloatStateOf(DEFAULT_YAW) }
     val pitch = remember { mutableFloatStateOf(DEFAULT_PITCH) }
     val haptics = LocalHaptics.current
@@ -77,7 +88,7 @@ fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra
     Canvas(
         modifier
             .fillMaxWidth()
-            .aspectRatio(PALLET_ASPECT)
+            .aspectRatio(aspect)
             .pointerInput(Unit) {
                 // «Береш і крутиш»: палець управо — передній бік їде вправо; униз — палета нахиляється до тебе
                 // (видно більше верху).
@@ -110,29 +121,34 @@ fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra
         val sp = sin(ph).toFloat()
         // Масштаб — сталий (палета не «дихає», поки крутиш), а положення — за справжніми межами зображення:
         // палета завжди рівно посередині вікна, і зверху, і знизу.
-        val probe = Camera(ct, st, cp, sp, cx, cy, cz, scale, Offset.Zero)
+        // Легка перспектива (камера на відстані ~3,2 радіуса): дальнє трохи менше — як бачить око.
+        val dist = radius * 3.2f
+        val probe = Camera(ct, st, cp, sp, cx, cy, cz, scale, Offset.Zero, dist)
         var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE; var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
         for (k in 0 until 8) {
             val p = probe.project(if (k and 1 == 0) 0f else PALLET_L.toFloat(), if (k and 2 == 0) 0f else PALLET_W.toFloat(), if (k and 4 == 0) 0f else top)
             minX = minOf(minX, p.x); maxX = maxOf(maxX, p.x); minY = minOf(minY, p.y); maxY = maxOf(maxY, p.y)
         }
         val mid = Offset(size.width / 2f - (minX + maxX) / 2f, size.height / 2f - (minY + maxY) / 2f)
-        val camera = Camera(ct, st, cp, sp, cx, cy, cz, scale, mid)
+        val camera = Camera(ct, st, cp, sp, cx, cy, cz, scale, mid, dist)
         val glass = AppStyle.glass
 
         // Основа палети — завжди під усім, тож першою.
-        drawCuboid(camera, Cuboid(0f, 0f, 0f, PALLET_L.toFloat(), PALLET_W.toFloat(), PALLET_HEIGHT_MM.toFloat(), -1), glass, pallet = true)
+        drawCuboid(camera, Cuboid(0f, 0f, 0f, PALLET_L.toFloat(), PALLET_W.toFloat(), PALLET_HEIGHT_MM.toFloat(), -1), glass, pallet = true, dim = false)
         // Точний порядок малювання: що за чим стоїть (див. drawOrder), щоб ближні коробки завжди закривали дальні.
         val thin = cuboids.size > 600
-        drawOrder(cuboids, camera).forEach { drawCuboid(camera, cuboids[it], glass, pallet = false, thin = thin) }
+        drawOrder(cuboids, camera).forEach {
+            val c = cuboids[it]
+            drawCuboid(camera, c, glass, pallet = false, thin = thin, dim = highlight != null && c.layer % 2 != highlight)
+        }
     }
 }
 
-/** Ортогональна камера: поворот навколо вертикалі ([ct], [st]) і нахил ([cp], [sp]). */
+/** Камера: поворот навколо вертикалі ([ct], [st]), нахил ([cp], [sp]) і легка перспектива з відстані [dist]. */
 private class Camera(
     val ct: Float, val st: Float, val cp: Float, val sp: Float,
     val cx: Float, val cy: Float, val cz: Float,
-    val scale: Float, val mid: Offset,
+    val scale: Float, val mid: Offset, val dist: Float,
 ) {
     fun project(x: Float, y: Float, z: Float): Offset {
         val dx = x - cx
@@ -141,20 +157,19 @@ private class Camera(
         val x1 = dx * ct - dy * st
         val y1 = dx * st + dy * ct
         val up = dz * cp + y1 * sp
-        return Offset(mid.x + x1 * scale, mid.y - up * scale)
+        val depth = y1 * cp - dz * sp
+        val f = dist / (dist + depth)
+        return Offset(mid.x + x1 * scale * f, mid.y - up * scale * f)
     }
 
     /** Глибина точки: більше — далі від глядача. */
     fun depth(x: Float, y: Float, z: Float): Float = ((x - cx) * st + (y - cy) * ct) * cp - (z - cz) * sp
 
-    /** Напрямок до глядача у світових осях (x, y, z): з якого боку дивимось. */
-    val toViewer: FloatArray get() = floatArrayOf(-st * cp, -ct * cp, sp)
+    /** Де глядач у світових координатах (мм). */
+    val viewer: FloatArray = floatArrayOf(cx - st * cp * dist, cy - ct * cp * dist, cz + sp * dist)
 
-    /** Чи грань з нормаллю (nx, ny, nz) дивиться на глядача. */
-    fun facing(nx: Float, ny: Float, nz: Float): Float {
-        val n1y = nx * st + ny * ct
-        return n1y * cp - nz * sp
-    }
+    /** Чи видно грань: глядач з того боку площини грані, куди дивиться нормаль ([axis] 0/1/2, [sign] ±1). */
+    fun sees(axis: Int, plane: Float, sign: Float): Boolean = (viewer[axis] - plane) * sign > 0f
 
     /** Наскільки грань освітлена (світло зверху-зліва-спереду), 0…1. */
     fun light(nx: Float, ny: Float, nz: Float): Float {
@@ -163,14 +178,23 @@ private class Camera(
     }
 }
 
-private fun DrawScope.drawCuboid(cam: Camera, c: Cuboid, glass: Boolean, pallet: Boolean, thin: Boolean = false) {
+private fun DrawScope.drawCuboid(cam: Camera, c: Cuboid, glass: Boolean, pallet: Boolean, thin: Boolean = false, dim: Boolean = false) {
     val v = arrayOf(
         cam.project(c.x0, c.y0, c.z0), cam.project(c.x1, c.y0, c.z0), cam.project(c.x1, c.y1, c.z0), cam.project(c.x0, c.y1, c.z0),
         cam.project(c.x0, c.y0, c.z1), cam.project(c.x1, c.y0, c.z1), cam.project(c.x1, c.y1, c.z1), cam.project(c.x0, c.y1, c.z1),
     )
     val stroke = Stroke((if (thin) 0.5f else if (pallet) 1f else 0.9f).dp.toPx())
     for ((idx, n) in FACES) {
-        if (cam.facing(n[0], n[1], n[2]) >= -0.0001f) continue
+        // Видимість — за положенням глядача (з перспективою): площина грані й з якого боку він.
+        val visible = when {
+            n[2] > 0f -> cam.sees(2, c.z1, 1f)
+            n[2] < 0f -> cam.sees(2, c.z0, -1f)
+            n[0] > 0f -> cam.sees(0, c.x1, 1f)
+            n[0] < 0f -> cam.sees(0, c.x0, -1f)
+            n[1] > 0f -> cam.sees(1, c.y1, 1f)
+            else -> cam.sees(1, c.y0, -1f)
+        }
+        if (!visible) continue
         val path = Path().apply {
             moveTo(v[idx[0]].x, v[idx[0]].y)
             for (k in 1..3) lineTo(v[idx[k]].x, v[idx[k]].y)
@@ -179,13 +203,17 @@ private fun DrawScope.drawCuboid(cam: Camera, c: Cuboid, glass: Boolean, pallet:
         val l = cam.light(n[0], n[1], n[2])
         if (glass) {
             // «Скло»: темне скло, верх світліший; кант — тонкий світлий.
-            val fill = if (pallet) lerp(Color(0xFF0E0E0E), Color(0xFF1C1C1C), l) else lerp(Color(0xFF111111), Color(0xFF353535), l)
+            val fill = when {
+                pallet -> lerp(Color(0xFF0E0E0E), Color(0xFF1C1C1C), l)
+                dim -> lerp(Color(0xFF0A0A0A), Color(0xFF171717), l)
+                else -> lerp(Color(0xFF111111), Color(0xFF353535), l)
+            }
             drawPath(path, fill)
-            drawPath(path, Color(if (pallet) 0x40FFFFFF else 0x66FFFFFF), style = stroke)
+            drawPath(path, Color(if (pallet) 0x40FFFFFF else if (dim) 0x26FFFFFF else 0x66FFFFFF), style = stroke)
         } else {
             // «Аркуш»: чорний папір, грані обведені білим олівцем (верх трохи яскравіше).
             drawPath(path, Oled.Black)
-            drawPath(path, SheetInk.copy(alpha = if (pallet) 0.4f else (0.55f + 0.35f * l)), style = stroke)
+            drawPath(path, SheetInk.copy(alpha = if (pallet) 0.4f else if (dim) 0.2f else (0.55f + 0.35f * l)), style = stroke)
         }
     }
 }
@@ -198,7 +226,7 @@ private fun DrawScope.drawCuboid(cam: Camera, c: Cuboid, glass: Boolean, pallet:
 private fun drawOrder(c: List<Cuboid>, cam: Camera): IntArray {
     val n = c.size
     if (n == 0) return IntArray(0)
-    val view = cam.toViewer
+    val view = cam.viewer
     // Рамки на екрані — перевіряти лише пари, що можуть перекриватися.
     val minX = FloatArray(n); val maxX = FloatArray(n); val minY = FloatArray(n); val maxY = FloatArray(n)
     val depth = FloatArray(n)
@@ -224,12 +252,13 @@ private fun drawOrder(c: List<Cuboid>, cam: Camera): IntArray {
         val a = c[i]; val b = c[j]
         // Вісь розділу і з якого боку глядач.
         val rel = when {
-            a.z1 <= b.z0 + eps -> if (view[2] > 0) 1 else -1
-            b.z1 <= a.z0 + eps -> if (view[2] > 0) -1 else 1
-            a.x1 <= b.x0 + eps -> if (view[0] > 0) 1 else -1
-            b.x1 <= a.x0 + eps -> if (view[0] > 0) -1 else 1
-            a.y1 <= b.y0 + eps -> if (view[1] > 0) 1 else -1
-            b.y1 <= a.y0 + eps -> if (view[1] > 0) -1 else 1
+            // Площина розділу і з якого боку від неї глядач: та коробка, що з дальнього боку, — раніше.
+            a.z1 <= b.z0 + eps -> if (view[2] > a.z1) 1 else -1
+            b.z1 <= a.z0 + eps -> if (view[2] > b.z1) -1 else 1
+            a.x1 <= b.x0 + eps -> if (view[0] > a.x1) 1 else -1
+            b.x1 <= a.x0 + eps -> if (view[0] > b.x1) -1 else 1
+            a.y1 <= b.y0 + eps -> if (view[1] > a.y1) 1 else -1
+            b.y1 <= a.y0 + eps -> if (view[1] > b.y1) -1 else 1
             else -> if (depth[i] >= depth[j]) 1 else -1
         }
         if (rel > 0) edge(i, j) else edge(j, i)

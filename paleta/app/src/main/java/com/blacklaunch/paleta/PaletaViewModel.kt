@@ -19,6 +19,8 @@ import com.blacklaunch.paleta.pack.Limit
 import com.blacklaunch.paleta.pack.Num
 import com.blacklaunch.paleta.pack.Orient
 import com.blacklaunch.paleta.pack.Packer
+import com.blacklaunch.paleta.pack.PALLET_L
+import com.blacklaunch.paleta.pack.PALLET_W
 import com.blacklaunch.paleta.pack.Placed
 import com.blacklaunch.paleta.pack.Stack
 import com.blacklaunch.paleta.pack.Stacking
@@ -175,6 +177,31 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     var uniform by mutableStateOf(settings.uniform)
         private set
     fun setUniformRows(on: Boolean) { uniform = on; settings.uniform = on }
+
+    /** Відкладені в кошик коробки — окремо для кожного шару. */
+    private var parked1 by mutableIntStateOf(0)
+    private var parked2 by mutableIntStateOf(0)
+    val parked: Int get() = if (editLayer == 1) parked2 else parked1
+
+    /** Коробку перетягнули в кошик: прибрати з шару, щоб не заважала; потім можна повернути. */
+    fun park(index: Int) {
+        val list = current
+        if (index !in list.indices) return
+        edit(list.toMutableList().also { it.removeAt(index) })
+        selected = null
+        if (editLayer == 1) parked2++ else parked1++
+    }
+
+    /** Повернути одну коробку з кошика — на перше вільне місце (немає місця — посередині, червоною). */
+    fun unpark() {
+        val b = box ?: return
+        if (parked == 0) return
+        val spot = Layout.freeSpot(current, b, overhang, current.lastOrNull()?.rotated ?: false)
+            ?: Placed(PALLET_L / 2 - b.l / 2, PALLET_W / 2 - b.w / 2, false)
+        edit(current + spot)
+        selected = current.size - 1
+        if (editLayer == 1) parked2-- else parked1--
+    }
 
     /** Розкладка шару, який зараз редагуємо. */
     val current: List<Placed> get() = if (editLayer == 1) layout2 ?: layout else layout
@@ -357,6 +384,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun applyVariant(i: Int) {
+        parked1 = 0
         variantIndex = i
         layout = variants.getOrNull(i).orEmpty()
         custom = false
@@ -380,13 +408,14 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Вибрати шар для редагування; другий уперше — з автоматичною розкладкою «навхрест». */
     fun selectLayer(i: Int) {
         if (box == null) return
-        if (i == 1 && layout2 == null) layout2 = defaultSecond()
+        if (i == 1 && layout2 == null) { layout2 = defaultSecond(); parked2 = 0 }
         editLayer = i
         selected = null
     }
 
     /** Усі шари однакові (другий — як перший). */
     fun sameLayers() {
+        parked2 = 0
         layout2 = null
         editLayer = 0
         selected = null
@@ -402,6 +431,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
             if (list.isEmpty()) return
             secondIndex = (secondIndex + 1) % list.size
             layout2 = list[secondIndex]
+            parked2 = 0
             selected = null
             _events.tryEmit(if (list.size > 1) UiEvent.Variant(secondIndex + 1, list.size) else UiEvent.OnlyVariant)
             return
@@ -505,7 +535,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         sku = ""; boxL = ""; boxW = ""; boxH = ""; boxKg = ""; units = ""
         unitL = ""; unitW = ""; unitH = ""; unitKg = ""; adr = false; arrows = false; manualOrientation = null
         layout = emptyList(); custom = false; layoutBox = null; layoutOverhang = -1; selected = null
-        layout2 = null; editLayer = 0
+        layout2 = null; editLayer = 0; parked1 = 0; parked2 = 0
     }
 
     /** «Дублювати»: усе зі збереженої картки — в поля (дату поставить нове збереження). */
@@ -534,6 +564,8 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         custom = card.customLayout
         layout2 = card.layout2?.let { Layout.decode(it) }
         editLayer = 0
+        parked1 = 0
+        parked2 = 0
         layoutUniform = uniform
         selected = null
         _events.tryEmit(UiEvent.Duplicated)

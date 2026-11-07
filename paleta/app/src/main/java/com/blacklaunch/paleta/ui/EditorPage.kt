@@ -239,7 +239,7 @@ fun EditorPage(
         Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
             if (view3d) {
                 val st = vm.stack
-                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
+                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, highlight = vm.editLayer, aspect = PALLET_EDIT_ASPECT, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
             } else PalletView(
                 layout = vm.current,
                 box = vm.box,
@@ -250,6 +250,10 @@ fun EditorPage(
                 onSelect = { vm.selected = it },
                 onMove = { i, x, y -> vm.move(i, x, y) },
                 onRotate = { vm.selected = it; vm.rotateSelected() },
+                tray = vm.parked,
+                trayLabel = if (vm.parked > 0) stringResource(R.string.tray_n, vm.parked) else stringResource(R.string.tray_empty),
+                onPark = { vm.park(it) },
+                onUnpark = { vm.unpark() },
             )
             if (vm.box == null || (view3d && vm.boxHmm == null)) {
                 // Підказка — на чорній плашці в рамці (не по дошках палети).
@@ -268,6 +272,7 @@ fun EditorPage(
             }
         }
         LayoutStatus(vm, comma)
+        StackSummary(vm, comma)
         // Дії з розкладкою — однакові кнопки в ряд; «Повернути» і «Прибрати» тьмяні, поки нічого не вибрано.
         val hasBox = vm.box != null
         val hasSel = vm.selected != null && vm.selected!! in vm.current.indices
@@ -395,4 +400,20 @@ private fun unitSummary(vm: PaletaViewModel, comma: Boolean): String {
         if (g != null) add("${Num.kilos(g, comma)} ${stringResource(R.string.unit_kg)}")
     }
     return if (parts.isEmpty()) stringResource(R.string.unit_incomplete) else parts.joinToString(" · ")
+}
+
+/** Під палетою: скільки шарів, яка вийшла висота й що обмежило (висота чи вага) — щоб було видно, чому саме стільки. */
+@Composable
+private fun StackSummary(vm: PaletaViewModel, comma: Boolean) {
+    val st = vm.stack ?: return
+    val text = when {
+        st.boxes == 0 -> stringResource(R.string.summary_too_heavy)
+        st.partial -> stringResource(R.string.summary_partial, st.boxes)
+        st.limit == com.blacklaunch.paleta.pack.Limit.Weight -> stringResource(
+            R.string.summary_weight, st.layers, Num.metres(st.heightMm, comma),
+            (vm.weightLimitG / 1000.0).let { if (it % 1.0 == 0.0) it.toLong().toString() else Num.kilos(vm.weightLimitG, comma) },
+        )
+        else -> stringResource(R.string.summary_height, st.layers, Num.metres(st.heightMm, comma), Num.metres(vm.effectiveHeight, comma))
+    }
+    Text(text, color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 4.dp))
 }
