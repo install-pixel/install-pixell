@@ -25,7 +25,7 @@
     <string name="unit_cm">cm</string>
     <string name="unit_kg">kg</string>
     <string name="unit_pcs">pcs</string>
-    <string name="hint_metres">In metres (0.47) or centimetres (47). Length is the longest side.</string>
+    <string name="hint_metres">In metres or centimetres — the app understands both. Length is the longest side.</string>
     <string name="hint_cm_read">Read as centimetres: %1$s m</string>
     <string name="section_unit">One piece</string>
     <string name="unit_optional">Optional — does not affect the calculation</string>
@@ -155,7 +155,7 @@
     <string name="status_hide_desc">Clock and network — only by swiping from the top edge</string>
 
     <string name="help_input_t">What to enter</string>
-    <string name="help_input">SKU — type it or scan it (barcode icon in the field). If this SKU was calculated before, “Already in history” appears under the field — open it and duplicate.\n\nBox: length, width, height — in metres like on the form (0.47) or in centimetres (47); the app understands both. Length is always the longest side. Box weight — down to the gram (2.305). Pieces per box — 1 if empty.\n\nOne piece is optional. If filled in, the form shows a “Piece” column; if not, there is no column and the calculation does not change.\n\nEverything is calculated as you type — there is no “Calculate” button.</string>
+    <string name="help_input">SKU — type it or scan it (barcode icon in the field). If this SKU was calculated before, “Already in history” appears under the field — open it and duplicate.\n\nBox: length, width, height — in metres like on the form or in centimetres; the app understands both. Length is always the longest side. Box weight — down to the gram. Pieces per box — 1 if empty.\n\nOne piece is optional. If filled in, the form shows a “Piece” column; if not, there is no column and the calculation does not change.\n\nEverything is calculated as you type — there is no “Calculate” button.</string>
     <string name="help_limits_t">Height, weight, overhang</string>
     <string name="help_limits">All three tiles work the same way: tap — a window with a field showing the current value; type another one and tap “Done”. “Standard” puts the standard value back.
 

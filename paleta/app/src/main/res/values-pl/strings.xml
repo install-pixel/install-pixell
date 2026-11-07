@@ -25,7 +25,7 @@
     <string name="unit_cm">cm</string>
     <string name="unit_kg">kg</string>
     <string name="unit_pcs">szt</string>
-    <string name="hint_metres">W metrach (0,47) albo centymetrach (47). Długość — zawsze najdłuższy bok.</string>
+    <string name="hint_metres">W metrach albo centymetrach — aplikacja zrozumie sama. Długość — zawsze najdłuższy bok.</string>
     <string name="hint_cm_read">Odczytano jako centymetry: %1$s m</string>
     <string name="section_unit">Jedna sztuka</string>
     <string name="unit_optional">Opcjonalnie — nie wpływa na wyliczenie</string>
@@ -155,7 +155,7 @@
     <string name="status_hide_desc">Zegar i sieć — tylko przesunięciem od górnej krawędzi</string>
 
     <string name="help_input_t">Co wpisywać</string>
-    <string name="help_input">SKU — wpisz albo zeskanuj (ikona kodu kreskowego w polu). Jeśli ten SKU był już liczony, pod polem pojawi się „Jest już w historii” — otworzysz i zduplikujesz.\n\nKarton: długość, szerokość, wysokość — w metrach jak w karcie (0,47) albo w centymetrach (47), aplikacja zrozumie sama. Długość — zawsze najdłuższy bok. Waga kartonu — z dokładnością do 1 g (2,305). Sztuk w kartonie — jeśli puste, liczy się 1.\n\nJedna sztuka — opcjonalnie. Jeśli wypełnisz, karta pokaże kolumnę „Sztuka”; jeśli nie — kolumny nie ma, wyliczenie się nie zmienia.\n\nWszystko liczy się od razu, gdy wpisujesz — nie ma przycisku „Oblicz”.</string>
+    <string name="help_input">SKU — wpisz albo zeskanuj (ikona kodu kreskowego w polu). Jeśli ten SKU był już liczony, pod polem pojawi się „Jest już w historii” — otworzysz i zduplikujesz.\n\nKarton: długość, szerokość, wysokość — w metrach jak w karcie albo w centymetrach, aplikacja zrozumie sama. Długość — zawsze najdłuższy bok. Waga kartonu — z dokładnością do 1 g. Sztuk w kartonie — jeśli puste, liczy się 1.\n\nJedna sztuka — opcjonalnie. Jeśli wypełnisz, karta pokaże kolumnę „Sztuka”; jeśli nie — kolumny nie ma, wyliczenie się nie zmienia.\n\nWszystko liczy się od razu, gdy wpisujesz — nie ma przycisku „Oblicz”.</string>
     <string name="help_limits_t">Wysokość, waga, nawis</string>
     <string name="help_limits">Trzy kafelki działają tak samo: dotknięcie — okno z polem, w polu obecna wartość; wpisz inną i „Gotowe”. „Standard” przywraca wartość standardową.
 

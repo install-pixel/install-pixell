@@ -68,6 +68,8 @@ fun EditorPage(
     val haptics = LocalHaptics.current
     var unitOpen by rememberSaveable { mutableStateOf(false) }
     val anyInput = listOf(vm.sku, vm.boxL, vm.boxW, vm.boxH, vm.boxKg, vm.units, vm.unitL, vm.unitW, vm.unitH, vm.unitKg).any { it.isNotBlank() }
+    // Підказки в полях — нулі, а не «приклад»: ніяких випадкових цифр з самого початку.
+    val zero = Num.metres(0, comma)
     val decimal = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next)
     val number = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
 
@@ -125,12 +127,12 @@ fun EditorPage(
         // --- Коробка ---
         SectionTitle(stringResource(R.string.section_box))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabeledField(stringResource(R.string.f_length), vm.boxL, { vm.boxL = it.take(8) }, "0,47", stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-            LabeledField(stringResource(R.string.f_width), vm.boxW, { vm.boxW = it.take(8) }, "0,40", stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-            LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, "0,40", stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+            LabeledField(stringResource(R.string.f_length), vm.boxL, { vm.boxL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+            LabeledField(stringResource(R.string.f_width), vm.boxW, { vm.boxW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+            LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabeledField(stringResource(R.string.f_box_weight), vm.boxKg, { vm.boxKg = it.take(9) }, "2,30", stringResource(R.string.unit_kg), decimal, Modifier.weight(1f))
+            LabeledField(stringResource(R.string.f_box_weight), vm.boxKg, { vm.boxKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal, Modifier.weight(1f))
             LabeledField(stringResource(R.string.f_units), vm.units, { vm.units = it.filter(Char::isDigit).take(6) }, "1", stringResource(R.string.unit_pcs), number, Modifier.weight(1f))
         }
         // Сантиметри зрозуміли як сантиметри — показуємо, що вийшло.
@@ -162,11 +164,11 @@ fun EditorPage(
         AnimatedVisibility(unitOpen, enter = fadeIn(tween(OPEN_MS)) + expandVertically(tween(OPEN_MS)), exit = fadeOut(tween(CLOSE_MS)) + shrinkVertically(tween(CLOSE_MS))) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LabeledField(stringResource(R.string.f_length), vm.unitL, { vm.unitL = it.take(8) }, "—", stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-                    LabeledField(stringResource(R.string.f_width), vm.unitW, { vm.unitW = it.take(8) }, "—", stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-                    LabeledField(stringResource(R.string.f_height), vm.unitH, { vm.unitH = it.take(8) }, "—", stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+                    LabeledField(stringResource(R.string.f_length), vm.unitL, { vm.unitL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+                    LabeledField(stringResource(R.string.f_width), vm.unitW, { vm.unitW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+                    LabeledField(stringResource(R.string.f_height), vm.unitH, { vm.unitH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
                 }
-                LabeledField(stringResource(R.string.f_unit_weight), vm.unitKg, { vm.unitKg = it.take(9) }, "—", stringResource(R.string.unit_kg), decimal.copy(imeAction = ImeAction.Done), Modifier.fillMaxWidth(0.5f))
+                LabeledField(stringResource(R.string.f_unit_weight), vm.unitKg, { vm.unitKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal.copy(imeAction = ImeAction.Done), Modifier.fillMaxWidth(0.5f))
                 FieldHint(stringResource(R.string.unit_hint))
             }
         }
