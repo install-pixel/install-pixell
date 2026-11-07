@@ -198,7 +198,7 @@ ADR (небезпечний товар) — висота лише 1,20 м.
     <string name="signer_desc">Впишеться в рядок «підпис того, хто описує структуру», щоб не забути.</string>
     <string name="only_orientation">Інших положень, у яких коробка поміщається, немає</string>
     <string name="orientation_now">Коробка %1$s: основа %2$s × %3$s, висота %4$s м</string>
-    <string name="orient_flat">як вписано</string>
+    <string name="orient_flat">плиском</string>
     <string name="orient_side">на боці</string>
     <string name="orient_up">стоячи</string>
     <string name="layout_orient">Інше положення коробки</string>

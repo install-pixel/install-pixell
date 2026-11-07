@@ -443,6 +443,16 @@ data class Orientation(val index: Int, val plan: BoxSize, val height: Int)
 data class OrientedResult(val orientation: Orientation, val auto: AutoResult, val total: Int)
 
 object Orient {
+    /**
+     * Як коробка стоїть — за самою коробкою, а не за тим, як вписали: найкоротша сторона вгору — плиском (0),
+     * середня — на боці (1), найдовша — стоячи (2). [base1], [base2] — основа, [height] — висота.
+     */
+    fun kind(base1: Int, base2: Int, height: Int): Int = when {
+        height <= minOf(base1, base2) -> 0
+        height >= maxOf(base1, base2) -> 2
+        else -> 1
+    }
+
     fun of(l: Int, w: Int, h: Int, index: Int): Orientation = when (index) {
         1 -> Orientation(1, BoxSize(l, h), w)
         2 -> Orientation(2, BoxSize(w, h), l)

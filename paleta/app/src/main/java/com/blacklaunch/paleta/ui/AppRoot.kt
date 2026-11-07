@@ -119,7 +119,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
                 UiEvent.OrientationNoFit -> show(textOrientNoFit)
                 is UiEvent.Orientation -> {
                     val c = decimalComma()
-                    show(String.format(orientFormat, orientNames[e.index], com.blacklaunch.paleta.pack.Num.metres(e.l, c), com.blacklaunch.paleta.pack.Num.metres(e.w, c), com.blacklaunch.paleta.pack.Num.metres(e.h, c)))
+                    show(String.format(orientFormat, orientNames[com.blacklaunch.paleta.pack.Orient.kind(e.l, e.w, e.h)], com.blacklaunch.paleta.pack.Num.metres(e.l, c), com.blacklaunch.paleta.pack.Num.metres(e.w, c), com.blacklaunch.paleta.pack.Num.metres(e.h, c)))
                 }
                 is UiEvent.Deleted -> show(textDeleted, textUndo) { vm.restore(e.card); banner = null }
             }

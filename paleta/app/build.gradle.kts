@@ -14,8 +14,8 @@ android {
         applicationId = "com.blacklaunch.paleta"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.7.0-alpha"
+        versionCode = 12
+        versionName = "0.7.1-alpha"
 
         // Вбудована модель ML Kit має нативні бібліотеки; лишаємо лише ARM — це всі реальні телефони (як у QRaft).
         ndk {

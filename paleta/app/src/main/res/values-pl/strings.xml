@@ -198,7 +198,7 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="signer_desc">Wpisze się w wiersz „podpis opisującego strukturę”, żeby nie zapomnieć.</string>
     <string name="only_orientation">Nie ma innych położeń, w których karton się mieści</string>
     <string name="orientation_now">Karton %1$s: podstawa %2$s × %3$s, wysokość %4$s m</string>
-    <string name="orient_flat">jak wpisano</string>
+    <string name="orient_flat">na płasko</string>
     <string name="orient_side">na boku</string>
     <string name="orient_up">pionowo</string>
     <string name="layout_orient">Inne położenie kartonu</string>

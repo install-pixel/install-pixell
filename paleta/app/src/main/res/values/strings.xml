@@ -198,7 +198,7 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="signer_desc">Goes into the “signature of the person describing the structure” row, so you don’t forget.</string>
     <string name="only_orientation">No other position where the box fits</string>
     <string name="orientation_now">Box %1$s: base %2$s × %3$s, height %4$s m</string>
-    <string name="orient_flat">as entered</string>
+    <string name="orient_flat">flat</string>
     <string name="orient_side">on its side</string>
     <string name="orient_up">standing up</string>
     <string name="layout_orient">Other box position</string>

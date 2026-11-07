@@ -296,9 +296,7 @@ fun EditorPage(
                 )
             }
         }
-        LayoutStatus(vm, comma)
-        StackSummary(vm, comma)
-        // Дії з розкладкою — однакові кнопки в ряд; «Повернути» і «Прибрати» тьмяні, поки нічого не вибрано.
+        // Дії з розкладкою — одразу під палетою (не треба гортати); однакові кнопки в ряд; «Повернути» і «Прибрати» тьмяні, поки нічого не вибрано.
         val hasBox = vm.box != null
         val hasSel = vm.selected != null && vm.selected!! in vm.current.indices
         EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
@@ -307,6 +305,8 @@ fun EditorPage(
             SheetButton(stringResource(R.string.act_rotate), { vm.rotateSelected() }, enabled = hasSel && !view3d, compact = true)
             SheetButton(stringResource(R.string.act_remove), { vm.removeSelected() }, enabled = hasSel && !view3d, compact = true)
         }
+        LayoutStatus(vm, comma)
+        StackSummary(vm, comma)
         FieldHint(stringResource(if (view3d) R.string.view_3d_hint else R.string.layout_hint))
 
         // --- Бланк ---
@@ -399,12 +399,13 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
             else stringResource(R.string.status_auto, n)
             val over = check?.overhangUsed ?: 0
             val withOver = if (over > 0) base + " · " + stringResource(R.string.status_overhang, Num.cm(over, comma)) else base
-            // Коробку поставлено інакше, ніж вписали, — сказати, як саме.
+            // Як стоїть коробка — плиском, на боці чи стоячи (за самою коробкою).
             val h = vm.boxHmm
-            val orient = when (vm.orientation) {
-                1 -> stringResource(R.string.orient_side)
-                2 -> stringResource(R.string.orient_up)
-                else -> null
+            val b = vm.box
+            val orient = if (h != null && b != null && vm.dims?.let { it.first != it.second || it.second != it.third } == true) {
+                stringResource(listOf(R.string.orient_flat, R.string.orient_side, R.string.orient_up)[com.blacklaunch.paleta.pack.Orient.kind(b.l, b.w, h)])
+            } else {
+                null
             }
             (if (orient != null && h != null) withOver + " · " + stringResource(R.string.status_orient, orient, Num.metres(h, comma)) else withOver) to false
         }
