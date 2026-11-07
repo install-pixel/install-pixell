@@ -41,6 +41,8 @@ class ModelInstallActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        hideStatusBar(window)
+        preferHighestRefreshRate(window)
         val uris = urisOf(intent)
         val repository = SettingsRepository(this)
         setContent {

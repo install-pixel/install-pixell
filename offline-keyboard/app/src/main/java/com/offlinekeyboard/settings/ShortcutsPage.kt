@@ -124,9 +124,6 @@ internal fun ShortcutsPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                 ActionButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
                     Text(stringResource(R.string.presets_import))
                 }
-                ActionButton(onClick = { Links.open(context, Links.SHORTCUT_PRESETS) }) {
-                    Text(stringResource(R.string.presets_more))
-                }
             }
         }
     }

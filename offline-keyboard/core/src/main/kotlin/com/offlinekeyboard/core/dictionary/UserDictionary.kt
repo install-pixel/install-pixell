@@ -100,6 +100,14 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
             .forEach { map.remove(it.key) }
     }
 
+    /** Replaces every word with those of a [serialize]d dictionary (restoring a backup). */
+    fun replaceWith(text: String) {
+        val other = parse(text, maxWordsPerLanguage)
+        byLanguage.clear()
+        byLanguage.putAll(other.byLanguage)
+        version++
+    }
+
     /** Plain text: `LANG<TAB>word<TAB>count<TAB>lastUsed` per line. */
     fun serialize(): String = buildString {
         for ((language, map) in byLanguage) {

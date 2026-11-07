@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.SparseArray
@@ -172,6 +171,19 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         computeKeyRects()
+        excludeBackGesture(w, h)
+    }
+
+    /**
+     * With gesture navigation a swipe from the screen edge is "Back". Over the keys it should be a key
+     * swipe (Backspace at the right edge deletes words), so the keyboard asks Android to leave both edges
+     * to it. Android grants at most 200 dp of each edge; the lower rows, where Backspace and Shift are,
+     * come first.
+     */
+    private fun excludeBackGesture(w: Int, h: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || w == 0 || h == 0) return
+        val top = (h - (EXCLUSION_DP * resources.displayMetrics.density).toInt()).coerceAtLeast(0)
+        systemGestureExclusionRects = listOf(android.graphics.Rect(0, top, w, h))
     }
 
     private fun computeKeyRects() {
@@ -627,22 +639,7 @@ class KeyboardView(context: Context) : View(context) {
             performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             return
         }
-        val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            VibrationEffect.createPredefined(
-                when (vibration) {
-                    VibrationStrength.LIGHT -> VibrationEffect.EFFECT_TICK
-                    VibrationStrength.MEDIUM -> VibrationEffect.EFFECT_CLICK
-                    VibrationStrength.STRONG -> VibrationEffect.EFFECT_HEAVY_CLICK
-                },
-            )
-        } else {
-            val (ms, amplitude) = when (vibration) {
-                VibrationStrength.LIGHT -> 8L to 60
-                VibrationStrength.MEDIUM -> 15L to 140
-                VibrationStrength.STRONG -> 28L to 255
-            }
-            VibrationEffect.createOneShot(ms, if (v.hasAmplitudeControl()) amplitude else VibrationEffect.DEFAULT_AMPLITUDE)
-        }
+        val effect = tapEffect(vibration, v)
         runCatching { v.vibrate(effect) }
     }
 
@@ -654,6 +651,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun dp(value: Float) = value * resources.displayMetrics.density
 
     private companion object {
+        const val EXCLUSION_DP = 200
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
         const val SPACE_SWIPE_DP = 60f

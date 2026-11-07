@@ -209,7 +209,7 @@ object LayoutProvider {
             Language.EN -> Key(KeyAction.Text("$"), alternatives = listOf("€", "£", "¥", "₴", "zł"))
         }
         fun texts(s: String) = s.split(" ").map { Key(KeyAction.Text(it), alternatives = punctuationAlternatives(it)) }
-        return KeyboardLayout(
+        return fullWidth(
             listOf(
                 texts("1 2 3 4 5 6 7 8 9 0"),
                 texts("@ #") + currency + texts("_ & - + ( ) /"),
@@ -220,8 +220,25 @@ object LayoutProvider {
     }
 
     /**
+     * Rows narrower than the widest one get their two edge keys widened, as on the letters, so every row
+     * reaches both sides of the keyboard instead of leaving empty edges.
+     */
+    private fun fullWidth(rows: List<List<Key>>): KeyboardLayout {
+        val target = KeyboardLayout(rows).maxRowUnits
+        return KeyboardLayout(
+            rows.map { row ->
+                val missing = target - row.sumOf { it.width.toDouble() }.toFloat()
+                if (missing < 0.01f || row.size < 2) row else row.mapIndexed { i, key ->
+                    if (i == 0 || i == row.lastIndex) key.copy(width = key.width + missing / 2f) else key
+                }
+            },
+        )
+    }
+
+    /**
      * The number pad for number and phone fields (or chosen by hand from the symbols): digits large as on a
-     * calculator, signs on the left, Backspace, space and Enter on the right, the same four rows as the letters
+     * calculator, signs on the left, space and language on the right, Backspace and Enter where they are on
+     * the letters (third row right, bottom right), the same four rows as the letters
      * so the keyboard keeps its height. ABC goes back to the letters, ?123 opens all the symbols.
      */
     private fun mobileNumpad(language: Language, phone: Boolean): KeyboardLayout {
@@ -232,15 +249,16 @@ object LayoutProvider {
         val signs = if (phone) listOf(sign("+"), sign("*"), sign("#")) else listOf(sign("-", listOf("+")), sign("+", listOf("±")), sign("/", listOf("*", "%", "=")))
         return KeyboardLayout(
             listOf(
-                listOf(signs[0], digit("1"), digit("2"), digit("3"), fn(BACKSPACE, SIDE, repeatable = true)),
-                listOf(signs[1], digit("4"), digit("5"), digit("6"), Key(KeyAction.Special(SPACE), width = SIDE, style = KeyStyle.SPACE, label = "␣")),
-                listOf(signs[2], digit("7"), digit("8"), digit("9"), action(ENTER, SIDE)),
+                listOf(signs[0], digit("1"), digit("2"), digit("3"), Key(KeyAction.Special(SPACE), width = SIDE, style = KeyStyle.SPACE, label = "␣")),
+                listOf(signs[1], digit("4"), digit("5"), digit("6"), fn(LANGUAGE, SIDE)),
+                // Backspace on the third row and Enter bottom right, where they are on the letters.
+                listOf(signs[2], digit("7"), digit("8"), digit("9"), fn(BACKSPACE, SIDE, repeatable = true)),
                 listOf(
                     mod(LAYER_LETTERS, SIDE),
                     mod(LAYER_SYMBOLS, DIGIT),
                     digit("0"),
                     if (phone) Key(KeyAction.Text("-"), width = DIGIT, alternatives = listOf("(", ")", " ")) else Key(KeyAction.Text(decimal), width = DIGIT, alternatives = listOf(other)),
-                    fn(LANGUAGE, SIDE),
+                    action(ENTER, SIDE),
                 ),
             ),
         )
@@ -251,7 +269,7 @@ object LayoutProvider {
 
     private fun mobileSymbolsMore(language: Language): KeyboardLayout {
         fun texts(s: String) = s.split(" ").map { Key(KeyAction.Text(it)) }
-        return KeyboardLayout(
+        return fullWidth(
             listOf(
                 texts("~ ` | • √ π ÷ × ¶ ∆"),
                 texts("€ £ ¥ $ ^ ° = { } \\"),

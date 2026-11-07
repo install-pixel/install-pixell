@@ -35,8 +35,7 @@
     <string name="section_translation">Translation (Ukrainian · Polish · English)</string>
 
     <string name="section_privacy">Privacy</string>
-    <string name="privacy_no_network">The app has no internet permission</string>
-    <string name="privacy_text">No server, no account, no analytics. Typed text and audio are not stored or logged. Your dictionary (if you turn learning on), translation glossary, settings and models stay on this device and are excluded from cloud backup. Bluetooth is used only by the computer keyboard mode, if you turn it on.</string>
+    <string name="privacy_text">The app has no internet permission: no server, no account, no analytics. Typed text and audio are not stored or logged. The dictionary, translation glossary, settings and models stay on this device.</string>
 
     <string name="section_about">About</string>
     <string name="about_version">Version %1$s</string>
@@ -159,16 +158,13 @@
     <string name="models_download">Download</string>
     <string name="models_size">about %1$d MB</string>
     <string name="models_custom">Other models (advanced)</string>
-    <string name="models_custom_text">You can import any small Vosk model (a zip with am, conf and graph folders) for a voice language, or a translation pack built from another OPUS-MT model with tools/mt/export_opus_mt.py. Use the Import button of the matching row.</string>
-    <string name="models_open_guide">Guide on GitHub</string>
-    <string name="models_open_release">All files</string>
+    <string name="models_custom_text">You can add your own model file: a small Vosk model (a zip with am, conf and graph folders) for a voice language, or an OffKey translation pack. Use the Import button of the matching row.</string>
     <string name="presets_title">Ready-made sets</string>
     <string name="presets_intro">Cheat sheets for popular apps: \"Show tips\" opens a list of the app\'s own shortcuts, for reference only. The \"Add\" button also puts ready-made shortcuts that type text (Excel formulas, Vim commands) into your list; they work in computer mode.</string>
     <string name="presets_add">Add %1$d combinations</string>
     <string name="presets_added">Added: %1$d</string>
     <string name="presets_nothing_new">Already in your list</string>
     <string name="presets_import">Import from file</string>
-    <string name="presets_more">More sets on GitHub</string>
     <string name="presets_import_failed">Cannot read the file: %1$s</string>
     <string name="presets_show_tips">Show tips</string>
     <string name="presets_hide_tips">Hide tips</string>
@@ -201,15 +197,14 @@
     <string name="bluetooth_use_steps">Open the keyboard in any field (for example below) and tap the Bluetooth button above the keys: it turns coloured and everything you type goes to the computer. Tap it again to type on the phone.</string>
     <string name="bluetooth_open_keyboard">Tap here to open the keyboard</string>
     <string name="bluetooth_section_notes">Good to know</string>
-    <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for (for example ы in Ukrainian) are not sent. Suggestions, translation and voice work only on the phone.</string>
+    <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for are not sent. Suggestions, translation and voice work only on the phone.</string>
     <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
     <string name="page_glossary">Translation glossary</string>
     <string name="page_glossary_summary">Your corrections · %1$d</string>
-    <string name="glossary_intro">If the translation gets a word wrong (for example warehouse terms), write the right translation here. The keyboard puts these words into the translation itself; a line that is a whole sentence is used as the translation of that sentence.</string>
+    <string name="glossary_intro">If the translation gets a word or phrase wrong, write the right version here. The keyboard puts it into the translation itself; a line that is a whole sentence is used as the translation of that sentence.</string>
     <string name="glossary_format">One line per word: українська | polski | English. Several forms with «/»: the first is used in translations. «*» at the end matches any ending, e.g. палет* = палета, палети, палетах. Lines starting with # are notes.</string>
     <string name="glossary_field">Glossary</string>
     <string name="glossary_saved">Saved · entries: %1$d</string>
-    <string name="glossary_add_example">Add warehouse example</string>
     <string name="models_install_downloaded">Install downloaded files</string>
     <string name="models_install_title">Install keyboard model</string>
     <string name="models_install_running">Installing… large models take a minute.</string>
@@ -285,4 +280,20 @@
     <string name="page_typing_keys">Keys</string>
     <string name="page_typing_vibration">Vibration</string>
     <string name="smart_punctuation">Smart punctuation: no space before a comma, one after it</string>
+    <string name="about_description">OffKey is an offline keyboard for Ukrainian, Polish and English. Typing with suggestions and typo correction, your own dictionary, voice input, translation between the three languages, emoji and stickers, a number pad, a computer layout with Ctrl, Alt and F keys, and a Bluetooth keyboard mode for a computer. Everything runs on the phone — no internet, no accounts, no ads.</string>
+    <string name="section_settings_reset">Reset</string>
+    <string name="dictionary_file">Import and export</string>
+    <string name="dictionary_file_text">Import adds words from a file:\n• .txt — one word per line; the words go to the language selected above (%1$s);\n• JSON — a list per language: {\"uk\": [\"слово\"], \"pl\": [\"słowo\"], \"en\": [\"word\"]}.\nWords shorter than 4 letters are skipped. Export saves all your words as JSON, most used first.</string>
+    <string name="dictionary_import">Import words from a file</string>
+    <string name="dictionary_export">Export words to a file</string>
+    <string name="dictionary_imported">Added %1$d words, skipped %2$d.</string>
+    <string name="file_saved">Saved.</string>
+    <string name="file_read_failed">Could not read the file.</string>
+    <string name="file_write_failed">Could not save the file.</string>
+    <string name="backup_title">Backup</string>
+    <string name="backup_text">One file with all settings (own emoji and shortcuts included), your dictionary and the translation glossary. Restoring replaces what is on this phone now. Voice and translation models are not included: add them again on the models page.</string>
+    <string name="backup_export">Save a backup</string>
+    <string name="backup_import">Restore from a backup</string>
+    <string name="backup_restored">Restored from the backup.</string>
+    <string name="backup_invalid">This file is not an OffKey backup.</string>
 </resources>

@@ -19,6 +19,7 @@ import com.offlinekeyboard.keyboard.ThemeMode
 import com.offlinekeyboard.keyboard.StickerCharacter
 import com.offlinekeyboard.keyboard.VibrationStrength
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 data class KeyboardSettings(
@@ -130,6 +131,49 @@ class SettingsRepository(context: Context) {
             prefs[Keys.TRANSLATION_ACCURATE] = updated.translationAccurate
             prefs[Keys.THEME_MODE] = updated.themeMode.name
             prefs[Keys.BLUETOOTH_KEYBOARD] = updated.bluetoothKeyboard
+        }
+    }
+
+    /** Every stored preference as JSON (type and value), for the full backup. */
+    suspend fun exportJson(): org.json.JSONObject {
+        val prefs = store.data.first()
+        val out = org.json.JSONObject()
+        for ((key, value) in prefs.asMap()) {
+            val entry = org.json.JSONObject()
+            when (value) {
+                is Boolean -> entry.put("t", "b").put("v", value)
+                is Int -> entry.put("t", "i").put("v", value)
+                is Long -> entry.put("t", "l").put("v", value)
+                is Float -> entry.put("t", "f").put("v", value.toDouble())
+                is Double -> entry.put("t", "d").put("v", value)
+                is String -> entry.put("t", "s").put("v", value)
+                is Set<*> -> entry.put("t", "set").put("v", org.json.JSONArray(value.map { it.toString() }))
+                else -> continue
+            }
+            out.put(key.name, entry)
+        }
+        return out
+    }
+
+    /** Replaces all preferences with those of [exportJson]. Unknown types are skipped. */
+    suspend fun importJson(json: org.json.JSONObject) {
+        store.edit { prefs ->
+            prefs.clear()
+            for (name in json.keys()) {
+                val entry = json.optJSONObject(name) ?: continue
+                when (entry.optString("t")) {
+                    "b" -> prefs[booleanPreferencesKey(name)] = entry.getBoolean("v")
+                    "i" -> prefs[intPreferencesKey(name)] = entry.getInt("v")
+                    "l" -> prefs[androidx.datastore.preferences.core.longPreferencesKey(name)] = entry.getLong("v")
+                    "f" -> prefs[floatPreferencesKey(name)] = entry.getDouble("v").toFloat()
+                    "d" -> prefs[androidx.datastore.preferences.core.doublePreferencesKey(name)] = entry.getDouble("v")
+                    "s" -> prefs[stringPreferencesKey(name)] = entry.getString("v")
+                    "set" -> {
+                        val array = entry.getJSONArray("v")
+                        prefs[stringSetPreferencesKey(name)] = (0 until array.length()).map { array.getString(it) }.toSet()
+                    }
+                }
+            }
         }
     }
 

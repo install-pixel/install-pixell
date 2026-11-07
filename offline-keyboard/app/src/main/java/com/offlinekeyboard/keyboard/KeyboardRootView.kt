@@ -2,6 +2,10 @@ package com.offlinekeyboard.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Shader
+import android.graphics.Paint
+import android.graphics.LinearGradient
+import android.graphics.Canvas
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -131,7 +135,33 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var echo: CharSequence? = null
     private val clearMessage = Runnable { message = null; statusAction = null; refreshCentre() }
 
+    /**
+     * A band above the toolbar where the app shows through and fades into the keyboard's black, instead
+     * of a hard line between the app and the keyboard. It is not touchable and does not shrink the app
+     * (see KeyboardService.onComputeInsets).
+     */
+    val fadeHeight = dp(FADE_DP)
+    private val fadePaint = Paint()
+    private var fadeColor = 0
+
+    override fun onDraw(canvas: Canvas) {
+        val color = fadeColor
+        if (fadePaint.shader == null || fadePaint.color != color) {
+            fadePaint.color = color
+            fadePaint.shader = LinearGradient(
+                0f, 0f, 0f, fadeHeight.toFloat(),
+                intArrayOf(color and 0x00FFFFFF, color), null, Shader.TileMode.CLAMP,
+            )
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)
+        backgroundPaint.color = color
+        canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
+    }
+
+    private val backgroundPaint = Paint()
+
     init {
+        setWillNotDraw(false)
         orientation = VERTICAL
         // The key preview of the top row is drawn over the toolbar above it.
         clipChildren = false
@@ -187,9 +217,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      */
     private fun updateBottomSpace() {
         val bottom = maxOf(navBars.bottom, imeButtonsHeight())
-        if (paddingLeft != navBars.left || paddingRight != navBars.right || paddingBottom != bottom) {
+        if (paddingTop != fadeHeight || paddingLeft != navBars.left || paddingRight != navBars.right || paddingBottom != bottom) {
             bottomSpaceChangesForTest++
-            setPadding(navBars.left, 0, navBars.right, bottom)
+            setPadding(navBars.left, fadeHeight, navBars.right, bottom)
         }
     }
 
@@ -209,7 +239,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         theme = value
         keyboardView.theme = value
         stickerPanel.applyTheme(value)
-        setBackgroundColor(value.background)
+        fadeColor = value.background
+        fadePaint.shader = null
+        invalidate()
         Icons.style = value.style
         val face = value.typeface(context)
         suggestionViews.forEach {
@@ -415,6 +447,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val FADE_DP = 14
         const val STATUS_MILLIS = 3500L
         const val SUGGESTIONS = 3
     }
