@@ -271,7 +271,7 @@ fun EditorPage(
                 }
             } else if (view3d) {
                 val st = vm.stack
-                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, highlight = vm.editLayer, aspect = PALLET_EDIT_ASPECT, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
+                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, highlight = vm.editLayer, aspect = PALLET_EDIT_ASPECT, heightLimit = vm.effectiveHeight, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
             } else PalletView(
                 layout = vm.current,
                 box = vm.box,

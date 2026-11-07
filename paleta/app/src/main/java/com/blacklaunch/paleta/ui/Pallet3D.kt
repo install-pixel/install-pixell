@@ -40,6 +40,46 @@ private const val PITCH_PER_PX = 0.14f
 /** Коробка в просторі (мм): від (x0, y0, z0) до (x1, y1, z1); [layer] — номер шару. */
 private class Cuboid(val x0: Float, val y0: Float, val z0: Float, val x1: Float, val y1: Float, val z1: Float, val layer: Int)
 
+/**
+ * Палета EUR 1200 × 800 × 150 з деталей, як справжня: 3 нижні дошки (уздовж), 9 шашок, 3 поперечні дошки і
+ * 5 дощок настилу зверху з проміжками. Шар −1 — «це палета».
+ */
+private val PALLET_PARTS: List<Cuboid> = buildList {
+    val l = PALLET_L.toFloat()
+    val w = PALLET_W.toFloat()
+    // Висоти (разом 150 мм): низ 0–22, шашки 22–100, поперечні 100–122, настил 122–150.
+    // Нижні дошки — уздовж, під рядами шашок.
+    val rows = floatArrayOf(0f, w / 2 - 72.5f, w - 100f)
+    val rowW = floatArrayOf(100f, 145f, 100f)
+    for (i in 0..2) add(Cuboid(0f, rows[i], 0f, l, rows[i] + rowW[i], 22f, -1))
+    // Шашки: 3 × 3.
+    val cols = floatArrayOf(0f, l / 2 - 72.5f, l - 145f)
+    for (c in cols) for (i in 0..2) add(Cuboid(c, rows[i], 22f, c + 145f, rows[i] + rowW[i], 100f, -1))
+    // Поперечні дошки — над шашками, на всю ширину.
+    for (c in cols) add(Cuboid(c, 0f, 100f, c + 145f, w, 122f, -1))
+    // Настил: 5 дощок уздовж (145, 100, 145, 100, 145) з рівними проміжками.
+    val boards = floatArrayOf(145f, 100f, 145f, 100f, 145f)
+    val gap = (w - boards.sum()) / (boards.size - 1)
+    var y = 0f
+    for (b in boards) { add(Cuboid(0f, y, 122f, l, y + b, PALLET_HEIGHT_MM.toFloat(), -1)); y += b + gap }
+}
+
+/** Пунктирний каркас межі висоти над палетою. */
+private fun DrawScope.drawLimitFrame(cam: Camera, top: Float, glass: Boolean) {
+    val l = PALLET_L.toFloat()
+    val w = PALLET_W.toFloat()
+    val z0 = PALLET_HEIGHT_MM.toFloat()
+    val c = if (glass) Color(0x33FFFFFF) else SheetInk.copy(alpha = 0.22f)
+    val dash = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx()))
+    val pts = listOf(0f to 0f, l to 0f, l to w, 0f to w)
+    for (i in 0..3) {
+        val (x, y) = pts[i]
+        val (x2, y2) = pts[(i + 1) % 4]
+        drawLine(c, cam.project(x, y, top), cam.project(x2, y2, top), 1.dp.toPx(), pathEffect = dash)
+        drawLine(c, cam.project(x, y, z0), cam.project(x, y, top), 1.dp.toPx(), pathEffect = dash)
+    }
+}
+
 /** Грані коробки: індекси вершин (проти годинникової, якщо дивитись ззовні) і нормаль. */
 private val FACES = listOf(
     intArrayOf(4, 5, 6, 7) to floatArrayOf(0f, 0f, 1f), // верх
@@ -67,6 +107,8 @@ fun Pallet3D(
     /** Підсвітити шари: 0 — непарні (шар 1), 1 — парні (шар 2); інші тьмяніші. null — усі однаково. */
     highlight: Int? = null,
     aspect: Float = PALLET_ASPECT,
+    /** Ліміт висоти (мм, разом з палетою): від нього масштаб — палета не «дихає», коли міняються коробки. */
+    heightLimit: Int = 1800,
 ) {
     val yaw = remember { mutableFloatStateOf(DEFAULT_YAW) }
     val pitch = remember { mutableFloatStateOf(DEFAULT_PITCH) }
@@ -107,7 +149,9 @@ fun Pallet3D(
             },
     ) {
         val top = cuboids.maxOfOrNull { it.z1 } ?: PALLET_HEIGHT_MM.toFloat()
-        val total = maxOf(top, PALLET_HEIGHT_MM + 400f)
+        // Масштаб і положення — від ліміту висоти (не від коробок): палета стоїть на місці й одного розміру,
+        // хоч би якою була висота стосу.
+        val total = maxOf(top, heightLimit.toFloat(), PALLET_HEIGHT_MM + 400f)
         val cx = PALLET_L / 2f
         val cy = PALLET_W / 2f
         val cz = total / 2f
@@ -126,20 +170,22 @@ fun Pallet3D(
         val probe = Camera(ct, st, cp, sp, cx, cy, cz, scale, Offset.Zero, dist)
         var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE; var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
         for (k in 0 until 8) {
-            val p = probe.project(if (k and 1 == 0) 0f else PALLET_L.toFloat(), if (k and 2 == 0) 0f else PALLET_W.toFloat(), if (k and 4 == 0) 0f else top)
+            val p = probe.project(if (k and 1 == 0) 0f else PALLET_L.toFloat(), if (k and 2 == 0) 0f else PALLET_W.toFloat(), if (k and 4 == 0) 0f else total)
             minX = minOf(minX, p.x); maxX = maxOf(maxX, p.x); minY = minOf(minY, p.y); maxY = maxOf(maxY, p.y)
         }
         val mid = Offset(size.width / 2f - (minX + maxX) / 2f, size.height / 2f - (minY + maxY) / 2f)
         val camera = Camera(ct, st, cp, sp, cx, cy, cz, scale, mid, dist)
         val glass = AppStyle.glass
 
-        // Основа палети — завжди під усім, тож першою.
-        drawCuboid(camera, Cuboid(0f, 0f, 0f, PALLET_L.toFloat(), PALLET_W.toFloat(), PALLET_HEIGHT_MM.toFloat(), -1), glass, pallet = true, dim = false)
-        // Точний порядок малювання: що за чим стоїть (див. drawOrder), щоб ближні коробки завжди закривали дальні.
+        // Межа висоти — ледь помітний пунктирний «каркас»: видно, скільки ще місця вгорі.
+        drawLimitFrame(camera, heightLimit.toFloat(), glass)
+        // Палета з деталей (як справжня EUR) і коробки — разом, у точному порядку (що за чим стоїть, див. drawOrder).
+        val all = PALLET_PARTS + cuboids
         val thin = cuboids.size > 600
-        drawOrder(cuboids, camera).forEach {
-            val c = cuboids[it]
-            drawCuboid(camera, c, glass, pallet = false, thin = thin, dim = highlight != null && c.layer % 2 != highlight)
+        drawOrder(all, camera).forEach {
+            val c = all[it]
+            if (c.layer < 0) drawCuboid(camera, c, glass, pallet = true)
+            else drawCuboid(camera, c, glass, pallet = false, thin = thin, dim = highlight != null && c.layer % 2 != highlight)
         }
     }
 }
