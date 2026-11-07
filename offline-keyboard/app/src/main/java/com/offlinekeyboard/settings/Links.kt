@@ -15,10 +15,6 @@ internal object Links {
     private const val REPO = "https://github.com/install-pixel/install-pixell"
     private const val BRANCH = "claude/offline-keyboard-android-w9kw2a"
 
-    const val SHORTCUT_PRESETS = "$REPO/tree/$BRANCH/offline-keyboard/shortcut-presets"
-    const val MODELS_GUIDE = "$REPO/blob/$BRANCH/offline-keyboard/docs/VOICE_AND_TRANSLATION.md"
-    const val MODELS_RELEASE = "$REPO/releases/tag/keyboard-models"
-
     fun modelFile(name: String) = "$REPO/releases/download/keyboard-models/$name"
 
     fun open(context: Context, url: String) {

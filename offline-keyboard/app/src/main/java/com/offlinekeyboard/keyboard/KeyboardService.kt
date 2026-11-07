@@ -119,6 +119,15 @@ class KeyboardService : InputMethodService(),
         settings = runBlocking { withTimeoutOrNull(STARTUP_SETTINGS_TIMEOUT_MS) { repository.settings.first() } }
             ?: KeyboardSettings()
         controller = KeyboardController(settings.startMode, settings.lastLanguage, settings.enabledLanguages)
+        // The base dictionaries are large (30 000 words plus the known forms): read them off the main
+        // thread now, so the first suggestion or correction does not wait for them.
+        val languages = settings.enabledLanguages.toList()
+        scope.launch(Dispatchers.Default) {
+            for (language in languages) {
+                BaseDictionary.isKnown(language, "")
+                BaseDictionary.suggestions(language, "a", 1)
+            }
+        }
         controller.shortcuts = settings.shortcuts
         controller.listener = this
         emojiUsage = EmojiUsage.decode(emojiPrefs().getString(EMOJI_USAGE_KEY, null))
@@ -196,11 +205,26 @@ class KeyboardService : InputMethodService(),
         root.stickerPanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
+        window.window?.let { com.offlinekeyboard.settings.preferHighestRefreshRate(it) }
         render()
         return root
     }
 
     private fun currentTheme() = KeyboardTheme.resolve(settings.themeMode, settings.keyBrightness)
+
+    /**
+     * The fading band at the top of the keyboard is not part of the keyboard for the app: the app is laid
+     * out under it (so it shows through the fade) and taps there reach the app.
+     */
+    override fun onComputeInsets(outInsets: InputMethodService.Insets) {
+        super.onComputeInsets(outInsets)
+        val root = rootView ?: return
+        if (!root.isShown || isFullscreenMode) return
+        val band = root.fadeHeight
+        outInsets.contentTopInsets += band
+        outInsets.visibleTopInsets += band
+        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_VISIBLE
+    }
 
     // Never take over the screen with the extract-text window: typing must happen in the app's own field.
     override fun onEvaluateFullscreenMode(): Boolean = false

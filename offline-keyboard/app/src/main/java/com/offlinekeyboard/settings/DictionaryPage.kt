@@ -1,5 +1,8 @@
 package com.offlinekeyboard.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.dictionary.UserDictionaryStore
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
@@ -34,6 +39,24 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
     var newWord by remember { mutableStateOf("") }
     var confirmClear by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf(false) }
+    var fileMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            fileMessage = runCatching { Backup.importDictionary(context, uri, language) }
+                .map { context.getString(R.string.dictionary_imported, it.added, it.skipped) }
+                .getOrElse { context.getString(R.string.file_read_failed) }
+        }
+    }
+    val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            fileMessage = runCatching { Backup.exportDictionary(context, uri) }
+                .map { context.getString(R.string.file_saved) }
+                .getOrElse { context.getString(R.string.file_write_failed) }
+        }
+    }
 
     PageScaffold(stringResource(R.string.page_dictionary), onBack) {
         Section(stringResource(R.string.dictionary_settings)) {
@@ -97,6 +120,15 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                 Text(stringResource(R.string.dictionary_more, entries.size - MAX_SHOWN), style = MaterialTheme.typography.bodySmall)
             }
             ActionButton(tone = ButtonTone.DANGER, onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
+        }
+
+        Section(stringResource(R.string.dictionary_file)) {
+            Text(stringResource(R.string.dictionary_file_text, language.code), style = MaterialTheme.typography.bodySmall)
+            ActionButton(onClick = { importer.launch(arrayOf("text/plain", "application/json", "application/octet-stream")) }) {
+                Text(stringResource(R.string.dictionary_import))
+            }
+            ActionButton(onClick = { exporter.launch("offkey-dictionary.json") }) { Text(stringResource(R.string.dictionary_export)) }
+            fileMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }
 

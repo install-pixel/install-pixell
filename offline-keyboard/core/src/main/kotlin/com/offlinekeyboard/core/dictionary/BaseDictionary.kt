@@ -4,7 +4,7 @@ import com.offlinekeyboard.core.layout.Language
 import java.util.EnumMap
 
 /**
- * About ten thousand common words per language shipped with the app (`resources/dictionary/<lang>.txt`,
+ * About thirty thousand common words per language shipped with the app (`resources/dictionary/<lang>.txt`,
  * most frequent first; built by `tools/dictionary/build_base.py`), so suggestions and autocorrect work
  * before the user's own dictionary has learned anything. Read-only; the user's words rank above these.
  */
@@ -21,7 +21,7 @@ object BaseDictionary {
 
     /**
      * Whether [word] (lower case) is a correct word: one of [words] or one of the less common words in
-     * `<lang>_known.txt` (about 15-25 thousand forms), which are never suggested but never "corrected".
+     * `<lang>_known.txt` (about 40-120 thousand forms), which are never suggested but never "corrected".
      */
     fun isKnown(language: Language, word: String): Boolean = synchronized(known) {
         known.getOrPut(language) {

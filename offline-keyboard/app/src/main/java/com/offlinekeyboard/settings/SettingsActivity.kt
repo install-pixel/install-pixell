@@ -26,7 +26,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,7 +58,6 @@ import com.offlinekeyboard.keyboard.KeyboardService
 import com.offlinekeyboard.keyboard.ThemeMode
 import com.offlinekeyboard.keyboard.VibrationStrength
 import com.offlinekeyboard.models.ModelStore
-import com.offlinekeyboard.privacy.OfflinePolicy
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -74,6 +75,8 @@ class SettingsActivity : ComponentActivity() {
             statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
+        hideStatusBar(window)
+        preferHighestRefreshRate(window)
         val repository = SettingsRepository(this)
         // After a crash, show the error first (plain views, nothing that could fail again) so it can be
         // copied and sent; "Continue" opens the normal settings.
@@ -153,21 +156,7 @@ private fun previewVibration(context: Context, strength: VibrationStrength) {
             context.getSystemService(android.os.Vibrator::class.java)
         }
     }.getOrNull() ?: return
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-        val effect = when (strength) {
-            VibrationStrength.LIGHT -> android.os.VibrationEffect.EFFECT_TICK
-            VibrationStrength.MEDIUM -> android.os.VibrationEffect.EFFECT_CLICK
-            VibrationStrength.STRONG -> android.os.VibrationEffect.EFFECT_HEAVY_CLICK
-        }
-        runCatching { vibrator.vibrate(android.os.VibrationEffect.createPredefined(effect)) }
-    } else {
-        val ms = when (strength) {
-            VibrationStrength.LIGHT -> 8L
-            VibrationStrength.MEDIUM -> 15L
-            VibrationStrength.STRONG -> 28L
-        }
-        runCatching { vibrator.vibrate(android.os.VibrationEffect.createOneShot(ms, android.os.VibrationEffect.DEFAULT_AMPLITUDE)) }
-    }
+    runCatching { vibrator.vibrate(com.offlinekeyboard.keyboard.tapEffect(strength, vibrator)) }
 }
 
 internal enum class Page(val depth: Int) {
@@ -255,11 +244,13 @@ private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings,
 /** Scrollable page with a title and an optional back button. */
 @Composable
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
+    val scroll = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
+            .fadingEdges(scroll)
+            .verticalScroll(scroll)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -330,7 +321,10 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 96.dp),
-                label = { Text(stringResource(R.string.try_hint)) },
+                // A placeholder inside the field: a floating label would cut the frame.
+                placeholder = { Text(stringResource(R.string.try_hint)) },
+                // Sentence capitals, like a message field, so every typing rule can be tried here.
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             )
         }
 
@@ -405,15 +399,6 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
                 steps = 6,
             )
             Text(stringResource(R.string.key_height_hint), style = MaterialTheme.typography.bodySmall)
-        }
-        Section(stringResource(R.string.section_try)) {
-            var sample by rememberSaveable { mutableStateOf("") }
-            OutlinedTextField(
-                value = sample,
-                onValueChange = { sample = it },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
-                label = { Text(stringResource(R.string.try_hint)) },
-            )
         }
     }
 }
@@ -578,15 +563,50 @@ private fun VoicePage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page
 private fun AboutPage(onReset: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
+    var backupMessage by remember { mutableStateOf<String?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val backupSaver = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            backupMessage = runCatching { Backup.exportAll(context, uri) }
+                .map { context.getString(R.string.file_saved) }
+                .getOrElse { context.getString(R.string.file_write_failed) }
+        }
+    }
+    val backupOpener = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            backupMessage = when (runCatching { Backup.importAll(context, uri) }.getOrNull()) {
+                true -> context.getString(R.string.backup_restored)
+                false -> context.getString(R.string.backup_invalid)
+                null -> context.getString(R.string.file_read_failed)
+            }
+        }
+    }
     PageScaffold(stringResource(R.string.page_about), onBack) {
+        Section(stringResource(R.string.app_name)) {
+            Text(stringResource(R.string.about_description), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall)
+        }
+
         Section(stringResource(R.string.section_privacy)) {
-            val networkPermissions = remember { OfflinePolicy.requestedNetworkPermissions(context) }
-            StatusLine(stringResource(R.string.privacy_no_network), networkPermissions.isEmpty())
             Text(stringResource(R.string.privacy_text), style = MaterialTheme.typography.bodyMedium)
         }
 
-        Section(stringResource(R.string.section_about)) {
-            Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME))
+        Section(stringResource(R.string.backup_title)) {
+            Text(stringResource(R.string.backup_text), style = MaterialTheme.typography.bodySmall)
+            ActionButton(onClick = { backupSaver.launch("offkey-backup.json") }) { Text(stringResource(R.string.backup_export)) }
+            ActionButton(onClick = { backupOpener.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }) {
+                Text(stringResource(R.string.backup_import))
+            }
+            backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+
+        Section(stringResource(R.string.section_settings_reset)) {
             val crash = remember { com.offlinekeyboard.KeyboardApp.crashFile(context).takeIf { it.isFile }?.readText() }
             if (crash != null) {
                 Text(stringResource(R.string.about_last_crash), style = MaterialTheme.typography.titleSmall)

@@ -196,8 +196,6 @@ internal fun ModelsPage(onBack: () -> Unit) {
 
         Section(stringResource(R.string.models_custom)) {
             Text(stringResource(R.string.models_custom_text), style = MaterialTheme.typography.bodyMedium)
-            ActionButton(onClick = { Links.open(context, Links.MODELS_GUIDE) }) { Text(stringResource(R.string.models_open_guide)) }
-            ActionButton(onClick = { Links.open(context, Links.MODELS_RELEASE) }) { Text(stringResource(R.string.models_open_release)) }
         }
     }
 }

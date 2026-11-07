@@ -70,10 +70,6 @@ internal fun GlossaryPage(onBack: () -> Unit) {
                 store.save(text)
                 message = context.getString(R.string.glossary_saved, Glossary.parse(text).size)
             }) { Text(stringResource(R.string.save)) }
-            ActionButton(onClick = {
-                runCatching { context.assets.open(GlossaryStore.EXAMPLE_ASSET).bufferedReader().use { it.readText() } }
-                    .onSuccess { append(it) }
-            }) { Text(stringResource(R.string.glossary_add_example)) }
             ActionButton(onClick = { filePicker.launch(arrayOf("text/plain", "*/*")) }) {
                 Text(stringResource(R.string.presets_import))
             }

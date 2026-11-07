@@ -35,8 +35,7 @@
     <string name="section_translation">Tłumaczenie (ukraiński · polski · angielski)</string>
 
     <string name="section_privacy">Prywatność</string>
-    <string name="privacy_no_network">Aplikacja nie ma uprawnienia do internetu</string>
-    <string name="privacy_text">Bez serwera, konta i analityki. Wpisany tekst i dźwięk nie są zapisywane ani logowane. Twój słownik (jeśli włączysz naukę), słownik tłumaczenia, ustawienia i modele pozostają na urządzeniu i są wyłączone z kopii zapasowej w chmurze. Bluetooth jest używany tylko w trybie klawiatury dla komputera, jeśli go włączysz.</string>
+    <string name="privacy_text">Aplikacja nie ma uprawnienia do internetu: bez serwera, konta i analityki. Wpisany tekst i dźwięk nie są zapisywane ani logowane. Słownik, słownik tłumaczenia, ustawienia i modele zostają na urządzeniu.</string>
 
     <string name="section_about">O aplikacji</string>
     <string name="about_version">Wersja %1$s</string>
@@ -159,16 +158,13 @@
     <string name="models_download">Pobierz</string>
     <string name="models_size">około %1$d MB</string>
     <string name="models_custom">Inne modele (zaawansowane)</string>
-    <string name="models_custom_text">Możesz zaimportować dowolny mały model Vosk (zip z folderami am, conf, graph) dla języka głosu albo pakiet tłumaczenia zbudowany z innego modelu OPUS-MT skryptem tools/mt/export_opus_mt.py. Użyj przycisku «Importuj» w odpowiednim wierszu.</string>
-    <string name="models_open_guide">Opis na GitHubie</string>
-    <string name="models_open_release">Wszystkie pliki</string>
+    <string name="models_custom_text">Możesz dodać własny plik modelu: mały model Vosk (zip z folderami am, conf, graph) dla języka głosu albo pakiet tłumaczenia OffKey. Użyj przycisku «Importuj» w odpowiednim wierszu.</string>
     <string name="presets_title">Gotowe zestawy</string>
     <string name="presets_intro">Ściągi dla popularnych programów: „Pokaż podpowiedzi” otwiera listę ich własnych skrótów — to tylko pomoc. Przycisk „Dodaj” dokłada też do Twojej listy gotowe skróty, które wpisują tekst (formuły Excela, polecenia Vima) — działają w trybie komputerowym.</string>
     <string name="presets_add">Dodaj skróty: %1$d</string>
     <string name="presets_added">Dodano: %1$d</string>
     <string name="presets_nothing_new">Już są na liście</string>
     <string name="presets_import">Importuj z pliku</string>
-    <string name="presets_more">Więcej zestawów na GitHubie</string>
     <string name="presets_import_failed">Nie można odczytać pliku: %1$s</string>
     <string name="presets_show_tips">Pokaż podpowiedzi</string>
     <string name="presets_hide_tips">Ukryj podpowiedzi</string>
@@ -201,15 +197,14 @@
     <string name="bluetooth_use_steps">Otwórz klawiaturę w dowolnym polu (np. poniżej) i stuknij przycisk Bluetooth nad klawiszami: zmieni kolor i wszystko, co piszesz, trafi do komputera. Kolejne stuknięcie — znów piszesz na telefonie.</string>
     <string name="bluetooth_open_keyboard">Stuknij, aby otworzyć klawiaturę</string>
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
-    <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma (np. ы po ukraińsku), nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
+    <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma, nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
     <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
     <string name="page_glossary">Słownik tłumaczenia</string>
     <string name="page_glossary_summary">Twoje poprawki · %1$d</string>
-    <string name="glossary_intro">Jeśli tłumaczenie myli się w słowie (np. w terminach magazynowych), wpisz tu poprawne tłumaczenie. Klawiatura sama wstawi te słowa do tłumaczenia; wiersz będący całym zdaniem jest używany jako tłumaczenie tego zdania.</string>
+    <string name="glossary_intro">Jeśli tłumaczenie myli się w słowie lub frazie, wpisz tu poprawny wariant. Klawiatura sama wstawi go do tłumaczenia; wiersz będący całym zdaniem jest używany jako tłumaczenie tego zdania.</string>
     <string name="glossary_format">Jeden wiersz — jedno słowo: українська | polski | English. Kilka form przez «/»: pierwsza trafia do tłumaczenia. «*» na końcu — dowolna końcówka, np. palet* = paleta, palety, paletach. Wiersze z # to notatki.</string>
     <string name="glossary_field">Słownik</string>
     <string name="glossary_saved">Zapisano · wpisów: %1$d</string>
-    <string name="glossary_add_example">Dodaj przykład magazynowy</string>
     <string name="models_install_downloaded">Zainstaluj pobrane pliki</string>
     <string name="models_install_title">Instalacja modelu klawiatury</string>
     <string name="models_install_running">Instaluję… duże modele — do minuty.</string>
@@ -285,4 +280,20 @@
     <string name="page_typing_keys">Klawisze</string>
     <string name="page_typing_vibration">Wibracje</string>
     <string name="smart_punctuation">Inteligentna interpunkcja: bez spacji przed przecinkiem, ze spacją po nim</string>
+    <string name="about_description">OffKey — klawiatura offline dla języka ukraińskiego, polskiego i angielskiego. Pisanie z podpowiedziami i poprawianiem literówek, własny słownik, wprowadzanie głosowe, tłumaczenie między trzema językami, emoji i naklejki, klawiatura numeryczna, układ komputerowy z Ctrl, Alt i klawiszami F oraz tryb klawiatury Bluetooth dla komputera. Wszystko działa na telefonie — bez internetu, kont i reklam.</string>
+    <string name="section_settings_reset">Resetowanie</string>
+    <string name="dictionary_file">Import i eksport</string>
+    <string name="dictionary_file_text">Import dodaje słowa z pliku:\n• .txt — jedno słowo w wierszu; słowa trafiają do języka wybranego wyżej (%1$s);\n• JSON — lista dla każdego języka: {\"uk\": [\"слово\"], \"pl\": [\"słowo\"], \"en\": [\"word\"]}.\nSłowa krótsze niż 4 litery są pomijane. Eksport zapisuje wszystkie Twoje słowa w JSON, najczęstsze najpierw.</string>
+    <string name="dictionary_import">Importuj słowa z pliku</string>
+    <string name="dictionary_export">Eksportuj słowa do pliku</string>
+    <string name="dictionary_imported">Dodano słów: %1$d, pominięto: %2$d.</string>
+    <string name="file_saved">Zapisano.</string>
+    <string name="file_read_failed">Nie udało się odczytać pliku.</string>
+    <string name="file_write_failed">Nie udało się zapisać pliku.</string>
+    <string name="backup_title">Kopia zapasowa</string>
+    <string name="backup_text">Jeden plik ze wszystkimi ustawieniami (także własne emoji i skróty), Twoim słownikiem i glosariuszem tłumaczenia. Przywrócenie zastępuje to, co jest teraz na tym telefonie. Modele głosu i tłumaczenia nie są dołączone: dodaj je ponownie na stronie modeli.</string>
+    <string name="backup_export">Zapisz kopię zapasową</string>
+    <string name="backup_import">Przywróć z kopii zapasowej</string>
+    <string name="backup_restored">Przywrócono z kopii zapasowej.</string>
+    <string name="backup_invalid">Ten plik nie jest kopią zapasową OffKey.</string>
 </resources>

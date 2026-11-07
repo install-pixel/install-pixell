@@ -46,4 +46,26 @@ class NumpadTest {
         c.onStartField(numeric = false)
         assertEquals(Layer.LETTERS, c.layer)
     }
+
+    @Test
+    fun `Backspace and Enter sit where they are on the letters`() {
+        for (language in Language.entries) {
+            val pad = LayoutProvider.layout(KeyboardMode.MOBILE, language, Layer.NUMPAD)
+            val letters = LayoutProvider.layout(KeyboardMode.MOBILE, language, Layer.LETTERS)
+            fun special(layout: com.offlinekeyboard.core.layout.KeyboardLayout, row: Int) =
+                (layout.rows[row].last().action as? KeyAction.Special)?.key
+            assertEquals(special(letters, 2), special(pad, 2))
+            assertEquals(SpecialKey.BACKSPACE, special(pad, 2))
+            assertEquals(special(letters, 3), special(pad, 3))
+        }
+    }
+
+    @Test
+    fun `every symbols row reaches both edges`() {
+        for (language in Language.entries) for (layer in listOf(Layer.SYMBOLS, Layer.SYMBOLS_MORE)) {
+            val layout = LayoutProvider.layout(KeyboardMode.MOBILE, language, layer)
+            val widths = layout.rows.map { row -> row.sumOf { it.width.toDouble() } }
+            assertTrue("$language $layer $widths", widths.all { kotlin.math.abs(it - widths.max()) < 0.01 })
+        }
+    }
 }

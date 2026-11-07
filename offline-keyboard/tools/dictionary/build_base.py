@@ -13,7 +13,7 @@ words of the language that pass three filters:
   subtitles, names and typos;
 * alphabet and a short list of rude word stems.
 
-It also writes <lang>_known.txt: every word of the 50k frequency list that passes the spelling and
+It also writes <lang>_known.txt: every word of the first 200k lines of the full frequency list that passes the spelling and
 alphabet checks (rude words included). Autocorrect leaves those alone even though they are too rare to
 be suggested, so a correct but less common word form is never "fixed" into a frequent one.
 
@@ -26,11 +26,13 @@ from pathlib import Path
 
 from spylls.hunspell import Dictionary
 
-TOTAL = 10_000
+TOTAL = 30_000
+# Lines of the full frequency list that are checked (the rest are rare, mostly typos and names).
+SCAN = 200_000
 ROOT = Path(__file__).resolve().parents[2]
 WORK = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/offkey-dictionary")
 
-FREQ = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/{0}/{0}_50k.txt"
+FREQ = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/{0}/{0}_full.txt"
 HUNSPELL = "https://raw.githubusercontent.com/LibreOffice/dictionaries/master/{}"
 LANGUAGES = {
     "uk": ("uk_UA/uk_UA", r"[абвгґдеєжзиіїйклмнопрстуфхцчшщьюя'ʼ-]+"),
@@ -53,7 +55,7 @@ def fetch(url, path):
 
 def build(lang):
     dic_path, alphabet = LANGUAGES[lang]
-    freq = fetch(FREQ.format(lang), WORK / f"{lang}_50k.txt")
+    freq = fetch(FREQ.format(lang), WORK / f"{lang}_full.txt")
     name = Path(dic_path).name
     fetch(HUNSPELL.format(dic_path + ".aff"), WORK / f"{name}.aff")
     fetch(HUNSPELL.format(dic_path + ".dic"), WORK / f"{name}.dic")
@@ -66,7 +68,7 @@ def build(lang):
     seen = {w.lower() for w in curated}
     words = list(curated)
     known = []
-    for line in freq.read_text(encoding="utf-8").splitlines():
+    for line in freq.read_text(encoding="utf-8").splitlines()[:SCAN]:
         word = line.split(" ")[0].strip().lower()
         if len(word) < 2 or not pattern.fullmatch(word) or not speller.lookup(word):
             continue

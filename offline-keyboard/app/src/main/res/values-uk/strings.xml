@@ -35,8 +35,7 @@
     <string name="section_translation">Переклад (українська · польська · англійська)</string>
 
     <string name="section_privacy">Приватність</string>
-    <string name="privacy_no_network">Застосунок не має дозволу на інтернет</string>
-    <string name="privacy_text">Без сервера, облікового запису й аналітики. Набраний текст і аудіо не зберігаються й не журналюються. Ваш словник (якщо ввімкнено навчання), словник перекладу, налаштування та моделі залишаються на пристрої й виключені з хмарного резервного копіювання. Bluetooth використовується лише в режимі клавіатури для комп\'ютера, якщо ви його ввімкнете.</string>
+    <string name="privacy_text">Застосунок не має дозволу на інтернет: без сервера, облікового запису й аналітики. Набраний текст і аудіо не зберігаються й не журналюються. Словник, словник перекладу, налаштування та моделі залишаються на пристрої.</string>
 
     <string name="section_about">Про застосунок</string>
     <string name="about_version">Версія %1$s</string>
@@ -159,16 +158,13 @@
     <string name="models_download">Завантажити</string>
     <string name="models_size">близько %1$d МБ</string>
     <string name="models_custom">Інші моделі (для досвідчених)</string>
-    <string name="models_custom_text">Можна імпортувати будь-яку малу модель Vosk (zip з папками am, conf, graph) для мови голосу або пакет перекладу, зібраний з іншої моделі OPUS-MT скриптом tools/mt/export_opus_mt.py. Використайте кнопку «Імпортувати» потрібного рядка.</string>
-    <string name="models_open_guide">Опис на GitHub</string>
-    <string name="models_open_release">Усі файли</string>
+    <string name="models_custom_text">Можна додати власний файл моделі: малу модель Vosk (zip з папками am, conf, graph) для мови голосу або пакет перекладу OffKey. Використайте кнопку «Імпортувати» потрібного рядка.</string>
     <string name="presets_title">Готові набори</string>
     <string name="presets_intro">Шпаргалки для популярних програм: «Показати підказки» відкриває список їхніх власних комбінацій — це просто довідка. Кнопка «Додати» ще й кладе в ваш список готові комбінації, що друкують текст (формули Excel, команди Vim), — вони працюють у комп\'ютерному режимі.</string>
     <string name="presets_add">Додати комбінації: %1$d</string>
     <string name="presets_added">Додано: %1$d</string>
     <string name="presets_nothing_new">Уже є у вашому списку</string>
     <string name="presets_import">Імпортувати з файла</string>
-    <string name="presets_more">Більше наборів на GitHub</string>
     <string name="presets_import_failed">Не вдалося прочитати файл: %1$s</string>
     <string name="presets_show_tips">Показати підказки</string>
     <string name="presets_hide_tips">Сховати підказки</string>
@@ -201,15 +197,14 @@
     <string name="bluetooth_use_steps">Відкрийте клавіатуру в будь-якому полі (наприклад, нижче) і торкніться кнопки Bluetooth над клавішами: вона стане кольоровою, і все, що ви друкуєте, піде на комп\'ютер. Ще дотик — знову друкуєте на телефоні.</string>
     <string name="bluetooth_open_keyboard">Торкніться, щоб відкрити клавіатуру</string>
     <string name="bluetooth_section_notes">Варто знати</string>
-    <string name="bluetooth_notes">Клавіатура надсилає клавіші, як справжня: на комп\'ютері має бути та сама мова, що й на телефоні (Укр/Pol/Eng). Win+Space перемикає обидві. Комп\'ютерна розкладка дає Ctrl, Alt, Win, F1–F12 і стрілки. Символи, яких немає в розкладці комп\'ютера (наприклад, ы в українській), не надсилаються. Підказки, переклад і голос працюють лише на телефоні.</string>
+    <string name="bluetooth_notes">Клавіатура надсилає клавіші, як справжня: на комп\'ютері має бути та сама мова, що й на телефоні (Укр/Pol/Eng). Win+Space перемикає обидві. Комп\'ютерна розкладка дає Ctrl, Alt, Win, F1–F12 і стрілки. Символи, яких немає в розкладці комп\'ютера, не надсилаються. Підказки, переклад і голос працюють лише на телефоні.</string>
     <string name="translation_direction_hint">З мови клавіатури на цю мову. Кнопка перекладу над клавішами перемикає між двома іншими мовами.</string>
     <string name="page_glossary">Словник перекладу</string>
     <string name="page_glossary_summary">Ваші виправлення · %1$d</string>
-    <string name="glossary_intro">Якщо переклад помиляється в слові (наприклад, у складських термінах), запишіть тут правильний переклад. Клавіатура сама підставить ці слова в переклад; рядок, що є цілим реченням, використовується як переклад цього речення.</string>
+    <string name="glossary_intro">Якщо переклад помиляється в слові чи фразі, запишіть тут правильний варіант. Клавіатура сама підставлятиме його в переклад; рядок, що є цілим реченням, використовується як переклад цього речення.</string>
     <string name="glossary_format">Один рядок — одне слово: українська | polski | English. Кілька форм — через «/»: перша підставляється в переклад. «*» у кінці — будь-яке закінчення, наприклад палет* = палета, палети, палетах. Рядки з # — примітки.</string>
     <string name="glossary_field">Словник</string>
     <string name="glossary_saved">Збережено · записів: %1$d</string>
-    <string name="glossary_add_example">Додати складський приклад</string>
     <string name="models_install_downloaded">Встановити завантажені файли</string>
     <string name="models_install_title">Встановлення моделі клавіатури</string>
     <string name="models_install_running">Встановлюю… великі моделі — до хвилини.</string>
@@ -285,4 +280,20 @@
     <string name="page_typing_keys">Клавіші</string>
     <string name="page_typing_vibration">Вібрація</string>
     <string name="smart_punctuation">Розумна пунктуація: без пробілу перед комою, з пробілом після</string>
+    <string name="about_description">OffKey — офлайн-клавіатура для української, польської та англійської мов. Набір із підказками й виправленням одруківок, власний словник, голосове введення, переклад між трьома мовами, емодзі й стікери, цифрова клавіатура, комп\'ютерна розкладка з Ctrl, Alt і F-клавішами, а також режим Bluetooth-клавіатури для комп\'ютера. Усе працює просто на телефоні — без інтернету, облікових записів і реклами.</string>
+    <string name="section_settings_reset">Скидання</string>
+    <string name="dictionary_file">Імпорт і експорт</string>
+    <string name="dictionary_file_text">Імпорт додає слова з файлу:\n• .txt — одне слово в рядку; слова потрапляють у мову, вибрану вище (%1$s);\n• JSON — список для кожної мови: {\"uk\": [\"слово\"], \"pl\": [\"słowo\"], \"en\": [\"word\"]}.\nСлова коротші за 4 літери пропускаються. Експорт зберігає всі ваші слова в JSON, найуживаніші першими.</string>
+    <string name="dictionary_import">Імпортувати слова з файлу</string>
+    <string name="dictionary_export">Експортувати слова у файл</string>
+    <string name="dictionary_imported">Додано слів: %1$d, пропущено: %2$d.</string>
+    <string name="file_saved">Збережено.</string>
+    <string name="file_read_failed">Не вдалося прочитати файл.</string>
+    <string name="file_write_failed">Не вдалося зберегти файл.</string>
+    <string name="backup_title">Резервна копія</string>
+    <string name="backup_text">Один файл з усіма налаштуваннями (разом із власними емодзі й скороченнями), вашим словником і глосарієм перекладу. Відновлення замінює те, що зараз є на цьому телефоні. Моделі голосу й перекладу не входять: додайте їх знову на сторінці моделей.</string>
+    <string name="backup_export">Зберегти резервну копію</string>
+    <string name="backup_import">Відновити з резервної копії</string>
+    <string name="backup_restored">Відновлено з резервної копії.</string>
+    <string name="backup_invalid">Цей файл не є резервною копією OffKey.</string>
 </resources>

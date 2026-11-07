@@ -35,7 +35,6 @@ class GlossaryStore private constructor(context: Context) {
 
     companion object {
         private const val FILE_NAME = "translation_glossary.txt"
-        const val EXAMPLE_ASSET = "warehouse.glossary"
 
         @Volatile
         private var instance: GlossaryStore? = null
