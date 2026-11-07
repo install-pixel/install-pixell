@@ -545,6 +545,18 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
+    override fun repeatHasEffect(key: Key): Boolean {
+        if (bluetoothSending && bluetoothConnected) return true
+        if (translateActive && !composer.isEmpty) return true
+        val ic = currentInputConnection ?: return false
+        if (!ic.getSelectedText(0).isNullOrEmpty()) return true
+        return when ((key.action as? KeyAction.Special)?.key) {
+            SpecialKey.BACKSPACE, SpecialKey.LEFT, SpecialKey.HOME -> !ic.getTextBeforeCursor(1, 0).isNullOrEmpty()
+            SpecialKey.DELETE, SpecialKey.RIGHT, SpecialKey.END -> !ic.getTextAfterCursor(1, 0).isNullOrEmpty()
+            else -> true
+        }
+    }
+
     override fun onLanguageKeyLongPress() {
         getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
     }

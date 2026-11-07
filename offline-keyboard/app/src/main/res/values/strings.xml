@@ -86,7 +86,7 @@
     <string name="dictionary_learn">Learn words I type</string>
     <string name="dictionary_learn_hint">Off by default. Single words are stored on this phone only, with a use count — never whole messages. Nothing is learned in password, private (incognito), e-mail and address fields.</string>
     <string name="dictionary_suggestions">Show word suggestions</string>
-    <string name="dictionary_suggestions_hint">Suggestions come from about 350 common words per language plus your own words (shown first). Tap inserts a word; long press removes one of your words.</string>
+    <string name="dictionary_suggestions_hint">Suggestions come from about 30,000 common words per language plus your own words (shown first). Tap inserts a word; long press removes one of your words.</string>
     <string name="dictionary_words">Words</string>
     <string name="dictionary_add_word">New word</string>
     <string name="dictionary_add_invalid">Only letters, apostrophe and hyphen; 2–40 characters.</string>
@@ -197,7 +197,7 @@
     <string name="bluetooth_use_steps">Open the keyboard in any field (for example below) and tap the Bluetooth button above the keys: it turns coloured and everything you type goes to the computer. Tap it again to type on the phone.</string>
     <string name="bluetooth_open_keyboard">Tap here to open the keyboard</string>
     <string name="bluetooth_section_notes">Good to know</string>
-    <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for are not sent. Suggestions, translation and voice work only on the phone.</string>
+    <string name="bluetooth_notes">The keyboard sends keys, like a real one: the computer must use the same language as the phone (Укр/Pol/Eng). Win+Space switches both. The computer keyboard mode gives you Ctrl, Alt, Win, F1–F12 and arrows. Characters the computer layout has no key for are not sent. While keys are sent to the computer, suggestions, translation and voice are paused: every key goes straight to the computer. Typing on the phone itself (also in the computer layout) has them all.</string>
     <string name="translation_direction_hint">From the keyboard language into this one. The translate button above the keys switches between the two other languages.</string>
     <string name="page_glossary">Translation glossary</string>
     <string name="page_glossary_summary">Your corrections · %1$d</string>

@@ -5,6 +5,19 @@ import android.view.Display
 import android.view.Window
 import androidx.compose.foundation.ScrollState
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Velocity
+import kotlin.math.abs
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -76,3 +89,58 @@ internal fun Modifier.fadingEdges(scroll: ScrollState, length: Dp = 18.dp): Modi
             )
         }
     }
+
+/**
+ * A light spring at the ends of a scroll: dragging past the top or the bottom (also on a page shorter than
+ * the screen) pulls the content a little, with growing resistance, and it springs back on release; a fling
+ * that hits an end gives a small bounce. Put it right before the `verticalScroll` it belongs to.
+ */
+internal fun Modifier.bounce(): Modifier = composed {
+    var offset by remember { mutableFloatStateOf(0f) }
+    val limit = with(LocalDensity.current) { 96.dp.toPx() }
+    val connection = remember(limit) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val o = offset
+                if (o == 0f || source != NestedScrollSource.UserInput) return Offset.Zero
+                // Pulling back towards rest first undoes the stretch.
+                if ((o > 0f && available.y < 0f) || (o < 0f && available.y > 0f)) {
+                    val next = if (o > 0f) (o + available.y).coerceAtLeast(0f) else (o + available.y).coerceAtMost(0f)
+                    offset = next
+                    return Offset(0f, next - o)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
+                val resistance = 0.4f * (1f - abs(offset) / limit).coerceIn(0.05f, 1f)
+                offset = (offset + available.y * resistance).coerceIn(-limit, limit)
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (offset == 0f) return Velocity.Zero
+                animate(offset, 0f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 380f)) { v, _ -> offset = v }
+                return available
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (available.y == 0f) {
+                    if (offset != 0f) animate(offset, 0f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 380f)) { v, _ -> offset = v }
+                    return Velocity.Zero
+                }
+                // The fling hit an end: a small bump in its direction, then back.
+                animate(
+                    offset, 0f,
+                    initialVelocity = (available.y * 0.12f).coerceIn(-2500f, 2500f),
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+                ) { v, _ -> offset = v.coerceIn(-limit, limit) }
+                return available
+            }
+        }
+    }
+    this
+        .nestedScroll(connection)
+        .graphicsLayer { translationY = offset }
+}

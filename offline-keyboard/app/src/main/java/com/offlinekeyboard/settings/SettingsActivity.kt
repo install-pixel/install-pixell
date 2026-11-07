@@ -250,6 +250,7 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
             .fillMaxSize()
             .safeDrawingPadding()
             .fadingEdges(scroll)
+            .bounce()
             .verticalScroll(scroll)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
