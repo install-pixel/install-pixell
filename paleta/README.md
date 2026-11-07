@@ -1,10 +1,12 @@
 # Stackraft (Палета)
 
 Картка нового товару для складу: вписуєш розміри й вагу коробки — програма рахує, скільки коробок
-поміститься на палету 1,20 × 0,80, показує розкладку шару зверху й заповнює бланк, схожий на паперову
-«Картку нового артикулу».
+поміститься на палету 1,20 × 0,80, показує розкладку шару зверху й у 3D і заповнює бланк — копію паперової
+«Картки нового артикулу».
 
-Тестовий APK (завжди найновіший): `https://github.com/install-pixel/install-pixell/releases/download/paleta-latest/Paleta.apk`
+- Версія 1.0.0 (постійний реліз): `https://github.com/install-pixel/install-pixell/releases/tag/paleta-v1.0.0`
+- Найновіша збірка (завжди): `https://github.com/install-pixel/install-pixell/releases/download/paleta-latest/Stackraft.apk`
+  (стара назва `Paleta.apk` теж працює)
 
 ## Що вміє
 

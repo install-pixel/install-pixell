@@ -1,0 +1,206 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "d5fedb2e0f0fc1a115afea645831398f",
+    "entities": [
+      {
+        "tableName": "cards",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, `sku` TEXT NOT NULL, `boxL` INTEGER NOT NULL, `boxW` INTEGER NOT NULL, `boxH` INTEGER NOT NULL, `boxG` INTEGER NOT NULL, `unitsPerBox` INTEGER NOT NULL, `unitL` INTEGER, `unitW` INTEGER, `unitH` INTEGER, `unitG` INTEGER, `heightLimit` INTEGER NOT NULL, `weightLimitG` INTEGER NOT NULL, `palletG` INTEGER NOT NULL, `overhang` INTEGER NOT NULL, `adr` INTEGER NOT NULL, `layout` TEXT NOT NULL, `customLayout` INTEGER NOT NULL, `perLayer` INTEGER NOT NULL, `layers` INTEGER NOT NULL, `boxes` INTEGER NOT NULL, `partial` INTEGER NOT NULL, `heightMm` INTEGER NOT NULL, `weightG` INTEGER NOT NULL, `limitedByWeight` INTEGER NOT NULL, `layersByHeight` INTEGER NOT NULL, `layout2` TEXT, `perLayer2` INTEGER NOT NULL DEFAULT 0)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sku",
+            "columnName": "sku",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "boxL",
+            "columnName": "boxL",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "boxW",
+            "columnName": "boxW",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "boxH",
+            "columnName": "boxH",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "boxG",
+            "columnName": "boxG",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unitsPerBox",
+            "columnName": "unitsPerBox",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unitL",
+            "columnName": "unitL",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "unitW",
+            "columnName": "unitW",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "unitH",
+            "columnName": "unitH",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "unitG",
+            "columnName": "unitG",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "heightLimit",
+            "columnName": "heightLimit",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightLimitG",
+            "columnName": "weightLimitG",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "palletG",
+            "columnName": "palletG",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "overhang",
+            "columnName": "overhang",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "adr",
+            "columnName": "adr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "layout",
+            "columnName": "layout",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customLayout",
+            "columnName": "customLayout",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "perLayer",
+            "columnName": "perLayer",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "layers",
+            "columnName": "layers",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "boxes",
+            "columnName": "boxes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partial",
+            "columnName": "partial",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heightMm",
+            "columnName": "heightMm",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weightG",
+            "columnName": "weightG",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "limitedByWeight",
+            "columnName": "limitedByWeight",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "layersByHeight",
+            "columnName": "layersByHeight",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "layout2",
+            "columnName": "layout2",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "perLayer2",
+            "columnName": "perLayer2",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cards_sku",
+            "unique": false,
+            "columnNames": [
+              "sku"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cards_sku` ON `${TABLE_NAME}` (`sku`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd5fedb2e0f0fc1a115afea645831398f')"
+    ]
+  }
+}
