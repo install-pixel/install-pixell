@@ -96,9 +96,17 @@ fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKi
  * вибрані лягають у нову папку.
  */
 @Composable
-fun ManyFoundDialog(found: List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>, suggestedFolder: String, onDismiss: () -> Unit, onSave: (List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>, String) -> Unit) {
+fun ManyFoundDialog(
+    found: List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>,
+    suggestedFolder: String,
+    /** Ті, що вже збережені: зміст → де лежать (назва папки; порожньо — загальний список). */
+    existing: Map<String, String>,
+    onDismiss: () -> Unit,
+    onSave: (List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>, String) -> Unit,
+) {
     val haptics = LocalHaptics.current
-    val picked = remember { androidx.compose.runtime.mutableStateListOf<Int>().apply { addAll(found.indices) } }
+    // Нові — одразу вибрані; ті, що вже є, — ні (щоб не переїхали непомітно з того місця, де їх зберегли).
+    val picked = remember { androidx.compose.runtime.mutableStateListOf<Int>().apply { addAll(found.indices.filter { found[it].first !in existing }) } }
     var folder by remember { mutableStateOf("") }
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.many_found_title, found.size), tall = true, buttons = {
         SheetButton(stringResource(R.string.cancel), onDismiss)
@@ -121,7 +129,15 @@ fun ManyFoundDialog(found: List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind
                         Modifier.size(26.dp).pencilFrame(13.dp, seed = i + 5, alpha = if (on) 0.9f else 0.35f, ink = if (on) SelectedInk else SheetInk),
                         contentAlignment = Alignment.Center,
                     ) { if (on) GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary, size = 16.dp) }
-                    Text(text.replace(Regex("\\s+"), " "), color = Oled.TextPrimary, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp).weight(1f))
+                    Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                        Text(text.replace(Regex("\\s+"), " "), color = Oled.TextPrimary, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        existing[text]?.let { where ->
+                            Text(
+                                if (where.isEmpty()) stringResource(R.string.many_exists_list) else stringResource(R.string.many_exists_folder, where),
+                                color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
             }
             WindowHint(stringResource(R.string.many_found_hint))
@@ -542,9 +558,18 @@ fun FolderDeleteDialog(folder: com.blacklaunch.qrcodes.data.Folder, count: Int, 
 
 /** «У папку…»: наявні папки й «Нова папка». */
 @Composable
-fun FolderPicker(folders: List<com.blacklaunch.qrcodes.data.Folder>, current: Long?, onDismiss: () -> Unit, onPick: (com.blacklaunch.qrcodes.data.Folder) -> Unit, onNew: () -> Unit) {
+fun FolderPicker(
+    folders: List<com.blacklaunch.qrcodes.data.Folder>,
+    current: Long?,
+    onDismiss: () -> Unit,
+    onPick: (com.blacklaunch.qrcodes.data.Folder) -> Unit,
+    onNew: () -> Unit,
+    /** Вийняти з папки в загальний список (null — пункту немає). */
+    onTakeOut: (() -> Unit)? = null,
+) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.folder_move)) {
         Column(Modifier.bouncyScroll()) {
+            if (onTakeOut != null) MenuRow(Glyph.Back, stringResource(R.string.folder_take_out), onTakeOut)
             folders.filter { it.id != current }.forEach { f -> MenuRow(Glyph.Folder, f.name, { onPick(f) }) }
             MenuRow(Glyph.Plus, stringResource(R.string.folder_new), onNew)
         }

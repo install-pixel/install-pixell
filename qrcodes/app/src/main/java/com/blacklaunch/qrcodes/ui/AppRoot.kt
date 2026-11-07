@@ -684,7 +684,13 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         val photoFolder = stringResource(R.string.many_folder)
         val doneText = stringResource(R.string.batch_done)
         val toLabel = stringResource(R.string.sel_to_label)
-        ManyFoundDialog(found, photoFolder, onDismiss = { manyFound = null }) { chosen, folderName ->
+        // Що з цього вже збережено й де лежить — показується біля коду, такі не вибрані одразу.
+        val existing = remember(found, saved, folders) {
+            val folderNames = folders.associate { it.id to it.name }
+            val byContent = saved.orEmpty().associateBy { it.content }
+            found.mapNotNull { (text, _) -> byContent[text]?.let { c -> text to (c.folderId?.let { folderNames[it] } ?: "") } }.toMap()
+        }
+        ManyFoundDialog(found, photoFolder, existing, onDismiss = { manyFound = null }) { chosen, folderName ->
             manyFound = null
             vm.createBatch(chosen.map { it.first }, com.blacklaunch.qrcodes.qr.CodeKind.QR, folderName, kinds = chosen.map { it.second ?: com.blacklaunch.qrcodes.qr.CodeKind.QR }) { codes ->
                 show(doneText.format(codes.size, folderName), toLabel) { labelFor = codes }
@@ -706,6 +712,16 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
             onNew = {
                 moveMany = null
                 newFolderMany = list
+            },
+            // Хоч один вибраний — у папці: можна вийняти всі вибрані в загальний список.
+            onTakeOut = if (list.any { it.folderId != null }) {
+                {
+                    moveMany = null
+                    list.filter { it.folderId != null }.forEach { vm.moveToFolder(it, null) }
+                    selection = null
+                }
+            } else {
+                null
             },
         )
     }
