@@ -128,6 +128,9 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
     // Вибрали більше, ніж уміщається на наклейку, — питаємо, що робити.
     var capFor by remember { mutableStateOf<List<QrCode>?>(null) }
     var moveMany by remember { mutableStateOf<List<QrCode>?>(null) }
+    // Порожня нова папка (з меню «Створити») і коди, знайдені на одному фото.
+    var emptyFolderAsk by remember { mutableStateOf(false) }
+    var manyFound by remember { mutableStateOf<List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>?>(null) }
     var newFolderMany by remember { mutableStateOf<List<QrCode>?>(null) }
     val labelPrefs = remember { com.blacklaunch.qrcodes.label.LabelPrefs(context) }
     // Відкрита папка у списку — нові коди й форми створюються в ній.
@@ -279,7 +282,7 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
 
     // Під меню й вікнами — розмитий і притемнений фон, як у Black Glass. Камера, друк і код на весь екран закривають
     // усе чорним — під ними нічого не розмиваємо (зайва робота для відеочипа й батареї).
-    val blur = backdropAmount(capFor != null || moveMany != null || newFolderMany != null || folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || formEditing)
+    val blur = backdropAmount(capFor != null || moveMany != null || emptyFolderAsk || manyFound != null || newFolderMany != null || folderMenuFor != null || folderDelete != null || combine != null || folderRename != null || moveFor != null || newFolderFor != null || formOpen != null || settingsOpen || modeMenu || menuFor != null || renameFor != null || contentFor != null || batchOpen != null || formEditing)
     // Останні значення лишаються, поки екран плавно зникає.
     var lastCamera by remember { mutableStateOf(InputMode.ScanQr) }
     camera?.let { lastCamera = it }
@@ -422,6 +425,11 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                     mode = InputMode.Manual
                 },
                 onMessage = { show(it) },
+                onMany = { list ->
+                    camera = null
+                    mode = InputMode.Manual
+                    manyFound = list
+                },
             )
         }
 
@@ -505,6 +513,10 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
                     InputMode.Manual -> focusAfterCamera++
                     InputMode.ScanQr, InputMode.PhotoText -> openCamera(picked)
                 }
+            },
+            onNewFolder = {
+                modeMenu = false
+                emptyFolderAsk = true
             },
             onFields = {
                 // Нова форма для сканера — одразу редактор; готова з'явиться в списку збережених.
@@ -655,6 +667,28 @@ fun AppRoot(vm: QrViewModel, sharedText: String?, onSharedConsumed: () -> Unit, 
         FolderNameDialog(stringResource(R.string.folder_rename), folder.name, onDismiss = { folderRename = null }) {
             vm.renameFolder(folder.id, it)
             folderRename = null
+        }
+    }
+    // Нова порожня папка: назва → папка відкривається, і нові коди створюються вже в ній.
+    if (emptyFolderAsk) {
+        FolderNameDialog(textNewFolder, "", onDismiss = { emptyFolderAsk = false }, suggested = nextFolderName) { name ->
+            emptyFolderAsk = false
+            vm.createFolder(name.ifBlank { nextFolderName }, emptyList(), System.currentTimeMillis()) { id ->
+                currentFolder = id
+                scope.launch { pager.animateScrollToPage(1, animationSpec = PAGE_ANIM) }
+            }
+        }
+    }
+    // Кілька кодів на одному фото — вибрати й зберегти в нову папку.
+    manyFound?.let { found ->
+        val photoFolder = stringResource(R.string.many_folder)
+        val doneText = stringResource(R.string.batch_done)
+        val toLabel = stringResource(R.string.sel_to_label)
+        ManyFoundDialog(found, photoFolder, onDismiss = { manyFound = null }) { chosen, folderName ->
+            manyFound = null
+            vm.createBatch(chosen.map { it.first }, com.blacklaunch.qrcodes.qr.CodeKind.QR, folderName, kinds = chosen.map { it.second ?: com.blacklaunch.qrcodes.qr.CodeKind.QR }) { codes ->
+                show(doneText.format(codes.size, folderName), toLabel) { labelFor = codes }
+            }
         }
     }
     // Вибрані — у папку (наявну чи нову).

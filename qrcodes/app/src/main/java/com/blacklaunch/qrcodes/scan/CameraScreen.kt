@@ -124,7 +124,14 @@ private sealed interface PhotoState {
  * Усе розпізнавання — на телефоні, без мережі.
  */
 @Composable
-fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.CodeKind?) -> Unit, onClose: () -> Unit, onMessage: (String) -> Unit) {
+fun CameraScreen(
+    scanQr: Boolean,
+    onResult: (String, com.blacklaunch.qrcodes.qr.CodeKind?) -> Unit,
+    onClose: () -> Unit,
+    onMessage: (String) -> Unit,
+    /** На фото з галереї кілька різних кодів — усі (зміст і вид); null — береться один, як раніше. */
+    onMany: ((List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>) -> Unit)? = null,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptics = LocalHaptics.current
@@ -218,15 +225,20 @@ fun CameraScreen(scanQr: Boolean, onResult: (String, com.blacklaunch.qrcodes.qr.
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             if (scanQr) {
-                val found = withContext<com.google.mlkit.vision.barcode.common.Barcode?>(Dispatchers.Default) {
-                    val image = runCatching { InputImage.fromFilePath(context, uri) }.getOrNull() ?: return@withContext null
+                // Усі коди з фото (різні, без повторів); один — як раніше, кілька — список для збереження в папку.
+                val all = withContext<List<com.google.mlkit.vision.barcode.common.Barcode>>(Dispatchers.Default) {
+                    val image = runCatching { InputImage.fromFilePath(context, uri) }.getOrNull() ?: return@withContext emptyList()
                     suspendCancellableCoroutine { cont ->
                         scanner.process(image)
-                            .addOnSuccessListener { list -> cont.resume(list.firstOrNull { !it.rawValue.isNullOrEmpty() }) }
-                            .addOnFailureListener { cont.resume(null) }
+                            .addOnSuccessListener { list -> cont.resume(list.filter { !it.rawValue.isNullOrEmpty() }.distinctBy { it.rawValue }) }
+                            .addOnFailureListener { cont.resume(emptyList()) }
                     }
                 }
-                if (found != null) deliver(found.rawValue!!, found.codeFormat()) else onMessage(notFoundQr)
+                when {
+                    all.isEmpty() -> onMessage(notFoundQr)
+                    all.size > 1 && onMany != null -> onMany(all.map { it.rawValue!! to it.codeFormat() })
+                    else -> deliver(all.first().rawValue!!, all.first().codeFormat())
+                }
             } else {
                 val bitmap = withContext(Dispatchers.IO) { loadBitmap(context, uri) }
                 if (bitmap != null) recognize(bitmap) else onMessage(notFoundText)

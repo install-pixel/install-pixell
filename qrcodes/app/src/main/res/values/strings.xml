@@ -178,9 +178,9 @@
     <string name="help">How to use</string>
     <string name="help_back">Back</string>
     <string name="help_create_t">Create a code</string>
-    <string name="help_create">• Swipe left from “Favourites” or tap “Create” at the top.\n• Type in the capsule at the bottom — the code appears above at once. The round button on the right — save.\n• “QR code / Barcode” — what to create; the third button — the type (QR, Data Matrix, Aztec; for barcodes — Auto, EAN, UPC, Code 39…). The choice is remembered.\n• The icon on the left of the capsule — input mode: by hand, scan someone’s code, text from a photo, Wi‑Fi, contact, site.\n• Also there — “Many codes at once”: a numbered series (PALLET-001…100) or a list — all into a new folder. And “Scanner form” — see its own section.\n• A folder is open — the new code is saved in it, at the end.\n• Text shared from another app lands in the field by itself.</string>
+    <string name="help_create">• Swipe left from “Favourites” or tap “Create” at the top.\n• Type in the capsule at the bottom — the code appears above at once. The round button on the right — save.\n• “QR code / Barcode” — what to create; the third button — the type (QR, Data Matrix, Aztec; for barcodes — Auto, EAN, UPC, Code 39…). The choice is remembered.\n• The icon on the left of the capsule — input mode: by hand, scan someone’s code, text from a photo, Wi‑Fi, contact, site.\n• Also there — “Many codes at once”: a numbered series (PALLET-001…100) or a list — all into a new folder. And “Scanner form” — see its own section. And “New folder” — an empty one; it opens at once and new codes go into it.\n• A folder is open — the new code is saved in it, at the end.\n• Text shared from another app lands in the field by itself.</string>
     <string name="help_camera_t">Camera and text from a photo</string>
-    <string name="help_camera">• “Scan QR” — point the camera at a code, its copy appears, save it.\n• “Text from photo” — take a photo, found words get frames.\n• Tap a word — choose or drop it.\n• Hold a word and drag — everything up to your finger is chosen.\n• The square next to a line — the whole line.\n• “Done” — the choice goes into the field, where you can fix it.\n• Both modes can take a picture from the gallery. The torch is a button on the camera screen.</string>
+    <string name="help_camera">• “Scan QR” — point the camera at a code, its copy appears, save it.\n• “Text from photo” — take a photo, found words get frames.\n• Tap a word — choose or drop it.\n• Hold a word and drag — everything up to your finger is chosen.\n• The square next to a line — the whole line.\n• “Done” — the choice goes into the field, where you can fix it.\n• Both modes can take a picture from the gallery. Several codes in a photo — all are found: pick the ones you need and they go into a new folder. The torch is a button on the camera screen.</string>
     <string name="help_list_t">Saved codes and search</string>
     <string name="help_list">• Tap a code — full screen, the code shines bright (the rest is dimmed). To turn it off — “⋯” → “Normal brightness”; one choice for the whole app.\n• Swipe left — delete (there is “Undo”).\n• Long press and release — the menu: favourites, name, content, to label, copy, select several, to folder, delete.\n• “Select several”: tap to put ✓, at the bottom — “To label”, “To folder”, “Delete”. The cross or “Back” — leave.\n• Your own name hides the content — handy for passwords.\n• The magnifier in the capsule — search by name or content.</string>
     <string name="help_folders_t">Folders and order</string>
@@ -393,4 +393,8 @@
     <string name="forms_date_editable">Can be changed in the form</string>
     <string name="forms_date_editable_desc">Today’s date is filled in by itself, and in the form you can change it.</string>
     <string name="forms_date_today">Today</string>
+    <string name="many_found_title">Codes found: %1$d</string>
+    <string name="many_save">Save (%1$d)</string>
+    <string name="many_found_hint">The chosen codes go into a new folder. Tap a row to remove or put ✓.</string>
+    <string name="many_folder">From photo</string>
 </resources>

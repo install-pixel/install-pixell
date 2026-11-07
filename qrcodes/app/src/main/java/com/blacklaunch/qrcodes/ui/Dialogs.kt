@@ -20,6 +20,8 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,7 +69,7 @@ import com.blacklaunch.qrcodes.ui.theme.Oled
 
 /** Вибір способу вводу (кнопка всередині капсули). */
 @Composable
-fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit, onBatch: (Boolean) -> Unit = {}, onFields: () -> Unit = {}) {
+fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKind) -> Unit, onBatch: (Boolean) -> Unit = {}, onFields: () -> Unit = {}, onNewFolder: () -> Unit = {}) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.mode_choose)) {
         Column(Modifier.bouncyScroll()) {
             // «Ввести» — як потрапляє текст у капсулу.
@@ -83,6 +85,46 @@ fun ModeMenu(onDismiss: () -> Unit, onPick: (InputMode) -> Unit, onForm: (FormKi
             MenuRow(Glyph.Template, stringResource(R.string.form_entry_sub), { onFields() })
             MenuRow(Glyph.Grid, stringResource(R.string.batch_series), { onBatch(false) })
             MenuRow(Glyph.TextT, stringResource(R.string.batch_list), { onBatch(true) })
+            // Порожня папка — щоб спершу зробити папку, а потім створювати коди вже в ній.
+            MenuRow(Glyph.Folder, stringResource(R.string.folder_new), onNewFolder)
+        }
+    }
+}
+
+/**
+ * На фото кілька кодів: список (усі вже вибрані ✓, дотик — зняти чи поставити), назва папки і «Зберегти (N)» —
+ * вибрані лягають у нову папку.
+ */
+@Composable
+fun ManyFoundDialog(found: List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>, suggestedFolder: String, onDismiss: () -> Unit, onSave: (List<Pair<String, com.blacklaunch.qrcodes.qr.CodeKind?>>, String) -> Unit) {
+    val haptics = LocalHaptics.current
+    val picked = remember { androidx.compose.runtime.mutableStateListOf<Int>().apply { addAll(found.indices) } }
+    var folder by remember { mutableStateOf("") }
+    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.many_found_title, found.size), tall = true, buttons = {
+        SheetButton(stringResource(R.string.cancel), onDismiss)
+        SheetButton(
+            stringResource(R.string.many_save, picked.size),
+            { onSave(picked.sorted().map { found[it] }, folder.trim().ifEmpty { suggestedFolder }) },
+            tone = Tone.Confirm,
+            enabled = picked.isNotEmpty(),
+        )
+    }) {
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            SheetTextField(folder, { folder = it.take(Limits.NAME) }, suggestedFolder)
+            found.forEachIndexed { i, (text, _) ->
+                val on = i in picked
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { haptics.tap(); if (on) picked.remove(i) else picked.add(i) }.padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(26.dp).pencilFrame(13.dp, seed = i + 5, alpha = if (on) 0.9f else 0.35f, ink = if (on) SelectedInk else SheetInk),
+                        contentAlignment = Alignment.Center,
+                    ) { if (on) GlyphIcon(Glyph.Save, null, tint = Oled.TextPrimary, size = 16.dp) }
+                    Text(text.replace(Regex("\\s+"), " "), color = Oled.TextPrimary, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp).weight(1f))
+                }
+            }
+            WindowHint(stringResource(R.string.many_found_hint))
         }
     }
 }

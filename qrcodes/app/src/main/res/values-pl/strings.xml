@@ -176,9 +176,9 @@
     <string name="help">Jak używać</string>
     <string name="help_back">Wstecz</string>
     <string name="help_create_t">Utwórz kod</string>
-    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod pojawia się u góry od razu. Okrągły przycisk po prawej — zapisz.\n• „Kod QR / Kod kreskowy” — co tworzyć; trzeci przycisk — rodzaj (QR, Data Matrix, Aztec; dla kreskowego — Auto, EAN, UPC, Code 39…). Wybór jest zapamiętany.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skanuj cudzy kod, tekst ze zdjęcia, Wi‑Fi, kontakt, strona.\n• Tam też — „Wiele kodów naraz”: seria z numerami (PALETA-001…100) lub lista — wszystkie do nowego folderu. I „Formularz skanera” — zob. osobny rozdział.\n• Otwarty folder — nowy kod zapisze się w nim, na końcu.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.</string>
+    <string name="help_create">• Przesuń w lewo z „Ulubionych” albo dotknij „Utwórz” u góry.\n• Pisz w kapsule na dole — kod pojawia się u góry od razu. Okrągły przycisk po prawej — zapisz.\n• „Kod QR / Kod kreskowy” — co tworzyć; trzeci przycisk — rodzaj (QR, Data Matrix, Aztec; dla kreskowego — Auto, EAN, UPC, Code 39…). Wybór jest zapamiętany.\n• Ikona po lewej w kapsule — sposób wpisywania: ręcznie, skanuj cudzy kod, tekst ze zdjęcia, Wi‑Fi, kontakt, strona.\n• Tam też — „Wiele kodów naraz”: seria z numerami (PALETA-001…100) lub lista — wszystkie do nowego folderu. I „Formularz skanera” — zob. osobny rozdział. I „Nowy folder” — pusty, otwiera się od razu, a nowe kody trafiają do niego.\n• Otwarty folder — nowy kod zapisze się w nim, na końcu.\n• Tekst udostępniony z innej aplikacji sam trafia do pola.</string>
     <string name="help_camera_t">Aparat i tekst ze zdjęcia</string>
-    <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Latarka — przycisk na ekranie aparatu.</string>
+    <string name="help_camera">• „Skanuj QR” — skieruj aparat na kod, pojawi się jego kopia, zapisz ją.\n• „Tekst ze zdjęcia” — zrób zdjęcie, znalezione słowa będą w ramkach.\n• Dotknięcie słowa — wybierz lub odznacz.\n• Przytrzymaj słowo i prowadź — wybiera się wszystko do palca.\n• Kwadracik przy wierszu — cały wiersz.\n• „Gotowe” — wybrane trafia do pola, tam można je poprawić.\n• Oba tryby potrafią wziąć obraz z galerii. Kilka kodów na zdjęciu — znajdą się wszystkie: wybierz potrzebne, a trafią do nowego folderu. Latarka — przycisk na ekranie aparatu.</string>
     <string name="help_list_t">Zapisane i szukanie</string>
     <string name="help_list">• Dotknij kodu — na cały ekran, kod świeci jasno (reszta przygaszona). Wyłączyć — „⋯” → „Zwykła jasność”; jeden wybór na całą aplikację.\n• Przesuń w lewo — usuń (jest „Cofnij”).\n• Przytrzymaj i puść — menu: do ulubionych, nazwa, treść, na naklejkę, kopiuj, wybierz kilka, do folderu, usuń.\n• „Wybierz kilka”: dotknięciami stawiasz ✓, na dole — „Na naklejkę”, „Do folderu”, „Usuń”. Krzyżyk lub „Wstecz” — wyjście.\n• Własna nazwa ukrywa treść — wygodne dla haseł.\n• Lupa w kapsule — szukaj po nazwie lub treści.</string>
     <string name="help_folders_t">Foldery i kolejność</string>
@@ -391,4 +391,8 @@
     <string name="forms_date_editable">Można poprawić w formularzu</string>
     <string name="forms_date_editable_desc">Dzisiejsza data wpisuje się sama, a w formularzu można ją zmienić.</string>
     <string name="forms_date_today">Dziś</string>
+    <string name="many_found_title">Znaleziono kodów: %1$d</string>
+    <string name="many_save">Zapisz (%1$d)</string>
+    <string name="many_found_hint">Wybrane kody trafią do nowego folderu. Dotknij wiersza, żeby zdjąć lub postawić ✓.</string>
+    <string name="many_folder">Ze zdjęcia</string>
 </resources>
