@@ -3,6 +3,12 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.5 — «How to use» exactly as in QRAFT
+
+- [x] Sections listed with a small line icon and the name only (no subtitles), as QRAFT's menu rows.
+- [x] Each section is short points «• action — what happens», in the QRAFT voice.
+- [x] «Style», never «theme», in every text.
+
 ## 1.6.4 — fixes from the 1.6.3 review
 
 - [x] Arrows no longer select text at a sentence start (the automatic capital Shift is for letters only).

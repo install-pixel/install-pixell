@@ -52,15 +52,15 @@ internal fun languageName(language: Language): String = stringResource(
  * (sheet) only a pencil frame on the black paper.
  */
 @Composable
-internal fun Section(title: String, content: @Composable () -> Unit) {
+internal fun Section(title: String?, content: @Composable () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .lookSurface(20.dp, seed = title.hashCode(), sheen = true, alpha = 0.6f)
+            .lookSurface(20.dp, seed = title?.hashCode() ?: 7, sheen = true, alpha = 0.6f)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(title, color = Tone.TextPrimary, fontSize = 19.sp)
+        if (title != null) Text(title, color = Tone.TextPrimary, fontSize = 19.sp)
         content()
     }
 }
