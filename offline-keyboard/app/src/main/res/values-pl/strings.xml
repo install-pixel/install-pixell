@@ -263,7 +263,7 @@
     <string name="models_download_accurate_short">Pobierz dokładniejszy</string>
     <string name="section_menu">Ustawienia</string>
     <string name="page_look">Wygląd</string>
-    <string name="page_look_summary">Motyw, jasność, rozmiar, klawisze kursora</string>
+    <string name="page_look_summary">Styl, jasność, rozmiar, klawisze kursora</string>
     <string name="page_typing">Pisanie</string>
     <string name="page_typing_summary">Poprawki, wielkie litery, wibracje</string>
     <string name="page_languages">Języki i układy</string>
@@ -304,7 +304,7 @@
     <string name="help_topics">Tematy</string>
     <string name="help_start">Pierwsze kroki</string>
     <string name="help_start_summary">Włączyć i wybrać klawiaturę</string>
-    <string name="help_start_body">1. Na stronie głównej dotknij «Włącz» i zaznacz OffKey na liście klawiatur Androida.\n2. Dotknij «Wybierz» i wybierz OffKey. Kroki znikają, a na górze zostaje pole «Wypróbuj» — wypróbujesz tam wszystko z tej pomocy.\n\nKlawiatura działa w całości na telefonie: bez internetu, kont i reklam. Głos i tłumaczenie potrzebują modeli pobieranych raz (temat «Głos i tłumaczenie»).\n\nWygląd zmienisz w «Wygląd»: motyw Szkło lub Kartka, jasność i wysokość klawiszy.</string>
+    <string name="help_start_body">1. Na stronie głównej dotknij «Włącz» i zaznacz OffKey na liście klawiatur Androida.\n2. Dotknij «Wybierz» i wybierz OffKey. Kroki znikają, a na górze zostaje pole «Wypróbuj» — wypróbujesz tam wszystko z tej pomocy.\n\nKlawiatura działa w całości na telefonie: bez internetu, kont i reklam. Głos i tłumaczenie potrzebują modeli pobieranych raz (temat «Głos i tłumaczenie»).\n\nWygląd zmienisz w «Wygląd»: styl Black Glass lub Black Sketch, jasność i wysokość klawiszy.</string>
     <string name="help_typing">Pisanie i gesty</string>
     <string name="help_typing_summary">Długie naciśnięcie, przesunięcia, pasek</string>
     <string name="help_typing_body">• Długie naciśnięcie litery otwiera warianty: polskie litery, ukraińskie ґ i ї, cyfry (mała cyfra w rogu górnego rzędu). Przesuń palec do wybranej i puść.\n• Długie naciśnięcie przecinka otwiera emoji.\n• Przesunięcie spacji w lewo lub w prawo zmienia język; możesz też dotknąć klawisza języka. Bieżący język jest napisany na spacji.\n• Przytrzymaj ⌫ — usuwa znak po znaku. Przeciągnij ⌫ w lewo — usuwa całe słowa (im dalej, tym więcej).\n• Pasek nad klawiszami pokazuje wpisany tekst. Dotknij go, by pokazać przyciski: tryby po lewej, przełącznik klawiatury komputerowej i ustawienia po prawej. Po kilku sekundach znów się chowają (wyłączysz to w Wygląd → Klawisze).\n• Przycisk trybów otwiera rząd: Tekst, Tłumaczenie, Schowek (przetłumacz zaznaczenie albo wklej tłumaczenie skopiowanego) i Głos.\n• Powiększoną literę nad palcem wyłączysz w «Pisanie».</string>

@@ -263,7 +263,7 @@
     <string name="models_download_accurate_short">Download more accurate</string>
     <string name="section_menu">Settings</string>
     <string name="page_look">Look</string>
-    <string name="page_look_summary">Theme, brightness, size, cursor keys</string>
+    <string name="page_look_summary">Style, brightness, size, cursor keys</string>
     <string name="page_typing">Typing</string>
     <string name="page_typing_summary">Corrections, capitals, vibration</string>
     <string name="page_languages">Languages and layouts</string>
@@ -304,7 +304,7 @@
     <string name="help_topics">Topics</string>
     <string name="help_start">First steps</string>
     <string name="help_start_summary">Turn on and choose the keyboard</string>
-    <string name="help_start_body">1. On the main page tap «Turn on» and tick OffKey in Android\'s list of keyboards.\n2. Tap «Choose» and pick OffKey. The steps then disappear and the «Try it» field stays on top — try everything from this help there.\n\nThe keyboard runs entirely on the phone: no internet, no accounts, no ads. Voice and translation need models, downloaded once (see «Voice and translation»).\n\nTo change the look, open «Look»: the Glass or Sheet theme, key brightness and height.</string>
+    <string name="help_start_body">1. On the main page tap «Turn on» and tick OffKey in Android\'s list of keyboards.\n2. Tap «Choose» and pick OffKey. The steps then disappear and the «Try it» field stays on top — try everything from this help there.\n\nThe keyboard runs entirely on the phone: no internet, no accounts, no ads. Voice and translation need models, downloaded once (see «Voice and translation»).\n\nTo change the look, open «Look»: the Black Glass or Black Sketch style, key brightness and height.</string>
     <string name="help_typing">Typing and gestures</string>
     <string name="help_typing_summary">Long press, swipes, the top strip</string>
     <string name="help_typing_body">• Long press a letter for its options: Ukrainian ґ and ї, Polish letters, digits (the small digit in the corner of the top row). Slide to one and let go.\n• Long press the comma for emoji.\n• Swipe the space bar left or right to change language, or tap the language key. The current language is written on the space bar.\n• Hold ⌫ to delete character by character. Drag ⌫ to the left to delete whole words (the further, the more words).\n• The strip above the keys shows what you typed. Tap it to show the buttons: modes on the left, the computer keyboard switch and settings on the right. They hide again a few seconds later (turn this off in Look → Keys).\n• The modes button opens a row: Text, Translate, Clipboard (translate the selection or paste a translation of the copied text) and Voice.\n• The enlarged letter above your finger can be turned off in «Typing».</string>
