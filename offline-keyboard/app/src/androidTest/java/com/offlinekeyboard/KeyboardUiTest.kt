@@ -471,7 +471,7 @@ class KeyboardUiTest {
         try {
             kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
             val tag = mode.name.lowercase()
-            for (page in listOf("", "look", "typing", "models")) {
+            for (page in listOf("", "look", "typing", "models", "help")) {
                 val intent = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
                     .putExtra("page", page)
                 ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->

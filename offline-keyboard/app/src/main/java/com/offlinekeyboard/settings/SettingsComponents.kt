@@ -162,7 +162,7 @@ internal fun StatusLine(label: String, ok: Boolean) {
 
 /** A row that opens another settings page: name, short hint and an arrow («›», or «→» on the sheet). */
 @Composable
-internal fun NavRow(title: String, subtitle: String, onClick: () -> Unit) {
+internal fun NavRow(title: String, subtitle: String?, leading: String? = null, onClick: () -> Unit) {
     val sheet = LocalLook.current == Look.SHEET
     Row(
         modifier = Modifier
@@ -172,10 +172,14 @@ internal fun NavRow(title: String, subtitle: String, onClick: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = if (sheet) 10.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (leading != null) {
+            // A small sign before the name, as QRAFT's «•••» before «How to use».
+            Text(leading, color = Tone.TextSecondary, fontSize = 15.sp, modifier = Modifier.width(36.dp))
+        }
         Column(Modifier.weight(1f)) {
             // A name never pushes the arrow away; the hint stays on one line (… if a language makes it long).
             Text(title, color = Tone.TextPrimary, fontSize = if (sheet) 19.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = Tone.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (!subtitle.isNullOrEmpty()) Text(subtitle, color = Tone.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(8.dp))
         Text(if (sheet) "→" else "›", color = Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
@@ -272,7 +276,7 @@ private fun CrossedRow(label: String, checked: Boolean, role: Role, onChange: (B
  * pencil, the others are just written, dimmer.
  */
 @Composable
-internal fun RadioRow(label: String, selected: Boolean, onSelect: () -> Unit) {
+internal fun RadioRow(label: String, selected: Boolean, description: String? = null, onSelect: () -> Unit) {
     val sheet = LocalLook.current == Look.SHEET
     Row(
         modifier = Modifier
@@ -293,7 +297,10 @@ internal fun RadioRow(label: String, selected: Boolean, onSelect: () -> Unit) {
             RadioDot(selected)
             Spacer(Modifier.width(12.dp))
         }
-        Text(label, color = if (selected) Tone.TextPrimary else Tone.TextSecondary, fontSize = if (sheet) 17.sp else 16.sp)
+        Column {
+            Text(label, color = if (selected) Tone.TextPrimary else Tone.TextSecondary, fontSize = if (sheet) 17.sp else 16.sp)
+            if (description != null) Text(description, color = Tone.TextSecondary, fontSize = 13.sp)
+        }
     }
 }
 
