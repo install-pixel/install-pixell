@@ -41,20 +41,20 @@ object Icons {
     private val tremble = ComposePathEffect(CornerPathEffect(0.6f), DiscretePathEffect(1.6f, 0.45f))
 
     /** Draws [icon] centred at ([cx], [cy]) in a square of [size] pixels. */
-    fun draw(canvas: Canvas, icon: Icon, cx: Float, cy: Float, size: Float, color: Int) {
+    fun draw(canvas: Canvas, icon: Icon, cx: Float, cy: Float, size: Float, color: Int, look: SurfaceStyle = style) {
         val (stroke, fill) = paths.getOrPut(icon) { build(icon) }
         val scale = size / GRID
         canvas.save()
         canvas.translate(cx - size / 2, cy - size / 2)
         canvas.scale(scale, scale)
         paint.color = color
-        paint.pathEffect = if (style == SurfaceStyle.SHEET) tremble else null
-        val width = when (style) {
+        paint.pathEffect = if (look == SurfaceStyle.SHEET) tremble else null
+        val width = when (look) {
             SurfaceStyle.FLAT -> STROKE
             SurfaceStyle.GLASS -> 1.8f
             SurfaceStyle.SHEET -> 2.2f
         }
-        if (style == SurfaceStyle.GLASS) {
+        if (look == SurfaceStyle.GLASS) {
             // The glow: the same line, wider and faint.
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 4.4f
