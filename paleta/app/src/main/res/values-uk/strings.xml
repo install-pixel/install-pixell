@@ -223,4 +223,8 @@ ADR (небезпечний товар) — висота лише 1,20 м.
     <string name="summary_weight">%1$d шарів · палета %2$s м · межа — вага %3$s кг</string>
     <string name="summary_partial">Неповний шар: %1$d кор. — більше не пускає вага</string>
     <string name="summary_too_heavy">Коробка важча за ліміт ваги — не поміщається жодна</string>
+    <string name="orient_flat_btn">Як вписано</string>
+    <string name="orient_side_btn">На боці</string>
+    <string name="orient_up_btn">Сторч</string>
+    <string name="orientation_no_fit">Так коробка на палету не поміщається</string>
 </resources>

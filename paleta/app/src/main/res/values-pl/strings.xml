@@ -223,4 +223,8 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="summary_weight">%1$d warstw · paleta %2$s m · limit — waga %3$s kg</string>
     <string name="summary_partial">Niepełna warstwa: %1$d kart. — więcej nie pozwala waga</string>
     <string name="summary_too_heavy">Karton cięższy niż limit wagi — nie mieści się żaden</string>
+    <string name="orient_flat_btn">Jak wpisano</string>
+    <string name="orient_side_btn">Na boku</string>
+    <string name="orient_up_btn">Pionowo</string>
+    <string name="orientation_no_fit">Tak karton nie mieści się na palecie</string>
 </resources>

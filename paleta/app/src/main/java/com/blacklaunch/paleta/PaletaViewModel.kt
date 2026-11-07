@@ -47,6 +47,7 @@ sealed interface UiEvent {
     data object OnlyVariant : UiEvent
     data object Duplicated : UiEvent
     data object OnlyOrientation : UiEvent
+    data object OrientationNoFit : UiEvent
     data class Orientation(val index: Int, val l: Int, val w: Int, val h: Int) : UiEvent
     data class Deleted(val card: ProductCard) : UiEvent
 }
@@ -369,7 +370,18 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     private var layoutUniform: Boolean? = null
     private fun uniformChanged(u: Boolean) = layoutUniform != null && layoutUniform != u
 
-    /** «Інше положення»: наступне з тих, де поміщається хоч одна коробка. */
+    /** Поставити коробку саме так (0 — як вписано, 1 — на боці, 2 — сторч), якщо так вона поміщається. */
+    fun setOrientation(i: Int) {
+        val d = dims ?: return
+        if (i == orientation) return
+        if (i !in orientations) {
+            _events.tryEmit(UiEvent.OrientationNoFit)
+            return
+        }
+        manualOrientation = d to i
+    }
+
+        /** «Інше положення»: наступне з тих, де поміщається хоч одна коробка. */
     fun nextOrientation() {
         val d = dims ?: return
         val list = orientations

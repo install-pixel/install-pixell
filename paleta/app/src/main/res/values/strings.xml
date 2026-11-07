@@ -223,4 +223,8 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="summary_weight">%1$d layers · pallet %2$s m · limit — weight %3$s kg</string>
     <string name="summary_partial">Partial layer: %1$d boxes — weight allows no more</string>
     <string name="summary_too_heavy">The box is heavier than the weight limit — none fit</string>
+    <string name="orient_flat_btn">As entered</string>
+    <string name="orient_side_btn">On side</string>
+    <string name="orient_up_btn">Upright</string>
+    <string name="orientation_no_fit">The box does not fit on the pallet that way</string>
 </resources>

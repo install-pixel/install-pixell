@@ -103,6 +103,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
     val textNoCamera = stringResource(R.string.camera_denied)
     val variantFormat = stringResource(R.string.variant_n)
     val textOnlyOrient = stringResource(R.string.only_orientation)
+    val textOrientNoFit = stringResource(R.string.orientation_no_fit)
     val orientFormat = stringResource(R.string.orientation_now)
     val orientNames = listOf(stringResource(R.string.orient_flat), stringResource(R.string.orient_side), stringResource(R.string.orient_up))
     LaunchedEffect(Unit) {
@@ -115,6 +116,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
                 is UiEvent.Variant -> show(String.format(variantFormat, e.index, e.total))
                 UiEvent.Duplicated -> show(textDuplicated)
                 UiEvent.OnlyOrientation -> show(textOnlyOrient)
+                UiEvent.OrientationNoFit -> show(textOrientNoFit)
                 is UiEvent.Orientation -> {
                     val c = decimalComma()
                     show(String.format(orientFormat, orientNames[e.index], com.blacklaunch.paleta.pack.Num.metres(e.l, c), com.blacklaunch.paleta.pack.Num.metres(e.w, c), com.blacklaunch.paleta.pack.Num.metres(e.h, c)))

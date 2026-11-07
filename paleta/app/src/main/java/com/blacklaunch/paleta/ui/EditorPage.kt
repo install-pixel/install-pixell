@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -230,6 +231,16 @@ fun EditorPage(
         EqualWidthRow(Modifier.fillMaxWidth()) {
             ChoiceChip(stringResource(R.string.view_top), selected = !view3d) { view3d = false }
             ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true; vm.selected = null }
+        }
+        // Положення коробки: авто вибирає найкраще, але покласти можна як треба (якщо так поміщається).
+        if (vm.dims != null && !vm.arrows) {
+            EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
+                listOf(R.string.orient_flat_btn, R.string.orient_side_btn, R.string.orient_up_btn).forEachIndexed { i, t ->
+                    Box(Modifier.alpha(if (i in vm.orientations) 1f else 0.4f)) {
+                        ChoiceChip(stringResource(t), selected = vm.orientation == i) { vm.setOrientation(i) }
+                    }
+                }
+            }
         }
         // Шар: перший (непарні) чи другий (парні) — другий можна розкласти інакше («навхрест»).
         EqualWidthRow(Modifier.fillMaxWidth()) {
