@@ -161,22 +161,23 @@ class KeyboardUiTest {
     fun punctuationRulesAndCapitalsAfterSwitching() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        focus(activity.plain)
-        clear(activity.plain)
-        // "а ," → "а, ": the space moves after the comma.
-        typeWord(activity.plain, "а")
+        focus(activity.sentences)
+        clear(activity.sentences)
+        // The field asks for sentence capitals: the first letter is one.
+        tapText("а")
+        assertEquals("А", text(activity.sentences))
         tapSpecial(SpecialKey.SPACE)
         tapText(",")
-        assertEquals("а, ", text(activity.plain))
+        assertEquals("А, ", text(activity.sentences))
         // "." after that space also moves before it; the next letter is a capital, also after a trip to the
         // symbols and back.
         tapText(".")
-        assertEquals("а,. ", text(activity.plain))
+        assertEquals("А,. ", text(activity.sentences))
         tapSpecial(SpecialKey.LAYER_SYMBOLS)
         tapSpecial(SpecialKey.LAYER_LETTERS)
         tapText("б")
-        assertEquals("а,. Б", text(activity.plain))
-        clear(activity.plain)
+        assertEquals("А,. Б", text(activity.sentences))
+        clear(activity.sentences)
     }
 
     @Test
