@@ -42,6 +42,8 @@ class LayoutProviderTest {
                 assertTrue("$mode $language $layer enter", SpecialKey.ENTER in s)
                 // On the mobile symbols the key next to ABC opens the number pad instead of switching language.
                 if (mode == KeyboardMode.MOBILE && layer == Layer.SYMBOLS) assertTrue("$mode $language $layer number pad", SpecialKey.LAYER_NUMPAD in s)
+                // The number pad has only ABC: digits need no language.
+                else if (mode == KeyboardMode.MOBILE && layer == Layer.NUMPAD) assertTrue("$language number pad", SpecialKey.LANGUAGE !in s && SpecialKey.LAYER_LETTERS in s)
                 else if (mode == KeyboardMode.MOBILE) assertTrue("$mode $language $layer language", SpecialKey.LANGUAGE in s)
                 else assertTrue("PC layouts have no language key", SpecialKey.LANGUAGE !in s && SpecialKey.MODE !in s)
             }
