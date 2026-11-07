@@ -73,12 +73,17 @@ class KeyboardController(
         }
 
     fun layout(mobileCursorRow: Boolean): KeyboardLayout =
-        LayoutProvider.layout(mode, language, layer, mobileCursorRow, emojiPage, emojiPages)
+        LayoutProvider.layout(mode, language, layer, mobileCursorRow, emojiPage, emojiPages, phonePad)
 
-    /** A new text field got focus. Number and phone fields open on digits in mobile mode. */
-    fun onStartField(numeric: Boolean) {
+    /** The number pad shows + * # (phone fields) instead of arithmetic signs. */
+    var phonePad: Boolean = false
+        private set
+
+    /** A new text field got focus. Number and phone fields open on the number pad in mobile mode. */
+    fun onStartField(numeric: Boolean, phone: Boolean = false) {
         modifiers.consumeOneShot()
-        layer = if (numeric && mode == KeyboardMode.MOBILE) Layer.SYMBOLS else Layer.LETTERS
+        phonePad = phone
+        layer = if (numeric && mode == KeyboardMode.MOBILE) Layer.NUMPAD else Layer.LETTERS
     }
 
     fun setMode(newMode: KeyboardMode) {
@@ -294,6 +299,7 @@ class KeyboardController(
             SpecialKey.LAYER_LETTERS -> { layer = Layer.LETTERS; emptyList() }
             SpecialKey.LAYER_SYMBOLS -> { toggleLayer(Layer.SYMBOLS); emptyList() }
             SpecialKey.LAYER_SYMBOLS_MORE -> { toggleLayer(Layer.SYMBOLS_MORE); emptyList() }
+            SpecialKey.LAYER_NUMPAD -> { toggleLayer(Layer.NUMPAD); emptyList() }
             SpecialKey.LAYER_FUNCTION -> { toggleLayer(Layer.FUNCTION); emptyList() }
             SpecialKey.LAYER_EMOJI -> {
                 // The panel opens on its first page: the most used emoji when there are any.

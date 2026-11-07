@@ -19,6 +19,9 @@ class KeyboardTestActivity : Activity() {
     /** A field that takes images, like a chat app's message box. */
     lateinit var chat: EditText
 
+    /** Asks for sentence capitals, as most chat and note fields do. */
+    lateinit var sentences: EditText
+
     /** What [chat] received: "mime size-in-bytes uri". */
     @Volatile var receivedSticker: String? = null
 
@@ -33,8 +36,9 @@ class KeyboardTestActivity : Activity() {
             hint = "chat"
             contentDescription = "chat"
         }
+        sentences = field(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES, "sentences")
         // Fresh ids per screen, so a test can tell which field (of which screen) the keyboard types into.
-        listOf(plain, multiLine, password, chat).forEach {
+        listOf(plain, multiLine, password, chat, sentences).forEach {
             it.id = android.view.View.generateViewId()
             root.addView(it)
         }

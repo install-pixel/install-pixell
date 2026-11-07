@@ -172,7 +172,7 @@ class KeyboardControllerTest {
     fun `numeric field opens digits in mobile mode`() {
         val c = controller(mode = KeyboardMode.MOBILE)
         c.onStartField(numeric = true)
-        assertEquals(Layer.SYMBOLS, c.layer)
+        assertEquals(Layer.NUMPAD, c.layer)
         c.onStartField(numeric = false)
         assertEquals(Layer.LETTERS, c.layer)
     }

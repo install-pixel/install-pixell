@@ -284,4 +284,5 @@
     <string name="page_typing_text">Text</string>
     <string name="page_typing_keys">Keys</string>
     <string name="page_typing_vibration">Vibration</string>
+    <string name="smart_punctuation">Smart punctuation: no space before a comma, one after it</string>
 </resources>

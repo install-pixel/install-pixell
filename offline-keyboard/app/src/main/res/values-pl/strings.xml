@@ -284,4 +284,5 @@
     <string name="page_typing_text">Tekst</string>
     <string name="page_typing_keys">Klawisze</string>
     <string name="page_typing_vibration">Wibracje</string>
+    <string name="smart_punctuation">Inteligentna interpunkcja: bez spacji przed przecinkiem, ze spacją po nim</string>
 </resources>

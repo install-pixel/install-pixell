@@ -56,6 +56,9 @@ data class FieldInfo(val inputType: Int, val imeOptions: Int) {
 
     val isNumeric: Boolean get() = inputClass == TYPE_CLASS_NUMBER || inputClass == TYPE_CLASS_PHONE
 
+    /** A phone number field: the number pad shows + * # instead of arithmetic signs. */
+    val isPhone: Boolean get() = inputClass == TYPE_CLASS_PHONE
+
     val imeAction: Int get() = imeOptions and IME_MASK_ACTION
 
     private val noEnterAction: Boolean get() = imeOptions and IME_FLAG_NO_ENTER_ACTION != 0

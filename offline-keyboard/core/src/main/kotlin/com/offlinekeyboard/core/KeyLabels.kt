@@ -88,6 +88,7 @@ object KeyLabels {
         SpecialKey.LAYER_LETTERS -> if (ctx.language == Language.UK) "АБВ" else "ABC"
         SpecialKey.LAYER_SYMBOLS -> if (ctx.mode == KeyboardMode.COMPUTER) "Sym" else "?123"
         SpecialKey.LAYER_SYMBOLS_MORE -> "=\\<"
+        SpecialKey.LAYER_NUMPAD -> "123"
         SpecialKey.LAYER_FUNCTION -> "Fn"
         SpecialKey.LAYER_EMOJI -> "☺"
         SpecialKey.EMOJI_PREVIOUS -> "‹"

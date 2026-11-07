@@ -216,7 +216,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        if (!restarting) controller.onStartField(currentField.isNumeric)
+        if (!restarting) controller.onStartField(currentField.isNumeric, currentField.isPhone)
         syncTranslateSource(showProblems = false)
         if (translateActive) translation.preload(settings.translationDirection)
         updateAutoShift()
@@ -462,6 +462,7 @@ class KeyboardService : InputMethodService(),
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
         if (sendToComputer(key, null)) return
+        if (undoPunctuation(key)) return
         if (undoCorrection(key)) return
         if (doubleSpacePeriod(key)) return
         handler.removeCallbacks(firePendingShortcut)
@@ -508,7 +509,7 @@ class KeyboardService : InputMethodService(),
                     if (translateActive) {
                         composer.append(command.text)
                         if (settings.translationAuto && endsSentence(command.text)) startTranslation() else segmentChanged()
-                    } else {
+                    } else if (!punctuate(command.text)) {
                         autoCorrectBefore(command.text)
                         learnBeforeSeparator(command.text)
                         editor.execute(command)
@@ -831,6 +832,52 @@ class KeyboardService : InputMethodService(),
         return true
     }
 
+    // ------------------------------------------------------------------ punctuation
+
+    /** What the last punctuation rule typed, and what the user had typed instead (for one Backspace). */
+    private var lastPunctuation: Pair<String, String>? = null
+
+    /**
+     * Applies the small punctuation rules ([Punctuation]) to [text] about to be typed: no space before a comma,
+     * a space after it before the next word, none after an opening bracket. Mobile mode, ordinary text only.
+     * Returns true when the rule typed it.
+     */
+    private fun punctuate(text: String): Boolean {
+        lastPunctuation = null
+        if (!settings.smartPunctuation || controller.mode != KeyboardMode.MOBILE) return false
+        if (!currentField.allowsCorrection || controller.modifiers.anyShortcutModifier) return false
+        val ic = currentInputConnection ?: return false
+        if (!ic.getSelectedText(0).isNullOrEmpty()) return false
+        val before = ic.getTextBeforeCursor(64, 0)?.toString() ?: return false
+        val edit = com.offlinekeyboard.core.input.Punctuation.adjust(before, text) ?: return false
+        ic.beginBatchEdit()
+        if (edit.delete > 0) ic.deleteSurroundingText(edit.delete, 0)
+        if (edit.insert.isNotEmpty()) ic.commitText(edit.insert, 1)
+        ic.endBatchEdit()
+        if (edit.insert.isNotEmpty()) lastPunctuation = edit.insert to edit.undo
+        return true
+    }
+
+    /** One Backspace right after a punctuation rule brings back exactly what was typed. */
+    private fun undoPunctuation(key: Key): Boolean {
+        val last = lastPunctuation ?: return false
+        lastPunctuation = null
+        if ((key.action as? KeyAction.Special)?.key != SpecialKey.BACKSPACE) return false
+        val (inserted, typed) = last
+        val ic = currentInputConnection ?: return false
+        val before = ic.getTextBeforeCursor(inserted.length, 0)?.toString() ?: return false
+        if (before != inserted) return false
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(inserted.length, 0)
+        ic.commitText(typed, 1)
+        ic.endBatchEdit()
+        rootView?.keyboardView?.feedback()
+        updateAutoShift()
+        updateSuggestions()
+        render()
+        return true
+    }
+
     // ------------------------------------------------------------------ backspace swipe
 
     override fun onBackspaceSwipe(words: Int, done: Boolean) {
@@ -1053,8 +1100,18 @@ class KeyboardService : InputMethodService(),
 
     // ------------------------------------------------------------------ rendering
 
+    private var renderedLayer: Layer? = null
+    private var renderedLanguage: Language? = null
+
     private fun render() {
         val root = rootView ?: return
+        // Back on the letters (from digits, symbols, emoji) or in another language: the sentence-start capital
+        // is worked out again from the text, so ". " then ?123 then ABC still gives a capital.
+        if (controller.layer != renderedLayer || controller.language != renderedLanguage) {
+            renderedLayer = controller.layer
+            renderedLanguage = controller.language
+            updateAutoShift()
+        }
         val mods = controller.modifiers
         val enterLabel = if (translateActive && !composer.isEmpty) EnterLabel.TRANSLATE else currentField.enterLabel
         val labels = LabelContext(
@@ -1169,7 +1226,7 @@ class KeyboardService : InputMethodService(),
         private val LOCAL_KEYS = setOf(
             SpecialKey.SHIFT, SpecialKey.CAPS_LOCK, SpecialKey.CTRL, SpecialKey.ALT, SpecialKey.META,
             SpecialKey.LANGUAGE, SpecialKey.MODE, SpecialKey.LAYER_LETTERS, SpecialKey.LAYER_SYMBOLS,
-            SpecialKey.LAYER_SYMBOLS_MORE, SpecialKey.LAYER_FUNCTION, SpecialKey.LAYER_EMOJI,
+            SpecialKey.LAYER_SYMBOLS_MORE, SpecialKey.LAYER_FUNCTION, SpecialKey.LAYER_EMOJI, SpecialKey.LAYER_NUMPAD,
             SpecialKey.EMOJI_PREVIOUS, SpecialKey.EMOJI_NEXT, SpecialKey.STICKERS, SpecialKey.VOICE, SpecialKey.SETTINGS,
             SpecialKey.HIDE,
         )
