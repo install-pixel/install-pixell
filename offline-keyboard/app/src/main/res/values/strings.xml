@@ -24,7 +24,7 @@
     <string name="remember_last_mode">Reopen in the last used mode</string>
     <string name="input_languages">Input languages</string>
     <string name="key_height">Key height: %1$d%%</string>
-    <string name="mobile_cursor_row">Cursor keys row in mobile mode</string>
+    <string name="mobile_cursor_row">Row of cursor keys</string>
     <string name="auto_capitalize">Capitalise sentences automatically (mobile mode)</string>
     <string name="space_swipe">Swipe the space bar to change language</string>
     <string name="haptic">Vibrate on key press</string>
@@ -263,11 +263,11 @@
     <string name="models_download_accurate_short">Download more accurate</string>
     <string name="section_menu">Settings</string>
     <string name="page_look">Look</string>
-    <string name="page_look_summary">Theme, brightness, size</string>
+    <string name="page_look_summary">Theme, brightness, size, cursor keys</string>
     <string name="page_typing">Typing</string>
     <string name="page_typing_summary">Corrections, capitals, vibration</string>
     <string name="page_languages">Languages and layouts</string>
-    <string name="page_languages_summary">Languages, mode, cursor, swipes</string>
+    <string name="page_languages_summary">Languages, mode, swipes</string>
     <string name="page_voice">Voice and translation</string>
     <string name="page_voice_summary">Models: %1$d of %2$d</string>
     <string name="page_about">About</string>
@@ -296,4 +296,6 @@
     <string name="backup_import">Restore from a backup</string>
     <string name="backup_restored">Restored from the backup.</string>
     <string name="backup_invalid">This file is not an OffKey backup.</string>
+    <string name="section_keys">Keys</string>
+    <string name="mobile_cursor_row_hint">Arrows, Home and End above the letters of the mobile keyboard, to move the cursor precisely. The keyboard keeps its height: the keys get a little lower.</string>
 </resources>

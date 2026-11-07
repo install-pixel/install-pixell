@@ -400,6 +400,12 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
             )
             Text(stringResource(R.string.key_height_hint), style = MaterialTheme.typography.bodySmall)
         }
+        Section(stringResource(R.string.section_keys)) {
+            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
+                update { it.copy(mobileCursorRow = v) }
+            }
+            Text(stringResource(R.string.mobile_cursor_row_hint), style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
@@ -481,9 +487,6 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
             }
             SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
                 update { it.copy(rememberLastMode = v) }
-            }
-            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
-                update { it.copy(mobileCursorRow = v) }
             }
         }
     }

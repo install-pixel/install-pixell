@@ -9,6 +9,9 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] All four operators: + − × on the left, / top right.
 - [x] Calculator layout: 0 double wide, the decimal point "." beside it for every language ("," on a long
       press), because number fields of many apps accept only the dot.
+- [x] The cursor keys row is switched on the «Look» page (Keys), not among the computer-mode settings.
+- [x] Every layer of both modes is as tall as the mobile letters: no jump when switching computer ↔
+      mobile, emoji or number pad.
 
 ## 1.6.0 — polish from the 1.5.0 review
 

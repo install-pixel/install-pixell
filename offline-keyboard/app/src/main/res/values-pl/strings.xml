@@ -24,7 +24,7 @@
     <string name="remember_last_mode">Otwieraj w ostatnio używanym trybie</string>
     <string name="input_languages">Języki wprowadzania</string>
     <string name="key_height">Wysokość klawiszy: %1$d%%</string>
-    <string name="mobile_cursor_row">Rząd klawiszy kursora w trybie mobilnym</string>
+    <string name="mobile_cursor_row">Rząd klawiszy kursora</string>
     <string name="auto_capitalize">Wielka litera na początku zdania (tryb mobilny)</string>
     <string name="space_swipe">Zmiana języka przesunięciem spacji</string>
     <string name="haptic">Wibracja przy naciśnięciu</string>
@@ -263,11 +263,11 @@
     <string name="models_download_accurate_short">Pobierz dokładniejszy</string>
     <string name="section_menu">Ustawienia</string>
     <string name="page_look">Wygląd</string>
-    <string name="page_look_summary">Motyw, jasność, rozmiar</string>
+    <string name="page_look_summary">Motyw, jasność, rozmiar, klawisze kursora</string>
     <string name="page_typing">Pisanie</string>
     <string name="page_typing_summary">Poprawki, wielkie litery, wibracje</string>
     <string name="page_languages">Języki i układy</string>
-    <string name="page_languages_summary">Języki, tryb, kursor, gesty</string>
+    <string name="page_languages_summary">Języki, tryb, gesty</string>
     <string name="page_voice">Głos i tłumaczenie</string>
     <string name="page_voice_summary">Modele: %1$d z %2$d</string>
     <string name="page_about">O aplikacji</string>
@@ -296,4 +296,6 @@
     <string name="backup_import">Przywróć z kopii zapasowej</string>
     <string name="backup_restored">Przywrócono z kopii zapasowej.</string>
     <string name="backup_invalid">Ten plik nie jest kopią zapasową OffKey.</string>
+    <string name="section_keys">Klawisze</string>
+    <string name="mobile_cursor_row_hint">Strzałki, Home i End nad literami klawiatury mobilnej, by dokładnie przesuwać kursor. Klawiatura nie rośnie: klawisze stają się trochę niższe.</string>
 </resources>
