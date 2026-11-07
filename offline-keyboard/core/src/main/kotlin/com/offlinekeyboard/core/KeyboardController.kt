@@ -141,8 +141,12 @@ class KeyboardController(
         KeyAction.Spacer -> emptyList()
     }
 
-    private fun currentMods() = KeyMods(
-        shift = modifiers.isActive(ModifierKey.SHIFT),
+    /**
+     * [forKeys]: for keys that are not letters (arrows, Enter, Tab…) the automatic sentence-start Shift
+     * does not count: it is meant for the next letter, and an arrow with it would select text.
+     */
+    private fun currentMods(forKeys: Boolean = false) = KeyMods(
+        shift = modifiers.isActive(ModifierKey.SHIFT) && !(forKeys && modifiers.shiftIsAutomatic),
         ctrl = modifiers.isActive(ModifierKey.CTRL),
         alt = modifiers.isActive(ModifierKey.ALT),
         meta = modifiers.isActive(ModifierKey.META),
@@ -242,7 +246,7 @@ class KeyboardController(
 
     private fun onSpecial(key: SpecialKey): List<EditorCommand> {
         val now = clock()
-        val mods = currentMods()
+        val mods = currentMods(forKeys = true)
         specialShortcut(key, mods)?.let { return runShortcut(it) }
         return when (key) {
             SpecialKey.SHIFT -> tapModifier(ModifierKey.SHIFT, now)

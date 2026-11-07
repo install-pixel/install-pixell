@@ -465,7 +465,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         view.chosen = active && theme.styled
         view.fill = if (active && !theme.styled) theme.accent else theme.function
         view.pressedFill = theme.pressed
-        view.foreground = if (active && !theme.styled) theme.onAccent else theme.text
+        // The others are written dimmer, so the chosen mode stands out at a glance.
+        view.foreground = when {
+            active && !theme.styled -> theme.onAccent
+            active -> theme.text
+            else -> androidx.core.graphics.ColorUtils.setAlphaComponent(theme.text, INACTIVE_CHIP_ALPHA)
+        }
         view.bold = active
         view.alpha = if (enabled) 1f else 0.4f
     }
@@ -510,6 +515,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private companion object {
         const val FADE_DP = 14
         const val BUTTONS_SHOWN_MS = 6000L
+        const val INACTIVE_CHIP_ALPHA = 0x70
         const val STATUS_MILLIS = 3500L
         const val SUGGESTIONS = 3
     }

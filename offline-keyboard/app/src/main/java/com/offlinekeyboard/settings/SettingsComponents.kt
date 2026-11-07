@@ -1,5 +1,8 @@
 package com.offlinekeyboard.settings
 
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -222,28 +225,41 @@ internal fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     }
 }
 
-/** The sheet's switch: the label, dimmed and crossed out with a wavy pencil line while it is off. */
+/**
+ * The sheet's switch: the label, dimmed and crossed out with a wavy pencil line while it is off. No tap
+ * highlight: a tap only draws the line through from start to end (or rubs it out back to the start).
+ */
 @Composable
 private fun CrossedRow(label: String, checked: Boolean, role: Role, onChange: (Boolean) -> Unit) {
+    val crossed by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (checked) 0f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 320, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "strike",
+    )
     Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .toggleable(value = checked, role = role, onValueChange = onChange)
+            .toggleable(
+                value = checked,
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                role = role,
+                onValueChange = onChange,
+            )
             .padding(vertical = 6.dp),
     ) {
         Text(
             label,
-            color = if (checked) Tone.TextPrimary else Tone.TextSecondary,
+            color = androidx.compose.ui.graphics.lerp(Tone.TextPrimary, Tone.TextSecondary, crossed),
             fontSize = 18.sp,
-            modifier = if (checked) {
-                Modifier
-            } else {
-                Modifier.drawWithContent {
-                    drawContent()
-                    // One line through the first line of text, as far as the text goes.
+            modifier = Modifier.drawWithContent {
+                drawContent()
+                if (crossed > 0f) {
+                    // One line through the first line of text, as far as the text goes, drawn from the left.
                     val line = minOf(size.height, 30.sp.toPx())
-                    pencilStroke(line * 0.55f, -2f, size.width + 2f, seed = label.length)
+                    clipRect(right = (size.width + 4f) * crossed) {
+                        pencilStroke(line * 0.55f, -2f, size.width + 2f, seed = label.length)
+                    }
                 }
             },
         )

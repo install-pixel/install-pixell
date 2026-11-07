@@ -3,6 +3,12 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.4 — fixes from the 1.6.3 review
+
+- [x] Arrows no longer select text at a sentence start (the automatic capital Shift is for letters only).
+- [x] Sheet theme: switching a setting draws the pencil line through (or rubs it out) without a tap halo.
+- [x] Modes row: the modes that are not chosen are written dimmer, so the chosen one stands out.
+
 ## 1.6.3 — fixes from the 1.6.2 review
 
 - [x] The Bluetooth note says plainly that translation, voice and suggestions pause only while keys go
