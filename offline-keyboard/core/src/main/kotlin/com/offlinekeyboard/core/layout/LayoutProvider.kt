@@ -238,18 +238,23 @@ object LayoutProvider {
     /**
      * The number pad for number and phone fields (or chosen by hand from the symbols), laid out like a
      * calculator: digits large, 0 double wide, the decimal point beside it. The four operators sit at the
-     * edges (+ − × on the left, / on the right), Backspace and Enter where they are on the letters (third
+     * edges (+ − × on the left, / on the right; plain ASCII + - * /), Backspace and Enter where they are on the letters (third
      * row right, bottom right), ABC bottom left is the only way out (the symbols are one more tap from the
      * letters). The decimal sign is always "." — number fields of many apps accept only the dot; "," is
      * on a long press. The same four rows as the letters, so the keyboard keeps its height.
      */
     private fun mobileNumpad(language: Language, phone: Boolean): KeyboardLayout {
         fun digit(d: String) = Key(KeyAction.Text(d), width = DIGIT)
-        fun sign(t: String, alts: List<String> = emptyList()) = Key(KeyAction.Text(t), width = SIDE, alternatives = alts, style = KeyStyle.FUNCTION)
+        // Operators have no long-press options: a tap held a moment too long (quick calculator typing)
+        // must still type the operator, not an option such as ± or the Unicode minus that calculators
+        // do not understand. Every operator is the plain ASCII sign apps parse; × is shown, * is typed.
+        fun sign(t: String, label: String? = null) = Key(KeyAction.Text(t), width = SIDE, style = KeyStyle.FUNCTION, label = label)
         val left = if (phone) listOf(sign("+"), sign("*"), sign("#"))
-        else listOf(sign("+", listOf("±")), sign("-", listOf("−")), sign("×", listOf("*")))
-        val topRight = if (phone) sign("-", listOf("(", ")")) else sign("/", listOf("÷", "%", "="))
-        val point = Key(KeyAction.Text("."), width = DIGIT, alternatives = if (phone) listOf(",", "(", ")") else listOf(","))
+        else listOf(sign("+"), sign("-"), sign("*", label = "×"))
+        val topRight = if (phone) sign("-") else sign("/")
+        // The point's options start with the point itself: held too long and let go, it is still ".";
+        // "," needs a slide to the second option.
+        val point = Key(KeyAction.Text("."), width = DIGIT, alternatives = if (phone) listOf(".", ",", "(", ")") else listOf(".", ","))
         return KeyboardLayout(
             listOf(
                 listOf(left[0], digit("1"), digit("2"), digit("3"), topRight),

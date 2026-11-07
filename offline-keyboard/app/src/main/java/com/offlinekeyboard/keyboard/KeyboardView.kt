@@ -527,6 +527,8 @@ class KeyboardView(context: Context) : View(context) {
             state.repeat = object : Runnable {
                 override fun run() {
                     state.repeating = true
+                    // A light tick for every character a held key deletes (or moves), not only the first.
+                    feedback(light = true)
                     listener?.onKey(key)
                     handler.postDelayed(this, REPEAT_INTERVAL_MS)
                 }
@@ -632,14 +634,14 @@ class KeyboardView(context: Context) : View(context) {
     private fun isLanguageKey(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.LANGUAGE
 
     /** Vibration for a tap, as set in settings; also used by the sticker panel. */
-    fun feedback() {
+    fun feedback(light: Boolean = false) {
         if (!hapticFeedback) return
         val v = vibrator
         if (v == null || !v.hasVibrator()) {
             performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             return
         }
-        val effect = tapEffect(vibration, v)
+        val effect = tapEffect(if (light) VibrationStrength.LIGHT else vibration, v)
         runCatching { v.vibrate(effect) }
     }
 

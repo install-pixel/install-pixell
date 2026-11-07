@@ -24,7 +24,11 @@ class NumpadTest {
         for (d in 0..9) assertTrue("$d", d.toString() in texts(Layer.NUMPAD))
         // The dot for every language: number fields of many apps accept nothing else.
         for (language in Language.entries) assertTrue("." in texts(Layer.NUMPAD, language))
-        for (op in listOf("+", "-", "×", "/")) assertTrue(op, op in texts(Layer.NUMPAD))
+        for (op in listOf("+", "-", "*", "/")) assertTrue(op, op in texts(Layer.NUMPAD))
+        // Operators type at once even on a long press: no options that calculators cannot parse.
+        val operators = pad.allKeys().filter { (it.action as? KeyAction.Text)?.text in setOf("+", "-", "*", "/") }
+        assertEquals(4, operators.size)
+        assertTrue(operators.all { it.alternatives.isEmpty() })
         assertTrue("#" in texts(Layer.NUMPAD, phone = true))
         // Every row as wide: the pad is a clean grid.
         val widths = pad.rows.map { row -> row.sumOf { it.width.toDouble() } }
