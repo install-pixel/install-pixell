@@ -90,9 +90,9 @@
     <string name="col_unit">Sztuka</string>
     <string name="col_box">Karton</string>
     <string name="col_pallet">Paleta</string>
-    <string name="row_length">Długość</string>
-    <string name="row_width">Szerokość</string>
-    <string name="row_height">Wysokość</string>
+    <string name="row_length">Długość [m]</string>
+    <string name="row_width">Szerokość [m]</string>
+    <string name="row_height">Wysokość [m]</string>
     <string name="row_qty">Ilość w danej pozycji</string>
     <string name="per_layer">Na warstwie</string>
     <string name="per_layer_value">%1$d szt · %2$d kart.</string>
@@ -169,9 +169,9 @@ ADR (HAZMAT) — wysokość wyłącznie 1,20 m.
 
 Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jest jaśniejszy.</string>
     <string name="help_layout_t">Ułożenie warstwy</string>
-    <string name="help_layout">Paleta 1,20 × 0,80 z góry, kartony w prawdziwych proporcjach.\n\n„Auto” szuka ułożenia z największą liczbą kartonów: proste rzędy, rzędy w różnych kierunkach i „wiatraczek” (bloki wokół środka). Jeśli najlepszych ułożeń jest kilka — „Auto” jeszcze raz pokazuje następne.\n\nWłasne ułożenie: przeciągnij karton palcem — przykleja się do krawędzi palety i sąsiednich kartonów. Obrót — przekręć dwoma palcami (co ~90° — obrót) albo podwójne dotknięcie. Dotknięcie — zaznacz; „Obróć” i „Usuń” działają na zaznaczony. „Dodaj” stawia karton w pierwszym wolnym miejscu.\n\nW menu „⋯”: „Uzupełnij wolne miejsce” — ułóż pierwszy rząd po swojemu, a resztę wypełni samo.\n\nCzerwony karton nachodzi na inny albo wystaje bardziej, niż wolno; dopóki są czerwone, nie można zapisać. Liczy się dokładnie ułożenie z rysunku.\n\nPołożenie: jeśli na kartonie nie ma strzałek ↑↑, aplikacja próbuje położyć go na boku lub postawić pionowo i wybiera to, przy którym na palecie mieści się najwięcej (wysokość w karcie — wg ułożenia na palecie). „⋯ → Inne położenie kartonu” — wybierz sam. Są strzałki — włącz „Strzałki ↑↑ na kartonie”.</string>
+    <string name="help_layout">Paleta 1,20 × 0,80 z góry, kartony w prawdziwych proporcjach.\n\n„Auto” szuka ułożenia z największą liczbą kartonów: proste rzędy, rzędy w różnych kierunkach i „wiatraczek” (bloki wokół środka). Jeśli najlepszych ułożeń jest kilka — „Auto” jeszcze raz pokazuje następne.\n\nWłasne ułożenie: przeciągnij karton palcem — przykleja się do krawędzi palety i sąsiednich kartonów. Obrót — przekręć dwoma palcami (co ~90° — obrót) albo podwójne dotknięcie. Dotknięcie — zaznacz; „Obróć” i „Usuń” działają na zaznaczony. „Dodaj” stawia karton w pierwszym wolnym miejscu.\n\nW menu „⋯”: „Uzupełnij wolne miejsce” — ułóż pierwszy rząd po swojemu, a resztę wypełni samo.\n\nCzerwony karton nachodzi na inny albo wystaje bardziej, niż wolno; dopóki są czerwone, nie można zapisać. Liczy się dokładnie ułożenie z rysunku.\n\nPołożenie: jeśli na kartonie nie ma strzałek ↑↑, aplikacja próbuje położyć go na boku lub postawić pionowo i wybiera to, przy którym na palecie mieści się najwięcej (wysokość w karcie — wg ułożenia na palecie). „⋯ → Inne położenie kartonu” — wybierz sam. Są strzałki — włącz „Strzałki ↑↑ na kartonie”.\n\n3D — cała paleta ze wszystkimi warstwami: przeciągnij palcem, by obrócić i pochylić (tylko podgląd).</string>
     <string name="help_result_t">Karta</string>
-    <string name="help_result">Karta wygląda jak papierowa — łatwo przepisać. Data wpisuje się sama.\n\nKolumny: Sztuka (jeśli wpisana), Karton, Paleta. Paleta: wysokość razem z paletą, liczba kartonów, waga towaru (i palety, jeśli dodana).\n\nNa warstwie — sztuk i kartonów na warstwie; warstw na palecie.\n\nOznaczenia liczą się same: gabaryt (sztuka większa niż 50×30 cm), awkward (ponad 1,2 m), two men lift (karton ponad 35 kg), struktura szacowana (waga nie pozwala nawet na jedną warstwę). Karton powyżej 25 kg — przypomnienie, by mierzyć taśmą.</string>
+    <string name="help_result">Karta wygląda jak papierowa — łatwo przepisać. Data wpisuje się sama.\n\nKolumny: Sztuka (jeśli wpisana), Karton, Paleta. Paleta: wysokość razem z paletą, liczba kartonów, waga towaru (i palety, jeśli dodana).\n\nNa warstwie — sztuk i kartonów na warstwie; warstw na palecie.\n\nOznaczenia liczą się same: gabaryt (sztuka większa niż 50×30 cm — dłuższy bok ponad 50 i drugi ponad 30), awkward (ponad 1,2 m), two men lift (karton ponad 35 kg), struktura szacowana (waga nie pozwala nawet na jedną warstwę). Karton powyżej 25 kg — przypomnienie, by mierzyć taśmą.</string>
     <string name="help_history_t">Historia</string>
     <string name="help_history">„Zapisz w historii” zapisuje wszystko: wpisane dane, ograniczenia, samo ułożenie i wynik.\n\nDotknij karty — otworzy się w całości. „Duplikuj” przenosi wszystko do nowego wyliczenia: zmieniasz, co trzeba (np. wagę), i zapisujesz nową kartę — stara zostaje.\n\nDługie przytrzymanie — menu (otwórz, duplikuj, udostępnij, usuń). Przesunięcie w lewo — usuń, z „Cofnij”.\n\nSzukanie po SKU, można zeskanować.</string>
     <string name="standard">Standard</string>
@@ -184,24 +184,20 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="form_name">Nazwa artykułu</string>
     <string name="form_dims">Wymiary / Dimensions</string>
     <string name="form_layer_by">Wysokość warstwy ułożona wg:</string>
-    <string name="form_in_metres">[w metrach]</string>
-    <string name="form_qty_box">(sztuk w kartonie)</string>
-    <string name="form_qty_pallet">(kartonów na palecie)</string>
+    <string name="form_qty_box">(szt. w kartonie)</string>
+    <string name="form_qty_pallet">(kart. na palecie)</string>
     <string name="form_per_layer">Ilość na warstwie</string>
     <string name="form_pcs">Sztuk</string>
     <string name="form_boxes">Kartonów</string>
     <string name="form_layers">Ilość warstw na palecie</string>
-    <string name="form_structure">Struktura szacowana</string>
-    <string name="form_structure_sub">(brak minimum jednej warstwy na palecie)</string>
-    <string name="form_oversize">Gabaryt</string>
-    <string name="form_oversize_sub">(sztuka produktu większa niż 50×30 cm)</string>
-    <string name="form_adr">Artykuł ADR</string>
+    <string name="form_structure">Struktura szacowana (brak min. jednej warstwy na palecie)</string>
+    <string name="form_oversize">Gabaryt (sztuka większa niż 50×30 cm)</string>
+    <string name="form_adr">Artykuł ADR (HAZMAT)</string>
     <string name="form_inner">Inner box</string>
     <string name="form_mark">Zaznacz pole*</string>
-    <string name="form_sign_struct">Czytelny podpis opisującego strukturę</string>
-    <string name="form_sign_struct_sub">nazwisko i imię — drukowanymi literami</string>
+    <string name="form_sign_struct">Czytelny podpis opisującego strukturę (nazwisko i imię)</string>
     <string name="form_sign_wms">Czytelny podpis wprowadzającego do WMS</string>
-    <string name="form_sign_dok">Czytelny podpis osoby weryfikującej (DOK)</string>
+    <string name="form_sign_dok">Czytelny podpis weryfikującego (DOK)</string>
     <string name="note_nothing_fits">Karton jest cięższy niż limit wagi — na paletę nie mieści się żaden.</string>
     <string name="settings_form">Karta</string>
     <string name="signer_hint">Imię i nazwisko</string>
@@ -216,4 +212,7 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="arrows_on">Nie obracać — wysokość tylko jak wpisano</string>
     <string name="arrows_off">Karton można położyć na boku lub postawić pionowo, jeśli tak mieści się więcej</string>
     <string name="status_orient">%1$s, wysokość %2$s m</string>
+    <string name="view_top">Z góry</string>
+    <string name="view_3d">3D</string>
+    <string name="view_3d_hint">Cała paleta z warstwami. Przeciągnij palcem — obracaj i pochylaj; podwójne dotknięcie — jak było. Edycja — w widoku „Z góry”.</string>
 </resources>

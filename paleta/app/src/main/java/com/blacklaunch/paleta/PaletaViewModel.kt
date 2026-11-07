@@ -81,7 +81,8 @@ fun flagsOf(box: Triple<Int, Int, Int>, boxG: Long, unit: Triple<Int, Int, Int>?
     val item = unit ?: box
     val sides = listOf(item.first, item.second, item.third).sortedDescending()
     return Flags(
-        oversize = sides[0] > 500 || sides[1] > 300,
+        // Габарит — коли штука більша за 50 × 30 см за обома сторонами (довша > 50 і друга > 30).
+        oversize = sides[0] > 500 && sides[1] > 300,
         awkward = sides[0] > 1200,
         twoMen = boxG > 35_000,
         heavy = boxG > 25_000,

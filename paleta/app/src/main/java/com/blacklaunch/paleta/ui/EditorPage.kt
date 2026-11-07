@@ -67,6 +67,7 @@ fun EditorPage(
     val scroll = rememberScrollState()
     val haptics = LocalHaptics.current
     var unitOpen by rememberSaveable { mutableStateOf(false) }
+    var view3d by rememberSaveable { mutableStateOf(false) }
     val anyInput = listOf(vm.sku, vm.boxL, vm.boxW, vm.boxH, vm.boxKg, vm.units, vm.unitL, vm.unitW, vm.unitH, vm.unitKg).any { it.isNotBlank() }
     // Підказки в полях — нулі, а не «приклад»: ніяких випадкових цифр з самого початку.
     val zero = Num.metres(0, comma)
@@ -217,8 +218,16 @@ fun EditorPage(
             ) { GlyphIcon(Glyph.More, stringResource(R.string.more), tint = Oled.TextSecondary.copy(alpha = if (vm.box != null) 1f else 0.35f)) }
         }
         val check = vm.check
+        // Вид: зверху (редагування) або 3D (уся палета, лише перегляд). Розмір вікна однаковий — нічого не стрибає.
+        EqualWidthRow(Modifier.fillMaxWidth()) {
+            ChoiceChip(stringResource(R.string.view_top), selected = !view3d) { view3d = false }
+            ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true; vm.selected = null }
+        }
         Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
-            PalletView(
+            if (view3d) {
+                val st = vm.stack
+                Pallet3D(vm.layout, vm.box, vm.boxHmm, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
+            } else PalletView(
                 layout = vm.layout,
                 box = vm.box,
                 overhang = vm.overhang,
@@ -229,7 +238,7 @@ fun EditorPage(
                 onMove = { i, x, y -> vm.move(i, x, y) },
                 onRotate = { vm.selected = it; vm.rotateSelected() },
             )
-            if (vm.box == null) {
+            if (vm.box == null || (view3d && vm.boxHmm == null)) {
                 Text(
                     stringResource(R.string.layout_empty),
                     color = Oled.TextSecondary,
@@ -243,12 +252,12 @@ fun EditorPage(
         val hasBox = vm.box != null
         val hasSel = vm.selected != null && vm.selected!! in vm.layout.indices
         EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
-            SheetButton(stringResource(R.string.act_auto), { vm.auto() }, enabled = hasBox, compact = true)
-            SheetButton(stringResource(R.string.act_add), { vm.addBox() }, enabled = hasBox, compact = true)
-            SheetButton(stringResource(R.string.act_rotate), { vm.rotateSelected() }, enabled = hasSel, compact = true)
-            SheetButton(stringResource(R.string.act_remove), { vm.removeSelected() }, enabled = hasSel, compact = true)
+            SheetButton(stringResource(R.string.act_auto), { vm.auto() }, enabled = hasBox && !view3d, compact = true)
+            SheetButton(stringResource(R.string.act_add), { vm.addBox() }, enabled = hasBox && !view3d, compact = true)
+            SheetButton(stringResource(R.string.act_rotate), { vm.rotateSelected() }, enabled = hasSel && !view3d, compact = true)
+            SheetButton(stringResource(R.string.act_remove), { vm.removeSelected() }, enabled = hasSel && !view3d, compact = true)
         }
-        FieldHint(stringResource(R.string.layout_hint))
+        FieldHint(stringResource(if (view3d) R.string.view_3d_hint else R.string.layout_hint))
 
         // --- Бланк ---
         Spacer(Modifier.height(6.dp))

@@ -75,8 +75,17 @@ fun DetailScreen(card: ProductCard, onBack: () -> Unit, onDuplicate: () -> Unit,
             ) {
                 SectionTitle(stringResource(R.string.section_layout))
                 val layout = remember(card.layout) { Layout.decode(card.layout) }
+                var view3d by remember { mutableStateOf(false) }
+                EqualWidthRow(Modifier.fillMaxWidth()) {
+                    ChoiceChip(stringResource(R.string.view_top), selected = !view3d) { view3d = false }
+                    ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true }
+                }
                 Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
-                    PalletView(layout, card.plan, card.overhang, check = null)
+                    if (view3d) {
+                        Pallet3D(layout, card.plan, card.boxH, layers = card.layers, extra = if (card.partial) card.boxes else 0)
+                    } else {
+                        PalletView(layout, card.plan, card.overhang, check = null)
+                    }
                 }
                 Text(
                     (if (card.customLayout) stringResource(R.string.status_custom, card.perLayer) else stringResource(R.string.status_auto, card.perLayer)) +

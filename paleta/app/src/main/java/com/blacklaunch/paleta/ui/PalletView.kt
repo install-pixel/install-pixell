@@ -21,18 +21,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.blacklaunch.paleta.pack.BoxSize
 import com.blacklaunch.paleta.pack.LayoutCheck
-import com.blacklaunch.paleta.pack.Num
 import com.blacklaunch.paleta.pack.PALLET_L
 import com.blacklaunch.paleta.pack.PALLET_W
 import com.blacklaunch.paleta.pack.Placed
@@ -48,7 +44,7 @@ private const val MARGIN_MM = 70
 private val BOARDS = intArrayOf(145, 100, 145, 100, 145)
 
 /** На скільки градусів крутнути двома пальцями, щоб коробка повернулась. */
-private const val TWIST_DEG = 35f
+private const val TWIST_DEG = 40f
 
 /** Співвідношення сторін малюнка палети — однакове скрізь (редактор, картка в історії). */
 const val PALLET_ASPECT = (PALLET_L + 2f * MARGIN_MM) / (PALLET_W + 2f * MARGIN_MM)
@@ -74,8 +70,6 @@ fun PalletView(
     onRotate: (Int) -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
-    val measurer = rememberTextMeasurer()
-    val sheet = LocalSheet.current
     val scale = remember { mutableFloatStateOf(1f) }
     val currentLayout by rememberUpdatedState(layout)
     val currentBox by rememberUpdatedState(box)
@@ -84,7 +78,6 @@ fun PalletView(
     val rotate by rememberUpdatedState(onRotate)
     // Контури олівцем — один раз на розмір (а не щокадру, поки тягнеш).
     val pencilCache = remember { HashMap<Long, Path>() }
-    val labelStyle = TextStyle(color = Oled.TextSecondary, fontSize = if (sheet) 12.sp else 10.sp)
 
     fun toMm(p: Offset): Offset = Offset(p.x / scale.floatValue - MARGIN_MM, p.y / scale.floatValue - MARGIN_MM)
 
@@ -101,6 +94,9 @@ fun PalletView(
     }
 
     val currentSelected by rememberUpdatedState(selected)
+    // Поки крутять двома пальцями — коробка видимо повертається за пальцями (кут, яка коробка).
+    val twistAngle = remember { mutableFloatStateOf(0f) }
+    val twistIndex = remember { androidx.compose.runtime.mutableIntStateOf(-1) }
     val gestures = if (!editable) Modifier else Modifier.pointerInput(Unit) {
         var lastTapAt = 0L
         var lastTapIndex = -1
@@ -130,8 +126,10 @@ fun PalletView(
                 if (pressed.isEmpty()) break
                 if (pressed.size >= 2) {
                     // Два пальці — крутнути: кожні ~90° повороту пальцями повертають коробку на 90°.
-                    val target = index ?: currentSelected
+                    // Яку крутити: під першим пальцем, під другим або вибрану.
+                    val target = index ?: pressed.firstNotNullOfOrNull { hit(it.position) } ?: currentSelected
                     if (target == null) { handedOff = true; break }
+                    if (!twoFingers) select(target)
                     twoFingers = true
                     twist += event.calculateRotation()
                     if (kotlin.math.abs(twist) >= TWIST_DEG) {
@@ -139,6 +137,8 @@ fun PalletView(
                         rotate(target)
                         twist -= kotlin.math.sign(twist) * 90f
                     }
+                    twistIndex.intValue = target
+                    twistAngle.floatValue = twist
                     event.changes.forEach { it.consume() }
                     continue
                 }
@@ -158,6 +158,8 @@ fun PalletView(
                 if (!dragging && acc.getDistance() > slop) dragging = true
                 if (dragging) emit()
             }
+            twistAngle.floatValue = 0f
+            twistIndex.intValue = -1
             if (twoFingers || dragging) {
                 lastTapAt = 0L
                 return@awaitEachGesture
@@ -234,14 +236,9 @@ fun PalletView(
             val at = tl + Offset(inset, inset)
             val isBad = i in bad
             val isSel = i == selected
-            if (glass) drawGlassBox(at, sz, isSel, isBad, line) else drawPencilBox(at, sz, i, isSel, isBad, line, pencilCache)
-            // Розмір коробки посередині, якщо вміщається.
-            if (!thumbnail) {
-                val text = "${Num.cm(p.sx(b))}×${Num.cm(p.sy(b))}"
-                val m = measurer.measure(text, labelStyle)
-                if (m.size.width < sz.width - 6.dp.toPx() && m.size.height < sz.height - 4.dp.toPx()) {
-                    drawText(m, color = if (isBad) Oled.Danger else if (isSel) Oled.TextPrimary else Oled.TextSecondary, topLeft = at + Offset((sz.width - m.size.width) / 2, (sz.height - m.size.height) / 2))
-                }
+            val angle = if (i == twistIndex.intValue) twistAngle.floatValue else 0f
+            rotate(angle, pivot = at + Offset(sz.width / 2, sz.height / 2)) {
+                if (glass) drawGlassBox(at, sz, isSel, isBad, line) else drawPencilBox(at, sz, i, isSel, isBad, line, pencilCache)
             }
         }
     }
