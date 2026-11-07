@@ -417,7 +417,6 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         check != null && check.overlapping.isNotEmpty() -> stringResource(R.string.status_overlap, check.overlapping.size) to true
         vm.editLayer == 1 && vm.gapsUnderThird > 0 && (check == null || check.ok) -> stringResource(R.string.status_gaps_third, vm.gapsUnderThird) to true
         check != null && check.unsupported.isNotEmpty() -> stringResource(R.string.status_unsupported, check.unsupported.size) to true
-        check != null && check.lonely.isNotEmpty() -> stringResource(R.string.status_lonely, check.lonely.size) to true
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true
         else -> {
             // Коли шари різні — спереду, який це шар; другий шар — дзеркало першого чи свій.

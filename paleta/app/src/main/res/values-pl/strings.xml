@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Paleta</string>
+    <string name="app_name">Stackraft</string>
 
     <!-- Strony -->
     <string name="page_new">Nowy</string>
@@ -192,8 +192,6 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="settings_form">Karta</string>
     <string name="signer_hint">Imię i nazwisko</string>
     <string name="signer_desc">Wpisze się w wiersz „podpis opisującego strukturę”, żeby nie zapomnieć.</string>
-    <string name="only_orientation">Nie ma innych położeń, w których karton się mieści</string>
-    <string name="orientation_now">Karton %1$s: podstawa %2$s × %3$s, wysokość %4$s m</string>
     <string name="orient_flat">na płasko</string>
     <string name="orient_side">na boku</string>
     <string name="orient_up">pionowo</string>
@@ -219,7 +217,6 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="orient_height">↕ %1$s m</string>
     <string name="view_3d_fix_first">Są czerwone kartony — takiej palety nie da się ułożyć. Najpierw popraw ułożenie w widoku „Z góry”.</string>
     <string name="summary_too_tall">Karton wyższy niż limit wysokości %1$s m — postaw go inaczej lub zmień limit</string>
-    <string name="status_lonely">Pojedynczy karton w poprzek (%1$d) — postaw w rzędzie z innym lub wyłącz „Bez pojedynczych kartonów”</string>
     <string name="same_layers_title">Wszystkie warstwy jednakowe</string>
     <string name="same_layers_on">Układasz pierwszą warstwę — wszystkie są takie same</string>
     <string name="same_layers_off">Warstwa 2 — lustro pierwszej (przewiązanie); można edytować osobno. Na przemian 1, 2, 1, 2…</string>

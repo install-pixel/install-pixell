@@ -181,12 +181,12 @@ fun ResultCard(view: CardView, modifier: Modifier = Modifier) {
             // --- Підписи ---
             FormRow(sign, ROW_HEAD, strong = true) { i ->
                 when (i) {
-                    0 -> Label(stringResource(R.string.form_sign_struct))
-                    1 -> Value(FormSigner.name)
+                    0 -> Label(stringResource(R.string.form_sign_struct), align = TextAlign.Start)
+                    1 -> Value(FormSigner.name, start = true)
                 }
             }
-            FormRow(sign, ROW_HEAD) { i -> if (i == 0) Label(stringResource(R.string.form_sign_wms)) }
-            FormRow(sign, ROW_HEAD) { i -> if (i == 0) Label(stringResource(R.string.form_sign_dok)) }
+            FormRow(sign, ROW_HEAD) { i -> if (i == 0) Label(stringResource(R.string.form_sign_wms), align = TextAlign.Start) }
+            FormRow(sign, ROW_HEAD) { i -> if (i == 0) Label(stringResource(R.string.form_sign_dok), align = TextAlign.Start) }
         }
     }
 }
@@ -290,9 +290,10 @@ private fun Label(text: String, sub: String? = null, bold: Boolean = false, size
 
 /** Вписане значення (яскраво, як ручкою); [note] — дрібний надрукований підпис під ним. */
 @Composable
-private fun Value(text: String, big: Boolean = false, bold: Boolean = false, note: String? = null) {
+private fun Value(text: String, big: Boolean = false, bold: Boolean = false, note: String? = null, start: Boolean = false) {
     if (note == null) {
-        if (text.isNotEmpty()) Fit(text, if (big) 15f else 12.5f, Oled.TextPrimary, bold = bold || big, lines = 1)
+        // [start] — ім'я в підписі: з лівого краю, до двох рядків (обидва рядки починаються з одного місця).
+        if (text.isNotEmpty()) Fit(text, if (big) 15f else 12.5f, Oled.TextPrimary, bold = bold || big, lines = if (start) 2 else 1, align = if (start) TextAlign.Start else TextAlign.Center)
         return
     }
     Column(Modifier.fillMaxSize()) {
@@ -377,7 +378,8 @@ fun cardText(context: Context, view: CardView): String {
         }
         if (s != null) {
             appendLine("${r.getString(R.string.col_pallet)}: ${s.boxes} · ${m(s.heightMm)} ${r.getString(R.string.unit_m)} · ${kg(s.weightG)} ${r.getString(R.string.unit_kg)}")
-            appendLine("${r.getString(R.string.per_layer)}: ${r.getString(R.string.per_layer_value, s.perLayer.toLong() * view.unitsPerBox, s.perLayer)}")
+            appendLine("${r.getString(R.string.per_layer)}: ${r.getString(R.string.per_layer_value, s.perLayer.toLong() * view.unitsPerBox, s.perLayer)}" +
+                if (s.perLayer2 != s.perLayer) " / ${r.getString(R.string.per_layer_value, s.perLayer2.toLong() * view.unitsPerBox, s.perLayer2)}" else "")
             append("${r.getString(R.string.layers_on_pallet)}: ${if (s.partial) r.getString(R.string.layers_partial) else s.layers.toString()}")
         }
     }

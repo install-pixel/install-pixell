@@ -47,9 +47,7 @@ sealed interface UiEvent {
     data class Variant(val index: Int, val total: Int) : UiEvent
     data object OnlyVariant : UiEvent
     data object Duplicated : UiEvent
-    data object OnlyOrientation : UiEvent
     data object OrientationNoFit : UiEvent
-    data class Orientation(val index: Int, val l: Int, val w: Int, val h: Int) : UiEvent
     data class Deleted(val card: ProductCard) : UiEvent
 }
 
@@ -88,7 +86,8 @@ fun flagsOf(box: Triple<Int, Int, Int>, boxG: Long, unit: Triple<Int, Int, Int>?
         // Габарит — коли штука більша за 50 × 30 см за обома сторонами (довша > 50 і друга > 30).
         oversize = sides[0] > 500 && sides[1] > 300,
         awkward = sides[0] > 1200,
-        twoMen = boxG > 35_000,
+        // Вдвох піднімають коробку понад 35 і до 50 кг; важчу вдвох не піднімають — позначки немає.
+        twoMen = boxG in 35_001..50_000,
         heavy = boxG > 25_000,
     )
 }
@@ -454,20 +453,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         manualOrientation = d to i
     }
 
-        /** «Інше положення»: наступне з тих, де поміщається хоч одна коробка. */
-    fun nextOrientation() {
-        val d = dims ?: return
-        val list = orientations
-        if (list.size < 2) {
-            _events.tryEmit(UiEvent.OnlyOrientation)
-            return
-        }
-        val next = list[(list.indexOf(orientation) + 1).mod(list.size)]
-        manualOrientation = d to next
-        val o = Orient.of(d.first, d.second, d.third, next)
-        _events.tryEmit(UiEvent.Orientation(next, maxOf(o.plan.l, o.plan.w), minOf(o.plan.l, o.plan.w), o.height))
-    }
-
+    
     private fun applyVariant(i: Int) {
         parked1 = 0
         variantIndex = i

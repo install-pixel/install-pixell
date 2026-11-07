@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Палета</string>
+    <string name="app_name">Stackraft</string>
 
     <!-- Сторінки -->
     <string name="page_new">Новий</string>
@@ -192,8 +192,6 @@ ADR (небезпечний товар) — висота лише 1,20 м.
     <string name="settings_form">Бланк</string>
     <string name="signer_hint">Ім’я та прізвище</string>
     <string name="signer_desc">Впишеться в рядок «підпис того, хто описує структуру», щоб не забути.</string>
-    <string name="only_orientation">Інших положень, у яких коробка поміщається, немає</string>
-    <string name="orientation_now">Коробка %1$s: основа %2$s × %3$s, висота %4$s м</string>
     <string name="orient_flat">плиском</string>
     <string name="orient_side">на боці</string>
     <string name="orient_up">стоячи</string>
@@ -219,7 +217,6 @@ ADR (небезпечний товар) — висота лише 1,20 м.
     <string name="orient_height">↕ %1$s м</string>
     <string name="view_3d_fix_first">Є червоні коробки — такої палети не скласти. Спершу виправ розкладку у виді «Зверху».</string>
     <string name="summary_too_tall">Коробка вища за ліміт висоти %1$s м — постав її інакше або зміни ліміт</string>
-    <string name="status_lonely">Поодинока коробка впоперек (%1$d) — постав у ряд з іншою або вимкни «Без поодиноких коробок»</string>
     <string name="same_layers_title">Усі шари однакові</string>
     <string name="same_layers_on">Розкладаєш перший шар — усі шари такі самі</string>
     <string name="same_layers_off">Шар 2 — дзеркало першого (перев’язка); можна правити окремо. Шари чергуються 1, 2, 1, 2…</string>

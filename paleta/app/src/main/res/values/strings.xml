@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Pallet</string>
+    <string name="app_name">Stackraft</string>
 
     <!-- Pages -->
     <string name="page_new">New</string>
@@ -192,8 +192,6 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="settings_form">Form</string>
     <string name="signer_hint">First name and surname</string>
     <string name="signer_desc">Goes into the “signature of the person describing the structure” row, so you don’t forget.</string>
-    <string name="only_orientation">No other position where the box fits</string>
-    <string name="orientation_now">Box %1$s: base %2$s × %3$s, height %4$s m</string>
     <string name="orient_flat">flat</string>
     <string name="orient_side">on its side</string>
     <string name="orient_up">standing up</string>
@@ -219,7 +217,6 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="orient_height">↕ %1$s m</string>
     <string name="view_3d_fix_first">There are red boxes — such a pallet cannot be built. Fix the layout in the “Top” view first.</string>
     <string name="summary_too_tall">The box is taller than the height limit %1$s m — turn it or change the limit</string>
-    <string name="status_lonely">Single box turned across (%1$d) — put it in a row with another or switch off “No single boxes”</string>
     <string name="same_layers_title">All layers the same</string>
     <string name="same_layers_on">Lay out the first layer — all layers are the same</string>
     <string name="same_layers_off">Layer 2 mirrors the first (interlocking); you can edit it separately. Layers alternate 1, 2, 1, 2…</string>

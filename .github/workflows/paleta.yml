@@ -52,6 +52,8 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "$APK"
           # Копія з постійною назвою — одне посилання в закладках завжди дає найновішу збірку.
           cp app/build/outputs/apk/release/app-release.apk Paleta.apk
+          # Нова назва програми — ще й під нею (старе посилання на Paleta.apk теж працює).
+          cp app/build/outputs/apk/release/app-release.apk Stackraft.apk
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
@@ -78,17 +80,18 @@ jobs:
         with:
           tag_name: paleta-latest
           target_commitish: ${{ github.sha }}
-          name: Палета v${{ env.VERSION }} (тестова збірка)
+          name: Stackraft v${{ env.VERSION }} (тестова збірка)
           prerelease: true
           make_latest: false
           body: |
-            Остання тестова збірка «Палети» з гілки ${{ github.ref_name }}.
+            Остання тестова збірка Stackraft з гілки ${{ github.ref_name }}.
             Версія: ${{ env.VERSION }}
             Коміт: ${{ github.sha }}
             Постійне посилання: https://github.com/${{ github.repository }}/releases/download/paleta-latest/Paleta.apk
           files: |
             paleta/${{ env.APK }}
             paleta/Paleta.apk
+            paleta/Stackraft.apk
 
       - name: Make sure the test release is published
         env:
@@ -104,10 +107,10 @@ jobs:
         with:
           tag_name: paleta-v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
-          name: Палета ${{ env.VERSION }}
+          name: Stackraft ${{ env.VERSION }}
           prerelease: false
           make_latest: false
           body: |
-            «Палета» ${{ env.VERSION }} — робоча версія. Що вміє — у paleta/README.md.
+            Stackraft ${{ env.VERSION }} — робоча версія. Що вміє — у paleta/README.md.
             Коміт: ${{ github.sha }}
           files: paleta/${{ env.APK }}
