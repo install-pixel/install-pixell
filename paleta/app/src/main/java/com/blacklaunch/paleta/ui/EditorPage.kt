@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -200,7 +201,7 @@ fun EditorPage(
 
         // --- Обмеження: три плашки, дотик — змінити ---
         SectionTitle(stringResource(R.string.section_limits))
-        EqualWidthRow(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LimitTile(
                 stringResource(R.string.limit_height),
                 "${Num.metres(vm.effectiveHeight, comma)} ${stringResource(R.string.unit_m)}",
@@ -254,9 +255,14 @@ fun EditorPage(
         }
         val check = vm.check
         // Вид: зверху (редагування) або 3D (уся палета, лише перегляд). Розмір вікна однаковий — нічого не стрибає.
-        EqualWidthRow(Modifier.fillMaxWidth()) {
-            ChoiceChip(stringResource(R.string.view_top), selected = !view3d) { view3d = false }
-            ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true; vm.selected = null }
+        // Один ряд на всю ширину з чотирьох однакових: вид (Зверху · 3D) і шар (Шар 1 · Шар 2) — рівно над
+        // чотирма кнопками дій під палетою. «Шар 1 / Шар 2» тьмяні, коли шари однакові чи шар лише один.
+        val layersOn = !vm.sameAll && twoLayers
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChoiceChip(stringResource(R.string.view_top), selected = !view3d, modifier = Modifier.weight(1f), dense = true) { view3d = false }
+            ChoiceChip(stringResource(R.string.view_3d), selected = view3d, modifier = Modifier.weight(1f), dense = true) { view3d = true; vm.selected = null }
+            ChoiceChip(stringResource(R.string.layer_1), selected = vm.editLayer == 0, modifier = Modifier.weight(1f).alpha(if (layersOn) 1f else 0.35f), dense = true) { vm.selectLayer(0) }
+            ChoiceChip(stringResource(R.string.layer_2), selected = vm.editLayer == 1, modifier = Modifier.weight(1f).alpha(if (layersOn) 1f else 0.35f), dense = true) { vm.selectLayer(1) }
         }
         // Положення коробки: авто вибирає найкраще, але покласти можна як треба (якщо так поміщається).
         // Кнопки підписані висотою, з якою коробка стоїть («↕ 0,30 м»): одразу видно, що буде. Лише різні положення,
@@ -264,18 +270,14 @@ fun EditorPage(
         val d = vm.dims
         if (d != null && !vm.arrows && !vm.palletBox && vm.orientations.size >= 2) {
             val options = vm.orientations.map { it to com.blacklaunch.paleta.pack.Orient.of(d.first, d.second, d.third, it).height }.sortedBy { it.second }
-            EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 options.forEach { (i, h) ->
-                    ChoiceChip(stringResource(R.string.orient_height, Num.metres(h, comma)), selected = vm.orientation == i) { vm.chooseOrientation(i) }
+                    ChoiceChip(stringResource(R.string.orient_height, Num.metres(h, comma)), selected = vm.orientation == i, modifier = Modifier.weight(1f), dense = true) { vm.chooseOrientation(i) }
                 }
             }
         }
         // Шар: перший (непарні) чи другий (парні) — другий можна розкласти інакше («навхрест»).
         // «Шар 1 / Шар 2» — лише коли шари різні; інакше тьмяні (місце лишається — нічого не стрибає).
-        EqualWidthRow(Modifier.fillMaxWidth().alpha(if (vm.sameAll || !twoLayers) 0.35f else 1f)) {
-            ChoiceChip(stringResource(R.string.layer_1), selected = vm.editLayer == 0) { vm.selectLayer(0) }
-            ChoiceChip(stringResource(R.string.layer_2), selected = vm.editLayer == 1) { vm.selectLayer(1) }
-        }
         Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
             if (view3d && !vm.allOk && vm.box != null) {
                 // Неможливу розкладку (червоні коробки) у 3D не показуємо — спершу виправити.
@@ -328,11 +330,12 @@ fun EditorPage(
         // Дії з розкладкою — одразу під палетою (не треба гортати); однакові кнопки в ряд; «Повернути» і «Прибрати» тьмяні, поки нічого не вибрано.
         val hasBox = vm.box != null
         val hasSel = vm.selected != null && vm.selected!! in vm.current.indices
-        EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
-            SheetButton(stringResource(R.string.act_auto), { vm.auto() }, enabled = hasBox && !view3d, compact = true)
-            SheetButton(stringResource(R.string.act_add), { vm.addBox() }, enabled = hasBox && !view3d, compact = true)
-            SheetButton(stringResource(R.string.act_rotate), { vm.rotateSelected() }, enabled = hasSel && !view3d, compact = true)
-            SheetButton(stringResource(R.string.act_remove), { vm.removeSelected() }, enabled = hasSel && !view3d, compact = true)
+        // У 3D дія сама повертає вид «Зверху» (редагують зверху) — кнопки не «мертві».
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SheetButton(stringResource(R.string.act_auto), { view3d = false; vm.auto() }, enabled = hasBox, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.act_add), { view3d = false; vm.addBox() }, enabled = hasBox, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.act_rotate), { view3d = false; vm.rotateSelected() }, enabled = hasSel && !view3d, compact = true, modifier = Modifier.weight(1f))
+            SheetButton(stringResource(R.string.act_remove), { view3d = false; vm.removeSelected() }, enabled = hasSel && !view3d, compact = true, modifier = Modifier.weight(1f))
         }
         LayoutStatus(vm, comma)
         StackSummary(vm, comma)
@@ -394,10 +397,11 @@ private fun LabeledField(
 
 /** Плашка обмеження: назва, значення, пояснення; дотик — змінити. */
 @Composable
-private fun LimitTile(title: String, value: String, note: String, bright: Boolean = false, onClick: () -> Unit) {
+private fun RowScope.LimitTile(title: String, value: String, note: String, bright: Boolean = false, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     Column(
         Modifier
+            .weight(1f)
             .clip(RoundedCornerShape(16.dp))
             .pencilFrame(16.dp, seed = title.length + 40, alpha = if (bright) 0.9f else 0.6f, ink = if (bright) SelectedInk else SheetInk)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = if (AppStyle.glass) androidx.compose.material3.ripple() else null) { haptics.tap(); onClick() }

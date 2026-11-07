@@ -557,14 +557,15 @@ private fun Modifier.fadeMask(top: androidx.compose.ui.unit.Density.() -> Float,
  * Вибір-«табличка» (QR / Штрихкод тощо). Вибраний — яскравим кантом і галочкою ✓ (не кольором); текст в один рядок.
  */
 @Composable
-fun ChoiceChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun ChoiceChip(text: String, selected: Boolean, modifier: Modifier = Modifier, dense: Boolean = false, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     Row(
         modifier
             .clip(RoundedCornerShape(14.dp))
             .pencilFrame(14.dp, seed = text.length + 3, alpha = if (selected) 0.9f else 0.35f, ink = if (selected) SelectedInk else SheetInk)
             .clickable { haptics.tap(); onClick() }
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            // [dense] — у ряду на всю ширину (сегменти): менші поля, щоб напис уміщався.
+            .padding(horizontal = if (dense) 6.dp else 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
