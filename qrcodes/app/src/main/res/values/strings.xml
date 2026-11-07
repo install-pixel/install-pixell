@@ -190,7 +190,7 @@
     <string name="help_print_t">Printing and labels</string>
     <string name="help_print">• Top right — “Share” (as an image, to the gallery, as text; several codes — each as its own image) and the blue “Print”.\n• Under the label — the “Add” and “Edit” tabs, on the right — the label size.\n• “Add” → “Code” — you can pick several (✓); it shows how many more fit.\n• Also: text, icon, finger drawing (3 widths, the line is smooth and thins at the ends), background (your photo or a scene with places for codes), template, frame.\n• Tap an element — “Edit”: size (the scale or − / +), rotation, centre, copy, caption, replace, delete.\n• Drag — move; two fingers — size and rotation; onto “Delete” at the top — remove. Elements snap and never overlap.\n• Several codes go in a grid with captions. If they don’t fit, the app offers each on its own label. More codes than places in a scene — the extra ones go next to it, move them as you like.\n• Your own layout can be saved as a template.</string>
     <string name="help_settings_t">Settings and backup</string>
-    <string name="help_settings">• The gear at the top right — style (Black Glass or Black Sketch), language and the status bar (hide — clock and battery only with a swipe from the top).\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
+    <string name="help_settings">• The gear at the top right — style (Black Glass or Black Sketch), language, “Screen”: hide the status bar and extra brightness for codes.\n• “Export” — all codes, folders and templates in one file, e.g. for a new phone.\n• “Import” — bring them back from a file; only what is new is added.\n• The app works offline: it sends nothing anywhere.</string>
     <string name="label_replace_code">Replace code</string>
     <string name="template_poster">Poster</string>
     <string name="template_badge">Badge</string>
@@ -377,7 +377,7 @@
     <string name="forms_bright_on">Turn screen brightness up</string>
     <string name="forms_bright_off">Normal brightness</string>
     <string name="help_forms_t">Scanner forms</string>
-    <string name="help_forms">• A form is a “live” QR: one code fills several fields of the app on your scanner in turn.\n• Create: the icon on the left of the capsule → “Scanner form”. A ready form is a row in the saved list (it can go to favourites too).\n• Each field is a card — tap it to set it up. Types: text, scan (camera, photo, by hand), choice from a list, number (− / +), “from field” (another field’s value + an ending, e.g. P), date by a pattern, move (only keys — to jump over a field).\n• “After the field press” — ↓, →, Tab, Enter or nothing, as many times as needed. “Can be switched off” — an On / Off switch while working; “If switched off” — what to press instead of the field.\n• “Whole form”: the move between fields (for terminals — “↓ Arrow · 1” or “· 2”), Enter at the end, remember entries.\n• Open a form — the QR on top, below only what you change. The code updates at once — scan it from the screen.\n• “One code” — everything in one QR; “Field by field” — a QR per field (tap the code — the next one).\n• “⋯” at the top — edit the form, “To label” (one QR of all fields) and brightness. “To label” is also in the form’s menu in the list — no need to open it.</string>
+    <string name="help_forms">• A form is a “live” QR: one code fills several fields of the app on your scanner in turn.\n• Create: the icon on the left of the capsule → “Scanner form”. A ready form is a row in the saved list (it can go to favourites too).\n• Each field is a card — tap it to set it up. Types: text, scan (camera, photo, by hand), choice from a list, number (− / +), “from field” (another field’s value + an ending, e.g. P), date by a pattern (can be allowed to change in the form), move (only keys — to jump over a field).\n• “After the field press” — ↓, →, Tab, Enter or nothing, as many times as needed. “Can be switched off” — an On / Off switch while working; “If switched off” — what to press instead of the field.\n• “Whole form”: the move between fields (for terminals — “↓ Arrow · 1” or “· 2”), Enter at the end, remember entries.\n• Open a form — the QR on top, below only what you change. The code updates at once — scan it from the screen.\n• “One code” — everything in one QR; “Field by field” — a QR per field (tap the code — the next one).\n• “⋯” at the top — edit the form, “To label” (one QR of all fields) and brightness. “To label” is also in the form’s menu in the list — no need to open it.</string>
     <string name="settings_status">Status bar</string>
     <string name="status_hide">Hide</string>
     <string name="status_hide_desc">Clock, network and battery appear only with a swipe from the top — in every window of the app.</string>
@@ -386,4 +386,11 @@
     <string name="menu_create">Create</string>
     <string name="batch_capped">At most %1$d at a time — the first %1$d are taken.</string>
     <string name="many_codes">You already have over %1$d codes — the list may work a bit slower. Old ones can be deleted or exported.</string>
+    <string name="settings_screen">Screen</string>
+    <string name="status_hide_title">Hide the status bar</string>
+    <string name="bright_title">Extra brightness for codes</string>
+    <string name="bright_desc">While a code is shown (full screen or in a form) it shines bright, the rest is dimmed.</string>
+    <string name="forms_date_editable">Can be changed in the form</string>
+    <string name="forms_date_editable_desc">Today’s date is filled in by itself, and in the form you can change it.</string>
+    <string name="forms_date_today">Today</string>
 </resources>

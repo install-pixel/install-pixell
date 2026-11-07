@@ -328,10 +328,8 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                             FieldType.NUMBER -> SheetTextField(f.value, { fields[i] = f.copy(value = it.filter { c -> c.isDigit() || c == '.' || c == ',' }) }, stringResource(R.string.forms_number_default), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                             FieldType.CHOICE -> {
                                 AreaField(f.options.joinToString("\n"), { fields[i] = f.copy(options = it.split('\n').take(Limits.OPTIONS).map { o -> o.take(Limits.NAME) }) }, stringResource(R.string.forms_options_hint))
-                                EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
-                                    ChoiceChip(stringResource(R.string.forms_allow_manual), f.allowManual) { fields[i] = f.copy(allowManual = !f.allowManual) }
-                                    ChoiceChip(stringResource(R.string.forms_allow_saved), f.allowSaved) { fields[i] = f.copy(allowSaved = !f.allowSaved) }
-                                }
+                                SwitchRow(stringResource(R.string.forms_allow_manual), f.allowManual) { fields[i] = f.copy(allowManual = it) }
+                                SwitchRow(stringResource(R.string.forms_allow_saved), f.allowSaved) { fields[i] = f.copy(allowSaved = it) }
                             }
                             FieldType.DERIVED -> {
                                 val src = fields.getOrNull(f.source)
@@ -346,6 +344,7 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                                     Text("→ «" + ScanForm.formatDate(f.datePattern, today) + "»", color = Oled.TextPrimary, fontSize = 15.sp)
                                 }
                                 FieldHint(stringResource(R.string.forms_date_hint))
+                                SwitchRow(stringResource(R.string.forms_date_editable), f.dateEditable, subtitle = stringResource(R.string.forms_date_editable_desc)) { fields[i] = f.copy(dateEditable = it) }
                             }
                             FieldType.SCAN, FieldType.SKIP -> {}
                         }
@@ -357,10 +356,8 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                             stringResource(if (f.type == FieldType.SKIP) R.string.forms_skip_keys else R.string.forms_after),
                             moveSummary(f.move, f.moveTimes),
                         ) { pick = Pick(PickKind.AFTER, i) }
-                        EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
-                            ChoiceChip(stringResource(R.string.forms_switchable), f.switchable) { fields[i] = f.copy(switchable = !f.switchable) }
-                            if (f.switchable) ChoiceChip(stringResource(R.string.forms_on_default), f.onByDefault) { fields[i] = f.copy(onByDefault = !f.onByDefault) }
-                        }
+                        SwitchRow(stringResource(R.string.forms_switchable), f.switchable) { fields[i] = f.copy(switchable = it) }
+                        if (f.switchable) SwitchRow(stringResource(R.string.forms_on_default), f.onByDefault) { fields[i] = f.copy(onByDefault = it) }
                         if (f.switchable) SettingRow(stringResource(R.string.forms_when_off), offSummary(f)) { pick = Pick(PickKind.OFF, i) }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SheetButton(stringResource(R.string.forms_up), { moveUp(i) }, enabled = i > 0, compact = true, modifier = Modifier.weight(1f))
@@ -382,10 +379,8 @@ fun FormEditorDialog(initial: ScanForm?, onDismiss: () -> Unit, onSave: (ScanFor
                 SheetTextField(custom, { custom = it.replace("\n", "").replace("\t", "").take(3) }, "|", Modifier.width(88.dp))
                 FieldHint(stringResource(R.string.fields_custom_hint), Modifier.weight(1f))
             }
-            EqualWidthRow(Modifier.fillMaxWidth(), gap = 8.dp) {
-                ChoiceChip(stringResource(R.string.fields_finish), endEnter) { endEnter = !endEnter }
-                ChoiceChip(stringResource(R.string.forms_remember), keepValues) { keepValues = !keepValues }
-            }
+            SwitchRow(stringResource(R.string.fields_finish), endEnter) { endEnter = it }
+            SwitchRow(stringResource(R.string.forms_remember), keepValues) { keepValues = it }
         }
     }
 
@@ -583,31 +578,37 @@ fun ScanFormScreen(
                         Modifier.fillMaxWidth().pencilFrame(16.dp, seed = 70 + i, alpha = if (on) 0.5f else 0.25f).padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                f.label.ifBlank { stringResource(R.string.forms_field_n).format(i + 1) },
-                                color = if (on) Oled.TextPrimary else Oled.TextSecondary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                            // Сталі поля (текст, дата, похідне, перехід) — значення тут же, в одному рядку з перемикачем.
-                            val fixed = when (f.type) {
-                                FieldType.SKIP -> moveSummary(f.move, f.moveTimes)
-                                FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> form.part(i, values.toList(), List(n) { true }, today).ifEmpty { "—" }
-                                else -> null
+                        val label = f.label.ifBlank { stringResource(R.string.forms_field_n).format(i + 1) }
+                        // Сталі поля (текст, дата, похідне, перехід) — значення під назвою. Дата, яку можна підправити, —
+                        // полем нижче.
+                        val fixed = when {
+                            f.type == FieldType.SKIP -> moveSummary(f.move, f.moveTimes)
+                            f.type == FieldType.DATE && f.dateEditable -> ""
+                            f.type == FieldType.TEXT || f.type == FieldType.DERIVED || f.type == FieldType.DATE -> form.part(i, values.toList(), List(n) { true }, today).ifEmpty { "—" }
+                            else -> ""
+                        }
+                        if (f.switchable) {
+                            // Перемикач — як скрізь: «Скло» — скляний, «Аркуш» — вимкнене перекреслене олівцем.
+                            SwitchRow(label, on, Modifier.heightIn(min = 40.dp), subtitle = fixed) { enabled[i] = it }
+                        } else {
+                            Column(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalArrangement = Arrangement.Center) {
+                                Text(label, color = Oled.TextPrimary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (fixed.isNotEmpty()) Text(fixed, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            if (fixed != null) Text(
-                                fixed, color = Oled.TextSecondary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 10.dp).widthIn(max = 150.dp).graphicsLayer { alpha = if (on) 1f else 0.4f },
-                            )
-                            if (f.switchable) ChoiceChip(stringResource(if (on) R.string.forms_on else R.string.forms_off), on, Modifier.width(104.dp)) { enabled[i] = !on }
                         }
                         // Поле вводу лишається на місці й тоді, коли вимкнене (лише тьмяніє) — список не стрибає.
-                        if (f.type == FieldType.SCAN || f.type == FieldType.NUMBER || f.type == FieldType.CHOICE) Row(
+                        if (f.type == FieldType.SCAN || f.type == FieldType.NUMBER || f.type == FieldType.CHOICE || (f.type == FieldType.DATE && f.dateEditable)) Row(
                             Modifier.fillMaxWidth().graphicsLayer { alpha = if (on) 1f else 0.35f },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             when (f.type) {
-                                FieldType.SKIP, FieldType.TEXT, FieldType.DERIVED, FieldType.DATE -> {}
+                                FieldType.DATE -> {
+                                    // Сьогоднішня дата вже вписана; виправив — так і піде в код, стер усе — знову сьогоднішня.
+                                    val todayText = ScanForm.formatDate(f.datePattern, today)
+                                    SheetTextField(values[i].ifEmpty { todayText }, { values[i] = if (it == todayText) "" else it.replace("\n", " ").replace("\t", " ") }, todayText, Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
+                                    if (values[i].isNotEmpty()) SheetButton(stringResource(R.string.forms_date_today), { values[i] = "" }, compact = true, modifier = Modifier.padding(start = 8.dp))
+                                }
+                                FieldType.SKIP, FieldType.TEXT, FieldType.DERIVED -> {}
                                 FieldType.SCAN -> {
                                     SheetTextField(values[i], { values[i] = it.replace("\n", " ").replace("\t", " ") }, stringResource(R.string.forms_scan_placeholder), Modifier.weight(1f), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done))
                                     IconSpot(Glyph.ScanQr, stringResource(R.string.mode_scan)) { camFor = i to true }

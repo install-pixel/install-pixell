@@ -85,4 +85,13 @@ class ScanFormTest {
         assertEquals("abc", ScanForm.idFromLink(ScanForm("abc", "n", emptyList()).link))
         assertEquals(null, ScanForm.idFromLink("https://example.com"))
     }
+
+    @Test
+    fun editableDateTakesTypedValueOrToday() {
+        val f = ScanForm("d", "d", listOf(FormField("Дата", FieldType.DATE, datePattern = "ddMM yyyy", dateEditable = true)), endEnter = false)
+        assertEquals("0311 2026", f.content(listOf(""), listOf(true), day))
+        assertEquals("0511 2026", f.content(listOf("0511 2026"), listOf(true), day))
+        // Відкривається щоразу з сьогоднішньою (навіть якщо «пам'ятати введене»).
+        assertEquals(listOf(""), f.copy(remember = true, lastValues = listOf("0111 2026")).startValues())
+    }
 }

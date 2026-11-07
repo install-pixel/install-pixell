@@ -47,9 +47,12 @@ data class FormField(
     val offTimes: Int = 1,
     /** На екрані заповнення є перемикач «вкл / вимк» (інакше поле завжди увімкнене). */
     val switchable: Boolean = true,
+    /** DATE: сьогоднішня дата вписується сама, але у формі її можна підправити. */
+    val dateEditable: Boolean = false,
 ) {
     /** Що показувати на екрані заповнення: поля, які треба вводити, або ті, що можна вимикати. */
-    val shownWhenFilling: Boolean get() = switchable || type == FieldType.SCAN || type == FieldType.CHOICE || type == FieldType.NUMBER
+    val shownWhenFilling: Boolean get() = switchable || type == FieldType.SCAN || type == FieldType.CHOICE || type == FieldType.NUMBER ||
+        (type == FieldType.DATE && dateEditable)
 }
 
 data class ScanForm(
@@ -81,7 +84,8 @@ data class ScanForm(
         return when (f.type) {
             FieldType.TEXT -> f.value
             FieldType.DERIVED -> if (depth > fields.size || f.source == i) "" else raw(f.source, values, today, depth + 1)
-            FieldType.DATE -> formatDate(f.datePattern, today)
+            // Підправлена у формі дата — як вписали; порожньо — сьогоднішня.
+            FieldType.DATE -> if (f.dateEditable) values.getOrNull(i).orEmpty().ifEmpty { formatDate(f.datePattern, today) } else formatDate(f.datePattern, today)
             FieldType.SKIP -> ""
             else -> values.getOrNull(i).orEmpty()
         }
@@ -134,8 +138,10 @@ data class ScanForm(
 
     /** Значення, з якими форма відкривається: запам'ятовані (якщо так задано) або типові. */
     fun startValues(): List<String> =
-        if (remember && lastValues.size == fields.size) lastValues
-        else fields.map { f -> if (f.type == FieldType.CHOICE && f.value.isEmpty()) f.options.firstOrNull { it.isNotBlank() }.orEmpty() else f.value }
+        // Дата щоразу починається з сьогоднішньої (підправлена вчора не лишається на завтра).
+        (if (remember && lastValues.size == fields.size) lastValues
+        else fields.map { f -> if (f.type == FieldType.CHOICE && f.value.isEmpty()) f.options.firstOrNull { it.isNotBlank() }.orEmpty() else f.value })
+            .mapIndexed { i, v -> if (fields[i].type == FieldType.DATE) "" else v }
 
     fun startEnabled(): List<Boolean> =
         if (remember && lastEnabled.size == fields.size) lastEnabled else fields.map { it.onByDefault }
@@ -160,7 +166,7 @@ data class ScanForm(
                     JSONObject().put("label", f.label).put("type", f.type.name).put("value", f.value).put("options", JSONArray(f.options))
                         .put("manual", f.allowManual).put("saved", f.allowSaved).put("source", f.source).put("date", f.datePattern)
                         .put("prefix", f.prefix).put("suffix", f.suffix).put("on", f.onByDefault)
-                        .put("move", f.move).put("moveN", f.moveTimes).put("off", f.offKey).put("offN", f.offTimes).put("sw", f.switchable),
+                        .put("move", f.move).put("moveN", f.moveTimes).put("off", f.offKey).put("offN", f.offTimes).put("sw", f.switchable).put("dateEdit", f.dateEditable),
                 )
             }
         })
@@ -203,6 +209,7 @@ data class ScanForm(
                         offKey = f.optInt("off", -1),
                         offTimes = f.optInt("offN", 1),
                         switchable = f.optBoolean("sw", true),
+                        dateEditable = f.optBoolean("dateEdit"),
                     )
                 },
                 separator = o.optInt("sep"),
