@@ -212,7 +212,8 @@ object Pencil {
         val f2 = 3 * 6.2832f / perimeter
         val wob = wobble * (0.45f + perimeter / 2500f).coerceAtMost(1f)
         val total = perimeter + overlap
-        val steps = (total / 4f).toInt().coerceIn(32, 400)
+        // About one point per 4 px: a tall frame (a long list) needs many, or its corners turn into chords.
+        val steps = (total / 4f).toInt().coerceIn(32, 4000)
         val cx = w / 2
         val cy = h / 2
         val points = FloatArray((steps + 1) * 2)

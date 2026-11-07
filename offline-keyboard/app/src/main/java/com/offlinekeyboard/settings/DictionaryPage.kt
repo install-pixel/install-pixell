@@ -4,6 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -105,15 +109,29 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                 store.dictionary.entries(language).filter { query.isBlank() || it.word.contains(query.trim(), ignoreCase = true) }
             }
             if (entries.isEmpty()) Text(stringResource(R.string.dictionary_empty), style = MaterialTheme.typography.bodySmall)
-            entries.take(MAX_SHOWN).forEachIndexed { i, e ->
-                if (i > 0) RowDivider()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(e.word, modifier = Modifier.weight(1f))
-                    Text("×${e.count}", style = MaterialTheme.typography.bodySmall)
-                    TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
-                        store.dictionary.remove(language, e.word)
-                        store.changed()
-                    }) { Text(stringResource(R.string.delete)) }
+            if (entries.isNotEmpty()) {
+                // A small window of its own, scrolled inside (with the same fade and spring as the pages),
+                // so import, export and the rest stay close however many words there are.
+                val listScroll = rememberScrollState()
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .fadingEdges(listScroll)
+                        .bounce()
+                        .verticalScroll(listScroll),
+                ) {
+                    entries.take(MAX_SHOWN).forEachIndexed { i, e ->
+                        if (i > 0) RowDivider()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(e.word, modifier = Modifier.weight(1f))
+                            Text("×${e.count}", style = MaterialTheme.typography.bodySmall)
+                            TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
+                                store.dictionary.remove(language, e.word)
+                                store.changed()
+                            }) { Text(stringResource(R.string.delete)) }
+                        }
+                    }
                 }
             }
             if (entries.size > MAX_SHOWN) {

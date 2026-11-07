@@ -626,7 +626,9 @@ class KeyboardUiTest {
     }
 
     private fun useMode(mode: KeyboardMode) {
-        repeat(2) {
+        // The mobile keyboard hides its toolbar buttons until the strip is tapped: a tap where the
+        // hidden button is shows it, the next one switches.
+        repeat(4) {
             if (service().modeForTest == mode) return
             tapView(toolbarButton(R.string.toolbar_mode_description))
         }

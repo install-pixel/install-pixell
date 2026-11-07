@@ -86,7 +86,7 @@
     <string name="dictionary_learn">Zapamiętuj wpisywane słowa</string>
     <string name="dictionary_learn_hint">Domyślnie wyłączone. Pojedyncze słowa są przechowywane tylko na tym telefonie z licznikiem użyć — nigdy całe wiadomości. W polach haseł, prywatnych (incognito), e-mail i adresów nic nie jest zapamiętywane.</string>
     <string name="dictionary_suggestions">Pokazuj podpowiedzi słów</string>
-    <string name="dictionary_suggestions_hint">Podpowiedzi pochodzą z około 350 częstych słów każdego języka i z Twoich słów (pokazywanych jako pierwsze). Stuknięcie wstawia słowo, długie naciśnięcie usuwa Twoje słowo.</string>
+    <string name="dictionary_suggestions_hint">Podpowiedzi pochodzą z około 30 000 częstych słów każdego języka i z Twoich słów (pokazywanych jako pierwsze). Stuknięcie wstawia słowo, długie naciśnięcie usuwa Twoje słowo.</string>
     <string name="dictionary_words">Słowa</string>
     <string name="dictionary_add_word">Nowe słowo</string>
     <string name="dictionary_add_invalid">Tylko litery, apostrof i łącznik; 2–40 znaków.</string>
@@ -197,7 +197,7 @@
     <string name="bluetooth_use_steps">Otwórz klawiaturę w dowolnym polu (np. poniżej) i stuknij przycisk Bluetooth nad klawiszami: zmieni kolor i wszystko, co piszesz, trafi do komputera. Kolejne stuknięcie — znów piszesz na telefonie.</string>
     <string name="bluetooth_open_keyboard">Stuknij, aby otworzyć klawiaturę</string>
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
-    <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma, nie są wysyłane. Podpowiedzi, tłumaczenie i głos działają tylko na telefonie.</string>
+    <string name="bluetooth_notes">Klawiatura wysyła klawisze, jak prawdziwa: komputer musi mieć ten sam język co telefon (Укр/Pol/Eng). Win+Space przełącza oba. Tryb komputerowy daje Ctrl, Alt, Win, F1–F12 i strzałki. Znaki, których układ komputera nie ma, nie są wysyłane. Gdy klawisze idą do komputera, podpowiedzi, tłumaczenie i głos są wstrzymane: każdy klawisz trafia od razu do komputera. Przy pisaniu na samym telefonie (także w układzie komputerowym) wszystko to działa.</string>
     <string name="translation_direction_hint">Z języka klawiatury na ten język. Przycisk tłumaczenia nad klawiszami przełącza między dwoma pozostałymi językami.</string>
     <string name="page_glossary">Słownik tłumaczenia</string>
     <string name="page_glossary_summary">Twoje poprawki · %1$d</string>
@@ -298,4 +298,6 @@
     <string name="backup_invalid">Ten plik nie jest kopią zapasową OffKey.</string>
     <string name="section_keys">Klawisze</string>
     <string name="mobile_cursor_row_hint">Strzałki, Home i End nad literami klawiatury mobilnej, by dokładnie przesuwać kursor. Klawiatura nie rośnie: klawisze stają się trochę niższe.</string>
+    <string name="hide_toolbar_buttons">Ukrywaj przyciski górnego paska</string>
+    <string name="hide_toolbar_buttons_hint">Na klawiaturze mobilnej widać tylko pasek z tekstem; dotknij go, by pokazać przyciski trybów, przełączania klawiatury i ustawień. Po kilku sekundach znów się chowają.</string>
 </resources>

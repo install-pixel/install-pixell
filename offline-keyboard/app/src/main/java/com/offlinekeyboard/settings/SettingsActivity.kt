@@ -250,6 +250,7 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
             .fillMaxSize()
             .safeDrawingPadding()
             .fadingEdges(scroll)
+            .bounce()
             .verticalScroll(scroll)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -405,6 +406,10 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
                 update { it.copy(mobileCursorRow = v) }
             }
             Text(stringResource(R.string.mobile_cursor_row_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v ->
+                update { it.copy(hideToolbarButtons = v) }
+            }
+            Text(stringResource(R.string.hide_toolbar_buttons_hint), style = MaterialTheme.typography.bodySmall)
         }
     }
 }

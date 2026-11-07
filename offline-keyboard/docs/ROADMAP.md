@@ -3,6 +3,17 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.3 — fixes from the 1.6.2 review
+
+- [x] The Bluetooth note says plainly that translation, voice and suggestions pause only while keys go
+      to the computer (the computer layout on the phone has them all).
+- [x] Dictionary: the word list is a small window scrolled inside, so import and export stay close.
+- [x] Pencil frames keep round corners however tall they get.
+- [x] Settings pages spring a little at both ends, also when shorter than the screen.
+- [x] A held Backspace stops vibrating once there is nothing left to delete.
+- [x] Texts: suggestions come from about 30 000 words per language (not 350).
+- [x] Mobile keyboard: the top bar buttons hide until the text strip is tapped (Look → Keys can turn it off).
+
 ## 1.6.2 — fixes from the 1.6.1 review
 
 - [x] Landscape: the keyboard's black reaches under the camera cutout; only the keys keep clear of it.

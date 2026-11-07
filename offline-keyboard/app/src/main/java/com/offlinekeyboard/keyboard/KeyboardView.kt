@@ -47,6 +47,8 @@ class KeyboardView(context: Context) : View(context) {
         /** Backspace dragged to the left: [words] words before the cursor; [done] when the finger lifts. */
         fun onBackspaceSwipe(words: Int, done: Boolean)
         fun onLanguageKeyLongPress()
+        /** Whether one more repeat of a held key changes anything (Backspace with text left to delete). */
+        fun repeatHasEffect(key: Key): Boolean = true
     }
 
     enum class KeyHighlight { NONE, ACTIVE, LOCKED }
@@ -527,8 +529,9 @@ class KeyboardView(context: Context) : View(context) {
             state.repeat = object : Runnable {
                 override fun run() {
                     state.repeating = true
-                    // A light tick for every character a held key deletes (or moves), not only the first.
-                    feedback(light = true)
+                    // A light tick for every character a held key deletes (or moves), not only the first;
+                    // none once there is nothing left to delete.
+                    if (listener?.repeatHasEffect(key) != false) feedback(light = true)
                     listener?.onKey(key)
                     handler.postDelayed(this, REPEAT_INTERVAL_MS)
                 }

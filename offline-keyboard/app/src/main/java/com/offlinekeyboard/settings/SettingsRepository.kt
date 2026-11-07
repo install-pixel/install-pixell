@@ -29,6 +29,8 @@ data class KeyboardSettings(
     val lastLanguage: Language = Language.UK,
     val enabledLanguages: List<Language> = Language.entries,
     val mobileCursorRow: Boolean = false,
+    /** Mobile keyboard: the toolbar buttons hide until the text strip is tapped. */
+    val hideToolbarButtons: Boolean = true,
     val keyHeightScale: Float = 1f,
     /** How bright frames, rims and light of the keys are, 0.4–1 (labels dim only a little). */
     val keyBrightness: Float = KeyboardTheme.DEFAULT_BRIGHTNESS,
@@ -104,6 +106,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.LAST_LANGUAGE] = updated.lastLanguage.name
             prefs[Keys.ENABLED_LANGUAGES] = updated.enabledLanguages.map { it.name }.toSet()
             prefs[Keys.MOBILE_CURSOR_ROW] = updated.mobileCursorRow
+            prefs[Keys.HIDE_TOOLBAR_BUTTONS] = updated.hideToolbarButtons
             prefs[Keys.KEY_HEIGHT_SCALE] = updated.keyHeightScale
             prefs[Keys.KEY_BRIGHTNESS] = updated.keyBrightness
             prefs[Keys.AUTO_CAPITALIZE] = updated.autoCapitalize
@@ -194,6 +197,7 @@ class SettingsRepository(context: Context) {
             lastLanguage = enumOrNull<Language>(this[Keys.LAST_LANGUAGE]) ?: defaults.lastLanguage,
             enabledLanguages = enabled ?: defaults.enabledLanguages,
             mobileCursorRow = this[Keys.MOBILE_CURSOR_ROW] ?: defaults.mobileCursorRow,
+            hideToolbarButtons = this[Keys.HIDE_TOOLBAR_BUTTONS] ?: defaults.hideToolbarButtons,
             keyHeightScale = (this[Keys.KEY_HEIGHT_SCALE] ?: defaults.keyHeightScale)
                 .coerceIn(KeyboardSettings.MIN_KEY_HEIGHT_SCALE, KeyboardSettings.MAX_KEY_HEIGHT_SCALE),
             keyBrightness = (this[Keys.KEY_BRIGHTNESS] ?: defaults.keyBrightness)
@@ -238,6 +242,7 @@ class SettingsRepository(context: Context) {
         val LAST_LANGUAGE = stringPreferencesKey("last_language")
         val ENABLED_LANGUAGES = stringSetPreferencesKey("enabled_languages")
         val MOBILE_CURSOR_ROW = booleanPreferencesKey("mobile_cursor_row")
+        val HIDE_TOOLBAR_BUTTONS = booleanPreferencesKey("hide_toolbar_buttons")
         val KEY_HEIGHT_SCALE = floatPreferencesKey("key_height_scale")
         val KEY_BRIGHTNESS = floatPreferencesKey("key_brightness")
         val AUTO_CAPITALIZE = booleanPreferencesKey("auto_capitalize")
