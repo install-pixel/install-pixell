@@ -107,20 +107,18 @@ fun EditorPage(
             },
         )
         // Цей SKU уже рахували — можна відкрити й здублювати.
-        Box {
-            AnimatedVisibility(known != null, enter = fadeIn(tween(OPEN_MS)) + expandVertically(tween(OPEN_MS)), exit = fadeOut(tween(CLOSE_MS)) + shrinkVertically(tween(CLOSE_MS))) {
-                val k = known
-                if (k != null) {
-                    Text(
-                        stringResource(R.string.sku_known, listDate(k.createdAt)),
-                        color = Oled.TextPrimary,
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { haptics.tap(); onOpenKnown(k) }
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
-                    )
-                }
+        AnimatedVisibility(known != null, enter = fadeIn(tween(OPEN_MS)) + expandVertically(tween(OPEN_MS)), exit = fadeOut(tween(CLOSE_MS)) + shrinkVertically(tween(CLOSE_MS))) {
+            val k = known
+            if (k != null) {
+                Text(
+                    stringResource(R.string.sku_known, listDate(k.createdAt)),
+                    color = Oled.TextPrimary,
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { haptics.tap(); onOpenKnown(k) }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                )
             }
         }
 
