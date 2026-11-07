@@ -196,10 +196,14 @@ private fun ShortcutEditor(existing: List<Shortcut>, onDismiss: () -> Unit, onSa
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.shortcut_add)) },
         text = {
+            val dialogScroll = rememberScrollState()
             Column(
                 modifier = Modifier
                     .heightIn(max = 480.dp)
-                    .verticalScroll(rememberScrollState()),
+                    // The same fade and spring as the pages.
+                    .fadingEdges(dialogScroll)
+                    .bounce()
+                    .verticalScroll(dialogScroll),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(stringResource(R.string.shortcut_modifiers), style = MaterialTheme.typography.titleSmall)
