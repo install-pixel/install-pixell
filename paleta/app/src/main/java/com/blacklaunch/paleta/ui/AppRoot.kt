@@ -102,6 +102,9 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
     val textUndo = stringResource(R.string.undo)
     val textNoCamera = stringResource(R.string.camera_denied)
     val variantFormat = stringResource(R.string.variant_n)
+    val textOnlyOrient = stringResource(R.string.only_orientation)
+    val orientFormat = stringResource(R.string.orientation_now)
+    val orientNames = listOf(stringResource(R.string.orient_flat), stringResource(R.string.orient_side), stringResource(R.string.orient_up))
     LaunchedEffect(Unit) {
         vm.events.collect { e ->
             when (e) {
@@ -111,6 +114,11 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
                 UiEvent.OnlyVariant -> show(textOnly)
                 is UiEvent.Variant -> show(String.format(variantFormat, e.index, e.total))
                 UiEvent.Duplicated -> show(textDuplicated)
+                UiEvent.OnlyOrientation -> show(textOnlyOrient)
+                is UiEvent.Orientation -> {
+                    val c = decimalComma()
+                    show(String.format(orientFormat, orientNames[e.index], com.blacklaunch.paleta.pack.Num.metres(e.l, c), com.blacklaunch.paleta.pack.Num.metres(e.w, c), com.blacklaunch.paleta.pack.Num.metres(e.h, c)))
+                }
                 is UiEvent.Deleted -> show(textDeleted, textUndo) { vm.restore(e.card); banner = null }
             }
         }
@@ -248,6 +256,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
         LayoutMenu(
             onDismiss = { layoutMenu = false },
             onBest = { layoutMenu = false; vm.auto() },
+            onOrient = { layoutMenu = false; vm.nextOrientation() },
             onFill = { layoutMenu = false; vm.fill() },
             onClear = { layoutMenu = false; vm.clearLayout() },
         )

@@ -352,3 +352,50 @@ object Layout {
         Placed(x, y, f[2] == "1")
     }
 }
+
+/**
+ * Положення коробки на палеті: яка зі сторін — вертикальна. Розміри як вписали: [l], [w], [h].
+ *  0 — як вписали (висота вгору), 1 — на боці (вгору ширина), 2 — сторч (вгору довжина).
+ * Правило бланку: висота картону — за тим, як він стоїть на палеті, якщо на ньому немає стрілок ↑↑.
+ */
+data class Orientation(val index: Int, val plan: BoxSize, val height: Int)
+
+/** Варіант положення з розкладкою й підсумком (скільки коробок на палеті). */
+data class OrientedResult(val orientation: Orientation, val auto: AutoResult, val total: Int)
+
+object Orient {
+    fun of(l: Int, w: Int, h: Int, index: Int): Orientation = when (index) {
+        1 -> Orientation(1, BoxSize(l, h), w)
+        2 -> Orientation(2, BoxSize(w, h), l)
+        else -> Orientation(0, BoxSize(l, w), h)
+    }
+
+    /**
+     * Усі дозволені положення ([arrows] — лише як вписали), найкраще першим: найбільше коробок на палеті (з
+     * урахуванням висоти й ваги); за рівності — як вписали. Положення, у яких не поміщається жодна, — у кінці.
+     */
+    fun rank(
+        l: Int, w: Int, h: Int,
+        arrows: Boolean,
+        overhang: Int,
+        heightLimitMm: Int,
+        boxG: Long?,
+        weightLimitG: Long,
+        palletG: Long,
+    ): List<OrientedResult> {
+        val indices = if (arrows) listOf(0) else listOf(0, 1, 2)
+        val seen = HashSet<Pair<Set<Int>, Int>>()
+        return indices.mapNotNull { i ->
+            val o = of(l, w, h, i)
+            // Однакові положення (куб, дві однакові сторони) — один раз.
+            if (!seen.add(setOf(o.plan.l, o.plan.w) to o.height)) return@mapNotNull null
+            val auto = Packer.auto(o.plan, overhang)
+            val total = when {
+                auto.count == 0 -> 0
+                boxG != null -> Stacking.stack(auto.count, o.height, boxG, heightLimitMm, weightLimitG, palletG)?.boxes ?: 0
+                else -> auto.count * ((heightLimitMm - PALLET_HEIGHT_MM).coerceAtLeast(0) / o.height)
+            }
+            OrientedResult(o, auto, total)
+        }.sortedWith(compareByDescending<OrientedResult> { it.total }.thenBy { it.orientation.index })
+    }
+}

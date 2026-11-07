@@ -169,7 +169,7 @@ ADR (hazardous goods) — height 1.20 m only.
 
 All these values are remembered. A tile that differs from the standard is brighter.</string>
     <string name="help_layout_t">Layer layout</string>
-    <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Rotate — twist with two fingers (every ~90° turns it) or double tap. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.</string>
+    <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Rotate — twist with two fingers (every ~90° turns it) or double tap. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.\n\nPosition: if the box has no ↑↑ arrows, the app tries laying it on its side or standing it up and picks whatever fits the most on the pallet (the form height is as the box stands). “⋯ → Other box position” — choose yourself. If there are arrows, switch on “Arrows ↑↑ on the box”.</string>
     <string name="help_result_t">Form</string>
     <string name="help_result">The form looks like the paper card so it is easy to copy. The date is filled in automatically.\n\nColumns: Piece (if entered), Carton, Pallet. Pallet: height including the pallet, number of boxes, goods weight (plus the pallet if added).\n\nPer layer — pieces and boxes in a layer; layers on the pallet.\n\nFlags are set automatically: oversize (piece over 50×30 cm), awkward (over 1.2 m), two men lift (box over 35 kg), estimated structure (weight does not allow even one layer). Carton over 25 kg — a reminder to measure with a tape.</string>
     <string name="help_history_t">History</string>
@@ -206,4 +206,14 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="settings_form">Form</string>
     <string name="signer_hint">First name and surname</string>
     <string name="signer_desc">Goes into the “signature of the person describing the structure” row, so you don’t forget.</string>
+    <string name="only_orientation">No other position where the box fits</string>
+    <string name="orientation_now">Box %1$s: base %2$s × %3$s, height %4$s m</string>
+    <string name="orient_flat">as entered</string>
+    <string name="orient_side">on its side</string>
+    <string name="orient_up">standing up</string>
+    <string name="layout_orient">Other box position</string>
+    <string name="arrows_title">Arrows ↑↑ on the box</string>
+    <string name="arrows_on">Do not turn — height only as entered</string>
+    <string name="arrows_off">The box may lie on its side or stand up if more fit that way</string>
+    <string name="status_orient">%1$s, height %2$s m</string>
 </resources>

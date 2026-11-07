@@ -169,7 +169,7 @@ ADR (HAZMAT) — wysokość wyłącznie 1,20 m.
 
 Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jest jaśniejszy.</string>
     <string name="help_layout_t">Ułożenie warstwy</string>
-    <string name="help_layout">Paleta 1,20 × 0,80 z góry, kartony w prawdziwych proporcjach.\n\n„Auto” szuka ułożenia z największą liczbą kartonów: proste rzędy, rzędy w różnych kierunkach i „wiatraczek” (bloki wokół środka). Jeśli najlepszych ułożeń jest kilka — „Auto” jeszcze raz pokazuje następne.\n\nWłasne ułożenie: przeciągnij karton palcem — przykleja się do krawędzi palety i sąsiednich kartonów. Obrót — przekręć dwoma palcami (co ~90° — obrót) albo podwójne dotknięcie. Dotknięcie — zaznacz; „Obróć” i „Usuń” działają na zaznaczony. „Dodaj” stawia karton w pierwszym wolnym miejscu.\n\nW menu „⋯”: „Uzupełnij wolne miejsce” — ułóż pierwszy rząd po swojemu, a resztę wypełni samo.\n\nCzerwony karton nachodzi na inny albo wystaje bardziej, niż wolno; dopóki są czerwone, nie można zapisać. Liczy się dokładnie ułożenie z rysunku.</string>
+    <string name="help_layout">Paleta 1,20 × 0,80 z góry, kartony w prawdziwych proporcjach.\n\n„Auto” szuka ułożenia z największą liczbą kartonów: proste rzędy, rzędy w różnych kierunkach i „wiatraczek” (bloki wokół środka). Jeśli najlepszych ułożeń jest kilka — „Auto” jeszcze raz pokazuje następne.\n\nWłasne ułożenie: przeciągnij karton palcem — przykleja się do krawędzi palety i sąsiednich kartonów. Obrót — przekręć dwoma palcami (co ~90° — obrót) albo podwójne dotknięcie. Dotknięcie — zaznacz; „Obróć” i „Usuń” działają na zaznaczony. „Dodaj” stawia karton w pierwszym wolnym miejscu.\n\nW menu „⋯”: „Uzupełnij wolne miejsce” — ułóż pierwszy rząd po swojemu, a resztę wypełni samo.\n\nCzerwony karton nachodzi na inny albo wystaje bardziej, niż wolno; dopóki są czerwone, nie można zapisać. Liczy się dokładnie ułożenie z rysunku.\n\nPołożenie: jeśli na kartonie nie ma strzałek ↑↑, aplikacja próbuje położyć go na boku lub postawić pionowo i wybiera to, przy którym na palecie mieści się najwięcej (wysokość w karcie — wg ułożenia na palecie). „⋯ → Inne położenie kartonu” — wybierz sam. Są strzałki — włącz „Strzałki ↑↑ na kartonie”.</string>
     <string name="help_result_t">Karta</string>
     <string name="help_result">Karta wygląda jak papierowa — łatwo przepisać. Data wpisuje się sama.\n\nKolumny: Sztuka (jeśli wpisana), Karton, Paleta. Paleta: wysokość razem z paletą, liczba kartonów, waga towaru (i palety, jeśli dodana).\n\nNa warstwie — sztuk i kartonów na warstwie; warstw na palecie.\n\nOznaczenia liczą się same: gabaryt (sztuka większa niż 50×30 cm), awkward (ponad 1,2 m), two men lift (karton ponad 35 kg), struktura szacowana (waga nie pozwala nawet na jedną warstwę). Karton powyżej 25 kg — przypomnienie, by mierzyć taśmą.</string>
     <string name="help_history_t">Historia</string>
@@ -206,4 +206,14 @@ Wszystkie te wartości zapamiętują się same. Kafelek różny od standardu jes
     <string name="settings_form">Karta</string>
     <string name="signer_hint">Imię i nazwisko</string>
     <string name="signer_desc">Wpisze się w wiersz „podpis opisującego strukturę”, żeby nie zapomnieć.</string>
+    <string name="only_orientation">Nie ma innych położeń, w których karton się mieści</string>
+    <string name="orientation_now">Karton %1$s: podstawa %2$s × %3$s, wysokość %4$s m</string>
+    <string name="orient_flat">jak wpisano</string>
+    <string name="orient_side">na boku</string>
+    <string name="orient_up">pionowo</string>
+    <string name="layout_orient">Inne położenie kartonu</string>
+    <string name="arrows_title">Strzałki ↑↑ na kartonie</string>
+    <string name="arrows_on">Nie obracać — wysokość tylko jak wpisano</string>
+    <string name="arrows_off">Karton można położyć na boku lub postawić pionowo, jeśli tak mieści się więcej</string>
+    <string name="status_orient">%1$s, wysokość %2$s m</string>
 </resources>

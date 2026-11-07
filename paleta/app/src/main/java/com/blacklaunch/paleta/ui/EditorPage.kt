@@ -199,6 +199,12 @@ fun EditorPage(
             Modifier.padding(horizontal = 6.dp),
             subtitle = stringResource(R.string.adr_desc),
         ) { vm.adr = it }
+        SwitchRow(
+            stringResource(R.string.arrows_title),
+            vm.arrows,
+            Modifier.padding(horizontal = 6.dp),
+            subtitle = stringResource(if (vm.arrows) R.string.arrows_on else R.string.arrows_off),
+        ) { vm.arrows = it }
 
         // --- Розкладка шару ---
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -327,7 +333,15 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
             else if (vm.variants.size > 1) stringResource(R.string.status_auto_variant, n, vm.variantIndex + 1, vm.variants.size)
             else stringResource(R.string.status_auto, n)
             val over = check?.overhangUsed ?: 0
-            (if (over > 0) base + " · " + stringResource(R.string.status_overhang, Num.cm(over, comma)) else base) to false
+            val withOver = if (over > 0) base + " · " + stringResource(R.string.status_overhang, Num.cm(over, comma)) else base
+            // Коробку поставлено інакше, ніж вписали, — сказати, як саме.
+            val h = vm.boxHmm
+            val orient = when (vm.orientation) {
+                1 -> stringResource(R.string.orient_side)
+                2 -> stringResource(R.string.orient_up)
+                else -> null
+            }
+            (if (orient != null && h != null) withOver + " · " + stringResource(R.string.status_orient, orient, Num.metres(h, comma)) else withOver) to false
         }
     }
     Text(
