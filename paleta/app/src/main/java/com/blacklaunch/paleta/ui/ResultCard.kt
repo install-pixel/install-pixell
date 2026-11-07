@@ -153,9 +153,9 @@ fun ResultCard(view: CardView, modifier: Modifier = Modifier) {
                 when (i) {
                     0 -> Label(stringResource(R.string.form_per_layer), "(Eaches per layer)")
                     1 -> Label(stringResource(R.string.form_pcs), bold = true)
-                    2 -> Value(s?.let { (it.perLayer.toLong() * view.unitsPerBox).toString() } ?: "")
+                    2 -> Value(s?.let { perLayerText(it.perLayer.toLong() * view.unitsPerBox, it.perLayer2.toLong() * view.unitsPerBox) } ?: "")
                     3 -> Label(stringResource(R.string.form_boxes), bold = true)
-                    4 -> Value(s?.perLayer?.toString() ?: "")
+                    4 -> Value(s?.let { perLayerText(it.perLayer.toLong(), it.perLayer2.toLong()) } ?: "")
                 }
             }
             FormRow(listOf(span(0, 1), span(2, 5)), ROW) { i ->
@@ -190,6 +190,9 @@ fun ResultCard(view: CardView, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** На шарі: одне число або «перший / другий», якщо другий шар розкладено інакше. */
+private fun perLayerText(a: Long, b: Long): String = if (a == b) a.toString() else "$a / $b"
 
 @Composable
 private fun DimRow(cols: List<Float>, name: String, unit: String, box: String, pallet: String) {

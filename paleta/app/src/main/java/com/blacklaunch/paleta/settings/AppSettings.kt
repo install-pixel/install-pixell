@@ -64,7 +64,13 @@ class AppSettings(context: Context) {
         get() = prefs.getString(KEY_SIGNER, null).orEmpty()
         set(value) = prefs.edit().putString(KEY_SIGNER, value).apply()
 
+    /** «Однакові ряди»: усі коробки шару в один бік (без окремих коробок упоперек). Типово — так. */
+    var uniform: Boolean
+        get() = prefs.getBoolean(KEY_UNIFORM, true)
+        set(value) = prefs.edit().putBoolean(KEY_UNIFORM, value).apply()
+
     companion object {
+        private const val KEY_UNIFORM = "uniform_rows"
         private const val KEY_SIGNER = "signer"
         private const val KEY_LANG = "language"
         private const val KEY_GLASS = "glass"

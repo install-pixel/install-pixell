@@ -56,19 +56,21 @@ private val FACES = listOf(
  * коробок розкладки. Кольори — з токенів теми.
  */
 @Composable
-fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra: Int, modifier: Modifier = Modifier) {
+fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra: Int, modifier: Modifier = Modifier, layout2: List<Placed>? = null) {
     val yaw = remember { mutableFloatStateOf(DEFAULT_YAW) }
     val pitch = remember { mutableFloatStateOf(DEFAULT_PITCH) }
     val haptics = LocalHaptics.current
-    val cuboids = remember(layout, box, boxH, layers, extra) {
+    val cuboids = remember(layout, layout2, box, boxH, layers, extra) {
         val out = ArrayList<Cuboid>()
         if (box != null && boxH != null && boxH > 0) {
             fun layer(k: Int, list: List<Placed>) {
                 val z0 = (PALLET_HEIGHT_MM + k * boxH).toFloat()
                 list.forEach { p -> out += Cuboid(p.x.toFloat(), p.y.toFloat(), z0, (p.x + p.sx(box)).toFloat(), (p.y + p.sy(box)).toFloat(), z0 + boxH, k) }
             }
-            for (k in 0 until layers) layer(k, layout)
-            if (extra > 0) layer(layers, layout.take(extra))
+            // Шари чергуються: непарні — перший шар, парні — другий (якщо він свій).
+            fun of(k: Int) = if (k % 2 == 1 && layout2 != null) layout2 else layout
+            for (k in 0 until layers) layer(k, of(k))
+            if (extra > 0) layer(layers, of(layers).take(extra))
         }
         out
     }
@@ -106,7 +108,15 @@ fun Pallet3D(layout: List<Placed>, box: BoxSize?, boxH: Int?, layers: Int, extra
         val st = sin(th).toFloat()
         val cp = cos(ph).toFloat()
         val sp = sin(ph).toFloat()
-        val mid = Offset(size.width / 2f, size.height / 2f)
+        // Масштаб — сталий (палета не «дихає», поки крутиш), а положення — за справжніми межами зображення:
+        // палета завжди рівно посередині вікна, і зверху, і знизу.
+        val probe = Camera(ct, st, cp, sp, cx, cy, cz, scale, Offset.Zero)
+        var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE; var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
+        for (k in 0 until 8) {
+            val p = probe.project(if (k and 1 == 0) 0f else PALLET_L.toFloat(), if (k and 2 == 0) 0f else PALLET_W.toFloat(), if (k and 4 == 0) 0f else top)
+            minX = minOf(minX, p.x); maxX = maxOf(maxX, p.x); minY = minOf(minY, p.y); maxY = maxOf(maxY, p.y)
+        }
+        val mid = Offset(size.width / 2f - (minX + maxX) / 2f, size.height / 2f - (minY + maxY) / 2f)
         val camera = Camera(ct, st, cp, sp, cx, cy, cz, scale, mid)
         val glass = AppStyle.glass
 

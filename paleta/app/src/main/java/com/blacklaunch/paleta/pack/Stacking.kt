@@ -26,9 +26,32 @@ data class Stack(
     val limit: Limit,
     /** Скільки шарів дала б висота (щоб показати «зменшено з N до M»). */
     val layersByHeight: Int,
+    /** Коробок у парних шарах (2, 4…), якщо другий шар має свою розкладку; інакше = [perLayer]. */
+    val perLayer2: Int = perLayer,
 )
 
 object Stacking {
+    /**
+     * Шари чергуються: непарні — [perA] коробок, парні — [perB] (свій другий шар). Решта — як у [stack]: шарів за
+     * висотою, потім, якщо вага не пускає, — менше шарів (лише повні); навіть один не набирається — неповний.
+     */
+    fun stackAlternating(perA: Int, perB: Int, boxHmm: Int, boxG: Long, heightLimitMm: Int, weightLimitG: Long, palletG: Long): Stack? {
+        if (perB == perA) return stack(perA, boxHmm, boxG, heightLimitMm, weightLimitG, palletG)
+        if (perA <= 0 || perB <= 0 || boxHmm <= 0 || boxG <= 0) return null
+        val byHeight = ((heightLimitMm - PALLET_HEIGHT_MM).coerceAtLeast(0)) / boxHmm
+        val byWeight = (weightLimitG - palletG).coerceAtLeast(0) / boxG
+        fun boxesIn(k: Int): Long = ((k + 1) / 2).toLong() * perA + (k / 2).toLong() * perB
+        var layers = byHeight
+        while (layers > 0 && boxesIn(layers) > byWeight) layers--
+        val limit = if (layers < byHeight) Limit.Weight else Limit.Height
+        if (layers == 0) {
+            val n = minOf(byWeight, perA.toLong()).toInt()
+            return Stack(perA, 0, n, n > 0 && byHeight > 0, if (n > 0) boxHmm + PALLET_HEIGHT_MM else PALLET_HEIGHT_MM, n * boxG + palletG, limit, byHeight, perB)
+        }
+        val n = boxesIn(layers)
+        return Stack(perA, layers, n.toInt(), false, layers * boxHmm + PALLET_HEIGHT_MM, n * boxG + palletG, limit, byHeight, perB)
+    }
+
     /**
      * [perLayer] коробок у шарі, коробка [boxHmm] заввишки й [boxG] грамів; ліміт висоти [heightLimitMm] (разом з
      * палетою), ліміт ваги [weightLimitG]; [palletG] — вага палети (0 — не враховується).

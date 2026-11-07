@@ -76,15 +76,24 @@ fun DetailScreen(card: ProductCard, onBack: () -> Unit, onDuplicate: () -> Unit,
                 SectionTitle(stringResource(R.string.section_layout))
                 val layout = remember(card.layout) { Layout.decode(card.layout) }
                 var view3d by remember { mutableStateOf(false) }
+                val layout2 = remember(card.layout2) { card.layout2?.let { Layout.decode(it) } }
+                var showSecond by remember { mutableStateOf(false) }
                 EqualWidthRow(Modifier.fillMaxWidth()) {
                     ChoiceChip(stringResource(R.string.view_top), selected = !view3d) { view3d = false }
                     ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true }
                 }
                 Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
                     if (view3d) {
-                        Pallet3D(layout, card.plan, card.boxH, layers = card.layers, extra = if (card.partial) card.boxes else 0)
+                        Pallet3D(layout, card.plan, card.boxH, layers = card.layers, extra = if (card.partial) card.boxes else 0, layout2 = layout2)
                     } else {
-                        PalletView(layout, card.plan, card.overhang, check = null)
+                        PalletView(if (showSecond && layout2 != null) layout2 else layout, card.plan, card.overhang, check = null)
+                    }
+                }
+                // Другий шар розкладено інакше — можна подивитись кожен.
+                if (layout2 != null && !view3d) {
+                    EqualWidthRow(Modifier.fillMaxWidth()) {
+                        ChoiceChip(stringResource(R.string.layer_1), selected = !showSecond) { showSecond = false }
+                        ChoiceChip(stringResource(R.string.layer_2), selected = showSecond) { showSecond = true }
                     }
                 }
                 Text(

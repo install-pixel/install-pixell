@@ -106,4 +106,14 @@ class PackingTest {
         // Куб — одне положення.
         assertEquals(1, com.blacklaunch.paleta.pack.Orient.rank(300, 300, 300, false, 0, 1800, 1000, 700_000, 0).size)
     }
+
+    @Test
+    fun uniformLayerIsOneDirection() {
+        val r = Packer.auto(BoxSize(450, 270), 0, uniform = true)
+        assertEquals(4, r.count)
+        for (v in r.variants) assertTrue(v.map { it.rotated }.distinct().size == 1)
+        val box = BoxSize(450, 270)
+        val m = Layout.mirror(r.variants.first(), box)
+        assertTrue(Layout.check(m, box, 0).ok)
+    }
 }

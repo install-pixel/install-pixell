@@ -1,5 +1,6 @@
 package com.blacklaunch.paleta.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -44,4 +45,7 @@ data class ProductCard(
     val weightG: Long,
     val limitedByWeight: Boolean,
     val layersByHeight: Int,
+    // Другий шар (парні шари) — своя розкладка; null — усі шари однакові (з версії бази 2).
+    val layout2: String? = null,
+    @ColumnInfo(defaultValue = "0") val perLayer2: Int = 0,
 )

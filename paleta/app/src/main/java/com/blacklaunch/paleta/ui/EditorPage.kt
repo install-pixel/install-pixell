@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -101,7 +102,8 @@ fun EditorPage(
             value = vm.sku,
             onValueChange = { vm.sku = it.take(PaletaViewModel.MAX_SKU) },
             placeholder = stringResource(R.string.sku_hint),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
+            // SKU — цифри: одразу цифрова клавіатура.
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             trailing = {
                 Box(
                     Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); onScan() },
@@ -208,6 +210,12 @@ fun EditorPage(
             Modifier.padding(horizontal = 6.dp),
             subtitle = stringResource(if (vm.arrows) R.string.arrows_on else R.string.arrows_off),
         ) { vm.arrows = it }
+        SwitchRow(
+            stringResource(R.string.uniform_title),
+            vm.uniform,
+            Modifier.padding(horizontal = 6.dp),
+            subtitle = stringResource(if (vm.uniform) R.string.uniform_on else R.string.uniform_off),
+        ) { vm.setUniformRows(it) }
 
         // --- Розкладка шару ---
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -223,12 +231,17 @@ fun EditorPage(
             ChoiceChip(stringResource(R.string.view_top), selected = !view3d) { view3d = false }
             ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true; vm.selected = null }
         }
+        // Шар: перший (непарні) чи другий (парні) — другий можна розкласти інакше («навхрест»).
+        EqualWidthRow(Modifier.fillMaxWidth()) {
+            ChoiceChip(stringResource(R.string.layer_1), selected = vm.editLayer == 0) { vm.selectLayer(0) }
+            ChoiceChip(stringResource(if (vm.layout2 == null) R.string.layer_2_same else R.string.layer_2), selected = vm.editLayer == 1) { vm.selectLayer(1) }
+        }
         Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
             if (view3d) {
                 val st = vm.stack
-                Pallet3D(vm.layout, vm.box, vm.boxHmm, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
+                Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
             } else PalletView(
-                layout = vm.layout,
+                layout = vm.current,
                 box = vm.box,
                 overhang = vm.overhang,
                 check = check,
@@ -239,18 +252,25 @@ fun EditorPage(
                 onRotate = { vm.selected = it; vm.rotateSelected() },
             )
             if (vm.box == null || (view3d && vm.boxHmm == null)) {
+                // Підказка — на чорній плашці в рамці (не по дошках палети).
                 Text(
                     stringResource(R.string.layout_empty),
                     color = Oled.TextSecondary,
-                    fontSize = 15.sp,
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                    fontSize = 14.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 28.dp)
+                        .background(Oled.Black, RoundedCornerShape(14.dp))
+                        .pencilFrame(14.dp, seed = 77, alpha = 0.6f)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                 )
             }
         }
         LayoutStatus(vm, comma)
         // Дії з розкладкою — однакові кнопки в ряд; «Повернути» і «Прибрати» тьмяні, поки нічого не вибрано.
         val hasBox = vm.box != null
-        val hasSel = vm.selected != null && vm.selected!! in vm.layout.indices
+        val hasSel = vm.selected != null && vm.selected!! in vm.current.indices
         EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
             SheetButton(stringResource(R.string.act_auto), { vm.auto() }, enabled = hasBox && !view3d, compact = true)
             SheetButton(stringResource(R.string.act_add), { vm.addBox() }, enabled = hasBox && !view3d, compact = true)
@@ -332,7 +352,7 @@ private fun LimitTile(title: String, value: String, note: String, bright: Boolea
 @Composable
 private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
     val check = vm.check
-    val n = vm.layout.size
+    val n = vm.current.size
     val (text, danger) = when {
         vm.box == null -> stringResource(R.string.status_no_box) to false
         n == 0 && !vm.custom && vm.variants.isNotEmpty() && vm.variants.first().isEmpty() -> stringResource(R.string.status_too_big) to true
@@ -340,7 +360,8 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         check != null && check.overlapping.isNotEmpty() -> stringResource(R.string.status_overlap, check.overlapping.size) to true
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true
         else -> {
-            val base = if (vm.custom) stringResource(R.string.status_custom, n)
+            val base = if (vm.editLayer == 1) stringResource(R.string.status_layer2, n)
+            else if (vm.custom) stringResource(R.string.status_custom, n)
             else if (vm.variants.size > 1) stringResource(R.string.status_auto_variant, n, vm.variantIndex + 1, vm.variants.size)
             else stringResource(R.string.status_auto, n)
             val over = check?.overhangUsed ?: 0

@@ -259,6 +259,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
             onOrient = { layoutMenu = false; vm.nextOrientation() },
             onFill = { layoutMenu = false; vm.fill() },
             onClear = { layoutMenu = false; vm.clearLayout() },
+            onSameLayers = if (vm.layout2 != null) ({ layoutMenu = false; vm.sameLayers() }) else null,
         )
     }
     cardMenu?.let { card ->

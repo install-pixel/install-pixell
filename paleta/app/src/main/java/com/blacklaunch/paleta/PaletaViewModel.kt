@@ -101,7 +101,7 @@ fun ProductCard.view(): CardView {
         unitsPerBox = unitsPerBox,
         unit = unit,
         unitG = unitG,
-        stack = Stack(perLayer, layers, boxes, partial, heightMm, weightG, if (limitedByWeight) Limit.Weight else Limit.Height, layersByHeight),
+        stack = Stack(perLayer, layers, boxes, partial, heightMm, weightG, if (limitedByWeight) Limit.Weight else Limit.Height, layersByHeight, if (perLayer2 > 0) perLayer2 else perLayer),
         palletG = palletG,
         adr = adr,
         flags = flagsOf(box, boxG, unit),
@@ -165,6 +165,20 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     var variantIndex by mutableIntStateOf(0)
         private set
     var selected by mutableStateOf<Int?>(null)
+    /** Другий шар (парні шари) — своя розкладка; null — усі шари однакові. */
+    var layout2 by mutableStateOf<List<Placed>?>(null)
+        private set
+    /** Який шар зараз редагуємо: 0 — перший (непарні), 1 — другий (парні). */
+    var editLayer by mutableIntStateOf(0)
+        private set
+    /** «Однакові ряди»: усі коробки шару в один бік (запам'ятовується). */
+    var uniform by mutableStateOf(settings.uniform)
+        private set
+    fun setUniformRows(on: Boolean) { uniform = on; settings.uniform = on }
+
+    /** Розкладка шару, який зараз редагуємо. */
+    val current: List<Placed> get() = if (editLayer == 1) layout2 ?: layout else layout
+
     /** Для якої коробки зроблено поточну розкладку. */
     private var layoutBox: BoxSize? = null
     /** І для якого звису (щоб після «Дублювати» розкладка лишилась точно та сама). */
@@ -214,18 +228,30 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Ліміт висоти з урахуванням ADR (лише 1,20 м). */
     val effectiveHeight: Int get() = if (adr) minOf(heightLimit, ADR_HEIGHT_MM) else heightLimit
 
-    val check: LayoutCheck? get() = box?.let { Layout.check(layout, it, overhang) }
+    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang) }
+
+    /** Обидва шари без помилок. */
+    private val allOk: Boolean
+        get() {
+            val b = box ?: return false
+            return Layout.check(layout, b, overhang).ok && (layout2?.let { Layout.check(it, b, overhang).ok } ?: true)
+        }
 
     val stack: Stack?
         get() {
             val h = boxHmm ?: return null
             val g = boxG ?: return null
             if (layout.isEmpty()) return null
-            return Stacking.stack(layout.size, h, g, effectiveHeight, weightLimitG, if (palletOn) palletG else 0)
+            val second = layout2
+            return if (second != null && second.isNotEmpty()) {
+                Stacking.stackAlternating(layout.size, second.size, h, g, effectiveHeight, weightLimitG, if (palletOn) palletG else 0)
+            } else {
+                Stacking.stack(layout.size, h, g, effectiveHeight, weightLimitG, if (palletOn) palletG else 0)
+            }
         }
 
     /** Можна зберегти: є коробка, вага, розкладка без помилок. */
-    val canSave: Boolean get() = stack != null && check?.ok == true
+    val canSave: Boolean get() = stack != null && allOk
 
     /** Бланк для поточного вводу (дата — сьогодні). */
     fun currentView(): CardView? {
@@ -255,6 +281,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         val l: Int?, val w: Int?, val h: Int?,
         val arrows: Boolean, val overhang: Int, val height: Int, val boxG: Long?, val weight: Long, val pallet: Long,
         val manual: Pair<Triple<Int, Int, Int>, Int>?,
+        val uniform: Boolean,
     )
 
     init {
@@ -264,7 +291,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
             snapshotFlow {
                 AutoKey(
                     Num.lengthMm(boxL), Num.lengthMm(boxW), Num.lengthMm(boxH),
-                    arrows, overhang, effectiveHeight, boxG, weightLimitG, if (palletOn) palletG else 0, manualOrientation,
+                    arrows, overhang, effectiveHeight, boxG, weightLimitG, if (palletOn) palletG else 0, manualOrientation, uniform,
                 )
             }
                 .distinctUntilChanged()
@@ -278,9 +305,9 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     val (chosen, auto, options) = withContext(Dispatchers.Default) {
                         if (k.h == null) {
-                            Triple(0, Packer.auto(BoxSize(k.l, k.w), k.overhang), listOf(0))
+                            Triple(0, Packer.auto(BoxSize(k.l, k.w), k.overhang, k.uniform), listOf(0))
                         } else {
-                            val ranked = Orient.rank(k.l, k.w, k.h, k.arrows, k.overhang, k.height, k.boxG, k.weight, k.pallet)
+                            val ranked = Orient.rank(k.l, k.w, k.h, k.arrows, k.overhang, k.height, k.boxG, k.weight, k.pallet, k.uniform)
                             val fits = ranked.filter { it.auto.count > 0 }.map { it.orientation.index }
                             val manual = k.manual?.takeIf { it.first == Triple(k.l, k.w, k.h) }?.second
                             val pick = ranked.firstOrNull { it.orientation.index == manual && (!k.arrows || manual == 0) } ?: ranked.first()
@@ -293,18 +320,27 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
                     val o = k.overhang
                     variants = auto.variants
                     when {
-                        layoutBox == b && layoutOverhang == o -> Unit
+                        layoutBox == b && layoutOverhang == o && !uniformChanged(k.uniform) -> Unit
                         layoutBox != b -> {
                             if (custom && layoutBox != null && layout.isNotEmpty()) _events.tryEmit(UiEvent.LayoutReset)
+                            // Інша коробка — другий шар теж заново (як перший).
+                            layout2 = null
+                            editLayer = 0
                             applyVariant(0)
                         }
+                        uniformChanged(k.uniform) -> { layout2 = null; editLayer = 0; applyVariant(0) }
                         !custom -> applyVariant(0)
                     }
                     layoutBox = b
                     layoutOverhang = o
+                    layoutUniform = k.uniform
                 }
         }
     }
+
+    /** Для якого режиму «однакові ряди» зроблено розкладку (перемкнули — авто заново). */
+    private var layoutUniform: Boolean? = null
+    private fun uniformChanged(u: Boolean) = layoutUniform != null && layoutUniform != u
 
     /** «Інше положення»: наступне з тих, де поміщається хоч одна коробка. */
     fun nextOrientation() {
@@ -327,9 +363,49 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         selected = null
     }
 
+    /** Варіанти для другого шару: інші найкращі розкладки й дзеркальні (щоб шви не збігались). */
+    private fun secondCandidates(): List<List<Placed>> {
+        val b = box ?: return emptyList()
+        val all = variants + variants.map { Layout.mirror(it, b) }
+        return all.distinctBy { it.toSet() }
+    }
+
+    /** Перший варіант другого шару: інша розкладка, ніж перший шар (якщо є), інакше дзеркальна. */
+    private fun defaultSecond(): List<Placed> {
+        val b = box ?: return layout
+        val first = layout.toSet()
+        return secondCandidates().firstOrNull { it.toSet() != first && it.size == layout.size } ?: Layout.mirror(layout, b)
+    }
+
+    /** Вибрати шар для редагування; другий уперше — з автоматичною розкладкою «навхрест». */
+    fun selectLayer(i: Int) {
+        if (box == null) return
+        if (i == 1 && layout2 == null) layout2 = defaultSecond()
+        editLayer = i
+        selected = null
+    }
+
+    /** Усі шари однакові (другий — як перший). */
+    fun sameLayers() {
+        layout2 = null
+        editLayer = 0
+        selected = null
+    }
+
+    private var secondIndex = 0
+
     /** «Авто»: своя розкладка → найкраща авто; авто → наступний варіант з такою самою кількістю. */
     fun auto() {
         if (variants.isEmpty()) return
+        if (editLayer == 1) {
+            val list = secondCandidates()
+            if (list.isEmpty()) return
+            secondIndex = (secondIndex + 1) % list.size
+            layout2 = list[secondIndex]
+            selected = null
+            _events.tryEmit(if (list.size > 1) UiEvent.Variant(secondIndex + 1, list.size) else UiEvent.OnlyVariant)
+            return
+        }
         if (custom) {
             applyVariant(0)
             if (variants.size > 1) _events.tryEmit(UiEvent.Variant(1, variants.size))
@@ -343,6 +419,10 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun edit(list: List<Placed>) {
+        if (editLayer == 1) {
+            layout2 = list
+            return
+        }
         layout = list
         custom = true
         layoutBox = box
@@ -352,41 +432,41 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Перетягування: [rawX], [rawY] — де під пальцем (мм), коробка прилипає до країв і сусідів. */
     fun move(index: Int, rawX: Int, rawY: Int) {
         val b = box ?: return
-        val p = layout.getOrNull(index) ?: return
-        val snapped = Layout.snap(layout, index, rawX, rawY, p.rotated, b, overhang)
-        if (snapped != p) edit(layout.toMutableList().also { it[index] = snapped })
+        val p = current.getOrNull(index) ?: return
+        val snapped = Layout.snap(current, index, rawX, rawY, p.rotated, b, overhang)
+        if (snapped != p) edit(current.toMutableList().also { it[index] = snapped })
     }
 
     fun rotateSelected() {
         val b = box ?: return
         val i = selected ?: return
-        if (i !in layout.indices) return
-        edit(layout.toMutableList().also { it[i] = Layout.rotate(layout, i, b, overhang) })
+        if (i !in current.indices) return
+        edit(current.toMutableList().also { it[i] = Layout.rotate(current, i, b, overhang) })
     }
 
     fun removeSelected() {
         val i = selected ?: return
-        if (i !in layout.indices) return
-        edit(layout.toMutableList().also { it.removeAt(i) })
+        if (i !in current.indices) return
+        edit(current.toMutableList().also { it.removeAt(i) })
         selected = null
     }
 
     fun addBox() {
         val b = box ?: return
-        val prefer = selected?.let { layout.getOrNull(it)?.rotated } ?: layout.lastOrNull()?.rotated ?: false
-        val spot = Layout.freeSpot(layout, b, overhang, prefer)
+        val prefer = selected?.let { current.getOrNull(it)?.rotated } ?: current.lastOrNull()?.rotated ?: false
+        val spot = Layout.freeSpot(current, b, overhang, prefer)
         if (spot == null) {
             _events.tryEmit(UiEvent.NoRoom)
             return
         }
-        edit(layout + spot)
-        selected = layout.size - 1
+        edit(current + spot)
+        selected = current.size - 1
     }
 
     fun fill() {
         val b = box ?: return
-        val filled = Layout.fill(layout, b, overhang)
-        if (filled.size == layout.size) _events.tryEmit(UiEvent.NoRoom) else edit(filled)
+        val filled = Layout.fill(current, b, overhang)
+        if (filled.size == current.size) _events.tryEmit(UiEvent.NoRoom) else edit(filled)
     }
 
     fun clearLayout() {
@@ -400,7 +480,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         val h = boxHmm ?: return
         val g = boxG ?: return
         val s = stack ?: return
-        if (check?.ok != true) return
+        if (!allOk) return
         val unit = unitTriple
         val card = ProductCard(
             createdAt = System.currentTimeMillis(),
@@ -412,6 +492,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
             layout = Layout.encode(layout), customLayout = custom,
             perLayer = s.perLayer, layers = s.layers, boxes = s.boxes, partial = s.partial,
             heightMm = s.heightMm, weightG = s.weightG, limitedByWeight = s.limit == Limit.Weight, layersByHeight = s.layersByHeight,
+            layout2 = layout2?.let { Layout.encode(it) }, perLayer2 = if (layout2 != null) s.perLayer2 else 0,
         )
         viewModelScope.launch {
             dao.insert(card)
@@ -424,6 +505,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         sku = ""; boxL = ""; boxW = ""; boxH = ""; boxKg = ""; units = ""
         unitL = ""; unitW = ""; unitH = ""; unitKg = ""; adr = false; arrows = false; manualOrientation = null
         layout = emptyList(); custom = false; layoutBox = null; layoutOverhang = -1; selected = null
+        layout2 = null; editLayer = 0
     }
 
     /** «Дублювати»: усе зі збереженої картки — в поля (дату поставить нове збереження). */
@@ -450,6 +532,9 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         layoutOverhang = card.overhang
         layout = Layout.decode(card.layout)
         custom = card.customLayout
+        layout2 = card.layout2?.let { Layout.decode(it) }
+        editLayer = 0
+        layoutUniform = uniform
         selected = null
         _events.tryEmit(UiEvent.Duplicated)
     }

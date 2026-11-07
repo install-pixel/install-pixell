@@ -90,7 +90,7 @@ fun HistoryPage(
             value = query,
             onValueChange = { onQuery(it.take(40)) },
             placeholder = stringResource(R.string.search_hint),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
+            keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, imeAction = ImeAction.Search),
             trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Порожньо — лупа (просто позначка); вписано — «очистити».

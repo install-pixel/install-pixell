@@ -190,13 +190,14 @@ fun CardMenu(card: ProductCard, onDismiss: () -> Unit, onOpen: () -> Unit, onDup
 
 /** Меню розкладки («⋯» біля палети). */
 @Composable
-fun LayoutMenu(onDismiss: () -> Unit, onBest: () -> Unit, onOrient: () -> Unit, onFill: () -> Unit, onClear: () -> Unit) {
+fun LayoutMenu(onDismiss: () -> Unit, onBest: () -> Unit, onOrient: () -> Unit, onFill: () -> Unit, onClear: () -> Unit, onSameLayers: (() -> Unit)? = null) {
     SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.section_layout)) {
         Column(Modifier.bouncyScroll()) {
             MenuRow(Glyph.Magic, stringResource(R.string.layout_best), onBest)
             MenuRow(Glyph.Box, stringResource(R.string.layout_orient), onOrient)
             MenuRow(Glyph.Plus, stringResource(R.string.layout_fill), onFill)
             MenuRow(Glyph.Eraser, stringResource(R.string.layout_clear), onClear)
+            if (onSameLayers != null) MenuRow(Glyph.Grid, stringResource(R.string.layers_same), onSameLayers)
             WindowHint(stringResource(R.string.layout_menu_hint))
         }
     }

@@ -39,11 +39,11 @@ object Packer {
      * Авторозкладка. [overhang] — дозволений звис з кожного боку (мм). Звис використовується, лише якщо з ним
      * поміщається більше коробок; інакше розкладка — в межах палети.
      */
-    fun auto(box: BoxSize, overhang: Int = 0): AutoResult {
+    fun auto(box: BoxSize, overhang: Int = 0, uniform: Boolean = false): AutoResult {
         if (!box.valid) return AutoResult(0, emptyList(), false)
-        val plain = bestIn(box, PALLET_L, PALLET_W)
+        val plain = bestIn(box, PALLET_L, PALLET_W, uniform)
         if (overhang > 0) {
-            val wide = bestIn(box, PALLET_L + 2 * overhang, PALLET_W + 2 * overhang)
+            val wide = bestIn(box, PALLET_L + 2 * overhang, PALLET_W + 2 * overhang, uniform)
             if (wide.first > plain.first) {
                 return AutoResult(wide.first, wide.second.map { centre(it, box) }.distinctLayouts(box), true)
             }
@@ -52,11 +52,18 @@ object Packer {
     }
 
     /** Кількість і варіанти розкладки в прямокутнику [areaL] × [areaW] (координати від його кута). */
-    internal fun bestIn(box: BoxSize, areaL: Int, areaW: Int): Pair<Int, List<List<Placed>>> {
+    internal fun bestIn(box: BoxSize, areaL: Int, areaW: Int, uniform: Boolean = false): Pair<Int, List<List<Placed>>> {
         val found = ArrayList<List<Placed>>()
         // 1. Проста сітка (обидва напрямки).
         val g0 = grid(areaL, areaW, box.l, box.w)
         val g1 = grid(areaL, areaW, box.w, box.l)
+        if (uniform) {
+            // «Однакові ряди»: усі коробки шару в один бік — лише сітка; обидва напрямки, якщо однаково добрі.
+            val best = maxOf(g0, g1)
+            if (g0 == best) found += fillGrid(0, 0, areaL, areaW, box, rotated = false)
+            if (g1 == best) found += fillGrid(0, 0, areaL, areaW, box, rotated = true)
+            return best to found
+        }
         found += fillGrid(0, 0, areaL, areaW, box, rotated = g1 > g0)
         // 2. Гільйотина.
         guillotine(box, areaL, areaW)?.let { found += it }
@@ -341,6 +348,10 @@ object Layout {
             out
         }.maxBy { it.size }
 
+    /** Дзеркально (поворот шару на 180°) — для другого шару, щоб шви не збігались. */
+    fun mirror(boxes: List<Placed>, box: BoxSize): List<Placed> =
+        boxes.map { Placed(PALLET_L - it.x - it.sx(box), PALLET_W - it.y - it.sy(box), it.rotated) }
+
     /** Розкладка в рядок для бази: «x,y,r;x,y,r…» (мм, r — 1 якщо повернута). */
     fun encode(boxes: List<Placed>): String = boxes.joinToString(";") { "${it.x},${it.y},${if (it.rotated) 1 else 0}" }
 
@@ -382,6 +393,7 @@ object Orient {
         boxG: Long?,
         weightLimitG: Long,
         palletG: Long,
+        uniform: Boolean = false,
     ): List<OrientedResult> {
         val indices = if (arrows) listOf(0) else listOf(0, 1, 2)
         val seen = HashSet<Pair<Set<Int>, Int>>()
@@ -389,7 +401,7 @@ object Orient {
             val o = of(l, w, h, i)
             // Однакові положення (куб, дві однакові сторони) — один раз.
             if (!seen.add(setOf(o.plan.l, o.plan.w) to o.height)) return@mapNotNull null
-            val auto = Packer.auto(o.plan, overhang)
+            val auto = Packer.auto(o.plan, overhang, uniform)
             val total = when {
                 auto.count == 0 -> 0
                 boxG != null -> Stacking.stack(auto.count, o.height, boxG, heightLimitMm, weightLimitG, palletG)?.boxes ?: 0

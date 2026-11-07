@@ -56,4 +56,18 @@ class StackingTest {
         assertEquals("2,5", Num.cm(25))
         assertEquals("0,475", Num.metres(475))
     }
+
+    @Test
+    fun alternatingLayers() {
+        // Шари 10 і 9 коробок, 8 шарів за висотою: 4×10 + 4×9 = 76.
+        val s = Stacking.stackAlternating(10, 9, 200, 1_000, 1800, 700_000, 0)!!
+        assertEquals(8, s.layers)
+        assertEquals(76, s.boxes)
+        assertEquals(9, s.perLayer2)
+        // Вага 20 кг: пускає 35 коробок → 3 шари (10 + 9 + 10 = 29), 4 шари — 38 забагато.
+        val w = Stacking.stackAlternating(10, 9, 200, 20_000, 1800, 700_000, 0)!!
+        assertEquals(3, w.layers)
+        assertEquals(29, w.boxes)
+        assertEquals(Limit.Weight, w.limit)
+    }
 }
