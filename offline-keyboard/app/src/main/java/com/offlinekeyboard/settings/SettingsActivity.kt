@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
@@ -283,7 +284,10 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
             androidx.compose.foundation.layout.Box(
                 Modifier
                     .align(androidx.compose.ui.Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    // Black paper under the button: text scrolling below never shows through (the
+                    // sheet's pencil frame has no fill of its own).
+                    .background(androidx.compose.ui.graphics.Color.Black, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
             ) {
                 InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
             }
