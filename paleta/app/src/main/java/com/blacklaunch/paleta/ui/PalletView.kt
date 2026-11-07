@@ -136,7 +136,9 @@ fun PalletView(
                 select(index)
                 down.consume()
             }
-            val start = index?.let { currentLayout.getOrNull(it) }
+            // Яку коробку тягнемо і звідки (після повороту двома пальцями — та, яку крутили, з нового місця).
+            var dragIndex = index
+            var start = index?.let { currentLayout.getOrNull(it) }
             val slop = viewConfiguration.touchSlop
             var acc = Offset.Zero
             var dragging = false
@@ -144,10 +146,14 @@ fun PalletView(
             var twist = 0f
             var handedOff = false
             fun emit() {
-                if (index == null || start == null) return
+                val i = dragIndex ?: return
+                val st = start ?: return
                 val k = scale.floatValue
-                move(index, (start.x + acc.x / k).roundToInt(), (start.y + acc.y / k).roundToInt())
+                move(i, (st.x + acc.x / k).roundToInt(), (st.y + acc.y / k).roundToInt())
             }
+            var lastTarget: Int? = null
+            // Щойно крутили двома пальцями — коли лишиться один палець, почати тягнути заново з нового місця.
+            var afterTwist = false
             while (true) {
                 val event = awaitPointerEvent()
                 val pressed = event.changes.filter { it.pressed }
@@ -159,6 +165,8 @@ fun PalletView(
                     if (target == null) { handedOff = true; break }
                     if (!twoFingers) select(target)
                     twoFingers = true
+                    lastTarget = target
+                    afterTwist = true
                     twist += event.calculateRotation()
                     if (kotlin.math.abs(twist) >= TWIST_DEG) {
                         haptics.tick()
@@ -171,12 +179,20 @@ fun PalletView(
                     continue
                 }
                 val c = pressed.first()
-                if (twoFingers) {
-                    // Після повороту один палець лишився — не тягнемо (щоб коробка не «стрибнула»).
+                if (afterTwist) {
+                    afterTwist = false
+                    // Після повороту один палець лишився — далі тягнемо цю коробку з того місця, де вона тепер
+                    // (без стрибка: рахуємо рух від цієї миті).
+                    dragIndex = lastTarget
+                    start = lastTarget?.let { currentLayout.getOrNull(it) }
+                    acc = Offset.Zero
+                    dragging = true
+                    twistAngle.floatValue = 0f
+                    twistIndex.intValue = -1
                     c.consume()
                     continue
                 }
-                if (index == null) {
+                if (dragIndex == null) {
                     // Повз коробки: рух — це прокрутка сторінки, віддаємо її.
                     if ((c.position - down.position).getDistance() > slop) { handedOff = true; break }
                     continue
@@ -194,9 +210,9 @@ fun PalletView(
             twistIndex.intValue = -1
             val dropped = overTray.value
             overTray.value = false
-            if (dragging && dropped && index != null) {
+            if (dragging && dropped && dragIndex != null) {
                 // Відпустили над кошиком — коробку відкладено.
-                park(index)
+                park(dragIndex!!)
                 lastTapAt = 0L
                 return@awaitEachGesture
             }

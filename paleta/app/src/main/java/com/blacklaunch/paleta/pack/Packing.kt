@@ -58,11 +58,12 @@ object Packer {
         val g0 = grid(areaL, areaW, box.l, box.w)
         val g1 = grid(areaL, areaW, box.w, box.l)
         if (uniform) {
-            // «Однакові ряди»: усі коробки шару в один бік — лише сітка; обидва напрямки, якщо однаково добрі.
-            val best = maxOf(g0, g1)
-            if (g0 == best) found += fillGrid(0, 0, areaL, areaW, box, rotated = false)
-            if (g1 == best) found += fillGrid(0, 0, areaL, areaW, box, rotated = true)
-            return best to found
+            // «Цілими рядами»: шар складається з рядів на всю довжину (або ширину) палети; у кожному ряду коробки
+            // в один бік, ряди можуть іти по-різному. Поодиноких коробок упоперек немає.
+            found += rowsPattern(box, areaL, areaW, alongX = true)
+            found += rowsPattern(box, areaL, areaW, alongX = false)
+            val best = found.maxOf { it.size }
+            return best to found.filter { it.size == best }.sortedBy { l -> l.map { it.rotated }.distinct().size }
         }
         found += fillGrid(0, 0, areaL, areaW, box, rotated = g1 > g0)
         // 2. Гільйотина.
@@ -72,6 +73,47 @@ object Packer {
         val best = found.maxOf { it.size }
         // Спершу — найпростіші (сітка), далі складніші; лише з найбільшою кількістю.
         return best to found.filter { it.size == best }
+    }
+
+    /**
+     * Найкращий шар із рядів. [alongX] — ряди вздовж палети (кожен ряд — смуга на всю довжину), інакше — уздовж
+     * ширини. Два види ряду: коробки «прямо» і «повернуті»; перебираємо, скільки рядів кожного виду. Якщо видів два —
+     * у кожному ряду мають бути щонайменше 2 коробки (інакше це та сама «одна коробка збоку»).
+     */
+    private fun rowsPattern(box: BoxSize, areaL: Int, areaW: Int, alongX: Boolean): List<Placed> {
+        // Ряд: (товщина ряду поперек, коробок у ряду, повернута).
+        val run = if (alongX) areaL else areaW
+        val across = if (alongX) areaW else areaL
+        fun along(rotated: Boolean): Int = if (alongX) (if (rotated) box.w else box.l) else (if (rotated) box.l else box.w)
+        fun thick(rotated: Boolean): Int = if (alongX) (if (rotated) box.l else box.w) else (if (rotated) box.w else box.l)
+        val cA = run / along(false)
+        val cB = run / along(true)
+        val tA = thick(false)
+        val tB = thick(true)
+        var best = -1
+        var bestA = 0
+        var bestB = 0
+        for (nA in 0..(if (cA > 0) across / tA else 0)) {
+            val nB = if (cB > 0) (across - nA * tA) / tB else 0
+            if (nA > 0 && nB > 0 && (cA < 2 || cB < 2)) continue
+            val n = nA * cA + nB * cB
+            // За рівності — менше різних видів рядів (простіше), потім більше «прямих».
+            if (n > best || (n == best && (nB == 0 || nA == 0) && bestA > 0 && bestB > 0)) { best = n; bestA = nA; bestB = nB }
+        }
+        val out = ArrayList<Placed>()
+        var offset = 0
+        fun strip(rotated: Boolean, count: Int, rows: Int) {
+            repeat(rows) {
+                for (k in 0 until count) {
+                    val a = k * along(rotated)
+                    out += if (alongX) Placed(a, offset, rotated) else Placed(offset, a, rotated)
+                }
+                offset += thick(rotated)
+            }
+        }
+        strip(false, cA, bestA)
+        strip(true, cB, bestB)
+        return out
     }
 
     /** Скільки коробок a×b (без повороту) поміщається сіткою в x×y. */
@@ -252,16 +294,18 @@ data class LayoutCheck(
     val outside: Map<Int, Int>,
     /** Найбільший звис серед дозволених (мм за край палети), 0 — без звису. */
     val overhangUsed: Int,
+    /** «Цілими рядами»: поодинокі коробки впоперек (немає сусіда в тому ж напрямку в ряду). */
+    val lonely: Set<Int> = emptySet(),
 ) {
-    val ok: Boolean get() = overlapping.isEmpty() && outside.isEmpty()
-    val bad: Set<Int> get() = overlapping + outside.keys
+    val ok: Boolean get() = overlapping.isEmpty() && outside.isEmpty() && lonely.isEmpty()
+    val bad: Set<Int> get() = overlapping + outside.keys + lonely
 }
 
 object Layout {
     /** Поріг «прилипання» до країв і сусідніх коробок під час перетягування. */
     const val SNAP_MM = 30
 
-    fun check(boxes: List<Placed>, box: BoxSize, overhang: Int): LayoutCheck {
+    fun check(boxes: List<Placed>, box: BoxSize, overhang: Int, rows: Boolean = false): LayoutCheck {
         val overlapping = HashSet<Int>()
         val outside = HashMap<Int, Int>()
         var used = 0
@@ -273,7 +317,31 @@ object Layout {
                 if (overlap(p, boxes[j], box)) { overlapping += i; overlapping += j }
             }
         }
-        return LayoutCheck(overlapping, outside, used)
+        return LayoutCheck(overlapping, outside, used, if (rows) lonely(boxes, box) else emptySet())
+    }
+
+    /**
+     * Поодинокі коробки: якщо в шарі є обидва напрямки, кожна коробка має стояти в ряду з іншою такою самою — поруч
+     * у тому самому ряду (той самий рядок чи стовпчик, впритул). Ті, що без пари, — «одна коробка збоку».
+     */
+    fun lonely(boxes: List<Placed>, box: BoxSize, tol: Int = 3): Set<Int> {
+        if (boxes.map { it.rotated }.distinct().size < 2) return emptySet()
+        val out = HashSet<Int>()
+        for (i in boxes.indices) {
+            val a = boxes[i]
+            val paired = boxes.indices.any { j ->
+                if (j == i) return@any false
+                val b = boxes[j]
+                if (b.rotated != a.rotated) return@any false
+                val sameRow = kotlin.math.abs(a.y - b.y) <= tol &&
+                    (kotlin.math.abs(b.x - (a.x + a.sx(box))) <= tol || kotlin.math.abs(a.x - (b.x + b.sx(box))) <= tol)
+                val sameCol = kotlin.math.abs(a.x - b.x) <= tol &&
+                    (kotlin.math.abs(b.y - (a.y + a.sy(box))) <= tol || kotlin.math.abs(a.y - (b.y + b.sy(box))) <= tol)
+                sameRow || sameCol
+            }
+            if (!paired) out += i
+        }
+        return out
     }
 
     private fun overlap(a: Placed, b: Placed, box: BoxSize): Boolean =

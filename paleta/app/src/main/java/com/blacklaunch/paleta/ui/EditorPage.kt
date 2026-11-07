@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -131,13 +132,13 @@ fun EditorPage(
         // --- Коробка ---
         SectionTitle(stringResource(R.string.section_box))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabeledField(stringResource(R.string.f_length), vm.boxL, { vm.boxL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-            LabeledField(stringResource(R.string.f_width), vm.boxW, { vm.boxW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-            LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+            LabeledField(stringResource(R.string.f_length), vm.boxL, { vm.boxL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxL))
+            LabeledField(stringResource(R.string.f_width), vm.boxW, { vm.boxW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxW))
+            LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxH))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LabeledField(stringResource(R.string.f_box_weight), vm.boxKg, { vm.boxKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal, Modifier.weight(1f))
-            LabeledField(stringResource(R.string.f_units), vm.units, { vm.units = it.filter(Char::isDigit).take(6) }, "1", stringResource(R.string.unit_pcs), number, Modifier.weight(1f))
+            LabeledField(stringResource(R.string.f_box_weight), vm.boxKg, { vm.boxKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal, Modifier.weight(1f), error = vm.badWeight(vm.boxKg))
+            LabeledField(stringResource(R.string.f_units), vm.units, { vm.units = it.filter(Char::isDigit).take(6) }, "1", stringResource(R.string.unit_pcs), number, Modifier.weight(1f), error = vm.badCount(vm.units))
         }
         // Сантиметри зрозуміли як сантиметри — показуємо, що вийшло.
         val cmHint = listOf(vm.boxL, vm.boxW, vm.boxH).filter { Num.isCentimetres(it) }.mapNotNull { Num.lengthMm(it) }
@@ -168,11 +169,11 @@ fun EditorPage(
         AnimatedVisibility(unitOpen, enter = fadeIn(tween(OPEN_MS)) + expandVertically(tween(OPEN_MS)), exit = fadeOut(tween(CLOSE_MS)) + shrinkVertically(tween(CLOSE_MS))) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LabeledField(stringResource(R.string.f_length), vm.unitL, { vm.unitL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-                    LabeledField(stringResource(R.string.f_width), vm.unitW, { vm.unitW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
-                    LabeledField(stringResource(R.string.f_height), vm.unitH, { vm.unitH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f))
+                    LabeledField(stringResource(R.string.f_length), vm.unitL, { vm.unitL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.unitL))
+                    LabeledField(stringResource(R.string.f_width), vm.unitW, { vm.unitW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.unitW))
+                    LabeledField(stringResource(R.string.f_height), vm.unitH, { vm.unitH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.unitH))
                 }
-                LabeledField(stringResource(R.string.f_unit_weight), vm.unitKg, { vm.unitKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal.copy(imeAction = ImeAction.Done), Modifier.fillMaxWidth(0.5f))
+                LabeledField(stringResource(R.string.f_unit_weight), vm.unitKg, { vm.unitKg = it.take(9) }, zero, stringResource(R.string.unit_kg), decimal.copy(imeAction = ImeAction.Done), Modifier.fillMaxWidth(0.5f), error = vm.badWeight(vm.unitKg))
                 FieldHint(stringResource(R.string.unit_hint))
             }
         }
@@ -233,12 +234,14 @@ fun EditorPage(
             ChoiceChip(stringResource(R.string.view_3d), selected = view3d) { view3d = true; vm.selected = null }
         }
         // Положення коробки: авто вибирає найкраще, але покласти можна як треба (якщо так поміщається).
-        if (vm.dims != null && !vm.arrows) {
+        // Кнопки підписані висотою, з якою коробка стоїть («↕ 0,30 м»): одразу видно, що буде. Лише різні положення,
+        // у яких коробка поміщається.
+        val d = vm.dims
+        if (d != null && !vm.arrows && vm.orientations.size >= 2) {
+            val options = vm.orientations.map { it to com.blacklaunch.paleta.pack.Orient.of(d.first, d.second, d.third, it).height }.sortedBy { it.second }
             EqualWidthRow(Modifier.fillMaxWidth(), gap = 6.dp) {
-                listOf(R.string.orient_flat_btn, R.string.orient_side_btn, R.string.orient_up_btn).forEachIndexed { i, t ->
-                    Box(Modifier.alpha(if (i in vm.orientations) 1f else 0.4f)) {
-                        ChoiceChip(stringResource(t), selected = vm.orientation == i) { vm.chooseOrientation(i) }
-                    }
+                options.forEach { (i, h) ->
+                    ChoiceChip(stringResource(R.string.orient_height, Num.metres(h, comma)), selected = vm.orientation == i) { vm.chooseOrientation(i) }
                 }
             }
         }
@@ -248,7 +251,18 @@ fun EditorPage(
             ChoiceChip(stringResource(if (vm.layout2 == null) R.string.layer_2_same else R.string.layer_2), selected = vm.editLayer == 1) { vm.selectLayer(1) }
         }
         Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
-            if (view3d) {
+            if (view3d && !vm.allOk && vm.box != null) {
+                // Неможливу розкладку (червоні коробки) у 3D не показуємо — спершу виправити.
+                Box(Modifier.fillMaxWidth().aspectRatio(PALLET_EDIT_ASPECT), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(R.string.view_3d_fix_first),
+                        color = Oled.Danger,
+                        fontSize = 15.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(24.dp),
+                    )
+                }
+            } else if (view3d) {
                 val st = vm.stack
                 Pallet3D(vm.layout, vm.box, vm.boxHmm, layout2 = vm.layout2, highlight = vm.editLayer, aspect = PALLET_EDIT_ASPECT, layers = st?.layers ?: if (vm.boxHmm != null) 1 else 0, extra = if (st?.partial == true) st.boxes else 0)
             } else PalletView(
@@ -334,6 +348,7 @@ private fun LabeledField(
     suffix: String,
     keyboard: KeyboardOptions,
     modifier: Modifier = Modifier,
+    error: Boolean = false,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp))
@@ -343,6 +358,7 @@ private fun LabeledField(
             placeholder = placeholder,
             keyboardOptions = keyboard,
             suffix = suffix,
+            error = error,
         )
     }
 }
@@ -374,6 +390,7 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         n == 0 && !vm.custom && vm.variants.isNotEmpty() && vm.variants.first().isEmpty() -> stringResource(R.string.status_too_big) to true
         n == 0 -> stringResource(R.string.status_empty) to false
         check != null && check.overlapping.isNotEmpty() -> stringResource(R.string.status_overlap, check.overlapping.size) to true
+        check != null && check.lonely.isNotEmpty() -> stringResource(R.string.status_lonely, check.lonely.size) to true
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true
         else -> {
             val base = if (vm.editLayer == 1) stringResource(R.string.status_layer2, n)
@@ -418,6 +435,7 @@ private fun unitSummary(vm: PaletaViewModel, comma: Boolean): String {
 private fun StackSummary(vm: PaletaViewModel, comma: Boolean) {
     val st = vm.stack ?: return
     val text = when {
+        st.layersByHeight == 0 -> stringResource(R.string.summary_too_tall, Num.metres(vm.effectiveHeight, comma))
         st.boxes == 0 -> stringResource(R.string.summary_too_heavy)
         st.partial -> stringResource(R.string.summary_partial, st.boxes)
         st.limit == com.blacklaunch.paleta.pack.Limit.Weight -> stringResource(

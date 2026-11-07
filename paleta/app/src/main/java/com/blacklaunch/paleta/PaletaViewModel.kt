@@ -224,9 +224,9 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Розміри, як вписали (довжина, ширина, висота), мм. */
     val dims: Triple<Int, Int, Int>?
         get() {
-            val l = Num.lengthMm(boxL) ?: return null
-            val w = Num.lengthMm(boxW) ?: return null
-            val h = Num.lengthMm(boxH) ?: return null
+            val l = len(boxL) ?: return null
+            val w = len(boxW) ?: return null
+            val h = len(boxH) ?: return null
             return Triple(l, w, h)
         }
 
@@ -234,16 +234,24 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     val box: BoxSize?
         get() {
             val d = dims ?: run {
-                val l = Num.lengthMm(boxL) ?: return null
-                val w = Num.lengthMm(boxW) ?: return null
+                val l = len(boxL) ?: return null
+                val w = len(boxW) ?: return null
                 return BoxSize(l, w)
             }
             return Orient.of(d.first, d.second, d.third, orientation).plan
         }
 
     /** Висота коробки так, як вона стоїть на палеті. */
+    /** Довжина з поля, лише в розумних межах (інакше — як не вписано). */
+    private fun len(t: String): Int? = Num.lengthMm(t)?.takeIf { it in 10..3000 }
+
+    /** Числа поза розумними межами (захист від помилок): довжина 1 см…3 м, вага до 1000 кг, штук до 100 000. */
+    fun badLength(t: String) = t.isNotBlank() && (Num.lengthMm(t)?.let { it !in 10..3000 } ?: true)
+    fun badWeight(t: String) = t.isNotBlank() && (Num.grams(t)?.let { it !in 1..1_000_000 } ?: true)
+    fun badCount(t: String) = t.isNotBlank() && (Num.count(t)?.let { it !in 1..100_000 } ?: true)
+
     val boxHmm: Int? get() = dims?.let { Orient.of(it.first, it.second, it.third, orientation).height }
-    val boxG: Long? get() = Num.grams(boxKg)
+    val boxG: Long? get() = Num.grams(boxKg)?.takeIf { it in 1..1_000_000 }
     val unitsPerBox: Int get() = Num.count(units) ?: 1
     val unitTriple: Triple<Int, Int, Int>?
         get() {
@@ -256,13 +264,13 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Ліміт висоти з урахуванням ADR (лише 1,20 м). */
     val effectiveHeight: Int get() = if (adr) minOf(heightLimit, ADR_HEIGHT_MM) else heightLimit
 
-    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang) }
+    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang, rows = uniform) }
 
-    /** Обидва шари без помилок. */
-    private val allOk: Boolean
+    /** Обидва шари без помилок (для 3D: показуємо лише те, що можна скласти насправді). */
+    val allOk: Boolean
         get() {
             val b = box ?: return false
-            return Layout.check(layout, b, overhang).ok && (layout2?.let { Layout.check(it, b, overhang).ok } ?: true)
+            return Layout.check(layout, b, overhang, uniform).ok && (layout2?.let { Layout.check(it, b, overhang, uniform).ok } ?: true)
         }
 
     val stack: Stack?
@@ -318,7 +326,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             snapshotFlow {
                 AutoKey(
-                    Num.lengthMm(boxL), Num.lengthMm(boxW), Num.lengthMm(boxH),
+                    len(boxL), len(boxW), len(boxH),
                     arrows, overhang, effectiveHeight, boxG, weightLimitG, if (palletOn) palletG else 0, manualOrientation, uniform,
                 )
             }

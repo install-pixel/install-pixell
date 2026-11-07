@@ -164,7 +164,7 @@ ADR (hazardous goods) — height 1.20 m only.
 
 All these values are remembered. A tile that differs from the standard is brighter.</string>
     <string name="help_layout_t">Layer layout</string>
-    <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Rotate — twist with two fingers (every ~90° turns it) or double tap. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.\n\nPosition: if the box has no ↑↑ arrows, the app tries laying it on its side or standing it up and picks whatever fits the most on the pallet (the form height is as the box stands). “⋯ → Other box position” — choose yourself. If there are arrows, switch on “Arrows ↑↑ on the box”.\n\n3D — the whole pallet with all layers: drag to turn and tilt (view only).\n\nSecond layer: “Layer 2” — lay out even layers differently (e.g. crosswise for interlocking). Layers alternate 1, 2, 1, 2…; each is counted on its own. “⋯ → All layers the same” — back as before.\n\n“Uniform rows” (on by default) — all boxes in a layer face one way, no single boxes turned across.\n\nTray under the pallet: drag a box that is in the way there — it is set aside; tap the tray to bring it back to a free spot. In 3D the selected layer (1 or 2) is highlighted.</string>
+    <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Rotate — twist with two fingers (every ~90° turns it) or double tap. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.\n\nPosition: if the box has no ↑↑ arrows, the app tries laying it on its side or standing it up and picks whatever fits the most on the pallet (the form height is as the box stands). The “↕ 0.30 m” buttons above the pallet — choose the position yourself (labelled with the height the box stands at). If there are arrows, switch on “Arrows ↑↑ on the box”.\n\n3D — the whole pallet with all layers: drag to turn and tilt (view only).\n\nSecond layer: “Layer 2” — lay out even layers differently (e.g. crosswise for interlocking). Layers alternate 1, 2, 1, 2…; each is counted on its own. “⋯ → All layers the same” — back as before.\n\n“In whole rows” (on by default) — each row of boxes faces one way, rows may differ; no single boxes turned across (manually too — such a box turns red).\n\nTray under the pallet: drag a box that is in the way there — it is set aside; tap the tray to bring it back to a free spot. In 3D the selected layer (1 or 2) is highlighted.</string>
     <string name="help_result_t">Form</string>
     <string name="help_result">The form looks like the paper card so it is easy to copy. The date is filled in automatically.\n\nColumns: Piece (if entered), Carton, Pallet. Pallet: height including the pallet, number of boxes, goods weight (plus the pallet if added).\n\nPer layer — pieces and boxes in a layer; layers on the pallet.\n\nFlags are set automatically: oversize (piece over 50×30 cm — longer side over 50 and the other over 30), awkward (over 1.2 m), two men lift (box over 35 kg), estimated structure (weight does not allow even one layer).</string>
     <string name="help_history_t">History</string>
@@ -209,9 +209,9 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="view_top">Top</string>
     <string name="view_3d">3D</string>
     <string name="view_3d_hint">The whole pallet with its layers. Drag to turn and tilt; double tap — reset. Edit in the “Top” view.</string>
-    <string name="uniform_title">Uniform rows</string>
-    <string name="uniform_on">All boxes in a layer face one way — easier to stack</string>
-    <string name="uniform_off">Directions may be mixed if more fit</string>
+    <string name="uniform_title">In whole rows</string>
+    <string name="uniform_on">Each row faces one way; rows may differ. No single boxes turned across</string>
+    <string name="uniform_off">Boxes can go any way, even single ones turned across</string>
     <string name="layer_1">Layer 1</string>
     <string name="layer_2">Layer 2</string>
     <string name="layer_2_same">Layer 2 (as 1)</string>
@@ -223,8 +223,9 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="summary_weight">%1$d layers · pallet %2$s m · limit — weight %3$s kg</string>
     <string name="summary_partial">Partial layer: %1$d boxes — weight allows no more</string>
     <string name="summary_too_heavy">The box is heavier than the weight limit — none fit</string>
-    <string name="orient_flat_btn">As entered</string>
-    <string name="orient_side_btn">On side</string>
-    <string name="orient_up_btn">Upright</string>
     <string name="orientation_no_fit">The box does not fit on the pallet that way</string>
+    <string name="orient_height">↕ %1$s m</string>
+    <string name="view_3d_fix_first">There are red boxes — such a pallet cannot be built. Fix the layout in the “Top” view first.</string>
+    <string name="summary_too_tall">The box is taller than the height limit %1$s m — turn it or change the limit</string>
+    <string name="status_lonely">Single box turned across (%1$d) — not allowed “in whole rows”</string>
 </resources>
