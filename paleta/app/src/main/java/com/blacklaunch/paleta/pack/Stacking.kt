@@ -46,7 +46,8 @@ object Stacking {
         val limit = if (layers < byHeight) Limit.Weight else Limit.Height
         if (layers == 0) {
             val n = minOf(byWeight, perA.toLong()).toInt()
-            return Stack(perA, 0, n, n > 0 && byHeight > 0, if (n > 0) boxHmm + PALLET_HEIGHT_MM else PALLET_HEIGHT_MM, n * boxG + palletG, limit, byHeight, perB)
+            // Неповний шар: на шарі — стільки, скільки пускає вага (не «скільки влазить»), шарів — 1.
+            return Stack(n, if (n > 0) 1 else 0, n, n > 0 && byHeight > 0, if (n > 0) boxHmm + PALLET_HEIGHT_MM else PALLET_HEIGHT_MM, n * boxG + palletG, limit, byHeight, n)
         }
         val n = boxesIn(layers)
         return Stack(perA, layers, n.toInt(), false, layers * boxHmm + PALLET_HEIGHT_MM, n * boxG + palletG, limit, byHeight, perB)
@@ -69,7 +70,8 @@ object Stacking {
             if (layers == 0) {
                 // Навіть шар не набирається — скільки коробок дозволяє вага (неповний шар).
                 val n = byWeight.toInt()
-                Stack(perLayer, 0, n, n > 0, if (n > 0) boxHmm + PALLET_HEIGHT_MM else PALLET_HEIGHT_MM, n * boxG + palletG, Limit.Weight, byHeight)
+                // Неповний шар: на шарі — стільки, скільки пускає вага (не «скільки влазить»), шарів — 1.
+                Stack(n, if (n > 0) 1 else 0, n, n > 0, if (n > 0) boxHmm + PALLET_HEIGHT_MM else PALLET_HEIGHT_MM, n * boxG + palletG, Limit.Weight, byHeight)
             } else {
                 val n = layers * perLayer
                 Stack(perLayer, layers, n, false, layers * boxHmm + PALLET_HEIGHT_MM, n.toLong() * boxG + palletG, Limit.Weight, byHeight)

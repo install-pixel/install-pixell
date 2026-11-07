@@ -93,7 +93,6 @@
     <string name="per_layer">На шарі</string>
     <string name="per_layer_value">%1$d шт · %2$d кор.</string>
     <string name="layers_on_pallet">Шарів на палеті</string>
-    <string name="layers_partial">неповний</string>
     <string name="yes">ТАК</string>
     <string name="no">НІ</string>
     <string name="save">Зберегти в історію</string>

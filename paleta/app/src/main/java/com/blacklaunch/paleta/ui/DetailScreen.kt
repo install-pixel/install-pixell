@@ -84,7 +84,7 @@ fun DetailScreen(card: ProductCard, onBack: () -> Unit, onDuplicate: () -> Unit,
                 }
                 Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
                     if (view3d) {
-                        Pallet3D(layout, card.plan, card.boxH, layers = card.layers, extra = if (card.partial) card.boxes else 0, layout2 = layout2, heightLimit = card.heightLimit)
+                        Pallet3D(layout, card.plan, card.boxH, layers = if (card.partial) 0 else card.layers, extra = if (card.partial) card.boxes else 0, layout2 = layout2, heightLimit = card.heightLimit)
                     } else {
                         PalletView(if (showSecond && layout2 != null) layout2 else layout, card.plan, card.overhang, check = null)
                     }

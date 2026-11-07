@@ -161,7 +161,7 @@ fun ResultCard(view: CardView, modifier: Modifier = Modifier) {
             FormRow(listOf(span(0, 1), span(2, 5)), ROW) { i ->
                 when (i) {
                     0 -> Label(stringResource(R.string.form_layers))
-                    1 -> Value(s?.let { if (it.partial) "0 (${stringResource(R.string.layers_partial)})" else it.layers.toString() } ?: "", bold = true)
+                    1 -> Value(s?.let { maxOf(it.layers, if (it.partial) 1 else 0).toString() } ?: "", bold = true)
                 }
             }
             // --- ТАК / НІ ---
@@ -380,7 +380,7 @@ fun cardText(context: Context, view: CardView): String {
             appendLine("${r.getString(R.string.col_pallet)}: ${s.boxes} · ${m(s.heightMm)} ${r.getString(R.string.unit_m)} · ${kg(s.weightG)} ${r.getString(R.string.unit_kg)}")
             appendLine("${r.getString(R.string.per_layer)}: ${r.getString(R.string.per_layer_value, s.perLayer.toLong() * view.unitsPerBox, s.perLayer)}" +
                 if (s.perLayer2 != s.perLayer) " / ${r.getString(R.string.per_layer_value, s.perLayer2.toLong() * view.unitsPerBox, s.perLayer2)}" else "")
-            append("${r.getString(R.string.layers_on_pallet)}: ${if (s.partial) r.getString(R.string.layers_partial) else s.layers.toString()}")
+            append("${r.getString(R.string.layers_on_pallet)}: ${maxOf(s.layers, if (s.partial) 1 else 0)}")
         }
     }
 }

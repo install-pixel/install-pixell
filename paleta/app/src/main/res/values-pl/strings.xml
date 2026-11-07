@@ -93,7 +93,6 @@
     <string name="per_layer">Na warstwie</string>
     <string name="per_layer_value">%1$d szt · %2$d kart.</string>
     <string name="layers_on_pallet">Warstw na palecie</string>
-    <string name="layers_partial">niepełna</string>
     <string name="yes">TAK</string>
     <string name="no">NIE</string>
     <string name="save">Zapisz w historii</string>

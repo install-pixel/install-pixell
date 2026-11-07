@@ -40,7 +40,9 @@ class StackingTest {
         val s = Stacking.stack(10, 300, 100_000, 1800, 700_000, 0)!!
         assertTrue(s.partial)
         assertEquals(7, s.boxes)
-        assertEquals(0, s.layers)
+        // Неповний шар — один шар, на шарі стільки, скільки пускає вага.
+        assertEquals(1, s.layers)
+        assertEquals(7, s.perLayer)
     }
 
     @Test

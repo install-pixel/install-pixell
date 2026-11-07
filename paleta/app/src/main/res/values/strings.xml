@@ -93,7 +93,6 @@
     <string name="per_layer">Per layer</string>
     <string name="per_layer_value">%1$d pcs · %2$d boxes</string>
     <string name="layers_on_pallet">Layers on pallet</string>
-    <string name="layers_partial">partial</string>
     <string name="yes">YES</string>
     <string name="no">NO</string>
     <string name="save">Save to history</string>
