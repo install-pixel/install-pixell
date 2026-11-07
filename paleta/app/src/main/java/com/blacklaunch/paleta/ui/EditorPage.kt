@@ -246,9 +246,16 @@ fun EditorPage(
             }
         }
         // Шар: перший (непарні) чи другий (парні) — другий можна розкласти інакше («навхрест»).
-        EqualWidthRow(Modifier.fillMaxWidth()) {
+        SwitchRow(
+            stringResource(R.string.same_layers_title),
+            vm.sameAll,
+            Modifier.padding(horizontal = 6.dp),
+            subtitle = stringResource(if (vm.sameAll) R.string.same_layers_on else R.string.same_layers_off),
+        ) { vm.setSameAll(it) }
+        // «Шар 1 / Шар 2» — лише коли шари різні; інакше тьмяні (місце лишається — нічого не стрибає).
+        EqualWidthRow(Modifier.fillMaxWidth().alpha(if (vm.sameAll) 0.35f else 1f)) {
             ChoiceChip(stringResource(R.string.layer_1), selected = vm.editLayer == 0) { vm.selectLayer(0) }
-            ChoiceChip(stringResource(if (vm.layout2 == null) R.string.layer_2_same else R.string.layer_2), selected = vm.editLayer == 1) { vm.selectLayer(1) }
+            ChoiceChip(stringResource(R.string.layer_2), selected = vm.editLayer == 1) { vm.selectLayer(1) }
         }
         Box(Modifier.fillMaxWidth().pencilFrame(18.dp, seed = 51, alpha = 0.5f).padding(6.dp)) {
             if (view3d && !vm.allOk && vm.box != null) {
@@ -390,6 +397,7 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         n == 0 && !vm.custom && vm.variants.isNotEmpty() && vm.variants.first().isEmpty() -> stringResource(R.string.status_too_big) to true
         n == 0 -> stringResource(R.string.status_empty) to false
         check != null && check.overlapping.isNotEmpty() -> stringResource(R.string.status_overlap, check.overlapping.size) to true
+        check != null && check.unsupported.isNotEmpty() -> stringResource(R.string.status_unsupported, check.unsupported.size) to true
         check != null && check.lonely.isNotEmpty() -> stringResource(R.string.status_lonely, check.lonely.size) to true
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true
         else -> {

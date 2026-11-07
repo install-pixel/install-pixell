@@ -264,13 +264,22 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Ліміт висоти з урахуванням ADR (лише 1,20 м). */
     val effectiveHeight: Int get() = if (adr) minOf(heightLimit, ADR_HEIGHT_MM) else heightLimit
 
-    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang, rows = uniform) }
+    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang, rows = uniform, below = belowOf(editLayer)) }
+
+    /**
+     * На що спирається шар: другий — на перший; перший (третій, п'ятий…) — на другий, якщо шари різні й їх щонайменше
+     * три. Однакові шари стоять один на одному точно — перевіряти нічого.
+     */
+    private fun belowOf(layer: Int): List<Placed>? {
+        val second = layout2 ?: return null
+        return if (layer == 1) layout else if ((stack?.layers ?: 0) >= 3) second else null
+    }
 
     /** Обидва шари без помилок (для 3D: показуємо лише те, що можна скласти насправді). */
     val allOk: Boolean
         get() {
             val b = box ?: return false
-            return Layout.check(layout, b, overhang, uniform).ok && (layout2?.let { Layout.check(it, b, overhang, uniform).ok } ?: true)
+            return Layout.check(layout, b, overhang, uniform, belowOf(0)).ok && (layout2?.let { Layout.check(it, b, overhang, uniform, belowOf(1)).ok } ?: true)
         }
 
     val stack: Stack?
@@ -425,10 +434,24 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         return secondCandidates().firstOrNull { it.toSet() != first && it.size == layout.size } ?: Layout.mirror(layout, b)
     }
 
-    /** Вибрати шар для редагування; другий уперше — з автоматичною розкладкою «навхрест». */
+    /** Чи всі шари однакові (другий повторює перший). */
+    val sameAll: Boolean get() = layout2 == null
+
+    /**
+     * «Усі шари однакові»: увімкнено — усі шари як перший (свій другий шар перезаписується); вимкнено — другий шар
+     * окремо (уперше — розкладка «навхрест»), і можна правити кожен.
+     */
+    fun setSameAll(on: Boolean) {
+        if (on) sameLayers() else if (layout2 == null && box != null) {
+            layout2 = defaultSecond()
+            parked2 = 0
+        }
+    }
+
+    /** Вибрати шар для редагування (другий — лише коли шари різні). */
     fun selectLayer(i: Int) {
         if (box == null) return
-        if (i == 1 && layout2 == null) { layout2 = defaultSecond(); parked2 = 0 }
+        if (i == 1 && layout2 == null) return
         editLayer = i
         selected = null
     }

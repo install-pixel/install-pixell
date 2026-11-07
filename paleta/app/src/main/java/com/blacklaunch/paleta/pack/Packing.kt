@@ -294,18 +294,24 @@ data class LayoutCheck(
     val outside: Map<Int, Int>,
     /** Найбільший звис серед дозволених (мм за край палети), 0 — без звису. */
     val overhangUsed: Int,
-    /** «Цілими рядами»: поодинокі коробки впоперек (немає сусіда в тому ж напрямку в ряду). */
+    /** «Без поодиноких»: поодинокі коробки впоперек (немає сусіда в тому ж напрямку в ряду). */
     val lonely: Set<Int> = emptySet(),
+    /** Коробки без опори знизу (центр не над коробкою шару нижче або спирається менше половини) — впадуть. */
+    val unsupported: Set<Int> = emptySet(),
 ) {
-    val ok: Boolean get() = overlapping.isEmpty() && outside.isEmpty() && lonely.isEmpty()
-    val bad: Set<Int> get() = overlapping + outside.keys + lonely
+    val ok: Boolean get() = overlapping.isEmpty() && outside.isEmpty() && lonely.isEmpty() && unsupported.isEmpty()
+    val bad: Set<Int> get() = overlapping + outside.keys + lonely + unsupported
 }
 
 object Layout {
     /** Поріг «прилипання» до країв і сусідніх коробок під час перетягування. */
     const val SNAP_MM = 30
 
-    fun check(boxes: List<Placed>, box: BoxSize, overhang: Int, rows: Boolean = false): LayoutCheck {
+    /**
+     * Перевірка шару. [rows] — без поодиноких коробок; [below] — шар під ним (null — стоїть на палеті): кожна коробка
+     * мусить на нього спиратися.
+     */
+    fun check(boxes: List<Placed>, box: BoxSize, overhang: Int, rows: Boolean = false, below: List<Placed>? = null): LayoutCheck {
         val overlapping = HashSet<Int>()
         val outside = HashMap<Int, Int>()
         var used = 0
@@ -317,7 +323,39 @@ object Layout {
                 if (overlap(p, boxes[j], box)) { overlapping += i; overlapping += j }
             }
         }
-        return LayoutCheck(overlapping, outside, used, if (rows) lonely(boxes, box) else emptySet())
+        return LayoutCheck(
+            overlapping, outside, used,
+            if (rows) lonely(boxes, box) else emptySet(),
+            if (below != null) unsupported(boxes, below, box) else emptySet(),
+        )
+    }
+
+    /**
+     * Фізика: коробка верхнього шару стоїть, лише якщо її центр — над якоюсь коробкою нижнього шару і щонайменше
+     * половина її площі спирається на коробки знизу. Інакше вона перевалиться чи впаде в порожнечу.
+     */
+    fun unsupported(upper: List<Placed>, lower: List<Placed>, box: BoxSize): Set<Int> {
+        val out = HashSet<Int>()
+        for (i in upper.indices) {
+            val a = upper[i]
+            val ax1 = a.x + a.sx(box)
+            val ay1 = a.y + a.sy(box)
+            val cx = (a.x + ax1) / 2.0
+            val cy = (a.y + ay1) / 2.0
+            var area = 0L
+            var centre = false
+            for (b in lower) {
+                val bx1 = b.x + b.sx(box)
+                val by1 = b.y + b.sy(box)
+                val w = minOf(ax1, bx1) - maxOf(a.x, b.x)
+                val h = minOf(ay1, by1) - maxOf(a.y, b.y)
+                if (w > 0 && h > 0) area += w.toLong() * h
+                if (cx >= b.x && cx <= bx1 && cy >= b.y && cy <= by1) centre = true
+            }
+            val full = a.sx(box).toLong() * a.sy(box)
+            if (!centre || area * 2 < full) out += i
+        }
+        return out
     }
 
     /**

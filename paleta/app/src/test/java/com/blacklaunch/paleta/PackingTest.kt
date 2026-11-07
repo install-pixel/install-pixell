@@ -134,4 +134,19 @@ class PackingTest {
         assertEquals(setOf(3), Layout.lonely(l, box))
         assertTrue(Layout.lonely(listOf(Placed(0, 0, false)), box).isEmpty())
     }
+
+    @Test
+    fun upperBoxNeedsSupport() {
+        val box = BoxSize(400, 300)
+        val lower = listOf(Placed(0, 0, false), Placed(400, 0, false))
+        // Над двома нижніми, посередині — стоїть.
+        assertTrue(Layout.unsupported(listOf(Placed(200, 0, false)), lower, box).isEmpty())
+        // Над порожнечею — ні.
+        assertEquals(setOf(0), Layout.unsupported(listOf(Placed(0, 400, false)), lower, box))
+        // Звисає більше ніж наполовину (центр над порожнечею) — перевалиться.
+        assertEquals(setOf(0), Layout.unsupported(listOf(Placed(650, 0, false)), lower, box))
+        // Дзеркальний другий шар повної розкладки — увесь на опорі.
+        val full = Packer.auto(BoxSize(400, 300)).variants.first()
+        assertTrue(Layout.unsupported(Layout.mirror(full, box), full, box).isEmpty())
+    }
 }
