@@ -4,6 +4,8 @@ import android.content.ClipboardManager
 import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
+import android.os.Build
+import android.view.WindowManager
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -205,7 +207,20 @@ class KeyboardService : InputMethodService(),
         root.stickerPanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
-        window.window?.let { com.offlinekeyboard.settings.preferHighestRefreshRate(it) }
+        window.window?.let {
+            com.offlinekeyboard.settings.preferHighestRefreshRate(it)
+            // Lay the keyboard out under the camera cutout too (landscape): its black background fills the
+            // side instead of the app showing through a gap; the keys are padded clear of the cutout.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                it.attributes = it.attributes.apply {
+                    layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    } else {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                }
+            }
+        }
         render()
         return root
     }
@@ -281,10 +296,24 @@ class KeyboardService : InputMethodService(),
     }
 
     /** Returns true when the Shift state changed. */
+    /**
+     * "word?" or "word!" with no space yet: smart punctuation puts the space in when the next letter is
+     * typed, so that letter starts a new sentence and gets its capital already.
+     */
+    private fun sentenceEndCapsMode(ic: android.view.inputmethod.InputConnection): Int {
+        if (!settings.smartPunctuation || controller.mode != KeyboardMode.MOBILE || !currentField.allowsCorrection) return 0
+        val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return 0
+        if (before.length < 2 || before[1] !in "?!") return 0
+        if (!before[0].isLetter() && before[0] != ')' && before[0] != '»' && before[0] != '"') return 0
+        return android.text.TextUtils.getCapsMode("$before ", before.length + 1, currentField.inputType)
+    }
+
     private fun updateAutoShift(): Boolean {
         val before = controller.modifiers.state(ModifierKey.SHIFT)
         val capsMode = if (settings.autoCapitalize && !currentField.isRawKeyField) {
-            currentInputConnection?.getCursorCapsMode(currentField.inputType) ?: 0
+            currentInputConnection?.let { ic ->
+                ic.getCursorCapsMode(currentField.inputType).takeIf { it != 0 } ?: sentenceEndCapsMode(ic)
+            } ?: 0
         } else {
             0
         }

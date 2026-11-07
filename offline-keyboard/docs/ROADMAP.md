@@ -3,6 +3,14 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.2 — fixes from the 1.6.1 review
+
+- [x] Landscape: the keyboard's black reaches under the camera cutout; only the keys keep clear of it.
+- [x] A held Backspace (or arrow) gives a light tick for every character, not only the first.
+- [x] "word?" / "word!" with no space yet: the next letter starts a sentence and gets its capital.
+- [x] Number pad operators are plain + - * / with no long-press options, so a slightly long tap still
+      types the operator (calculators missed ± and the Unicode minus); the point keeps "." when held.
+
 ## 1.6.1 — number pad
 
 - [x] Only ABC (bottom left) leaves the pad; no language key and no ?123 there.

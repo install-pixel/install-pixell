@@ -170,7 +170,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         // globe): the keys move up by the bar's height, and the keyboard's background shows behind it.
         // Older Android places the window above the bar and reports no inset here.
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
-            navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            // In landscape the camera cutout is at one side: the keyboard's black reaches under it (the
+            // window is laid out into the cutout), only the keys keep clear of it.
+            navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.displayCutout())
             updateBottomSpace()
             insets
         }
