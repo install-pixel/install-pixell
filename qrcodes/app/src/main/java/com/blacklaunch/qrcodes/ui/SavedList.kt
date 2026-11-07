@@ -117,6 +117,9 @@ fun SavedList(
     /** Відкрита папка (тримає екран: нові коди створюються саме в ній). */
     openFolderId: Long? = null,
     onOpenFolder: (Long?) -> Unit = {},
+    /** Стан і ефект гойдання списку — щоб сторінка над ним (прев'ю) могла гортати й гойдати саме його. */
+    listState: androidx.compose.foundation.lazy.LazyListState? = null,
+    overscroll: androidx.compose.foundation.OverscrollEffect? = null,
 ) {
     val haptics = LocalHaptics.current
     val codes = saved.orEmpty()
@@ -163,7 +166,12 @@ fun SavedList(
             }
         }
 
-        val list = rememberLazyListState()
+        val ownList = rememberLazyListState()
+        val list = listState ?: ownList
+        val ownEffect = androidx.compose.foundation.rememberOverscrollEffect()
+        val effect = overscroll ?: ownEffect
+        // Усе поміщається — гойдається однаково, як і довгий список.
+        val listFits = list.fits
         var draggingKey by remember { mutableStateOf<String?>(null) }
         var fingerY by remember { mutableStateOf(0f) }
         var grabY by remember { mutableStateOf(0f) }
@@ -224,9 +232,12 @@ fun SavedList(
         Box(Modifier.weight(1f).fillMaxWidth()) {
         LazyColumn(
             state = list,
+            overscrollEffect = effect,
+            userScrollEnabled = !listFits,
             modifier = Modifier
                 .fillMaxSize()
                 .fadingEdges(list)
+                .bounceWhenFits(listFits, shared = effect)
                 .then(
                     if (!canDrag) {
                         Modifier

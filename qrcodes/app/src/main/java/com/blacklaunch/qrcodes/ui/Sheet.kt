@@ -79,29 +79,27 @@ private const val HAND_SCALE = 1.22f
 /** «Аркуш»: шрифт від руки для всього тексту й трохи більший кегль. «Скло»: звичайний шрифт. */
 @Composable
 fun SheetTheme(enabled: Boolean, content: @Composable () -> Unit) {
-    if (!enabled) {
-        // «Скло»: Exo 2 для всього тексту.
-        val glass = TextStyle(fontFamily = GlassFont)
-        MaterialTheme(colorScheme = MaterialTheme.colorScheme, typography = MaterialTheme.typography.withFont(glass)) {
-            CompositionLocalProvider(LocalSheet provides false, LocalTextStyle provides LocalTextStyle.current.merge(glass), content = content)
-        }
-        return
-    }
+    // Одне місце виклику [content] для обох стилів: зміна стилю лише перемальовує, а не будує екран заново —
+    // відкриті вікна (Налаштування) й стан програми лишаються, де були.
     val density = LocalDensity.current
-    val hand = TextStyle(fontFamily = HandFont)
+    val font = TextStyle(fontFamily = if (enabled) HandFont else GlassFont)
     val base = MaterialTheme.typography
-    val typography = Typography(
-        displayLarge = base.displayLarge.merge(hand), displayMedium = base.displayMedium.merge(hand), displaySmall = base.displaySmall.merge(hand),
-        headlineLarge = base.headlineLarge.merge(hand), headlineMedium = base.headlineMedium.merge(hand), headlineSmall = base.headlineSmall.merge(hand),
-        titleLarge = base.titleLarge.merge(hand), titleMedium = base.titleMedium.merge(hand), titleSmall = base.titleSmall.merge(hand),
-        bodyLarge = base.bodyLarge.merge(hand), bodyMedium = base.bodyMedium.merge(hand), bodySmall = base.bodySmall.merge(hand),
-        labelLarge = base.labelLarge.merge(hand), labelMedium = base.labelMedium.merge(hand), labelSmall = base.labelSmall.merge(hand),
-    )
+    val typography = if (enabled) {
+        Typography(
+            displayLarge = base.displayLarge.merge(font), displayMedium = base.displayMedium.merge(font), displaySmall = base.displaySmall.merge(font),
+            headlineLarge = base.headlineLarge.merge(font), headlineMedium = base.headlineMedium.merge(font), headlineSmall = base.headlineSmall.merge(font),
+            titleLarge = base.titleLarge.merge(font), titleMedium = base.titleMedium.merge(font), titleSmall = base.titleSmall.merge(font),
+            bodyLarge = base.bodyLarge.merge(font), bodyMedium = base.bodyMedium.merge(font), bodySmall = base.bodySmall.merge(font),
+            labelLarge = base.labelLarge.merge(font), labelMedium = base.labelMedium.merge(font), labelSmall = base.labelSmall.merge(font),
+        )
+    } else {
+        base.withFont(font)
+    }
     MaterialTheme(colorScheme = MaterialTheme.colorScheme, typography = typography) {
         CompositionLocalProvider(
-            LocalSheet provides true,
-            LocalTextStyle provides LocalTextStyle.current.merge(hand),
-            LocalDensity provides Density(density.density, density.fontScale * HAND_SCALE),
+            LocalSheet provides enabled,
+            LocalTextStyle provides LocalTextStyle.current.merge(font),
+            LocalDensity provides if (enabled) Density(density.density, density.fontScale * HAND_SCALE) else density,
             content = content,
         )
     }

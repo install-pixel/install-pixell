@@ -114,11 +114,15 @@ fun FavoritesPage(
     }
 
     Box(Modifier.fillMaxSize()) {
+        // Кілька кодів, що поміщаються, — теж гойдаються на краях, як усе в програмі.
+        val gridFits = !grid.canScrollForward && !grid.canScrollBackward
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 150.dp),
             state = grid,
+            userScrollEnabled = !gridFits,
             modifier = Modifier
                 .fillMaxSize()
+                .bounceWhenFits(gridFits)
                 .onGloballyPositioned { gridOrigin = it.positionInRoot() }
                 .fadingEdges(grid)
                 .pointerInput(Unit) {
@@ -304,6 +308,9 @@ fun CreatePage(
     val tooLong = input.text.isNotEmpty() && symbol == null
     val barcode = format.format == CodeFormat.BARCODE
     var kindPicker by remember { mutableStateOf(false) }
+    // Список збережених і його гойдання — спільні з прев'ю вгорі: жест по прев'ю гортає й гойдає список.
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val overscroll = androidx.compose.foundation.rememberOverscrollEffect()
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         // Що створюємо — вибирається раз тут і зберігається з кодом (у списку, на весь екран, на наклейці — так само).
         // Три однакові кнопки: QR-код, Штрихкод і вид кодування (для вибраного з них — «▾» відкриває список саме його видів).
@@ -320,7 +327,7 @@ fun CreatePage(
         }
         // Віконце сталого розміру — однакове для QR і штрихкоду (нічого не стрибає): біла картка, QR — квадратом по
         // центру, штрихкод — смугою на всю ширину.
-        BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        BoxWithConstraints(Modifier.fillMaxWidth().dragIntoList(listState, overscroll), contentAlignment = Alignment.Center) {
             val cardH = qrPreviewSide(maxWidth)
             val cardW = minOf(maxWidth * 0.86f, cardH * 1.35f)
             if (symbol != null) {
@@ -359,7 +366,7 @@ fun CreatePage(
             }
         }
         Spacer(Modifier.height(4.dp))
-        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth(), query = if (searching) searchValue.text else "", openFolderId = openFolderId, onOpenFolder = onOpenFolder)
+        SavedList(saved, folders, listActions, Modifier.weight(1f).fillMaxWidth(), query = if (searching) searchValue.text else "", openFolderId = openFolderId, onOpenFolder = onOpenFolder, listState = listState, overscroll = overscroll)
         if (selectionCount != null) {
             SelectionBar(selectionCount, onSelectionClose, onSelectionLabel, onSelectionFolder, onSelectionDelete)
         } else InputCapsule(

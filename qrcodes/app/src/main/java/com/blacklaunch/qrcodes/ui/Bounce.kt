@@ -54,16 +54,42 @@ internal fun edgeActivity(active: Boolean): () -> Float {
 /** Для списків: гойдання, коли список поміщається (у самого списку тоді ставте userScrollEnabled = !fits). */
 internal val LazyListState.fits: Boolean get() = !canScrollForward && !canScrollBackward
 
+/**
+ * Жест на нерухомій частині екрана (напр. прев'ю над списком) гортає список [list], а на краях — гойдає його
+ * ефектом [effect]: уся сторінка відчувається одним полотном.
+ */
+@Composable
+internal fun Modifier.dragIntoList(list: LazyListState, effect: androidx.compose.foundation.OverscrollEffect?): Modifier {
+    val drag = rememberDraggableState { dy ->
+        if (effect != null) {
+            effect.applyToScroll(Offset(0f, dy), NestedScrollSource.UserInput) { d -> Offset(0f, -list.dispatchRawDelta(-d.y)) }
+        } else {
+            list.dispatchRawDelta(-dy)
+        }
+    }
+    return this.draggable(
+        drag,
+        Orientation.Vertical,
+        onDragStopped = { velocity -> effect?.applyToFling(Velocity(0f, velocity)) { Velocity.Zero } },
+    )
+}
+
 /** Коли вміст поміщається ([fits]), вертикальний жест тягне край системним ефектом розтягування. */
 @Composable
-internal fun Modifier.bounceWhenFits(fits: Boolean, interaction: MutableInteractionSource? = null): Modifier {
-    val effect = rememberOverscrollEffect()
+internal fun Modifier.bounceWhenFits(
+    fits: Boolean,
+    interaction: MutableInteractionSource? = null,
+    /** Ефект самого списку (той, що він малює) — тоді гойдається саме він; null — свій. */
+    shared: androidx.compose.foundation.OverscrollEffect? = null,
+): Modifier {
+    val own = rememberOverscrollEffect()
+    val effect = shared ?: own
     val drag = rememberDraggableState { dy ->
         effect?.applyToScroll(Offset(0f, dy), NestedScrollSource.UserInput) { Offset.Zero }
     }
     if (!fits || effect == null) return this
     return this
-        .overscroll(effect)
+        .then(if (shared == null) Modifier.overscroll(effect) else Modifier)
         .draggable(
             drag,
             Orientation.Vertical,

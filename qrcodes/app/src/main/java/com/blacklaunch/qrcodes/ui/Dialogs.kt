@@ -230,8 +230,10 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
     // Довідка відкривається в тому самому вікні (того самого розміру): сторінки міняються плавно, «Назад» — на крок.
     var page by remember { mutableStateOf<SettingsPage>(SettingsPage.Main) }
     val current = page
-    val back: (@Composable () -> Unit)? = when (current) {
-        SettingsPage.Main -> null
+    // Рядок кнопок є на всіх сторінках (на головній — «Закрити», далі — «Назад»): висота вмісту не міняється, і
+    // перехід між сторінками не смикається.
+    val back: @Composable () -> Unit = when (current) {
+        SettingsPage.Main -> { { SheetButton(stringResource(R.string.close), onDismiss) } }
         else -> { { SheetButton(stringResource(R.string.help_back), { page = current.up() }) } }
     }
     SheetDialog(
@@ -252,13 +254,15 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
             targetState = current,
             transitionSpec = {
                 val forward = targetState.depth > initialState.depth
-                (fadeIn(tween(PAGE_IN_MS, delayMillis = 60)) + slideInHorizontally(tween(PAGE_IN_MS, easing = FastOutSlowInEasing)) { (if (forward) it else -it) / 8 }) togetherWith
-                    (fadeOut(tween(PAGE_OUT_MS)) + slideOutHorizontally(tween(PAGE_OUT_MS, easing = FastOutSlowInEasing)) { (if (forward) -it else it) / 8 })
+                ((fadeIn(tween(PAGE_IN_MS, delayMillis = 60)) + slideInHorizontally(tween(PAGE_IN_MS, easing = FastOutSlowInEasing)) { (if (forward) it else -it) / 8 }) togetherWith
+                    (fadeOut(tween(PAGE_OUT_MS)) + slideOutHorizontally(tween(PAGE_OUT_MS, easing = FastOutSlowInEasing)) { (if (forward) -it else it) / 8 }))
+                    // Розмір не анімується й не обрізається: сторінки однакові (на всю висоту вікна), лише їдуть і тануть.
+                    .using(null)
             },
             label = "settingsPage",
         ) { shown ->
             when (shown) {
-                SettingsPage.Main -> Column(Modifier.fillMaxWidth().bouncyScroll()) {
+                SettingsPage.Main -> Column(Modifier.fillMaxSize().bouncyScroll()) {
                     // Довідка — першою: тут усі приховані жести, розкладені за темами.
                     MenuRow(Glyph.More, stringResource(R.string.help), { page = SettingsPage.Help })
                     Spacer(Modifier.height(12.dp))
@@ -307,7 +311,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
                     MenuRow(Glyph.Copy, stringResource(R.string.backup_import), onImport)
                     WindowHint(stringResource(R.string.backup_hint))
                 }
-                SettingsPage.Help -> Column(Modifier.fillMaxWidth().bouncyScroll()) {
+                SettingsPage.Help -> Column(Modifier.fillMaxSize().bouncyScroll()) {
                     HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { page = SettingsPage.Topic(t) }) }
                 }
                 is SettingsPage.Topic -> Text(
@@ -315,7 +319,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit, onExpor
                     color = Oled.TextPrimary.copy(alpha = 0.9f),
                     fontSize = 16.sp,
                     lineHeight = 23.sp,
-                    modifier = Modifier.fillMaxWidth().bouncyScroll(),
+                    modifier = Modifier.fillMaxSize().bouncyScroll(),
                 )
             }
         }
