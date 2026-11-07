@@ -83,6 +83,8 @@ fun PalletView(
     onPark: (Int) -> Unit = {},
     /** Дотик по кошику — повернути одну коробку на палету. */
     onUnpark: () -> Unit = {},
+    /** Силует шару під цим (пунктиром) — видно, куди ставити, щоб коробка мала опору. */
+    ghost: List<Placed>? = null,
 ) {
     val haptics = LocalHaptics.current
     val scale = remember { mutableFloatStateOf(1f) }
@@ -301,6 +303,17 @@ fun PalletView(
 
         // --- Коробки ---
         val b = box ?: return@Canvas
+        // Силует нижнього шару — пунктиром під коробками.
+        if (ghost != null) {
+            val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
+            val c = if (glass) Color(0x66FFFFFF) else SheetInk.copy(alpha = 0.45f)
+            ghost.forEach { p ->
+                val tl = Offset(px(p.x) + 3f, px(p.y) + 3f)
+                val sz = Size(p.sx(b) * s - 6f, p.sy(b) * s - 6f)
+                drawRoundRect(c.copy(alpha = c.alpha * 0.25f), tl, sz, CornerRadius(3.dp.toPx()))
+                drawRoundRect(c, tl, sz, CornerRadius(3.dp.toPx()), style = Stroke(1.2.dp.toPx(), pathEffect = dash))
+            }
+        }
         val bad = check?.bad.orEmpty()
         // Вибрана — останньою, поверх інших (видно, на що вона налазить).
         val order = layout.indices.sortedBy { if (it == selected) 1 else 0 }

@@ -271,15 +271,29 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
      * три. Однакові шари стоять один на одному точно — перевіряти нічого.
      */
     private fun belowOf(layer: Int): List<Placed>? {
-        val second = layout2 ?: return null
-        return if (layer == 1) layout else if ((stack?.layers ?: 0) >= 3) second else null
+        // Перший шар стоїть на палеті; на інший шар спирається лише другий (коли шари різні).
+        if (layout2 == null) return null
+        return if (layer == 1) layout else null
     }
+
+    /**
+     * Скільки коробок третього шару (він як перший) не матиме опори на другому — це помилка другого шару (там
+     * порожнеча під ними). Рахується, лише коли шарів щонайменше три.
+     */
+    val gapsUnderThird: Int
+        get() {
+            val b = box ?: return 0
+            val second = layout2 ?: return 0
+            if ((stack?.layers ?: 0) < 3) return 0
+            return Layout.unsupported(layout, second, b).size
+        }
 
     /** Обидва шари без помилок (для 3D: показуємо лише те, що можна скласти насправді). */
     val allOk: Boolean
         get() {
             val b = box ?: return false
-            return Layout.check(layout, b, overhang, uniform, belowOf(0)).ok && (layout2?.let { Layout.check(it, b, overhang, uniform, belowOf(1)).ok } ?: true)
+            return Layout.check(layout, b, overhang, uniform, belowOf(0)).ok &&
+                (layout2?.let { Layout.check(it, b, overhang, uniform, belowOf(1)).ok } ?: true) && gapsUnderThird == 0
         }
 
     val stack: Stack?
@@ -418,6 +432,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         layout = variants.getOrNull(i).orEmpty()
         custom = false
         selected = null
+        followFirst()
     }
 
     /** Варіанти для другого шару: інші найкращі розкладки й дзеркальні (щоб шви не збігались). */
@@ -428,10 +443,11 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Перший варіант другого шару: інша розкладка, ніж перший шар (якщо є), інакше дзеркальна. */
+    /** Перший варіант другого шару — дзеркало першого (перев'язка: шви не збігаються). */
     private fun defaultSecond(): List<Placed> {
         val b = box ?: return layout
-        val first = layout.toSet()
-        return secondCandidates().firstOrNull { it.toSet() != first && it.size == layout.size } ?: Layout.mirror(layout, b)
+        layer2Custom = false
+        return Layout.mirror(layout, b)
     }
 
     /** Чи всі шари однакові (другий повторює перший). */
@@ -474,6 +490,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
             if (list.isEmpty()) return
             secondIndex = (secondIndex + 1) % list.size
             layout2 = list[secondIndex]
+            layer2Custom = true
             parked2 = 0
             selected = null
             _events.tryEmit(if (list.size > 1) UiEvent.Variant(secondIndex + 1, list.size) else UiEvent.OnlyVariant)
@@ -494,12 +511,23 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     private fun edit(list: List<Placed>) {
         if (editLayer == 1) {
             layout2 = list
+            layer2Custom = true
             return
         }
         layout = list
         custom = true
         layoutBox = box
         layoutOverhang = overhang
+        followFirst()
+    }
+
+    /** Другий шар правили руками — він більше не повторює перший дзеркально. */
+    private var layer2Custom = false
+
+    /** Перев'язка: поки другий шар не правили, він — дзеркало першого (і змінюється разом з ним). */
+    private fun followFirst() {
+        val b = box ?: return
+        if (layout2 != null && !layer2Custom) layout2 = Layout.mirror(layout, b)
     }
 
     /** Перетягування: [rawX], [rawY] — де під пальцем (мм), коробка прилипає до країв і сусідів. */
@@ -606,6 +634,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         layout = Layout.decode(card.layout)
         custom = card.customLayout
         layout2 = card.layout2?.let { Layout.decode(it) }
+        layer2Custom = true
         editLayer = 0
         parked1 = 0
         parked2 = 0

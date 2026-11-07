@@ -218,6 +218,12 @@ fun EditorPage(
             Modifier.padding(horizontal = 6.dp),
             subtitle = stringResource(if (vm.uniform) R.string.uniform_on else R.string.uniform_off),
         ) { vm.setUniformRows(it) }
+        SwitchRow(
+            stringResource(R.string.same_layers_title),
+            vm.sameAll,
+            Modifier.padding(horizontal = 6.dp),
+            subtitle = stringResource(if (vm.sameAll) R.string.same_layers_on else R.string.same_layers_off),
+        ) { vm.setSameAll(it) }
 
         // --- Розкладка шару ---
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -246,12 +252,6 @@ fun EditorPage(
             }
         }
         // Шар: перший (непарні) чи другий (парні) — другий можна розкласти інакше («навхрест»).
-        SwitchRow(
-            stringResource(R.string.same_layers_title),
-            vm.sameAll,
-            Modifier.padding(horizontal = 6.dp),
-            subtitle = stringResource(if (vm.sameAll) R.string.same_layers_on else R.string.same_layers_off),
-        ) { vm.setSameAll(it) }
         // «Шар 1 / Шар 2» — лише коли шари різні; інакше тьмяні (місце лишається — нічого не стрибає).
         EqualWidthRow(Modifier.fillMaxWidth().alpha(if (vm.sameAll) 0.35f else 1f)) {
             ChoiceChip(stringResource(R.string.layer_1), selected = vm.editLayer == 0) { vm.selectLayer(0) }
@@ -286,6 +286,7 @@ fun EditorPage(
                 trayLabel = if (vm.parked > 0) stringResource(R.string.tray_n, vm.parked) else stringResource(R.string.tray_empty),
                 onPark = { vm.park(it) },
                 onUnpark = { vm.unpark() },
+                ghost = if (vm.editLayer == 1) vm.layout else null,
             )
             if (vm.box == null || (view3d && vm.boxHmm == null)) {
                 // Підказка — на чорній плашці в рамці (не по дошках палети).
@@ -397,6 +398,7 @@ private fun LayoutStatus(vm: PaletaViewModel, comma: Boolean) {
         n == 0 && !vm.custom && vm.variants.isNotEmpty() && vm.variants.first().isEmpty() -> stringResource(R.string.status_too_big) to true
         n == 0 -> stringResource(R.string.status_empty) to false
         check != null && check.overlapping.isNotEmpty() -> stringResource(R.string.status_overlap, check.overlapping.size) to true
+        vm.editLayer == 1 && vm.gapsUnderThird > 0 && (check == null || check.ok) -> stringResource(R.string.status_gaps_third, vm.gapsUnderThird) to true
         check != null && check.unsupported.isNotEmpty() -> stringResource(R.string.status_unsupported, check.unsupported.size) to true
         check != null && check.lonely.isNotEmpty() -> stringResource(R.string.status_lonely, check.lonely.size) to true
         check != null && check.outside.isNotEmpty() -> stringResource(R.string.status_outside, Num.cm(check.outside.values.max(), comma)) to true

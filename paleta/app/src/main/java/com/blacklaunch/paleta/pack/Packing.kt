@@ -331,8 +331,9 @@ object Layout {
     }
 
     /**
-     * Фізика: коробка верхнього шару стоїть, лише якщо її центр — над якоюсь коробкою нижнього шару і щонайменше
-     * половина її площі спирається на коробки знизу. Інакше вона перевалиться чи впаде в порожнечу.
+     * Фізика: коробка верхнього шару стоїть, якщо її центр — у межах опор під нею (над коробкою або між коробками,
+     * на які вона спирається з обох боків, як місток) і спирається вона щонайменше чвертю площі. Інакше вона
+     * перевалиться чи впаде в порожнечу.
      */
     fun unsupported(upper: List<Placed>, lower: List<Placed>, box: BoxSize): Set<Int> {
         val out = HashSet<Int>()
@@ -343,17 +344,21 @@ object Layout {
             val cx = (a.x + ax1) / 2.0
             val cy = (a.y + ay1) / 2.0
             var area = 0L
-            var centre = false
+            // Межі всіх опор (прямокутник, що охоплює місця дотику).
+            var minX = Int.MAX_VALUE; var minY = Int.MAX_VALUE; var maxX = Int.MIN_VALUE; var maxY = Int.MIN_VALUE
             for (b in lower) {
-                val bx1 = b.x + b.sx(box)
-                val by1 = b.y + b.sy(box)
-                val w = minOf(ax1, bx1) - maxOf(a.x, b.x)
-                val h = minOf(ay1, by1) - maxOf(a.y, b.y)
-                if (w > 0 && h > 0) area += w.toLong() * h
-                if (cx >= b.x && cx <= bx1 && cy >= b.y && cy <= by1) centre = true
+                val x0 = maxOf(a.x, b.x)
+                val y0 = maxOf(a.y, b.y)
+                val x1 = minOf(ax1, b.x + b.sx(box))
+                val y1 = minOf(ay1, b.y + b.sy(box))
+                if (x1 > x0 && y1 > y0) {
+                    area += (x1 - x0).toLong() * (y1 - y0)
+                    minX = minOf(minX, x0); minY = minOf(minY, y0); maxX = maxOf(maxX, x1); maxY = maxOf(maxY, y1)
+                }
             }
             val full = a.sx(box).toLong() * a.sy(box)
-            if (!centre || area * 2 < full) out += i
+            val centreOk = area > 0 && cx >= minX && cx <= maxX && cy >= minY && cy <= maxY
+            if (!centreOk || area * 4 < full) out += i
         }
         return out
     }

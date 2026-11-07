@@ -149,4 +149,14 @@ class PackingTest {
         val full = Packer.auto(BoxSize(400, 300)).variants.first()
         assertTrue(Layout.unsupported(Layout.mirror(full, box), full, box).isEmpty())
     }
+
+    @Test
+    fun bridgeOverGapIsStable() {
+        val box = BoxSize(400, 300)
+        // Дві нижні з проміжком 200 мм; верхня 400 лежить на обох краями — центр між опорами, стоїть.
+        val lower = listOf(Placed(0, 0, false), Placed(600, 0, false))
+        assertTrue(Layout.unsupported(listOf(Placed(300, 0, false)), lower, box).isEmpty())
+        // Лише краєм на одній — центр поза опорою, впаде.
+        assertEquals(setOf(0), Layout.unsupported(listOf(Placed(-250, 0, false)), listOf(Placed(0, 0, false)), box))
+    }
 }
