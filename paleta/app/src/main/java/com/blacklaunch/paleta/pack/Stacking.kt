@@ -1,0 +1,108 @@
+package com.blacklaunch.paleta.pack
+
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
+
+/** Висота самої палети (дерево), мм. Входить у ліміт висоти. */
+const val PALLET_HEIGHT_MM = 150
+
+/** Ліміт висоти для товару ADR (небезпечного) — лише 1,20 м разом з палетою. */
+const val ADR_HEIGHT_MM = 1200
+
+/** Що обмежило кількість шарів. */
+enum class Limit { Height, Weight }
+
+/**
+ * Результат: скільки коробок на палеті, шарів, висота й вага.
+ * [partial] — не набирається навіть одного повного шару (вага): «структура орієнтовна».
+ */
+data class Stack(
+    val perLayer: Int,
+    val layers: Int,
+    val boxes: Int,
+    val partial: Boolean,
+    val heightMm: Int,
+    val weightG: Long,
+    val limit: Limit,
+    /** Скільки шарів дала б висота (щоб показати «зменшено з N до M»). */
+    val layersByHeight: Int,
+)
+
+object Stacking {
+    /**
+     * [perLayer] коробок у шарі, коробка [boxHmm] заввишки й [boxG] грамів; ліміт висоти [heightLimitMm] (разом з
+     * палетою), ліміт ваги [weightLimitG]; [palletG] — вага палети (0 — не враховується).
+     */
+    fun stack(perLayer: Int, boxHmm: Int, boxG: Long, heightLimitMm: Int, weightLimitG: Long, palletG: Long): Stack? {
+        if (perLayer <= 0 || boxHmm <= 0 || boxG <= 0) return null
+        val byHeight = ((heightLimitMm - PALLET_HEIGHT_MM).coerceAtLeast(0)) / boxHmm
+        val budget = (weightLimitG - palletG).coerceAtLeast(0)
+        val byWeight = budget / boxG
+        val full = perLayer.toLong() * byHeight
+        return if (full <= byWeight) {
+            Stack(perLayer, byHeight, full.toInt(), false, byHeight * boxHmm + PALLET_HEIGHT_MM, full * boxG + palletG, Limit.Height, byHeight)
+        } else {
+            val layers = (byWeight / perLayer).toInt()
+            if (layers == 0) {
+                // Навіть шар не набирається — скільки коробок дозволяє вага (неповний шар).
+                val n = byWeight.toInt()
+                Stack(perLayer, 0, n, n > 0, if (n > 0) boxHmm + PALLET_HEIGHT_MM else PALLET_HEIGHT_MM, n * boxG + palletG, Limit.Weight, byHeight)
+            } else {
+                val n = layers * perLayer
+                Stack(perLayer, layers, n, false, layers * boxHmm + PALLET_HEIGHT_MM, n.toLong() * boxG + palletG, Limit.Weight, byHeight)
+            }
+        }
+    }
+}
+
+/** Числа з поля: кома чи крапка; довжина — метри або сантиметри. */
+object Num {
+    /** Звичайне число (кома чи крапка), null — порожньо чи не число. */
+    fun parse(text: String): Double? {
+        val t = text.trim().replace(',', '.').replace(" ", "")
+        if (t.isEmpty()) return null
+        return t.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+    }
+
+    /**
+     * Довжина в мм. Пишуть як у бланку — у метрах («0,47»); якщо число від 3 і більше — це сантиметри («47»):
+     * коробок по 3 метри на палеті не буває.
+     */
+    fun lengthMm(text: String): Int? {
+        val v = parse(text) ?: return null
+        val metres = if (v >= 3.0) v / 100.0 else v
+        val mm = (metres * 1000).roundToInt()
+        return mm.takeIf { it > 0 }
+    }
+
+    /** Чи число в полі зрозуміли як сантиметри (для підказки «= 0,47 м»). */
+    fun isCentimetres(text: String): Boolean = (parse(text) ?: 0.0) >= 3.0
+
+    /** Вага в грамах (поле — у кілограмах, точність до 1 г). */
+    fun grams(text: String): Long? {
+        val v = parse(text) ?: return null
+        val g = (v * 1000).roundToLong()
+        return g.takeIf { it > 0 }
+    }
+
+    /** Ціле число > 0. */
+    fun count(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it > 0 }
+
+    /** мм → «0,47» (метри, два знаки, як у бланку; третій — лише якщо є). */
+    fun metres(mm: Int, comma: Boolean = true): String {
+        val s = if (mm % 10 == 0) String.format(java.util.Locale.ROOT, "%.2f", mm / 1000.0) else String.format(java.util.Locale.ROOT, "%.3f", mm / 1000.0)
+        return if (comma) s.replace('.', ',') else s
+    }
+
+    /** г → «2,30» (кг, два знаки; до грама — три, якщо є). */
+    fun kilos(g: Long, comma: Boolean = true): String {
+        val s = if (g % 10 == 0L) String.format(java.util.Locale.ROOT, "%.2f", g / 1000.0) else String.format(java.util.Locale.ROOT, "%.3f", g / 1000.0)
+        return if (comma) s.replace('.', ',') else s
+    }
+
+    /** мм → «2,5» (сантиметри, без зайвих нулів). */
+    fun cm(mm: Int, comma: Boolean = true): String {
+        val s = if (mm % 10 == 0) (mm / 10).toString() else String.format(java.util.Locale.ROOT, "%.1f", mm / 10.0)
+        return if (comma) s.replace('.', ',') else s
+    }
+}

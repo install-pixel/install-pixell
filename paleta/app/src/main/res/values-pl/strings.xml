@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Paleta</string>
+
+    <!-- Strony -->
+    <string name="page_new">Nowy</string>
+    <string name="page_history">Historia</string>
+    <string name="settings">Ustawienia</string>
+    <string name="more">Więcej</string>
+
+    <!-- Wprowadzanie -->
+    <string name="section_product">Towar</string>
+    <string name="clear_all">Wyczyść</string>
+    <string name="sku_hint">SKU — numer artykułu</string>
+    <string name="scan">Skanuj</string>
+    <string name="sku_known">Jest już w historii · %1$s — otwórz ›</string>
+    <string name="section_box">Karton</string>
+    <string name="f_length">Długość</string>
+    <string name="f_width">Szerokość</string>
+    <string name="f_height">Wysokość</string>
+    <string name="f_box_weight">Waga kartonu</string>
+    <string name="f_units">Sztuk w kartonie</string>
+    <string name="f_unit_weight">Waga sztuki</string>
+    <string name="unit_m">m</string>
+    <string name="unit_cm">cm</string>
+    <string name="unit_kg">kg</string>
+    <string name="unit_pcs">szt</string>
+    <string name="hint_metres">W metrach (0,47) albo centymetrach (47). Długość — zawsze najdłuższy bok.</string>
+    <string name="hint_cm_read">Odczytano jako centymetry: %1$s m</string>
+    <string name="section_unit">Jedna sztuka</string>
+    <string name="unit_optional">Opcjonalnie — nie wpływa na wyliczenie</string>
+    <string name="unit_hint">Jeśli wypełnisz — pojawi się w karcie jako kolumna „Sztuka”. Jeśli nie — jest pomijana.</string>
+    <string name="unit_incomplete">Nie wszystko wypełnione</string>
+
+    <!-- Ograniczenia -->
+    <string name="section_limits">Ograniczenia</string>
+    <string name="limit_height">Wysokość</string>
+    <string name="limit_with_pallet">z paletą</string>
+    <string name="limit_adr_short">ADR — tylko 1,20</string>
+    <string name="limit_weight">Waga</string>
+    <string name="limit_pallet_added">+ paleta %1$s kg</string>
+    <string name="limit_pallet_not">bez palety</string>
+    <string name="limit_overhang">Nawis</string>
+    <string name="overhang_none_short">brak</string>
+    <string name="overhang_flush">równo z krawędzią</string>
+    <string name="overhang_per_side">z każdej strony</string>
+    <string name="adr_title">Artykuł ADR (HAZMAT)</string>
+    <string name="adr_desc">Wysokość palety — wyłącznie 1,20 m</string>
+
+    <string name="limit_height_title">Wysokość palety</string>
+    <string name="limit_height_own">Własna wysokość</string>
+    <string name="limit_height_hint">Razem z samą paletą (%1$s cm). Standard — 1,20 m lub 1,80 m, jeśli ciężar kartonów i stabilność ułożenia na to pozwalają.</string>
+    <string name="limit_height_adr">Włączono ADR: liczone najwyżej %1$s m.</string>
+    <string name="limit_weight_title">Waga palety</string>
+    <string name="limit_weight_max">Maksymalna waga razem z towarem</string>
+    <string name="pallet_add_title">Dodawać wagę palety</string>
+    <string name="pallet_add_desc">Sama paleta też wlicza się do wagi i limitu</string>
+    <string name="limit_weight_hint">Wybór jest zapamiętywany: raz wyłączysz wagę palety — tak zostaje.</string>
+    <string name="overhang_title">Nawis poza krawędź palety</string>
+    <string name="overhang_none">Bez nawisu</string>
+    <string name="overhang_option">Do %1$s cm z każdej strony</string>
+    <string name="overhang_option_total">razem do %1$s cm na bok palety</string>
+    <string name="overhang_hint">Kartony nie wychodzą poza krawędź palety.</string>
+    <string name="overhang_warning">Uwaga: kartony mogą wystawać poza krawędź palety. Sprawdź, czy tak można w twoim magazynie. Autoułożenie bierze nawis tylko wtedy, gdy z nim mieści się więcej.</string>
+
+    <!-- Ułożenie -->
+    <string name="section_layout">Ułożenie warstwy</string>
+    <string name="layout_empty">Wpisz długość i szerokość kartonu — tu pojawi się paleta z góry</string>
+    <string name="act_auto">Auto</string>
+    <string name="act_add">Dodaj</string>
+    <string name="act_rotate">Obróć</string>
+    <string name="act_remove">Usuń</string>
+    <string name="layout_hint">Przeciągnij karton palcem — przykleja się do krawędzi i sąsiadów. Podwójne dotknięcie — obróć. „Auto” jeszcze raz — inny wariant.</string>
+    <string name="layout_best">Najlepsze autoułożenie</string>
+    <string name="layout_fill">Uzupełnij wolne miejsce</string>
+    <string name="layout_clear">Wyczyść paletę</string>
+    <string name="layout_menu_hint">Ułóż pierwszy rząd, jak chcesz, potem „Uzupełnij” — resztę wypełni samo.</string>
+    <string name="status_no_box">Brak wymiarów kartonu</string>
+    <string name="status_too_big">Karton jest większy niż paleta 1,20 × 0,80</string>
+    <string name="status_empty">Paleta pusta — „Auto” lub „Dodaj”</string>
+    <string name="status_overlap">Kartony nachodzą na siebie (%1$d) — tak nie można</string>
+    <string name="status_outside">Wystaje o %1$s cm więcej, niż wolno</string>
+    <string name="status_custom">Własne ułożenie · %1$d kart. na warstwie</string>
+    <string name="status_auto">Autoułożenie · %1$d kart. na warstwie</string>
+    <string name="status_auto_variant">Autoułożenie · %1$d kart. na warstwie · wariant %2$d z %3$d</string>
+    <string name="status_overhang">nawis do %1$s cm</string>
+
+    <!-- Karta -->
+    <string name="section_result">Karta</string>
+    <string name="result_empty">Wpisz wymiary i wagę kartonu — karta wypełni się sama</string>
+    <string name="form_title">Karta nowego artykułu</string>
+    <string name="form_date">Data: %1$s</string>
+    <string name="no_sku">Bez SKU</string>
+    <string name="col_param">Parametr</string>
+    <string name="col_unit">Sztuka</string>
+    <string name="col_box">Karton</string>
+    <string name="col_pallet">Paleta</string>
+    <string name="row_length">Długość, m</string>
+    <string name="row_width">Szerokość, m</string>
+    <string name="row_height">Wysokość, m</string>
+    <string name="row_qty">Ilość</string>
+    <string name="row_weight">Waga, kg</string>
+    <string name="per_layer">Na warstwie</string>
+    <string name="per_layer_value">%1$d szt · %2$d kart.</string>
+    <string name="layers_on_pallet">Warstw na palecie</string>
+    <string name="layers_partial">niepełna</string>
+    <string name="units_on_pallet">Sztuk na palecie</string>
+    <string name="flag_structure">Struktura szacowana</string>
+    <string name="flag_oversize">Gabaryt (większa niż 50×30 cm)</string>
+    <string name="flag_adr">Artykuł ADR (HAZMAT)</string>
+    <string name="flag_awkward">Awkward (ponad 1,2 m)</string>
+    <string name="flag_two_men">Two men lift (ponad 35 kg)</string>
+    <string name="yes">TAK</string>
+    <string name="no">NIE</string>
+    <string name="note_weight_limited">Ograniczone wagą: %2$d warstw zamiast %1$d.</string>
+    <string name="note_partial">Waga nie pozwala nawet na jedną pełną warstwę.</string>
+    <string name="note_pallet_included">W wadze palety jest sama paleta (%1$s kg).</string>
+    <string name="note_adr">ADR: wysokość palety najwyżej 1,20 m.</string>
+    <string name="note_heavy">Karton powyżej 25 kg — zmierzyć taśmą mierniczą, zważyć na wadze kartonowej.</string>
+    <string name="save">Zapisz w historii</string>
+    <string name="save_blocked">Najpierw popraw ułożenie — czerwone kartony.</string>
+
+    <!-- Historia -->
+    <string name="search_hint">Szukaj po SKU</string>
+    <string name="clear">Wyczyść</string>
+    <string name="history_empty">Tu będą zapisane karty. Policz towar na stronie „Nowy” i dotknij „Zapisz w historii”.</string>
+    <string name="history_not_found">Nic nie znaleziono dla „%1$s”</string>
+    <string name="history_line">%1$d kart. · %2$d × %3$s · %4$s m · %5$s kg</string>
+    <string name="open">Otwórz</string>
+    <string name="duplicate">Duplikuj</string>
+    <string name="share">Udostępnij</string>
+    <string name="delete">Usuń</string>
+    <string name="detail_limits">Liczone z ograniczeniami: wysokość %1$s m · waga %2$s kg · nawis %3$s.</string>
+
+    <!-- Powiadomienia -->
+    <string name="saved">Zapisano w historii</string>
+    <string name="new_product">Nowy</string>
+    <string name="layout_reset">Wymiary się zmieniły — ułożenie zrobione od nowa</string>
+    <string name="no_room">Więcej się nie mieści</string>
+    <string name="only_variant">To jedyne najlepsze ułożenie</string>
+    <string name="variant_n">Wariant %1$d z %2$d</string>
+    <string name="duplicated">Skopiowano — zmień, co trzeba, i zapisz</string>
+    <string name="deleted">Usunięto</string>
+    <string name="undo">Cofnij</string>
+    <string name="camera_denied">Bez dostępu do aparatu skaner nie działa</string>
+
+    <!-- Skaner -->
+    <string name="scan_hint">Nakieruj na kod kreskowy w ramce</string>
+    <string name="flashlight">Latarka</string>
+
+    <!-- Okna -->
+    <string name="cancel">Anuluj</string>
+    <string name="done">Gotowe</string>
+    <string name="close">Zamknij</string>
+    <string name="back">Wstecz</string>
+
+    <!-- Ustawienia -->
+    <string name="help">Pomoc</string>
+    <string name="settings_style">Styl</string>
+    <string name="style_glass">Szkło</string>
+    <string name="style_glass_desc">Black Glass — czarne szkło z odblaskiem</string>
+    <string name="style_sheet">Arkusz</string>
+    <string name="style_sheet_desc">Odręcznie — biały ołówek na czarnym</string>
+    <string name="settings_language">Język</string>
+    <string name="lang_system">Jak w telefonie</string>
+    <string name="settings_screen">Ekran</string>
+    <string name="status_hide_title">Ukrywaj pasek stanu</string>
+    <string name="status_hide_desc">Zegar i sieć — tylko przesunięciem od górnej krawędzi</string>
+    <string name="settings_hint">Wysokość, waga palety i nawis zapamiętują się same — zmieniasz je dotykiem kafelków „Ograniczenia”.</string>
+
+    <string name="help_input_t">Co wpisywać</string>
+    <string name="help_input">SKU — wpisz albo zeskanuj (ikona kodu kreskowego w polu). Jeśli ten SKU był już liczony, pod polem pojawi się „Jest już w historii” — otworzysz i zduplikujesz.\n\nKarton: długość, szerokość, wysokość — w metrach jak w karcie (0,47) albo w centymetrach (47), aplikacja zrozumie sama. Długość — zawsze najdłuższy bok. Waga kartonu — z dokładnością do 1 g (2,305). Sztuk w kartonie — jeśli puste, liczy się 1.\n\nJedna sztuka — opcjonalnie. Jeśli wypełnisz, karta pokaże kolumnę „Sztuka”; jeśli nie — kolumny nie ma, wyliczenie się nie zmienia.\n\nWszystko liczy się od razu, gdy wpisujesz — nie ma przycisku „Oblicz”.</string>
+    <string name="help_limits_t">Wysokość, waga, nawis</string>
+    <string name="help_limits">Wysokość — razem z samą paletą (15 cm). Domyślnie 1,80 m; dotknij kafelka — 1,20 / 1,30 / 1,80 albo własna.\n\nWaga — maksymalna waga razem z towarem, domyślnie 700 kg. Wagę samej palety można dodać (domyślnie nie); gdy dodana, na kafelku jest „+ paleta”.\n\nNawis — o ile kartony mogą wystawać poza krawędź palety: bez nawisu (domyślnie) albo do 2,5 cm z każdej strony. Autoułożenie bierze nawis tylko wtedy, gdy mieści się więcej kartonów.\n\nADR (HAZMAT) — wysokość wyłącznie 1,20 m.\n\nWszystkie te wybory są zapamiętywane.</string>
+    <string name="help_layout_t">Ułożenie warstwy</string>
+    <string name="help_layout">Paleta 1,20 × 0,80 z góry, kartony w prawdziwych proporcjach.\n\n„Auto” szuka ułożenia z największą liczbą kartonów: proste rzędy, rzędy w różnych kierunkach i „wiatraczek” (bloki wokół środka). Jeśli najlepszych ułożeń jest kilka — „Auto” jeszcze raz pokazuje następne.\n\nWłasne ułożenie: przeciągnij karton palcem — przykleja się do krawędzi palety i sąsiednich kartonów. Podwójne dotknięcie — obróć. Dotknięcie — zaznacz; „Obróć” i „Usuń” działają na zaznaczony. „Dodaj” stawia karton w pierwszym wolnym miejscu.\n\nW menu „⋯”: „Uzupełnij wolne miejsce” — ułóż pierwszy rząd po swojemu, a resztę wypełni samo.\n\nCzerwony karton nachodzi na inny albo wystaje bardziej, niż wolno; dopóki są czerwone, nie można zapisać. Liczy się dokładnie ułożenie z rysunku.</string>
+    <string name="help_result_t">Karta</string>
+    <string name="help_result">Karta wygląda jak papierowa — łatwo przepisać. Data wpisuje się sama.\n\nKolumny: Sztuka (jeśli wpisana), Karton, Paleta. Paleta: wysokość razem z paletą, liczba kartonów, waga towaru (i palety, jeśli dodana).\n\nNa warstwie — sztuk i kartonów na warstwie; warstw na palecie.\n\nOznaczenia liczą się same: gabaryt (sztuka większa niż 50×30 cm), awkward (ponad 1,2 m), two men lift (karton ponad 35 kg), struktura szacowana (waga nie pozwala nawet na jedną warstwę). Karton powyżej 25 kg — przypomnienie, by mierzyć taśmą.</string>
+    <string name="help_history_t">Historia</string>
+    <string name="help_history">„Zapisz w historii” zapisuje wszystko: wpisane dane, ograniczenia, samo ułożenie i wynik.\n\nDotknij karty — otworzy się w całości. „Duplikuj” przenosi wszystko do nowego wyliczenia: zmieniasz, co trzeba (np. wagę), i zapisujesz nową kartę — stara zostaje.\n\nDługie przytrzymanie — menu (otwórz, duplikuj, udostępnij, usuń). Przesunięcie w lewo — usuń, z „Cofnij”.\n\nSzukanie po SKU, można zeskanować.</string>
+</resources>
