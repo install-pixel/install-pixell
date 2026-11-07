@@ -12,6 +12,7 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Settings pages spring a little at both ends, also when shorter than the screen.
 - [x] A held Backspace stops vibrating once there is nothing left to delete.
 - [x] Texts: suggestions come from about 30 000 words per language (not 350).
+- [x] Mobile keyboard: the top bar buttons hide until the text strip is tapped (Look → Keys can turn it off).
 
 ## 1.6.2 — fixes from the 1.6.1 review
 

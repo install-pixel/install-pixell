@@ -1193,6 +1193,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.keyPreview = settings.keyPreview
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
         root.compact = settings.compactToolbar
+        root.hideButtons = settings.hideToolbarButtons
         val layout = controller.layout(settings.mobileCursorRow)
         // Every layer of both modes is exactly as tall as the mobile letters: switching between the
         // computer and the mobile keyboard, the emoji or the number pad never makes the keyboard jump.

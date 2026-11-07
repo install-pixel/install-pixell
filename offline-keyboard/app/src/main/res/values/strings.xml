@@ -298,4 +298,6 @@
     <string name="backup_invalid">This file is not an OffKey backup.</string>
     <string name="section_keys">Keys</string>
     <string name="mobile_cursor_row_hint">Arrows, Home and End above the letters of the mobile keyboard, to move the cursor precisely. The keyboard keeps its height: the keys get a little lower.</string>
+    <string name="hide_toolbar_buttons">Hide the top bar buttons</string>
+    <string name="hide_toolbar_buttons_hint">On the mobile keyboard only the text strip shows; tap it to show the modes, keyboard switch and settings buttons. They hide again a few seconds later.</string>
 </resources>

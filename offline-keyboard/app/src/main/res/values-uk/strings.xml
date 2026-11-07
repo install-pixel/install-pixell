@@ -298,4 +298,6 @@
     <string name="backup_invalid">Цей файл не є резервною копією OffKey.</string>
     <string name="section_keys">Клавіші</string>
     <string name="mobile_cursor_row_hint">Стрілки, Home і End над літерами мобільної клавіатури, щоб точно переміщати курсор. Клавіатура не стає вищою: клавіші трохи нижчають.</string>
+    <string name="hide_toolbar_buttons">Ховати кнопки верхньої панелі</string>
+    <string name="hide_toolbar_buttons_hint">На мобільній клавіатурі видно лише смужку з текстом; торкніться її, щоб з\'явилися кнопки режимів, перемикання клавіатури й налаштувань. За кілька секунд вони знову ховаються.</string>
 </resources>

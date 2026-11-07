@@ -80,7 +80,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         setHorizontallyScrolling(true)
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(8), 0, dp(8), 0)
-        setOnClickListener { statusAction?.let { action -> statusAction = null; action() } }
+        setOnClickListener {
+            val action = statusAction
+            if (action != null) { statusAction = null; action() } else revealButtons()
+        }
     }
     private val statusScroll = HorizontalScrollView(context).apply {
         isHorizontalScrollBarEnabled = false
@@ -124,6 +127,55 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             field = value
             refreshModesRow()
         }
+    /**
+     * Mobile keyboard: the toolbar buttons (modes, Bluetooth, computer keyboard, settings) stay hidden and
+     * only the text strip shows, until the strip is tapped; they hide again a few seconds later.
+     */
+    var hideButtons = false
+        set(value) {
+            if (field == value) return
+            field = value
+            refreshButtons()
+        }
+    private var buttonsShown = false
+    private val hideButtonsRunnable = Runnable { buttonsShown = false; refreshButtons() }
+
+    fun revealButtons() {
+        removeCallbacks(hideButtonsRunnable)
+        if (!buttonsShown) {
+            buttonsShown = true
+            refreshButtons()
+        }
+        postDelayed(hideButtonsRunnable, BUTTONS_SHOWN_MS)
+    }
+
+    private fun buttonsVisible(): Boolean {
+        val state = lastState
+        if (!hideButtons || state == null || state.computerMode || buttonsShown || busy()) return true
+        if (compact && modesExpanded) return true
+        return state.bluetooth == BluetoothButton.SENDING
+    }
+
+    private fun refreshButtons() {
+        val visible = buttonsVisible()
+        val bluetoothOn = lastState?.bluetooth?.let { it != BluetoothButton.HIDDEN } ?: false
+        for ((button, present) in listOf(
+            modesButton to compact,
+            bluetoothButton to bluetoothOn,
+            modeButton to true,
+            settingsButton to true,
+        )) {
+            val target = when {
+                !present -> View.GONE
+                visible -> View.VISIBLE
+                // Invisible, not gone: the text strip keeps its place and width.
+                else -> View.INVISIBLE
+            }
+            if (target == View.VISIBLE && button.visibility != View.VISIBLE) fadeIn(button)
+            button.visibility = target
+        }
+    }
+
     private var modesExpanded = false
     /** Folded by hand while translating or dictating (the row opens by itself for those). */
     private var foldedWhileBusy = false
@@ -180,6 +232,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            // A tap where the hidden buttons are (or anywhere on the strip) shows them.
+            setOnClickListener { revealButtons() }
             addView(modesButton, LayoutParams(dp(44), LayoutParams.MATCH_PARENT))
             addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
@@ -265,7 +319,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         lastState = state
         recording = state.recording
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
-        bluetoothButton.visibility = if (state.bluetooth == BluetoothButton.HIDDEN) View.GONE else View.VISIBLE
         val sending = state.bluetooth == BluetoothButton.SENDING
         if (theme.styled) {
             bluetoothButton.fill = if (sending) theme.function else 0
@@ -299,12 +352,15 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     /** Folds the modes row away again (the keyboard was hidden). */
     fun collapseModes() {
         modesExpanded = false
+        removeCallbacks(hideButtonsRunnable)
+        buttonsShown = false
         refreshModesRow()
     }
 
     private fun busy() = lastState?.let { it.translateActive || it.recording } ?: false
 
     private fun toggleModes() {
+        if (buttonsShown) revealButtons()
         if (busy()) foldedWhileBusy = !foldedWhileBusy else modesExpanded = !modesExpanded
         refreshModesRow()
     }
@@ -313,12 +369,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val busy = busy()
         if (!busy) foldedWhileBusy = false
         val open = if (busy) !foldedWhileBusy else modesExpanded
-        modesButton.visibility = if (compact) View.VISIBLE else View.GONE
         // Lit while translating or dictating even when folded, so the mode is not forgotten.
         modesButton.fill = if (compact && (open || busy)) theme.function else 0
         val showRow = !compact || open
         if (showRow && modeRow.visibility != View.VISIBLE) fadeIn(modeRow)
         modeRow.visibility = if (showRow) View.VISIBLE else View.GONE
+        refreshButtons()
     }
 
     /** Swaps the keys for the sticker panel (same height, so nothing jumps) or back. */
@@ -416,7 +472,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private fun button(descriptionRes: Int, onClick: () -> Unit) = ToolbarButton(context).apply {
         contentDescription = context.getString(descriptionRes)
-        setOnClickListener { onClick() }
+        setOnClickListener {
+            if (buttonsShown) revealButtons()
+            onClick()
+        }
     }
 
     private fun suggestionView() = TextView(context).apply {
@@ -450,6 +509,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private companion object {
         const val FADE_DP = 14
+        const val BUTTONS_SHOWN_MS = 6000L
         const val STATUS_MILLIS = 3500L
         const val SUGGESTIONS = 3
     }

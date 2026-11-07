@@ -298,4 +298,6 @@
     <string name="backup_invalid">Ten plik nie jest kopią zapasową OffKey.</string>
     <string name="section_keys">Klawisze</string>
     <string name="mobile_cursor_row_hint">Strzałki, Home i End nad literami klawiatury mobilnej, by dokładnie przesuwać kursor. Klawiatura nie rośnie: klawisze stają się trochę niższe.</string>
+    <string name="hide_toolbar_buttons">Ukrywaj przyciski górnego paska</string>
+    <string name="hide_toolbar_buttons_hint">Na klawiaturze mobilnej widać tylko pasek z tekstem; dotknij go, by pokazać przyciski trybów, przełączania klawiatury i ustawień. Po kilku sekundach znów się chowają.</string>
 </resources>
