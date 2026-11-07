@@ -89,7 +89,7 @@ class PackingTest {
 
     @Test
     fun standingBoxFits() {
-        // Відео: 1,30 × 0,70 × 0,20 — плиском не влазить, сторч (основа 0,70 × 0,20, висота 1,30) — так.
+        // Відео: 1,30 × 0,70 × 0,20 — плиском не влазить, стоячи (основа 0,70 × 0,20, висота 1,30) — так.
         val r = com.blacklaunch.paleta.pack.Orient.rank(1300, 700, 200, false, 0, 1800, 200, 700_000, 0)
         val best = r.first()
         assertEquals(2, best.orientation.index)
@@ -99,7 +99,7 @@ class PackingTest {
         val arrows = com.blacklaunch.paleta.pack.Orient.rank(1300, 700, 200, true, 0, 1800, 200, 700_000, 0)
         assertEquals(1, arrows.size)
         assertEquals(0, arrows.first().total)
-        // Бланк 0,47 × 0,40 × 0,40: сторч (висота 0,47) — 6 на шар × 3 шари = 18 замість 16; зі стрілками — 16.
+        // Бланк 0,47 × 0,40 × 0,40: стоячи (висота 0,47) — 6 на шар × 3 шари = 18 замість 16; зі стрілками — 16.
         val form = com.blacklaunch.paleta.pack.Orient.rank(470, 400, 400, false, 0, 1800, 2300, 700_000, 0).first()
         assertEquals(18, form.total)
         assertEquals(16, com.blacklaunch.paleta.pack.Orient.rank(470, 400, 400, true, 0, 1800, 2300, 700_000, 0).first().total)

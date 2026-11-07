@@ -212,7 +212,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** І для якого звису (щоб після «Дублювати» розкладка лишилась точно та сама). */
     private var layoutOverhang: Int = -1
 
-    /** Як стоїть коробка (0 — як вписали, 1 — на боці, 2 — сторч); вибирається автоматично. */
+    /** Як стоїть коробка (0 — як вписали, 1 — на боці, 2 — стоячи); вибирається автоматично. */
     var orientation by mutableIntStateOf(0)
         private set
     /** Положення, у яких поміщається хоч одна, — найкраще першим (для «Інше положення»). */
@@ -370,7 +370,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     private var layoutUniform: Boolean? = null
     private fun uniformChanged(u: Boolean) = layoutUniform != null && layoutUniform != u
 
-    /** Поставити коробку саме так (0 — як вписано, 1 — на боці, 2 — сторч), якщо так вона поміщається. */
+    /** Поставити коробку саме так (0 — як вписано, 1 — на боці, 2 — стоячи), якщо так вона поміщається. */
     fun chooseOrientation(i: Int) {
         val d = dims ?: return
         if (i == orientation) return
