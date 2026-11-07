@@ -59,7 +59,13 @@ class AppSettings(context: Context) {
         get() = prefs.getInt(KEY_OVERHANG, 0)
         set(value) = prefs.edit().putInt(KEY_OVERHANG, value).apply()
 
+    /** Ім'я та прізвище для рядка підпису в бланку (порожньо — рядок порожній). */
+    var signer: String
+        get() = prefs.getString(KEY_SIGNER, null).orEmpty()
+        set(value) = prefs.edit().putString(KEY_SIGNER, value).apply()
+
     companion object {
+        private const val KEY_SIGNER = "signer"
         private const val KEY_LANG = "language"
         private const val KEY_GLASS = "glass"
         private const val KEY_HIDE_STATUS = "hide_status"

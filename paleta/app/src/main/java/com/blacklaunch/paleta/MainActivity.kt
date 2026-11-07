@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
         val settings = AppSettings(this)
         AppStyle.glass = settings.glass
         StatusBar.hidden = settings.hideStatusBar
+        com.blacklaunch.paleta.ui.FormSigner.name = settings.signer
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.BLACK),
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),

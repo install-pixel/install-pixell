@@ -241,7 +241,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
             vm.setPallet(on, pallet)
             limitDialog = null
         }
-        LimitDialog.Overhang -> OverhangDialog(vm.overhang, onDismiss = { limitDialog = null }) { vm.setOverhangMm(it) }
+        LimitDialog.Overhang -> OverhangDialog(vm.overhang, onDismiss = { limitDialog = null }) { vm.setOverhangMm(it); limitDialog = null }
         null -> Unit
     }
     if (layoutMenu) {

@@ -2,10 +2,8 @@ package com.blacklaunch.paleta.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
-import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -48,6 +46,9 @@ private const val MARGIN_MM = 70
 
 /** Дошки настилу палети EUR (уздовж довгого боку): ширини, мм. */
 private val BOARDS = intArrayOf(145, 100, 145, 100, 145)
+
+/** На скільки градусів крутнути двома пальцями, щоб коробка повернулась. */
+private const val TWIST_DEG = 35f
 
 /** Співвідношення сторін малюнка палети — однакове скрізь (редактор, картка в історії). */
 const val PALLET_ASPECT = (PALLET_L + 2f * MARGIN_MM) / (PALLET_W + 2f * MARGIN_MM)
@@ -99,48 +100,81 @@ fun PalletView(
         return null
     }
 
+    val currentSelected by rememberUpdatedState(selected)
     val gestures = if (!editable) Modifier else Modifier.pointerInput(Unit) {
         var lastTapAt = 0L
         var lastTapIndex = -1
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             val index = hit(down.position)
+            if (index != null) {
+                haptics.tap()
+                select(index)
+                down.consume()
+            }
+            val start = index?.let { currentLayout.getOrNull(it) }
+            val slop = viewConfiguration.touchSlop
+            var acc = Offset.Zero
+            var dragging = false
+            var twoFingers = false
+            var twist = 0f
+            var handedOff = false
+            fun emit() {
+                if (index == null || start == null) return
+                val k = scale.floatValue
+                move(index, (start.x + acc.x / k).roundToInt(), (start.y + acc.y / k).roundToInt())
+            }
+            while (true) {
+                val event = awaitPointerEvent()
+                val pressed = event.changes.filter { it.pressed }
+                if (pressed.isEmpty()) break
+                if (pressed.size >= 2) {
+                    // Два пальці — крутнути: кожні ~90° повороту пальцями повертають коробку на 90°.
+                    val target = index ?: currentSelected
+                    if (target == null) { handedOff = true; break }
+                    twoFingers = true
+                    twist += event.calculateRotation()
+                    if (kotlin.math.abs(twist) >= TWIST_DEG) {
+                        haptics.tick()
+                        rotate(target)
+                        twist -= kotlin.math.sign(twist) * 90f
+                    }
+                    event.changes.forEach { it.consume() }
+                    continue
+                }
+                val c = pressed.first()
+                if (twoFingers) {
+                    // Після повороту один палець лишився — не тягнемо (щоб коробка не «стрибнула»).
+                    c.consume()
+                    continue
+                }
+                if (index == null) {
+                    // Повз коробки: рух — це прокрутка сторінки, віддаємо її.
+                    if ((c.position - down.position).getDistance() > slop) { handedOff = true; break }
+                    continue
+                }
+                acc += c.positionChange()
+                c.consume()
+                if (!dragging && acc.getDistance() > slop) dragging = true
+                if (dragging) emit()
+            }
+            if (twoFingers || dragging) {
+                lastTapAt = 0L
+                return@awaitEachGesture
+            }
             if (index == null) {
                 // Дотик повз коробки (не прокрутка) — зняти вибір.
-                if (waitForUpOrCancellation() != null) select(null)
+                if (!handedOff) select(null)
                 return@awaitEachGesture
             }
-            haptics.tap()
-            select(index)
-            val start = currentLayout.getOrNull(index) ?: return@awaitEachGesture
-            var acc = Offset.Zero
-            val moved = awaitTouchSlopOrCancellation(down.id) { change, over ->
-                change.consume()
-                acc += over
-            }
-            if (moved == null) {
-                // Дотик без руху: другий швидкий дотик по тій самій — повернути.
-                val now = down.uptimeMillis
-                if (now - lastTapAt < 320 && lastTapIndex == index) {
-                    rotate(index)
-                    lastTapAt = 0L
-                } else {
-                    lastTapAt = now
-                    lastTapIndex = index
-                }
-                return@awaitEachGesture
-            }
-            lastTapAt = 0L
-            acc = moved.position - down.position
-            fun emit() {
-                val s = scale.floatValue
-                move(index, (start.x + acc.x / s).roundToInt(), (start.y + acc.y / s).roundToInt())
-            }
-            emit()
-            drag(moved.id) { change ->
-                acc += change.positionChange()
-                change.consume()
-                emit()
+            // Дотик без руху: другий швидкий дотик по тій самій — повернути.
+            val now = down.uptimeMillis
+            if (now - lastTapAt < 320 && lastTapIndex == index) {
+                rotate(index)
+                lastTapAt = 0L
+            } else {
+                lastTapAt = now
+                lastTapIndex = index
             }
         }
     }
@@ -190,7 +224,10 @@ fun PalletView(
         // --- Коробки ---
         val b = box ?: return@Canvas
         val bad = check?.bad.orEmpty()
-        layout.forEachIndexed { i, p ->
+        // Вибрана — останньою, поверх інших (видно, на що вона налазить).
+        val order = layout.indices.sortedBy { if (it == selected) 1 else 0 }
+        order.forEach { i ->
+            val p = layout[i]
             val tl = Offset(px(p.x), px(p.y))
             val inset = if (thumbnail) 0.5f else 1.2f
             val sz = Size(p.sx(b) * s - 2 * inset, p.sy(b) * s - 2 * inset)
@@ -237,6 +274,8 @@ private fun DrawScope.drawPencilBox(at: Offset, sz: Size, index: Int, selected: 
         if (cache.size > 400) cache.clear()
         taperedPath(pencilLoop(sz, 3.dp.toPx(), seed, 1.dp.toPx()), w)
     }
+    // Коробка непрозора: усередині — чорне тло (дошки й сусідні коробки під нею не просвічують).
+    drawRoundRect(Oled.Black, at, sz, CornerRadius(3.dp.toPx()))
     translate(at.x, at.y) {
         drawPath(path, ink.copy(alpha = if (selected || bad) 0.95f else 0.75f))
         if (selected || bad) {

@@ -65,48 +65,71 @@ fun ChoiceRow(title: String, subtitle: String?, selected: Boolean, onClick: () -
     }
 }
 
-/** Типові висоти палети (разом з палетою), мм. */
-private val HEIGHTS = listOf(1200, 1300, 1800)
+/** Стандарти обмежень: висота 1,80 м разом з палетою, вага 700 кг, без виступу за край. */
+const val STD_HEIGHT_MM = 1800
+const val STD_WEIGHT_G = 700_000L
+const val STD_OVERHANG_MM = 0
+
+/** Найбільший виступ, який можна вписати (з кожного боку), мм. */
+const val MAX_OVERHANG_MM = 50
 
 /**
- * Висота: три типові (1,20 / 1,30 / 1,80 — дотик одразу застосовує) або своя. Висота — разом з палетою (15 см).
+ * Однакове вікно для всіх трьох обмежень: поле з поточним значенням (міняєш — і все), під ним — який стандарт;
+ * кнопки «Стандарт» (повертає стандартне значення в поле) і «Готово».
  */
 @Composable
-fun HeightDialog(current: Int, adr: Boolean, onDismiss: () -> Unit, onApply: (Int) -> Unit) {
-    val comma = decimalComma()
-    var own by remember { mutableStateOf(if (current in HEIGHTS) "" else Num.metres(current, comma)) }
-    val ownMm = Num.lengthMm(own)?.takeIf { it in (PALLET_HEIGHT_MM + 50)..3000 }
+private fun LimitDialogFrame(
+    title: String,
+    onDismiss: () -> Unit,
+    onStandard: () -> Unit,
+    onDone: () -> Unit,
+    doneEnabled: Boolean,
+    content: @Composable () -> Unit,
+) {
     SheetDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.limit_height_title),
+        title = title,
         buttons = {
-            SheetButton(stringResource(R.string.cancel), onDismiss)
-            SheetButton(stringResource(R.string.done), { ownMm?.let(onApply) }, tone = Tone.Confirm, enabled = ownMm != null)
+            SheetButton(stringResource(R.string.standard), onStandard)
+            SheetButton(stringResource(R.string.done), onDone, tone = Tone.Confirm, enabled = doneEnabled)
         },
     ) {
-        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            EqualWidthRow(Modifier.fillMaxWidth()) {
-                HEIGHTS.forEach { h ->
-                    ChoiceChip("${Num.metres(h, comma)} ${stringResource(R.string.unit_m)}", selected = current == h) { onApply(h) }
-                }
-            }
-            SheetTextField(
-                value = own,
-                onValueChange = { v -> own = v.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
-                placeholder = stringResource(R.string.limit_height_own),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { ownMm?.let(onApply) }),
-                suffix = stringResource(R.string.unit_m),
-            )
-            WindowHint(stringResource(R.string.limit_height_hint, Num.cm(PALLET_HEIGHT_MM, comma)))
-            if (adr) WindowHint(stringResource(R.string.limit_height_adr, Num.metres(ADR_HEIGHT_MM, comma)))
-        }
+        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
     }
 }
 
-/**
- * Вага: ліміт (типово 700 кг) і чи додавати вагу палети (типово — ні; вибір запам'ятовується).
- */
+@Composable
+private fun LimitField(value: String, onChange: (String) -> Unit, placeholder: String, suffix: String, error: Boolean, onDone: () -> Unit, modifier: Modifier = Modifier, last: Boolean = true) {
+    SheetTextField(
+        value = value,
+        onValueChange = { v -> onChange(v.filter { it.isDigit() || it == ',' || it == '.' }.take(7)) },
+        placeholder = placeholder,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = if (last) ImeAction.Done else ImeAction.Next),
+        keyboardActions = KeyboardActions(onDone = { onDone() }),
+        suffix = suffix,
+        error = error,
+        modifier = modifier,
+    )
+}
+
+/** Висота палети разом з самою палетою: стандарт 1,80 м, будь-яку іншу — вписати. */
+@Composable
+fun HeightDialog(current: Int, adr: Boolean, onDismiss: () -> Unit, onApply: (Int) -> Unit) {
+    val comma = decimalComma()
+    var text by remember { mutableStateOf(Num.metres(current, comma)) }
+    val mm = Num.lengthMm(text)?.takeIf { it in (PALLET_HEIGHT_MM + 50)..3000 }
+    LimitDialogFrame(
+        stringResource(R.string.limit_height_title), onDismiss,
+        onStandard = { text = Num.metres(STD_HEIGHT_MM, comma) },
+        onDone = { mm?.let(onApply) }, doneEnabled = mm != null,
+    ) {
+        LimitField(text, { text = it }, Num.metres(STD_HEIGHT_MM, comma), stringResource(R.string.unit_m), text.isNotEmpty() && mm == null, { mm?.let(onApply) })
+        WindowHint(stringResource(R.string.limit_height_hint, Num.metres(STD_HEIGHT_MM, comma), Num.cm(PALLET_HEIGHT_MM, comma)))
+        if (adr) WindowHint(stringResource(R.string.limit_height_adr, Num.metres(ADR_HEIGHT_MM, comma)))
+    }
+}
+
+/** Вага разом з товаром: стандарт 700 кг; перемикач — додавати вагу самої палети (запам'ятовується). */
 @Composable
 fun WeightDialog(limitG: Long, palletOn: Boolean, palletG: Long, onDismiss: () -> Unit, onApply: (limitG: Long, palletOn: Boolean, palletG: Long) -> Unit) {
     val comma = decimalComma()
@@ -117,62 +140,38 @@ fun WeightDialog(limitG: Long, palletOn: Boolean, palletG: Long, onDismiss: () -
     val limitValue = Num.grams(limit)?.takeIf { it in 1_000..5_000_000 }
     val palletValue = Num.grams(pallet)?.takeIf { it in 1..200_000 }
     val ok = limitValue != null && (!on || palletValue != null)
-    SheetDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.limit_weight_title),
-        buttons = {
-            SheetButton(stringResource(R.string.cancel), onDismiss)
-            SheetButton(stringResource(R.string.done), { if (ok) onApply(limitValue!!, on, palletValue ?: palletG) }, tone = Tone.Confirm, enabled = ok)
-        },
+    val apply = { if (ok) onApply(limitValue!!, on, palletValue ?: palletG) }
+    LimitDialogFrame(
+        stringResource(R.string.limit_weight_title), onDismiss,
+        onStandard = { limit = kgText(STD_WEIGHT_G) },
+        onDone = apply, doneEnabled = ok,
     ) {
-        Column(Modifier.bouncyScroll(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.limit_weight_max), color = Oled.TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp))
-            SheetTextField(
-                value = limit,
-                onValueChange = { v -> limit = v.filter { it.isDigit() || it == ',' || it == '.' }.take(7) },
-                placeholder = "700",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                suffix = stringResource(R.string.unit_kg),
-                error = limit.isNotEmpty() && limitValue == null,
-            )
-            SwitchRow(stringResource(R.string.pallet_add_title), on, Modifier.padding(horizontal = 6.dp), subtitle = stringResource(R.string.pallet_add_desc)) { on = it }
-            // Вимкнене поле тьмяніє, а не зникає (нічого не смикається).
-            SheetTextField(
-                value = pallet,
-                onValueChange = { v -> pallet = v.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
-                placeholder = "25",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                suffix = stringResource(R.string.unit_kg),
-                modifier = Modifier.alpha(if (on) 1f else 0.35f),
-            )
-            WindowHint(stringResource(R.string.limit_weight_hint))
-        }
+        LimitField(limit, { limit = it }, kgText(STD_WEIGHT_G), stringResource(R.string.unit_kg), limit.isNotEmpty() && limitValue == null, apply, last = false)
+        WindowHint(stringResource(R.string.limit_weight_hint, kgText(STD_WEIGHT_G)))
+        SwitchRow(stringResource(R.string.pallet_add_title), on, Modifier.padding(horizontal = 6.dp), subtitle = stringResource(R.string.pallet_add_desc)) { on = it }
+        // Вимкнене поле тьмяніє, а не зникає (нічого не смикається).
+        LimitField(pallet, { pallet = it }, "25", stringResource(R.string.unit_kg), on && pallet.isNotEmpty() && palletValue == null, apply, Modifier.alpha(if (on) 1f else 0.35f))
     }
 }
 
-/** Звис з кожного боку, мм: без звису, 1, 1,5, 2, 2,5 см (разом — до 5 см на сторону палети). */
-private val OVERHANGS = listOf(0, 10, 15, 20, 25)
-
-/** Звис: без звису (типово) або до 2,5 см з кожного боку — з попередженням. */
+/**
+ * Виступ за край палети, з кожного боку: стандарт — без виступу (так приймає більшість складів і перевізників);
+ * інший — вписати, до 5 см.
+ */
 @Composable
 fun OverhangDialog(current: Int, onDismiss: () -> Unit, onApply: (Int) -> Unit) {
     val comma = decimalComma()
-    SheetDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.overhang_title),
-        buttons = { SheetButton(stringResource(R.string.close), onDismiss) },
+    var text by remember { mutableStateOf(Num.cm(current, comma)) }
+    val mm = Num.parse(text)?.let { kotlin.math.round(it * 10).toInt() }?.takeIf { it in 0..MAX_OVERHANG_MM }
+    LimitDialogFrame(
+        stringResource(R.string.overhang_title), onDismiss,
+        onStandard = { text = Num.cm(STD_OVERHANG_MM, comma) },
+        onDone = { mm?.let(onApply) }, doneEnabled = mm != null,
     ) {
-        Column(Modifier.bouncyScroll()) {
-            OVERHANGS.forEach { mm ->
-                ChoiceRow(
-                    if (mm == 0) stringResource(R.string.overhang_none) else stringResource(R.string.overhang_option, Num.cm(mm, comma)),
-                    if (mm == 0) null else stringResource(R.string.overhang_option_total, Num.cm(mm * 2, comma)),
-                    selected = current == mm,
-                ) { onApply(mm) }
-            }
-            // Попередження — видно, поки звис дозволено.
-            WindowHint(stringResource(if (current > 0) R.string.overhang_warning else R.string.overhang_hint))
-        }
+        LimitField(text, { text = it }, "0", stringResource(R.string.unit_cm_side), text.isNotEmpty() && mm == null, { mm?.let(onApply) })
+        WindowHint(stringResource(R.string.overhang_hint, Num.cm(MAX_OVERHANG_MM, comma)))
+        // Попередження — коли виступ дозволено.
+        if ((mm ?: 0) > 0) WindowHint(stringResource(R.string.overhang_warning))
     }
 }
 
@@ -300,6 +299,19 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
                             }
                         }
                     }
+                    // Бланк: хто описує структуру — ім'я впишеться в рядок підпису.
+                    Text(stringResource(R.string.settings_form), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                    SheetTextField(
+                        value = FormSigner.name,
+                        onValueChange = { v ->
+                            val t = v.take(60)
+                            FormSigner.name = t
+                            settings.signer = t.trim()
+                        },
+                        placeholder = stringResource(R.string.signer_hint),
+                        keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                    )
+                    FieldHint(stringResource(R.string.signer_desc), Modifier.padding(top = 4.dp))
                     Text(stringResource(R.string.settings_screen), color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
                     Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SwitchRow(stringResource(R.string.status_hide_title), StatusBar.hidden, subtitle = stringResource(R.string.status_hide_desc)) {
@@ -307,7 +319,6 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
                             settings.hideStatusBar = it
                         }
                     }
-                    WindowHint(stringResource(R.string.settings_hint))
                 }
                 SettingsPage.Help -> Column(Modifier.fillMaxSize().bouncyScroll()) {
                     HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { page = SettingsPage.Topic(t) }) }

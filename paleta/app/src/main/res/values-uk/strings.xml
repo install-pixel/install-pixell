@@ -40,7 +40,7 @@
     <string name="limit_weight">Вага</string>
     <string name="limit_pallet_added">+ палета %1$s кг</string>
     <string name="limit_pallet_not">без палети</string>
-    <string name="limit_overhang">Звис</string>
+    <string name="limit_overhang">Виступ</string>
     <string name="overhang_none_short">немає</string>
     <string name="overhang_flush">рівно з краєм</string>
     <string name="overhang_per_side">з кожного боку</string>
@@ -48,20 +48,16 @@
     <string name="adr_desc">Висота палети — лише 1,20 м</string>
 
     <string name="limit_height_title">Висота палети</string>
-    <string name="limit_height_own">Своя висота</string>
-    <string name="limit_height_hint">Разом з самою палетою (%1$s см). Стандарт — 1,20 м, або 1,80 м, якщо вага коробок і стійкість це дозволяють.</string>
+    <string name="limit_height_hint">Стандарт — %1$s м. Разом з самою палетою (%2$s см). Інша висота — просто впиши.</string>
     <string name="limit_height_adr">Увімкнено ADR: рахується не більше %1$s м.</string>
     <string name="limit_weight_title">Вага палети</string>
-    <string name="limit_weight_max">Найбільша вага разом з товаром</string>
     <string name="pallet_add_title">Додавати вагу палети</string>
     <string name="pallet_add_desc">Сама палета теж рахується у вагу й у ліміт</string>
-    <string name="limit_weight_hint">Вибір запам’ятовується: один раз вимкнув вагу палети — так і лишається.</string>
-    <string name="overhang_title">Звис за край палети</string>
-    <string name="overhang_none">Без звису</string>
-    <string name="overhang_option">До %1$s см з кожного боку</string>
-    <string name="overhang_option_total">разом до %1$s см на сторону палети</string>
-    <string name="overhang_hint">Коробки не виходять за край палети.</string>
-    <string name="overhang_warning">Увага: коробки можуть виступати за край палети. Перевір, чи так можна на твоєму складі. Авторозкладка бере звис, лише якщо з ним поміщається більше.</string>
+    <string name="limit_weight_hint">Стандарт — %1$s кг разом з товаром. Інша вага — просто впиши.</string>
+    <string name="overhang_title">Виступ за край палети</string>
+    <string name="overhang_option">виступ до %1$s см з кожного боку</string>
+    <string name="overhang_hint">Стандарт — без виступу (0 см): так палети приймає більшість складів і перевізників. Інший — впиши, з кожного боку, до %1$s см.</string>
+    <string name="overhang_warning">Увага: коробки можуть виступати за край палети. Перевір, чи так можна на твоєму складі. Авторозкладка бере виступ, лише якщо з ним поміщається більше.</string>
 
     <!-- Розкладка -->
     <string name="section_layout">Розкладка шару</string>
@@ -70,7 +66,7 @@
     <string name="act_add">Додати</string>
     <string name="act_rotate">Повернути</string>
     <string name="act_remove">Прибрати</string>
-    <string name="layout_hint">Тягни коробку пальцем — вона прилипає до країв і сусідів. Подвійний дотик — повернути. «Авто» ще раз — інший варіант.</string>
+    <string name="layout_hint">Тягни коробку пальцем — вона прилипає до країв і сусідів. Повернути — двома пальцями крутнути або подвійний дотик. «Авто» ще раз — інший варіант.</string>
     <string name="layout_best">Найкраща авторозкладка</string>
     <string name="layout_fill">Доповнити вільне місце</string>
     <string name="layout_clear">Очистити палету</string>
@@ -83,33 +79,25 @@
     <string name="status_custom">Своя розкладка · %1$d кор. у шарі</string>
     <string name="status_auto">Авторозкладка · %1$d кор. у шарі</string>
     <string name="status_auto_variant">Авторозкладка · %1$d кор. у шарі · варіант %2$d з %3$d</string>
-    <string name="status_overhang">звис до %1$s см</string>
+    <string name="status_overhang">виступ до %1$s см</string>
 
     <!-- Бланк -->
     <string name="section_result">Бланк</string>
     <string name="result_empty">Впиши розміри й вагу коробки — бланк заповниться сам</string>
     <string name="form_title">Картка нового артикулу</string>
-    <string name="form_date">Дата: %1$s</string>
     <string name="no_sku">Без SKU</string>
     <string name="col_param">Параметр</string>
     <string name="col_unit">Штука</string>
     <string name="col_box">Картон</string>
     <string name="col_pallet">Палета</string>
-    <string name="row_length">Довжина, м</string>
-    <string name="row_width">Ширина, м</string>
-    <string name="row_height">Висота, м</string>
-    <string name="row_qty">Кількість</string>
-    <string name="row_weight">Вага, кг</string>
+    <string name="row_length">Довжина</string>
+    <string name="row_width">Ширина</string>
+    <string name="row_height">Висота</string>
+    <string name="row_qty">Кількість у позиції</string>
     <string name="per_layer">На шарі</string>
     <string name="per_layer_value">%1$d шт · %2$d кор.</string>
     <string name="layers_on_pallet">Шарів на палеті</string>
     <string name="layers_partial">неповний</string>
-    <string name="units_on_pallet">Штук на палеті</string>
-    <string name="flag_structure">Структура орієнтовна</string>
-    <string name="flag_oversize">Габарит (більше 50×30 см)</string>
-    <string name="flag_adr">ADR (небезпечний)</string>
-    <string name="flag_awkward">Awkward (понад 1,2 м)</string>
-    <string name="flag_two_men">Two men lift (понад 35 кг)</string>
     <string name="yes">ТАК</string>
     <string name="no">НІ</string>
     <string name="note_weight_limited">Обмежено вагою: шарів %2$d замість %1$d.</string>
@@ -130,7 +118,7 @@
     <string name="duplicate">Дублювати</string>
     <string name="share">Поділитися</string>
     <string name="delete">Видалити</string>
-    <string name="detail_limits">Рахувалось з обмеженнями: висота %1$s м · вага %2$s кг · звис %3$s.</string>
+    <string name="detail_limits">Рахувалось з обмеженнями: висота %1$s м · вага %2$s кг · виступ %3$s.</string>
 
     <!-- Сповіщення -->
     <string name="saved">Збережено в історію</string>
@@ -149,7 +137,6 @@
     <string name="flashlight">Ліхтарик</string>
 
     <!-- Вікна -->
-    <string name="cancel">Скасувати</string>
     <string name="done">Готово</string>
     <string name="close">Закрити</string>
     <string name="back">Назад</string>
@@ -166,16 +153,57 @@
     <string name="settings_screen">Екран</string>
     <string name="status_hide_title">Ховати рядок стану</string>
     <string name="status_hide_desc">Годинник і мережа — лише свайпом від верхнього краю</string>
-    <string name="settings_hint">Висота, вага палети й звис запам’ятовуються самі — міняються дотиком по плашках «Обмеження».</string>
 
     <string name="help_input_t">Що вписувати</string>
     <string name="help_input">SKU — вписати або засканувати (значок штрихкоду в полі). Якщо такий SKU вже рахували, під полем з’явиться «Уже є в історії» — відкриєш і здублюєш.\n\nКоробка: довжина, ширина, висота — у метрах, як у бланку (0,47), або в сантиметрах (47) — програма зрозуміє сама. Довжина — завжди найдовший бік. Вага коробки — до грама (2,305). Штук у коробці — якщо порожньо, рахується 1.\n\nОдна штука — необов’язково. Заповниш — буде в бланку колонкою «Штука»; ні — колонки немає, на розрахунок це не впливає.\n\nУсе рахується одразу, поки вписуєш — кнопки «Розрахувати» немає.</string>
-    <string name="help_limits_t">Висота, вага, звис</string>
-    <string name="help_limits">Висота — разом з самою палетою (15 см). Типово 1,80 м; дотик по плашці — 1,20 / 1,30 / 1,80 або своя.\n\nВага — найбільша вага разом з товаром, типово 700 кг. Вагу самої палети можна додати (типово — ні); якщо додано, на плашці написано «+ палета».\n\nЗвис — на скільки коробки можуть виступати за край палети: без звису (типово) або до 2,5 см з кожного боку. Авторозкладка бере звис, лише якщо з ним поміщається більше коробок.\n\nADR (небезпечний товар) — висота лише 1,20 м.\n\nУсі ці вибори запам’ятовуються.</string>
+    <string name="help_limits_t">Висота, вага, виступ</string>
+    <string name="help_limits">Три плашки працюють однаково: дотик — вікно з полем, у полі поточне значення; впиши інше й «Готово». «Стандарт» повертає стандартне значення.
+
+Висота — разом з самою палетою (15 см). Стандарт 1,80 м.
+
+Вага — найбільша вага разом з товаром. Стандарт 700 кг. Перемикачем можна додати вагу самої палети (типово — ні); тоді на плашці «+ палета».
+
+Виступ — на скільки коробки можуть виступати за край палети, з кожного боку. Стандарт — без виступу (так приймає більшість складів і перевізників), можна до 5 см. Авторозкладка бере виступ, лише якщо з ним поміщається більше коробок.
+
+ADR (небезпечний товар) — висота лише 1,20 м.
+
+Усі ці значення запам’ятовуються самі. Плашка, що відрізняється від стандарту, — яскравіша.</string>
     <string name="help_layout_t">Розкладка шару</string>
-    <string name="help_layout">Палета 1,20 × 0,80 зверху, коробки — у правильних пропорціях.\n\n«Авто» шукає, як покласти найбільше коробок: прості ряди, ряди різного напрямку і «млин» (блоки довкола центру). Якщо найкращих розкладок кілька — «Авто» ще раз показує наступну.\n\nСвоя розкладка: тягни коробку пальцем — вона прилипає до країв палети й до сусідніх коробок. Подвійний дотик — повернути. Вибрати коробку — дотик; «Повернути» і «Прибрати» — для вибраної. «Додати» ставить коробку на перше вільне місце.\n\nУ меню «⋯»: «Доповнити вільне місце» — розклади перший ряд як тобі зручно, а решту заповнить само.\n\nЧервона коробка — накладається на іншу або виступає більше, ніж дозволено; поки є червоні, зберегти не можна. Рахується саме та розкладка, що на малюнку.</string>
+    <string name="help_layout">Палета 1,20 × 0,80 зверху, коробки — у правильних пропорціях.\n\n«Авто» шукає, як покласти найбільше коробок: прості ряди, ряди різного напрямку і «млин» (блоки довкола центру). Якщо найкращих розкладок кілька — «Авто» ще раз показує наступну.\n\nСвоя розкладка: тягни коробку пальцем — вона прилипає до країв палети й до сусідніх коробок. Повернути — крутнути двома пальцями (кожні ~90° — поворот) або подвійний дотик. Вибрати коробку — дотик; «Повернути» і «Прибрати» — для вибраної. «Додати» ставить коробку на перше вільне місце.\n\nУ меню «⋯»: «Доповнити вільне місце» — розклади перший ряд як тобі зручно, а решту заповнить само.\n\nЧервона коробка — накладається на іншу або виступає більше, ніж дозволено; поки є червоні, зберегти не можна. Рахується саме та розкладка, що на малюнку.</string>
     <string name="help_result_t">Бланк</string>
     <string name="help_result">Бланк схожий на паперову картку — щоб легко переписати. Дата ставиться сама.\n\nКолонки: Штука (якщо вписав), Картон, Палета. Палета: висота разом з палетою, кількість коробок, вага товару (і палети, якщо додано).\n\nНа шарі — штук і коробок у шарі; шарів на палеті.\n\nПозначки рахуються самі: габарит (штука більша за 50×30 см), awkward (понад 1,2 м), two men lift (коробка понад 35 кг), структура орієнтовна (вага не дозволяє навіть одного шару). Картон понад 25 кг — нагадування міряти рулеткою.</string>
     <string name="help_history_t">Історія</string>
     <string name="help_history">«Зберегти в історію» зберігає все: введене, обмеження, саму розкладку й результат.\n\nДотик по картці — відкрити повністю. «Дублювати» переносить усе в новий розрахунок: міняєш, що треба (наприклад, вагу), і зберігаєш нову картку — стара лишається.\n\nДовге натискання — меню (відкрити, дублювати, поділитися, видалити). Свайп уліво — видалити, з «Повернути».\n\nПошук — за SKU, можна засканувати.</string>
+    <string name="standard">Стандарт</string>
+    <string name="unit_cm_side">см з боку</string>
+    <string name="row_weight_form">Ваги</string>
+    <string name="form_delivery">Номер поставки</string>
+    <string name="form_date_label">Дата:</string>
+    <string name="form_sku">Номер артикулу</string>
+    <string name="form_ean">Код EAN</string>
+    <string name="form_name">Назва артикулу</string>
+    <string name="form_dims">Розміри / Dimensions</string>
+    <string name="form_layer_by">Висота шару за:</string>
+    <string name="form_in_metres">[у метрах]</string>
+    <string name="form_qty_box">(штук у коробці)</string>
+    <string name="form_qty_pallet">(коробок на палеті)</string>
+    <string name="form_per_layer">Кількість на шарі</string>
+    <string name="form_pcs">Штук</string>
+    <string name="form_boxes">Коробок</string>
+    <string name="form_layers">Кількість шарів на палеті</string>
+    <string name="form_structure">Структура орієнтовна</string>
+    <string name="form_structure_sub">(немає хоча б одного шару на палеті)</string>
+    <string name="form_oversize">Габарит</string>
+    <string name="form_oversize_sub">(штука більша за 50×30 см)</string>
+    <string name="form_adr">Артикул ADR</string>
+    <string name="form_inner">Inner box</string>
+    <string name="form_mark">Познач поле*</string>
+    <string name="form_sign_struct">Розбірливий підпис того, хто описує структуру</string>
+    <string name="form_sign_struct_sub">прізвище та ім’я друкованими</string>
+    <string name="form_sign_wms">Розбірливий підпис того, хто вносить у WMS</string>
+    <string name="form_sign_dok">Розбірливий підпис того, хто перевіряє (DOK)</string>
+    <string name="note_nothing_fits">Коробка важча за ліміт ваги — на палету не поміщається жодна.</string>
+    <string name="settings_form">Бланк</string>
+    <string name="signer_hint">Ім’я та прізвище</string>
+    <string name="signer_desc">Впишеться в рядок «підпис того, хто описує структуру», щоб не забути.</string>
 </resources>

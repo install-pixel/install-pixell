@@ -48,19 +48,15 @@
     <string name="adr_desc">Pallet height 1.20 m only</string>
 
     <string name="limit_height_title">Pallet height</string>
-    <string name="limit_height_own">Custom height</string>
-    <string name="limit_height_hint">Including the pallet itself (%1$s cm). Standard is 1.20 m, or 1.80 m if box weight and stability allow it.</string>
+    <string name="limit_height_hint">Standard is %1$s m. Including the pallet itself (%2$s cm). For another height just type it.</string>
     <string name="limit_height_adr">ADR is on: at most %1$s m is used.</string>
     <string name="limit_weight_title">Pallet weight</string>
-    <string name="limit_weight_max">Maximum weight including goods</string>
     <string name="pallet_add_title">Add pallet weight</string>
     <string name="pallet_add_desc">The pallet itself counts toward the weight and the limit</string>
-    <string name="limit_weight_hint">Your choice is remembered: switch pallet weight off once and it stays off.</string>
+    <string name="limit_weight_hint">Standard is %1$s kg including goods. For another weight just type it.</string>
     <string name="overhang_title">Overhang past the pallet edge</string>
-    <string name="overhang_none">No overhang</string>
-    <string name="overhang_option">Up to %1$s cm on each side</string>
-    <string name="overhang_option_total">up to %1$s cm in total per pallet side</string>
-    <string name="overhang_hint">Boxes stay within the pallet edge.</string>
+    <string name="overhang_option">overhang up to %1$s cm on each side</string>
+    <string name="overhang_hint">Standard is no overhang (0 cm): most warehouses and carriers accept pallets this way. For another value type it, per side, up to %1$s cm.</string>
     <string name="overhang_warning">Warning: boxes may stick out past the pallet edge. Check whether your warehouse allows it. Auto layout uses overhang only if more boxes fit with it.</string>
 
     <!-- Layout -->
@@ -70,7 +66,7 @@
     <string name="act_add">Add</string>
     <string name="act_rotate">Rotate</string>
     <string name="act_remove">Remove</string>
-    <string name="layout_hint">Drag a box with your finger — it snaps to edges and neighbours. Double tap — rotate. “Auto” again — another variant.</string>
+    <string name="layout_hint">Drag a box with your finger — it snaps to edges and neighbours. Rotate — twist with two fingers or double tap. “Auto” again — another variant.</string>
     <string name="layout_best">Best auto layout</string>
     <string name="layout_fill">Fill free space</string>
     <string name="layout_clear">Clear pallet</string>
@@ -89,27 +85,19 @@
     <string name="section_result">Form</string>
     <string name="result_empty">Enter box size and weight — the form fills itself in</string>
     <string name="form_title">New item card</string>
-    <string name="form_date">Date: %1$s</string>
     <string name="no_sku">No SKU</string>
     <string name="col_param">Parameter</string>
     <string name="col_unit">Piece</string>
     <string name="col_box">Carton</string>
     <string name="col_pallet">Pallet</string>
-    <string name="row_length">Length, m</string>
-    <string name="row_width">Width, m</string>
-    <string name="row_height">Height, m</string>
-    <string name="row_qty">Quantity</string>
-    <string name="row_weight">Weight, kg</string>
+    <string name="row_length">Length</string>
+    <string name="row_width">Width</string>
+    <string name="row_height">Height</string>
+    <string name="row_qty">Quantity per item</string>
     <string name="per_layer">Per layer</string>
     <string name="per_layer_value">%1$d pcs · %2$d boxes</string>
     <string name="layers_on_pallet">Layers on pallet</string>
     <string name="layers_partial">partial</string>
-    <string name="units_on_pallet">Pieces on pallet</string>
-    <string name="flag_structure">Estimated structure</string>
-    <string name="flag_oversize">Oversize (over 50×30 cm)</string>
-    <string name="flag_adr">ADR (hazmat)</string>
-    <string name="flag_awkward">Awkward (over 1.2 m)</string>
-    <string name="flag_two_men">Two men lift (over 35 kg)</string>
     <string name="yes">YES</string>
     <string name="no">NO</string>
     <string name="note_weight_limited">Limited by weight: %2$d layers instead of %1$d.</string>
@@ -149,7 +137,6 @@
     <string name="flashlight">Flashlight</string>
 
     <!-- Dialogs -->
-    <string name="cancel">Cancel</string>
     <string name="done">Done</string>
     <string name="close">Close</string>
     <string name="back">Back</string>
@@ -166,16 +153,57 @@
     <string name="settings_screen">Screen</string>
     <string name="status_hide_title">Hide status bar</string>
     <string name="status_hide_desc">Clock and network — only by swiping from the top edge</string>
-    <string name="settings_hint">Height, pallet weight and overhang are remembered — change them by tapping the “Limits” tiles.</string>
 
     <string name="help_input_t">What to enter</string>
     <string name="help_input">SKU — type it or scan it (barcode icon in the field). If this SKU was calculated before, “Already in history” appears under the field — open it and duplicate.\n\nBox: length, width, height — in metres like on the form (0.47) or in centimetres (47); the app understands both. Length is always the longest side. Box weight — down to the gram (2.305). Pieces per box — 1 if empty.\n\nOne piece is optional. If filled in, the form shows a “Piece” column; if not, there is no column and the calculation does not change.\n\nEverything is calculated as you type — there is no “Calculate” button.</string>
     <string name="help_limits_t">Height, weight, overhang</string>
-    <string name="help_limits">Height includes the pallet itself (15 cm). Default 1.80 m; tap the tile for 1.20 / 1.30 / 1.80 or your own.\n\nWeight — maximum weight including goods, default 700 kg. The pallet’s own weight can be added (off by default); when added, the tile says “+ pallet”.\n\nOverhang — how far boxes may stick out past the pallet edge: none (default) or up to 2.5 cm on each side. Auto layout uses overhang only if more boxes fit.\n\nADR (hazardous goods) — height 1.20 m only.\n\nAll these choices are remembered.</string>
+    <string name="help_limits">All three tiles work the same way: tap — a window with a field showing the current value; type another one and tap “Done”. “Standard” puts the standard value back.
+
+Height includes the pallet itself (15 cm). Standard 1.80 m.
+
+Weight — maximum weight including goods. Standard 700 kg. A switch adds the pallet’s own weight (off by default); the tile then says “+ pallet”.
+
+Overhang — how far boxes may stick out past the pallet edge, per side. Standard is none (most warehouses and carriers accept this), up to 5 cm allowed. Auto layout uses overhang only if more boxes fit.
+
+ADR (hazardous goods) — height 1.20 m only.
+
+All these values are remembered. A tile that differs from the standard is brighter.</string>
     <string name="help_layout_t">Layer layout</string>
-    <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Double tap — rotate. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.</string>
+    <string name="help_layout">The 1.20 × 0.80 pallet from above, boxes in true proportions.\n\n“Auto” looks for the layout with the most boxes: simple rows, rows in different directions and the “pinwheel” (blocks around the centre). If there are several best layouts, “Auto” again shows the next one.\n\nOwn layout: drag a box with your finger — it snaps to the pallet edges and neighbouring boxes. Rotate — twist with two fingers (every ~90° turns it) or double tap. Tap — select; “Rotate” and “Remove” act on the selected box. “Add” puts a box in the first free spot.\n\nIn the “⋯” menu: “Fill free space” — lay out the first row the way you like and the rest is filled in.\n\nA red box overlaps another or sticks out more than allowed; while there are red boxes you cannot save. The layout in the picture is exactly what gets counted.</string>
     <string name="help_result_t">Form</string>
     <string name="help_result">The form looks like the paper card so it is easy to copy. The date is filled in automatically.\n\nColumns: Piece (if entered), Carton, Pallet. Pallet: height including the pallet, number of boxes, goods weight (plus the pallet if added).\n\nPer layer — pieces and boxes in a layer; layers on the pallet.\n\nFlags are set automatically: oversize (piece over 50×30 cm), awkward (over 1.2 m), two men lift (box over 35 kg), estimated structure (weight does not allow even one layer). Carton over 25 kg — a reminder to measure with a tape.</string>
     <string name="help_history_t">History</string>
     <string name="help_history">“Save to history” keeps everything: what you entered, the limits, the layout itself and the result.\n\nTap a card to open it in full. “Duplicate” copies everything into a new calculation: change what you need (the weight, say) and save a new card — the old one stays.\n\nLong press — menu (open, duplicate, share, delete). Swipe left — delete, with “Undo”.\n\nSearch by SKU; you can scan it.</string>
+    <string name="standard">Standard</string>
+    <string name="unit_cm_side">cm per side</string>
+    <string name="row_weight_form">Weights</string>
+    <string name="form_delivery">Delivery number</string>
+    <string name="form_date_label">Date:</string>
+    <string name="form_sku">Item number</string>
+    <string name="form_ean">EAN code</string>
+    <string name="form_name">Item name</string>
+    <string name="form_dims">Dimensions</string>
+    <string name="form_layer_by">Layer height laid by:</string>
+    <string name="form_in_metres">[in metres]</string>
+    <string name="form_qty_box">(pieces per carton)</string>
+    <string name="form_qty_pallet">(cartons per pallet)</string>
+    <string name="form_per_layer">Quantity per layer</string>
+    <string name="form_pcs">Pieces</string>
+    <string name="form_boxes">Cartons</string>
+    <string name="form_layers">Layers on pallet</string>
+    <string name="form_structure">Estimated structure</string>
+    <string name="form_structure_sub">(not even one layer on the pallet)</string>
+    <string name="form_oversize">Oversize</string>
+    <string name="form_oversize_sub">(piece bigger than 50×30 cm)</string>
+    <string name="form_adr">ADR item</string>
+    <string name="form_inner">Inner box</string>
+    <string name="form_mark">Tick the box*</string>
+    <string name="form_sign_struct">Legible signature of the person describing the structure</string>
+    <string name="form_sign_struct_sub">surname and first name in capitals</string>
+    <string name="form_sign_wms">Legible signature of the person entering into WMS</string>
+    <string name="form_sign_dok">Legible signature of the verifier (DOK)</string>
+    <string name="note_nothing_fits">The box is heavier than the weight limit — not a single one fits on the pallet.</string>
+    <string name="settings_form">Form</string>
+    <string name="signer_hint">First name and surname</string>
+    <string name="signer_desc">Goes into the “signature of the person describing the structure” row, so you don’t forget.</string>
 </resources>

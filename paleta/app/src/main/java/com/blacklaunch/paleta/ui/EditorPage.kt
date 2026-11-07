@@ -178,12 +178,13 @@ fun EditorPage(
                 stringResource(R.string.limit_height),
                 "${Num.metres(vm.effectiveHeight, comma)} ${stringResource(R.string.unit_m)}",
                 if (vm.adr) stringResource(R.string.limit_adr_short) else stringResource(R.string.limit_with_pallet),
+                bright = vm.adr || vm.heightLimit != STD_HEIGHT_MM,
             ) { onLimit(LimitDialog.Height) }
             LimitTile(
                 stringResource(R.string.limit_weight),
                 "${(vm.weightLimitG / 1000.0).let { if (it % 1.0 == 0.0) it.toLong().toString() else Num.kilos(vm.weightLimitG, comma) }} ${stringResource(R.string.unit_kg)}",
                 if (vm.palletOn) stringResource(R.string.limit_pallet_added, Num.kilos(vm.palletG, comma)) else stringResource(R.string.limit_pallet_not),
-                bright = vm.palletOn,
+                bright = vm.palletOn || vm.weightLimitG != STD_WEIGHT_G,
             ) { onLimit(LimitDialog.Weight) }
             LimitTile(
                 stringResource(R.string.limit_overhang),
