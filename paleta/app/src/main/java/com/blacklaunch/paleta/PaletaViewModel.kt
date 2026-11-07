@@ -147,7 +147,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
      */
     var palletBox by mutableStateOf(false)
         private set
-    fun setPalletBox(on: Boolean) {
+    fun choosePalletBox(on: Boolean) {
         palletBox = on
         if (on) {
             val comma = boxL.contains(',') || boxW.contains(',') || java.text.DecimalFormatSymbols.getInstance().decimalSeparator == ','
@@ -637,6 +637,15 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     fun clearLayout() {
         edit(emptyList())
         selected = null
+    }
+
+    /** «Усе в кошик»: шар порожній, усі коробки — у кошику (можна повернути, нічого не загублено). */
+    fun allToTray() {
+        val n = current.size
+        if (n == 0) return
+        edit(emptyList())
+        selected = null
+        if (editLayer == 1) parked2 += n else parked1 += n
     }
 
     /** Зберегти в історію. */

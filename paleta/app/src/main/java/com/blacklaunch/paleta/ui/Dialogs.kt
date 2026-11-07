@@ -188,17 +188,6 @@ fun CardMenu(card: ProductCard, onDismiss: () -> Unit, onOpen: () -> Unit, onDup
     }
 }
 
-/** Меню розкладки («⋯» біля палети). */
-@Composable
-fun LayoutMenu(onDismiss: () -> Unit, onFill: () -> Unit, onClear: () -> Unit) {
-    SheetDialog(onDismissRequest = onDismiss, title = stringResource(R.string.section_layout)) {
-        Column(Modifier.bouncyScroll()) {
-            MenuRow(Glyph.Plus, stringResource(R.string.layout_fill), onFill)
-            MenuRow(Glyph.Eraser, stringResource(R.string.layout_clear), onClear)
-            WindowHint(stringResource(R.string.layout_menu_hint))
-        }
-    }
-}
 
 /** Сторінки вікна Налаштувань. */
 private sealed interface SettingsPage {

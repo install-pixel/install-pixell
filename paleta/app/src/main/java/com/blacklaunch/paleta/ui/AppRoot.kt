@@ -75,7 +75,6 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
 
     var settingsOpen by remember { mutableStateOf(false) }
     var limitDialog by remember { mutableStateOf<LimitDialog?>(null) }
-    var layoutMenu by remember { mutableStateOf(false) }
     var cardMenu by remember { mutableStateOf<ProductCard?>(null) }
     var detail by remember { mutableStateOf<ProductCard?>(null) }
     var scanFor by rememberSaveable { mutableStateOf<ScanTarget?>(null) }
@@ -168,7 +167,7 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
     val skuNow = vm.sku.trim()
     val known = remember(cards, skuNow) { if (skuNow.isEmpty()) null else cards?.firstOrNull { it.sku.equals(skuNow, ignoreCase = true) } }
 
-    val dialogOpen = settingsOpen || limitDialog != null || layoutMenu || cardMenu != null
+    val dialogOpen = settingsOpen || limitDialog != null || cardMenu != null
     val backdrop = backdropAmount(dialogOpen)
 
     Box(Modifier.fillMaxSize().background(Oled.Black)) {
@@ -192,7 +191,6 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
                         onScan = { scan(ScanTarget.Sku) },
                         onOpenKnown = { detail = it },
                         onLimit = { limitDialog = it },
-                        onLayoutMenu = { layoutMenu = true },
                     )
                     else -> HistoryPage(
                         cards = cards,
@@ -253,13 +251,6 @@ fun AppRoot(vm: PaletaViewModel, onLanguageChanged: () -> Unit) {
         }
         LimitDialog.Overhang -> OverhangDialog(vm.overhang, onDismiss = { limitDialog = null }) { vm.setOverhangMm(it); limitDialog = null }
         null -> Unit
-    }
-    if (layoutMenu) {
-        LayoutMenu(
-            onDismiss = { layoutMenu = false },
-            onFill = { layoutMenu = false; vm.fill() },
-            onClear = { layoutMenu = false; vm.clearLayout() },
-        )
     }
     cardMenu?.let { card ->
         CardMenu(

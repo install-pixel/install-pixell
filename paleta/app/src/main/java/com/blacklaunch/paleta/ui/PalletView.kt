@@ -85,6 +85,9 @@ fun PalletView(
     onUnpark: () -> Unit = {},
     /** Силует шару під цим (пунктиром) — видно, куди ставити, щоб коробка мала опору. */
     ghost: List<Placed>? = null,
+    /** Праворуч від кошика — «Усе в кошик» (очистити шар, але нічого не загубити). */
+    clearLabel: String = "",
+    onClearAll: () -> Unit = {},
 ) {
     val haptics = LocalHaptics.current
     val scale = remember { mutableFloatStateOf(1f) }
@@ -113,6 +116,9 @@ fun PalletView(
     val currentSelected by rememberUpdatedState(selected)
     val park by rememberUpdatedState(onPark)
     val unpark by rememberUpdatedState(onUnpark)
+    val clearAll by rememberUpdatedState(onClearAll)
+    /** Частка ширини під кошик; праворуч — кнопка «Усе в кошик». */
+    val trayShare = 0.66f
     val hasTray = tray != null
     // Коробку тягнуть над кошиком — кошик підсвічується.
     val overTray = remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -225,7 +231,12 @@ fun PalletView(
             if (index == null) {
                 // Дотик по кошику — повернути коробку; повз коробки (не прокрутка) — зняти вибір.
                 if (!handedOff) {
-                    if (inTray(down.position)) { haptics.tap(); unpark() } else select(null)
+                    if (inTray(down.position)) {
+                        haptics.tap()
+                        if (down.position.x > size.width * trayShare) clearAll() else unpark()
+                    } else {
+                        select(null)
+                    }
                 }
                 return@awaitEachGesture
             }
@@ -311,8 +322,22 @@ fun PalletView(
         if (tray != null) {
             val top = (PALLET_W + 2 * MARGIN_MM) * s + 4.dp.toPx()
             val tl = Offset(px(-MARGIN_MM) + 6.dp.toPx(), top)
-            val sz = Size(size.width - 12.dp.toPx(), size.height - top - 4.dp.toPx())
+            val sz = Size(size.width * trayShare - 12.dp.toPx(), size.height - top - 4.dp.toPx())
             val hot = overTray.value
+            // «Усе в кошик» — праворуч, окремою кнопкою.
+            run {
+                val ctl = Offset(size.width * trayShare, top)
+                val csz = Size(size.width * (1 - trayShare) - 6.dp.toPx(), sz.height)
+                val cInk = Oled.TextSecondary.copy(alpha = 0.85f)
+                if (glass) {
+                    drawRoundRect(Oled.Surface, ctl, csz, CornerRadius(12.dp.toPx()))
+                    drawRoundRect(Oled.Glint, ctl, csz, CornerRadius(12.dp.toPx()), style = Stroke(1.dp.toPx()))
+                } else {
+                    outline(ctl, csz, 12.dp.toPx(), 305, cInk.copy(alpha = 0.6f), 1.5.dp.toPx())
+                }
+                val cm = measurer.measure(clearLabel, trayStyle.copy(color = cInk), constraints = androidx.compose.ui.unit.Constraints(maxWidth = (csz.width - 8.dp.toPx()).toInt().coerceAtLeast(1)))
+                drawText(cm, topLeft = Offset(ctl.x + (csz.width - cm.size.width) / 2, ctl.y + (csz.height - cm.size.height) / 2))
+            }
             val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))
             val ink = if (hot) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = if (tray > 0) 0.9f else 0.5f)
             if (glass) {
@@ -321,7 +346,7 @@ fun PalletView(
             } else {
                 outline(tl, sz, 12.dp.toPx(), 303, ink.copy(alpha = if (hot) 0.95f else 0.55f), (if (hot) 2.2f else 1.5f).dp.toPx())
             }
-            val m = measurer.measure(trayLabel, trayStyle.copy(color = ink))
+            val m = measurer.measure(trayLabel, trayStyle.copy(color = ink), constraints = androidx.compose.ui.unit.Constraints(maxWidth = (sz.width - 8.dp.toPx()).toInt().coerceAtLeast(1)))
             drawText(m, topLeft = Offset(tl.x + (sz.width - m.size.width) / 2, tl.y + (sz.height - m.size.height) / 2))
         }
 

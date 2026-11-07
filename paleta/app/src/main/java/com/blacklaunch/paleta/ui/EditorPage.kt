@@ -64,7 +64,6 @@ fun EditorPage(
     onScan: () -> Unit,
     onOpenKnown: (ProductCard) -> Unit,
     onLimit: (LimitDialog) -> Unit,
-    onLayoutMenu: () -> Unit,
 ) {
     val comma = decimalComma()
     val scroll = rememberScrollState()
@@ -151,7 +150,7 @@ fun EditorPage(
             vm.palletBox,
             Modifier.padding(horizontal = 6.dp),
             subtitle = stringResource(if (vm.palletBox) R.string.pallet_box_on else R.string.pallet_box_off),
-        ) { vm.setPalletBox(it); if (it) unitOpen = true }
+        ) { vm.choosePalletBox(it); if (it) unitOpen = true }
         // Сантиметри зрозуміли як сантиметри — показуємо, що вийшло.
         val cmHint = listOf(vm.boxL, vm.boxW, vm.boxH).filter { Num.isCentimetres(it) }.mapNotNull { Num.lengthMm(it) }
         FieldHint(
@@ -243,10 +242,6 @@ fun EditorPage(
         // --- Розкладка шару ---
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionTitle(stringResource(R.string.section_layout), Modifier.weight(1f))
-            Box(
-                Modifier.size(40.dp).clip(CircleShape).clickable(enabled = vm.box != null) { haptics.tap(); onLayoutMenu() },
-                contentAlignment = Alignment.Center,
-            ) { GlyphIcon(Glyph.More, stringResource(R.string.more), tint = Oled.TextSecondary.copy(alpha = if (vm.box != null) 1f else 0.35f)) }
         }
         val check = vm.check
         // Вид: зверху (редагування) або 3D (уся палета, лише перегляд). Розмір вікна однаковий — нічого не стрибає.
@@ -301,6 +296,8 @@ fun EditorPage(
                 trayLabel = if (vm.parked > 0) stringResource(R.string.tray_n, vm.parked) else stringResource(R.string.tray_empty),
                 onPark = { vm.park(it) },
                 onUnpark = { vm.unpark() },
+                clearLabel = stringResource(R.string.tray_all),
+                onClearAll = { vm.allToTray() },
                 ghost = if (vm.editLayer == 1) vm.layout else null,
             )
             if (vm.box == null || (view3d && vm.boxHmm == null)) {
