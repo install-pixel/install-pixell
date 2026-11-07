@@ -108,22 +108,15 @@ class PackingTest {
     }
 
     @Test
-    fun rowsPatternFindsMixedRows() {
-        // Відео: 0,30 × 0,50 — ряд із 4 (повернуті) + ряд із 2 (прямо) = 6; простими рядами в один бік — лише 4.
+    fun mixedAndOneWay() {
+        // Відео: 0,30 × 0,50 — змішано (ряд із 4 + ряд із 2) = 6; «усі в один бік» — 4, і всі однаково.
         val box = BoxSize(300, 500)
-        val r = Packer.auto(box, 0, uniform = true)
-        assertEquals(6, r.count)
-        for (v in r.variants) {
-            val c = Layout.check(v, box, 0, rows = true)
-            assertTrue("$c", c.ok)
-        }
-        // Жоден варіант «рядами» не має поодиноких коробок — для різних розмірів.
-        for (l in 150..700 step 53) for (w in 120..l step 47) {
-            val b = BoxSize(l, w)
-            for (v in Packer.auto(b, 0, uniform = true).variants) assertTrue("$l×$w", Layout.check(v, b, 0, rows = true).ok)
-        }
-        val m = Layout.mirror(r.variants.first(), box)
-        assertTrue(Layout.check(m, box, 0, rows = true).ok)
+        assertTrue(Packer.auto(box, 0).count >= 6)
+        val one = Packer.auto(box, 0, uniform = true)
+        assertEquals(4, one.count)
+        for (v in one.variants) assertEquals(1, v.map { it.rotated }.distinct().size)
+        assertEquals(4, Packer.grid(box, true).size)
+        assertTrue(Layout.check(Packer.grid(box, true), box, 0).ok)
     }
 
     @Test

@@ -264,7 +264,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Ліміт висоти з урахуванням ADR (лише 1,20 м). */
     val effectiveHeight: Int get() = if (adr) minOf(heightLimit, ADR_HEIGHT_MM) else heightLimit
 
-    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang, rows = uniform, below = belowOf(editLayer)) }
+    val check: LayoutCheck? get() = box?.let { Layout.check(current, it, overhang, below = belowOf(editLayer)) }
 
     /**
      * На що спирається шар: другий — на перший; перший (третій, п'ятий…) — на другий, якщо шари різні й їх щонайменше
@@ -292,8 +292,8 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     val allOk: Boolean
         get() {
             val b = box ?: return false
-            return Layout.check(layout, b, overhang, uniform, belowOf(0)).ok &&
-                (layout2?.let { Layout.check(it, b, overhang, uniform, belowOf(1)).ok } ?: true) && gapsUnderThird == 0
+            return Layout.check(layout, b, overhang, below = belowOf(0)).ok &&
+                (layout2?.let { Layout.check(it, b, overhang, below = belowOf(1)).ok } ?: true) && gapsUnderThird == 0
         }
 
     val stack: Stack?
@@ -458,6 +458,8 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
      * окремо (уперше — розкладка «навхрест»), і можна правити кожен.
      */
     fun setSameAll(on: Boolean) {
+        // Вибір користувача: увімкнув «однакові» — автоматичної перев'язки більше не робимо.
+        sameAllPinned = on
         if (on) sameLayers() else if (layout2 == null && box != null) {
             layout2 = defaultSecond()
             parked2 = 0
@@ -527,8 +529,26 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     /** Перев'язка: поки другий шар не правили, він — дзеркало першого (і змінюється разом з ним). */
     private fun followFirst() {
         val b = box ?: return
-        if (layout2 != null && !layer2Custom) layout2 = Layout.mirror(layout, b)
+        val m = Layout.mirror(layout, b)
+        val symmetric = m.toSet() == layout.toSet()
+        if (layout2 != null && !layer2Custom) {
+            // Шар симетричний і перев'язку ставили самі — дзеркало нічого не дає, шари знову однакові.
+            if (symmetric && autoInterlock) { layout2 = null; autoInterlock = false; editLayer = 0 } else layout2 = m
+        } else if (layout2 == null && !uniform && !sameAllPinned && !symmetric && layout.isNotEmpty() &&
+            Layout.unsupported(m, layout, b).isEmpty() && Layout.unsupported(layout, m, b).isEmpty()
+        ) {
+            // Змішаний шар несиметричний — наступний шар сам лягає дзеркально (перев'язка), якщо стоїть на опорі.
+            layout2 = m
+            layer2Custom = false
+            autoInterlock = true
+        }
     }
+
+    /** Користувач сам увімкнув «Усі шари однакові» — перев'язку автоматично не вмикаємо. */
+    private var sameAllPinned = false
+
+    /** Перев'язку увімкнено автоматично (не користувачем). */
+    private var autoInterlock = false
 
     /** Перетягування: [rawX], [rawY] — де під пальцем (мм), коробка прилипає до країв і сусідів. */
     fun move(index: Int, rawX: Int, rawY: Int) {
@@ -542,6 +562,14 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         val b = box ?: return
         val i = selected ?: return
         if (i !in current.indices) return
+        if (uniform) {
+            // «Усі коробки в один бік»: повертається весь шар — сіткою в інший бік.
+            val turned = Packer.grid(b, !current[i].rotated)
+            if (turned.isEmpty()) { _events.tryEmit(UiEvent.NoRoom); return }
+            edit(turned)
+            selected = null
+            return
+        }
         edit(current.toMutableList().also { it[i] = Layout.rotate(current, i, b, overhang) })
     }
 
@@ -555,7 +583,8 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     fun addBox() {
         val b = box ?: return
         val prefer = selected?.let { current.getOrNull(it)?.rotated } ?: current.lastOrNull()?.rotated ?: false
-        val spot = Layout.freeSpot(current, b, overhang, prefer)
+        // «В один бік» — лише в тому самому напрямку, що й решта шару.
+        val spot = Layout.freeSpot(current, b, overhang, prefer, onlyPreferred = uniform && current.isNotEmpty())
         if (spot == null) {
             _events.tryEmit(UiEvent.NoRoom)
             return
@@ -566,7 +595,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun fill() {
         val b = box ?: return
-        val filled = Layout.fill(current, b, overhang)
+        val filled = Layout.fill(current, b, overhang, if (uniform && current.isNotEmpty()) current.first().rotated else null)
         if (filled.size == current.size) _events.tryEmit(UiEvent.NoRoom) else edit(filled)
     }
 

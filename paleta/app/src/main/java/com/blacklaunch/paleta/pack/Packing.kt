@@ -58,13 +58,15 @@ object Packer {
         val g0 = grid(areaL, areaW, box.l, box.w)
         val g1 = grid(areaL, areaW, box.w, box.l)
         if (uniform) {
-            // «Цілими рядами»: шар складається з рядів на всю довжину (або ширину) палети; у кожному ряду коробки
-            // в один бік, ряди можуть іти по-різному. Поодиноких коробок упоперек немає.
-            found += rowsPattern(box, areaL, areaW, alongX = true)
-            found += rowsPattern(box, areaL, areaW, alongX = false)
-            val best = found.maxOf { it.size }
-            return best to found.filter { it.size == best }.sortedBy { l -> l.map { it.rotated }.distinct().size }
+            // «Усі коробки в один бік»: лише сітка, обидва напрямки, якщо однаково добрі.
+            val best = maxOf(g0, g1)
+            if (g0 == best) found += fillGrid(0, 0, areaL, areaW, box, rotated = false)
+            if (g1 == best) found += fillGrid(0, 0, areaL, areaW, box, rotated = true)
+            return best to found
         }
+        // Ряди різних напрямків (4 так + 2 так) — теж кандидати (простіші за «млин»).
+        found += rowsPattern(box, areaL, areaW, alongX = true)
+        found += rowsPattern(box, areaL, areaW, alongX = false)
         found += fillGrid(0, 0, areaL, areaW, box, rotated = g1 > g0)
         // 2. Гільйотина.
         guillotine(box, areaL, areaW)?.let { found += it }
@@ -257,6 +259,9 @@ object Packer {
         return list.map { it.copy(y = it.y + dy) }
     }
 
+    /** Увесь шар в один бік (сіткою) — для «Повернути» в режимі «Усі коробки в один бік». */
+    fun grid(box: BoxSize, rotated: Boolean): List<Placed> = centre(fillGrid(0, 0, PALLET_L, PALLET_W, box, rotated), box)
+
     /** Розкладку — по центру палети (вантаж рівномірно, звис — однаковий з обох боків). */
     fun centre(list: List<Placed>, box: BoxSize): List<Placed> {
         if (list.isEmpty()) return list
@@ -435,12 +440,12 @@ object Layout {
      * Перше вільне місце для ще однієї коробки: знизу вгору, зліва направо, біля країв і сусідів; спершу в межах
      * палети, потім (якщо дозволено) зі звисом. [preferRotated] — якою стороною пробувати першою. null — не поміщається.
      */
-    fun freeSpot(boxes: List<Placed>, box: BoxSize, overhang: Int, preferRotated: Boolean = false): Placed? {
+    fun freeSpot(boxes: List<Placed>, box: BoxSize, overhang: Int, preferRotated: Boolean = false, onlyPreferred: Boolean = false): Placed? {
         for (limit in if (overhang > 0) listOf(0, overhang) else listOf(0)) {
             val xs = (listOf(-limit) + boxes.map { it.x + it.sx(box) } + boxes.map { it.x }).distinct()
             val ys = (listOf(-limit) + boxes.map { it.y + it.sy(box) } + boxes.map { it.y }).distinct()
             val candidates = ArrayList<Placed>()
-            for (r in listOf(preferRotated, !preferRotated)) for (x in xs) for (y in ys) candidates += Placed(x, y, r)
+            for (r in if (onlyPreferred) listOf(preferRotated) else listOf(preferRotated, !preferRotated)) for (x in xs) for (y in ys) candidates += Placed(x, y, r)
             candidates.sortWith(compareBy({ it.y }, { it.x }))
             for (c in candidates) {
                 val fits = c.x >= -limit && c.y >= -limit && c.x + c.sx(box) <= PALLET_L + limit && c.y + c.sy(box) <= PALLET_W + limit
@@ -451,11 +456,11 @@ object Layout {
     }
 
     /** Доповнити вільне місце: додавати коробки, поки поміщаються (пробуємо обидва напрямки, беремо кращий). */
-    fun fill(boxes: List<Placed>, box: BoxSize, overhang: Int): List<Placed> =
-        listOf(false, true).map { prefer ->
+    fun fill(boxes: List<Placed>, box: BoxSize, overhang: Int, only: Boolean? = null): List<Placed> =
+        (if (only != null) listOf(only) else listOf(false, true)).map { prefer ->
             val out = boxes.toMutableList()
             var guard = 0
-            while (guard++ < 400) out += freeSpot(out, box, overhang, prefer) ?: break
+            while (guard++ < 400) out += freeSpot(out, box, overhang, prefer, onlyPreferred = only != null) ?: break
             out
         }.maxBy { it.size }
 

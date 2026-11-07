@@ -253,24 +253,48 @@ fun PalletView(
         val glass = AppStyle.glass
         val line = if (thumbnail) 0.7f else 1f
 
-        // --- Палета: дошки настилу ---
+        // --- Палета зверху, як справжня EUR (і як у 3D): у проміжках настилу видно поперечні дошки, а між ними —
+        // нижні дошки. Знизу вгору: нижні (найтемніші), поперечні, настил (найсвітліший, з волокнами й цвяхами).
+        val rows = floatArrayOf(0f, PALLET_W / 2f - 72.5f, PALLET_W - 100f)
+        val rowW = floatArrayOf(100f, 145f, 100f)
+        val cols = floatArrayOf(0f, PALLET_L / 2f - 72.5f, PALLET_L - 145f)
+        fun pxf(mm: Float): Float = (mm + MARGIN_MM) * s
+        fun part(x: Float, y: Float, w: Float, h: Float, depth: Int, seed: Int) {
+            val tl = Offset(pxf(x), pxf(y))
+            val sz = Size(w * s, h * s)
+            if (glass) {
+                val fill = when (depth) { 0 -> Color(0xFF0B0B0B); 1 -> Color(0xFF121212); else -> Color(0xFF1A1A1A) }
+                val edge = when (depth) { 0 -> 0x14FFFFFF; 1 -> 0x22FFFFFF; else -> 0x40FFFFFF }
+                if (depth == 2) {
+                    drawRoundRect(Brush.verticalGradient(0f to Color(0xFF1C1C1C), 1f to Color(0xFF0E0E0E), startY = tl.y, endY = tl.y + sz.height), tl, sz, CornerRadius(2.dp.toPx()))
+                } else {
+                    drawRoundRect(fill, tl, sz, CornerRadius(2.dp.toPx()))
+                }
+                drawRoundRect(Color(edge), tl, sz, CornerRadius(2.dp.toPx()), style = Stroke(1.dp.toPx() * line))
+            } else {
+                drawRoundRect(Oled.Black, tl, sz, CornerRadius(2.dp.toPx()))
+                outline(tl, sz, 2.dp.toPx(), seed, SheetInk.copy(alpha = when (depth) { 0 -> 0.12f; 1 -> 0.2f; else -> 0.3f }), 1.4.dp.toPx() * line)
+            }
+        }
+        for (i in 0..2) part(0f, rows[i], PALLET_L.toFloat(), rowW[i], 0, 210 + i)
+        for (i in 0..2) part(cols[i], 0f, 145f, PALLET_W.toFloat(), 1, 220 + i)
         val gap = (PALLET_W - BOARDS.sum()) / (BOARDS.size - 1f)
         var y = 0f
         BOARDS.forEachIndexed { i, w ->
-            val top = px(0) + y * s
-            val h = w * s
-            if (glass) {
-                drawRoundRect(
-                    Brush.verticalGradient(0f to Color(0xFF181818), 1f to Color(0xFF0B0B0B), startY = top, endY = top + h),
-                    topLeft = Offset(px(0), top), size = Size(PALLET_L * s, h), cornerRadius = CornerRadius(3.dp.toPx()),
-                )
-                drawRoundRect(
-                    Brush.verticalGradient(0f to Color(0x40FFFFFF), 1f to Color(0x10FFFFFF), startY = top, endY = top + h),
-                    topLeft = Offset(px(0), top), size = Size(PALLET_L * s, h), cornerRadius = CornerRadius(3.dp.toPx()),
-                    style = Stroke(1.dp.toPx() * line),
-                )
-            } else {
-                outline(Offset(px(0), top), Size(PALLET_L * s, h), 3.dp.toPx(), 200 + i, SheetInk.copy(alpha = 0.28f), 1.6.dp.toPx() * line)
+            part(0f, y, PALLET_L.toFloat(), w.toFloat(), 2, 200 + i)
+            if (!thumbnail) {
+                // Волокна дерева — кілька ледь помітних рисок уздовж дошки.
+                val grain = if (glass) Color(0x0DFFFFFF) else SheetInk.copy(alpha = 0.07f)
+                for (k in 1..2) {
+                    val gy = pxf(y + w * k / 3f)
+                    val x0 = pxf(40f + 90f * ((i + k) % 3))
+                    drawLine(grain, Offset(x0, gy), Offset(x0 + 380f * s, gy + (k - 1.5f)), 1.dp.toPx())
+                }
+                // Цвяхи — там, де під настилом поперечні дошки.
+                val nail = if (glass) Color(0x30FFFFFF) else SheetInk.copy(alpha = 0.25f)
+                for (c in cols) for (k in listOf(0.3f, 0.7f)) {
+                    drawCircle(nail, 1.4.dp.toPx(), Offset(pxf(c + 72.5f), pxf(y + w * k)))
+                }
             }
             y += w + gap
         }
