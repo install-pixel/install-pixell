@@ -17,13 +17,14 @@ class NumpadTest {
             .mapNotNull { (it.action as? KeyAction.Text)?.text }
 
     @Test
-    fun `the number pad has every digit, as many rows as the letters, the decimal sign of the language`() {
+    fun `the number pad has every digit, the four operators, the dot and as many rows as the letters`() {
         val pad = LayoutProvider.layout(KeyboardMode.MOBILE, Language.UK, Layer.NUMPAD)
         val letters = LayoutProvider.layout(KeyboardMode.MOBILE, Language.UK, Layer.LETTERS)
         assertEquals(letters.rows.size, pad.rows.size)
         for (d in 0..9) assertTrue("$d", d.toString() in texts(Layer.NUMPAD))
-        assertTrue("," in texts(Layer.NUMPAD, Language.UK))
-        assertTrue("." in texts(Layer.NUMPAD, Language.EN))
+        // The dot for every language: number fields of many apps accept nothing else.
+        for (language in Language.entries) assertTrue("." in texts(Layer.NUMPAD, language))
+        for (op in listOf("+", "-", "×", "/")) assertTrue(op, op in texts(Layer.NUMPAD))
         assertTrue("#" in texts(Layer.NUMPAD, phone = true))
         // Every row as wide: the pad is a clean grid.
         val widths = pad.rows.map { row -> row.sumOf { it.width.toDouble() } }
@@ -37,6 +38,8 @@ class NumpadTest {
         assertEquals(Layer.NUMPAD, c.layer)
         assertTrue(c.layout(false).allKeys().any { (it.action as? KeyAction.Text)?.text == "#" })
         fun press(key: SpecialKey) = c.onKey(c.layout(false).allKeys().first { (it.action as? KeyAction.Special)?.key == key })
+        press(SpecialKey.LAYER_LETTERS)
+        assertEquals(Layer.LETTERS, c.layer)
         press(SpecialKey.LAYER_SYMBOLS)
         assertEquals(Layer.SYMBOLS, c.layer)
         press(SpecialKey.LAYER_NUMPAD)

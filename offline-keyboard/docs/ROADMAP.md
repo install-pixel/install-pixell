@@ -3,6 +3,16 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.1 — number pad
+
+- [x] Only ABC (bottom left) leaves the pad; no language key and no ?123 there.
+- [x] All four operators: + − × on the left, / top right.
+- [x] Calculator layout: 0 double wide, the decimal point "." beside it for every language ("," on a long
+      press), because number fields of many apps accept only the dot.
+- [x] The cursor keys row is switched on the «Look» page (Keys), not among the computer-mode settings.
+- [x] Every layer of both modes is as tall as the mobile letters: no jump when switching computer ↔
+      mobile, emoji or number pad.
+
 ## 1.6.0 — polish from the 1.5.0 review
 
 - [x] «Про застосунок»: a real description of the app (what it does), then privacy, version, reset.

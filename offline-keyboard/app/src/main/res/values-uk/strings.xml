@@ -24,7 +24,7 @@
     <string name="remember_last_mode">Відкривати в останньому режимі</string>
     <string name="input_languages">Мови введення</string>
     <string name="key_height">Висота клавіш: %1$d%%</string>
-    <string name="mobile_cursor_row">Ряд курсорних клавіш у мобільному режимі</string>
+    <string name="mobile_cursor_row">Ряд курсорних клавіш</string>
     <string name="auto_capitalize">Велика літера на початку речення (мобільний режим)</string>
     <string name="space_swipe">Зміна мови свайпом по пробілу</string>
     <string name="haptic">Вібрація під час натискання</string>
@@ -263,11 +263,11 @@
     <string name="models_download_accurate_short">Завантажити точнішу</string>
     <string name="section_menu">Налаштування</string>
     <string name="page_look">Вигляд</string>
-    <string name="page_look_summary">Тема, яскравість, розмір</string>
+    <string name="page_look_summary">Тема, яскравість, розмір, курсорні клавіші</string>
     <string name="page_typing">Набір</string>
     <string name="page_typing_summary">Виправлення, великі літери, вібрація</string>
     <string name="page_languages">Мови й розкладки</string>
-    <string name="page_languages_summary">Мови, режим, курсор, свайпи</string>
+    <string name="page_languages_summary">Мови, режим, свайпи</string>
     <string name="page_voice">Голос і переклад</string>
     <string name="page_voice_summary">Моделі: %1$d з %2$d</string>
     <string name="page_about">Про застосунок</string>
@@ -296,4 +296,6 @@
     <string name="backup_import">Відновити з резервної копії</string>
     <string name="backup_restored">Відновлено з резервної копії.</string>
     <string name="backup_invalid">Цей файл не є резервною копією OffKey.</string>
+    <string name="section_keys">Клавіші</string>
+    <string name="mobile_cursor_row_hint">Стрілки, Home і End над літерами мобільної клавіатури, щоб точно переміщати курсор. Клавіатура не стає вищою: клавіші трохи нижчають.</string>
 </resources>

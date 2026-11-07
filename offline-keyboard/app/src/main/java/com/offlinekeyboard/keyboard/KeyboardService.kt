@@ -1145,7 +1145,6 @@ class KeyboardService : InputMethodService(),
             mode = controller.mode,
             enterLabel = enterLabel,
         )
-        val baseHeight = if (controller.mode == KeyboardMode.COMPUTER) COMPUTER_KEY_DP else MOBILE_KEY_DP
         root.keyboardView.hapticFeedback = settings.hapticFeedback
         root.keyboardView.vibration = settings.vibration
         root.stickerPanel.character = settings.stickerCharacter
@@ -1154,18 +1153,15 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
         root.compact = settings.compactToolbar
         val layout = controller.layout(settings.mobileCursorRow)
-        // The emoji panel (and the sticker panel, which takes its size) is exactly as tall as the
-        // letters: its keys share the same height instead of the keyboard growing or shrinking.
-        val rowScale = if (controller.layer == Layer.EMOJI && layout.rows.isNotEmpty()) {
-            LayoutProvider.layout(controller.mode, controller.language, Layer.LETTERS, settings.mobileCursorRow).rows.size /
-                layout.rows.size.toFloat()
-        } else {
-            1f
-        }
+        // Every layer of both modes is exactly as tall as the mobile letters: switching between the
+        // computer and the mobile keyboard, the emoji or the number pad never makes the keyboard jump.
+        // A layer with more rows gets lower keys instead.
+        val mobileRows = LayoutProvider.layout(KeyboardMode.MOBILE, controller.language, Layer.LETTERS, false).rows.size
+        val keyHeight = if (layout.rows.isEmpty()) MOBILE_KEY_DP else MOBILE_KEY_DP * mobileRows / layout.rows.size
         root.keyboardView.bind(
             layout = layout,
             labels = labels,
-            keyHeightDp = baseHeight * settings.keyHeightScale * rowScale,
+            keyHeightDp = keyHeight * settings.keyHeightScale,
             highlight = ::highlightFor,
         )
         root.updateToolbar(
@@ -1228,7 +1224,6 @@ class KeyboardService : InputMethodService(),
             private set
 
         private const val STARTUP_SETTINGS_TIMEOUT_MS = 500L
-        private const val COMPUTER_KEY_DP = 40f
         private const val MOBILE_KEY_DP = 52f
         private const val WORD_CONTEXT = 64
         private const val CHECK_WARNING_MS = 8000L
