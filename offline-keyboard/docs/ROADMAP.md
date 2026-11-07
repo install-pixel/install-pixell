@@ -3,6 +3,11 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.6 — «Back» at the bottom, as in QRAFT
+
+- [x] Every settings page has «Back» at the bottom right (one hand, thumb), fixed while the page
+      scrolls; hidden while the keyboard is open. The title stays at the top.
+
 ## 1.6.5 — «How to use» exactly as in QRAFT
 
 - [x] Sections listed with a small line icon and the name only (no subtitles), as QRAFT's menu rows.

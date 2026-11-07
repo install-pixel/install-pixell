@@ -46,6 +46,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.offlinekeyboard.BuildConfig
@@ -245,28 +248,46 @@ private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings,
     }
 }
 
-/** Scrollable page with a title and an optional back button. */
+/**
+ * Scrollable page with a title and, as in QRAFT, the «Назад» button at the bottom right, where the thumb is.
+ * The button stays put while the page scrolls under it (the bottom fade keeps text from running under it)
+ * and hides while the keyboard is open, so it never sits on top of the keys.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
     val scroll = rememberScrollState()
-    Column(
-        modifier = Modifier
+    val keyboardOpen = WindowInsets.isImeVisible
+    val showBack = onBack != null && !keyboardOpen
+    androidx.compose.foundation.layout.Box(
+        Modifier
             .fillMaxSize()
-            .safeDrawingPadding()
-            .fadingEdges(scroll)
-            .bounce()
-            .verticalScroll(scroll)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .safeDrawingPadding(),
     ) {
-        Row {
-            if (onBack != null) {
-                TextButton(onClick = onBack) { Text("‹ " + stringResource(R.string.back)) }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .fadingEdges(scroll)
+                .bounce()
+                .verticalScroll(scroll)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Spacer(Modifier.heightIn(min = 32.dp))
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+            content()
+            // Room under the last card so it can scroll clear of the button.
+            Spacer(Modifier.heightIn(min = if (onBack != null) 72.dp else 24.dp))
+        }
+        if (showBack && onBack != null) {
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .align(androidx.compose.ui.Alignment.BottomEnd)
+                    .padding(16.dp),
+            ) {
+                InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
             }
         }
-        Text(title, style = MaterialTheme.typography.headlineSmall)
-        content()
-        Spacer(Modifier.heightIn(min = 24.dp))
     }
 }
 
