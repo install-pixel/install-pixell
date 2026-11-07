@@ -226,10 +226,10 @@ All these values are remembered. A tile that differs from the standard is bright
     <string name="status_unsupported">Box without support (%1$d) — it will fall. Put it over first-layer boxes (dashed)</string>
     <string name="status_gaps_third">Boxes of the third layer (%1$d) would stand over empty space here — add a box (dashed — first layer)</string>
     <string name="pallet_box_title">Box the size of the pallet</string>
-    <string name="pallet_box_on">1.20 × 0.80 — enter the box height and the piece (size, weight): pieces and weight are calculated</string>
+    <string name="pallet_box_on">1.20 × 0.80 — enter only the piece (size, weight): how many fit, box height and weight are calculated (from the height and weight limits)</string>
     <string name="pallet_box_off">One big 1.20 × 0.80 box — pieces in it are calculated from the piece size</string>
-    <string name="pallet_box_fit">%1$d pcs fit in the box — pieces and box weight calculated from the piece</string>
-    <string name="pallet_box_need">Enter the box height and the piece size and weight — I’ll work out how many fit</string>
+    <string name="pallet_box_fit">%1$d pcs fit in the box — box height and weight are calculated: as many rows of pieces as height and weight allow</string>
+    <string name="pallet_box_need">Enter the piece size (and weight) — I’ll work out how many fit and how tall the box is</string>
     <string name="history_title">Saved</string>
     <string name="status_layer_prefix">Layer %1$d · </string>
     <string name="status_mirror">mirror of layer 1 (interlocking) · %1$d boxes</string>

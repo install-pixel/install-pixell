@@ -133,7 +133,12 @@ fun EditorPage(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LabeledField(stringResource(R.string.f_length), vm.boxL, { vm.boxL = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxL))
             LabeledField(stringResource(R.string.f_width), vm.boxW, { vm.boxW = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxW))
-            LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxH))
+            if (vm.palletBox) {
+                // Коробка на всю палету: висота рахується сама (від ліміту висоти й ваги) — поле лише показує.
+                LabeledField(stringResource(R.string.f_height), vm.palletBoxFit?.heightMm?.let { Num.metres(it, comma) }.orEmpty(), {}, "—", stringResource(R.string.unit_m), decimal, Modifier.weight(1f).alpha(0.6f))
+            } else {
+                LabeledField(stringResource(R.string.f_height), vm.boxH, { vm.boxH = it.take(8) }, zero, stringResource(R.string.unit_m), decimal, Modifier.weight(1f), error = vm.badLength(vm.boxH))
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (vm.palletBox) {

@@ -139,3 +139,34 @@ object Fit {
         return perms.maxOf { (x, y, z) -> (box.first / x) * (box.second / y) * (box.third / z) }
     }
 }
+
+/**
+ * Коробка на всю палету (1200 × 800), висоти якої немає: висота — від ліміту висоти (мінус палета) і ваги.
+ * Перебираються 6 способів покласти штуку; береться найбільше штук, які влазять по висоті й не перевищують [maxUnits]
+ * (вага); за рівності — нижча коробка. Висота — стільки рядів штук, скільки треба для цієї кількості.
+ */
+data class PalletBoxFit(val units: Int, val heightMm: Int)
+
+object PalletBox {
+    fun fit(unit: Triple<Int, Int, Int>, heightLimitMm: Int, maxUnits: Long?): PalletBoxFit? {
+        val (a, b, c) = unit
+        if (a <= 0 || b <= 0 || c <= 0) return null
+        val room = heightLimitMm - PALLET_HEIGHT_MM
+        if (room <= 0) return null
+        val perms = listOf(Triple(a, b, c), Triple(a, c, b), Triple(b, a, c), Triple(b, c, a), Triple(c, a, b), Triple(c, b, a))
+        var best: PalletBoxFit? = null
+        for ((x, y, z) in perms) {
+            val perLayer = (PALLET_L / x) * (PALLET_W / y)
+            val layers = room / z
+            if (perLayer <= 0 || layers <= 0) continue
+            val cap = perLayer.toLong() * layers
+            val n = minOf(cap, maxUnits ?: cap)
+            if (n <= 0) continue
+            val needLayers = ((n + perLayer - 1) / perLayer).toInt()
+            val f = PalletBoxFit(n.toInt(), needLayers * z)
+            val cur = best
+            if (cur == null || f.units > cur.units || (f.units == cur.units && f.heightMm < cur.heightMm)) best = f
+        }
+        return best
+    }
+}

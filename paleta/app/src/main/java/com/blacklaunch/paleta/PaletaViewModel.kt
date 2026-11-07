@@ -157,13 +157,23 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Скільки штук влазить у коробку на всю палету (null — не все вписано). */
-    val fitUnits: Int?
+    val fitUnits: Int? get() = palletBoxFit?.units
+
+    /**
+     * Коробка на всю палету без відомої висоти: скільки штук влізе і якої висоти буде коробка — від ліміту висоти
+     * (мінус палета) і ваги (ліміт мінус палета, якщо вона у вазі).
+     */
+    val palletBoxFit: com.blacklaunch.paleta.pack.PalletBoxFit?
         get() {
             if (!palletBox) return null
-            val h = len(boxH) ?: return null
             val u = unitTriple ?: return null
-            return Fit.units(Triple(PALLET_L, PALLET_W, h), u).takeIf { it > 0 }
+            val g = Num.grams(unitKg)
+            val max = g?.let { ((weightLimitG - (if (palletOn) palletG else 0)) / it).coerceAtLeast(0) }
+            return com.blacklaunch.paleta.pack.PalletBox.fit(u, effectiveHeight, max)
         }
+
+    /** Висота коробки: у режимі «на всю палету» — рахується сама, інакше — з поля. */
+    private val boxHeightMm: Int? get() = if (palletBox) palletBoxFit?.heightMm else len(boxH)
 
     // --- Обмеження: запам'ятовуються ---
     var heightLimit by mutableIntStateOf(settings.heightLimit)
@@ -251,7 +261,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         get() {
             val l = len(boxL) ?: return null
             val w = len(boxW) ?: return null
-            val h = len(boxH) ?: return null
+            val h = boxHeightMm ?: return null
             return Triple(l, w, h)
         }
 
@@ -381,7 +391,7 @@ class PaletaViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             snapshotFlow {
                 AutoKey(
-                    len(boxL), len(boxW), len(boxH),
+                    len(boxL), len(boxW), boxHeightMm,
                     arrows || palletBox, overhang, effectiveHeight, boxG, weightLimitG, if (palletOn) palletG else 0, manualOrientation, uniform,
                 )
             }

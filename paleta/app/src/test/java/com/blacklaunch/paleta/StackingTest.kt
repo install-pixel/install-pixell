@@ -78,4 +78,16 @@ class StackingTest {
         // Штука більша за коробку — 0.
         assertEquals(0, com.blacklaunch.paleta.pack.Fit.units(Triple(300, 300, 300), Triple(400, 100, 100)))
     }
+
+    @Test
+    fun palletBoxHeightFromLimitAndWeight() {
+        // Штука 0,40 × 0,20 × 0,25; ліміт 1,80 → місця 1,65: 12 на ряд × 6 рядів (0,25) = 72, висота 1,50…
+        val all = com.blacklaunch.paleta.pack.PalletBox.fit(Triple(400, 200, 250), 1800, null)!!
+        assertTrue(all.units >= 72)
+        assertTrue(all.heightMm <= 1650)
+        // Вага пускає лише 20 штук → висота під 20 (стільки рядів, скільки треба).
+        val w = com.blacklaunch.paleta.pack.PalletBox.fit(Triple(400, 200, 250), 1800, 20)!!
+        assertEquals(20, w.units)
+        assertTrue(w.heightMm < all.heightMm)
+    }
 }
