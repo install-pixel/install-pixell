@@ -391,6 +391,13 @@ class KeyboardUiTest {
             val bar = barRef.get()
             assertTrue("keys end at ${bottom.get()}, the bar starts at ${screen - bar}", bottom.get() <= screen - bar)
             assertKeysClearOfImeButtons()
+            // The settings' «Back» sits at the bottom right: with buttons it must stay above the bar too.
+            val intent = android.content.Intent(context, com.offlinekeyboard.settings.SettingsActivity::class.java).putExtra("page", "look")
+            ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->
+                Thread.sleep(1500)
+                assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
+                screenshot("settings-three-button")
+            }
         } finally {
             val restore = when (mode) {
                 "1" -> "twobutton"
