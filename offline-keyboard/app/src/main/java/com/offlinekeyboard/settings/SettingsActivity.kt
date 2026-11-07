@@ -46,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
@@ -250,24 +249,25 @@ private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings,
 }
 
 /**
- * Scrollable page with a title and, as in QRAFT, the «Назад» button at the bottom right, where the thumb is.
- * The button stays put while the page scrolls under it (the bottom fade keeps text from running under it)
- * and hides while the keyboard is open, so it never sits on top of the keys.
+ * Scrollable page with a title and, as in QRAFT, a strip at the very bottom with «Назад» on the right,
+ * where the thumb is. The page scrolls only above the strip (fading out at its edge), so nothing ever
+ * lies under the button and a tap meant for a switch cannot hit «Назад» or the other way round. The
+ * strip hides while the keyboard is open.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
     val scroll = rememberScrollState()
     val keyboardOpen = WindowInsets.isImeVisible
-    val showBack = onBack != null && !keyboardOpen
-    androidx.compose.foundation.layout.Box(
+    Column(
         Modifier
             .fillMaxSize()
             .safeDrawingPadding(),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .weight(1f)
                 .fadingEdges(scroll)
                 .bounce()
                 .verticalScroll(scroll)
@@ -277,17 +277,14 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
             Spacer(Modifier.heightIn(min = 32.dp))
             Text(title, style = MaterialTheme.typography.headlineSmall)
             content()
-            // Room under the last card so it can scroll clear of the button.
-            Spacer(Modifier.heightIn(min = if (onBack != null) 72.dp else 24.dp))
+            Spacer(Modifier.heightIn(min = 8.dp))
         }
-        if (showBack && onBack != null) {
-            androidx.compose.foundation.layout.Box(
+        if (onBack != null && !keyboardOpen) {
+            Row(
                 Modifier
-                    .align(androidx.compose.ui.Alignment.BottomEnd)
-                    .padding(16.dp)
-                    // Black paper under the button: text scrolling below never shows through (the
-                    // sheet's pencil frame has no fill of its own).
-                    .background(androidx.compose.ui.graphics.Color.Black, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.End,
             ) {
                 InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
             }
