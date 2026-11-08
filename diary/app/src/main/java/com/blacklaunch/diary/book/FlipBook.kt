@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -373,13 +374,25 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
         strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass)
     }
 
-    // 5) Вільний край аркуша — одна тонка лінія (скляна грань чи олівець). З'являється поступово, щойно край відійшов від
-    //    рамки (не спалахує від першого дотику), і не довша за заокруглені кути.
+    // 5) Контур звороту: верхній край, вільний край (із заокругленими кутами) і нижній край — як рамка самої сторінки,
+    //    тож зворот виглядає аркушем, а не намальованою лінією. Тьмяно, як рамка, і з'являється поступово. Коли видно лише
+    //    лице (край ще не перевалив), контуру не треба — рамка сторінки й так стиснута разом із нею.
     val fade = ((w - a) / (w * 0.08f)).coerceIn(0f, 1f)
     val edge = g.map(w)
-    if (fade > 0.01f && edge in 0f..w) {
-        val line = if (glass) Color.White.copy(alpha = 0.26f * fade) else SheetInk.copy(alpha = 0.5f * fade)
-        drawLine(line, Offset(edge, corner), Offset(edge, h - corner), if (heavy) 1.6.dp.toPx() else 1.dp.toPx())
+    val crest = g.rightmost
+    if (fade > 0.01f && !g.front(w) && crest - edge > 1f) {
+        val inset = 0.5.dp.toPx()
+        val c = corner.coerceAtMost((crest - edge) / 2f)
+        val outline = Path().apply {
+            moveTo(crest, inset)
+            lineTo(edge + c, inset)
+            quadraticTo(edge + inset, inset, edge + inset, c)
+            lineTo(edge + inset, h - c)
+            quadraticTo(edge + inset, h - inset, edge + c, h - inset)
+            lineTo(crest, h - inset)
+        }
+        val ink = if (glass) Color.White.copy(alpha = 0.16f * fade) else SheetInk.copy(alpha = 0.4f * fade)
+        drawPath(outline, ink, style = Stroke(if (heavy) 1.4.dp.toPx() else 1.dp.toPx()))
     }
 }
 
