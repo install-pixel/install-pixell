@@ -16,6 +16,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -283,7 +285,9 @@ fun FlipBook(
             key(state.index) { Box(Modifier.fillMaxSize()) { page(state.index) } }
         } else {
             // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
-            key(under) { Box(Modifier.fillMaxSize()) { page(under) } }
+            // Під обкладинкою — блок сторінок у формі самої обкладинки: їхні кути й риски торців не визирають з-під неї.
+            val underShape = if (isHeavy(top)) Modifier.clip(RoundedCornerShape(14.dp)) else Modifier
+            key(under) { Box(Modifier.fillMaxSize().then(underShape)) { page(under) } }
             key(top) {
                 Box(
                     Modifier
@@ -348,30 +352,43 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
         strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0.6f * (1f - cos((t0 + t1) / 2f)), back = false, heavy = heavy, glass = glass)
     }
 
-    // 4) Зворот на валику (θ π/2…π) і плаский зворот, що ліг назад, — він вище за все інше.
-    for (i in 0 until steps) {
-        val t0 = Math.PI.toFloat() / 2f * (1f + i.toFloat() / steps)
-        val t1 = Math.PI.toFloat() / 2f * (1f + (i + 1).toFloat() / steps)
-        val x0 = a + r * t0
-        val x1 = a + r * t1
-        if (x1 <= 0f || x0 >= w) continue
-        // Світло на звороті валика: найяскравіше посередині вигину — так око бачить, що аркуш круглий.
-        val mid = (t0 + t1) / 2f
-        strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)))
-    }
+    // 4) Зворот на валику (θ π/2…π) і плаский зворот, що ліг назад, — він вище за все інше. Обрізаний тією самою формою,
+    //    що й контур (заокруглені кути з боку вільного краю), — щоб сірий кут не виступав за обводку.
     val backFrom = a + r * Math.PI.toFloat()
-    if (backFrom < w) {
+    val freeEdge = g.map(w)
+    if (backFrom < w && freeEdge > 0f) {
         // Тінь від пласкої частини звороту на лиці під нею (біля її краю).
-        val edge = g.map(w)
-        if (edge > 0f) {
-            val len = w * 0.05f
-            drawRect(
-                Brush.horizontalGradient(0f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f), startX = edge - len, endX = edge),
-                topLeft = Offset(edge - len, 0f),
-                size = androidx.compose.ui.geometry.Size(len, h),
+        val len = w * 0.05f
+        drawRect(
+            Brush.horizontalGradient(0f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f), startX = freeEdge - len, endX = freeEdge),
+            topLeft = Offset(freeEdge - len, 0f),
+            size = androidx.compose.ui.geometry.Size(len, h),
+        )
+    }
+    if (!g.front(w)) {
+        val c = corner.coerceAtMost(((g.rightmost - freeEdge) / 2f).coerceAtLeast(0f))
+        val backShape = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    left = freeEdge, top = 0f, right = g.rightmost + 2f, bottom = h,
+                    topLeftCornerRadius = CornerRadius(c), topRightCornerRadius = CornerRadius.Zero,
+                    bottomRightCornerRadius = CornerRadius.Zero, bottomLeftCornerRadius = CornerRadius(c),
+                ),
             )
         }
-        strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass)
+        clipPath(backShape) {
+            for (i in 0 until steps) {
+                val t0 = Math.PI.toFloat() / 2f * (1f + i.toFloat() / steps)
+                val t1 = Math.PI.toFloat() / 2f * (1f + (i + 1).toFloat() / steps)
+                val x0 = a + r * t0
+                val x1 = a + r * t1
+                if (x1 <= 0f || x0 >= w) continue
+                // Світло на звороті валика: найяскравіше посередині вигину — так око бачить, що аркуш круглий.
+                val mid = (t0 + t1) / 2f
+                strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)))
+            }
+            if (backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass)
+        }
     }
 
     // 5) Контур звороту: верхній край, вільний край (із заокругленими кутами) і нижній край — як рамка самої сторінки,
