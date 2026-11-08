@@ -1,9 +1,8 @@
 package com.blacklaunch.diary.book
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -40,8 +40,10 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.diary.ui.AppStyle
 import com.blacklaunch.diary.ui.LocalHaptics
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.exp
 
 /**
  * Стан гортання: яка сторінка відкрита і що зараз «у руці». Сторінку беруть не від самого краю (там системний жест
@@ -68,6 +70,28 @@ class FlipState(initial: Int) {
     suspend fun flipTo(target: Int) {
         onJump?.invoke(target) ?: run { index = target }
     }
+}
+
+/**
+ * Єдині правила руху сторінки — однакові всюди: під пальцем, коли відпустив, і коли щоденник гортає сам (шестерня,
+ * календар, пошук, закладка). Плавно, без ривків, не швидко; обкладинка — важча й повільніша.
+ */
+internal object FlipMotion {
+    /** Повний перегорт (від краю до корінця). */
+    private const val PAGE_MS = 720
+    private const val COVER_MS = 1050
+    const val MIN_MS = 240
+
+    /** М'який розгін і м'яке гальмування — без ривка на початку й удару в кінці. */
+    val Easing = CubicBezierEasing(0.45f, 0.05f, 0.25f, 1f)
+
+    fun duration(heavy: Boolean) = if (heavy) COVER_MS else PAGE_MS
+
+    /**
+     * Наскільки за кадр сторінка наздоганяє палець (частка відстані). Залежить від часу кадру, тож однаково плавно на
+     * 60 і на 120 Гц; тремтіння пальця згладжується, а не передається сторінці.
+     */
+    fun follow(dt: Float, heavy: Boolean): Float = 1f - exp(-dt / if (heavy) 0.16f else 0.075f)
 }
 
 /**
@@ -104,14 +128,14 @@ fun FlipBook(
     val onStarted by rememberUpdatedState(onStart)
     val layer = rememberGraphicsLayer()
 
-    suspend fun settle(complete: Boolean, velocity: Float = 0f) {
+    suspend fun settle(complete: Boolean) {
         val top = state.top ?: return
         val g = state.grip
         val target = if (complete == state.forward) Offset(-g.x, g.y) else g
-        val ms = if (isHeavy(top) || isHeavy(state.under ?: top)) 760 else 480
-        // Швидкий кидок — швидше лягає.
-        val fast = (abs(velocity) / 4000f).coerceIn(0f, 0.45f)
-        state.corner.animateTo(target, tween((ms * (1f - fast)).toInt(), easing = FastOutSlowInEasing))
+        // Та сама швидкість, що й у будь-якого гортання: решту шляху — за частку повного часу.
+        val left = (abs(target.x - state.corner.value.x) / (2f * g.x).coerceAtLeast(1f)).coerceIn(0f, 1f)
+        val full = FlipMotion.duration(isHeavy(top) || isHeavy(state.under ?: top))
+        state.corner.animateTo(target, tween((full * left).toInt().coerceAtLeast(FlipMotion.MIN_MS), easing = FlipMotion.Easing))
         if (complete) {
             state.index = if (state.forward) state.under!! else top
             haptics.tick()
@@ -130,18 +154,20 @@ fun FlipBook(
         val h = state.size.height
         val g = Offset(w * 0.92f, h * 0.62f)
         state.grip = g
-        if (target > state.index) {
-            state.forward = true
-            state.top = state.index
-            state.under = target
+        val forward = target > state.index
+        val top = if (forward) state.index else target
+        val under = if (forward) target else state.index
+        val ms = FlipMotion.duration(isHeavy(top) || isHeavy(under))
+        state.forward = forward
+        state.top = top
+        state.under = under
+        // Як рука перегортає сама: рівно, без нахилу, тим самим темпом і плавністю, що й під пальцем.
+        if (forward) {
             state.corner.snapTo(g)
-            state.corner.animateTo(Offset(-g.x, g.y - h * 0.06f), tween(720, easing = FastOutSlowInEasing))
+            state.corner.animateTo(Offset(-g.x, g.y), tween(ms, easing = FlipMotion.Easing))
         } else {
-            state.forward = false
-            state.top = target
-            state.under = state.index
             state.corner.snapTo(Offset(-g.x, g.y))
-            state.corner.animateTo(g, tween(720, easing = FastOutSlowInEasing))
+            state.corner.animateTo(g, tween(ms, easing = FlipMotion.Easing))
         }
         state.index = target
         haptics.tick()
@@ -169,19 +195,25 @@ fun FlipBook(
                         val tracker = VelocityTracker()
                         tracker.addPosition(down.uptimeMillis, p)
                         var started = false
+                        var settled = false
                         var forward = fwdZone
                         var last = p
+                        // Куди тягне палець; сама сторінка щокадру плавно наздоганяє цю точку (див. FlipMotion).
+                        var target = Offset.Zero
+                        var follow: Job? = null
                         while (true) {
                             val ev = awaitPointerEvent(PointerEventPass.Initial)
                             val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
                             if (!ch.pressed) {
                                 if (started) {
                                     val vx = tracker.calculateVelocity().x
-                                    val g = FlipGeometry(w, h, state.grip, state.corner.value)
+                                    val g = FlipGeometry(w, h, state.grip, target)
                                     val complete = if (state.forward) (g.progress > 0.38f || vx < -900f) && vx < 600f
                                     else (g.progress < 0.62f || vx > 900f) && vx > -600f
                                     ch.consume()
-                                    scope.launch { settle(complete, vx) }
+                                    follow?.cancel()
+                                    settled = true
+                                    scope.launch { settle(complete) }
                                 }
                                 break
                             }
@@ -205,10 +237,18 @@ fun FlipBook(
                                         state.under = state.index
                                         state.grip = Offset(w * 0.9f, p.y)
                                     }
-                                    scope.launch {
-                                        state.corner.snapTo(
-                                            if (forward) state.grip else Offset(-state.grip.x, state.grip.y),
-                                        )
+                                    target = if (forward) state.grip else Offset(-state.grip.x, state.grip.y)
+                                    val heavyNow = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
+                                    follow = scope.launch {
+                                        state.corner.snapTo(target)
+                                        var before = withFrameNanos { it }
+                                        while (true) {
+                                            val now = withFrameNanos { it }
+                                            val dt = ((now - before) / 1e9f).coerceIn(0f, 0.05f)
+                                            before = now
+                                            val c = state.corner.value
+                                            state.corner.snapTo(c + (target - c) * FlipMotion.follow(dt, heavyNow))
+                                        }
                                     }
                                     haptics.tick()
                                     onStarted()
@@ -216,14 +256,16 @@ fun FlipBook(
                             }
                             if (started) {
                                 ch.consume()
-                                val target = if (forward) FlipGeometry.forwardCorner(state.grip, p, last, h)
+                                target = if (forward) FlipGeometry.forwardCorner(state.grip, p, last, h)
                                 else FlipGeometry.backwardCorner(state.grip, p, last, w, h)
-                                // Сторінка йде за пальцем з легким запізненням, обкладинка — помітно повільніше (вона важка).
-                                val heavyNow = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
-                                scope.launch { state.corner.animateTo(target, spring(dampingRatio = 1f, stiffness = if (heavyNow) 160f else 700f)) }
                             } else if (ch.positionChange() != Offset.Zero && abs(dx) > slop * 3) {
                                 break
                             }
+                        }
+                        // Жест обірвався без «відпустив» (наприклад, система забрала дотик) — сторінка лягає назад.
+                        if (started && !settled) {
+                            follow?.cancel()
+                            scope.launch { settle(false) }
                         }
                     }
                 }

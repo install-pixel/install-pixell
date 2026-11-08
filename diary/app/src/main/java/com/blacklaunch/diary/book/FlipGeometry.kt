@@ -96,8 +96,9 @@ class FlipGeometry(val width: Float, val height: Float, val grip: Offset, val co
          * початку руху (палець пішов униз) згин ставав горизонтальним — сторінка ламалась навпіл донизу.
          */
         private fun tilt(grip: Offset, down: Offset, now: Offset, x: Float, height: Float): Float {
-            val limit = minOf(height * 0.12f, abs(grip.x - x) * 0.3f)
-            return grip.y + ((now.y - down.y) * 0.38f).coerceIn(-limit, limit)
+            // Палець ніколи не йде ідеально рівно — тож нахил ледь помітний: до 4 % висоти й не більше 1/10 зсуву вбік.
+            val limit = minOf(height * 0.04f, abs(grip.x - x) * 0.1f)
+            return grip.y + ((now.y - down.y) * 0.2f).coerceIn(-limit, limit)
         }
     }
 }

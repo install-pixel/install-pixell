@@ -549,7 +549,8 @@ fun BookScreen(
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
                                 val split = splitFor(d.text, d.photo, d.audio || recording?.day == p.day)
                                 val before = i - 1
-                                val after = pages.size - 1 - i
+                                // Сторінка меню — не сторінка щоденника: торці книжки від неї не товщають.
+                                val after = pages.size - 1 - i - (if (menuOpen) 1 else 0)
                                 val years = if (p.day == today) {
                                     val t = LocalDate.ofEpochDay(today)
                                     dayList.lastOrNull { it < today && LocalDate.ofEpochDay(it).let { x -> x.monthValue == t.monthValue && x.dayOfMonth == t.dayOfMonth } }
@@ -568,6 +569,7 @@ fun BookScreen(
                                     yearsAgo = years,
                                     editable = true,
                                     number = pageNumbers.getOrNull(i),
+                                    ribbon = { if (ribbon.day == p.day) ribbon.laid.value else if (open?.bookmark == p.day) 1f else 0f },
                                 )
                             }
                         }

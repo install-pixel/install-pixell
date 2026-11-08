@@ -54,6 +54,22 @@ class RibbonMotion(here: Boolean) {
     /** Наскільки витягли кінчик униз. */
     internal val pull = Animatable(0f)
     internal val sway = Animatable(0f)
+    /** День, до якого стосується [laid] (поточна сторінка); на інших сторінках стрічка просто лежить чи ні. */
+    internal var day by mutableStateOf<Long?>(null)
+}
+
+/**
+ * Стрічка на сторінці — малюється як частина самої сторінки (у лівому полі, в межах контуру), тож перегортається разом
+ * із нею, а не висить поверх книжки. [laid] — яка частка висоти вкрита (0…1).
+ */
+internal fun DrawScope.drawRibbonStrip(laid: Float, glass: Boolean) {
+    if (laid <= 0.01f) return
+    val x = size.width * RIBBON_X
+    val w = RibbonWidth.toPx()
+    val top = 3.dp.toPx()
+    val bottom = top + (size.height - 2 * top) * laid
+    val p = Path().apply { addRect(androidx.compose.ui.geometry.Rect(x - w / 2, top, x + w / 2, bottom)) }
+    ribbonBody(p, x, w, top, bottom, glass)
 }
 
 /**
@@ -83,7 +99,8 @@ fun RibbonTail(motion: RibbonMotion, pageW: Dp, pageH: Dp) {
 }
 
 /**
- * Закладка — тканинна стрічка, пришита до корінця, як у справжньому щоденнику (кінчик — [RibbonTail], під книжкою).
+ * Закладка — тканинна стрічка, пришита до корінця, як у справжньому щоденнику. Кінчик — [RibbonTail] (під книжкою),
+ * сама стрічка — на сторінці ([drawRibbonStrip]); тут — лише рух і те, де її брати.
  *  - Береться лише за кінчик під книжкою, тож стрічка не заважає тексту й клавіатурі.
  *  - Смикнув кінчик униз — стрічка лягла на цю сторінку (у лівому полі, всередині контуру сторінки).
  *    Смикнув, коли лежить тут, — прибрав. Лежить на іншій сторінці — дотик до кінчика перегортає до неї.
@@ -105,32 +122,18 @@ fun BookmarkRibbon(
 ) {
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
-    var shownDay by remember { mutableStateOf(day) }
     LaunchedEffect(day, here) {
-        if (day != shownDay) {
-            shownDay = day
+        if (day != motion.day) {
             motion.laid.snapTo(if (here) 1f else 0f)
+            motion.day = day
         } else {
             motion.laid.animateTo(if (here) 1f else 0f, tween(420))
             motion.sway.snapTo(if (here) 3f else -3f)
             motion.sway.animateTo(0f, spring(dampingRatio = 0.25f, stiffness = 60f))
         }
     }
-    val glass = AppStyle.glass
     val xDp = pageW * RIBBON_X
     Box(Modifier.size(pageW, pageH + RibbonBottom)) {
-        // Стрічка на сторінці: у лівому полі, від верхнього краю до нижнього — не виходить за контур.
-        Canvas(Modifier.size(pageW, pageH)) {
-            val laid = motion.laid.value
-            if (laid > 0.01f) {
-                val x = size.width * RIBBON_X
-                val w = RibbonWidth.toPx()
-                val top = 3.dp.toPx()
-                val bottom = top + (size.height - 2 * top) * laid
-                val p = Path().apply { addRect(androidx.compose.ui.geometry.Rect(x - w / 2, top, x + w / 2, bottom)) }
-                ribbonBody(p, x, w, top, bottom, glass)
-            }
-        }
         // Узяти можна лише кінчик під книжкою.
         if (enabled) {
             Box(

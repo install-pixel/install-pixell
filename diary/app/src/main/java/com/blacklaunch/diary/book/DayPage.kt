@@ -121,6 +121,7 @@ fun DayPage(
     yearsAgo: Long?,
     editable: Boolean,
     number: Int? = null,
+    ribbon: () -> Float = { 0f },
 ) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
@@ -135,7 +136,10 @@ fun DayPage(
     val locale = Locale.getDefault()
 
     Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.fillMaxSize()) { drawPaper(u, (day.day % 997).toInt() + part * 31, lines, edgeBefore, edgeAfter) }
+        Canvas(Modifier.fillMaxSize()) {
+            drawPaper(u, (day.day % 997).toInt() + part * 31, lines, edgeBefore, edgeAfter)
+            drawRibbonStrip(ribbon(), glass)
+        }
 
         // Шапка: дата ліворуч, місце праворуч.
         val date = LocalDate.ofEpochDay(day.day)
