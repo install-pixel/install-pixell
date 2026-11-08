@@ -491,6 +491,8 @@ fun BookScreen(
                         prevOf = { i -> if (pages.getOrNull(i) == BookPage.Menu) pages.indexOf(menuReturn).coerceAtLeast(0) else i - 1 },
                         onStart = { focusManager.clearFocus() },
                         blocked = { blockers.values.toList() },
+                        // Скільки рисок стосу ліворуч від сторінки (як у DayPage) — щоб аркуш біля корінця лягав поверх них.
+                        stackLeft = { i -> if (pages.getOrNull(i) is BookPage.DayPart) edgeCount(i - 1) else 0 },
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey != BookPage.Menu) menuOpen = false

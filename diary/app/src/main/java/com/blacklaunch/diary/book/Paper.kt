@@ -59,13 +59,16 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeBefore: 
     }
 }
 
+/** Відстань між рисками торців (в одиницях сторінки). */
+const val PAGE_EDGE_STEP = 0.55f
+
 /**
  * Товщина книжки: збоку видно стос сторінок — перегорнутих (зліва) і тих, що попереду (справа). Що більше записів,
  * то товща книжка.
  */
 fun DrawScope.drawPageEdges(unit: Float, before: Int, after: Int) {
     val glass = AppStyle.glass
-    val step = 0.55f * unit
+    val step = PAGE_EDGE_STEP * unit
     val color = if (glass) Color(0x33FFFFFF) else SheetInk.copy(alpha = 0.25f)
     for (i in 1..after.coerceAtMost(6)) {
         val x = size.width + i * step

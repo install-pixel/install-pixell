@@ -133,6 +133,7 @@ fun FlipBook(
     nextOf: (Int) -> Int = { it + 1 },
     prevOf: (Int) -> Int = { it - 1 },
     blocked: () -> List<Rect> = { emptyList() },
+    stackLeft: (Int) -> Int = { 0 },
     onStart: () -> Unit = {},
     onFlipped: (Int) -> Unit = {},
     page: @Composable (Int) -> Unit,
@@ -149,6 +150,7 @@ fun FlipBook(
     val prev by rememberUpdatedState(prevOf)
     val flipped by rememberUpdatedState(onFlipped)
     val onStarted by rememberUpdatedState(onStart)
+    val stack by rememberUpdatedState(stackLeft)
     val layer = rememberGraphicsLayer()
 
     fun heavyNow() = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
@@ -296,7 +298,7 @@ fun FlipBook(
                             state.width = size.width
                             layer.record { this@drawWithContent.drawContent() }
                             val hv = isHeavy(top)
-                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv)
+                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, stack(under))
                         },
                 ) { page(top) }
             }
@@ -311,10 +313,13 @@ fun FlipBook(
  * валику й пласкою частиною, що лягла назад. Сторінку смужками перерозміщено по горизонталі — без нахилу, тож згин
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
-private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean) {
-    // Усе — лише в межах самої сторінки (з її заокругленими кутами): аркуш пришитий до корінця й не виходить за книжку.
+private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, stackLeft: Int) {
+    // Усе — лише в межах книжки (із заокругленими кутами): аркуш пришитий до корінця й за книжку не виходить. Ліворуч
+    // книжка — це ще й стос уже перегорнутих сторінок (риски торців, [drawPageEdges]) і рамка: біля корінця аркуш лягає
+    // ПОВЕРХ них, а не під них — тож межа зліва саме там, де закінчуються риски.
     val corner = if (heavy) 14.dp.toPx() else size.width * 0.022f
-    val bounds = Path().apply { addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(corner))) }
+    val left = -(stackLeft.coerceIn(0, 6) * PAGE_EDGE_STEP * size.width / PageMetrics.WIDTH + 1.5.dp.toPx())
+    val bounds = Path().apply { addRoundRect(RoundRect(left, 0f, size.width, size.height, CornerRadius(corner))) }
     clipPath(bounds) { curlContent(g, layer, heavy, corner) }
 }
 
@@ -333,8 +338,10 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
     val rollRight = g.rightmost.coerceAtMost(w)
     if (rollRight < w && a < w) {
         val len = (w * 0.07f + r * 0.6f)
+        // Тінь тане на початку й у кінці руху: коли сторінка лягає (валик іде за корінець), під нею не «спалахує» світло.
+        val shade = 0.5f * minOf(((w - a) / (w * 0.1f)).coerceIn(0f, 1f), (rollRight / (w * 0.25f)).coerceIn(0f, 1f))
         drawRect(
-            Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.5f), 1f to Color.Transparent, startX = rollRight, endX = rollRight + len),
+            Brush.horizontalGradient(0f to Color.Black.copy(alpha = shade), 1f to Color.Transparent, startX = rollRight, endX = rollRight + len),
             topLeft = Offset(rollRight, 0f),
             size = androidx.compose.ui.geometry.Size(len, h),
         )
@@ -360,7 +367,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
         // Тінь від пласкої частини звороту на лиці під нею (біля її краю).
         val len = w * 0.05f
         drawRect(
-            Brush.horizontalGradient(0f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f), startX = freeEdge - len, endX = freeEdge),
+            Brush.horizontalGradient(0f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f * (freeEdge / (w * 0.15f)).coerceIn(0f, 1f)), startX = freeEdge - len, endX = freeEdge),
             topLeft = Offset(freeEdge - len, 0f),
             size = androidx.compose.ui.geometry.Size(len, h),
         )
