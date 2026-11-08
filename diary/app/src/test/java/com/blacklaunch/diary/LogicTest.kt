@@ -1,7 +1,6 @@
 package com.blacklaunch.diary
 
-import androidx.compose.ui.geometry.Offset
-import com.blacklaunch.diary.book.FlipGeometry
+import com.blacklaunch.diary.book.CurlGeometry
 import com.blacklaunch.diary.book.PageMetrics
 import com.blacklaunch.diary.book.splitPages
 import com.blacklaunch.diary.book.wordRange
@@ -11,6 +10,7 @@ import com.blacklaunch.diary.data.InkLine
 import com.blacklaunch.diary.data.Strike
 import com.blacklaunch.diary.image.Stylize
 import com.blacklaunch.diary.search.Searcher
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -119,34 +119,41 @@ class LogicTest {
         assertTrue(PageMetrics.firstLines(photo = true, audio = true) >= 8)
     }
 
-    // ——— Згин сторінки ———
+    // ——— Загинання сторінки ———
 
     @Test
-    fun foldKeepsGripUnderFinger() {
-        val g = FlipGeometry(300f, 460f, grip = Offset(260f, 300f), corner = Offset(120f, 310f))
-        val reflected = g.reflect(g.grip)
-        assertEquals(g.corner.x, reflected.x, 0.5f)
-        assertEquals(g.corner.y, reflected.y, 0.5f)
-        assertTrue(g.side(g.grip) > 0f)
-        assertTrue(g.side(Offset(0f, 0f)) < 0f)
+    fun curlStartsFlatAndEndsOffPage() {
+        // Початок: валик за правим краєм — кожна точка аркуша там, де лежала.
+        val flat = CurlGeometry.at(0f, 300f, heavy = false)
+        for (x in listOf(0f, 120f, 299f)) assertEquals(x, flat.map(x), 0.01f)
+        // Кінець: увесь аркуш (і валик) уже за корінцем — на сторінці нічого не лишилось.
+        for (heavy in listOf(false, true)) {
+            val gone = CurlGeometry.at(1f, 300f, heavy)
+            for (x in listOf(0f, 150f, 300f)) assertTrue(gone.map(x) <= 0.01f)
+        }
     }
 
     @Test
-    fun foldProgress() {
-        val flat = FlipGeometry(300f, 460f, Offset(270f, 200f), Offset(270f, 200f))
-        assertEquals(0f, flat.progress, 0.001f)
-        val turned = FlipGeometry(300f, 460f, Offset(270f, 200f), Offset(-270f, 200f))
-        assertEquals(1f, turned.progress, 0.001f)
-        // Повністю перегорнута: згин — по корінцю, лежить порожньо.
-        assertTrue(turned.stay.isEmpty() || turned.stay.all { it.x <= 0.5f })
+    fun curlIsContinuousAndRollsOver() {
+        val g = CurlGeometry.at(0.4f, 300f, heavy = false)
+        // Безперервно: сусідні точки аркуша — поруч і на екрані (немає розривів між смужками).
+        var x = 0f
+        while (x < 300f) {
+            assertTrue(abs(g.map(x + 1f) - g.map(x)) <= 1.001f)
+            x += 1f
+        }
+        // Біля осі — лицем, далеко за нею — зворотом, і зворот лягає лівіше за вершину валика.
+        assertTrue(g.front(g.axis + 1f))
+        assertTrue(!g.front(300f))
+        assertTrue(g.map(300f) < g.axis + g.radius)
     }
 
     @Test
-    fun liftedAndStayCoverPage() {
-        val g = FlipGeometry(300f, 460f, Offset(260f, 230f), Offset(60f, 250f))
-        assertTrue(g.lifted.size >= 3)
-        assertTrue(g.stay.size >= 3)
-        assertEquals(g.lifted.size, g.flap.size)
+    fun curlProgressFromFinger() {
+        assertEquals(0f, CurlGeometry.forwardProgress(250f, 250f, 300f), 0.001f)
+        assertTrue(CurlGeometry.forwardProgress(250f, 100f, 300f) in 0.4f..0.9f)
+        assertEquals(1f, CurlGeometry.backwardProgress(60f, 60f, 300f), 0.001f)
+        assertEquals(0f, CurlGeometry.backwardProgress(60f, 300f, 300f), 0.001f)
     }
 
     // ——— Пошук ———
