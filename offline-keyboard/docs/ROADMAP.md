@@ -3,6 +3,11 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.6.9 — own words in autocorrect
+
+- [x] Words in «My dictionary» (added, imported, or typed often) are never «corrected» away, and a slip in
+      a word added by hand or imported is fixed to it before any base word.
+
 ## 1.6.8 — the same scrolling everywhere
 
 - [x] Every scrolling list fades at its edges: the add-shortcut dialog (also springs) and the sticker

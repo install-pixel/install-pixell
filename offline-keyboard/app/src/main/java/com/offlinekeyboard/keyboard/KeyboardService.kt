@@ -852,15 +852,17 @@ class KeyboardService : InputMethodService(),
         val language = controller.language
         val user = dictionary.dictionary
         val base = BaseDictionary.words(language)
-        // The user's dictionary learns typos too (every word followed by a space), so it never protects a
-        // word from correction: a word of the user's own stays once a correction of it is undone.
+        // The user's own words take part in autocorrect: a word added by hand or imported (it starts with a
+        // count of 5) or typed often is never "corrected" away, and a slip in it is fixed to it before any
+        // base word. Words seen only once or twice are left out: the dictionary also learns typos.
+        val own = user.entries(language).filter { it.count >= OWN_WORD_MIN_COUNT }
+        val ownKeys = own.mapTo(HashSet()) { it.word.lowercase(language.locale) }
+        val trusted = own.filter { it.count >= TRUSTED_WORD_COUNT }.map { it.word }
         val fixed = AutoCorrect.correction(
             language,
             word,
-            known = { BaseDictionary.isKnown(language, it) },
-            // Common words first: a typo the user repeated would otherwise "correct" the right word into it.
-            candidates = base.asSequence() +
-                user.entries(language).asSequence().filter { it.count >= OWN_WORD_MIN_COUNT }.map { it.word },
+            known = { it in ownKeys || BaseDictionary.isKnown(language, it) },
+            candidates = trusted.asSequence() + base.asSequence() + own.asSequence().map { it.word },
             rejected = rejectedWords(),
         ) ?: return
         ic.beginBatchEdit()
@@ -1277,6 +1279,8 @@ class KeyboardService : InputMethodService(),
         private const val DOUBLE_SPACE_MS = 1100L
         private const val CORRECTION_PREFS = "autocorrect"
         private const val OWN_WORD_MIN_COUNT = 3
+        /** A word added by hand or imported starts at 5: it is preferred to base words when fixing a slip. */
+        private const val TRUSTED_WORD_COUNT = 5
         private const val REJECTED_KEY = "rejected"
         private const val CORRECTION_MESSAGE_MS = 2500L
         private const val BACKSPACE_SWIPE_CONTEXT = 1000
