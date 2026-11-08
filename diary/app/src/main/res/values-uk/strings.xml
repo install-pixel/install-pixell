@@ -174,4 +174,12 @@
     <string name="settings_this_diary">Налаштування цього щоденника</string>
     <string name="shelf_and_settings">Полиця й загальні налаштування</string>
     <string name="settings_global_desc">Спільні для всіх щоденників</string>
+    <string name="photo_from_camera">Сфотографувати</string>
+    <string name="photo_from_gallery">Фото з галереї</string>
+    <string name="photo_from_file">Фото з файлу</string>
+    <string name="photo_caption">Підпис до фото</string>
+    <string name="photo_caption_hint">Кілька слів</string>
+    <string name="cover_from_camera">Обкладинка з камери</string>
+    <string name="cover_from_file">Обкладинка з файлу</string>
+    <string name="camera_failed">Не вдалося відкрити камеру</string>
 </resources>

@@ -12,6 +12,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +61,7 @@ import kotlin.math.sin
  *  - «Скло»: товста пластина чорного димчастого скла — подвійний кант (товщина), відблиск угорі й косий відсвіт;
  *    своє фото (чорно-біле) лежить під склом.
  *  - «Аркуш»: обкладинка, обведена олівцем, з орнаментом у кутах і резинкою-застібкою; своє фото — олівцевим ескізом.
- * Назва — на табличці (скляній чи намальованій олівцем) з темним тлом: вона читається на будь-якому фото.
+ * Назва: «Скло» — на легкій скляній плашечці, «Аркуш» — просто напис почерком; пересувається (утримати й тягнути).
  * [lock] — замок (барабани) на застібці, якщо щоденник закритий на код.
  */
 @Composable
@@ -62,59 +71,119 @@ fun CoverFace(
     pattern: Int,
     locked: Boolean,
     modifier: Modifier = Modifier,
+    titleY: Float? = null,
+    onTitleMoved: ((Float) -> Unit)? = null,
     lock: (@Composable () -> Unit)? = null,
 ) {
     val glass = AppStyle.glass
+    val haptics = com.blacklaunch.diary.ui.LocalHaptics.current
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) { drawCover(photo, pattern, glass, locked) }
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 26.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(Modifier.weight(0.26f))
-            // Табличка з назвою.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+            val heightPx = constraints.maxHeight.toFloat()
+            var y by remember(titleY) { mutableFloatStateOf(titleY ?: DEFAULT_TITLE_Y) }
+            var titleH by remember { mutableFloatStateOf(0f) }
+            if (lock != null) {
+                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.weight(0.6f))
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xE6000000))
+                            .pencilFrame(22.dp, seed = 409)
+                            .padding(14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { lock() }
+                    Box(Modifier.weight(0.4f))
+                }
+            }
+            // Назва. Утримай і тягни вгору чи вниз — пересунеться (не під кожне фото звичне місце підходить).
             Box(
                 Modifier
+                    .align(Alignment.TopCenter)
+                    .offset { IntOffset(0, (y * heightPx - titleH / 2).toInt()) }
+                    .padding(horizontal = 26.dp)
                     .widthIn(max = 320.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    // «Аркуш» — непрозора табличка (як наклеєна на обкладинку); «Скло» — темне скло, крізь яке ледь видно фото.
-                    .background(if (glass) Color(0xD9000000) else Color.Black)
-                    .pencilFrame(16.dp, seed = 401)
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .onSizeChanged { titleH = it.height.toFloat() }
+                    .then(
+                        if (onTitleMoved == null) Modifier
+                        else Modifier.pointerInput(Unit) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { haptics.longPress() },
+                                onDrag = { change, d ->
+                                    change.consume()
+                                    y = (y + d.y / heightPx).coerceIn(0.08f, 0.92f)
+                                },
+                                onDragEnd = { haptics.tick(); onTitleMoved(y) },
+                            )
+                        },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    name,
-                    style = TextStyle(
-                        fontFamily = if (glass) GlassFont else HandFont,
-                        fontWeight = if (glass) FontWeight.Light else FontWeight.Medium,
-                        fontSize = if (glass) 30.sp else 36.sp,
-                        letterSpacing = if (glass) 2.sp else 0.sp,
-                        color = Oled.TextPrimary,
-                        shadow = if (glass) Shadow(Color(0x59FFFFFF), blurRadius = 18f) else null,
-                        textAlign = TextAlign.Center,
-                    ),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (glass) {
+                    // «Скло»: легка скляна плашечка — ледь прозора, з товщею й опуклістю.
+                    GlassPlate(Modifier.fillMaxWidth()) {
+                        Text(
+                            name,
+                            style = TextStyle(
+                                fontFamily = GlassFont, fontWeight = FontWeight.Light, fontSize = 30.sp, letterSpacing = 2.sp,
+                                color = Oled.TextPrimary, shadow = Shadow(Color(0x59FFFFFF), blurRadius = 18f), textAlign = TextAlign.Center,
+                            ),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                        )
+                    }
+                } else {
+                    // «Аркуш»: просто напис почерком, без таблички; тінь — щоб читався на будь-якому фото.
+                    Text(
+                        name,
+                        style = TextStyle(
+                            fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = 40.sp,
+                            color = Oled.TextPrimary, shadow = Shadow(Color.Black, blurRadius = 14f), textAlign = TextAlign.Center,
+                        ),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
             }
-            Box(Modifier.weight(0.34f))
-            if (lock != null) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Color(0xE6000000))
-                        .pencilFrame(22.dp, seed = 409)
-                        .padding(14.dp),
-                    contentAlignment = Alignment.Center,
-                ) { lock() }
-            }
-            Box(Modifier.weight(0.4f))
         }
-        // Резинка — поверх усього (і таблички з назвою), як справжня резинка поверх обкладинки.
+        // Резинка — поверх усього (і назви), як справжня резинка поверх обкладинки.
         if (!glass) Canvas(Modifier.fillMaxSize()) { drawBand(locked) }
     }
+}
+
+/** Звичне місце назви на обкладинці (частка висоти). */
+private const val DEFAULT_TITLE_Y = 0.24f
+
+/**
+ * Скляна плашечка — як скрізь у «Склі»: ледь прозора темна пластинка з товщею (світліший верхній край, темніший нижній)
+ * і опуклістю (відблиск зверху), скляна грань по контуру.
+ */
+@Composable
+internal fun GlassPlate(modifier: Modifier = Modifier, radius: androidx.compose.ui.unit.Dp = 14.dp, content: @Composable () -> Unit) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(radius))
+            .drawBehind {
+                val r = CornerRadius(radius.toPx())
+                drawRoundRect(Color(0x47000000), cornerRadius = r)
+                drawRoundRect(Brush.verticalGradient(0f to Color(0x2EFFFFFF), 0.45f to Color(0x0AFFFFFF), 1f to Color(0x14FFFFFF)), cornerRadius = r)
+                // Опуклість: м'який відблиск у верхній половині.
+                drawRoundRect(
+                    Brush.verticalGradient(0f to Color(0x24FFFFFF), 1f to Color.Transparent, startY = 0f, endY = size.height * 0.5f),
+                    topLeft = Offset(3.dp.toPx(), 2.dp.toPx()),
+                    size = Size(size.width - 6.dp.toPx(), size.height * 0.5f),
+                    cornerRadius = r,
+                )
+                // Товща: темніший нижній край.
+                drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x40000000), startY = size.height * 0.7f, endY = size.height))
+                drawRoundRect(Oled.Glint, cornerRadius = r, style = Stroke(1.dp.toPx()))
+            },
+        contentAlignment = Alignment.Center,
+    ) { content() }
 }
 
 private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolean, locked: Boolean) {
@@ -146,6 +215,8 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
                 photo,
                 dstOffset = IntOffset((inset + (inner.width - w) / 2).toInt(), (inset + (inner.height - h) / 2).toInt()),
                 dstSize = IntSize(w.toInt(), h.toInt()),
+                // «Аркуш»: на всю обкладинку олівець світиться сильніше, ніж маленьке фото дня, — трохи тьмяніше.
+                alpha = if (glass) 1f else 0.72f,
             )
             if (glass) {
                 // Як фото дня: під товстим склом — притемнені «заломлені» краї й фаска (світла вгорі ліворуч, темна внизу

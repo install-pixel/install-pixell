@@ -32,6 +32,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.blacklaunch.diary.ui.HandFont
+import com.blacklaunch.diary.ui.GlassFont
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.draw.drawWithContent
@@ -356,7 +360,7 @@ private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modif
             .swipeAway(host, "photo_$day", editable) { host.vm.removePhoto(day) }
             .pointerInput(day) { detectTapGestures(onTap = { host.openPhoto(day) }, onLongPress = { host.openPhoto(day) }) },
     ) {
-        StyledPhoto(image, glass, Modifier.fillMaxSize(), ContentScale.Crop)
+        StyledPhoto(image, glass, Modifier.fillMaxSize(), ContentScale.Crop, caption = host.vm.day(day).caption)
     }
 }
 
@@ -479,9 +483,10 @@ fun clock(ms: Long): String {
  * притемнені краї, відблиск); «Аркуш» — біла штриховка олівцем просто на папері, краї тануть. Жодних додаткових рамок.
  */
 @Composable
-internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale) {
+internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale, caption: String = "") {
     val shape = RoundedCornerShape(10.dp)
-    Box(modifier) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+        val captionSize = with(LocalDensity.current) { (maxWidth * 0.055f).toSp() }
         if (glass) {
             // «Скло»: фото лежить під товстою скляною пластиною — тінь під пластиною, фаска по краях (світла вгорі
             // ліворуч, темна внизу праворуч), притемнені «заломлені» краї й косий відблиск.
@@ -538,6 +543,29 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                             drawRect(Brush.verticalGradient(0f to Color.Transparent, fy to Color.Black, 1f - fy to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
                         },
                 )
+            }
+        }
+        // Підпис до фото: «Аркуш» — почерком просто в розмитому низу фото; «Скло» — на маленькій скляній плашечці.
+        if (caption.isNotBlank()) {
+            Box(Modifier.align(Alignment.BottomCenter).offset(y = if (glass) 0.dp else maxHeight * 0.045f).padding(bottom = if (glass) maxHeight * 0.05f else 0.dp, start = 12.dp, end = 12.dp)) {
+                if (glass) {
+                    com.blacklaunch.diary.book.GlassPlate(radius = 10.dp) {
+                        Text(
+                            caption,
+                            style = TextStyle(fontFamily = GlassFont, fontWeight = FontWeight.Light, fontSize = captionSize * 0.85f, color = Oled.TextPrimary),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        )
+                    }
+                } else {
+                    Text(
+                        caption,
+                        style = TextStyle(fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = captionSize, color = SheetInk, shadow = Shadow(Color.Black, blurRadius = 10f)),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

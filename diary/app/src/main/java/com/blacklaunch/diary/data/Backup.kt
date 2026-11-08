@@ -124,6 +124,7 @@ object Backup {
         .put("strikes", DayCodec.strikesToJson(d.strikes))
         .put("ink", DayCodec.inkToJson(d.ink))
         .put("photo", d.photo)
+        .put("caption", d.caption)
         .put("audio", d.audio)
         .put("audioMs", d.audioMs)
         .put("wave", DayCodec.waveToString(d.wave))
@@ -138,6 +139,7 @@ object Backup {
         strikes = DayCodec.strikesFromJson(o.optString("strikes")),
         ink = DayCodec.inkFromJson(o.optString("ink")),
         photo = o.optBoolean("photo"),
+        caption = o.optString("caption"),
         audio = o.optBoolean("audio"),
         audioMs = o.optLong("audioMs"),
         wave = DayCodec.waveFromString(o.optString("wave")),

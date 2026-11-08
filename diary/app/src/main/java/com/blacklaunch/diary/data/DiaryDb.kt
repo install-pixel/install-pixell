@@ -36,6 +36,13 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
                 wave TEXT NOT NULL DEFAULT '',
                 updated INTEGER NOT NULL DEFAULT 0)""",
         )
+        // Підпис до фото з'явився пізніше — старим базам додаємо стовпчик.
+        val hasCaption = db.rawQuery("PRAGMA table_info(day)", emptyArray<String>()).use { c ->
+            var found = false
+            while (c.moveToNext()) if (c.getString(1) == "caption") found = true
+            found
+        }
+        if (!hasCaption) db.execSQL("ALTER TABLE day ADD COLUMN caption TEXT NOT NULL DEFAULT ''")
         val stored = meta("media_key")
         val raw = if (stored != null) {
             android.util.Base64.decode(stored, android.util.Base64.NO_WRAP)
@@ -59,7 +66,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
     }
 
     fun days(): List<Day> = db.rawQuery(
-        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated FROM day ORDER BY day",
+        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption FROM day ORDER BY day",
         emptyArray<String>(),
     ).use { c ->
         val out = ArrayList<Day>(c.count)
@@ -77,6 +84,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
                 audioMs = c.getLong(9),
                 wave = DayCodec.waveFromString(c.getString(10)),
                 updated = c.getLong(11),
+                caption = c.getString(12),
             )
         }
         out
@@ -97,6 +105,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
             put("strikes", DayCodec.strikesToJson(d.strikes))
             put("ink", DayCodec.inkToJson(d.ink))
             put("photo", if (d.photo) 1 else 0)
+            put("caption", d.caption)
             put("audio", if (d.audio) 1 else 0)
             put("audio_ms", d.audioMs)
             put("wave", DayCodec.waveToString(d.wave))

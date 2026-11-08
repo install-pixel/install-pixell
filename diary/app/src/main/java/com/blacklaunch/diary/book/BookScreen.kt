@@ -99,6 +99,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Позначка «знімок / файл — для обкладинки» (не день). */
+private const val COVER_TARGET = Long.MIN_VALUE
+
 /** Сторінка книги: обкладинка або одна з (до двох) сторінок дня. */
 sealed interface BookPage {
     data object Cover : BookPage
@@ -110,6 +113,7 @@ sealed interface BookPage {
 /** Які вікна відкриті. */
 private sealed interface BookDialog {
     data class Place(val day: Long) : BookDialog
+    data class Caption(val day: Long) : BookDialog
     data class Photo(val day: Long) : BookDialog
     data object Calendar : BookDialog
     data object LockSet : BookDialog
@@ -328,6 +332,39 @@ fun BookScreen(
     val pickCover = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setCover(info.id, uri)
     }
+    // Камера: знімок пишеться в приватну теку програми (не в галерею й не у спільні файли), одразу шифрується в щоденник,
+    // а тимчасовий файл стирається. Окремий дозвіл на камеру не потрібен — знімає системна камера.
+    val shotFile = remember { java.io.File(context.cacheDir, "camera").apply { mkdirs() }.let { java.io.File(it, "shot.jpg") } }
+    val shotUri = remember { androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".camera", shotFile) }
+    var shotFor by remember { mutableStateOf<Long?>(null) }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val target = shotFor
+        shotFor = null
+        when {
+            !ok || target == null -> shotFile.delete()
+            target == COVER_TARGET -> vm.setCover(info.id, shotUri, shotFile)
+            else -> vm.setPhoto(target, shotUri, shotFile)
+        }
+    }
+    fun shoot(target: Long) {
+        shotFor = target
+        vm.keepOpenOnce = true
+        runCatching { takePhoto.launch(shotUri) }.onFailure { shotFor = null; vm.show(R.string.camera_failed) }
+    }
+    // З файлу (будь-яке зображення з файлового менеджера).
+    var fileFor by remember { mutableStateOf<Long?>(null) }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val target = fileFor
+        fileFor = null
+        if (uri != null && target != null) {
+            if (target == COVER_TARGET) vm.setCover(info.id, uri) else vm.setPhoto(target, uri)
+        }
+    }
+    fun fromFile(target: Long) {
+        fileFor = target
+        vm.keepOpenOnce = true
+        pickFile.launch(arrayOf("image/*"))
+    }
     var backupPassword by remember { mutableStateOf<String?>(null) }
     val createBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         val pw = backupPassword
@@ -380,7 +417,10 @@ fun BookScreen(
             if (open != null && day != null) {
                 val d = vm.day(day)
                 add(MenuEntry(null, stringResource(R.string.menu_page)))
-                add(MenuEntry(Glyph.Gallery, stringResource(if (d.photo) R.string.photo_replace else R.string.photo_add)) { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                add(MenuEntry(Glyph.Shutter, stringResource(R.string.photo_from_camera)) { shoot(day) })
+                add(MenuEntry(Glyph.Gallery, stringResource(R.string.photo_from_gallery)) { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                add(MenuEntry(Glyph.Folder, stringResource(R.string.photo_from_file)) { fromFile(day) })
+                if (d.photo) add(MenuEntry(Glyph.Edit, stringResource(R.string.photo_caption)) { dialog = BookDialog.Caption(day) })
                 if (!d.audio && recording == null) add(MenuEntry(Glyph.Mic, stringResource(R.string.record)) { record(day) })
                 add(MenuEntry(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, (back as BookPage.DayPart).part) })
                 add(MenuEntry(Glyph.Pin, stringResource(R.string.place)) { dialog = BookDialog.Place(day) })
@@ -390,6 +430,8 @@ fun BookScreen(
                 add(MenuEntry(Glyph.Search, stringResource(R.string.search)) { searching = true })
                 add(MenuEntry(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar })
                 add(MenuEntry(Glyph.Photo, stringResource(if (info.cover) R.string.cover_photo_change else R.string.cover_photo)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                add(MenuEntry(Glyph.Shutter, stringResource(R.string.cover_from_camera)) { shoot(COVER_TARGET) })
+                add(MenuEntry(Glyph.Folder, stringResource(R.string.cover_from_file)) { fromFile(COVER_TARGET) })
                 if (info.cover) add(MenuEntry(Glyph.Close, stringResource(R.string.cover_photo_remove)) { vm.removeCover(info.id) })
                 add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
                 add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
@@ -506,6 +548,8 @@ fun BookScreen(
                                     photo = photo,
                                     pattern = info.tint,
                                     locked = info.locked,
+                                    titleY = info.titleY,
+                                    onTitleMoved = { vm.setTitleY(info.id, it) },
                                     lock = when {
                                         info.locked && open == null -> {
                                             {
@@ -638,7 +682,15 @@ fun BookScreen(
         is BookDialog.Photo -> PhotoViewer(vm, dl.day, onDismiss = { dialog = null }, onReplace = {
             photoFor = dl.day
             vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-        }, onDelete = { vm.removePhoto(dl.day) })
+        }, onDelete = { vm.removePhoto(dl.day) }, onCaption = { dialog = BookDialog.Caption(dl.day) })
+        is BookDialog.Caption -> TextDialog(
+            title = stringResource(R.string.photo_caption),
+            initial = vm.day(dl.day).caption,
+            placeholder = stringResource(R.string.photo_caption_hint),
+            limit = Limits.CAPTION,
+            allowEmpty = true,
+            onDismiss = { dialog = null },
+        ) { vm.setCaption(dl.day, it) }
         BookDialog.Calendar -> CalendarDialog(
             written = open?.days?.keys?.toSet().orEmpty(),
             start = currentDay ?: today,
@@ -703,7 +755,7 @@ private fun LockSetDialog(onDismiss: () -> Unit, onFix: (String) -> Unit) {
 
 /** Фото дня великим (теж оброблене під тему — оригінал виглядав би чужим). Хрестик унизу, «⋯» — замінити, прибрати. */
 @Composable
-private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, onReplace: () -> Unit, onDelete: () -> Unit) {
+private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, onReplace: () -> Unit, onDelete: () -> Unit, onCaption: () -> Unit) {
     val haptics = LocalHaptics.current
     var image by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -728,7 +780,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
                     image?.let {
-                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit)
+                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit, caption = vm.day(day).caption)
                     }
                 }
                 // Унизу — закрити, поруч шестерня (замінити чи прибрати фото).
@@ -746,6 +798,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
     }
     if (menu) {
         MenuDialog(null, listOf(
+            MenuEntry(Glyph.Edit, stringResource(R.string.photo_caption)) { onDismiss(); onCaption() },
             MenuEntry(Glyph.Gallery, stringResource(R.string.photo_replace)) { onDismiss(); onReplace() },
             MenuEntry(Glyph.Delete, stringResource(R.string.photo_remove), Tone.Danger) { onDismiss(); onDelete() },
         ), onDismiss = { menu = false })

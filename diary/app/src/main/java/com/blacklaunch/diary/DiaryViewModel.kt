@@ -139,11 +139,11 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         return store.loadCover(id, glass)?.also { Photos.cache.put(key, it) }?.asImageBitmap()
     }
 
-    fun setCover(id: String, uri: Uri) {
+    fun setCover(id: String, uri: Uri, temp: java.io.File? = null) {
         busy = true
         viewModelScope.launch {
             val ok = withContext(Dispatchers.Default) {
-                val src = Photos.load(getApplication(), uri, Limits.PHOTO_SIDE) ?: return@withContext false
+                val src = Photos.load(getApplication(), uri, Limits.PHOTO_SIDE).also { temp?.delete() } ?: return@withContext false
                 store.saveCover(id, Photos.stylize(src, glass = true), Photos.stylize(src, glass = false, onPaper = true))
                 true
             }
@@ -299,6 +299,11 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setPlace(epochDay: Long, place: String) = update(day(epochDay).copy(place = place.trim().take(Limits.PLACE)))
 
+    fun setCaption(epochDay: Long, caption: String) = update(day(epochDay).copy(caption = caption.trim().take(Limits.CAPTION)))
+
+    /** Куди на обкладинці пересунули назву (частка висоти). */
+    fun setTitleY(id: String, y: Float) = saveShelf(shelf.map { if (it.id == id) it.copy(titleY = y.coerceIn(0.08f, 0.92f)) else it })
+
     /** Викреслити (лише висохле). Перетини зливаються в одне викреслення. */
     fun addStrike(epochDay: Long, start: Int, end: Int) {
         val d = dayNow(epochDay)
@@ -321,12 +326,13 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     // ——— Фото дня ———
 
-    fun setPhoto(epochDay: Long, uri: Uri) {
+    /** [temp] — тимчасовий знімок камери: стерти щойно прочитали (у щоденнику фото лежить уже зашифрованим). */
+    fun setPhoto(epochDay: Long, uri: Uri, temp: java.io.File? = null) {
         val o = open ?: return
         busy = true
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.Default) {
-                Photos.load(getApplication(), uri, Limits.PHOTO_SIDE)?.let { Photos.toJpeg(it) }
+                Photos.load(getApplication(), uri, Limits.PHOTO_SIDE).also { temp?.delete() }?.let { Photos.toJpeg(it) }
             }
             if (bytes == null) {
                 show(R.string.photo_failed)

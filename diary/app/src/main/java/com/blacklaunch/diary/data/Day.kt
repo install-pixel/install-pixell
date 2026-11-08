@@ -37,6 +37,8 @@ data class Day(
     val strikes: List<Strike> = emptyList(),
     val ink: List<InkLine> = emptyList(),
     val photo: Boolean = false,
+    /** Короткий підпис до фото дня (кілька слів). */
+    val caption: String = "",
     val audio: Boolean = false,
     val audioMs: Long = 0L,
     /** Обриси звуку (0…1) — для смужки запису. */

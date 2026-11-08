@@ -32,6 +32,8 @@ data class DiaryInfo(
     /** Свої налаштування цього щоденника; null — як було до них (тоді діє старе спільне значення). */
     val drying: InkDrying? = null,
     val openAtBookmark: Boolean? = null,
+    /** Де на обкладинці назва (частка висоти; null — звичне місце). Пересувається пальцем — під фото. */
+    val titleY: Float? = null,
 )
 
 /** Полиця — маленький JSON-файл у приватній теці програми. */
@@ -108,6 +110,7 @@ class ShelfStore(context: Context) {
         tint = optInt("tint"),
         drying = InkDrying.entries.firstOrNull { it.name == optString("drying") },
         openAtBookmark = if (has("openAtBookmark")) optBoolean("openAtBookmark") else null,
+        titleY = if (has("titleY")) optDouble("titleY").toFloat() else null,
     )
 
     private fun DiaryInfo.toJson() = JSONObject()
@@ -122,4 +125,5 @@ class ShelfStore(context: Context) {
         .put("tint", tint)
         .put("drying", drying?.name)
         .put("openAtBookmark", openAtBookmark)
+        .put("titleY", titleY?.toDouble())
 }

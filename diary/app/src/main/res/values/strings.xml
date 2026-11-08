@@ -162,4 +162,12 @@
     <string name="settings_this_diary">This diary\'s settings</string>
     <string name="shelf_and_settings">Shelf and general settings</string>
     <string name="settings_global_desc">Shared by all diaries</string>
+    <string name="photo_from_camera">Take a photo</string>
+    <string name="photo_from_gallery">Photo from gallery</string>
+    <string name="photo_from_file">Photo from file</string>
+    <string name="photo_caption">Photo caption</string>
+    <string name="photo_caption_hint">A few words</string>
+    <string name="cover_from_camera">Cover from camera</string>
+    <string name="cover_from_file">Cover from file</string>
+    <string name="camera_failed">Couldn\'t open the camera</string>
 </resources>
