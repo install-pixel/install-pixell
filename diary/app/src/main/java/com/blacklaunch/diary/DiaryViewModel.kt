@@ -389,7 +389,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         val o = open ?: return
         viewModelScope.launch {
             withContext(io) { o.db.writeMedia(o.db.audioFile(epochDay), bytes) }
-            update(day(epochDay).copy(audio = true, audioMs = ms, wave = compactWave(wave)))
+            update(day(epochDay).copy(audio = true, audioMs = ms, wave = compactWave(wave), noAudio = false))
         }
     }
 

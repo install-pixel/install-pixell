@@ -315,6 +315,8 @@ fun BookScreen(
         haptics.longPress()
         val st = RecordingState(day)
         recording = st
+        // Запис видно на першій сторінці дня (смужка з «стоп») — гортаємо туди, звідки б не почали (меню, 2-га сторінка).
+        pendingFlip = BookPage.DayPart(day, 0)
         scope.launch {
             while (recording === st) {
                 recorder.sample()
@@ -526,6 +528,7 @@ fun BookScreen(
 
     BackHandler {
         when {
+            recording != null -> stopRecording()
             ink != null -> ink = null
             menuOpen -> closeMenu()
             editing != null -> focusManager.clearFocus()
@@ -694,10 +697,28 @@ fun BookScreen(
             }
         }
 
-        // Шестерня — завжди в одному місці внизу (як і на полиці); з'являється після дотику.
+        // Шестерня — завжди в одному місці внизу (як і на полиці); з'являється після дотику. Поки йде запис голосу — на її
+        // місці завжди видно «стоп» із часом: зупинити запис можна звідусіль.
         if (ink == null) {
             Box(Modifier.fillMaxWidth().height(GearRow), contentAlignment = Alignment.Center) {
-                GearSpot(gear) { if (menuOpen) closeMenu() else openMenu() }
+                val rec = recording
+                if (rec != null) {
+                    Row(
+                        Modifier
+                            .clip(CircleShape)
+                            .background(Color(0x33B0244F))
+                            .clickable { stopRecording() }
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        GlyphIcon(Glyph.Stop, stringResource(R.string.record_stop), tint = Color(0xFFE0607E), size = 20.dp)
+                        Spacer(Modifier.width(8.dp))
+                        val sec = rec.elapsed / 1000
+                        Text("%d:%02d".format(sec / 60, sec % 60), color = Oled.TextPrimary, fontSize = 15.sp)
+                    }
+                } else {
+                    GearSpot(gear) { if (menuOpen) closeMenu() else openMenu() }
+                }
             }
         }
 
