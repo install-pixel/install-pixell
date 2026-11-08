@@ -22,6 +22,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -303,6 +307,13 @@ fun FlipBook(
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
 private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean) {
+    // Усе — лише в межах самої сторінки (з її заокругленими кутами): аркуш пришитий до корінця й не виходить за книжку.
+    val corner = if (heavy) 14.dp.toPx() else size.width * 0.022f
+    val bounds = Path().apply { addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(corner))) }
+    clipPath(bounds) { curlContent(g, layer, heavy, corner) }
+}
+
+private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, corner: Float) {
     val glass = AppStyle.glass
     val w = size.width
     val h = size.height
@@ -362,13 +373,14 @@ private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boo
         strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass)
     }
 
-    // 5) Край аркуша: вершина валика й край звороту — тонка лінія (скляна грань чи олівець).
-    val line = if (glass) Color.White.copy(alpha = 0.32f) else SheetInk.copy(alpha = 0.6f)
-    val stroke = if (heavy) 2.4.dp.toPx() else 1.2.dp.toPx()
-    val crest = g.rightmost
-    if (crest in 0f..w && a < w) drawLine(line, Offset(crest, 0f), Offset(crest, h), stroke)
+    // 5) Вільний край аркуша — одна тонка лінія (скляна грань чи олівець). З'являється поступово, щойно край відійшов від
+    //    рамки (не спалахує від першого дотику), і не довша за заокруглені кути.
+    val fade = ((w - a) / (w * 0.08f)).coerceIn(0f, 1f)
     val edge = g.map(w)
-    if (backFrom < w && edge in 0f..w) drawLine(line, Offset(edge, 0f), Offset(edge, h), stroke)
+    if (fade > 0.01f && edge in 0f..w) {
+        val line = if (glass) Color.White.copy(alpha = 0.26f * fade) else SheetInk.copy(alpha = 0.5f * fade)
+        drawLine(line, Offset(edge, corner), Offset(edge, h - corner), if (heavy) 1.6.dp.toPx() else 1.dp.toPx())
+    }
 }
 
 /**
