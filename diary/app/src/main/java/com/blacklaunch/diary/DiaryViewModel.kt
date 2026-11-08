@@ -170,6 +170,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         }
         val db = result.getOrNull()
         if (db == null) {
+            android.util.Log.w("Diary", "open failed", result.exceptionOrNull())
             if (!info.locked) return OpenResult.Failed
             val fails = info.fails + 1
             // Після 5 невдалих спроб — пауза, що подвоюється: 30 с, 1 хв, 2 хв… (не більше години).

@@ -141,7 +141,7 @@ fun BookScreen(
 
     // Без замка щоденник відкривається сам (ключем телефона).
     LaunchedEffect(info.id, info.locked, open == null) {
-        if (!info.locked && open == null) vm.tryOpen(info.id, "")
+        if (!info.locked && open == null && vm.tryOpen(info.id, "") == OpenResult.Failed) vm.show(R.string.open_failed)
     }
     // Щоденник із замком, поки відкритий, — без знімків екрана й прев'ю в «Недавніх».
     DisposableEffect(open != null && info.locked) {

@@ -60,7 +60,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
 
     fun days(): List<Day> = db.rawQuery(
         "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated FROM day ORDER BY day",
-        arrayOf<Any>(),
+        emptyArray<String>(),
     ).use { c ->
         val out = ArrayList<Day>(c.count)
         while (c.moveToNext()) {
@@ -163,7 +163,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
             val file = File(dir, "diary.db")
             val db = SQLiteDatabase.openOrCreateDatabase(file, rawKey(passphrase), null, null, null)
             // Перевірка ключа: з неправильним ключем перший же запит падає.
-            db.rawQuery("SELECT count(*) FROM sqlite_master", arrayOf<Any>()).use { it.moveToFirst() }
+            db.rawQuery("SELECT count(*) FROM sqlite_master", emptyArray<String>()).use { it.moveToFirst() }
             return DiaryDb(db, dir)
         }
     }
