@@ -149,6 +149,23 @@ class LogicTest {
     }
 
     @Test
+    fun curlEdgeStaysOnPaper() {
+        // Край, де малюється лінія й тінь, — справді найправіша точка аркуша (не «відривається» від сторінки).
+        for (p in listOf(0.01f, 0.03f, 0.08f, 0.2f, 0.5f, 0.9f)) {
+            for (heavy in listOf(false, true)) {
+                val g = CurlGeometry.at(p, 300f, heavy)
+                var max = -1e9f
+                var x = 0f
+                while (x <= 300f) { max = maxOf(max, g.map(x)); x += 0.5f }
+                assertEquals(max, g.rightmost, 0.6f)
+            }
+        }
+        // На самому початку загнутий край уже перевалив через вершину — видно круглий валик.
+        val start = CurlGeometry.at(0.03f, 300f, heavy = false)
+        assertTrue(!start.front(300f))
+    }
+
+    @Test
     fun curlProgressFromFinger() {
         assertEquals(0f, CurlGeometry.forwardProgress(250f, 250f, 300f), 0.001f)
         assertTrue(CurlGeometry.forwardProgress(250f, 100f, 300f) in 0.4f..0.9f)

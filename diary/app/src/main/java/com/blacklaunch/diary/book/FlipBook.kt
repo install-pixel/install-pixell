@@ -314,7 +314,7 @@ private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boo
     if (flatEnd > 0f) clipRect(0f, 0f, flatEnd, h) { drawLayer(layer) }
 
     // 2) Тінь від валика на сторінці під ним (праворуч від валика).
-    val rollRight = (a + r).coerceAtMost(w)
+    val rollRight = g.rightmost.coerceAtMost(w)
     if (rollRight < w && a < w) {
         val len = (w * 0.07f + r * 0.6f)
         drawRect(
@@ -365,7 +365,7 @@ private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boo
     // 5) Край аркуша: вершина валика й край звороту — тонка лінія (скляна грань чи олівець).
     val line = if (glass) Color.White.copy(alpha = 0.32f) else SheetInk.copy(alpha = 0.6f)
     val stroke = if (heavy) 2.4.dp.toPx() else 1.2.dp.toPx()
-    val crest = a + r
+    val crest = g.rightmost
     if (crest in 0f..w && a < w) drawLine(line, Offset(crest, 0f), Offset(crest, h), stroke)
     val edge = g.map(w)
     if (backFrom < w && edge in 0f..w) drawLine(line, Offset(edge, 0f), Offset(edge, h), stroke)

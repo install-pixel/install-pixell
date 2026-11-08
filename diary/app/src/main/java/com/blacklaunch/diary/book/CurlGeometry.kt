@@ -25,8 +25,18 @@ class CurlGeometry(val width: Float, val radius: Float, val axis: Float) {
     /** Точка аркуша x видна лицем (а не зворотом). */
     fun front(x: Float): Boolean = x - axis <= PI.toFloat() * radius / 2f
 
+    /** Найправіша точка аркуша на екрані — справжній край валика (лінія й тінь — саме тут, а не «де була б вершина»). */
+    val rightmost: Float = run {
+        val s = width - axis
+        when {
+            s <= 0f -> width
+            s >= PI.toFloat() * radius / 2f -> axis + radius
+            else -> axis + radius * sin(s / radius)
+        }
+    }
+
     companion object {
-        /** Валик сторінки тонкий, обкладинки — широкий: тверда обкладинка майже не гнеться. */
+        /** Найбільший валик: сторінки тонкий, обкладинки — широкий (тверда обкладинка майже не гнеться). */
         fun radiusFor(width: Float, heavy: Boolean) = width * if (heavy) 0.3f else 0.12f
 
         /**
@@ -34,9 +44,16 @@ class CurlGeometry(val width: Float, val radius: Float, val axis: Float) {
          * за корінець (сторінки вже не видно). Між ними рух видно весь — нічого не зникає раптом.
          */
         fun at(progress: Float, width: Float, heavy: Boolean): CurlGeometry {
-            val r = radiusFor(width, heavy)
-            return CurlGeometry(width, r, width - progress.coerceIn(0f, 1f) * (width + r))
+            val rMax = radiusFor(width, heavy)
+            val axis = width - progress.coerceIn(0f, 1f) * (width + rMax)
+            // Спершу валик тонкий і росте разом із загнутою частиною: край аркуша одразу перекочується через вершину —
+            // видно круглий валик, а не «стінку» під прямим кутом.
+            val r = ((width - axis) / ROLL_TURN).coerceIn(0.5f, rMax)
+            return CurlGeometry(width, r, axis)
         }
+
+        /** Скільки радіан загнутий край, доки валик росте (≈ 140°: зворот уже видно, валик круглий). */
+        private const val ROLL_TURN = 2.4f
 
         /** Уперед: палець узяв сторінку в [down] і тягне ліворуч, зараз у [now]. */
         fun forwardProgress(down: Float, now: Float, width: Float): Float =
