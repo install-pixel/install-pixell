@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Щоденник</string>
+    <string name="default_diary_name">Щоденник</string>
+
+    <string name="back">Назад</string>
+    <string name="close">Закрити</string>
+    <string name="cancel">Скасувати</string>
+    <string name="save">Зберегти</string>
+    <string name="done">Готово</string>
+    <string name="menu">Меню</string>
+    <string name="open">Відкрити</string>
+    <string name="undo">Крок назад</string>
+    <string name="redo">Крок уперед</string>
+    <string name="undo_action">Повернути</string>
+    <string name="working">Хвилинку…</string>
+
+    <!-- Сторінка -->
+    <string name="page_continued">продовження</string>
+    <string name="place">Місце</string>
+    <string name="place_hint">Місце</string>
+    <string name="place_explain">Де минув цей день. Щоденник без інтернету й не знає, де ти, — тож місце вписується вручну.</string>
+    <string name="write_hint">Торкнись, щоб писати…</string>
+    <string name="write_more_hint">Дописати…</string>
+    <string name="day_full">Дві сторінки дня вже заповнені</string>
+    <string name="struck">Викреслено</string>
+    <string name="year_ago">рік тому</string>
+    <plurals name="years_ago">
+        <item quantity="one">%d рік тому</item>
+        <item quantity="few">%d роки тому</item>
+        <item quantity="many">%d років тому</item>
+        <item quantity="other">%d року тому</item>
+    </plurals>
+    <string name="cover_turn_hint">Гортай обкладинку пальцем</string>
+
+    <!-- Фото й голос -->
+    <string name="photo_add">Додати фото</string>
+    <string name="photo_replace">Замінити фото</string>
+    <string name="photo_remove">Прибрати фото</string>
+    <string name="photo_removed">Фото прибрано</string>
+    <string name="photo_failed">Не вдалося відкрити фото</string>
+    <string name="photo_of_day">Фото дня</string>
+    <string name="record">Записати голос</string>
+    <string name="record_stop">Зупинити запис</string>
+    <string name="record_failed">Не вдалося почати запис</string>
+    <string name="record_short">Запис надто короткий</string>
+    <string name="play">Грати / пауза</string>
+    <string name="audio_removed">Запис прибрано</string>
+    <string name="mic_denied">Без дозволу на мікрофон голос не запишеш</string>
+
+    <!-- Перо -->
+    <string name="ink_mode">Писати пером</string>
+    <string name="ink_hint">Пиши й малюй пальцем. Гумка стирає лише свіже чорнило.</string>
+    <string name="ink_eraser">Гумка</string>
+    <string name="ink_dry">Висохле чорнило не стирається</string>
+
+    <!-- Меню -->
+    <string name="menu_page">Сторінка</string>
+    <string name="menu_diary">Щоденник</string>
+    <string name="menu_more">Ще</string>
+    <string name="search">Пошук</string>
+    <string name="calendar">Календар</string>
+    <string name="cover_photo">Фото на обкладинку</string>
+    <string name="cover_photo_change">Інше фото на обкладинку</string>
+    <string name="cover_photo_remove">Прибрати фото з обкладинки</string>
+    <string name="rename">Перейменувати</string>
+    <string name="new_diary">Новий щоденник</string>
+    <string name="new_diary_hint">Щоденники стоятимуть на полиці. Без назви — просто «Щоденник».</string>
+    <string name="diary_name_hint">Назва щоденника</string>
+    <string name="shelf">Полиця</string>
+    <string name="shelf_hint">Торкнись корінця, щоб дістати щоденник. Довге натискання — перейменувати чи стерти.</string>
+    <string name="settings">Налаштування</string>
+    <string name="bookmark">Закладка: смикни вниз</string>
+    <string name="locked">Закрито на код</string>
+
+    <!-- Замок -->
+    <string name="lock_set">Поставити замок</string>
+    <string name="lock_change">Змінити код</string>
+    <string name="lock_remove">Зняти замок</string>
+    <string name="lock_remove_text">Щоденник відкриватиметься без коду. Він і далі лишається зашифрованим на телефоні.</string>
+    <string name="lock_remove_go">Зняти</string>
+    <string name="lock_removed">Замок знято</string>
+    <string name="lock_wheels">Кодовий замок: чотири барабани з цифрами</string>
+    <string name="lock_set_hint">Покрути барабани й натисни «Зафіксувати».</string>
+    <string name="lock_fix">Зафіксувати</string>
+    <string name="lock_confirm_title">Запам\'ятай код</string>
+    <string name="lock_confirm_text">Код: %s.\n\nСкинути чи нагадати його неможливо. Якщо забудеш — щоденник можна буде лише стерти разом з усім написаним.</string>
+    <string name="lock_set_done">Замок поставлено</string>
+    <string name="lock_open">Відкрити</string>
+    <string name="lock_wrong">Не той код</string>
+    <string name="lock_wait">Забагато спроб. Зачекай %d с</string>
+    <string name="open_failed">Не вдалося відкрити щоденник</string>
+    <string name="forgot_code">Не пам\'ятаєш код?</string>
+    <string name="forgot_text">Код не можна скинути: без нього написане не розшифрувати. Можна лише стерти цей щоденник повністю й почати новий.</string>
+
+    <!-- Стерти -->
+    <string name="erase">Стерти щоденник</string>
+    <string name="erase_title">Стерти «%s»?</string>
+    <string name="erase_text">Усі дні, фото, записи голосу й обкладинка зникнуть назавжди. Повернути не вийде (хіба що з резервної копії).</string>
+    <string name="erase_go">Стерти</string>
+
+    <!-- Резервна копія -->
+    <string name="backup">Резервна копія</string>
+    <string name="backup_title">Резервна копія</string>
+    <string name="backup_go">Зберегти копію</string>
+    <string name="backup_password">Пароль копії (від 4 символів)</string>
+    <string name="backup_password_again">Ще раз той самий пароль</string>
+    <string name="backup_hint">Копія — один файл, зашифрований цим паролем. Збережи його куди хочеш (флешка, комп\'ютер). Без пароля копію не відкрити — не забудь його.</string>
+    <string name="backup_done">Копію збережено</string>
+    <string name="backup_failed">Не вдалося зберегти копію</string>
+    <string name="backup_wrong_password">Пароль не підходить</string>
+    <string name="restore">Відновити з копії</string>
+    <string name="restore_title">Відновити з копії</string>
+    <string name="restore_go">Відновити</string>
+    <string name="restore_hint">Щоденник з копії з\'явиться на полиці поруч з іншими (без замка — поставиш, якщо треба).</string>
+    <string name="restore_done">Щоденник відновлено</string>
+    <string name="restore_failed">Це не копія щоденника або файл пошкоджено</string>
+
+    <!-- Пошук і календар -->
+    <string name="search_hint">Слово, дата чи місце</string>
+    <string name="search_explain">Шукай словами з тексту чи місця, датою («12.03», «12.03.2025»), місяцем («березень») чи роком («2025»). Можна разом: «море липень».</string>
+    <string name="search_nothing">Нічого не знайшлося</string>
+    <string name="filter_photo">Є фото</string>
+    <string name="filter_audio">Є голос</string>
+    <string name="month_prev">Попередній місяць</string>
+    <string name="month_next">Наступний місяць</string>
+    <string name="calendar_hint">Обведено дні з записами. Торкнись дня, щоб перегорнути туди, — або порожнього, щоб дописати його.</string>
+
+    <!-- Налаштування -->
+    <string name="settings_style">Стиль</string>
+    <string name="style_glass">Скло</string>
+    <string name="style_glass_desc">Чорне скло, рівні лінії, світіння</string>
+    <string name="style_sheet">Аркуш</string>
+    <string name="style_sheet_desc">Білий олівець на чорному папері</string>
+    <string name="settings_language">Мова</string>
+    <string name="lang_system">Як у телефоні</string>
+    <string name="settings_diary">Щоденник</string>
+    <string name="open_bookmark_title">Відкривати на закладці</string>
+    <string name="open_bookmark_desc">Вимкнено — щоразу на сьогоднішньому дні</string>
+    <string name="drying_title">Чорнило висихає</string>
+    <string name="drying_day">Через день</string>
+    <string name="drying_week">Через тиждень</string>
+    <string name="drying_desc">Поки чорнило свіже, текст виправляєш як завгодно. Висохле вже не змінити — лише викреслити (дописувати можна завжди).</string>
+    <string name="settings_screen">Екран</string>
+    <string name="status_hide_title">Сховати рядок стану</string>
+    <string name="status_hide_desc">Годинник і батарея — лише свайпом згори</string>
+    <string name="haptics_title">Вібрація</string>
+    <string name="haptics_desc">Гортання, барабани замка, кнопки</string>
+    <string name="settings_hint">Усе зберігається лише на цьому телефоні, зашифрованим. Щоденник не має доступу до інтернету.</string>
+
+    <!-- Довідка -->
+    <string name="help">Як користуватися</string>
+    <string name="help_turn_t">Гортати</string>
+    <string name="help_turn">Сторінку беруть пальцем у зовнішній третині (не від самого краю — там жест «назад» телефона) і тягнуть: праворуч — уперед, ліворуч — назад. Якщо відпустити на півдорозі — сторінка ляже або повернеться, як справжня.\n\nОбкладинка гортається так само, але вона важча. Відкривається щоденник одразу на закладці (або на сьогодні — як вибрано в Налаштуваннях).\n\nСтрілка вгорі — закрити щоденник (повернутись до обкладинки).</string>
+    <string name="help_write_t">Писати</string>
+    <string name="help_write">Торкнись рядка — з\'явиться клавіатура, і вся сторінка підсунеться над нею (текст не відривається від паперу).\n\nНа день — дві сторінки. Коли перша заповнилась, щоденник сам перегорне на другу. Більше місця на день немає: щоб не розтягувати в поему.\n\nМісце (угорі праворуч) — торкнись, щоб вписати. Щоденник без інтернету, тож не знає, де ти.</string>
+    <string name="help_ink_t">Перо</string>
+    <string name="help_ink">«⋯» → «Писати пером»: пиши й малюй пальцем поверх сторінки — підкреслити, обвести, домалювати. Повільно — товща лінія, швидко — тонша.\n\nТри товщини, гумка, крок назад і вперед. Розпізнавання тексту немає: що там написано — ти й так знаєш.</string>
+    <string name="help_dry_t">Чорнило висихає</string>
+    <string name="help_dry">Свіже чорнило яскраве, і текст можна виправляти. Через день (чи тиждень — у Налаштуваннях) воно висихає: стає трохи тьмянішим, і змінити його вже не можна.\n\nВисохле можна лише викреслити: затисни палець на слові й веди по рядку. В «Аркуші» слова перекреслюються олівцем, у «Склі» на них лягає матова скляна крапля.\n\nДописати день можна завжди — нове пишеться після висохлого.</string>
+    <string name="help_media_t">Фото й голос</string>
+    <string name="help_media">«⋯» → «Додати фото»: одне фото на день. Воно стає частиною сторінки: у «Склі» — чорно-біле під склом, в «Аркуші» — ескізом олівцем. Дотик — подивитися більшим.\n\n«⋯» → «Записати голос»: один запис на день (до 5 хвилин). Кругла кнопка — грати / пауза; дотик по смужці — перемотати.\n\nПрибрати фото чи запис — свайп уліво (з «Повернути»).</string>
+    <string name="help_bookmark_t">Закладка</string>
+    <string name="help_bookmark">Стрічка висить над сторінкою. Смикни її вниз — вона ляже на цю сторінку. Смикни ще раз — прибереш.\n\nКоли закладка на іншій сторінці, знизу видно її кінчик: торкнись — щоденник перегорнеться туди.</string>
+    <string name="help_search_t">Пошук і календар</string>
+    <string name="help_search">«⋯» → «Пошук»: словами, датою, місяцем, роком, місцем. Торкнись знайденого — щоденник перегорнеться на той день і підсвітить слово.\n\n«⋯» → «Календар»: обведено дні з записами. Можна відкрити й порожній минулий день, щоб дописати його.\n\nЯкщо цього дня рік (чи кілька) тому щось було написано — на сьогоднішній сторінці внизу загнутий ріжок.</string>
+    <string name="help_lock_t">Замок</string>
+    <string name="help_lock">«⋯» → «Поставити замок»: покрути чотири барабани й зафіксуй. Далі щоденник відкривається лише цим кодом.\n\nКод не скидається й не нагадується. Якщо його забуто — щоденник можна тільки стерти.\n\nУсе написане завжди зашифроване на телефоні (і без замка). Поки щоденник із замком відкритий, знімки екрана вимкнено; щойно програма йде у фон — він закривається.</string>
+    <string name="help_shelf_t">Кілька щоденників</string>
+    <string name="help_shelf">«⋯» → «Новий щоденник». Коли їх більше одного, з\'являється полиця з корінцями. Торкнись — дістанеш щоденник; довге натискання — перейменувати чи стерти.\n\nУ кожного щоденника — своя обкладинка, свій замок і своя закладка.</string>
+    <string name="help_backup_t">Резервна копія</string>
+    <string name="help_backup">«⋯» → «Резервна копія»: увесь щоденник (дні, фото, голос, обкладинка) — в один файл, зашифрований паролем, який ти придумаєш.\n\nНа новому телефоні: «⋯» → «Відновити з копії», вибери файл і введи пароль.</string>
+</resources>

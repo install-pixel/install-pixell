@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pamiętnik</string>
+    <string name="default_diary_name">Pamiętnik</string>
+
+    <string name="back">Wstecz</string>
+    <string name="close">Zamknij</string>
+    <string name="cancel">Anuluj</string>
+    <string name="save">Zapisz</string>
+    <string name="done">Gotowe</string>
+    <string name="menu">Menu</string>
+    <string name="open">Otwórz</string>
+    <string name="undo">Cofnij</string>
+    <string name="redo">Ponów</string>
+    <string name="undo_action">Przywróć</string>
+    <string name="working">Chwileczkę…</string>
+
+    <string name="page_continued">ciąg dalszy</string>
+    <string name="place">Miejsce</string>
+    <string name="place_hint">Miejsce</string>
+    <string name="place_explain">Gdzie minął ten dzień. Pamiętnik nie ma internetu i nie wie, gdzie jesteś — miejsce wpisuje się ręcznie.</string>
+    <string name="write_hint">Dotknij, aby pisać…</string>
+    <string name="write_more_hint">Dopisz…</string>
+    <string name="day_full">Obie strony tego dnia są już zapisane</string>
+    <string name="struck">Skreślono</string>
+    <string name="year_ago">rok temu</string>
+    <plurals name="years_ago">
+        <item quantity="one">%d rok temu</item>
+        <item quantity="few">%d lata temu</item>
+        <item quantity="many">%d lat temu</item>
+        <item quantity="other">%d roku temu</item>
+    </plurals>
+    <string name="cover_turn_hint">Przewróć okładkę palcem</string>
+
+    <string name="photo_add">Dodaj zdjęcie</string>
+    <string name="photo_replace">Zmień zdjęcie</string>
+    <string name="photo_remove">Usuń zdjęcie</string>
+    <string name="photo_removed">Zdjęcie usunięte</string>
+    <string name="photo_failed">Nie udało się otworzyć zdjęcia</string>
+    <string name="photo_of_day">Zdjęcie dnia</string>
+    <string name="record">Nagraj głos</string>
+    <string name="record_stop">Zatrzymaj nagrywanie</string>
+    <string name="record_failed">Nie udało się zacząć nagrywania</string>
+    <string name="record_short">Nagranie jest za krótkie</string>
+    <string name="play">Odtwórz / pauza</string>
+    <string name="audio_removed">Nagranie usunięte</string>
+    <string name="mic_denied">Bez zgody na mikrofon nie da się nagrać głosu</string>
+
+    <string name="ink_mode">Pisz piórem</string>
+    <string name="ink_hint">Pisz i rysuj palcem. Gumka ściera tylko świeży atrament.</string>
+    <string name="ink_eraser">Gumka</string>
+    <string name="ink_dry">Suchego atramentu nie da się zetrzeć</string>
+
+    <string name="menu_page">Strona</string>
+    <string name="menu_diary">Pamiętnik</string>
+    <string name="menu_more">Więcej</string>
+    <string name="search">Szukaj</string>
+    <string name="calendar">Kalendarz</string>
+    <string name="cover_photo">Zdjęcie na okładkę</string>
+    <string name="cover_photo_change">Inne zdjęcie na okładkę</string>
+    <string name="cover_photo_remove">Usuń zdjęcie z okładki</string>
+    <string name="rename">Zmień nazwę</string>
+    <string name="new_diary">Nowy pamiętnik</string>
+    <string name="new_diary_hint">Pamiętniki staną na półce. Bez nazwy — po prostu „Pamiętnik”.</string>
+    <string name="diary_name_hint">Nazwa pamiętnika</string>
+    <string name="shelf">Półka</string>
+    <string name="shelf_hint">Dotknij grzbietu, aby wyjąć pamiętnik. Długie naciśnięcie — zmień nazwę lub usuń.</string>
+    <string name="settings">Ustawienia</string>
+    <string name="bookmark">Zakładka: pociągnij w dół</string>
+    <string name="locked">Zamknięty na kod</string>
+
+    <string name="lock_set">Załóż zamek</string>
+    <string name="lock_change">Zmień kod</string>
+    <string name="lock_remove">Zdejmij zamek</string>
+    <string name="lock_remove_text">Pamiętnik będzie się otwierał bez kodu. Nadal jest zaszyfrowany w telefonie.</string>
+    <string name="lock_remove_go">Zdejmij</string>
+    <string name="lock_removed">Zamek zdjęty</string>
+    <string name="lock_wheels">Zamek szyfrowy: cztery bębenki z cyframi</string>
+    <string name="lock_set_hint">Pokręć bębenkami i naciśnij „Zatwierdź”.</string>
+    <string name="lock_fix">Zatwierdź</string>
+    <string name="lock_confirm_title">Zapamiętaj kod</string>
+    <string name="lock_confirm_text">Kod: %s.\n\nNie da się go zresetować ani przypomnieć. Jeśli zostanie zapomniany, pamiętnik będzie można tylko usunąć razem ze wszystkim, co w nim jest.</string>
+    <string name="lock_set_done">Zamek założony</string>
+    <string name="lock_open">Otwórz</string>
+    <string name="lock_wrong">Zły kod</string>
+    <string name="lock_wait">Za dużo prób. Poczekaj %d s</string>
+    <string name="open_failed">Nie udało się otworzyć pamiętnika</string>
+    <string name="forgot_code">Nie pamiętasz kodu?</string>
+    <string name="forgot_text">Kodu nie da się zresetować: bez niego zapisków nie można odszyfrować. Można jedynie całkowicie usunąć ten pamiętnik i zacząć nowy.</string>
+
+    <string name="erase">Usuń pamiętnik</string>
+    <string name="erase_title">Usunąć „%s”?</string>
+    <string name="erase_text">Wszystkie dni, zdjęcia, nagrania i okładka znikną na zawsze. Nie da się tego cofnąć (chyba że z kopii zapasowej).</string>
+    <string name="erase_go">Usuń</string>
+
+    <string name="backup">Kopia zapasowa</string>
+    <string name="backup_title">Kopia zapasowa</string>
+    <string name="backup_go">Zapisz kopię</string>
+    <string name="backup_password">Hasło kopii (min. 4 znaki)</string>
+    <string name="backup_password_again">To samo hasło jeszcze raz</string>
+    <string name="backup_hint">Kopia to jeden plik zaszyfrowany tym hasłem. Zapisz go, gdzie chcesz (pendrive, komputer). Bez hasła kopii nie da się otworzyć — nie zapomnij go.</string>
+    <string name="backup_done">Kopia zapisana</string>
+    <string name="backup_failed">Nie udało się zapisać kopii</string>
+    <string name="backup_wrong_password">Hasło nie pasuje</string>
+    <string name="restore">Przywróć z kopii</string>
+    <string name="restore_title">Przywróć z kopii</string>
+    <string name="restore_go">Przywróć</string>
+    <string name="restore_hint">Pamiętnik z kopii pojawi się na półce obok innych (bez zamka — możesz go założyć).</string>
+    <string name="restore_done">Pamiętnik przywrócony</string>
+    <string name="restore_failed">To nie jest kopia pamiętnika albo plik jest uszkodzony</string>
+
+    <string name="search_hint">Słowo, data lub miejsce</string>
+    <string name="search_explain">Szukaj słowami z tekstu lub miejsca, datą („12.03”, „12.03.2025”), miesiącem („marzec”) lub rokiem („2025”). Można łączyć: „morze lipiec”.</string>
+    <string name="search_nothing">Nic nie znaleziono</string>
+    <string name="filter_photo">Ze zdjęciem</string>
+    <string name="filter_audio">Z głosem</string>
+    <string name="month_prev">Poprzedni miesiąc</string>
+    <string name="month_next">Następny miesiąc</string>
+    <string name="calendar_hint">Dni z wpisami są zakreślone. Dotknij dnia, aby tam przejść — albo pustego, aby go dopisać.</string>
+
+    <string name="settings_style">Styl</string>
+    <string name="style_glass">Szkło</string>
+    <string name="style_glass_desc">Czarne szkło, równe linie, poświata</string>
+    <string name="style_sheet">Kartka</string>
+    <string name="style_sheet_desc">Biały ołówek na czarnym papierze</string>
+    <string name="settings_language">Język</string>
+    <string name="lang_system">Jak w telefonie</string>
+    <string name="settings_diary">Pamiętnik</string>
+    <string name="open_bookmark_title">Otwieraj na zakładce</string>
+    <string name="open_bookmark_desc">Wyłączone — zawsze na dzisiejszym dniu</string>
+    <string name="drying_title">Atrament wysycha</string>
+    <string name="drying_day">Po dniu</string>
+    <string name="drying_week">Po tygodniu</string>
+    <string name="drying_desc">Póki atrament jest świeży, tekst można dowolnie poprawiać. Suchego nie da się już zmienić — tylko skreślić (dopisywać można zawsze).</string>
+    <string name="settings_screen">Ekran</string>
+    <string name="status_hide_title">Ukryj pasek stanu</string>
+    <string name="status_hide_desc">Zegar i bateria — tylko po przesunięciu z góry</string>
+    <string name="haptics_title">Wibracja</string>
+    <string name="haptics_desc">Przewracanie stron, bębenki zamka, przyciski</string>
+    <string name="settings_hint">Wszystko jest przechowywane tylko w tym telefonie, zaszyfrowane. Pamiętnik nie ma dostępu do internetu.</string>
+
+    <string name="help">Jak korzystać</string>
+    <string name="help_turn_t">Przewracanie stron</string>
+    <string name="help_turn">Stronę chwyta się palcem w zewnętrznej jednej trzeciej (nie przy samej krawędzi — tam jest gest „wstecz” telefonu) i ciągnie: z prawej — do przodu, z lewej — wstecz. Puszczona w połowie strona opada albo wraca, jak prawdziwa.\n\nOkładka przewraca się tak samo, tylko jest cięższa. Pamiętnik otwiera się od razu na zakładce (albo na dzisiejszym dniu — jak w Ustawieniach).\n\nStrzałka u góry zamyka pamiętnik (powrót do okładki).</string>
+    <string name="help_write_t">Pisanie</string>
+    <string name="help_write">Dotknij linii — pojawi się klawiatura, a cała strona przesunie się nad nią (tekst nie odrywa się od papieru).\n\nNa dzień są dwie strony. Gdy pierwsza się zapełni, pamiętnik sam przewróci na drugą. Więcej miejsca na dzień nie ma — żeby nie rozpisywać się w poemat.\n\nMiejsce (w prawym górnym rogu) — dotknij, aby wpisać. Pamiętnik nie ma internetu, więc nie wie, gdzie jesteś.</string>
+    <string name="help_ink_t">Pióro</string>
+    <string name="help_ink">„⋯” → „Pisz piórem”: pisz i rysuj palcem na stronie — podkreśl, zakreśl, dorysuj. Wolno — grubsza linia, szybko — cieńsza.\n\nTrzy grubości, gumka, cofnij i ponów. Nie ma rozpoznawania pisma: wiesz, co tam jest napisane.</string>
+    <string name="help_dry_t">Atrament wysycha</string>
+    <string name="help_dry">Świeży atrament jest jasny i tekst można poprawiać. Po dniu (lub tygodniu — w Ustawieniach) wysycha: robi się trochę bledszy i nie da się go już zmienić.\n\nSuchy tekst można tylko skreślić: przytrzymaj palec na słowie i przesuń wzdłuż linii. W „Kartce” słowa przekreśla ołówek, w „Szkle” przykrywa je matowa szklana kropla.\n\nDopisać dzień można zawsze — nowy tekst idzie po suchym.</string>
+    <string name="help_media_t">Zdjęcie i głos</string>
+    <string name="help_media">„⋯” → „Dodaj zdjęcie”: jedno zdjęcie na dzień. Staje się częścią strony: w „Szkle” — czarno-białe pod szkłem, w „Kartce” — szkic ołówkiem. Dotknij, aby zobaczyć większe.\n\n„⋯” → „Nagraj głos”: jedno nagranie na dzień (do 5 minut). Okrągły przycisk — odtwórz / pauza; dotyk paska — przewiń.\n\nUsuń zdjęcie lub nagranie przesunięciem w lewo (z „Przywróć”).</string>
+    <string name="help_bookmark_t">Zakładka</string>
+    <string name="help_bookmark">Wstążka wisi nad stroną. Pociągnij ją w dół — położy się na tej stronie. Pociągnij jeszcze raz — zniknie.\n\nGdy zakładka jest na innej stronie, na dole widać jej koniec: dotknij — pamiętnik tam przewróci.</string>
+    <string name="help_search_t">Szukanie i kalendarz</string>
+    <string name="help_search">„⋯” → „Szukaj”: słowami, datą, miesiącem, rokiem, miejscem. Dotknij wyniku — pamiętnik przewróci na ten dzień i podświetli słowo.\n\n„⋯” → „Kalendarz”: dni z wpisami są zakreślone. Można też otworzyć pusty miniony dzień, żeby go dopisać.\n\nJeśli tego dnia rok (lub kilka lat) temu coś zapisano — na dzisiejszej stronie na dole jest zagięty róg.</string>
+    <string name="help_lock_t">Zamek</string>
+    <string name="help_lock">„⋯” → „Załóż zamek”: pokręć czterema bębenkami i zatwierdź. Odtąd pamiętnik otwiera się tylko tym kodem.\n\nKodu nie da się zresetować ani przypomnieć. Jeśli zostanie zapomniany — pamiętnik można tylko usunąć.\n\nWszystkie zapiski są zawsze zaszyfrowane w telefonie (także bez zamka). Gdy pamiętnik z zamkiem jest otwarty, zrzuty ekranu są wyłączone; gdy aplikacja przejdzie w tło — zamyka się.</string>
+    <string name="help_shelf_t">Kilka pamiętników</string>
+    <string name="help_shelf">„⋯” → „Nowy pamiętnik”. Gdy jest ich więcej niż jeden, pojawia się półka z grzbietami. Dotknij — wyjmiesz pamiętnik; długie naciśnięcie — zmień nazwę lub usuń.\n\nKażdy pamiętnik ma własną okładkę, zamek i zakładkę.</string>
+    <string name="help_backup_t">Kopia zapasowa</string>
+    <string name="help_backup">„⋯” → „Kopia zapasowa”: cały pamiętnik (dni, zdjęcia, głos, okładka) w jednym pliku, zaszyfrowanym wymyślonym hasłem.\n\nNa nowym telefonie: „⋯” → „Przywróć z kopii”, wybierz plik i wpisz hasło.</string>
+</resources>

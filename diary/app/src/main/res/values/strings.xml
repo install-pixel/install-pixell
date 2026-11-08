@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Diary</string>
+    <string name="default_diary_name">Diary</string>
+
+    <string name="back">Back</string>
+    <string name="close">Close</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="done">Done</string>
+    <string name="menu">Menu</string>
+    <string name="open">Open</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="undo_action">Undo</string>
+    <string name="working">One moment…</string>
+
+    <string name="page_continued">continued</string>
+    <string name="place">Place</string>
+    <string name="place_hint">Place</string>
+    <string name="place_explain">Where this day happened. The diary has no internet and doesn\'t know where you are, so you write the place yourself.</string>
+    <string name="write_hint">Tap to write…</string>
+    <string name="write_more_hint">Add more…</string>
+    <string name="day_full">Both pages of this day are full</string>
+    <string name="struck">Crossed out</string>
+    <string name="year_ago">a year ago</string>
+    <plurals name="years_ago">
+        <item quantity="one">%d year ago</item>
+        <item quantity="other">%d years ago</item>
+    </plurals>
+    <string name="cover_turn_hint">Turn the cover with your finger</string>
+
+    <string name="photo_add">Add a photo</string>
+    <string name="photo_replace">Replace photo</string>
+    <string name="photo_remove">Remove photo</string>
+    <string name="photo_removed">Photo removed</string>
+    <string name="photo_failed">Couldn\'t open the photo</string>
+    <string name="photo_of_day">Photo of the day</string>
+    <string name="record">Record voice</string>
+    <string name="record_stop">Stop recording</string>
+    <string name="record_failed">Couldn\'t start recording</string>
+    <string name="record_short">Recording is too short</string>
+    <string name="play">Play / pause</string>
+    <string name="audio_removed">Recording removed</string>
+    <string name="mic_denied">Voice can\'t be recorded without microphone permission</string>
+
+    <string name="ink_mode">Write with a pen</string>
+    <string name="ink_hint">Write and draw with your finger. The eraser only removes fresh ink.</string>
+    <string name="ink_eraser">Eraser</string>
+    <string name="ink_dry">Dry ink can\'t be erased</string>
+
+    <string name="menu_page">Page</string>
+    <string name="menu_diary">Diary</string>
+    <string name="menu_more">More</string>
+    <string name="search">Search</string>
+    <string name="calendar">Calendar</string>
+    <string name="cover_photo">Photo on the cover</string>
+    <string name="cover_photo_change">Another cover photo</string>
+    <string name="cover_photo_remove">Remove cover photo</string>
+    <string name="rename">Rename</string>
+    <string name="new_diary">New diary</string>
+    <string name="new_diary_hint">Diaries will stand on a shelf. Without a name it\'s simply “Diary”.</string>
+    <string name="diary_name_hint">Diary name</string>
+    <string name="shelf">Shelf</string>
+    <string name="shelf_hint">Tap a spine to take the diary out. Long-press to rename or erase.</string>
+    <string name="settings">Settings</string>
+    <string name="bookmark">Bookmark: pull down</string>
+    <string name="locked">Locked with a code</string>
+
+    <string name="lock_set">Set a lock</string>
+    <string name="lock_change">Change code</string>
+    <string name="lock_remove">Remove lock</string>
+    <string name="lock_remove_text">The diary will open without a code. It stays encrypted on the phone.</string>
+    <string name="lock_remove_go">Remove</string>
+    <string name="lock_removed">Lock removed</string>
+    <string name="lock_wheels">Combination lock: four number wheels</string>
+    <string name="lock_set_hint">Turn the wheels and tap “Lock in”.</string>
+    <string name="lock_fix">Lock in</string>
+    <string name="lock_confirm_title">Remember the code</string>
+    <string name="lock_confirm_text">Code: %s.\n\nIt can\'t be reset or recovered. If it\'s forgotten, the diary can only be erased together with everything written in it.</string>
+    <string name="lock_set_done">Lock set</string>
+    <string name="lock_open">Open</string>
+    <string name="lock_wrong">Wrong code</string>
+    <string name="lock_wait">Too many tries. Wait %d s</string>
+    <string name="open_failed">Couldn\'t open the diary</string>
+    <string name="forgot_code">Forgot the code?</string>
+    <string name="forgot_text">The code can\'t be reset: without it the writing can\'t be decrypted. The only option is to erase this diary completely and start a new one.</string>
+
+    <string name="erase">Erase diary</string>
+    <string name="erase_title">Erase “%s”?</string>
+    <string name="erase_text">All days, photos, voice notes and the cover will be gone forever. This can\'t be undone (except from a backup).</string>
+    <string name="erase_go">Erase</string>
+
+    <string name="backup">Backup</string>
+    <string name="backup_title">Backup</string>
+    <string name="backup_go">Save backup</string>
+    <string name="backup_password">Backup password (4+ characters)</string>
+    <string name="backup_password_again">Same password again</string>
+    <string name="backup_hint">The backup is a single file encrypted with this password. Keep it anywhere (USB stick, computer). It can\'t be opened without the password — don\'t forget it.</string>
+    <string name="backup_done">Backup saved</string>
+    <string name="backup_failed">Couldn\'t save the backup</string>
+    <string name="backup_wrong_password">Wrong password</string>
+    <string name="restore">Restore from backup</string>
+    <string name="restore_title">Restore from backup</string>
+    <string name="restore_go">Restore</string>
+    <string name="restore_hint">The diary from the backup will appear on the shelf next to the others (without a lock — set one if needed).</string>
+    <string name="restore_done">Diary restored</string>
+    <string name="restore_failed">This isn\'t a diary backup, or the file is damaged</string>
+
+    <string name="search_hint">Word, date or place</string>
+    <string name="search_explain">Search by words from the text or place, a date (“12.03”, “12.03.2025”), a month (“March”) or a year (“2025”). Combine them: “sea July”.</string>
+    <string name="search_nothing">Nothing found</string>
+    <string name="filter_photo">Has photo</string>
+    <string name="filter_audio">Has voice</string>
+    <string name="month_prev">Previous month</string>
+    <string name="month_next">Next month</string>
+    <string name="calendar_hint">Days with entries are circled. Tap a day to turn to it — or an empty one to write it.</string>
+
+    <string name="settings_style">Style</string>
+    <string name="style_glass">Glass</string>
+    <string name="style_glass_desc">Black glass, clean lines, a soft glow</string>
+    <string name="style_sheet">Sheet</string>
+    <string name="style_sheet_desc">White pencil on black paper</string>
+    <string name="settings_language">Language</string>
+    <string name="lang_system">Same as the phone</string>
+    <string name="settings_diary">Diary</string>
+    <string name="open_bookmark_title">Open at the bookmark</string>
+    <string name="open_bookmark_desc">Off — always open at today</string>
+    <string name="drying_title">Ink dries</string>
+    <string name="drying_day">After a day</string>
+    <string name="drying_week">After a week</string>
+    <string name="drying_desc">While the ink is fresh, the text can be edited freely. Dry ink can\'t be changed — only crossed out (you can always add more).</string>
+    <string name="settings_screen">Screen</string>
+    <string name="status_hide_title">Hide the status bar</string>
+    <string name="status_hide_desc">Clock and battery — only by swiping down</string>
+    <string name="haptics_title">Vibration</string>
+    <string name="haptics_desc">Page turns, lock wheels, buttons</string>
+    <string name="settings_hint">Everything is stored only on this phone, encrypted. The diary has no internet access.</string>
+
+    <string name="help">How to use</string>
+    <string name="help_turn_t">Turning pages</string>
+    <string name="help_turn">Take a page with your finger in its outer third (not at the very edge — that\'s the phone\'s back gesture) and pull: from the right — forward, from the left — back. Let go halfway and the page either settles or falls back, like a real one.\n\nThe cover turns the same way, only heavier. The diary opens right at the bookmark (or at today — as chosen in Settings).\n\nThe arrow at the top closes the diary (back to the cover).</string>
+    <string name="help_write_t">Writing</string>
+    <string name="help_write">Tap a line — the keyboard appears and the whole page slides above it (the text never leaves the paper).\n\nEach day has two pages. When the first is full, the diary turns to the second by itself. There\'s no more room per day — so it doesn\'t turn into a novel.\n\nPlace (top right) — tap to write it in. The diary has no internet, so it doesn\'t know where you are.</string>
+    <string name="help_ink_t">Pen</string>
+    <string name="help_ink">“⋯” → “Write with a pen”: write and draw with your finger over the page — underline, circle, doodle. Slow strokes are thicker, fast ones thinner.\n\nThree widths, an eraser, undo and redo. There\'s no handwriting recognition: you know what it says.</string>
+    <string name="help_dry_t">Ink dries</string>
+    <string name="help_dry">Fresh ink is bright and the text can be corrected. After a day (or a week — in Settings) it dries: it gets a little duller and can no longer be changed.\n\nDry text can only be crossed out: hold a finger on a word and slide along the line. In “Sheet” the words are struck through with pencil; in “Glass” a frosted glass drop covers them.\n\nYou can always add to a day — new text goes after the dry part.</string>
+    <string name="help_media_t">Photo and voice</string>
+    <string name="help_media">“⋯” → “Add a photo”: one photo per day. It becomes part of the page: black-and-white under glass in “Glass”, a pencil sketch in “Sheet”. Tap to see it bigger.\n\n“⋯” → “Record voice”: one recording per day (up to 5 minutes). The round button plays / pauses; tap the strip to seek.\n\nRemove a photo or recording by swiping left (with “Undo”).</string>
+    <string name="help_bookmark_t">Bookmark</string>
+    <string name="help_bookmark">A ribbon hangs above the page. Pull it down — it lies on this page. Pull it again — it\'s removed.\n\nWhen the bookmark is on another page, its tip shows at the bottom: tap it and the diary turns there.</string>
+    <string name="help_search_t">Search and calendar</string>
+    <string name="help_search">“⋯” → “Search”: by words, date, month, year, place. Tap a result — the diary turns to that day and highlights the word.\n\n“⋯” → “Calendar”: days with entries are circled. You can also open an empty past day to write it.\n\nIf something was written on this day a year (or more) ago, today\'s page has a folded corner at the bottom.</string>
+    <string name="help_lock_t">Lock</string>
+    <string name="help_lock">“⋯” → “Set a lock”: turn the four wheels and lock in. From then on the diary opens only with that code.\n\nThe code can\'t be reset or recovered. If it\'s forgotten, the diary can only be erased.\n\nEverything written is always encrypted on the phone (even without a lock). While a locked diary is open, screenshots are disabled; as soon as the app goes to the background, it closes.</string>
+    <string name="help_shelf_t">Several diaries</string>
+    <string name="help_shelf">“⋯” → “New diary”. With more than one, a shelf with spines appears. Tap to take a diary out; long-press to rename or erase.\n\nEach diary has its own cover, lock and bookmark.</string>
+    <string name="help_backup_t">Backup</string>
+    <string name="help_backup">“⋯” → “Backup”: the whole diary (days, photos, voice, cover) in one file, encrypted with a password you choose.\n\nOn a new phone: “⋯” → “Restore from backup”, pick the file and enter the password.</string>
+</resources>
