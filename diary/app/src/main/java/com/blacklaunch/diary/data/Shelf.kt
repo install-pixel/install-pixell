@@ -77,7 +77,8 @@ class ShelfStore(context: Context) {
     fun saveCover(id: String, glass: Bitmap, sheet: Bitmap) {
         File(root, "covers").mkdirs()
         coverFile(id, true).outputStream().use { glass.compress(Bitmap.CompressFormat.JPEG, 90, it) }
-        coverFile(id, false).outputStream().use { sheet.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        // «Аркуш» — олівець із прозорістю (лягає на фактуру обкладинки), тож PNG.
+        coverFile(id, false).outputStream().use { sheet.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     fun loadCover(id: String, glass: Boolean): Bitmap? =

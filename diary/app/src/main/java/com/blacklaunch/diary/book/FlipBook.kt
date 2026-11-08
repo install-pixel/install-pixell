@@ -447,24 +447,36 @@ private fun DrawScope.strip(
                 scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
             }) { drawLayer(layer) }
         } else {
-            drawRect(
-                when {
-                    heavy -> if (glass) Color(0xFF181818) else Color(0xFF121212)
-                    glass -> Color(0xFF111111)
-                    else -> Color(0xFF0E0E0E)
-                },
-                topLeft = Offset(left - 0.5f, 0f),
-                size = androidx.compose.ui.geometry.Size(right - left + 1f, h),
-            )
-            if (glass && !heavy) {
-                val k = (d1 - d0) / (x1 - x0)
-                val canvas = drawContext.canvas
-                canvas.saveLayer(Rect(left - 0.5f, 0f, right + 0.5f, h), Paint().apply { alpha = 0.12f })
+            val k = (d1 - d0) / (x1 - x0)
+            val stripRect = Offset(left - 0.5f, 0f) to androidx.compose.ui.geometry.Size(right - left + 1f, h)
+            val tex = if (heavy) PaperTexture.cover else PaperTexture.page
+            if (!glass && tex != null) {
+                // «Аркуш»: зворот — той самий старий папір (дзеркально), а не рівна заливка.
                 withTransform({
                     translate(left = d0 - x0 * k)
                     scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
-                }) { drawLayer(layer) }
-                canvas.restore()
+                }) { drawImage(tex, dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)) }
+            } else {
+                // «Скло»: зворот — темна товста плівка, крізь яку видно, що під нею; і ледь — саму сторінку зі зворотного
+                // боку (обкладинку — помітніше: фото під склом видно й ззаду).
+                drawRect(
+                    when {
+                        heavy -> if (glass) Color(0xFF15161A).copy(alpha = 0.82f) else Color(0xFF121212)
+                        glass -> Color(0xFF111215).copy(alpha = 0.72f)
+                        else -> Color(0xFF0E0E0E)
+                    },
+                    topLeft = stripRect.first,
+                    size = stripRect.second,
+                )
+                if (glass) {
+                    val canvas = drawContext.canvas
+                    canvas.saveLayer(Rect(left - 0.5f, 0f, right + 0.5f, h), Paint().apply { alpha = if (heavy) 0.3f else 0.22f })
+                    withTransform({
+                        translate(left = d0 - x0 * k)
+                        scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
+                    }) { drawLayer(layer) }
+                    canvas.restore()
+                }
             }
         }
         if (light > 0.005f) drawRect(Color.White.copy(alpha = (if (glass) 0.16f else 0.11f) * light), topLeft = Offset(left - 0.5f, 0f), size = androidx.compose.ui.geometry.Size(right - left + 1f, h))

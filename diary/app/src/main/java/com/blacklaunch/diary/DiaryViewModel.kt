@@ -144,7 +144,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val ok = withContext(Dispatchers.Default) {
                 val src = Photos.load(getApplication(), uri, Limits.PHOTO_SIDE) ?: return@withContext false
-                store.saveCover(id, Photos.stylize(src, glass = true), Photos.stylize(src, glass = false))
+                store.saveCover(id, Photos.stylize(src, glass = true), Photos.stylize(src, glass = false, onPaper = true))
                 true
             }
             Photos.cache.remove("cover_${id}_true")

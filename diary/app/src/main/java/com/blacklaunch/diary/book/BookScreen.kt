@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -708,24 +710,37 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
     val glass = AppStyle.glass
     LaunchedEffect(day, glass) { image = vm.photo(day, glass) }
     com.blacklaunch.diary.ui.SmoothDialog(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxSize().background(Color.Black), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.End) {
-                Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); menu = true }, contentAlignment = Alignment.Center) {
-                    GlyphIcon(Glyph.More, stringResource(R.string.menu), tint = Oled.TextPrimary)
+        // Збільшене фото — те саме, що на сторінці (той самий фільтр, ті самі краї), без жодних рамок довкола.
+        // «Аркуш» — на тому самому старому папері, «Скло» — на чорному.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .then(
+                    if (glass) Modifier
+                    else Modifier.drawBehind {
+                        PaperTexture.ensure()
+                        PaperTexture.page?.let { drawImage(it, dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)) }
+                            ?: drawRect(PaperTexture.PAGE_BASE)
+                    }.paperRelief(glass),
+                ),
+        ) {
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.weight(1f).fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
+                    image?.let {
+                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit)
+                    }
                 }
-            }
-            Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                image?.let {
-                    androidx.compose.foundation.Image(
-                        it,
-                        contentDescription = stringResource(R.string.photo_of_day),
-                        modifier = Modifier.fillMaxSize().pencilFrame(14.dp, seed = 88).padding(3.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                    )
+                // Унизу — закрити, поруч шестерня (замінити чи прибрати фото).
+                Row(Modifier.padding(bottom = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                    Spacer(Modifier.size(44.dp))
+                    Box(Modifier.size(56.dp).clip(CircleShape).clickable { haptics.tap(); onDismiss() }, contentAlignment = Alignment.Center) {
+                        GlyphIcon(Glyph.Close, stringResource(R.string.close), tint = if (glass) Oled.TextPrimary else SheetInk)
+                    }
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); menu = true }, contentAlignment = Alignment.Center) {
+                        GlyphIcon(Glyph.Settings, stringResource(R.string.menu), tint = Oled.TextSecondary, size = 24.dp)
+                    }
                 }
-            }
-            Box(Modifier.padding(bottom = 24.dp).size(56.dp).background(Oled.Black, CircleShape).pencilFrame(28.dp, seed = 13).clip(CircleShape).clickable { haptics.tap(); onDismiss() }, contentAlignment = Alignment.Center) {
-                GlyphIcon(Glyph.Close, stringResource(R.string.close), tint = SheetInk)
             }
         }
     }

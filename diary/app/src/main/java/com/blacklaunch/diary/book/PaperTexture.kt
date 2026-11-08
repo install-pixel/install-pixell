@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.drawWithContent
 import kotlin.concurrent.thread
 import kotlin.math.abs
 import kotlin.math.cos
@@ -33,13 +34,32 @@ object PaperTexture {
     var grain by mutableStateOf<ImageBitmap?>(null)
         private set
 
+    /**
+     * Рельєф сторінки — заломи, зморшки й витерті краї — окремо від фарби паперу: тінь (множення) і світло (екран).
+     * Накладається ПОВЕРХ усього, що на сторінці (лінії, текст, перо, фото), тож написане лежить на папері й темніє та
+     * світлішає разом зі згинами, а не «плаває» зверху.
+     */
+    var shade by mutableStateOf<ImageBitmap?>(null)
+        private set
+    var light by mutableStateOf<ImageBitmap?>(null)
+        private set
+
+    /** Складка (у частках сторінки): точка, напрям, довжина, ширина й сила — щоб і лінії ледь «ламались» на ній. */
+    class Crease(val x: Float, val y: Float, val dx: Float, val dy: Float, val len: Float, val width: Float, val amp: Float)
+
+    @Volatile var creases: List<Crease> = emptyList()
+        private set
+
     @Volatile private var started = false
 
     fun ensure() {
         if (started) return
         started = true
         thread(name = "paper-texture", isDaemon = true) {
-            page = sheet(W, H, seed = 11, base = intArrayOf(21, 19, 15), mottle = 7f, grainAmp = 3.5f, fibers = 2200, creases = 3, wrinkles = 9, wear = 13f, pores = 0f).asImageBitmap()
+            val relief = FloatArray(W * H)
+            page = sheet(W, H, seed = 11, base = intArrayOf(21, 19, 15), mottle = 7f, grainAmp = 3.5f, fibers = 2200, creases = 3, wrinkles = 9, wear = 13f, pores = 0f, relief = relief).asImageBitmap()
+            shade = reliefMap(relief, W, H, dark = true).asImageBitmap()
+            light = reliefMap(relief, W, H, dark = false).asImageBitmap()
             cover = sheet(W, H, seed = 29, base = intArrayOf(12, 11, 10), mottle = 5f, grainAmp = 4f, fibers = 600, creases = 2, wrinkles = 5, wear = 18f, pores = 4f).asImageBitmap()
             grain = grainMap(W / 2, H / 2, seed = 5).asImageBitmap()
         }
@@ -51,7 +71,11 @@ object PaperTexture {
     private fun sheet(
         w: Int, h: Int, seed: Int, base: IntArray, mottle: Float, grainAmp: Float,
         fibers: Int, creases: Int, wrinkles: Int, wear: Float, pores: Float,
+        relief: FloatArray? = null,
     ): Bitmap {
+        // Рельєф (заломи, витерті краї) — або в саму фарбу (обкладинка), або окремо ([relief]) — для накладання поверх.
+        val r = relief ?: FloatArray(w * h)
+        val found = ArrayList<Crease>()
         val rnd = java.util.Random(seed.toLong())
         val l = FloatArray(w * h)
         val n1 = ValueNoise(rnd, 170f)
@@ -70,7 +94,7 @@ object PaperTexture {
             val band = w * 0.05f
             if (e < band) {
                 val k = 1f - e / band
-                v += wear * k * k * (0.55f + 0.9f * n3.at(x + 500, y))
+                r[i] += wear * k * k * (0.55f + 0.9f * n3.at(x + 500, y))
             }
             l[i] = v
         }
@@ -85,6 +109,7 @@ object PaperTexture {
             val width = if (long) 7f else 4f
             val dx = cos(ang)
             val dy = sin(ang)
+            found += Crease(ax / w, ay / h, dx, dy, len / w, width / w, amp)
             for (y in 0 until h) for (x in 0 until w) {
                 val px = x - ax
                 val py = y - ay
@@ -94,7 +119,7 @@ object PaperTexture {
                 if (abs(d) > width * 3) continue
                 val along = 1f - (abs(t) / (len / 2)).let { it * it }
                 val s = d / width
-                l[y * w + x] += amp * along * (s * exp(-s * s) * 2.3f) * (0.6f + 0.8f * n2.at(x + 900, y))
+                r[y * w + x] += amp * along * (s * exp(-s * s) * 2.3f) * (0.6f + 0.8f * n2.at(x + 900, y))
             }
         }
         // Волокна: короткі світлі вигнуті нитки.
@@ -119,12 +144,27 @@ object PaperTexture {
             val iy = rnd.nextInt(h)
             l[iy * w + ix] += 10f + rnd.nextFloat() * 10f
         }
+        if (relief == null) for (i in l.indices) l[i] += r[i] else PaperTexture.creases = found
         val px = IntArray(w * h) { i ->
             val v = l[i]
-            val r = (base[0] + v).toInt().coerceIn(0, 255)
+            val rr = (base[0] + v).toInt().coerceIn(0, 255)
             val g = (base[1] + v * 0.94f).toInt().coerceIn(0, 255)
             val bl = (base[2] + v * 0.82f).toInt().coerceIn(0, 255)
-            (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
+            (0xFF shl 24) or (rr shl 16) or (g shl 8) or bl
+        }
+        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * Карта рельєфу: [dark] — тінь для множення (біле — без змін, темніше — тінь), інакше світло для «екрана» (чорне —
+     * без змін). Сила розрахована так, щоб на темному папері дати ті самі ±кілька відтінків, що й раніше.
+     */
+    private fun reliefMap(relief: FloatArray, w: Int, h: Int, dark: Boolean): Bitmap {
+        val px = IntArray(w * h) { i ->
+            val v = relief[i]
+            val c = if (dark) (255f * (1f + minOf(0f, v) / 28f)).toInt().coerceIn(0, 255)
+            else (255f * (maxOf(0f, v) / 255f) * 1.15f).toInt().coerceIn(0, 255)
+            (0xFF shl 24) or (c shl 16) or (c shl 8) or c
         }
         return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
     }
@@ -162,3 +202,16 @@ object PaperTexture {
         private fun smooth(t: Float) = t * t * (3f - 2f * t)
     }
 }
+
+/**
+ * «Аркуш»: накласти на вміст сторінки рельєф паперу (заломи, витерті краї) і зерно — усе написане лягає на папір.
+ * У «Склі» нічого не робить.
+ */
+fun androidx.compose.ui.Modifier.paperRelief(glass: Boolean): androidx.compose.ui.Modifier =
+    if (glass) this else this.drawWithContent {
+        drawContent()
+        val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
+        PaperTexture.shade?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+        PaperTexture.light?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+        PaperTexture.grain?.let { drawImage(it, dstSize = dst, alpha = 0.75f, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+    }

@@ -147,6 +147,17 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
                 dstOffset = IntOffset((inset + (inner.width - w) / 2).toInt(), (inset + (inner.height - h) / 2).toInt()),
                 dstSize = IntSize(w.toInt(), h.toInt()),
             )
+            if (glass) {
+                // Як фото дня: під товстим склом — притемнені «заломлені» краї й фаска (світла вгорі ліворуч, темна внизу
+                // праворуч).
+                val bevel = 9.dp.toPx()
+                val c = Offset(size.width / 2, size.height / 2)
+                drawRect(Brush.radialGradient(0.5f to Color.Transparent, 1f to Color(0x80000000), center = c, radius = maxOf(inner.width, inner.height) * 0.6f))
+                drawRect(Brush.verticalGradient(0f to Color(0x40FFFFFF), 1f to Color.Transparent, startY = inset, endY = inset + bevel), topLeft = Offset(inset, inset), size = Size(inner.width, bevel))
+                drawRect(Brush.horizontalGradient(0f to Color(0x2EFFFFFF), 1f to Color.Transparent, startX = inset, endX = inset + bevel), topLeft = Offset(inset, inset), size = Size(bevel, inner.height))
+                drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x59000000), startY = size.height - inset - bevel, endY = size.height - inset), topLeft = Offset(inset, size.height - inset - bevel), size = Size(inner.width, bevel))
+                drawRect(Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0x4D000000), startX = size.width - inset - bevel, endX = size.width - inset), topLeft = Offset(size.width - inset - bevel, inset), size = Size(bevel, inner.height))
+            }
         }
     } else {
         clipPath(innerPath) { drawPattern(pattern, glass, inset, inner) }
