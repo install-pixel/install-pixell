@@ -172,4 +172,5 @@
     <string name="cover_from_camera">Okładka z aparatu</string>
     <string name="cover_from_file">Okładka z pliku</string>
     <string name="camera_failed">Nie udało się otworzyć aparatu</string>
+    <string name="swipe_delete">Usuń</string>
 </resources>

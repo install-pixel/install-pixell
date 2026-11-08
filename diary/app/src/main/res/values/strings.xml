@@ -170,4 +170,5 @@
     <string name="cover_from_camera">Cover from camera</string>
     <string name="cover_from_file">Cover from file</string>
     <string name="camera_failed">Couldn\'t open the camera</string>
+    <string name="swipe_delete">Delete</string>
 </resources>

@@ -78,7 +78,8 @@ fun pageTextStyle(unitPx: Float, density: Density, glass: Boolean): TextStyle {
         fontSize = font.sp,
         lineHeight = line.sp,
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
-        color = FreshInk,
+        // «Аркуш»: чорнило ледь прозоре — крізь нього проступає папір, текст вписаний, а не накладений.
+        color = if (glass) FreshInk else FreshInk.copy(alpha = 0.82f),
     )
 }
 
@@ -168,7 +169,7 @@ fun PageText(
             TransformedText(
                 buildAnnotatedString {
                     append(text)
-                    if (n > 0) addStyle(SpanStyle(color = DryInk), 0, n)
+                    if (n > 0) addStyle(SpanStyle(color = if (AppStyle.glass) DryInk else DryInk.copy(alpha = 0.8f)), 0, n)
                 },
                 OffsetMapping.Identity,
             )

@@ -12,6 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.input.pointer.pointerInput
@@ -73,6 +77,7 @@ fun CoverFace(
     modifier: Modifier = Modifier,
     titleY: Float? = null,
     onTitleMoved: ((Float) -> Unit)? = null,
+    onTitleTap: (() -> Unit)? = null,
     lock: (@Composable () -> Unit)? = null,
 ) {
     val glass = AppStyle.glass
@@ -81,7 +86,13 @@ fun CoverFace(
         Canvas(Modifier.fillMaxSize()) { drawCover(photo, pattern, glass, locked) }
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             val heightPx = constraints.maxHeight.toFloat()
-            var y by remember(titleY) { mutableFloatStateOf(titleY ?: DEFAULT_TITLE_Y) }
+            // Одна й та сама змінна положення на весь час (жест і малювання бачать одне значення); збережене місце
+            // підхоплюємо, лише коли не тягнемо.
+            var y by remember { mutableFloatStateOf(titleY ?: DEFAULT_TITLE_Y) }
+            var dragging by remember { mutableStateOf(false) }
+            LaunchedEffect(titleY) { if (!dragging) y = titleY ?: DEFAULT_TITLE_Y }
+            val moved by rememberUpdatedState(onTitleMoved)
+            val tapped by rememberUpdatedState(onTitleTap)
             var titleH by remember { mutableFloatStateOf(0f) }
             if (lock != null) {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -108,16 +119,20 @@ fun CoverFace(
                     .onSizeChanged { titleH = it.height.toFloat() }
                     .then(
                         if (onTitleMoved == null) Modifier
-                        else Modifier.pointerInput(Unit) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { haptics.longPress() },
-                                onDrag = { change, d ->
-                                    change.consume()
-                                    y = (y + d.y / heightPx).coerceIn(0.08f, 0.92f)
-                                },
-                                onDragEnd = { haptics.tick(); onTitleMoved(y) },
-                            )
-                        },
+                        else Modifier
+                            .pointerInput(heightPx) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { dragging = true; haptics.longPress() },
+                                    onDrag = { change, d ->
+                                        change.consume()
+                                        y = (y + d.y / heightPx).coerceIn(0.08f, 0.92f)
+                                    },
+                                    onDragEnd = { dragging = false; haptics.tick(); moved?.invoke(y) },
+                                    onDragCancel = { dragging = false },
+                                )
+                            }
+                            // Дотик — перейменувати просто тут.
+                            .pointerInput(Unit) { detectTapGestures(onTap = { tapped?.invoke() }) },
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -141,7 +156,7 @@ fun CoverFace(
                         name,
                         style = TextStyle(
                             fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = 40.sp,
-                            color = Oled.TextPrimary, shadow = Shadow(Color.Black, blurRadius = 14f), textAlign = TextAlign.Center,
+                            color = SheetInk.copy(alpha = 0.78f), shadow = Shadow(Color.Black, blurRadius = 14f), textAlign = TextAlign.Center,
                         ),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,

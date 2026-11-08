@@ -455,7 +455,15 @@ private fun DrawScope.strip(
                 withTransform({
                     translate(left = d0 - x0 * k)
                     scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
-                }) { drawImage(tex, dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)) }
+                }) {
+                    val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
+                    drawImage(tex, dstSize = dst)
+                    // У сторінок заломи — окремим рельєфом (у картону обкладинки вони вже у фарбі): і зворот зім'ятий.
+                    if (!heavy) {
+                        PaperTexture.shade?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+                        PaperTexture.light?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+                    }
+                }
             } else {
                 // «Скло»: зворот — темна товста плівка, крізь яку видно, що під нею; і ледь — саму сторінку зі зворотного
                 // боку (обкладинку — помітніше: фото під склом видно й ззаду).

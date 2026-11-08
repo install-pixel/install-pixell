@@ -32,6 +32,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.blacklaunch.diary.ui.HandFont
 import com.blacklaunch.diary.ui.GlassFont
 import androidx.compose.ui.graphics.Shadow
@@ -310,12 +313,23 @@ private fun Modifier.swipeAway(host: PageHost, key: String, enabled: Boolean, on
     val scope = rememberCoroutineScope()
     val dx = remember { Animatable(0f) }
     val haptics = LocalHaptics.current
+    val measurer = rememberTextMeasurer()
+    val label = stringResource(R.string.swipe_delete)
+    val glassNow = AppStyle.glass
     DisposableEffect(key) { onDispose { host.block(key, null) } }
     return this
         .onGloballyPositioned { c ->
             val book = host.bookCoords ?: return@onGloballyPositioned
             val o = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return@onGloballyPositioned
             host.block(key, Rect(o, Size(c.size.width.toFloat(), c.size.height.toFloat())))
+        }
+        // Під тим, що відсуваєш, — напис «Видалити» праворуч (як в інших програмах); проступає разом зі свайпом.
+        .drawBehind {
+            val k = (-dx.value / (size.width * 0.33f)).coerceIn(0f, 1f)
+            if (k > 0.01f) {
+                val l = measurer.measure(label, TextStyle(color = Oled.Danger, fontFamily = if (glassNow) GlassFont else HandFont, fontSize = if (glassNow) 15.sp else 19.sp, fontWeight = FontWeight.Medium))
+                drawText(l, topLeft = Offset(size.width - l.size.width - 12.dp.toPx(), (size.height - l.size.height) / 2), alpha = k)
+            }
         }
         .graphicsLayer {
             translationX = dx.value
@@ -360,7 +374,7 @@ private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modif
             .swipeAway(host, "photo_$day", editable) { host.vm.removePhoto(day) }
             .pointerInput(day) { detectTapGestures(onTap = { host.openPhoto(day) }, onLongPress = { host.openPhoto(day) }) },
     ) {
-        StyledPhoto(image, glass, Modifier.fillMaxSize(), ContentScale.Crop, caption = host.vm.day(day).caption)
+        StyledPhoto(image, glass, Modifier.fillMaxSize(), ContentScale.Crop, caption = host.vm.day(day).caption, seed = day)
     }
 }
 
@@ -483,7 +497,7 @@ fun clock(ms: Long): String {
  * притемнені краї, відблиск); «Аркуш» — біла штриховка олівцем просто на папері, краї тануть. Жодних додаткових рамок.
  */
 @Composable
-internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale, caption: String = "") {
+internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale, caption: String = "", seed: Long = 0L) {
     val shape = RoundedCornerShape(10.dp)
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         val captionSize = with(LocalDensity.current) { (maxWidth * 0.055f).toSp() }
@@ -507,13 +521,19 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                     drawRect(Brush.horizontalGradient(0f to Color(0x2EFFFFFF), 1f to Color.Transparent, startX = 0f, endX = bevel), size = Size(bevel, size.height))
                     drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x59000000), startY = size.height - bevel, endY = size.height), topLeft = Offset(0f, size.height - bevel), size = Size(size.width, bevel))
                     drawRect(Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0x4D000000), startX = size.width - bevel, endX = size.width), topLeft = Offset(size.width - bevel, 0f), size = Size(bevel, size.height))
-                    // Косий відблиск на поверхні скла.
-                    drawPath(
-                        androidx.compose.ui.graphics.Path().apply {
-                            moveTo(size.width * 0.55f, 0f); lineTo(size.width * 0.72f, 0f)
-                            lineTo(size.width * 0.42f, size.height); lineTo(size.width * 0.25f, size.height); close()
-                        },
-                        Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color(0x12FFFFFF), 1f to Color.Transparent),
+                    // Відблиск на поверхні скла: широкий, з м'якими краями (без чітких ліній) і на кожному фото свій —
+                    // кут, місце й ширина залежать від дня.
+                    val rnd = java.util.Random(seed * 7919 + 13)
+                    val ang = Math.toRadians(20.0 + rnd.nextDouble() * 50.0).toFloat()
+                    val at = 0.25f + rnd.nextFloat() * 0.5f
+                    val wide = size.width * (0.25f + rnd.nextFloat() * 0.25f)
+                    val c = Offset(size.width * at, size.height / 2)
+                    val n = Offset(kotlin.math.cos(ang), -kotlin.math.sin(ang))
+                    drawRect(
+                        Brush.linearGradient(
+                            0f to Color.Transparent, 0.35f to Color(0x08FFFFFF), 0.5f to Color(0x10FFFFFF), 0.65f to Color(0x08FFFFFF), 1f to Color.Transparent,
+                            start = c - n * wide, end = c + n * wide,
+                        ),
                     )
                 }
             }

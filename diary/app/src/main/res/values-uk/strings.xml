@@ -182,4 +182,5 @@
     <string name="cover_from_camera">Обкладинка з камери</string>
     <string name="cover_from_file">Обкладинка з файлу</string>
     <string name="camera_failed">Не вдалося відкрити камеру</string>
+    <string name="swipe_delete">Видалити</string>
 </resources>

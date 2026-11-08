@@ -550,6 +550,7 @@ fun BookScreen(
                                     locked = info.locked,
                                     titleY = info.titleY,
                                     onTitleMoved = { vm.setTitleY(info.id, it) },
+                                    onTitleTap = if (open != null) ({ dialog = BookDialog.Rename }) else null,
                                     lock = when {
                                         info.locked && open == null -> {
                                             {
@@ -780,7 +781,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
                     image?.let {
-                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit, caption = vm.day(day).caption)
+                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit, caption = vm.day(day).caption, seed = day)
                     }
                 }
                 // Унизу — закрити, поруч шестерня (замінити чи прибрати фото).

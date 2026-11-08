@@ -162,7 +162,7 @@ object PaperTexture {
     private fun reliefMap(relief: FloatArray, w: Int, h: Int, dark: Boolean): Bitmap {
         val px = IntArray(w * h) { i ->
             val v = relief[i]
-            val c = if (dark) (255f * (1f + minOf(0f, v) / 28f)).toInt().coerceIn(0, 255)
+            val c = if (dark) (255f * (1f + minOf(0f, v) / 20f)).toInt().coerceIn(0, 255)
             else (255f * (maxOf(0f, v) / 255f) * 1.15f).toInt().coerceIn(0, 255)
             (0xFF shl 24) or (c shl 16) or (c shl 8) or c
         }

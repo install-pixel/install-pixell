@@ -340,7 +340,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(io) { o.db.writeMedia(o.db.photoFile(epochDay), bytes) }
                 Photos.cache.remove("photo_${epochDay}_true")
                 Photos.cache.remove("photo_${epochDay}_false")
-                update(day(epochDay).copy(photo = true))
+                update(day(epochDay).copy(photo = true, caption = ""))
             }
             busy = false
         }
@@ -351,10 +351,12 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         val file = o.db.photoFile(epochDay)
         val keep = java.io.File(file.path + ".undo")
         file.renameTo(keep)
-        update(day(epochDay).copy(photo = false))
+        // Підпис — частина фото: зникає разом із ним (і повертається разом із ним через «Повернути»).
+        val caption = day(epochDay).caption
+        update(day(epochDay).copy(photo = false, caption = ""))
         show(R.string.photo_removed) {
             keep.renameTo(file)
-            update(day(epochDay).copy(photo = true))
+            update(day(epochDay).copy(photo = true, caption = caption))
         }
         viewModelScope.launch { delay(6000); if (!day(epochDay).photo) keep.delete() }
     }
