@@ -58,14 +58,17 @@ object Photos {
 
     fun decode(bytes: ByteArray): Bitmap? = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
 
-    /** Фото під тему: [glass] — «Скло», інакше «Аркуш» (олівцевий ескіз). */
-    fun stylize(src: Bitmap, glass: Boolean): Bitmap {
+    /**
+     * Фото під тему: [glass] — «Скло», інакше «Аркуш» (олівцевий ескіз). [onPaper] — малюнок олівцем із прозорістю, щоб
+     * лягав просто на фактуру паперу (фото дня); обкладинка зберігається у JPEG — там без прозорості.
+     */
+    fun stylize(src: Bitmap, glass: Boolean, onPaper: Boolean = false): Bitmap {
         val bmp = scaleDown(src, PROCESS_SIDE).let { if (it.config == Bitmap.Config.ARGB_8888) it else it.copy(Bitmap.Config.ARGB_8888, false) }
         val w = bmp.width
         val h = bmp.height
         val px = IntArray(w * h)
         bmp.getPixels(px, 0, w, 0, 0, w, h)
-        val out = if (glass) Stylize.glass(px, w, h) else Stylize.pencil(px, w, h)
+        val out = if (glass) Stylize.glass(px, w, h) else Stylize.pencil(px, w, h, transparent = onPaper)
         return Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
     }
 

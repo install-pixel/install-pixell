@@ -32,6 +32,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -113,7 +116,6 @@ fun DayPage(
     part: Int,
     split: Int,
     pageWidthPx: Float,
-    edgeAfter: Int,
     hours: Long,
     highlight: IntRange?,
     ink: InkSession?,
@@ -134,9 +136,19 @@ fun DayPage(
     val style = pageTextStyle(u, density, glass)
     val locale = Locale.getDefault()
 
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            // «Аркуш»: усе написане й намальоване ледь «рветься» на зерні паперу — як справжній олівець на шорсткому аркуші.
+            .drawWithContent {
+                drawContent()
+                if (!glass) PaperTexture.grain?.let {
+                    drawImage(it, dstSize = IntSize(size.width.toInt() + 1, size.height.toInt() + 1), alpha = 0.75f, blendMode = BlendMode.Multiply)
+                }
+            },
+    ) {
         Canvas(Modifier.fillMaxSize()) {
-            drawPaper(u, (day.day % 997).toInt() + part * 31, lines, edgeAfter)
+            drawPaper(u, (day.day % 997).toInt() + part * 31, lines)
             drawRibbonStrip(ribbon(), glass)
         }
 
@@ -349,31 +361,46 @@ private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modif
             .swipeAway(host, "photo_$day", editable) { host.vm.removePhoto(day) }
             .pointerInput(day) { detectTapGestures(onTap = { host.openPhoto(day) }, onLongPress = { host.openPhoto(day) }) },
     ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .clip(shape)
-                .background(Color.Black),
-        ) {
-            image?.let {
-                androidx.compose.foundation.Image(it, contentDescription = stringResource(R.string.photo_of_day), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-            }
+        if (glass) {
+            // «Скло»: фото лежить під товстою скляною пластиною — тінь під пластиною, фаска по краях (світла вгорі
+            // ліворуч, темна внизу праворуч), притемнені «заломлені» краї й косий відблиск.
             Canvas(Modifier.fillMaxSize()) {
-                if (glass) {
-                    drawRect(Brush.verticalGradient(0f to Color(0x1FFFFFFF), 0.45f to Color.Transparent))
+                val r = 10.dp.toPx()
+                drawRoundRect(Color(0x80000000), topLeft = Offset(2.dp.toPx(), 3.dp.toPx()), size = size, cornerRadius = CornerRadius(r))
+            }
+            Box(Modifier.fillMaxSize().clip(shape).background(Color.Black)) {
+                image?.let {
+                    androidx.compose.foundation.Image(it, contentDescription = stringResource(R.string.photo_of_day), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
+                Canvas(Modifier.fillMaxSize()) {
+                    val bevel = 7.dp.toPx()
+                    // Товща скла: краї темніші, ніби світло заломлюється.
+                    drawRect(Brush.radialGradient(0.55f to Color.Transparent, 1f to Color(0x66000000), center = center, radius = size.maxDimension * 0.62f))
+                    // Фаска: світла вгорі й ліворуч, темна внизу й праворуч.
+                    drawRect(Brush.verticalGradient(0f to Color(0x40FFFFFF), 1f to Color.Transparent, startY = 0f, endY = bevel), size = Size(size.width, bevel))
+                    drawRect(Brush.horizontalGradient(0f to Color(0x2EFFFFFF), 1f to Color.Transparent, startX = 0f, endX = bevel), size = Size(bevel, size.height))
+                    drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x59000000), startY = size.height - bevel, endY = size.height), topLeft = Offset(0f, size.height - bevel), size = Size(size.width, bevel))
+                    drawRect(Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0x4D000000), startX = size.width - bevel, endX = size.width), topLeft = Offset(size.width - bevel, 0f), size = Size(bevel, size.height))
+                    // Косий відблиск на поверхні скла.
+                    drawPath(
+                        androidx.compose.ui.graphics.Path().apply {
+                            moveTo(size.width * 0.55f, 0f); lineTo(size.width * 0.72f, 0f)
+                            lineTo(size.width * 0.42f, size.height); lineTo(size.width * 0.25f, size.height); close()
+                        },
+                        Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color(0x12FFFFFF), 1f to Color.Transparent),
+                    )
                 }
             }
-        }
-        Canvas(Modifier.fillMaxSize()) {
-            val r = 10.dp.toPx()
-            if (glass) {
-                drawRoundRect(Oled.Glint, cornerRadius = CornerRadius(r), style = Stroke(1.dp.toPx()))
-            } else {
-                drawPath(taperedPath(pencilLoop(size, r, (day % 97).toInt(), 1.2.dp.toPx()), 2.dp.toPx()), SheetInk.copy(alpha = 0.8f))
-                // «Скотч» на кутах — дві риски олівцем навскіс.
-                val t = 14.dp.toPx()
-                pencilTick(Offset(-t * 0.4f, t * 0.7f), Offset(t * 0.9f, -t * 0.3f), 5.dp.toPx(), SheetInk.copy(alpha = 0.25f), 3)
-                pencilTick(Offset(size.width - t * 0.9f, -t * 0.3f), Offset(size.width + t * 0.4f, t * 0.7f), 5.dp.toPx(), SheetInk.copy(alpha = 0.25f), 5)
+            Canvas(Modifier.fillMaxSize()) {
+                val r = 10.dp.toPx()
+                val w = 1.dp.toPx()
+                drawRoundRect(Color(0x55FFFFFF), topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w), cornerRadius = CornerRadius(r - w / 2), style = Stroke(w))
+            }
+        } else {
+            // «Аркуш»: фото намальоване білим олівцем просто на цьому аркуші — без рамки й без чорного тла, краї тануть
+            // у папір (прозорість — у самому малюнку, [com.blacklaunch.diary.image.Stylize.pencil]).
+            image?.let {
+                androidx.compose.foundation.Image(it, contentDescription = stringResource(R.string.photo_of_day), contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(shape))
             }
         }
     }

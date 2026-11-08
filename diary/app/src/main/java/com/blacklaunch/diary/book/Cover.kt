@@ -118,7 +118,7 @@ fun CoverFace(
 }
 
 private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolean, locked: Boolean) {
-    val r = 14.dp.toPx()
+    val r = BookCorner.toPx()
     val cr = CornerRadius(r)
     val inset = if (glass) 10.dp.toPx() else 14.dp.toPx()
     val inner = Size(size.width - 2 * inset, size.height - 2 * inset)
@@ -129,7 +129,12 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
     if (glass) {
         drawRoundRect(Brush.verticalGradient(0f to Color(0xFF1A1A1A), 0.5f to Color(0xFF0B0B0B), 1f to Color(0xFF060606)), cornerRadius = cr)
     } else {
-        drawRoundRect(Color(0xFF040404), cornerRadius = cr)
+        // Щільний чорний картон / шкіра — та сама фактура, що й у паперу, тільки темніша й з порами.
+        PaperTexture.ensure()
+        clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, cr)) }) {
+            val tex = PaperTexture.cover
+            if (tex != null) drawImage(tex, dstSize = IntSize(size.width.toInt() + 1, size.height.toInt() + 1)) else drawRect(PaperTexture.COVER_BASE)
+        }
     }
     // Фото під склом / у рамці олівцем.
     if (photo != null) {
@@ -159,22 +164,16 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
                 Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color(0x0FFFFFFF), 1f to Color.Transparent),
             )
         }
-        drawRoundRect(Oled.Glint, cornerRadius = cr, style = Stroke(1.2.dp.toPx()))
         drawPath(innerPath, Brush.verticalGradient(0f to Color(0x40FFFFFF), 0.3f to Color(0x10FFFFFF), 1f to Color(0x20FFFFFF)), style = Stroke(1.dp.toPx()))
         // Корінець зліва — темна смуга з гранню.
         drawRect(Brush.horizontalGradient(0f to Color(0x99000000), 1f to Color.Transparent, startX = 0f, endX = 18.dp.toPx()))
     } else {
-        // Обведення олівцем — у межах обкладинки: хвостик штриха на куті не виступає назовні.
-        val bleed = 0.6.dp.toPx()
-        clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(-bleed, -bleed, size.width + bleed, size.height + bleed, CornerRadius(r + bleed))) }) {
-            drawPath(taperedPath(pencilLoop(size, r, 311, 1.6.dp.toPx()), 2.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-            drawPath(taperedPath(pencilLoop(size, r, 412, 2.dp.toPx()), 1.2.dp.toPx()), SheetInk.copy(alpha = 0.3f))
-        }
-        drawPath(innerPath, SheetInk.copy(alpha = 0f))
         val loop = pencilLoop(inner, r * 0.7f, 313, 1.4.dp.toPx()).map { it + Offset(inset, inset) }
         drawPath(taperedPath(loop, 1.6.dp.toPx()), SheetInk.copy(alpha = 0.55f))
         drawCorners(inset)
     }
+    // Зовнішній контур — та сама рамка, що й у сторінок (одна на всю книжку).
+    drawBookFrame(glass)
 }
 
 /** «Аркуш»: резинка-застібка праворуч — суцільна смуга (під нею нічого не просвічує), обведена двома лініями. */

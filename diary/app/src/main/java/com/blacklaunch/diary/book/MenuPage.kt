@@ -30,7 +30,7 @@ fun PaperPage(title: String, subtitle: String?, seed: Int, modifier: Modifier = 
         val u = constraints.maxWidth / PageMetrics.WIDTH
         val style = pageTextStyle(u.coerceAtLeast(0.01f), density, glass)
         val headerSize = (if (glass) 5f else 6.2f) * u / (density.density * density.fontScale)
-        Canvas(Modifier.fillMaxSize()) { drawPaper(u, seed, emptyList(), 0) }
+        Canvas(Modifier.fillMaxSize()) { drawPaper(u, seed, emptyList()) }
         Column(
             Modifier
                 .fillMaxSize()

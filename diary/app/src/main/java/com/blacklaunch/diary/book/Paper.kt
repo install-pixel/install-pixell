@@ -9,47 +9,86 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.dp
 import com.blacklaunch.diary.ui.AppStyle
 import com.blacklaunch.diary.ui.SheetInk
-import com.blacklaunch.diary.ui.pencilLoop
 import com.blacklaunch.diary.ui.quadPoints
 import com.blacklaunch.diary.ui.taperedPath
-import com.blacklaunch.diary.ui.theme.Oled
 import kotlin.math.sin
+
+/** Одна форма для всієї книжки — обкладинки, сторінок, гортання: кути однакові, нічому виступати. */
+val BookCorner = 12.dp
+
+/** Одна рамка для всієї книжки: тонка, стала (не підсвічується й не змінюється), лежить ВСЕРЕДИНІ форми. */
+private val FrameWidth = 1.dp
+private val GlassFrame = Color(0x3DFFFFFF)
+private val SheetFrame = SheetInk.copy(alpha = 0.42f)
+
+/**
+ * Рамка книжки — однакова в обкладинки й сторінок. Лінія лежить усередині форми (а не по центру краю), тож обрізання
+ * по краю не робить її тоншою, а за край вона не виходить.
+ */
+fun DrawScope.drawBookFrame(glass: Boolean) {
+    val w = FrameWidth.toPx()
+    drawRoundRect(
+        if (glass) GlassFrame else SheetFrame,
+        topLeft = Offset(w / 2, w / 2),
+        size = Size(size.width - w, size.height - w),
+        cornerRadius = CornerRadius(BookCorner.toPx() - w / 2),
+        style = Stroke(w),
+    )
+}
 
 /**
  * Папір сторінки.
- *  - «Скло»: пластина чорного димчастого скла — градієнт, відблиск угорі, яскравий кант, лінії ніби вигравірувані.
- *  - «Аркуш»: чорний папір, край обведено олівцем, лінії — ледь помітні штрихи олівця.
- * [unit] — px в одній одиниці сторінки ([PageMetrics]).
+ *  - «Скло»: товста темна плівка — ледь світліша за тло, з великими м'якими переливами й товщею біля краю.
+ *  - «Аркуш»: старий чорний папір ([PaperTexture]) — фактура, заломи, витерті краї; лінії — штрихи олівця.
+ * Рамка — одна на всю книжку ([drawBookFrame]). [unit] — px в одній одиниці сторінки ([PageMetrics]).
  */
-fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeAfter: Int) {
-    val r = 2.2f * unit
-    drawPageEdges(unit, edgeAfter)
-    // Рамка сторінки — тонка й тьмяна (як видно сторінку з-під обкладинки), і не виходить за саму сторінку: хвостик
-    // олівцевого обведення на куті обрізано.
-    val bleed = 0.5f * density
+fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>) {
+    val r = BookCorner.toPx()
+    val shape = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, CornerRadius(r))) }
     if (AppStyle.glass) {
-        drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r))
-        val sheenH = (size.height * 0.35f)
-        drawRoundRect(
-            Brush.verticalGradient(0f to Color(0x12FFFFFF), 1f to Color.Transparent, startY = 0f, endY = sheenH),
-            cornerRadius = CornerRadius(r),
-        )
-        drawRoundRect(Oled.Glint, cornerRadius = CornerRadius(r), alpha = 0.5f, style = Stroke(1f * density))
-        // Корінець: м'яка тінь зліва, ніби аркуш виходить із палітурки.
-        drawRect(Brush.horizontalGradient(0f to Color(0x55000000), 1f to Color.Transparent, startX = 0f, endX = 5f * unit))
+        drawRoundRect(Color(0xFF111215), cornerRadius = CornerRadius(r))
+        clipPath(shape) {
+            // Переливи в товщі плівки — великі, ледь помітні.
+            listOf(Triple(0.25f, 0.2f, 0.8f), Triple(0.8f, 0.55f, 0.7f), Triple(0.35f, 0.85f, 0.6f)).forEach { (cx, cy, rr) ->
+                drawCircle(
+                    Brush.radialGradient(listOf(Color(0x0BFFFFFF), Color.Transparent), center = Offset(size.width * cx, size.height * cy), radius = size.width * rr),
+                    radius = size.width * rr,
+                    center = Offset(size.width * cx, size.height * cy),
+                )
+            }
+            // Відблиск угорі.
+            drawRect(Brush.verticalGradient(0f to Color(0x10FFFFFF), 1f to Color.Transparent, startY = 0f, endY = size.height * 0.35f))
+            // Товща біля краю: широкий м'який кант (сталий — не підсвічується).
+            val band = 6.dp.toPx()
+            drawRoundRect(
+                Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color(0x06FFFFFF)),
+                topLeft = Offset(band / 2, band / 2),
+                size = Size(size.width - band, size.height - band),
+                cornerRadius = CornerRadius(r - band / 2),
+                style = Stroke(band),
+            )
+            // Корінець: м'яка тінь зліва, ніби аркуш виходить із палітурки.
+            drawRect(Brush.horizontalGradient(0f to Color(0x55000000), 1f to Color.Transparent, startX = 0f, endX = 5f * unit))
+        }
         lines.forEach { y ->
             drawLine(Color(0x1CFFFFFF), Offset(PageMetrics.MARGIN_LEFT * unit * 0.7f, y), Offset(size.width - PageMetrics.MARGIN_RIGHT * unit * 0.7f, y), 0.8f * density)
             drawLine(Color(0x0AFFFFFF), Offset(PageMetrics.MARGIN_LEFT * unit * 0.7f, y + 1.2f * density), Offset(size.width - PageMetrics.MARGIN_RIGHT * unit * 0.7f, y + 1.2f * density), 0.8f * density)
         }
     } else {
-        drawRoundRect(Color(0xFF030303), cornerRadius = CornerRadius(r))
-        clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(-bleed, -bleed, size.width + bleed, size.height + bleed, CornerRadius(r + bleed))) }) {
-            drawPath(taperedPath(pencilLoop(size, r, seed, 1.4f * density), 1f * density), SheetInk.copy(alpha = 0.4f))
-            drawPath(taperedPath(pencilLoop(size, r, seed + 77, 1.8f * density), 0.8f * density), SheetInk.copy(alpha = 0.12f))
+        PaperTexture.ensure()
+        clipPath(shape) {
+            val tex = PaperTexture.page
+            if (tex != null) {
+                drawImage(tex, dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1))
+            } else {
+                drawRect(PaperTexture.PAGE_BASE)
+            }
+            // Корінець — тінь палітурки й подвійна лінія олівцем.
+            drawRect(Brush.horizontalGradient(0f to Color(0x66000000), 1f to Color.Transparent, startX = 0f, endX = 5f * unit))
         }
-        // Корінець — подвійна лінія олівцем.
         drawPath(taperedPath(quadPoints(Offset(3.2f * unit, 2f * unit), Offset(3.6f * unit, size.height / 2), Offset(3.1f * unit, size.height - 2f * unit), 40), 1.2f * density), SheetInk.copy(alpha = 0.25f))
         lines.forEachIndexed { i, y ->
             val a = PageMetrics.MARGIN_LEFT * unit * 0.7f
@@ -61,37 +100,10 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeAfter: I
                 Offset(b, y + sin(seed + i * 0.9f) * wob),
                 32,
             )
-            drawPath(taperedPath(pts, 1.1f * density), SheetInk.copy(alpha = 0.13f))
+            drawPath(taperedPath(pts, 1.1f * density), SheetInk.copy(alpha = 0.16f))
         }
     }
-}
-
-/** Відстань між рисками торців (в одиницях сторінки). */
-const val PAGE_EDGE_STEP = 0.55f
-
-/**
- * Товщина книжки: праворуч видно стос сторінок, що попереду. Що більше записів, то товща книжка. Зліва рисок немає —
- * там корінець, і перегорнутий аркуш лягає рівно на край.
- */
-fun DrawScope.drawPageEdges(unit: Float, after: Int) {
-    val glass = AppStyle.glass
-    val step = PAGE_EDGE_STEP * unit
-    val color = if (glass) Color(0x33FFFFFF) else SheetInk.copy(alpha = 0.25f)
-    for (i in 1..after.coerceAtMost(6)) {
-        val x = size.width + i * step
-        drawLine(color.copy(alpha = color.alpha * (1f - i / 8f)), Offset(x, 1.5f * unit + i * step * 0.5f), Offset(x, size.height - 1.5f * unit - i * step * 0.3f), 0.8f * density)
-    }
-}
-
-/** Скільки «рисок» товщини показати для N сторінок. */
-fun edgeCount(pages: Int): Int = when {
-    pages <= 0 -> 0
-    pages < 4 -> 1
-    pages < 12 -> 2
-    pages < 30 -> 3
-    pages < 80 -> 4
-    pages < 200 -> 5
-    else -> 6
+    drawBookFrame(AppStyle.glass)
 }
 
 /** Розмір сторінки, що вміщається в [avail] зі сталими пропорціями. */

@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.sin
 
 /** Простір під сторінкою — там з книжки звисає кінчик стрічки. */
-val RibbonBottom = 34.dp
+val RibbonBottom = 30.dp
 
 /** Де лежить стрічка (частка ширини сторінки): ліве поле, де не пишеться текст. */
 private const val RIBBON_X = 0.042f

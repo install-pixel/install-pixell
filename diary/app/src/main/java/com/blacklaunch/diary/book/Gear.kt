@@ -31,7 +31,7 @@ import com.blacklaunch.diary.ui.theme.Oled
 import kotlinx.coroutines.delay
 
 /** Місце під шестерню внизу екрана — однакове в щоденнику й на полиці. */
-val GearRow = 56.dp
+val GearRow = 48.dp
 
 /** Шестерня не висить постійно: з'являється на кілька секунд після будь-якого дотику до екрана. */
 @Stable

@@ -548,8 +548,6 @@ fun BookScreen(
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
                                 val split = splitFor(d.text, d.photo, d.audio || recording?.day == p.day)
-                                // Сторінка меню — не сторінка щоденника: торці книжки від неї не товщають.
-                                val after = pages.size - 1 - i - (if (menuOpen) 1 else 0)
                                 val years = if (p.day == today) {
                                     val t = LocalDate.ofEpochDay(today)
                                     dayList.lastOrNull { it < today && LocalDate.ofEpochDay(it).let { x -> x.monthValue == t.monthValue && x.dayOfMonth == t.dayOfMonth } }
@@ -560,7 +558,6 @@ fun BookScreen(
                                     part = p.part,
                                     split = split.split,
                                     pageWidthPx = size.width,
-                                    edgeAfter = edgeCount(after),
                                     hours = hours,
                                     highlight = highlight?.takeIf { it.first == p.day }?.second,
                                     ink = ink,

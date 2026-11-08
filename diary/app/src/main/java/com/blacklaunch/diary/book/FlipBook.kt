@@ -285,9 +285,8 @@ fun FlipBook(
             key(state.index) { Box(Modifier.fillMaxSize()) { page(state.index) } }
         } else {
             // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
-            // Під обкладинкою — блок сторінок у формі самої обкладинки: їхні кути й риски торців не визирають з-під неї.
-            val underShape = if (isHeavy(top)) Modifier.clip(RoundedCornerShape(14.dp)) else Modifier
-            key(under) { Box(Modifier.fillMaxSize().then(underShape)) { page(under) } }
+            // Сторінка під низом — у тій самій формі книжки ([BookCorner]): нічого не визирає з-під верхньої.
+            key(under) { Box(Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner))) { page(under) } }
             key(top) {
                 Box(
                     Modifier
@@ -314,7 +313,7 @@ fun FlipBook(
 private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean) {
     // Усе — лише в межах книжки (із заокругленими кутами): аркуш пришитий до корінця й за книжку не виходить. Біля
     // корінця аркуш лягає ПОВЕРХ рамки сторінки під ним (на півтовщини лінії лівіше), а не під неї.
-    val corner = if (heavy) 14.dp.toPx() else size.width * 0.022f
+    val corner = BookCorner.toPx()
     val left = -1.5.dp.toPx()
     val bounds = Path().apply { addRoundRect(RoundRect(left, 0f, size.width, size.height, CornerRadius(corner))) }
     clipPath(bounds) { curlContent(g, layer, heavy, corner) }
@@ -345,7 +344,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
     }
 
     // 3) Лице на валику: від осі до вершини (θ 0…π/2), смужками.
-    val steps = 18
+    val steps = 40
     val frontFrom = a.coerceAtLeast(0f)
     for (i in 0 until steps) {
         val t0 = Math.PI.toFloat() / 2f * i / steps

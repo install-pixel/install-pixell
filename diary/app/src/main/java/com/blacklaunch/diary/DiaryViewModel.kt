@@ -359,7 +359,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         val key = "photo_${epochDay}_$glass"
         Photos.cache.get(key)?.let { return it.asImageBitmap() }
         val bmp: Bitmap = withContext(io) { o.db.readMedia(o.db.photoFile(epochDay)) }
-            ?.let { bytes -> withContext(Dispatchers.Default) { Photos.decode(bytes)?.let { Photos.stylize(it, glass) } } }
+            ?.let { bytes -> withContext(Dispatchers.Default) { Photos.decode(bytes)?.let { Photos.stylize(it, glass, onPaper = true) } } }
             ?: return null
         Photos.cache.put(key, bmp)
         return bmp.asImageBitmap()

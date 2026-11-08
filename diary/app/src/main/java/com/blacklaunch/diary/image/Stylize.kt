@@ -1,5 +1,6 @@
 package com.blacklaunch.diary.image
 
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -46,48 +47,63 @@ object Stylize {
     }
 
     /**
-     * «Аркуш»: малюнок білим олівцем на чорному папері. Білим олівцем малюють **світло**, тож яскравість іде за світлом
-     * самого фото (обличчя світле — і на малюнку світле, очі й тіні — чорний папір): схожість зберігається, бо це
-     * обробка фотографії, а не перемальовування. Поверх тону:
-     *  - обриси — тонкі світлі лінії там, де на фото межа (прийом «освітлення основи» сірого фото з розмитим негативом);
-     *  - текстура олівця — косі штрихи (шум, розтягнутий уздовж діагоналі), тож тон виглядає заштрихованим, а не
-     *    гладким фото;
-     *  - зерно паперу.
+     * «Аркуш»: малюнок білим олівцем на чорному папері. Білим олівцем малюють **світло**: світле на фото — густа біла
+     * штриховка, темне — чистий папір. Без інверсії й без світних ореолів довкола країв (це й давало «рентген»):
+     *  - тон — м'яка підкладка за світлом фото (обличчя впізнавані);
+     *  - штриховка — косі лінії олівця, що товщають у світлому, а в найсвітлішому — ще й перехресні; лінії ледь хвилясті,
+     *    як від руки;
+     *  - обриси — тонкі лінії лише там, де на фото справжня межа;
+     *  - краї малюнка тануть у папір.
+     * [transparent] — білий олівець із прозорістю (лягає просто на фактуру паперу); інакше — сірий на чорному.
      */
-    fun pencil(src: IntArray, w: Int, h: Int, seed: Int = 7): IntArray {
+    fun pencil(src: IntArray, w: Int, h: Int, seed: Int = 7, transparent: Boolean = false): IntArray {
         val lum = luminance(src)
         autoLevels(lum)
         val n = w * h
-        // Обриси: класичний ескіз (1 — папір, менше — лінія), звідси сила лінії.
-        val inv = FloatArray(n) { 1f - lum[it] }
-        val radius = max(1, min(w, h) / 200)
-        val blurred = boxBlur(inv, w, h, radius, passes = 3)
-        // Штрихи олівця: випадковий шум, розмазаний уздовж діагоналі.
-        var rnd = seed * 1103515245 + 12345
-        val noise = FloatArray(n) {
-            rnd = rnd * 1103515245 + 12345
-            ((rnd ushr 16) and 0xFF) / 255f
+        val soft = boxBlur(lum, w, h, max(1, min(w, h) / 320), passes = 2)
+        // Обриси: перепад яскравості (Собель) на трохи розмитому фото — лише справжні межі, без ореолів.
+        val edge = FloatArray(n)
+        for (y in 1 until h - 1) for (x in 1 until w - 1) {
+            val i = y * w + x
+            val gx = soft[i - w + 1] + 2 * soft[i + 1] + soft[i + w + 1] - soft[i - w - 1] - 2 * soft[i - 1] - soft[i + w - 1]
+            val gy = soft[i + w - 1] + 2 * soft[i + w] + soft[i + w + 1] - soft[i - w - 1] - 2 * soft[i - w] - soft[i - w + 1]
+            edge[i] = sqrt(gx * gx + gy * gy)
         }
-        val len = max(3, min(w, h) / 110)
-        val streak = diagonalBlur(noise, w, h, len)
+        // Хвилястість штрихів: плавний шум.
+        var rnd = seed * 1103515245 + 12345
+        fun next(): Float { rnd = rnd * 1103515245 + 12345; return ((rnd ushr 16) and 0xFF) / 255f }
+        val wobble = boxBlur(FloatArray(n) { next() }, w, h, max(2, min(w, h) / 40), passes = 2)
+        val spacing = max(3f, min(w, h) / 85f)
+        val fade = min(w, h) * 0.07f
         val out = IntArray(n)
-        for (i in 0 until n) {
-            val l = lum[i]
-            val b = blurred[i]
-            val dodge = if (b >= 0.999f) 1f else min(1f, l / (1f - b))
-            val line = ((1f - dodge) * 1.3f).coerceIn(0f, 1f)
-            // Тон за світлом фото, трохи стиснутий (малюнок, а не фото): темне — чорний папір.
-            val t = smoothRange(0.18f, 0.95f, l).pow(1.15f)
-            // Штрихи: світла частина тону «заштрихована» — то густіше, то рідше.
-            val s = ((streak[i] - 0.5f) * 3.2f + 0.5f).coerceIn(0f, 1f)
-            val tone = t * (0.68f + 0.32f * s)
-            // Змішування «екраном»: лінії й тон складаються, як шари олівця.
-            var v = 1f - (1f - line * 0.55f) * (1f - tone * 0.95f)
-            rnd = rnd * 1103515245 + 12345
-            v += (((rnd ushr 16) and 0xFF) / 255f - 0.5f) * 0.035f
-            out[i] = gray((v * MAX_LIGHT * 1.08f).coerceIn(0f, MAX_LIGHT + 0.06f))
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            val t = smoothRange(0.12f, 0.92f, soft[i]).pow(1.1f)
+            val wob = (wobble[i] - 0.5f) * 6f * spacing
+            fun hatch(u: Float, level: Float): Float {
+                val f = u / spacing
+                val d = abs(f - kotlin.math.floor(f) - 0.5f) * 2f // 0 — посередині лінії, 1 — між лініями
+                return smoothRange(d - 0.2f, d + 0.2f, level)
+            }
+            val h1 = hatch(x + y + wob, t * 1.05f)
+            val h2 = hatch(x - y + wob * 0.7f, (t - 0.55f) * 2f)
+            val line = max(h1, h2 * 0.8f)
+            val e = ((edge[i] - 0.1f) * 3.2f).coerceIn(0f, 1f) * 0.55f
+            var v = 1f - (1f - t * 0.32f) * (1f - line * 0.78f) * (1f - e)
+            // Краї малюнка тануть у папір.
+            val dEdge = min(min(x, w - 1 - x), min(y, h - 1 - y)).toFloat()
+            v *= smooth((dEdge / fade).coerceIn(0f, 1f))
+            v *= 0.9f + 0.1f * next()
+            val value = (v * MAX_LIGHT * 1.08f).coerceIn(0f, MAX_LIGHT + 0.06f)
+            out[i] = if (transparent) ink(value / (MAX_LIGHT + 0.06f)) else gray(value)
         }
         return out
+    }
+
+    /** Білий олівець (трохи теплий, як [com.blacklaunch.diary.ui.SheetInk]) із прозорістю [a]. */
+    private fun ink(a: Float): Int {
+        val al = (a.coerceIn(0f, 1f) * 255f + 0.5f).toInt()
+        return (al shl 24) or (0xEC shl 16) or (0xE8 shl 8) or 0xE0
     }
 
     /** Розмити вздовж діагоналі (зліва знизу — вправо вгору): з шуму виходять косі штрихи олівця. */
