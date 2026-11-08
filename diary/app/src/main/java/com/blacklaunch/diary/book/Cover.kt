@@ -78,7 +78,8 @@ fun CoverFace(
                     .widthIn(max = 320.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xD9000000))
+                    // «Аркуш» — непрозора табличка (як наклеєна на обкладинку); «Скло» — темне скло, крізь яке ледь видно фото.
+                    .background(if (glass) Color(0xD9000000) else Color.Black)
                     .pencilFrame(16.dp, seed = 401)
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 contentAlignment = Alignment.Center,
@@ -111,6 +112,8 @@ fun CoverFace(
             }
             Box(Modifier.weight(0.4f))
         }
+        // Резинка — поверх усього (і таблички з назвою), як справжня резинка поверх обкладинки.
+        if (!glass) Canvas(Modifier.fillMaxSize()) { drawBand(locked) }
     }
 }
 
@@ -167,18 +170,21 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
         val loop = pencilLoop(inner, r * 0.7f, 313, 1.4.dp.toPx()).map { it + Offset(inset, inset) }
         drawPath(taperedPath(loop, 1.6.dp.toPx()), SheetInk.copy(alpha = 0.55f))
         drawCorners(inset)
-        // Резинка-застібка праворуч: суцільна смуга (рамка обкладинки під нею не просвічує), обведена двома лініями.
-        val x = size.width * 0.86f
-        drawPath(
-            Path().apply {
-                moveTo(x, -2f); quadraticTo(x + 2.dp.toPx(), size.height / 2, x - 1.dp.toPx(), size.height + 2f)
-                lineTo(x + 8.dp.toPx(), size.height + 2f); quadraticTo(x + 11.dp.toPx(), size.height / 2, x + 9.dp.toPx(), -2f); close()
-            },
-            Color(0xFF080808),
-        )
-        for (dx in listOf(0f, 9.dp.toPx())) {
-            drawPath(taperedPath(quadPoints(Offset(x + dx, -2f), Offset(x + dx + 2.dp.toPx(), size.height / 2), Offset(x + dx - 1.dp.toPx(), size.height + 2f), 40), 2.dp.toPx()), SheetInk.copy(alpha = if (locked) 0.8f else 0.5f))
-        }
+    }
+}
+
+/** «Аркуш»: резинка-застібка праворуч — суцільна смуга (під нею нічого не просвічує), обведена двома лініями. */
+private fun DrawScope.drawBand(locked: Boolean) {
+    val x = size.width * 0.86f
+    drawPath(
+        Path().apply {
+            moveTo(x, -2f); quadraticTo(x + 2.dp.toPx(), size.height / 2, x - 1.dp.toPx(), size.height + 2f)
+            lineTo(x + 8.dp.toPx(), size.height + 2f); quadraticTo(x + 11.dp.toPx(), size.height / 2, x + 9.dp.toPx(), -2f); close()
+        },
+        Color(0xFF080808),
+    )
+    for (dx in listOf(0f, 9.dp.toPx())) {
+        drawPath(taperedPath(quadPoints(Offset(x + dx, -2f), Offset(x + dx + 2.dp.toPx(), size.height / 2), Offset(x + dx - 1.dp.toPx(), size.height + 2f), 40), 2.dp.toPx()), SheetInk.copy(alpha = if (locked) 0.8f else 0.5f))
     }
 }
 
