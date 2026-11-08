@@ -17,6 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -147,10 +151,14 @@ fun PageText(
         val l = layout ?: return
         val c = coords ?: return
         val book = bookCoords() ?: return
-        val r = l.getCursorRect(value.selection.end.coerceIn(0, value.text.length))
+        // Розкладка могла ще не встигнути за текстом (швидке письмо) — курсор лише в її межах, інакше падіння.
+        val r = l.getCursorRect(value.selection.end.coerceIn(0, minOf(value.text.length, l.layoutInput.text.length)))
         val origin = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return
         onCursor(r.translate(origin))
     }
+
+    // Курсор перемістився без зміни тексту (дотик в інше місце, стрілки) — книжка теж має знати, куди піднятися.
+    LaunchedEffect(value.selection, focused) { if (focused) reportCursor() }
 
     LaunchedEffect(focusCursor) {
         if (focusCursor != null) {
@@ -200,8 +208,12 @@ fun PageText(
             visualTransformation = dry,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             onTextLayout = { layout = it; if (focused) reportCursor() },
+            // Висота — за текстом, а не рівно N рядків: шрифт заокруглюється до пікселів, і текст бував на 1–2 px вищим
+            // за поле — тоді поле прокручувало себе, і текст «плив» відносно ліній. Поле, вище за текст, не прокручується.
             modifier = Modifier
-                .size(wDp, hDp)
+                .width(wDp)
+                .wrapContentHeight(Alignment.Top, unbounded = true)
+                .heightIn(min = hDp)
                 .focusRequester(focus)
                 .onFocusChanged { f ->
                     if (f.isFocused != focused) {

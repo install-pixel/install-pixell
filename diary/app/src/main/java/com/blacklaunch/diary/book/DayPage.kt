@@ -146,6 +146,8 @@ fun DayPage(
     Box(
         Modifier
             .fillMaxSize()
+            // Усе на сторінці — в її межах: фото, що відсуваєш свайпом, за край книжки не виходить, а зникає за ним.
+            .clip(RoundedCornerShape(BookCorner))
             // «Аркуш»: усе написане й намальоване лежить на папері — темніє й світлішає разом із заломами, бере зерно.
             .paperRelief(glass),
     ) {
@@ -316,12 +318,14 @@ private fun Modifier.swipeAway(host: PageHost, key: String, enabled: Boolean, on
     val measurer = rememberTextMeasurer()
     val label = stringResource(R.string.swipe_delete)
     val glassNow = AppStyle.glass
+    var pageLeft by remember { mutableFloatStateOf(0f) }
     DisposableEffect(key) { onDispose { host.block(key, null) } }
     return this
         .onGloballyPositioned { c ->
             val book = host.bookCoords ?: return@onGloballyPositioned
             val o = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return@onGloballyPositioned
             host.block(key, Rect(o, Size(c.size.width.toFloat(), c.size.height.toFloat())))
+            pageLeft = o.x
         }
         // Під тим, що відсуваєш, — напис «Видалити» праворуч (як в інших програмах); проступає разом зі свайпом.
         .drawBehind {
@@ -334,6 +338,19 @@ private fun Modifier.swipeAway(host: PageHost, key: String, enabled: Boolean, on
         .graphicsLayer {
             translationX = dx.value
             alpha = 1f - (kotlin.math.abs(dx.value) / (size.width.coerceAtLeast(1f))).coerceIn(0f, 0.8f)
+            compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        }
+        // Біля краю сторінки те, що відсуваєш, м'яко тане — ніби йде під край книжки, а не обрізається.
+        .drawWithContent {
+            drawContent()
+            if (dx.value < -0.5f) {
+                val edge = -pageLeft - dx.value
+                val fade = 18.dp.toPx()
+                drawRect(
+                    Brush.horizontalGradient(0f to Color.Transparent, 1f to Color.Black, startX = edge, endX = edge + fade),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
         }
         .then(
             if (!enabled) Modifier else Modifier.pointerInput(key) {
