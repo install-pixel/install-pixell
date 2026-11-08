@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,7 +27,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -46,16 +46,52 @@ val RibbonBottom = 34.dp
 private const val RIBBON_X = 0.042f
 private val RibbonWidth = 12.dp
 
+/** Рух стрічки — спільний для кінчика (під книжкою) і самої стрічки (на сторінці). */
+@Stable
+class RibbonMotion(here: Boolean) {
+    /** Яка частка сторінки вкрита стрічкою: 0 — лише кінчик знизу, 1 — лежить на всю висоту. */
+    internal val laid = Animatable(if (here) 1f else 0f)
+    /** Наскільки витягли кінчик униз. */
+    internal val pull = Animatable(0f)
+    internal val sway = Animatable(0f)
+}
+
 /**
- * Закладка — тканинна стрічка, пришита до корінця, як у справжньому щоденнику.
- *  - Кінчик завжди звисає з-під нижнього краю книжки (з-поміж сторінок) ліворуч — за нього й беруть, тож стрічка не
- *    заважає тексту й клавіатурі.
- *  - Смикнув кінчик униз — стрічка лягла на цю сторінку (видно її від верхнього краю до низу, у лівому полі).
+ * Кінчик закладки, що звисає з-під книжки ліворуч. Малюється ПІД книжкою: він виходить з-поміж сторінок і не
+ * перетинає контур щоденника.
+ */
+@Composable
+fun RibbonTail(motion: RibbonMotion, pageW: Dp, pageH: Dp) {
+    val glass = AppStyle.glass
+    Canvas(Modifier.size(pageW, pageH + RibbonBottom)) {
+        val x = size.width * RIBBON_X
+        val w = RibbonWidth.toPx()
+        val tailTop = pageH.toPx() - 12.dp.toPx()
+        val tailEnd = pageH.toPx() + 24.dp.toPx() + motion.pull.value
+        val notch = w * 0.55f
+        rotate(motion.sway.value, pivot = Offset(x, pageH.toPx())) {
+            val p = Path().apply {
+                moveTo(x - w / 2, tailTop); lineTo(x + w / 2, tailTop); lineTo(x + w / 2, tailEnd)
+                lineTo(x, tailEnd - notch); lineTo(x - w / 2, tailEnd); close()
+            }
+            ribbonBody(p, x, w, tailTop, tailEnd - notch, glass)
+            if (!glass) {
+                drawPath(taperedPath(listOf(Offset(x - w / 2, tailEnd), Offset(x, tailEnd - notch), Offset(x + w / 2, tailEnd)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+            }
+        }
+    }
+}
+
+/**
+ * Закладка — тканинна стрічка, пришита до корінця, як у справжньому щоденнику (кінчик — [RibbonTail], під книжкою).
+ *  - Береться лише за кінчик під книжкою, тож стрічка не заважає тексту й клавіатурі.
+ *  - Смикнув кінчик униз — стрічка лягла на цю сторінку (у лівому полі, всередині контуру сторінки).
  *    Смикнув, коли лежить тут, — прибрав. Лежить на іншій сторінці — дотик до кінчика перегортає до неї.
  * [day] — поточна сторінка: при перегортанні стрічка не «їде», а одразу лежить чи ні.
  */
 @Composable
 fun BookmarkRibbon(
+    motion: RibbonMotion,
     pageW: Dp,
     pageH: Dp,
     day: Long?,
@@ -67,58 +103,40 @@ fun BookmarkRibbon(
     onJump: () -> Unit,
     description: String,
 ) {
-    val density = LocalDensity.current
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
-    val hPx = with(density) { pageH.toPx() }
-    // Яка частка сторінки вкрита стрічкою (0 — лише кінчик знизу, 1 — лежить на всю висоту) і наскільки витягли кінчик.
-    val laid = remember { Animatable(if (here) 1f else 0f) }
-    val pull = remember { Animatable(0f) }
-    val sway = remember { Animatable(0f) }
     var shownDay by remember { mutableStateOf(day) }
     LaunchedEffect(day, here) {
         if (day != shownDay) {
             shownDay = day
-            laid.snapTo(if (here) 1f else 0f)
+            motion.laid.snapTo(if (here) 1f else 0f)
         } else {
-            laid.animateTo(if (here) 1f else 0f, tween(420))
-            sway.snapTo(if (here) 3f else -3f)
-            sway.animateTo(0f, spring(dampingRatio = 0.25f, stiffness = 60f))
+            motion.laid.animateTo(if (here) 1f else 0f, tween(420))
+            motion.sway.snapTo(if (here) 3f else -3f)
+            motion.sway.animateTo(0f, spring(dampingRatio = 0.25f, stiffness = 60f))
         }
     }
     val glass = AppStyle.glass
     val xDp = pageW * RIBBON_X
     Box(Modifier.size(pageW, pageH + RibbonBottom)) {
-        Canvas(Modifier.fillMaxSize()) {
-            val x = size.width * RIBBON_X
-            val w = RibbonWidth.toPx()
-            val tailTop = hPx - 3.dp.toPx()
-            val tailEnd = hPx + 24.dp.toPx() + pull.value
-            val notch = w * 0.55f
-            // Стрічка на сторінці: від верхнього краю (з корінця) донизу, у лівому полі.
-            if (laid.value > 0.01f) {
-                val bottom = hPx * laid.value
-                val p = Path().apply { addRect(androidx.compose.ui.geometry.Rect(x - w / 2, 0f, x + w / 2, bottom)) }
-                ribbonBody(p, x, w, 0f, bottom, glass)
-            }
-            // Кінчик з вирізом, що звисає з-під книжки.
-            rotate(sway.value, pivot = Offset(x, tailTop)) {
-                val p = Path().apply {
-                    moveTo(x - w / 2, tailTop); lineTo(x + w / 2, tailTop); lineTo(x + w / 2, tailEnd)
-                    lineTo(x, tailEnd - notch); lineTo(x - w / 2, tailEnd); close()
-                }
-                ribbonBody(p, x, w, tailTop, tailEnd - notch, glass)
-                if (!glass) {
-                    drawPath(taperedPath(listOf(Offset(x - w / 2, tailEnd), Offset(x, tailEnd - notch), Offset(x + w / 2, tailEnd)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-                }
+        // Стрічка на сторінці: у лівому полі, від верхнього краю до нижнього — не виходить за контур.
+        Canvas(Modifier.size(pageW, pageH)) {
+            val laid = motion.laid.value
+            if (laid > 0.01f) {
+                val x = size.width * RIBBON_X
+                val w = RibbonWidth.toPx()
+                val top = 3.dp.toPx()
+                val bottom = top + (size.height - 2 * top) * laid
+                val p = Path().apply { addRect(androidx.compose.ui.geometry.Rect(x - w / 2, top, x + w / 2, bottom)) }
+                ribbonBody(p, x, w, top, bottom, glass)
             }
         }
         // Узяти можна лише кінчик під книжкою.
         if (enabled) {
             Box(
                 Modifier
-                    .offset(xDp - 22.dp, pageH - 4.dp)
-                    .size(44.dp, RibbonBottom + 4.dp)
+                    .offset(xDp - 22.dp, pageH)
+                    .size(44.dp, RibbonBottom)
                     .semantics { contentDescription = description }
                     .pointerInput(here, elsewhere) {
                         detectTapGestures { if (elsewhere && !here) { haptics.tap(); onJump() } }
@@ -131,13 +149,13 @@ fun BookmarkRibbon(
                                 c.consume()
                                 pulled += dy
                                 scope.launch {
-                                    pull.snapTo((pulled * 0.35f).coerceIn(0f, 28.dp.toPx()))
-                                    sway.snapTo((pulled / 40f).coerceIn(-4f, 4f) * 0.3f)
+                                    motion.pull.snapTo((pulled * 0.35f).coerceIn(0f, 28.dp.toPx()))
+                                    motion.sway.snapTo((pulled / 40f).coerceIn(-4f, 4f) * 0.3f)
                                 }
                             },
                             onDragEnd = {
-                                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 300f)) }
-                                scope.launch { sway.animateTo(0f, spring(dampingRatio = 0.3f, stiffness = 80f)) }
+                                scope.launch { motion.pull.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 300f)) }
+                                scope.launch { motion.sway.animateTo(0f, spring(dampingRatio = 0.3f, stiffness = 80f)) }
                                 if (pulled > 36.dp.toPx()) {
                                     haptics.longPress()
                                     if (here) onRemove() else onPlace()

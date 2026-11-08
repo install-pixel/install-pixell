@@ -79,7 +79,10 @@ import com.blacklaunch.diary.ui.LocalHaptics
 import com.blacklaunch.diary.ui.MenuDialog
 import com.blacklaunch.diary.ui.MenuEntry
 import com.blacklaunch.diary.ui.PasswordDialog
-import com.blacklaunch.diary.ui.SettingsDialog
+import com.blacklaunch.diary.ui.SwitchRow
+import com.blacklaunch.diary.ui.ChoiceRow
+import com.blacklaunch.diary.ui.FieldHint
+import com.blacklaunch.diary.settings.InkDrying
 import com.blacklaunch.diary.ui.SheetButton
 import com.blacklaunch.diary.ui.SheetDialog
 import com.blacklaunch.diary.ui.SheetInk
@@ -98,11 +101,12 @@ import java.util.Locale
 sealed interface BookPage {
     data object Cover : BookPage
     data class DayPart(val day: Long, val part: Int) : BookPage
+    /** Сторінка меню (шестерня): на неї перегортають і з неї повертаються туди, звідки прийшли. */
+    data object Menu : BookPage
 }
 
 /** Які вікна відкриті. */
 private sealed interface BookDialog {
-    data object Menu : BookDialog
     data class Place(val day: Long) : BookDialog
     data class Photo(val day: Long) : BookDialog
     data object Calendar : BookDialog
@@ -110,10 +114,7 @@ private sealed interface BookDialog {
     data class LockConfirm(val code: String) : BookDialog
     data object LockRemove : BookDialog
     data object Rename : BookDialog
-    data object NewDiary : BookDialog
-    data object Settings : BookDialog
     data object Backup : BookDialog
-    data class Restore(val uri: android.net.Uri, val wrong: Boolean) : BookDialog
     data object Erase : BookDialog
     data object Forgot : BookDialog
 }
@@ -126,8 +127,7 @@ private sealed interface BookDialog {
 fun BookScreen(
     vm: DiaryViewModel,
     info: DiaryInfo,
-    onShelf: (() -> Unit)?,
-    onExit: () -> Unit,
+    onShelf: () -> Unit,
     onLanguageChanged: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -138,7 +138,7 @@ fun BookScreen(
     val view = LocalView.current
     val glass = AppStyle.glass
     val open = vm.open?.takeIf { it.info.id == info.id }
-    val hours = vm.settings.inkDrying.hours
+    val hours = vm.dryingOf(info).hours
 
     // Без замка щоденник відкривається сам (ключем телефона).
     LaunchedEffect(info.id, info.locked, open == null) {
@@ -181,6 +181,8 @@ fun BookScreen(
     }
 
     var recording by remember { mutableStateOf<RecordingState?>(null) }
+    var menuOpen by remember(info.id) { mutableStateOf(false) }
+    var menuReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     val pages: List<BookPage> = buildList {
         add(BookPage.Cover)
         if (open != null) {
@@ -191,6 +193,7 @@ fun BookScreen(
                 if (split.split < day.text.length || day.ink.any { it.page == 1 }) add(BookPage.DayPart(d, 1))
             }
         }
+        if (menuOpen) add(BookPage.Menu)
     }
     val flip = remember(info.id) { FlipState(0) }
     var currentKey by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
@@ -219,7 +222,7 @@ fun BookScreen(
     // Куди відкривається обкладинка: на закладку (якщо так у Налаштуваннях) чи на сьогодні.
     val openTarget = run {
         val bm = open?.bookmark
-        val day = if (vm.settings.openAtBookmark && bm != null && bm in dayList) bm else today
+        val day = if (vm.openAtBookmarkOf(info) && bm != null && bm in dayList) bm else today
         pages.indexOf(BookPage.DayPart(day, 0)).coerceAtLeast(if (pages.size > 1) 1 else 0)
     }
 
@@ -242,8 +245,22 @@ fun BookScreen(
         if (i >= 0) {
             pendingFlip = null
             currentKey = p
-            flip.flipTo(i)
+            // Окремою корутиною: зміна ключів цього ефекту (pendingFlip = null) не має обривати гортання на півдорозі.
+            scope.launch { flip.flipTo(i) }
         }
+    }
+
+    // ——— Сторінка меню (шестерня) ———
+    fun openMenu() {
+        if (menuOpen) return
+        focusManager.clearFocus()
+        ink = null
+        menuReturn = currentKey
+        menuOpen = true
+        pendingFlip = BookPage.Menu
+    }
+    fun closeMenu() {
+        if (menuOpen) pendingFlip = menuReturn
     }
 
     fun jumpToDay(day: Long, mark: IntRange? = null) {
@@ -315,9 +332,6 @@ fun BookScreen(
         backupPassword = null
         if (uri != null && pw != null) vm.backup(uri, pw)
     }
-    val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) dialog = BookDialog.Restore(uri, false)
-    }
 
     val host = object : PageHost {
         override val vm: DiaryViewModel = vm
@@ -351,9 +365,55 @@ fun BookScreen(
         override fun block(key: String, rect: Rect?) { if (rect == null) blockers.remove(key) else blockers[key] = rect }
         override fun jumpTo(day: Long) = jumpToDay(day)
         override fun dryHint() = vm.show(R.string.ink_dry)
-        override fun openMenu() { focusManager.clearFocus(); dialog = BookDialog.Menu }
         override val recording: RecordingState? get() = recording
         override fun stopRecording() = stopRecording()
+    }
+
+    /** Вміст сторінки меню: дії з цією сторінкою, з цим щоденником і його власні налаштування. */
+    @Composable
+    fun androidx.compose.foundation.layout.ColumnScope.DiaryMenu() {
+        val back = menuReturn
+        MenuEntries(buildList {
+            val day = (back as? BookPage.DayPart)?.day
+            if (open != null && day != null) {
+                val d = vm.day(day)
+                add(MenuEntry(null, stringResource(R.string.menu_page)))
+                add(MenuEntry(Glyph.Gallery, stringResource(if (d.photo) R.string.photo_replace else R.string.photo_add)) { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                if (!d.audio && recording == null) add(MenuEntry(Glyph.Mic, stringResource(R.string.record)) { record(day) })
+                add(MenuEntry(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, (back as BookPage.DayPart).part) })
+                add(MenuEntry(Glyph.Pin, stringResource(R.string.place)) { dialog = BookDialog.Place(day) })
+            }
+            if (open != null) {
+                add(MenuEntry(null, stringResource(R.string.menu_diary)))
+                add(MenuEntry(Glyph.Search, stringResource(R.string.search)) { searching = true })
+                add(MenuEntry(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar })
+                add(MenuEntry(Glyph.Photo, stringResource(if (info.cover) R.string.cover_photo_change else R.string.cover_photo)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                if (info.cover) add(MenuEntry(Glyph.Close, stringResource(R.string.cover_photo_remove)) { vm.removeCover(info.id) })
+                add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
+                add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
+                if (info.locked) add(MenuEntry(Glyph.Unlock, stringResource(R.string.lock_remove)) { dialog = BookDialog.LockRemove })
+                add(MenuEntry(Glyph.Backup, stringResource(R.string.backup)) { dialog = BookDialog.Backup })
+            }
+            // Новий щоденник, копія й загальні налаштування — на полиці: щоденник керує лише собою.
+        }.map { e -> MenuEntry(e.glyph, e.text, e.tone) { closeMenu(); e.onClick() } })
+        if (open != null) {
+            Text(stringResource(R.string.settings_this_diary), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 6.dp))
+            Column(Modifier.padding(horizontal = 8.dp)) {
+                SwitchRow(stringResource(R.string.open_bookmark_title), vm.openAtBookmarkOf(info), subtitle = stringResource(R.string.open_bookmark_desc)) { vm.setOpenAtBookmark(info.id, it) }
+            }
+            Text(stringResource(R.string.drying_title), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp))
+            InkDrying.entries.forEach { dr ->
+                ChoiceRow(stringResource(if (dr == InkDrying.Day) R.string.drying_day else R.string.drying_week), null, vm.dryingOf(info) == dr) { vm.setDrying(info.id, dr) }
+            }
+            FieldHint(stringResource(R.string.drying_desc), Modifier.padding(horizontal = 8.dp))
+        }
+        // Наостанок — полиця (там спільне для всіх щоденників) і стерти: найнебезпечніше — найнижче.
+        MenuEntries(buildList {
+            add(MenuEntry(null, stringResource(R.string.menu_more)))
+            add(MenuEntry(Glyph.Grid, stringResource(R.string.shelf_and_settings)) { onShelf() })
+            if (open != null) add(MenuEntry(Glyph.Delete, stringResource(R.string.erase), Tone.Danger) { dialog = BookDialog.Erase })
+            else if (info.locked) add(MenuEntry(Glyph.Delete, stringResource(R.string.forgot_code), Tone.Danger) { dialog = BookDialog.Forgot })
+        }.map { e -> MenuEntry(e.glyph, e.text, e.tone) { closeMenu(); e.onClick() } })
     }
 
     // Лок-екран: барабани на обкладинці.
@@ -369,14 +429,16 @@ fun BookScreen(
     BackHandler {
         when {
             ink != null -> ink = null
+            menuOpen -> closeMenu()
             editing != null -> focusManager.clearFocus()
             flip.index > 0 -> scope.launch { currentKey = BookPage.Cover; flip.flipTo(0) }
-            onShelf != null -> onShelf()
-            else -> onExit()
+            else -> onShelf()
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding()) {
+    val gear = rememberGearReveal()
+    val ribbon = remember(info.id) { RibbonMotion(open?.bookmark != null && open.bookmark == currentDay) }
+    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().revealsGear(gear)) {
         // Книга. Коли з'являється клавіатура, вся сторінка (папір, лінії й текст разом) підсувається вгору, щоб рядок
         // з курсором був над клавіатурою, — як коли підсовуєш щоденник. Тло лишається на місці.
         val ime = WindowInsets.ime
@@ -408,6 +470,8 @@ fun BookScreen(
                     }
                     .size(pw, ph + RibbonBottom),
             ) {
+                // Кінчик закладки — під книжкою (виходить з-поміж сторінок, контур щоденника не перетинає).
+                if (open != null) RibbonTail(ribbon, pw, ph)
                 Box(
                     Modifier
                         .size(pw, ph)
@@ -416,18 +480,21 @@ fun BookScreen(
                     FlipBook(
                         state = flip,
                         count = pages.size,
-                        enabled = editing == null && ink == null && recording == null,
+                        // Гортати можна й під час письма: щойно сторінка рушила — клавіатура ховається.
+                        enabled = ink == null && recording == null,
                         heavy = { pages.getOrNull(it) == BookPage.Cover },
-                        canFlipForward = { i -> !(i == 0 && open == null) },
-                        nextOf = { i -> if (i == 0) openTarget else i + 1 },
-                        prevOf = { i -> i - 1 },
-                        blocked = {
-                            // Шестерня внизу ліворуч на сторінці дня — там гортання не починається.
-                            val g = GearBox
-                            val k = size.width / PageMetrics.WIDTH
-                            blockers.values.toList() + Rect(g.left * k, g.top * k, g.right * k, g.bottom * k)
+                        canFlipForward = { i ->
+                            val next = if (i == 0) openTarget else i + 1
+                            !(i == 0 && open == null) && pages.getOrNull(i) != BookPage.Menu && pages.getOrNull(next) != BookPage.Menu
                         },
-                        onFlipped = { i -> currentKey = pages.getOrNull(i) ?: BookPage.Cover; highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
+                        nextOf = { i -> if (i == 0) openTarget else i + 1 },
+                        prevOf = { i -> if (pages.getOrNull(i) == BookPage.Menu) pages.indexOf(menuReturn).coerceAtLeast(0) else i - 1 },
+                        onStart = { focusManager.clearFocus() },
+                        blocked = { blockers.values.toList() },
+                        onFlipped = { i ->
+                            currentKey = pages.getOrNull(i) ?: BookPage.Cover
+                            if (currentKey != BookPage.Menu) menuOpen = false
+                            highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
                     ) { i ->
                         when (val p = pages.getOrNull(i)) {
                             BookPage.Cover, null -> {
@@ -462,7 +529,7 @@ fun BookScreen(
                                         else -> null
                                     },
                                 )
-                                Column(Modifier.fillMaxSize().padding(bottom = 16.dp), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
+                                Column(Modifier.fillMaxSize().padding(bottom = 22.dp), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
                                     // Підказка не висить постійно — з'являється, якщо обкладинку довго не гортають.
                                     if (open != null) {
                                         Row(Modifier.graphicsLayer { alpha = hintAlpha }.padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -471,9 +538,13 @@ fun BookScreen(
                                             Text(stringResource(R.string.cover_turn_hint), color = Oled.TextSecondary, fontSize = 13.sp)
                                         }
                                     }
-                                    DiaryGear(size = 44.dp) { focusManager.clearFocus(); dialog = BookDialog.Menu }
                                 }
                             }
+                            BookPage.Menu -> PaperPage(
+                                title = info.name,
+                                subtitle = stringResource(R.string.menu_diary_desc),
+                                seed = info.tint * 7 + 3,
+                            ) { DiaryMenu() }
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
                                 val split = splitFor(d.text, d.photo, d.audio || recording?.day == p.day)
@@ -506,6 +577,7 @@ fun BookScreen(
                 if (open != null) {
                     val bm = open.bookmark
                     BookmarkRibbon(
+                        motion = ribbon,
                         pageW = pw,
                         pageH = ph,
                         day = currentDay,
@@ -518,6 +590,13 @@ fun BookScreen(
                         description = stringResource(R.string.bookmark),
                     )
                 }
+            }
+        }
+
+        // Шестерня — завжди в одному місці внизу (як і на полиці); з'являється після дотику.
+        if (ink == null) {
+            Box(Modifier.fillMaxWidth().height(GearRow), contentAlignment = Alignment.Center) {
+                GearSpot(gear) { if (menuOpen) closeMenu() else openMenu() }
             }
         }
 
@@ -544,35 +623,6 @@ fun BookScreen(
     // ——— Вікна ———
     when (val dl = dialog) {
         null -> Unit
-        BookDialog.Menu -> MenuDialog(null, buildList {
-            val day = currentDay
-            if (open != null && day != null) {
-                val d = vm.day(day)
-                add(MenuEntry(null, stringResource(R.string.menu_page)))
-                add(MenuEntry(Glyph.Gallery, stringResource(if (d.photo) R.string.photo_replace else R.string.photo_add)) { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                if (!d.audio && recording == null) add(MenuEntry(Glyph.Mic, stringResource(R.string.record)) { record(day) })
-                add(MenuEntry(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, (currentPage as BookPage.DayPart).part) })
-                add(MenuEntry(Glyph.Pin, stringResource(R.string.place)) { dialog = BookDialog.Place(day) })
-            }
-            if (open != null) {
-                add(MenuEntry(null, stringResource(R.string.menu_diary)))
-                add(MenuEntry(Glyph.Search, stringResource(R.string.search)) { searching = true })
-                add(MenuEntry(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar })
-                add(MenuEntry(Glyph.Photo, stringResource(if (info.cover) R.string.cover_photo_change else R.string.cover_photo)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                if (info.cover) add(MenuEntry(Glyph.Close, stringResource(R.string.cover_photo_remove)) { vm.removeCover(info.id) })
-                add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
-                add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
-                if (info.locked) add(MenuEntry(Glyph.Unlock, stringResource(R.string.lock_remove)) { dialog = BookDialog.LockRemove })
-                add(MenuEntry(Glyph.Backup, stringResource(R.string.backup)) { dialog = BookDialog.Backup })
-            }
-            add(MenuEntry(null, stringResource(R.string.menu_more)))
-            add(MenuEntry(Glyph.Plus, stringResource(R.string.new_diary)) { dialog = BookDialog.NewDiary })
-            if (onShelf != null) add(MenuEntry(Glyph.Grid, stringResource(R.string.shelf)) { onShelf() })
-            add(MenuEntry(Glyph.Restore, stringResource(R.string.restore)) { vm.keepOpenOnce = true; openBackup.launch(arrayOf("*/*")) })
-            add(MenuEntry(Glyph.Settings, stringResource(R.string.settings)) { dialog = BookDialog.Settings })
-            if (open != null) add(MenuEntry(Glyph.Delete, stringResource(R.string.erase), Tone.Danger) { dialog = BookDialog.Erase })
-            else if (info.locked) add(MenuEntry(Glyph.Delete, stringResource(R.string.forgot_code), Tone.Danger) { dialog = BookDialog.Forgot })
-        }, onDismiss = { dialog = null })
         is BookDialog.Place -> {
             val recent = remember { open?.days?.values?.sortedByDescending { it.day }?.map { it.place }?.filter { it.isNotBlank() }?.distinct().orEmpty() }
             TextDialog(
@@ -611,19 +661,10 @@ fun BookScreen(
             onDismiss = { dialog = null },
         ) { vm.removePin() }
         BookDialog.Rename -> TextDialog(stringResource(R.string.rename), info.name, stringResource(R.string.diary_name_hint), Limits.DIARY_NAME, onDismiss = { dialog = null }) { vm.rename(info.id, it) }
-        BookDialog.NewDiary -> TextDialog(stringResource(R.string.new_diary), "", stringResource(R.string.diary_name_hint), Limits.DIARY_NAME, onDismiss = { dialog = null }, hint = stringResource(R.string.new_diary_hint), allowEmpty = true) {
-            val d = vm.createDiary(it)
-            vm.closeDiary()
-            vm.current = d.id
-        }
-        BookDialog.Settings -> SettingsDialog(onDismiss = { dialog = null }, onLanguageChanged = onLanguageChanged)
         BookDialog.Backup -> PasswordDialog(restore = false, wrong = false, onDismiss = { dialog = null }) { pw ->
             backupPassword = pw
             val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(LocalDate.now())
             vm.keepOpenOnce = true; createBackup.launch("${info.name.replace(Regex("[^\\p{L}\\p{N} _-]"), "").ifBlank { "diary" }}-$stamp.diary")
-        }
-        is BookDialog.Restore -> PasswordDialog(restore = true, wrong = dl.wrong, onDismiss = { dialog = null }) { pw ->
-            vm.restore(dl.uri, pw) { dialog = BookDialog.Restore(dl.uri, true) }
         }
         BookDialog.Erase -> ConfirmDialog(
             title = stringResource(R.string.erase_title, info.name),

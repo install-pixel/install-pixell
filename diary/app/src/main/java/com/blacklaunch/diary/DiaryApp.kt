@@ -35,13 +35,13 @@ fun DiaryApp(vm: DiaryViewModel, onExit: () -> Unit, onLanguageChanged: () -> Un
         ) { id ->
             val info = vm.info(id)
             if (info == null) {
-                ShelfScreen(vm, onLanguageChanged)
+                ShelfScreen(vm, onLanguageChanged, onExit)
             } else {
                 BookScreen(
                     vm = vm,
                     info = info,
-                    onShelf = if (vm.shelf.size > 1) { { vm.closeDiary(); vm.current = null } } else null,
-                    onExit = onExit,
+                    // Полиця є завжди (навіть з одним щоденником): там новий щоденник, копія й загальні налаштування.
+                    onShelf = { vm.closeDiary(); vm.current = null },
                     onLanguageChanged = onLanguageChanged,
                 )
             }

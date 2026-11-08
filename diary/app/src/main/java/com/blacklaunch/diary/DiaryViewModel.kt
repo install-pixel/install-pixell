@@ -23,6 +23,7 @@ import com.blacklaunch.diary.image.Photos
 import com.blacklaunch.diary.search.SearchHit
 import com.blacklaunch.diary.search.Searcher
 import com.blacklaunch.diary.settings.AppSettings
+import com.blacklaunch.diary.settings.InkDrying
 import com.blacklaunch.diary.ui.Limits
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,6 +87,13 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun info(id: String?): DiaryInfo? = shelf.firstOrNull { it.id == id }
+
+    /** Налаштування окремого щоденника (кожен — свої; спільні налаштування їх не чіпають). */
+    fun dryingOf(info: DiaryInfo?): InkDrying = info?.drying ?: settings.inkDrying
+    fun openAtBookmarkOf(info: DiaryInfo?): Boolean = info?.openAtBookmark ?: settings.openAtBookmark
+
+    fun setDrying(id: String, drying: InkDrying) = saveShelf(shelf.map { if (it.id == id) it.copy(drying = drying) else it })
+    fun setOpenAtBookmark(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(openAtBookmark = on) else it })
 
     fun show(message: Int, undo: (() -> Unit)? = null) {
         notice = Notice(message, undo)
@@ -182,7 +190,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         if (info.fails != 0) saveShelf(shelf.map { if (it.id == id) it.copy(fails = 0, retryAt = 0) else it })
         val o = OpenDiary(info(id)!!, db)
         withContext(io) {
-            val hours = settings.inkDrying.hours
+            val hours = dryingOf(info).hours
             val all = db.days().map { d ->
                 val dried = d.dried(now, hours)
                 if (dried !== d) db.save(dried)
@@ -251,7 +259,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun day(epochDay: Long): Day = open?.days?.get(epochDay) ?: Day(epochDay)
 
     /** День із урахуванням висихання «зараз» — так, як його показує сторінка. */
-    fun dayNow(epochDay: Long): Day = day(epochDay).dried(System.currentTimeMillis(), settings.inkDrying.hours)
+    fun dayNow(epochDay: Long): Day = day(epochDay).dried(System.currentTimeMillis(), dryingOf(info(open?.info?.id)).hours)
 
     private val pending = HashMap<Long, Job>()
 

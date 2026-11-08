@@ -1,6 +1,7 @@
 package com.blacklaunch.diary.book
 
 import androidx.compose.ui.geometry.Offset
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
 
@@ -76,8 +77,7 @@ class FlipGeometry(val width: Float, val height: Float, val grip: Offset, val co
          */
         fun forwardCorner(grip: Offset, down: Offset, now: Offset, height: Float): Offset {
             val x = (grip.x + (now.x - down.x)).coerceIn(-grip.x, grip.x)
-            val y = grip.y + ((now.y - down.y) * 0.38f).coerceIn(-height * 0.16f, height * 0.16f)
-            return Offset(x, y)
+            return Offset(x, tilt(grip, down, now, x, height))
         }
 
         /**
@@ -88,8 +88,16 @@ class FlipGeometry(val width: Float, val height: Float, val grip: Offset, val co
             val travel = (width - down.x).coerceAtLeast(width * 0.3f)
             val k = ((now.x - down.x) / travel).coerceIn(0f, 1f)
             val x = -grip.x + 2f * grip.x * k
-            val y = grip.y + ((now.y - down.y) * 0.38f).coerceIn(-height * 0.16f, height * 0.16f)
-            return Offset(x, y)
+            return Offset(x, tilt(grip, down, now, x, height))
+        }
+
+        /**
+         * Вертикальний зсув клаптя. Обмежений не лише висотою, а й тим, наскільки сторінку вже потягнули вбік: інакше на
+         * початку руху (палець пішов униз) згин ставав горизонтальним — сторінка ламалась навпіл донизу.
+         */
+        private fun tilt(grip: Offset, down: Offset, now: Offset, x: Float, height: Float): Float {
+            val limit = minOf(height * 0.12f, abs(grip.x - x) * 0.3f)
+            return grip.y + ((now.y - down.y) * 0.38f).coerceIn(-limit, limit)
         }
     }
 }

@@ -3,6 +3,7 @@ package com.blacklaunch.diary.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.blacklaunch.diary.settings.InkDrying
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -28,6 +29,9 @@ data class DiaryInfo(
     val cover: Boolean = false,
     /** Відтінок обкладинки без фото — щоб щоденники на полиці розрізнялись (0…5). */
     val tint: Int = 0,
+    /** Свої налаштування цього щоденника; null — як було до них (тоді діє старе спільне значення). */
+    val drying: InkDrying? = null,
+    val openAtBookmark: Boolean? = null,
 )
 
 /** Полиця — маленький JSON-файл у приватній теці програми. */
@@ -101,6 +105,8 @@ class ShelfStore(context: Context) {
         retryAt = optLong("retryAt"),
         cover = optBoolean("cover"),
         tint = optInt("tint"),
+        drying = InkDrying.entries.firstOrNull { it.name == optString("drying") },
+        openAtBookmark = if (has("openAtBookmark")) optBoolean("openAtBookmark") else null,
     )
 
     private fun DiaryInfo.toJson() = JSONObject()
@@ -113,4 +119,6 @@ class ShelfStore(context: Context) {
         .put("retryAt", retryAt)
         .put("cover", cover)
         .put("tint", tint)
+        .put("drying", drying?.name)
+        .put("openAtBookmark", openAtBookmark)
 }

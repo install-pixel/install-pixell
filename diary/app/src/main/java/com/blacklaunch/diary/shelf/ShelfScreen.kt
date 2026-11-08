@@ -61,7 +61,20 @@ import com.blacklaunch.diary.ui.LocalHaptics
 import com.blacklaunch.diary.ui.MenuDialog
 import com.blacklaunch.diary.ui.MenuEntry
 import com.blacklaunch.diary.ui.PasswordDialog
-import com.blacklaunch.diary.ui.SettingsDialog
+import com.blacklaunch.diary.ui.SettingsBody
+import com.blacklaunch.diary.book.GearRow
+import com.blacklaunch.diary.book.GearSpot
+import com.blacklaunch.diary.book.MenuEntries
+import com.blacklaunch.diary.book.PaperPage
+import com.blacklaunch.diary.book.rememberGearReveal
+import com.blacklaunch.diary.book.revealsGear
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import com.blacklaunch.diary.ui.SheetInk
 import com.blacklaunch.diary.ui.TextDialog
 import com.blacklaunch.diary.ui.Tone
@@ -79,29 +92,29 @@ private const val PER_SHELF = 4
 
 /**
  * Полиця щоденників (коли їх більше одного): корінці з назвами, у закритих на код — замок. Дотик — дістати щоденник
- * (обкладинка на весь екран), довге натискання — меню корінця. «⋯» — новий щоденник, відновити з копії, налаштування.
+ * (обкладинка на весь екран), довге натискання — меню корінця. Шестерня (там само, де в щоденнику) — сторінка загальних
+ * налаштувань для всіх щоденників: новий щоденник, відновити з копії, стиль, мова, екран, довідка.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit) {
+fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () -> Unit) {
     val haptics = LocalHaptics.current
-    var menu by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf(false) }
+    val gear = rememberGearReveal()
     var spineMenu by remember { mutableStateOf<DiaryInfo?>(null) }
     var rename by remember { mutableStateOf<DiaryInfo?>(null) }
     var erase by remember { mutableStateOf<DiaryInfo?>(null) }
     var newDiary by remember { mutableStateOf(false) }
-    var settings by remember { mutableStateOf(false) }
     var restore by remember { mutableStateOf<Pair<android.net.Uri, Boolean>?>(null) }
     val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) restore = uri to false }
 
-    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.width(44.dp))
-            Text(stringResource(R.string.shelf), color = Oled.TextPrimary, fontSize = 20.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); menu = true }, contentAlignment = Alignment.Center) {
-                GlyphIcon(Glyph.More, stringResource(R.string.menu), tint = Oled.TextPrimary)
-            }
-        }
+    BackHandler { if (page) page = false else onExit() }
+    // Сторінка налаштувань «перегортається» поверх полиці від корінця (лівого краю).
+    val turn by animateFloatAsState(if (page) 1f else 0f, tween(if (page) 620 else 480, easing = FastOutSlowInEasing), label = "settingsPage")
+    Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().revealsGear(gear)) {
+      Box(Modifier.weight(1f).fillMaxWidth()) {
+       Column(Modifier.fillMaxSize()) {
+        Text(stringResource(R.string.shelf), color = Oled.TextPrimary, fontSize = 20.sp, modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Column(
             Modifier.weight(1f).fillMaxWidth().bouncyScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp),
@@ -129,15 +142,37 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit) {
             }
             WindowHint(stringResource(R.string.shelf_hint))
         }
+       }
+        if (turn > 0.01f) {
+            PaperPage(
+                title = stringResource(R.string.settings),
+                subtitle = stringResource(R.string.settings_global_desc),
+                seed = 57,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        rotationY = -100f * (1f - turn)
+                        cameraDistance = 14f * density
+                        alpha = if (turn < 0.15f) turn / 0.15f else 1f
+                    }
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.dp, Oled.TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
+            ) {
+                MenuEntries(listOf(
+                    MenuEntry(Glyph.Plus, stringResource(R.string.new_diary)) { newDiary = true },
+                    MenuEntry(Glyph.Restore, stringResource(R.string.restore)) { openBackup.launch(arrayOf("*/*")) },
+                ))
+                SettingsBody(onLanguageChanged, Modifier.padding(top = 8.dp))
+            }
+        }
+      }
+        // Шестерня — там само, де в щоденнику; з'являється після дотику.
+        Box(Modifier.fillMaxWidth().height(GearRow), contentAlignment = Alignment.Center) {
+            GearSpot(gear) { page = !page }
+        }
     }
 
-    if (menu) {
-        MenuDialog(null, listOf(
-            MenuEntry(Glyph.Plus, stringResource(R.string.new_diary)) { newDiary = true },
-            MenuEntry(Glyph.Restore, stringResource(R.string.restore)) { openBackup.launch(arrayOf("*/*")) },
-            MenuEntry(Glyph.Settings, stringResource(R.string.settings)) { settings = true },
-        ), onDismiss = { menu = false })
-    }
     spineMenu?.let { b ->
         MenuDialog(b.name, listOf(
             MenuEntry(Glyph.Book, stringResource(R.string.open)) { vm.current = b.id },
@@ -154,7 +189,6 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit) {
             vm.current = vm.createDiary(it).id
         }
     }
-    if (settings) SettingsDialog(onDismiss = { settings = false }, onLanguageChanged = onLanguageChanged)
     restore?.let { (uri, wrong) ->
         PasswordDialog(restore = true, wrong = wrong, onDismiss = { restore = null }) { pw -> vm.restore(uri, pw) { restore = uri to true } }
     }

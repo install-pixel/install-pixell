@@ -3,6 +3,7 @@ package com.blacklaunch.diary.book
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,6 +86,7 @@ fun FlipBook(
     nextOf: (Int) -> Int = { it + 1 },
     prevOf: (Int) -> Int = { it - 1 },
     blocked: () -> List<Rect> = { emptyList() },
+    onStart: () -> Unit = {},
     onFlipped: (Int) -> Unit = {},
     page: @Composable (Int) -> Unit,
 ) {
@@ -99,13 +101,14 @@ fun FlipBook(
     val next by rememberUpdatedState(nextOf)
     val prev by rememberUpdatedState(prevOf)
     val flipped by rememberUpdatedState(onFlipped)
+    val onStarted by rememberUpdatedState(onStart)
     val layer = rememberGraphicsLayer()
 
     suspend fun settle(complete: Boolean, velocity: Float = 0f) {
         val top = state.top ?: return
         val g = state.grip
         val target = if (complete == state.forward) Offset(-g.x, g.y) else g
-        val ms = if (isHeavy(top) || isHeavy(state.under ?: top)) 460 else 300
+        val ms = if (isHeavy(top) || isHeavy(state.under ?: top)) 760 else 480
         // Швидкий кидок — швидше лягає.
         val fast = (abs(velocity) / 4000f).coerceIn(0f, 0.45f)
         state.corner.animateTo(target, tween((ms * (1f - fast)).toInt(), easing = FastOutSlowInEasing))
@@ -132,13 +135,13 @@ fun FlipBook(
             state.top = state.index
             state.under = target
             state.corner.snapTo(g)
-            state.corner.animateTo(Offset(-g.x, g.y - h * 0.06f), tween(520, easing = FastOutSlowInEasing))
+            state.corner.animateTo(Offset(-g.x, g.y - h * 0.06f), tween(720, easing = FastOutSlowInEasing))
         } else {
             state.forward = false
             state.top = target
             state.under = state.index
             state.corner.snapTo(Offset(-g.x, g.y))
-            state.corner.animateTo(g, tween(520, easing = FastOutSlowInEasing))
+            state.corner.animateTo(g, tween(720, easing = FastOutSlowInEasing))
         }
         state.index = target
         haptics.tick()
@@ -208,13 +211,16 @@ fun FlipBook(
                                         )
                                     }
                                     haptics.tick()
+                                    onStarted()
                                 }
                             }
                             if (started) {
                                 ch.consume()
                                 val target = if (forward) FlipGeometry.forwardCorner(state.grip, p, last, h)
                                 else FlipGeometry.backwardCorner(state.grip, p, last, w, h)
-                                scope.launch { state.corner.snapTo(target) }
+                                // Сторінка йде за пальцем з легким запізненням, обкладинка — помітно повільніше (вона важка).
+                                val heavyNow = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
+                                scope.launch { state.corner.animateTo(target, spring(dampingRatio = 1f, stiffness = if (heavyNow) 160f else 700f)) }
                             } else if (ch.positionChange() != Offset.Zero && abs(dx) > slop * 3) {
                                 break
                             }
@@ -293,10 +299,17 @@ private fun DrawScope.drawFlip(g: FlipGeometry, layer: GraphicsLayer, heavy: Boo
         )
     }
 
-    // 4) Клапоть — зворот сторінки: папір, крізь який ледь просвічує написане (дзеркально).
+    // 4) Клапоть — зворот сторінки. «Скло»: аркуші скляні — зворот трохи прозорий, ледь просвічує написане (дзеркально);
+    //    обкладинка — непрозора. «Аркуш»: папір не просвічує зовсім.
+    val seeThrough = glass && !heavy
     clipPath(flap) {
-        val back = if (glass) Color(0xFF0C0C0C) else Color(0xFF060606)
-        drawRect(if (heavy) Color(0xFF101010) else back)
+        drawRect(
+            when {
+                heavy -> Color(0xFF101010)
+                glass -> Color(0xFF0C0C0C).copy(alpha = 0.86f)
+                else -> Color(0xFF060606)
+            },
+        )
         val mirror = Matrix().apply {
             val k = 2f * (m.x * n.x + m.y * n.y)
             values[Matrix.ScaleX] = 1f - 2f * n.x * n.x
@@ -306,9 +319,9 @@ private fun DrawScope.drawFlip(g: FlipGeometry, layer: GraphicsLayer, heavy: Boo
             values[Matrix.TranslateX] = k * n.x
             values[Matrix.TranslateY] = k * n.y
         }
-        if (!heavy) {
+        if (seeThrough) {
             drawIntoCanvas { c ->
-                c.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { alpha = 0.10f })
+                c.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { alpha = 0.12f })
                 c.concat(mirror)
                 drawLayer(layer)
                 c.restore()
@@ -341,6 +354,7 @@ private fun DrawScope.drawFlip(g: FlipGeometry, layer: GraphicsLayer, heavy: Boo
             )
         }
     }
-    // 5) Край клаптя: скляна грань чи лінія олівця.
+    // 5) Край клаптя: скляна грань чи лінія олівця. Обкладинка товща — її край широкий, видно товщину.
+    if (heavy) drawPath(flap, if (glass) Color(0xFF2A2A2A) else Color(0xFF1A1A1A), style = Stroke(6.dp.toPx()))
     drawPath(flap, Color.White.copy(alpha = if (glass) 0.35f else 0.55f), style = Stroke(if (glass) 1.dp.toPx() else 1.6.dp.toPx()))
 }

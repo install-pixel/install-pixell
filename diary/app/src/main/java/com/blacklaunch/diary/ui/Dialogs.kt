@@ -157,32 +157,22 @@ private fun PasswordField(value: String, onChange: (String) -> Unit, placeholder
     )
 }
 
-/** Налаштування: стиль, мова, щоденник (закладка, чорнило), екран, довідка. */
+/**
+ * Загальні налаштування — для всіх щоденників: стиль, мова, екран, довідка. Це вміст сторінки (не вікно); свої
+ * налаштування кожного щоденника — на його сторінці меню.
+ */
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
+fun SettingsBody(onLanguageChanged: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val settings = remember { AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
-    var openAtBookmark by remember { mutableStateOf(settings.openAtBookmark) }
-    var drying by remember { mutableStateOf(settings.inkDrying) }
     var haptics by remember { mutableStateOf(settings.haptics) }
     var page by remember { mutableStateOf<SettingsPage>(SettingsPage.Main) }
     val current = page
-    SheetDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(
-            when (current) {
-                SettingsPage.Main -> R.string.settings
-                SettingsPage.Help -> R.string.help
-                is SettingsPage.Topic -> current.topic.title
-            },
-        ),
-        buttons = {
-            if (current == SettingsPage.Main) SheetButton(stringResource(R.string.close), onDismiss)
-            else SheetButton(stringResource(R.string.back), { page = current.up() })
-        },
-        tall = true,
-    ) {
+    Column(modifier) {
+        if (current != SettingsPage.Main) {
+            MenuRow(Glyph.Back, stringResource(when (current) { SettingsPage.Help -> R.string.help; is SettingsPage.Topic -> current.topic.title; else -> R.string.settings }), { page = current.up() })
+        }
         BackHandler(enabled = current != SettingsPage.Main) { page = current.up() }
         AnimatedContent(
             targetState = current,
@@ -195,7 +185,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
             label = "settingsPage",
         ) { shown ->
             when (shown) {
-                SettingsPage.Main -> Column(Modifier.fillMaxSize().bouncyScroll()) {
+                SettingsPage.Main -> Column(Modifier.fillMaxWidth()) {
                     MenuRow(Glyph.Help, stringResource(R.string.help), { page = SettingsPage.Help })
                     Spacer(Modifier.height(12.dp))
                     Header(stringResource(R.string.settings_style))
@@ -223,21 +213,6 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
                             }
                         }
                     }
-                    Header(stringResource(R.string.settings_diary))
-                    Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SwitchRow(stringResource(R.string.open_bookmark_title), openAtBookmark, subtitle = stringResource(R.string.open_bookmark_desc)) {
-                            openAtBookmark = it
-                            settings.openAtBookmark = it
-                        }
-                    }
-                    Text(stringResource(R.string.drying_title), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp))
-                    InkDrying.entries.forEach { d ->
-                        ChoiceRow(stringResource(if (d == InkDrying.Day) R.string.drying_day else R.string.drying_week), null, drying == d) {
-                            drying = d
-                            settings.inkDrying = d
-                        }
-                    }
-                    FieldHint(stringResource(R.string.drying_desc), Modifier.padding(horizontal = 8.dp))
                     Header(stringResource(R.string.settings_screen))
                     Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SwitchRow(stringResource(R.string.status_hide_title), StatusBar.hidden, subtitle = stringResource(R.string.status_hide_desc)) {
@@ -252,7 +227,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
                     }
                     WindowHint(stringResource(R.string.settings_hint))
                 }
-                SettingsPage.Help -> Column(Modifier.fillMaxSize().bouncyScroll()) {
+                SettingsPage.Help -> Column(Modifier.fillMaxWidth()) {
                     HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { page = SettingsPage.Topic(t) }) }
                 }
                 is SettingsPage.Topic -> Text(
@@ -260,7 +235,7 @@ fun SettingsDialog(onDismiss: () -> Unit, onLanguageChanged: () -> Unit) {
                     color = Oled.TextPrimary.copy(alpha = 0.9f),
                     fontSize = 16.sp,
                     lineHeight = 23.sp,
-                    modifier = Modifier.fillMaxSize().bouncyScroll(),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
