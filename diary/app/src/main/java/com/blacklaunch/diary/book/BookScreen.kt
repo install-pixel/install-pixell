@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -118,8 +119,8 @@ private sealed interface BookDialog {
 }
 
 /**
- * Щоденник на весь екран: обкладинка (із замком, якщо поставлено код), далі — сторінки днів. Гортається пальцем,
- * зверху лише «назад», назва й «⋯» (THEMES.md, розділ 7).
+ * Щоденник на весь екран: обкладинка (із замком, якщо поставлено код), далі — сторінки днів. Гортається пальцем.
+ * Жодних стандартних рядків і кнопок: меню — шестерня, намальована на самому щоденнику; назад — системним жестом.
  */
 @Composable
 fun BookScreen(
@@ -201,6 +202,18 @@ fun BookScreen(
     }
     LaunchedEffect(open == null) { if (open == null) { flip.index = 0; currentKey = BookPage.Cover } }
     val currentPage = pages.getOrNull(flip.index) ?: BookPage.Cover
+    // Номери лише заповнених сторінок (порожнє «сьогодні» без номера) — щоб знати, де ти в щоденнику.
+    val pageNumbers = run {
+        var n = 0
+        pages.map { p -> if (p is BookPage.DayPart && !vm.day(p.day).isEmpty) ++n else null }
+    }
+    // Підказка «Гортай обкладинку» — через 5 с на обкладинці, плавно.
+    var hintShown by remember(info.id) { mutableStateOf(false) }
+    LaunchedEffect(open != null, flip.index == 0) {
+        hintShown = false
+        if (open != null && flip.index == 0) { delay(5_000); hintShown = true }
+    }
+    val hintAlpha by animateFloatAsState(if (hintShown) 1f else 0f, tween(900), label = "hint")
     val currentDay = (currentPage as? BookPage.DayPart)?.day
 
     // Куди відкривається обкладинка: на закладку (якщо так у Налаштуваннях) чи на сьогодні.
@@ -338,6 +351,7 @@ fun BookScreen(
         override fun block(key: String, rect: Rect?) { if (rect == null) blockers.remove(key) else blockers[key] = rect }
         override fun jumpTo(day: Long) = jumpToDay(day)
         override fun dryHint() = vm.show(R.string.ink_dry)
+        override fun openMenu() { focusManager.clearFocus(); dialog = BookDialog.Menu }
         override val recording: RecordingState? get() = recording
         override fun stopRecording() = stopRecording()
     }
@@ -363,29 +377,6 @@ fun BookScreen(
     }
 
     Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding()) {
-        // Верхній рядок: назад, назва, «⋯».
-        Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            val canBack = flip.index > 0 || onShelf != null
-            Box(Modifier.size(44.dp).clip(CircleShape).clickable(enabled = canBack) {
-                haptics.tap()
-                if (flip.index > 0) scope.launch { focusManager.clearFocus(); ink = null; currentKey = BookPage.Cover; flip.flipTo(0) } else onShelf?.invoke()
-            }, contentAlignment = Alignment.Center) {
-                if (canBack) GlyphIcon(Glyph.Back, stringResource(R.string.back), tint = Oled.TextPrimary)
-            }
-            Text(
-                if (flip.index > 0) info.name else "",
-                color = Oled.TextSecondary,
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
-            )
-            Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); focusManager.clearFocus(); dialog = BookDialog.Menu }, contentAlignment = Alignment.Center) {
-                GlyphIcon(Glyph.More, stringResource(R.string.menu), tint = Oled.TextPrimary)
-            }
-        }
-
         // Книга. Коли з'являється клавіатура, вся сторінка (папір, лінії й текст разом) підсувається вгору, щоб рядок
         // з курсором був над клавіатурою, — як коли підсовуєш щоденник. Тло лишається на місці.
         val ime = WindowInsets.ime
@@ -393,30 +384,32 @@ fun BookScreen(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .padding(top = 12.dp)
                 .onGloballyPositioned { bookTop = it.positionInWindow().y },
         ) {
-            val availW = maxWidth - 28.dp
-            val availH = maxHeight - RibbonTop - RibbonBottom
+            val availW = maxWidth - 16.dp
+            val availH = maxHeight - RibbonBottom
             val size = with(density) { pageSize(androidx.compose.ui.geometry.Size(availW.toPx(), availH.toPx())) }
             val pw = with(density) { size.width.toDp() }
             val ph = with(density) { size.height.toDp() }
             LaunchedEffect(size.width) { pageW = size.width }
+            // Книжка — посередині вільного місця (вона вужча за екран, тож зверху й знизу лишається тло).
+            val top = ((maxHeight - ph - RibbonBottom) / 2).coerceAtLeast(0.dp)
             Box(
                 Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = 0.dp)
+                    .offset(y = top)
                     .graphicsLayer {
                         val imeH = ime.getBottom(this).toFloat()
                         val rootH = view.rootView.height.toFloat()
-                        val topOfPage = bookTop + RibbonTop.toPx()
+                        val topOfPage = bookTop + top.toPx()
                         val visible = rootH - imeH - 20.dp.toPx()
                         translationY = if (editing != null && imeH > 0f) -(topOfPage + cursorBottom.value - visible).coerceAtLeast(0f) else 0f
                     }
-                    .size(pw, ph + RibbonTop + RibbonBottom),
+                    .size(pw, ph + RibbonBottom),
             ) {
                 Box(
                     Modifier
-                        .offset(y = RibbonTop)
                         .size(pw, ph)
                         .onGloballyPositioned { bookCoords = it },
                 ) {
@@ -428,7 +421,12 @@ fun BookScreen(
                         canFlipForward = { i -> !(i == 0 && open == null) },
                         nextOf = { i -> if (i == 0) openTarget else i + 1 },
                         prevOf = { i -> i - 1 },
-                        blocked = { blockers.values.toList() },
+                        blocked = {
+                            // Шестерня внизу ліворуч на сторінці дня — там гортання не починається.
+                            val g = GearBox
+                            val k = size.width / PageMetrics.WIDTH
+                            blockers.values.toList() + Rect(g.left * k, g.top * k, g.right * k, g.bottom * k)
+                        },
                         onFlipped = { i -> currentKey = pages.getOrNull(i) ?: BookPage.Cover; highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
                     ) { i ->
                         when (val p = pages.getOrNull(i)) {
@@ -464,14 +462,16 @@ fun BookScreen(
                                         else -> null
                                     },
                                 )
-                                if (open != null) {
-                                    Box(Modifier.fillMaxSize().padding(bottom = 22.dp), contentAlignment = Alignment.BottomCenter) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.fillMaxSize().padding(bottom = 16.dp), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
+                                    // Підказка не висить постійно — з'являється, якщо обкладинку довго не гортають.
+                                    if (open != null) {
+                                        Row(Modifier.graphicsLayer { alpha = hintAlpha }.padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                             if (info.locked) GlyphIcon(Glyph.Unlock, null, tint = Oled.TextSecondary, size = 18.dp)
                                             Spacer(Modifier.width(6.dp))
                                             Text(stringResource(R.string.cover_turn_hint), color = Oled.TextSecondary, fontSize = 13.sp)
                                         }
                                     }
+                                    DiaryGear(size = 44.dp) { focusManager.clearFocus(); dialog = BookDialog.Menu }
                                 }
                             }
                             is BookPage.DayPart -> {
@@ -496,20 +496,22 @@ fun BookScreen(
                                     ink = ink,
                                     yearsAgo = years,
                                     editable = true,
+                                    number = pageNumbers.getOrNull(i),
                                 )
                             }
                         }
                     }
                 }
-                // Закладка — над книжкою (з корінця), лише коли щоденник відкритий.
-                if (open != null && currentDay != null) {
+                // Закладка — пришита до корінця; кінчик звисає з-під книжки (і з-під закритої обкладинки).
+                if (open != null) {
                     val bm = open.bookmark
                     BookmarkRibbon(
                         pageW = pw,
                         pageH = ph,
-                        here = bm == currentDay,
+                        day = currentDay,
+                        here = currentDay != null && bm == currentDay,
                         elsewhere = bm != null && bm != currentDay && bm in dayList,
-                        enabled = editing == null && ink == null && !flip.moving,
+                        enabled = currentDay != null && editing == null && ink == null && !flip.moving,
                         onPlace = { vm.setBookmark(currentDay) },
                         onRemove = { vm.setBookmark(null) },
                         onJump = { bm?.let { jumpToDay(it) } },

@@ -1,7 +1,6 @@
 package com.blacklaunch.diary.book
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -13,6 +12,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -20,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,25 +39,26 @@ import com.blacklaunch.diary.ui.taperedPath
 import kotlinx.coroutines.launch
 import kotlin.math.sin
 
-/** Простір над і під сторінкою — там висить кінчик стрічки. */
-val RibbonTop = 34.dp
-val RibbonBottom = 24.dp
+/** Простір під сторінкою — там з книжки звисає кінчик стрічки. */
+val RibbonBottom = 34.dp
 
-/** Де на сторінці висить стрічка (частка ширини). */
-private const val RIBBON_X = 0.72f
-private val RibbonWidth = 15.dp
+/** Де лежить стрічка (частка ширини сторінки): ліве поле, де не пишеться текст. */
+private const val RIBBON_X = 0.042f
+private val RibbonWidth = 12.dp
 
 /**
- * Закладка — тканинна стрічка з корінця, як у справжньому щоденнику.
- *  - Висить коротким кінчиком над сторінкою. Смикнув униз і відпустив — лягла на цю сторінку.
- *  - Лежить на сторінці (видно її на всю висоту, кінець із вирізом стирчить знизу). Смикнув так само — прибрав.
- *  - Лежить на іншій сторінці — знизу видно її кінчик; дотик — перегорнути до неї.
- * Гойдається, коли її чіпаєш. [pageW]/[pageH] — розмір сторінки; стрічка малюється в просторі над сторінкою.
+ * Закладка — тканинна стрічка, пришита до корінця, як у справжньому щоденнику.
+ *  - Кінчик завжди звисає з-під нижнього краю книжки (з-поміж сторінок) ліворуч — за нього й беруть, тож стрічка не
+ *    заважає тексту й клавіатурі.
+ *  - Смикнув кінчик униз — стрічка лягла на цю сторінку (видно її від верхнього краю до низу, у лівому полі).
+ *    Смикнув, коли лежить тут, — прибрав. Лежить на іншій сторінці — дотик до кінчика перегортає до неї.
+ * [day] — поточна сторінка: при перегортанні стрічка не «їде», а одразу лежить чи ні.
  */
 @Composable
 fun BookmarkRibbon(
     pageW: Dp,
     pageH: Dp,
+    day: Long?,
     here: Boolean,
     elsewhere: Boolean,
     enabled: Boolean,
@@ -66,115 +70,102 @@ fun BookmarkRibbon(
     val density = LocalDensity.current
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
-    val topPx = with(density) { RibbonTop.toPx() }
     val hPx = with(density) { pageH.toPx() }
-    val tail = with(density) { 30.dp.toPx() }
-    val full = topPx + hPx + with(density) { 18.dp.toPx() }
-    // Довжина стрічки від верхнього краю простору над сторінкою.
-    val length = remember { Animatable(if (here) full else topPx + tail * 0.3f) }
+    // Яка частка сторінки вкрита стрічкою (0 — лише кінчик знизу, 1 — лежить на всю висоту) і наскільки витягли кінчик.
+    val laid = remember { Animatable(if (here) 1f else 0f) }
+    val pull = remember { Animatable(0f) }
     val sway = remember { Animatable(0f) }
-    LaunchedEffect(here, hPx) {
-        length.animateTo(if (here) full else topPx + tail * 0.3f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow))
+    var shownDay by remember { mutableStateOf(day) }
+    LaunchedEffect(day, here) {
+        if (day != shownDay) {
+            shownDay = day
+            laid.snapTo(if (here) 1f else 0f)
+        } else {
+            laid.animateTo(if (here) 1f else 0f, tween(420))
+            sway.snapTo(if (here) 3f else -3f)
+            sway.animateTo(0f, spring(dampingRatio = 0.25f, stiffness = 60f))
+        }
     }
-    LaunchedEffect(here) {
-        sway.snapTo(if (here) 3.5f else -3f)
-        sway.animateTo(0f, spring(dampingRatio = 0.25f, stiffness = 60f))
-    }
-    val xDp = pageW * RIBBON_X
     val glass = AppStyle.glass
-    Box(Modifier.size(pageW, pageH + RibbonTop + RibbonBottom)) {
+    val xDp = pageW * RIBBON_X
+    Box(Modifier.size(pageW, pageH + RibbonBottom)) {
         Canvas(Modifier.fillMaxSize()) {
             val x = size.width * RIBBON_X
             val w = RibbonWidth.toPx()
-            val len = length.value
-            rotate(sway.value, pivot = Offset(x, 0f)) {
-                val notch = w * 0.55f
-                val p = Path().apply {
-                    moveTo(x - w / 2, 0f)
-                    lineTo(x + w / 2, 0f)
-                    lineTo(x + w / 2, len)
-                    lineTo(x, len - notch)
-                    lineTo(x - w / 2, len)
-                    close()
-                }
-                if (glass) {
-                    // Скляна стрічка: напівпрозора (текст під нею видно), з гранями й відблиском.
-                    drawPath(p, Brush.horizontalGradient(0f to Color(0xCC2C2C2C), 0.5f to Color(0xB3121212), 1f to Color(0xCC262626), startX = x - w / 2, endX = x + w / 2))
-                    drawPath(p, Color(0x80FFFFFF), style = Stroke(1.dp.toPx()))
-                    drawLine(Color(0x33FFFFFF), Offset(x - w * 0.18f, 2f), Offset(x - w * 0.18f, len - notch - 2f), 1.dp.toPx())
-                } else {
-                    drawPath(p, Color(0xB0000000))
-                    drawPath(taperedPath(listOf(Offset(x - w / 2, 0f), Offset(x - w / 2 + 0.6f, len * 0.5f), Offset(x - w / 2, len)), 1.8.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-                    drawPath(taperedPath(listOf(Offset(x + w / 2, 0f), Offset(x + w / 2 - 0.6f, len * 0.5f), Offset(x + w / 2, len)), 1.8.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-                    drawPath(taperedPath(listOf(Offset(x - w / 2, len), Offset(x, len - notch), Offset(x + w / 2, len)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-                    // Тканина: рідке косе штрихування.
-                    var y = 6.dp.toPx()
-                    var i = 0
-                    while (y < len - notch - 4.dp.toPx()) {
-                        pencilTick(Offset(x - w * 0.35f, y + w * 0.3f), Offset(x + w * 0.35f, y - w * 0.3f), 0.9.dp.toPx(), SheetInk.copy(alpha = 0.28f), i++)
-                        y += 9.dp.toPx() + sin(i * 1.7f) * 1.5f
-                    }
-                }
+            val tailTop = hPx - 3.dp.toPx()
+            val tailEnd = hPx + 24.dp.toPx() + pull.value
+            val notch = w * 0.55f
+            // Стрічка на сторінці: від верхнього краю (з корінця) донизу, у лівому полі.
+            if (laid.value > 0.01f) {
+                val bottom = hPx * laid.value
+                val p = Path().apply { addRect(androidx.compose.ui.geometry.Rect(x - w / 2, 0f, x + w / 2, bottom)) }
+                ribbonBody(p, x, w, 0f, bottom, glass)
             }
-            // Закладка на іншій сторінці: її кінчик стирчить знизу книжки.
-            if (elsewhere && !here) {
-                val top = topPx + hPx - 4.dp.toPx()
-                val end = top + 22.dp.toPx()
-                val notch = w * 0.5f
+            // Кінчик з вирізом, що звисає з-під книжки.
+            rotate(sway.value, pivot = Offset(x, tailTop)) {
                 val p = Path().apply {
-                    moveTo(x - w / 2, top); lineTo(x + w / 2, top); lineTo(x + w / 2, end); lineTo(x, end - notch); lineTo(x - w / 2, end); close()
+                    moveTo(x - w / 2, tailTop); lineTo(x + w / 2, tailTop); lineTo(x + w / 2, tailEnd)
+                    lineTo(x, tailEnd - notch); lineTo(x - w / 2, tailEnd); close()
                 }
-                if (glass) {
-                    drawPath(p, Color(0xCC1E1E1E))
-                    drawPath(p, Color(0x80FFFFFF), style = Stroke(1.dp.toPx()))
-                } else {
-                    drawPath(p, Color.Black)
-                    drawPath(taperedPath(listOf(Offset(x - w / 2, top), Offset(x - w / 2, end), Offset(x, end - notch), Offset(x + w / 2, end), Offset(x + w / 2, top)), 1.7.dp.toPx()), SheetInk.copy(alpha = 0.8f))
+                ribbonBody(p, x, w, tailTop, tailEnd - notch, glass)
+                if (!glass) {
+                    drawPath(taperedPath(listOf(Offset(x - w / 2, tailEnd), Offset(x, tailEnd - notch), Offset(x + w / 2, tailEnd)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
                 }
             }
         }
-        // Де можна взяти стрічку — лише біля неї (решта сторінки живе своїм життям).
+        // Узяти можна лише кінчик під книжкою.
         if (enabled) {
             Box(
                 Modifier
-                    .offset(xDp - 26.dp, 0.dp)
-                    .size(52.dp, RibbonTop + 18.dp)
+                    .offset(xDp - 22.dp, pageH - 4.dp)
+                    .size(44.dp, RibbonBottom + 4.dp)
                     .semantics { contentDescription = description }
+                    .pointerInput(here, elsewhere) {
+                        detectTapGestures { if (elsewhere && !here) { haptics.tap(); onJump() } }
+                    }
                     .pointerInput(here) {
                         var pulled = 0f
-                        var start = 0f
                         detectVerticalDragGestures(
-                            onDragStart = { pulled = 0f; start = length.value; haptics.tick() },
+                            onDragStart = { pulled = 0f; haptics.tick() },
                             onVerticalDrag = { c, dy ->
                                 c.consume()
                                 pulled += dy
                                 scope.launch {
-                                    if (here) length.snapTo((start + pulled * 0.25f).coerceAtLeast(start))
-                                    else length.snapTo((start + pulled).coerceIn(start, full))
+                                    pull.snapTo((pulled * 0.35f).coerceIn(0f, 28.dp.toPx()))
                                     sway.snapTo((pulled / 40f).coerceIn(-4f, 4f) * 0.3f)
                                 }
                             },
                             onDragEnd = {
+                                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 300f)) }
                                 scope.launch { sway.animateTo(0f, spring(dampingRatio = 0.3f, stiffness = 80f)) }
-                                if (here) {
-                                    if (pulled > 36.dp.toPx()) { haptics.longPress(); onRemove() }
-                                    else scope.launch { length.animateTo(full, tween(220)) }
-                                } else {
-                                    if (length.value > topPx + hPx * 0.35f) { haptics.longPress(); onPlace() }
-                                    else scope.launch { length.animateTo(topPx + tail * 0.3f, spring(dampingRatio = 0.6f)) }
+                                if (pulled > 36.dp.toPx()) {
+                                    haptics.longPress()
+                                    if (here) onRemove() else onPlace()
                                 }
                             },
                         )
                     },
             )
         }
-        if (elsewhere && !here) {
-            Box(
-                Modifier
-                    .offset(xDp - 22.dp, RibbonTop + pageH - 6.dp)
-                    .size(44.dp, RibbonBottom + 6.dp)
-                    .pointerInput(Unit) { detectTapGestures { haptics.tap(); onJump() } },
-            )
+    }
+}
+
+/** Тіло стрічки: «Скло» — темне скло з гранями й відблиском; «Аркуш» — суцільна чорна тканина, обведена олівцем. */
+private fun DrawScope.ribbonBody(p: Path, x: Float, w: Float, top: Float, bottom: Float, glass: Boolean) {
+    if (glass) {
+        drawPath(p, Brush.horizontalGradient(0f to Color(0xFF2C2C2C), 0.5f to Color(0xFF141414), 1f to Color(0xFF262626), startX = x - w / 2, endX = x + w / 2))
+        drawPath(p, Color(0x80FFFFFF), style = Stroke(1.dp.toPx()))
+        if (bottom - top > 6f) drawLine(Color(0x33FFFFFF), Offset(x - w * 0.18f, top + 2f), Offset(x - w * 0.18f, bottom - 2f), 1.dp.toPx())
+    } else {
+        drawPath(p, Color(0xFF050505))
+        drawPath(taperedPath(listOf(Offset(x - w / 2, top), Offset(x - w / 2 + 0.6f, (top + bottom) / 2), Offset(x - w / 2, bottom)), 1.8.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+        drawPath(taperedPath(listOf(Offset(x + w / 2, top), Offset(x + w / 2 - 0.6f, (top + bottom) / 2), Offset(x + w / 2, bottom)), 1.8.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+        // Тканина: рідке косе штрихування.
+        var y = top + 6.dp.toPx()
+        var i = 0
+        while (y < bottom - 4.dp.toPx()) {
+            pencilTick(Offset(x - w * 0.35f, y + w * 0.3f), Offset(x + w * 0.35f, y - w * 0.3f), 0.9.dp.toPx(), SheetInk.copy(alpha = 0.28f), i++)
+            y += 9.dp.toPx() + sin(i * 1.7f) * 1.5f
         }
     }
 }

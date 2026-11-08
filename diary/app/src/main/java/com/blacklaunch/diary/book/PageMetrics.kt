@@ -6,8 +6,8 @@ package com.blacklaunch.diary.book
  * тексту — у дня справді фіксована «кількість місця».
  */
 object PageMetrics {
-    /** Висота сторінки до ширини (трохи вужча за A5 — під екран телефона). */
-    const val ASPECT = 1.56f
+    /** Висота сторінки до ширини (вужча за A5 — книжка на весь екран телефона). */
+    const val ASPECT = 1.75f
 
     const val WIDTH = 100f
     const val HEIGHT = WIDTH * ASPECT

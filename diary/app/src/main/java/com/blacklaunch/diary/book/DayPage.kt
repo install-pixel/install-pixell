@@ -92,6 +92,7 @@ interface PageHost {
     fun block(key: String, rect: Rect?)
     fun jumpTo(day: Long)
     fun dryHint()
+    fun openMenu()
     val recording: RecordingState?
     fun stopRecording()
 }
@@ -120,6 +121,7 @@ fun DayPage(
     ink: InkSession?,
     yearsAgo: Long?,
     editable: Boolean,
+    number: Int? = null,
 ) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
@@ -240,6 +242,16 @@ fun DayPage(
             onChange = { host.vm.setInk(day.day, it) },
             onDryErase = { host.dryHint() },
         )
+
+        // Номер сторінки (лише заповнені) — унизу посередині; шестерня — унизу ліворуч, на самому аркуші.
+        if (number != null) {
+            Text(
+                number.toString(),
+                style = style.copy(fontSize = (headerSize * 0.8f).sp, lineHeight = (headerSize * 0.9f).sp, color = Oled.TextSecondary, textAlign = TextAlign.Center),
+                modifier = Modifier.offset(dp(PageMetrics.WIDTH / 2 - 8f), dp(PageMetrics.HEIGHT - 6.6f)).width(dp(16f)),
+            )
+        }
+        DiaryGear(Modifier.offset(dp(GearBox.left), dp(GearBox.top)), size = dp(GearBox.width)) { host.openMenu() }
 
         // «Цей день рік тому»: загнутий ріжок унизу праворуч.
         if (first && yearsAgo != null) {
@@ -480,3 +492,21 @@ fun clock(ms: Long): String {
     return "%d:%02d".format(s / 60, s % 60)
 }
 
+
+/** Де на сторінці дня шестерня (в одиницях сторінки): нижнє поле, ліворуч — поза текстом і поза стрічкою. */
+val GearBox = androidx.compose.ui.geometry.Rect(PageMetrics.MARGIN_LEFT - 1.5f, PageMetrics.HEIGHT - 9f, PageMetrics.MARGIN_LEFT + 7.5f, PageMetrics.HEIGHT)
+
+/** Шестерня, намальована на щоденнику, — замість стандартного «⋯»: відкриває меню. */
+@Composable
+fun DiaryGear(modifier: Modifier = Modifier, size: Dp = 40.dp, onClick: () -> Unit) {
+    val haptics = com.blacklaunch.diary.ui.LocalHaptics.current
+    Box(
+        modifier
+            .size(size)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .clickable { haptics.tap(); onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        GlyphIcon(Glyph.Settings, stringResource(R.string.menu), tint = Oled.TextSecondary, size = size * 0.6f)
+    }
+}
