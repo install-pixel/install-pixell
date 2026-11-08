@@ -171,4 +171,13 @@
     <string name="cover_from_file">Cover from file</string>
     <string name="camera_failed">Couldn\'t open the camera</string>
     <string name="swipe_delete">Delete</string>
+    <string name="photo_slot">Photo of the day</string>
+    <string name="voice_slot">Record voice</string>
+    <string name="slot_removed">Space freed for text</string>
+    <string name="no_room_photo">No room for a photo — shorten this day\'s text</string>
+    <string name="no_room_voice">No room for a recording — shorten this day\'s text</string>
+    <string name="settings_photos">Photos on pages</string>
+    <string name="settings_photos_desc">Off — the whole page is for text</string>
+    <string name="settings_voice">Voice recordings</string>
+    <string name="settings_voice_desc">Off — the recording space goes to text</string>
 </resources>

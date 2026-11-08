@@ -104,6 +104,12 @@ interface PageHost {
     fun dryHint()
     val recording: RecordingState?
     fun stopRecording()
+    /** Додати фото дня: 0 — камера, 1 — галерея, 2 — файл. */
+    fun addPhoto(day: Long, source: Int)
+    fun recordVoice(day: Long)
+    fun dismissSlot(day: Long, photo: Boolean)
+    /** Backspace на самому початку другої сторінки: стерти символ перед [at] (кінець першої). */
+    fun joinBack(day: Long, at: Int)
 }
 
 /** Іде запис голосу (для смужки — живі обриси й час). */
@@ -122,6 +128,8 @@ fun DayPage(
     day: Day,
     part: Int,
     split: Int,
+    photoSlot: Boolean,
+    audioSlot: Boolean,
     pageWidthPx: Float,
     hours: Long,
     highlight: IntRange?,
@@ -137,7 +145,7 @@ fun DayPage(
     fun dp(v: Float): Dp = with(density) { (v * u).toDp() }
     val now = remember(day.updated) { System.currentTimeMillis() }
     val first = part == 0
-    val textTop = if (first) PageMetrics.firstTextTop(day.photo, day.audio || host.recording?.day == day.day) else PageMetrics.TEXT_TOP_SECOND
+    val textTop = if (first) PageMetrics.firstTextTop(photoSlot, audioSlot) else PageMetrics.TEXT_TOP_SECOND
     val lineCount = if (first) PageMetrics.firstLines(day.photo, day.audio || host.recording?.day == day.day) else PageMetrics.secondLines
     val lines = remember(textTop, lineCount, u) { List(lineCount) { i -> (textTop + (i + 1) * PageMetrics.LINE - PageMetrics.LINE * 0.14f) * u } }
     val style = pageTextStyle(u, density, glass)
@@ -206,6 +214,20 @@ fun DayPage(
                 editable = editable,
             )
             y += PageMetrics.PHOTO_HEIGHT + PageMetrics.BLOCK_GAP
+        } else if (first && photoSlot) {
+            // Порожнє місце під фото: дотик до значка — камера / галерея / файл; свайп — віддати місце тексту.
+            SlotBlock(
+                host = host,
+                key = "photo_${day.day}",
+                label = stringResource(R.string.photo_slot),
+                modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)),
+                width = dp(PageMetrics.textWidth),
+                height = dp(PageMetrics.PHOTO_HEIGHT),
+                editable = editable,
+                actions = listOf(Glyph.Shutter to { host.addPhoto(day.day, 0) }, Glyph.Gallery to { host.addPhoto(day.day, 1) }, Glyph.Folder to { host.addPhoto(day.day, 2) }),
+                onDismiss = { host.dismissSlot(day.day, photo = true) },
+            )
+            y += PageMetrics.PHOTO_HEIGHT + PageMetrics.BLOCK_GAP
         } else {
             LaunchedEffect(day.photo) { host.block("photo_${day.day}", null) }
         }
@@ -219,6 +241,18 @@ fun DayPage(
                 width = dp(PageMetrics.textWidth),
                 height = dp(PageMetrics.AUDIO_HEIGHT),
                 editable = editable,
+            )
+        } else if (first && audioSlot) {
+            SlotBlock(
+                host = host,
+                key = "audio_${day.day}",
+                label = stringResource(R.string.voice_slot),
+                modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)),
+                width = dp(PageMetrics.textWidth),
+                height = dp(PageMetrics.AUDIO_HEIGHT),
+                editable = editable,
+                actions = listOf(Glyph.Mic to { host.recordVoice(day.day) }),
+                onDismiss = { host.dismissSlot(day.day, photo = false) },
             )
         } else {
             LaunchedEffect(day.audio) { host.block("audio_${day.day}", null) }
@@ -243,6 +277,7 @@ fun DayPage(
             onFocusConsumed = { host.consumeFocus() },
             sink = host.textSink(day.day, part),
             onFocus = { host.onFocus(day.day, part, it) },
+            onBackAtStart = if (part == 1) ({ host.joinBack(day.day, segStart) }) else null,
             onCursor = { host.onCursor(it) },
             onStrike = { s, e -> host.vm.addStrike(day.day, s, e) },
             bookCoords = { host.bookCoords },
@@ -377,6 +412,61 @@ private fun Modifier.swipeAway(host: PageHost, key: String, enabled: Boolean, on
                 )
             },
         )
+}
+
+/**
+ * Порожнє місце під фото чи голос: тонка пунктирна рамка, підпис і значки (дотик — додати). Свайп уліво з «Видалити» —
+ * прибрати місце на цей день, його займе текст.
+ */
+@Composable
+private fun SlotBlock(
+    host: PageHost,
+    key: String,
+    label: String,
+    modifier: Modifier,
+    width: Dp,
+    height: Dp,
+    editable: Boolean,
+    actions: List<Pair<Glyph, () -> Unit>>,
+    onDismiss: () -> Unit,
+) {
+    val glass = AppStyle.glass
+    val haptics = LocalHaptics.current
+    val ink = if (glass) Color(0x33FFFFFF) else SheetInk.copy(alpha = 0.3f)
+    Box(modifier.size(width, height).swipeAway(host, key, editable, onDismiss)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val r = minOf(10.dp.toPx(), size.height / 2)
+            drawRoundRect(
+                ink,
+                cornerRadius = CornerRadius(r),
+                style = Stroke(1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))),
+            )
+        }
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (actions.size > 1) androidx.compose.foundation.layout.Arrangement.Center else androidx.compose.foundation.layout.Arrangement.Start,
+        ) {
+            if (actions.size == 1) {
+                Text(label, color = Oled.TextSecondary, fontFamily = if (glass) GlassFont else HandFont, fontSize = if (glass) 14.sp else 18.sp, modifier = Modifier.weight(1f))
+            }
+            actions.forEach { (glyph, action) ->
+                Box(
+                    Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable(enabled = editable) { haptics.tap(); action() },
+                    contentAlignment = Alignment.Center,
+                ) { GlyphIcon(glyph, label, tint = Oled.TextSecondary, size = 24.dp) }
+            }
+        }
+        if (actions.size > 1) {
+            Text(
+                label,
+                color = Oled.TextSecondary.copy(alpha = 0.7f),
+                fontFamily = if (glass) GlassFont else HandFont,
+                fontSize = if (glass) 13.sp else 17.sp,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+            )
+        }
+    }
 }
 
 @Composable

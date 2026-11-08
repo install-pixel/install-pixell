@@ -183,4 +183,13 @@
     <string name="cover_from_file">Обкладинка з файлу</string>
     <string name="camera_failed">Не вдалося відкрити камеру</string>
     <string name="swipe_delete">Видалити</string>
+    <string name="photo_slot">Фото дня</string>
+    <string name="voice_slot">Записати голос</string>
+    <string name="slot_removed">Місце звільнено під текст</string>
+    <string name="no_room_photo">Для фото немає місця — скороти текст цього дня</string>
+    <string name="no_room_voice">Для запису немає місця — скороти текст цього дня</string>
+    <string name="settings_photos">Фото на сторінках</string>
+    <string name="settings_photos_desc">Вимкнено — уся сторінка під текст</string>
+    <string name="settings_voice">Голосові записи</string>
+    <string name="settings_voice_desc">Вимкнено — місце під запис віддається тексту</string>
 </resources>

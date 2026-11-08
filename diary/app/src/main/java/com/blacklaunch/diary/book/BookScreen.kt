@@ -180,13 +180,38 @@ fun BookScreen(
         splitCache[key]?.let { return it }
         val l = measurer.measure(text, style, constraints = Constraints(maxWidth = (PageMetrics.textWidth * u).toInt().coerceAtLeast(1)))
         val starts = List(l.lineCount) { l.getLineStart(it) }
-        val r = splitPages(text.length, starts, first, second)
+        // Пробіли й порожні рядки в кінці дня місця не займають — рахуємо лише до останнього написаного символу.
+        val trimmed = text.trimEnd().length
+        val used = if (trimmed == 0) 0 else l.getLineForOffset(trimmed - 1) + 1
+        val r = splitPages(text.length, starts, first, second).copy(fits = used <= first + second, lines = used)
         if (splitCache.size > 200) splitCache.clear()
         splitCache[key] = r
         return r
     }
 
     var recording by remember { mutableStateOf<RecordingState?>(null) }
+
+    /**
+     * Які місця є на першій сторінці дня: фото / голос, якщо вони вже є, або порожнє місце-запрошення, якщо в щоденнику
+     * це увімкнено, на цей день його не прибрали й воно вміщається разом із текстом (інакше місце віддається тексту).
+     */
+    fun slotsFor(d: com.blacklaunch.diary.data.Day, text: String = d.text): Pair<Boolean, Boolean> {
+        val hasP = d.photo
+        val hasA = d.audio || recording?.day == d.day
+        val wantP = !hasP && info.photos && !d.noPhoto
+        val wantA = !hasA && info.voice && !d.noAudio
+        var p = hasP || wantP
+        var a = hasA || wantA
+        if (wantA && !splitFor(text, p, a).fits) a = hasA
+        if (wantP && !splitFor(text, p, a).fits) p = hasP
+        return p to a
+    }
+    fun roomFor(day: Long, photo: Boolean): Boolean {
+        val d = vm.day(day)
+        val (p, a) = slotsFor(d)
+        return if (photo) p || splitFor(d.text, true, a).fits else a || splitFor(d.text, p, true).fits
+    }
+
     var menuOpen by remember(info.id) { mutableStateOf(false) }
     var menuReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     val pages: List<BookPage> = buildList {
@@ -195,7 +220,8 @@ fun BookScreen(
             dayList.forEach { d ->
                 val day = vm.day(d)
                 add(BookPage.DayPart(d, 0))
-                val split = splitFor(day.text, day.photo, day.audio || recording?.day == d)
+                val (sp, sa) = slotsFor(day)
+                val split = splitFor(day.text, sp, sa)
                 if (split.split < day.text.length || day.ink.any { it.page == 1 }) add(BookPage.DayPart(d, 1))
             }
         }
@@ -214,7 +240,7 @@ fun BookScreen(
     // Номери лише заповнених сторінок (порожнє «сьогодні» без номера) — щоб знати, де ти в щоденнику.
     val pageNumbers = run {
         var n = 0
-        pages.map { p -> if (p is BookPage.DayPart && !vm.day(p.day).isEmpty) ++n else null }
+        pages.map { p -> if (p is BookPage.DayPart && !vm.day(p.day).isBlank) ++n else null }
     }
     // Підказка «Гортай обкладинку» — через 5 с на обкладинці, плавно.
     var hintShown by remember(info.id) { mutableStateOf(false) }
@@ -274,7 +300,8 @@ fun BookScreen(
         val target = BookPage.DayPart(day, 0)
         val partTarget = if (mark != null) {
             val d = vm.day(day)
-            val split = splitFor(d.text, d.photo, d.audio)
+            val (sp, sa) = slotsFor(d)
+            val split = splitFor(d.text, sp, sa)
             if (mark.first >= split.split && split.split < d.text.length) BookPage.DayPart(day, 1) else target
         } else target
         highlight = mark?.let { day to it }
@@ -375,11 +402,19 @@ fun BookScreen(
     val host = object : PageHost {
         override val vm: DiaryViewModel = vm
         override val bookCoords: LayoutCoordinates? get() = bookCoords
-        override fun textSink(day: Long, part: Int) = TextSink { full, cursor ->
+        override fun textSink(day: Long, part: Int) = TextSink { input, cursor ->
             val d = vm.dayNow(day)
-            if (!full.startsWith(d.sealed) || full.length > Limits.DAY_TEXT) return@TextSink false
-            val split = splitFor(full, d.photo, d.audio || recording?.day == day)
-            if (!split.fits) { vm.show(R.string.day_full); return@TextSink false }
+            if (!input.startsWith(d.sealed) || input.length > Limits.DAY_TEXT) return@TextSink false
+            // Порожні рядки після курсора — вільне місце, як на папері: текст займає найближчий порожній рядок, а не
+            // впирається в кінець дня.
+            val full = absorbBlankLines(input, cursor) { t -> slotsFor(d, t).let { splitFor(t, it.first, it.second).fits } }
+            val slots = slotsFor(d, full)
+            val split = splitFor(full, slots.first, slots.second)
+            if (!split.fits) {
+                // Стирати можна завжди — навіть коли день уже переповнений; не можна лише додавати понад місце.
+                val old = slotsFor(d).let { splitFor(d.text, it.first, it.second) }
+                if (split.lines > old.lines) { vm.show(R.string.day_full); return@TextSink false }
+            }
             vm.editText(day, full)
             if (part == 0 && split.split < full.length && cursor >= split.split) {
                 // Сторінка закінчилась — переходимо на продовження дня, курсор там само.
@@ -406,6 +441,21 @@ fun BookScreen(
         override fun dryHint() = vm.show(R.string.ink_dry)
         override val recording: RecordingState? get() = recording
         override fun stopRecording() = stopRecording()
+        override fun addPhoto(day: Long, source: Int) {
+            when (source) {
+                0 -> shoot(day)
+                1 -> { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                else -> fromFile(day)
+            }
+        }
+        override fun recordVoice(day: Long) = record(day)
+        override fun dismissSlot(day: Long, photo: Boolean) = vm.dismissSlot(day, photo)
+        override fun joinBack(day: Long, at: Int) {
+            // Backspace на початку другої сторінки — стерти останній символ першої (якщо він не висох).
+            val d = vm.dayNow(day)
+            if (at <= d.sealed.length || at > d.text.length) return
+            textSink(day, 1).change(d.text.removeRange(at - 1, at), at - 1)
+        }
     }
 
     /** Вміст сторінки меню: дії з цією сторінкою, з цим щоденником і його власні налаштування. */
@@ -417,11 +467,13 @@ fun BookScreen(
             if (open != null && day != null) {
                 val d = vm.day(day)
                 add(MenuEntry(null, stringResource(R.string.menu_page)))
-                add(MenuEntry(Glyph.Shutter, stringResource(R.string.photo_from_camera)) { shoot(day) })
-                add(MenuEntry(Glyph.Gallery, stringResource(R.string.photo_from_gallery)) { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                add(MenuEntry(Glyph.Folder, stringResource(R.string.photo_from_file)) { fromFile(day) })
+                val photoRoom = roomFor(day, photo = true)
+                fun photo(src: Int) { if (photoRoom || d.photo) host.addPhoto(day, src) else vm.show(R.string.no_room_photo) }
+                add(MenuEntry(Glyph.Shutter, stringResource(R.string.photo_from_camera)) { photo(0) })
+                add(MenuEntry(Glyph.Gallery, stringResource(R.string.photo_from_gallery)) { photo(1) })
+                add(MenuEntry(Glyph.Folder, stringResource(R.string.photo_from_file)) { photo(2) })
                 if (d.photo) add(MenuEntry(Glyph.Edit, stringResource(R.string.photo_caption)) { dialog = BookDialog.Caption(day) })
-                if (!d.audio && recording == null) add(MenuEntry(Glyph.Mic, stringResource(R.string.record)) { record(day) })
+                if (!d.audio && recording == null) add(MenuEntry(Glyph.Mic, stringResource(R.string.record)) { if (roomFor(day, photo = false)) record(day) else vm.show(R.string.no_room_voice) })
                 add(MenuEntry(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, (back as BookPage.DayPart).part) })
                 add(MenuEntry(Glyph.Pin, stringResource(R.string.place)) { dialog = BookDialog.Place(day) })
             }
@@ -442,8 +494,10 @@ fun BookScreen(
         }.map { e -> MenuEntry(e.glyph, e.text, e.tone) { closeMenu(); e.onClick() } })
         if (open != null) {
             Text(stringResource(R.string.settings_this_diary), color = Oled.TextSecondary, fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 6.dp))
-            Column(Modifier.padding(horizontal = 8.dp)) {
+            Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SwitchRow(stringResource(R.string.open_bookmark_title), vm.openAtBookmarkOf(info), subtitle = stringResource(R.string.open_bookmark_desc)) { vm.setOpenAtBookmark(info.id, it) }
+                SwitchRow(stringResource(R.string.settings_photos), info.photos, subtitle = stringResource(R.string.settings_photos_desc)) { vm.setPhotosOn(info.id, it) }
+                SwitchRow(stringResource(R.string.settings_voice), info.voice, subtitle = stringResource(R.string.settings_voice_desc)) { vm.setVoiceOn(info.id, it) }
             }
             Text(stringResource(R.string.drying_title), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp, top = 10.dp))
             InkDrying.entries.forEach { dr ->
@@ -594,7 +648,8 @@ fun BookScreen(
                             ) { DiaryMenu() }
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
-                                val split = splitFor(d.text, d.photo, d.audio || recording?.day == p.day)
+                                val (sp, sa) = slotsFor(d)
+                                val split = splitFor(d.text, sp, sa)
                                 val years = if (p.day == today) {
                                     val t = LocalDate.ofEpochDay(today)
                                     dayList.lastOrNull { it < today && LocalDate.ofEpochDay(it).let { x -> x.monthValue == t.monthValue && x.dayOfMonth == t.dayOfMonth } }
@@ -604,6 +659,8 @@ fun BookScreen(
                                     day = d,
                                     part = p.part,
                                     split = split.split,
+                                    photoSlot = sp,
+                                    audioSlot = sa,
                                     pageWidthPx = size.width,
                                     hours = hours,
                                     highlight = highlight?.takeIf { it.first == p.day }?.second,

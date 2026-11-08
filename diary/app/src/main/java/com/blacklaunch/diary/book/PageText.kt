@@ -17,6 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -114,6 +119,7 @@ fun PageText(
     onFocusConsumed: () -> Unit,
     sink: TextSink,
     onFocus: (Boolean) -> Unit,
+    onBackAtStart: (() -> Unit)? = null,
     onCursor: (Rect) -> Unit,
     onStrike: (Int, Int) -> Unit,
     bookCoords: () -> LayoutCoordinates?,
@@ -215,6 +221,12 @@ fun PageText(
                 .wrapContentHeight(Alignment.Top, unbounded = true)
                 .heightIn(min = hDp)
                 .focusRequester(focus)
+                // Backspace на самому початку продовження дня — стирає кінець попередньої сторінки.
+                .onPreviewKeyEvent { e ->
+                    if (onBackAtStart != null && e.type == KeyEventType.KeyDown && e.key == Key.Backspace &&
+                        value.selection.collapsed && value.selection.start == 0
+                    ) { onBackAtStart(); true } else false
+                }
                 .onFocusChanged { f ->
                     if (f.isFocused != focused) {
                         focused = f.isFocused

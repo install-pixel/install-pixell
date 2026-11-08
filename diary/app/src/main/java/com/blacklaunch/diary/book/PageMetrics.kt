@@ -63,3 +63,17 @@ fun splitPages(textLength: Int, lineStarts: List<Int>, firstLines: Int, secondLi
     val split = if (lines > firstLines) lineStarts[firstLines] else textLength
     return PageSplit(split = split, fits = lines <= firstLines + secondLines, lines = lines)
 }
+
+/**
+ * Порожні рядки після курсора — вільне місце, як на папері: поки текст не вміщається ([fits]), прибираємо найближчий
+ * порожній рядок (лише з пробілів) після [cursor]. Написане нижче лишається на місці, просто підтягується.
+ */
+fun absorbBlankLines(text: String, cursor: Int, fits: (String) -> Boolean): String {
+    var t = text
+    val blank = Regex("\n[ \t]*(?=\n|$)")
+    while (!fits(t)) {
+        val cut = blank.find(t, cursor.coerceIn(0, t.length)) ?: break
+        t = t.removeRange(cut.range)
+    }
+    return t
+}

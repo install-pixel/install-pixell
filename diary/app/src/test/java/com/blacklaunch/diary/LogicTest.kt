@@ -3,6 +3,7 @@ package com.blacklaunch.diary
 import com.blacklaunch.diary.book.CurlGeometry
 import com.blacklaunch.diary.book.PageMetrics
 import com.blacklaunch.diary.book.splitPages
+import com.blacklaunch.diary.book.absorbBlankLines
 import com.blacklaunch.diary.book.wordRange
 import com.blacklaunch.diary.data.Day
 import com.blacklaunch.diary.data.DayCodec
@@ -250,5 +251,20 @@ class LogicTest {
         assertEquals(0.5f, back.factors[1], 0.01f)
         assertEquals(42L, back.time)
         assertEquals(listOf(Strike(1, 4)), DayCodec.strikesFromJson(DayCodec.strikesToJson(listOf(Strike(1, 4)))))
+    }
+
+    @Test
+    fun blankLinesAreFreeSpace() {
+        // 6 рядків місця: 5 порожніх рядків, текст на 6-му; дописали в 1-й рядок так, що він переніс би на 2-й.
+        val nl = 10.toChar().toString()
+        val fits = { t: String -> t.split(nl).size <= 6 }
+        val typed = "Перший рядок" + nl + "продовження" + nl.repeat(5) + "Шостий"
+        val out = absorbBlankLines(typed, cursor = 24, fits = fits)
+        assertTrue(fits(out))
+        assertTrue(out.endsWith("Шостий"))
+        assertTrue(out.startsWith("Перший рядок" + nl + "продовження"))
+        // Порожніх рядків немає — нічого не прибираємо (і текст не губиться).
+        val full = (1..7).joinToString(nl) { "р$it" }
+        assertEquals(full, absorbBlankLines(full, 0, fits))
     }
 }

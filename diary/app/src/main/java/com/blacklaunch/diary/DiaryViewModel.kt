@@ -93,6 +93,15 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun openAtBookmarkOf(info: DiaryInfo?): Boolean = info?.openAtBookmark ?: settings.openAtBookmark
 
     fun setDrying(id: String, drying: InkDrying) = saveShelf(shelf.map { if (it.id == id) it.copy(drying = drying) else it })
+    fun setPhotosOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(photos = on) else it })
+    fun setVoiceOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(voice = on) else it })
+
+    /** Прибрати порожнє місце під фото / голос на цей день (з «Повернути»): його займе текст. */
+    fun dismissSlot(epochDay: Long, photo: Boolean) {
+        update(day(epochDay).let { if (photo) it.copy(noPhoto = true) else it.copy(noAudio = true) })
+        show(R.string.slot_removed) { update(day(epochDay).let { if (photo) it.copy(noPhoto = false) else it.copy(noAudio = false) }) }
+    }
+
     fun setOpenAtBookmark(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(openAtBookmark = on) else it })
 
     fun show(message: Int, undo: (() -> Unit)? = null) {
@@ -353,10 +362,11 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         file.renameTo(keep)
         // Підпис — частина фото: зникає разом із ним (і повертається разом із ним через «Повернути»).
         val caption = day(epochDay).caption
-        update(day(epochDay).copy(photo = false, caption = ""))
+        // Разом із фото зникає й місце під нього — його займає текст (через «Повернути» — усе назад).
+        update(day(epochDay).copy(photo = false, caption = "", noPhoto = true))
         show(R.string.photo_removed) {
             keep.renameTo(file)
-            update(day(epochDay).copy(photo = true, caption = caption))
+            update(day(epochDay).copy(photo = true, caption = caption, noPhoto = false))
         }
         viewModelScope.launch { delay(6000); if (!day(epochDay).photo) keep.delete() }
     }
@@ -389,10 +399,10 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         val keep = java.io.File(file.path + ".undo")
         file.renameTo(keep)
         val before = day(epochDay)
-        update(before.copy(audio = false))
+        update(before.copy(audio = false, noAudio = true))
         show(R.string.audio_removed) {
             keep.renameTo(file)
-            update(day(epochDay).copy(audio = true, audioMs = before.audioMs, wave = before.wave))
+            update(day(epochDay).copy(audio = true, audioMs = before.audioMs, wave = before.wave, noAudio = false))
         }
         viewModelScope.launch { delay(6000); if (!day(epochDay).audio) keep.delete() }
     }
