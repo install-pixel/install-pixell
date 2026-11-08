@@ -491,8 +491,6 @@ fun BookScreen(
                         prevOf = { i -> if (pages.getOrNull(i) == BookPage.Menu) pages.indexOf(menuReturn).coerceAtLeast(0) else i - 1 },
                         onStart = { focusManager.clearFocus() },
                         blocked = { blockers.values.toList() },
-                        // Скільки рисок стосу ліворуч від сторінки (як у DayPage) — щоб аркуш біля корінця лягав поверх них.
-                        stackLeft = { i -> if (pages.getOrNull(i) is BookPage.DayPart) edgeCount(i - 1) else 0 },
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey != BookPage.Menu) menuOpen = false
@@ -550,7 +548,6 @@ fun BookScreen(
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
                                 val split = splitFor(d.text, d.photo, d.audio || recording?.day == p.day)
-                                val before = i - 1
                                 // Сторінка меню — не сторінка щоденника: торці книжки від неї не товщають.
                                 val after = pages.size - 1 - i - (if (menuOpen) 1 else 0)
                                 val years = if (p.day == today) {
@@ -563,7 +560,6 @@ fun BookScreen(
                                     part = p.part,
                                     split = split.split,
                                     pageWidthPx = size.width,
-                                    edgeBefore = edgeCount(before),
                                     edgeAfter = edgeCount(after),
                                     hours = hours,
                                     highlight = highlight?.takeIf { it.first == p.day }?.second,

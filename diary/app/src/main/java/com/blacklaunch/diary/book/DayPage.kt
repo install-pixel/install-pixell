@@ -113,7 +113,6 @@ fun DayPage(
     part: Int,
     split: Int,
     pageWidthPx: Float,
-    edgeBefore: Int,
     edgeAfter: Int,
     hours: Long,
     highlight: IntRange?,
@@ -137,7 +136,7 @@ fun DayPage(
 
     Box(Modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
-            drawPaper(u, (day.day % 997).toInt() + part * 31, lines, edgeBefore, edgeAfter)
+            drawPaper(u, (day.day % 997).toInt() + part * 31, lines, edgeAfter)
             drawRibbonStrip(ribbon(), glass)
         }
 

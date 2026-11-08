@@ -5,7 +5,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.blacklaunch.diary.ui.AppStyle
 import com.blacklaunch.diary.ui.SheetInk
@@ -21,9 +23,12 @@ import kotlin.math.sin
  *  - «Аркуш»: чорний папір, край обведено олівцем, лінії — ледь помітні штрихи олівця.
  * [unit] — px в одній одиниці сторінки ([PageMetrics]).
  */
-fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeBefore: Int, edgeAfter: Int) {
+fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeAfter: Int) {
     val r = 2.2f * unit
-    drawPageEdges(unit, edgeBefore, edgeAfter)
+    drawPageEdges(unit, edgeAfter)
+    // Рамка сторінки — тонка й тьмяна (як видно сторінку з-під обкладинки), і не виходить за саму сторінку: хвостик
+    // олівцевого обведення на куті обрізано.
+    val bleed = 0.5f * density
     if (AppStyle.glass) {
         drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r))
         val sheenH = (size.height * 0.35f)
@@ -31,7 +36,7 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeBefore: 
             Brush.verticalGradient(0f to Color(0x12FFFFFF), 1f to Color.Transparent, startY = 0f, endY = sheenH),
             cornerRadius = CornerRadius(r),
         )
-        drawRoundRect(Oled.Glint, cornerRadius = CornerRadius(r), style = Stroke(1f * density))
+        drawRoundRect(Oled.Glint, cornerRadius = CornerRadius(r), alpha = 0.5f, style = Stroke(1f * density))
         // Корінець: м'яка тінь зліва, ніби аркуш виходить із палітурки.
         drawRect(Brush.horizontalGradient(0f to Color(0x55000000), 1f to Color.Transparent, startX = 0f, endX = 5f * unit))
         lines.forEach { y ->
@@ -40,8 +45,10 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeBefore: 
         }
     } else {
         drawRoundRect(Color(0xFF030303), cornerRadius = CornerRadius(r))
-        drawPath(taperedPath(pencilLoop(size, r, seed, 1.4f * density), 2f * density), SheetInk.copy(alpha = 0.7f))
-        drawPath(taperedPath(pencilLoop(size, r, seed + 77, 1.8f * density), 1.1f * density), SheetInk.copy(alpha = 0.22f))
+        clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(-bleed, -bleed, size.width + bleed, size.height + bleed, CornerRadius(r + bleed))) }) {
+            drawPath(taperedPath(pencilLoop(size, r, seed, 1.4f * density), 1f * density), SheetInk.copy(alpha = 0.4f))
+            drawPath(taperedPath(pencilLoop(size, r, seed + 77, 1.8f * density), 0.8f * density), SheetInk.copy(alpha = 0.12f))
+        }
         // Корінець — подвійна лінія олівцем.
         drawPath(taperedPath(quadPoints(Offset(3.2f * unit, 2f * unit), Offset(3.6f * unit, size.height / 2), Offset(3.1f * unit, size.height - 2f * unit), 40), 1.2f * density), SheetInk.copy(alpha = 0.25f))
         lines.forEachIndexed { i, y ->
@@ -63,19 +70,15 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>, edgeBefore: 
 const val PAGE_EDGE_STEP = 0.55f
 
 /**
- * Товщина книжки: збоку видно стос сторінок — перегорнутих (зліва) і тих, що попереду (справа). Що більше записів,
- * то товща книжка.
+ * Товщина книжки: праворуч видно стос сторінок, що попереду. Що більше записів, то товща книжка. Зліва рисок немає —
+ * там корінець, і перегорнутий аркуш лягає рівно на край.
  */
-fun DrawScope.drawPageEdges(unit: Float, before: Int, after: Int) {
+fun DrawScope.drawPageEdges(unit: Float, after: Int) {
     val glass = AppStyle.glass
     val step = PAGE_EDGE_STEP * unit
     val color = if (glass) Color(0x33FFFFFF) else SheetInk.copy(alpha = 0.25f)
     for (i in 1..after.coerceAtMost(6)) {
         val x = size.width + i * step
-        drawLine(color.copy(alpha = color.alpha * (1f - i / 8f)), Offset(x, 1.5f * unit + i * step * 0.5f), Offset(x, size.height - 1.5f * unit - i * step * 0.3f), 0.8f * density)
-    }
-    for (i in 1..before.coerceAtMost(6)) {
-        val x = -i * step
         drawLine(color.copy(alpha = color.alpha * (1f - i / 8f)), Offset(x, 1.5f * unit + i * step * 0.5f), Offset(x, size.height - 1.5f * unit - i * step * 0.3f), 0.8f * density)
     }
 }

@@ -164,8 +164,12 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
         // Корінець зліва — темна смуга з гранню.
         drawRect(Brush.horizontalGradient(0f to Color(0x99000000), 1f to Color.Transparent, startX = 0f, endX = 18.dp.toPx()))
     } else {
-        drawPath(taperedPath(pencilLoop(size, r, 311, 1.6.dp.toPx()), 2.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-        drawPath(taperedPath(pencilLoop(size, r, 412, 2.dp.toPx()), 1.2.dp.toPx()), SheetInk.copy(alpha = 0.3f))
+        // Обведення олівцем — у межах обкладинки: хвостик штриха на куті не виступає назовні.
+        val bleed = 0.6.dp.toPx()
+        clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(-bleed, -bleed, size.width + bleed, size.height + bleed, CornerRadius(r + bleed))) }) {
+            drawPath(taperedPath(pencilLoop(size, r, 311, 1.6.dp.toPx()), 2.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+            drawPath(taperedPath(pencilLoop(size, r, 412, 2.dp.toPx()), 1.2.dp.toPx()), SheetInk.copy(alpha = 0.3f))
+        }
         drawPath(innerPath, SheetInk.copy(alpha = 0f))
         val loop = pencilLoop(inner, r * 0.7f, 313, 1.4.dp.toPx()).map { it + Offset(inset, inset) }
         drawPath(taperedPath(loop, 1.6.dp.toPx()), SheetInk.copy(alpha = 0.55f))
