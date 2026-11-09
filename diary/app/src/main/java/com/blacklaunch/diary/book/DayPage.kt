@@ -638,9 +638,10 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                 val r = 10.dp.toPx()
                 drawRoundRect(Color(0x80000000), topLeft = Offset(2.dp.toPx(), 3.dp.toPx()), size = size, cornerRadius = CornerRadius(r))
             }
-            Box(Modifier.fillMaxSize().clip(shape).background(Color.Black)) {
+            // Фото теж під тим самим товстим склом: просвічує, але менше, ніж сам аркуш (аркуш + фото).
+            Box(Modifier.fillMaxSize().clip(shape).background(Color.Black.copy(alpha = GLASS_PHOTO_ALPHA))) {
                 image?.let {
-                    androidx.compose.foundation.Image(it, contentDescription = stringResource(R.string.photo_of_day), contentScale = scale, modifier = Modifier.fillMaxSize())
+                    androidx.compose.foundation.Image(it, contentDescription = stringResource(R.string.photo_of_day), contentScale = scale, alpha = GLASS_PHOTO_ALPHA, modifier = Modifier.fillMaxSize())
                 }
                 Canvas(Modifier.fillMaxSize()) {
                     val bevel = 7.dp.toPx()
@@ -723,3 +724,6 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
         }
     }
 }
+
+/** «Скло»: наскільки непрозоре фото на аркуші (просвічує менше, ніж сам аркуш). */
+const val GLASS_PHOTO_ALPHA = 0.94f

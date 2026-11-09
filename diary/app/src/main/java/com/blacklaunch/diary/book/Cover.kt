@@ -230,7 +230,7 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
                 dstOffset = IntOffset((inset + (inner.width - w) / 2).toInt(), (inset + (inner.height - h) / 2).toInt()),
                 dstSize = IntSize(w.toInt(), h.toInt()),
                 // «Аркуш»: на всю обкладинку олівець світиться сильніше, ніж маленьке фото дня, — трохи тьмяніше.
-                alpha = if (glass) 1f else 0.72f,
+                alpha = if (glass) GLASS_PHOTO_ALPHA else 0.72f,
             )
             if (glass) glassFilter(inset, inner)
         }

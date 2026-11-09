@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -154,6 +156,9 @@ fun FlipBook(
     val flipped by rememberUpdatedState(onFlipped)
     val onStarted by rememberUpdatedState(onStart)
     val layer = rememberGraphicsLayer()
+    // «Скло»: розмиті копії сторінки під низом і верхньої — крізь товсте скло видно лише розмиті обриси.
+    val underBlur = rememberGraphicsLayer()
+    val topBlur = rememberGraphicsLayer()
 
     fun heavyNow() = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
 
@@ -295,14 +300,28 @@ fun FlipBook(
                     Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(BookCorner))
-                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
+                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } }
+                        .blur(GlassBlur, BlurredEdgeTreatment.Unbounded),
                 ) { CompositionLocalProvider(LocalPagePreview provides true) { page(peek) } }
             }
             key(state.index) { Box(Modifier.fillMaxSize()) { page(state.index) } }
         } else {
             // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
             // Сторінка під низом — у тій самій формі книжки ([BookCorner]): нічого не визирає з-під верхньої.
-            key(under) { Box(Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner))) { page(under) } }
+            key(under) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(BookCorner))
+                        .drawWithContent {
+                            drawContent()
+                            if (AppStyle.glass) {
+                                underBlur.record { this@drawWithContent.drawContent() }
+                                underBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                            }
+                        },
+                ) { page(under) }
+            }
             key(top) {
                 Box(
                     Modifier
@@ -310,8 +329,13 @@ fun FlipBook(
                         .drawWithContent {
                             state.width = size.width
                             layer.record { this@drawWithContent.drawContent() }
+                            val glassNow = AppStyle.glass
+                            if (glassNow) {
+                                topBlur.record { this@drawWithContent.drawContent() }
+                                topBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                            }
                             val hv = isHeavy(top)
-                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv)
+                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, if (glassNow) Blurred(underBlur, topBlur) else null)
                         },
                 ) { page(top) }
             }
@@ -326,16 +350,16 @@ fun FlipBook(
  * валику й пласкою частиною, що лягла назад. Сторінку смужками перерозміщено по горизонталі — без нахилу, тож згин
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
-private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean) {
+private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, blur: Blurred?) {
     // Усе — лише в межах книжки (із заокругленими кутами): аркуш пришитий до корінця й за книжку не виходить. Біля
     // корінця аркуш лягає ПОВЕРХ рамки сторінки під ним (на півтовщини лінії лівіше), а не під неї.
     val corner = BookCorner.toPx()
     val left = -1.5.dp.toPx()
     val bounds = Path().apply { addRoundRect(RoundRect(left, 0f, size.width, size.height, CornerRadius(corner))) }
-    clipPath(bounds) { curlContent(g, layer, heavy, corner) }
+    clipPath(bounds) { curlContent(g, layer, heavy, corner, blur) }
 }
 
-private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, corner: Float) {
+private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, corner: Float, blur: Blurred?) {
     val glass = AppStyle.glass
     val w = size.width
     val h = size.height
@@ -344,7 +368,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
 
     // 1) Плаский шматок лицем — як лежав.
     val flatEnd = a.coerceIn(0f, w)
-    if (flatEnd > 0f) clipRect(0f, 0f, flatEnd, h) { drawLayer(layer) }
+    if (flatEnd > 0f) clipRect(0f, 0f, flatEnd, h) { blur?.under(this); drawLayer(layer) }
 
     // 2) Тінь від валика на сторінці під ним (праворуч від валика).
     val rollRight = g.rightmost.coerceAtMost(w)
@@ -368,7 +392,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
         val x0 = a + r * t0
         val x1 = a + r * t1
         if (x1 <= frontFrom || x0 >= w) continue
-        strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0.6f * (1f - cos((t0 + t1) / 2f)), back = false, heavy = heavy, glass = glass)
+        strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0.6f * (1f - cos((t0 + t1) / 2f)), back = false, heavy = heavy, glass = glass, blur = blur)
     }
 
     // 4) Зворот на валику (θ π/2…π) і плаский зворот, що ліг назад, — він вище за все інше. Обрізаний тією самою формою,
@@ -404,9 +428,9 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
                 if (x1 <= 0f || x0 >= w) continue
                 // Світло на звороті валика: найяскравіше посередині вигину — так око бачить, що аркуш круглий.
                 val mid = (t0 + t1) / 2f
-                strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)))
+                strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)), blur = blur)
             }
-            if (backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass)
+            if (backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, blur = blur)
         }
     }
 
@@ -447,6 +471,7 @@ private fun DrawScope.strip(
     heavy: Boolean,
     glass: Boolean,
     light: Float = 0f,
+    blur: Blurred? = null,
 ) {
     if (x1 - x0 < 0.01f) return
     val d0 = g.map(x0)
@@ -457,6 +482,7 @@ private fun DrawScope.strip(
     // Смужка трохи ширша (на піксель) — щоб між сусідніми не просвічували щілини.
     clipRect(left - 0.5f, 0f, right + 0.5f, h) {
         if (!back) {
+            blur?.under(this)
             val k = (d1 - d0) / (x1 - x0)
             withTransform({
                 translate(left = d0 - x0 * k)
@@ -481,8 +507,9 @@ private fun DrawScope.strip(
                     }
                 }
             } else {
-                // «Скло»: зворот — темна товста плівка, крізь яку видно, що під нею; і ледь — саму сторінку зі зворотного
-                // боку (обкладинку — помітніше: фото під склом видно й ззаду).
+                // «Скло»: зворот — темна товста плівка, крізь яку розмито видно, що під нею; і ледь — саму сторінку зі
+                // зворотного боку (обкладинку — помітніше: фото під склом видно й ззаду).
+                blur?.under(this)
                 drawRect(
                     when {
                         heavy -> if (glass) Color(0xFF15161A).copy(alpha = 0.82f) else Color(0xFF121212)
@@ -498,12 +525,24 @@ private fun DrawScope.strip(
                     withTransform({
                         translate(left = d0 - x0 * k)
                         scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
-                    }) { drawLayer(layer) }
+                    }) { drawLayer(blur?.top ?: layer) }
                     canvas.restore()
                 }
             }
         }
         if (light > 0.005f) drawRect(Color.White.copy(alpha = (if (glass) 0.16f else 0.11f) * light), topLeft = Offset(left - 0.5f, 0f), size = androidx.compose.ui.geometry.Size(right - left + 1f, h))
         if (darkness > 0.005f) drawRect(Color.Black.copy(alpha = darkness.coerceIn(0f, 0.9f)), topLeft = Offset(left - 0.5f, 0f), size = androidx.compose.ui.geometry.Size(right - left + 1f, h))
+    }
+}
+
+/** Наскільки розмите те, що видно крізь товсте скло. */
+private val GlassBlur = 9.dp
+
+/** Розмиті копії сторінки під низом ([under]) і верхньої ([top]) — для «Скла». */
+private class Blurred(private val underLayer: GraphicsLayer, val top: GraphicsLayer) {
+    /** Під прозорим аркушем: замість чіткої сторінки під низом — розмита (поточне обрізання лишається). */
+    fun under(scope: DrawScope) = with(scope) {
+        drawRect(Color.Black)
+        drawLayer(underLayer)
     }
 }
