@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -381,37 +382,39 @@ fun SheetTextField(
  */
 @Composable
 fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+    val glass = AppStyle.glass
+    val font = if (glass) GlassFont else HandFont
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = NOTICE_HEIGHT)
-            // М'яка темна «тінь» довкола: те, що під сповіщенням (кнопки, заголовок), плавно притемнюється до його краю,
-            // тож плашка лежить зверху, а не «наліплена» на чужі елементи.
+            // Віконце без рамки: графітова пляма з розмитими краями — рамка щоденника під ним лишається видно.
             .drawBehind {
-                // Розмиту тінь апаратне малювання вміє з Android 9; на старіших — без неї.
+                val soft = NOTICE_SOFT.toPx()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) drawIntoCanvas { canvas ->
-                    val halo = NOTICE_HALO.toPx()
                     val paint = android.graphics.Paint().apply {
                         isAntiAlias = true
-                        color = android.graphics.Color.BLACK
-                        alpha = 235
-                        maskFilter = android.graphics.BlurMaskFilter(halo, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                        color = if (glass) 0xFA141518.toInt() else 0xFA1B1A17.toInt()
+                        maskFilter = android.graphics.BlurMaskFilter(soft, android.graphics.BlurMaskFilter.Blur.NORMAL)
                     }
-                    val grow = halo * 0.6f
-                    val r = size.height / 2 + grow
-                    canvas.nativeCanvas.drawRoundRect(-grow, -grow, size.width + grow, size.height + grow, r, r, paint)
+                    val r = soft * 1.5f
+                    // Розмитий край виходить трохи назовні, а всередині — суцільний графіт (текст під ним не просвічує).
+                    canvas.nativeCanvas.drawRoundRect(-soft * 0.3f, -soft * 0.3f, size.width + soft * 0.3f, size.height + soft * 0.3f, r, r, paint)
+                    paint.maskFilter = null
+                    canvas.nativeCanvas.drawRoundRect(soft * 0.5f, soft * 0.5f, size.width - soft * 0.5f, size.height - soft * 0.5f, r, r, paint)
+                } else {
+                    drawRoundRect(if (glass) Color(0xF2141518) else Color(0xF21B1A17), cornerRadius = androidx.compose.ui.geometry.CornerRadius(soft))
                 }
             }
-            .background(Oled.Black, RoundedCornerShape(NOTICE_HEIGHT / 2))
-            .pencilFrame(NOTICE_HEIGHT / 2, seed = 17)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 22.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(
             text,
             color = Oled.TextPrimary,
-            fontSize = 17.sp,
+            fontFamily = font,
+            fontSize = if (glass) 16.sp else 19.sp,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -419,13 +422,27 @@ fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, 
         )
         if (action != null) {
             Spacer(Modifier.width(12.dp))
-            SheetButton(action, onAction)
+            Text(
+                action,
+                color = Oled.TextPrimary,
+                fontFamily = font,
+                fontSize = if (glass) 16.sp else 19.sp,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onAction).padding(horizontal = 10.dp, vertical = 6.dp),
+            )
         }
     }
 }
 
+/**
+ * Де зараз щоденник на екрані (у координатах вікна): сповіщення з'являються ВСЕРЕДИНІ його верхнього краю, не
+ * виходячи за рамку. null — щоденника немає (полиця): тоді звичне місце вгорі.
+ */
+object NoticeArea {
+    var rect by mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+}
+
 private val NOTICE_HEIGHT = 56.dp
-private val NOTICE_HALO = 22.dp
+private val NOTICE_SOFT = 10.dp
 
 /** Місце сповіщень — одне на всю програму: угорі, під рядком стану. */
 fun Modifier.noticePlace(): Modifier = statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp)
@@ -439,12 +456,22 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
         shown = text
         shownAction = action
     }
+    val area = NoticeArea.rect
+    val density = androidx.compose.ui.platform.LocalDensity.current
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         AnimatedVisibility(
             visible = text != null,
-            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { -it / 3 },
-            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { -it / 3 },
-            modifier = Modifier.noticePlace(),
+            enter = fadeIn(tween(OPEN_MS)) + slideInVertically(tween(OPEN_MS)) { -it / 4 },
+            exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { -it / 4 },
+            modifier = if (area == null) Modifier.noticePlace()
+            else with(density) {
+                // Усередині верхнього краю щоденника, з відступом від рамки.
+                val inset = 6.dp.toPx()
+                Modifier
+                    .align(Alignment.TopStart)
+                    .offset { androidx.compose.ui.unit.IntOffset((area.left + inset).toInt(), (area.top + inset).toInt()) }
+                    .width((area.width - 2 * inset).toDp())
+            },
         ) {
             Notice(shown, action = shownAction, onAction = onAction)
         }

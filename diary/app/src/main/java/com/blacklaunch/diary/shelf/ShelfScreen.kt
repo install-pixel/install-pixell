@@ -61,7 +61,7 @@ import com.blacklaunch.diary.ui.LocalHaptics
 import com.blacklaunch.diary.ui.MenuDialog
 import com.blacklaunch.diary.ui.MenuEntry
 import com.blacklaunch.diary.ui.PasswordDialog
-import com.blacklaunch.diary.ui.SettingsBody
+import com.blacklaunch.diary.ui.SettingsBook
 import com.blacklaunch.diary.book.GearRow
 import com.blacklaunch.diary.book.GearSpot
 import com.blacklaunch.diary.book.MenuEntries
@@ -144,10 +144,10 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
         }
        }
         if (turn > 0.01f) {
-            PaperPage(
-                title = stringResource(R.string.settings),
-                subtitle = stringResource(R.string.settings_global_desc),
-                seed = 57,
+            SettingsBook(
+                onLanguageChanged = onLanguageChanged,
+                onNewDiary = { newDiary = true },
+                onRestore = { openBackup.launch(arrayOf("*/*")) },
                 modifier = Modifier
                     .padding(8.dp)
                     .graphicsLayer {
@@ -155,16 +155,8 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
                         rotationY = -100f * (1f - turn)
                         cameraDistance = 14f * density
                         alpha = if (turn < 0.15f) turn / 0.15f else 1f
-                    }
-                    .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, Oled.TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
-            ) {
-                MenuEntries(listOf(
-                    MenuEntry(Glyph.Plus, stringResource(R.string.new_diary)) { newDiary = true },
-                    MenuEntry(Glyph.Restore, stringResource(R.string.restore)) { openBackup.launch(arrayOf("*/*")) },
-                ))
-                SettingsBody(onLanguageChanged, Modifier.padding(top = 8.dp))
-            }
+                    },
+            )
         }
       }
         // Шестерня — там само, де в щоденнику; з'являється після дотику.

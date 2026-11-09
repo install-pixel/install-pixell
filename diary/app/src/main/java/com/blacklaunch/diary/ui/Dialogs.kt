@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -158,36 +159,45 @@ private fun PasswordField(value: String, onChange: (String) -> Unit, placeholder
 }
 
 /**
- * Загальні налаштування — для всіх щоденників: стиль, мова, екран, довідка. Це вміст сторінки (не вікно); свої
- * налаштування кожного щоденника — на його сторінці меню.
+ * Загальні налаштування — для всіх щоденників — як книжечка зі сторінок сталого розміру (нічого не «пливе»), між ними —
+ * те саме гортання, що й у щоденнику: 0 — щоденники й стиль, 1 — мова й екран, 2 — довідка, далі — теми довідки.
  */
 @Composable
-fun SettingsBody(onLanguageChanged: () -> Unit, modifier: Modifier = Modifier) {
+fun SettingsBook(onLanguageChanged: () -> Unit, onNewDiary: () -> Unit, onRestore: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val settings = remember { AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
     var haptics by remember { mutableStateOf(settings.haptics) }
-    var page by remember { mutableStateOf<SettingsPage>(SettingsPage.Main) }
-    val current = page
-    Column(modifier) {
-        if (current != SettingsPage.Main) {
-            MenuRow(Glyph.Back, stringResource(when (current) { SettingsPage.Help -> R.string.help; is SettingsPage.Topic -> current.topic.title; else -> R.string.settings }), { page = current.up() })
+    val state = remember { com.blacklaunch.diary.book.FlipState(0) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val topics = HelpTopic.entries
+    val helpPage = 2
+    fun go(i: Int) { scope.launch { state.flipTo(i) } }
+    BackHandler(enabled = state.index > 0) { go(if (state.index > helpPage) helpPage else state.index - 1) }
+    com.blacklaunch.diary.book.FlipBook(
+        state = state,
+        count = helpPage + 1 + topics.size,
+        enabled = true,
+        modifier = modifier,
+        canFlipForward = { it < helpPage },
+        prevOf = { if (it > helpPage) helpPage else it - 1 },
+    ) { i ->
+        val title = when {
+            i == 0 -> stringResource(R.string.settings)
+            i == 1 -> stringResource(R.string.settings_language)
+            i == helpPage -> stringResource(R.string.help)
+            else -> stringResource(topics[i - helpPage - 1].title)
         }
-        BackHandler(enabled = current != SettingsPage.Main) { page = current.up() }
-        AnimatedContent(
-            targetState = current,
-            transitionSpec = {
-                val forward = targetState.depth > initialState.depth
-                ((fadeIn(tween(300, delayMillis = 60)) + slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { (if (forward) it else -it) / 8 }) togetherWith
-                    (fadeOut(tween(180)) + slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { (if (forward) -it else it) / 8 }))
-                    .using(null)
-            },
-            label = "settingsPage",
-        ) { shown ->
-            when (shown) {
-                SettingsPage.Main -> Column(Modifier.fillMaxWidth()) {
-                    MenuRow(Glyph.Help, stringResource(R.string.help), { page = SettingsPage.Help })
-                    Spacer(Modifier.height(12.dp))
+        com.blacklaunch.diary.book.PaperPage(
+            title = title,
+            subtitle = if (i == 0) stringResource(R.string.settings_global_desc) else null,
+            seed = 57 + i * 13,
+            footer = if (i < helpPage) stringResource(R.string.page_next) else null,
+        ) {
+            when {
+                i == 0 -> {
+                    MenuRow(Glyph.Plus, stringResource(R.string.new_diary), onNewDiary)
+                    MenuRow(Glyph.Restore, stringResource(R.string.restore), onRestore)
                     Header(stringResource(R.string.settings_style))
                     ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), AppStyle.glass) {
                         AppStyle.glass = true
@@ -197,15 +207,17 @@ fun SettingsBody(onLanguageChanged: () -> Unit, modifier: Modifier = Modifier) {
                         AppStyle.glass = false
                         settings.glass = false
                     }
-                    Header(stringResource(R.string.settings_language))
+                    WindowHint(stringResource(R.string.settings_hint))
+                }
+                i == 1 -> {
                     AppLanguage.entries.forEach { lang ->
-                        val title = when (lang) {
+                        val name = when (lang) {
                             AppLanguage.System -> stringResource(R.string.lang_system)
                             AppLanguage.Ukrainian -> "Українська"
                             AppLanguage.Polish -> "Polski"
                             AppLanguage.English -> "English"
                         }
-                        ChoiceRow(title, null, language == lang) {
+                        ChoiceRow(name, null, language == lang) {
                             if (language != lang) {
                                 language = lang
                                 settings.language = lang
@@ -225,18 +237,18 @@ fun SettingsBody(onLanguageChanged: () -> Unit, modifier: Modifier = Modifier) {
                             HapticsSwitch.on = it
                         }
                     }
-                    WindowHint(stringResource(R.string.settings_hint))
                 }
-                SettingsPage.Help -> Column(Modifier.fillMaxWidth()) {
-                    HelpTopic.entries.forEach { t -> MenuRow(t.glyph, stringResource(t.title), { page = SettingsPage.Topic(t) }) }
+                i == helpPage -> topics.forEachIndexed { k, t -> MenuRow(t.glyph, stringResource(t.title), { go(helpPage + 1 + k) }) }
+                else -> {
+                    MenuRow(Glyph.Back, stringResource(R.string.help), { go(helpPage) })
+                    Text(
+                        stringResource(topics[i - helpPage - 1].body),
+                        color = Oled.TextPrimary.copy(alpha = 0.9f),
+                        fontSize = 16.sp,
+                        lineHeight = 23.sp,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp),
+                    )
                 }
-                is SettingsPage.Topic -> Text(
-                    stringResource(shown.topic.body),
-                    color = Oled.TextPrimary.copy(alpha = 0.9f),
-                    fontSize = 16.sp,
-                    lineHeight = 23.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         }
     }
@@ -246,20 +258,6 @@ fun SettingsBody(onLanguageChanged: () -> Unit, modifier: Modifier = Modifier) {
 private fun Header(text: String) {
     Text(text, color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
 }
-
-private sealed interface SettingsPage {
-    data object Main : SettingsPage
-    data object Help : SettingsPage
-    data class Topic(val topic: HelpTopic) : SettingsPage
-}
-
-private val SettingsPage.depth: Int get() = when (this) {
-    SettingsPage.Main -> 0
-    SettingsPage.Help -> 1
-    is SettingsPage.Topic -> 2
-}
-
-private fun SettingsPage.up(): SettingsPage = if (this is SettingsPage.Topic) SettingsPage.Help else SettingsPage.Main
 
 /** Довідка: усі приховані жести — за темами. */
 private enum class HelpTopic(val title: Int, val body: Int, val glyph: Glyph) {

@@ -184,4 +184,6 @@
     <string name="strike_hint">Drag your finger over dry words to strike them out. Tap the icon again to leave</string>
     <string name="tool_photo">Photo</string>
     <string name="audio_exists">This day already has a recording — swipe it left to record a new one</string>
+    <string name="menu_next">Turn the page — settings →</string>
+    <string name="page_next">Turn the page →</string>
 </resources>

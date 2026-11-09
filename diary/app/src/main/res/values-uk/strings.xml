@@ -196,4 +196,6 @@
     <string name="strike_hint">Проведи пальцем по висохлих словах — закреслиш. Ще раз на значок — вийти</string>
     <string name="tool_photo">Фото</string>
     <string name="audio_exists">Запис цього дня вже є — свайпни його вліво, щоб записати новий</string>
+    <string name="menu_next">Гортай — налаштування →</string>
+    <string name="page_next">Гортай →</string>
 </resources>

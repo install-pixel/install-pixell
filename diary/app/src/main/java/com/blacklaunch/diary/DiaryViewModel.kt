@@ -372,6 +372,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Фото дня, оброблене під тему (з пам'яті, якщо вже рахувалось). */
+    /** Уже оброблене фото — одразу, без очікування (сторінка малюється готовою, без «проявлення»). */
+    fun cachedPhoto(epochDay: Long, glass: Boolean): ImageBitmap? = Photos.cache.get("photo_${epochDay}_$glass")?.asImageBitmap()
+
     suspend fun photo(epochDay: Long, glass: Boolean): ImageBitmap? {
         val o = open ?: return null
         val key = "photo_${epochDay}_$glass"

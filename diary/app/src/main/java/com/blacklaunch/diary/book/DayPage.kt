@@ -475,8 +475,9 @@ private fun SlotBlock(
 @Composable
 private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modifier, width: Dp, height: Dp, editable: Boolean) {
     val glass = AppStyle.glass
-    var image by remember(day, glass) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(day, glass, version) { image = host.vm.photo(day, glass) }
+    // З пам'яті одразу: при перегортанні сторінка з'являється вже з фото, а не перемальовується на очах.
+    var image by remember(day, glass) { mutableStateOf(host.vm.cachedPhoto(day, glass)) }
+    LaunchedEffect(day, glass, version) { host.vm.photo(day, glass)?.let { image = it } }
     val shape = RoundedCornerShape(10.dp)
     Box(
         modifier

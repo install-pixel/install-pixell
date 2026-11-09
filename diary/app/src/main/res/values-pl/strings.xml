@@ -186,4 +186,6 @@
     <string name="strike_hint">Przeciągnij palcem po suchych słowach, by je skreślić. Dotknij ikony ponownie, by wyjść</string>
     <string name="tool_photo">Zdjęcie</string>
     <string name="audio_exists">Nagranie tego dnia już jest — przesuń je w lewo, by nagrać nowe</string>
+    <string name="menu_next">Przewróć — ustawienia →</string>
+    <string name="page_next">Przewróć →</string>
 </resources>
