@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.withTransform
 import kotlin.concurrent.thread
 import kotlin.math.abs
 import kotlin.math.cos
@@ -44,11 +45,43 @@ object PaperTexture {
     var light by mutableStateOf<ImageBitmap?>(null)
         private set
 
-    /** Складка (у частках сторінки): точка, напрям, довжина, ширина й сила — щоб і лінії ледь «ламались» на ній. */
+    /** Складка (у частках сторінки) — для обкладинки; лінії сторінок ламаються за самим рельєфом ([reliefAt]). */
     class Crease(val x: Float, val y: Float, val dx: Float, val dy: Float, val len: Float, val width: Float, val amp: Float)
 
     @Volatile var creases: List<Crease> = emptyList()
-        private set
+
+    /**
+     * Кілька варіантів природного рельєфу (вигнуті заломи з відгалуженнями, сітка дрібних зморшок, витерті краї). Кожна
+     * сторінка бере свій варіант і ще віддзеркалює його за власним «зерном» ([Variant.of]) — сусідні сторінки різні, а та
+     * сама сторінка завжди однакова.
+     */
+    private const val VARIANTS = 4
+    private const val RW = 270
+    private const val RH = 540
+    private val reliefs = arrayOfNulls<FloatArray>(VARIANTS)
+    private val shades = androidx.compose.runtime.mutableStateListOf<ImageBitmap?>().apply { repeat(VARIANTS) { add(null) } }
+    private val lights = androidx.compose.runtime.mutableStateListOf<ImageBitmap?>().apply { repeat(VARIANTS) { add(null) } }
+
+    /** Який варіант і як віддзеркалений — за «зерном» сторінки. */
+    class Variant(val index: Int, val flipX: Boolean, val flipY: Boolean) {
+        companion object {
+            fun of(seed: Int): Variant {
+                val h = (seed * 2654435761L).toInt() ushr 3
+                return Variant(Math.floorMod(h, VARIANTS), (h shr 4) and 1 == 1, (h shr 5) and 1 == 1)
+            }
+        }
+    }
+
+    fun shadeOf(v: Variant) = shades[v.index]
+    fun lightOf(v: Variant) = lights[v.index]
+
+    /** Рельєф у точці (частки сторінки 0…1) з урахуванням віддзеркалення; ±кілька одиниць — для зламу ліній. */
+    fun reliefAt(v: Variant, fx: Float, fy: Float): Float {
+        val r = reliefs[v.index] ?: return 0f
+        val x = ((if (v.flipX) 1f - fx else fx) * (RW - 1)).toInt().coerceIn(0, RW - 1)
+        val y = ((if (v.flipY) 1f - fy else fy) * (RH - 1)).toInt().coerceIn(0, RH - 1)
+        return r[y * RW + x]
+    }
 
     @Volatile private var started = false
 
@@ -56,10 +89,16 @@ object PaperTexture {
         if (started) return
         started = true
         thread(name = "paper-texture", isDaemon = true) {
-            val relief = FloatArray(W * H)
-            page = sheet(W, H, seed = 11, base = intArrayOf(21, 19, 15), mottle = 7f, grainAmp = 3.5f, fibers = 2200, creases = 3, wrinkles = 9, wear = 13f, pores = 0f, relief = relief).asImageBitmap()
-            shade = reliefMap(relief, W, H, dark = true).asImageBitmap()
-            light = reliefMap(relief, W, H, dark = false).asImageBitmap()
+            // Фарба паперу — одна; рельєф — окремими варіантами (поверх усього, що на сторінці).
+            page = sheet(W, H, seed = 11, base = intArrayOf(21, 19, 15), mottle = 7f, grainAmp = 3.5f, fibers = 2200, creases = 0, wrinkles = 0, wear = 0f, pores = 0f, relief = FloatArray(W * H)).asImageBitmap()
+            for (i in 0 until VARIANTS) {
+                val r = naturalRelief(RW, RH, seed = 101 + i * 37)
+                reliefs[i] = r
+                shades[i] = reliefMap(r, RW, RH, dark = true).asImageBitmap()
+                lights[i] = reliefMap(r, RW, RH, dark = false).asImageBitmap()
+            }
+            shade = shades[0]
+            light = lights[0]
             cover = sheet(W, H, seed = 29, base = intArrayOf(12, 11, 10), mottle = 5f, grainAmp = 4f, fibers = 600, creases = 2, wrinkles = 5, wear = 18f, pores = 4f).asImageBitmap()
             grain = grainMap(W / 2, H / 2, seed = 5).asImageBitmap()
         }
@@ -156,6 +195,120 @@ object PaperTexture {
     }
 
     /**
+     * Природний рельєф пожмаканого й розправленого паперу: 2–4 довгі вигнуті заломи (з відгалуженнями), сітка дрібних
+     * зморшок і витерті краї. Залом — крива, що повільно змінює напрям; уздовж неї папір з одного боку світліший, з
+     * другого — у тіні, а до кінців залом тане.
+     */
+    private fun naturalRelief(w: Int, h: Int, seed: Int): FloatArray {
+        val rnd = java.util.Random(seed.toLong())
+        val r = FloatArray(w * h)
+        fun walk(x0: Float, y0: Float, a0: Float, len: Float, bend: Float): List<FloatArray> {
+            val pts = ArrayList<FloatArray>()
+            var x = x0
+            var y = y0
+            var a = a0
+            // [bend] — найбільша кривизна: довгі заломи лише ледь вигинаються (не закручуються в кільце), дрібні зморшки — сильніше.
+            var c = (rnd.nextFloat() - 0.5f) * bend
+            val n = (len / 1.5f).toInt().coerceAtLeast(4)
+            repeat(n) {
+                pts += floatArrayOf(x, y)
+                c += (rnd.nextFloat() - 0.5f) * bend * 0.3f
+                c = c.coerceIn(-bend, bend)
+                a += c + (rnd.nextFloat() - 0.5f) * bend * 2f
+                x += cos(a) * 1.5f
+                y += sin(a) * 1.5f
+            }
+            return pts
+        }
+        fun crease(x0: Float, y0: Float, a0: Float, len: Float, amp: Float, width: Float, branches: Int, bend: Float) {
+            val pts = walk(x0, y0, a0, len, bend)
+            stamp(r, w, h, pts, amp, width)
+            repeat(branches) {
+                val i = (pts.size * (0.2f + rnd.nextFloat() * 0.6f)).toInt().coerceIn(0, pts.size - 2)
+                val at = pts[i]
+                val nxt = pts[i + 1]
+                val base = kotlin.math.atan2(nxt[1] - at[1], nxt[0] - at[0])
+                val turn = (0.4f + rnd.nextFloat() * 0.7f) * if (rnd.nextBoolean()) 1f else -1f
+                stamp(r, w, h, walk(at[0], at[1], base + turn, len * (0.15f + rnd.nextFloat() * 0.25f), bend * 2f), amp * 0.6f, width * 0.8f)
+            }
+        }
+        // Довгі заломи — найчастіше від краю до краю.
+        repeat(2 + rnd.nextInt(3)) {
+            val fromLeft = rnd.nextBoolean()
+            val y0 = rnd.nextFloat() * h
+            val x0 = if (fromLeft) -10f else w + 10f
+            val a = (if (fromLeft) 0f else Math.PI.toFloat()) + (rnd.nextFloat() - 0.5f) * 1.6f
+            crease(x0, y0, a, (w + h) * (0.5f + rnd.nextFloat() * 0.5f), 6.5f, 3.2f, 1 + rnd.nextInt(3), bend = 0.0025f)
+        }
+        // Сітка дрібних зморшок.
+        repeat(45 + rnd.nextInt(25)) {
+            crease(rnd.nextFloat() * w, rnd.nextFloat() * h, rnd.nextFloat() * 6.28f, 8f + rnd.nextFloat() * 40f, 2.2f + rnd.nextFloat() * 1.5f, 1.4f, 0, bend = 0.02f)
+        }
+        // Витерті краї — світліші, нерівно.
+        val band = w * 0.05f
+        for (y in 0 until h) for (x in 0 until w) {
+            val e = minOf(minOf(x, w - 1 - x), minOf(y, h - 1 - y)).toFloat()
+            if (e < band) {
+                val k = 1f - e / band
+                r[y * w + x] += 13f * k * k * (0.7f + 0.3f * rnd.nextFloat())
+            }
+        }
+        return r
+    }
+
+    /** Відбити один залом у рельєф: для кожного пікселя — відстань до найближчого відрізка кривої (зі знаком). */
+    private fun stamp(r: FloatArray, w: Int, h: Int, pts: List<FloatArray>, amp: Float, width: Float) {
+        if (pts.size < 2) return
+        val reach = width * 3f
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = -Float.MAX_VALUE
+        var maxY = -Float.MAX_VALUE
+        pts.forEach { minX = minOf(minX, it[0]); maxX = maxOf(maxX, it[0]); minY = minOf(minY, it[1]); maxY = maxOf(maxY, it[1]) }
+        val bx0 = (minX - reach).toInt().coerceIn(0, w - 1)
+        val by0 = (minY - reach).toInt().coerceIn(0, h - 1)
+        val bx1 = (maxX + reach).toInt().coerceIn(0, w - 1)
+        val by1 = (maxY + reach).toInt().coerceIn(0, h - 1)
+        if (bx1 <= bx0 || by1 <= by0) return
+        val bw = bx1 - bx0 + 1
+        val bh = by1 - by0 + 1
+        val dist = FloatArray(bw * bh) { Float.MAX_VALUE }
+        val taper = FloatArray(bw * bh)
+        val n = pts.size
+        for (i in 0 until n - 1) {
+            val p = pts[i]
+            val q = pts[i + 1]
+            val dx = q[0] - p[0]
+            val dy = q[1] - p[1]
+            val l = sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
+            val ux = dx / l
+            val uy = dy / l
+            val tp = sqrt(sin(Math.PI.toFloat() * i / (n - 1)))
+            val x0 = (p[0] - reach).toInt().coerceAtLeast(bx0)
+            val x1 = (p[0] + reach).toInt().coerceAtMost(bx1)
+            val y0 = (p[1] - reach).toInt().coerceAtLeast(by0)
+            val y1 = (p[1] + reach).toInt().coerceAtMost(by1)
+            for (y in y0..y1) for (x in x0..x1) {
+                val vx = x - p[0]
+                val vy = y - p[1]
+                val t = vx * ux + vy * uy
+                if (t < -0.2f || t > l + 0.2f) continue
+                val d = -vx * uy + vy * ux
+                val k = (y - by0) * bw + (x - bx0)
+                if (abs(d) < abs(dist[k])) { dist[k] = d; taper[k] = tp }
+            }
+        }
+        for (k in dist.indices) {
+            val d = dist[k]
+            if (abs(d) > reach) continue
+            val s = d / width
+            val x = bx0 + k % bw
+            val y = by0 + k / bw
+            r[y * w + x] += amp * taper[k] * s * exp(-s * s) * 2.3f
+        }
+    }
+
+    /**
      * Карта рельєфу: [dark] — тінь для множення (біле — без змін, темніше — тінь), інакше світло для «екрана» (чорне —
      * без змін). Сила розрахована так, щоб на темному папері дати ті самі ±кілька відтінків, що й раніше.
      */
@@ -207,11 +360,14 @@ object PaperTexture {
  * «Аркуш»: накласти на вміст сторінки рельєф паперу (заломи, витерті краї) і зерно — усе написане лягає на папір.
  * У «Склі» нічого не робить.
  */
-fun androidx.compose.ui.Modifier.paperRelief(glass: Boolean): androidx.compose.ui.Modifier =
+fun androidx.compose.ui.Modifier.paperRelief(glass: Boolean, seed: Int = 0): androidx.compose.ui.Modifier =
     if (glass) this else this.drawWithContent {
         drawContent()
         val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
-        PaperTexture.shade?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
-        PaperTexture.light?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+        val v = PaperTexture.Variant.of(seed)
+        withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = center) }) {
+            PaperTexture.shadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+            PaperTexture.lightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+        }
         PaperTexture.grain?.let { drawImage(it, dstSize = dst, alpha = 0.75f, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
     }

@@ -46,6 +46,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -166,8 +171,10 @@ fun BookScreen(
     val today = remember { DiaryViewModel.today() }
     val extraDays = remember { mutableStateListOf<Long>() }
     val days = open?.days
-    val dayList = remember(days?.keys?.toSet(), extraDays.toList()) {
-        ((days?.keys ?: emptySet()) + today + extraDays).toSortedSet().toList()
+    // У книжці — лише дні, де щось є (текст, фото, голос, малюнок, місце), плюс сьогодні й ті, що відкрили з календаря.
+    // Порожній минулий день (лише прибрані місця під фото / голос) — не показується.
+    val dayList = remember(days?.values?.toList(), extraDays.toList()) {
+        ((days?.filterValues { !it.isBlank }?.keys ?: emptySet()) + today + extraDays).toSortedSet().toList()
     }
 
     // Розміри сторінки й поділ тексту між двома сторінками дня.
@@ -176,13 +183,14 @@ fun BookScreen(
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val style = pageTextStyle(u.coerceAtLeast(0.01f), density, glass)
     val splitCache = remember(glass, pageW) { HashMap<String, PageSplit>() }
-    fun splitFor(text: String, photo: Boolean, audio: Boolean): PageSplit {
-        val first = PageMetrics.firstLines(photo, audio)
-        val second = PageMetrics.secondLines
+    fun splitFor(text: String, photo: Boolean, audio: Boolean, torn: Int = 0): PageSplit {
+        // Вирвана сторінка місця не дає: вирвали першу — увесь текст на другій; другу — лише на першій.
+        val first = if (torn and 1 != 0) 0 else PageMetrics.firstLines(photo, audio)
+        val second = if (torn and 2 != 0) 0 else PageMetrics.secondLines
         if (pageW <= 0f) return PageSplit(text.length, true, 0)
         // Короткий текст без багатьох рядків точно вміщається на першій — без вимірювань.
-        if (text.length < first * 12 && text.count { it == '\n' } < first - 1) return PageSplit(text.length, true, 1)
-        val key = "$photo$audio" + text
+        if (first > 0 && text.length < first * 12 && text.count { it == '\n' } < first - 1) return PageSplit(text.length, true, 1)
+        val key = "$photo$audio$torn" + text
         splitCache[key]?.let { return it }
         val l = measurer.measure(text, style, constraints = Constraints(maxWidth = (PageMetrics.textWidth * u).toInt().coerceAtLeast(1)))
         val starts = List(l.lineCount) { l.getLineStart(it) }
@@ -202,38 +210,62 @@ fun BookScreen(
      * це увімкнено, на цей день його не прибрали й воно вміщається разом із текстом (інакше місце віддається тексту).
      */
     fun slotsFor(d: com.blacklaunch.diary.data.Day, text: String = d.text): Pair<Boolean, Boolean> {
+        if (d.torn and 1 != 0) return false to false
         val hasP = d.photo
         val hasA = d.audio || recording?.day == d.day
-        val wantP = !hasP && info.photos && !d.noPhoto
-        val wantA = !hasA && info.voice && !d.noAudio
+        // Висохлий день — без місць-запрошень: додати вже нічого не можна.
+        val open = !DiaryViewModel.isDry(d.day)
+        val wantP = open && !hasP && info.photos && !d.noPhoto
+        val wantA = open && !hasA && info.voice && !d.noAudio
         var p = hasP || wantP
         var a = hasA || wantA
-        if (wantA && !splitFor(text, p, a).fits) a = hasA
-        if (wantP && !splitFor(text, p, a).fits) p = hasP
+        if (wantA && !splitFor(text, p, a, d.torn).fits) a = hasA
+        if (wantP && !splitFor(text, p, a, d.torn).fits) p = hasP
         return p to a
     }
+    /** Поділ тексту дня з його місцями й вирваними сторінками. */
+    fun splitDay(d: com.blacklaunch.diary.data.Day, text: String = d.text): PageSplit =
+        slotsFor(d, text).let { splitFor(text, it.first, it.second, d.torn) }
     fun roomFor(day: Long, photo: Boolean): Boolean {
         val d = vm.day(day)
         val (p, a) = slotsFor(d)
-        return if (photo) p || splitFor(d.text, true, a).fits else a || splitFor(d.text, p, true).fits
+        return if (photo) p || splitFor(d.text, true, a, d.torn).fits else a || splitFor(d.text, p, true, d.torn).fits
     }
 
     var menuOpen by remember(info.id) { mutableStateOf(false) }
-    // Нижня панель: режим «закреслити» і розгорнутий вибір джерела фото.
-    var striking by remember(info.id) { mutableStateOf(false) }
+    // Нижня панель: розгорнутий вибір джерела фото.
     var photoTools by remember(info.id) { mutableStateOf(false) }
     var menuReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
+    // Усі сторінки книжки разом із вирваними: вирвана займає своє місце (номер пропущено), але не показується, а
+    // наступна після неї має рваний клаптик біля корінця.
+    val physical: List<Pair<BookPage.DayPart, Boolean>> = buildList {
+        if (open == null) return@buildList
+        ((days?.filterValues { it.torn != 0 }?.keys ?: emptySet()) + dayList).toSortedSet().forEach { d ->
+            val day = vm.day(d)
+            val t = day.torn
+            val shown = d in dayList
+            val split = splitDay(day)
+            if (t and 1 != 0) add(BookPage.DayPart(d, 0) to true) else if (shown) add(BookPage.DayPart(d, 0) to false)
+            val second = if (t and 1 != 0) day.text.isNotBlank() || day.ink.any { it.page == 1 } || d == today || d in extraDays
+            else shown && (split.split < day.text.length || day.ink.any { it.page == 1 })
+            if (t and 2 != 0) add(BookPage.DayPart(d, 1) to true) else if (second) add(BookPage.DayPart(d, 1) to false)
+        }
+    }
+    val pageNumber = HashMap<BookPage, Int>()
+    val stubs = HashSet<BookPage>()
+    run {
+        var n = 0
+        var prevTorn = false
+        physical.forEach { (p, torn) ->
+            if (torn) { n++; prevTorn = true; return@forEach }
+            if (!vm.day(p.day).isBlank || vm.day(p.day).torn != 0) pageNumber[p] = ++n
+            if (prevTorn) stubs += p
+            prevTorn = false
+        }
+    }
     val pages: List<BookPage> = buildList {
         add(BookPage.Cover)
-        if (open != null) {
-            dayList.forEach { d ->
-                val day = vm.day(d)
-                add(BookPage.DayPart(d, 0))
-                val (sp, sa) = slotsFor(day)
-                val split = splitFor(day.text, sp, sa)
-                if (split.split < day.text.length || day.ink.any { it.page == 1 }) add(BookPage.DayPart(d, 1))
-            }
-        }
+        physical.forEach { (p, torn) -> if (!torn) add(p) }
         if (menuOpen) {
             add(BookPage.Menu(0))
             if (open != null) add(BookPage.Menu(1))
@@ -249,11 +281,6 @@ fun BookScreen(
     }
     LaunchedEffect(open == null) { if (open == null) { flip.index = 0; currentKey = BookPage.Cover } }
     val currentPage = pages.getOrNull(flip.index) ?: BookPage.Cover
-    // Номери лише заповнених сторінок (порожнє «сьогодні» без номера) — щоб знати, де ти в щоденнику.
-    val pageNumbers = run {
-        var n = 0
-        pages.map { p -> if (p is BookPage.DayPart && !vm.day(p.day).isBlank) ++n else null }
-    }
     // Підказка «Гортай обкладинку» — через 5 с на обкладинці, плавно.
     var hintShown by remember(info.id) { mutableStateOf(false) }
     LaunchedEffect(open != null, flip.index == 0) {
@@ -278,6 +305,9 @@ fun BookScreen(
     }
 
     var dialog by remember { mutableStateOf<BookDialog?>(null) }
+    // Вирвати сторінку: наскільки протягнули по корінцю (0…1) і «падіння» вирваної.
+    val tearPull = remember { Animatable(0f) }
+    val tearDrop = remember { Animatable(0f) }
     var searching by remember { mutableStateOf(false) }
     var ink by remember { mutableStateOf<InkSession?>(null) }
     var highlight by remember { mutableStateOf<Pair<Long, IntRange>?>(null) }
@@ -319,9 +349,8 @@ fun BookScreen(
         val target = BookPage.DayPart(day, 0)
         val partTarget = if (mark != null) {
             val d = vm.day(day)
-            val (sp, sa) = slotsFor(d)
-            val split = splitFor(d.text, sp, sa)
-            if (mark.first >= split.split && split.split < d.text.length) BookPage.DayPart(day, 1) else target
+            val split = splitDay(d)
+            if ((d.torn and 1 != 0) || (mark.first >= split.split && split.split < d.text.length)) BookPage.DayPart(day, 1) else target
         } else target
         highlight = mark?.let { day to it }
         pendingFlip = partTarget
@@ -428,20 +457,19 @@ fun BookScreen(
             if (!input.startsWith(d.sealed) || input.length > Limits.DAY_TEXT) return@TextSink false
             // Порожні рядки після курсора — вільне місце, як на папері: текст займає найближчий порожній рядок, а не
             // впирається в кінець дня.
-            val full = absorbBlankLines(input, cursor) { t -> slotsFor(d, t).let { splitFor(t, it.first, it.second).fits } }
-            val slots = slotsFor(d, full)
-            val split = splitFor(full, slots.first, slots.second)
+            val full = absorbBlankLines(input, cursor) { t -> splitDay(d, t).fits }
+            val split = splitDay(d, full)
             if (!split.fits) {
                 // Стирати можна завжди — навіть коли день уже переповнений; не можна лише додавати понад місце.
-                val old = slotsFor(d).let { splitFor(d.text, it.first, it.second) }
+                val old = splitDay(d)
                 if (split.lines > old.lines) { vm.show(R.string.day_full); return@TextSink false }
             }
             vm.editText(day, full)
-            if (part == 0 && split.split < full.length && cursor >= split.split) {
+            if (part == 0 && d.torn and 2 == 0 && split.split < full.length && cursor >= split.split) {
                 // Сторінка закінчилась — переходимо на продовження дня, курсор там само.
                 focusReq = Triple(day, 1, cursor)
                 pendingFlip = BookPage.DayPart(day, 1)
-            } else if (part == 1 && (cursor < split.split || split.split >= full.length)) {
+            } else if (part == 1 && d.torn and 1 == 0 && (cursor < split.split || split.split >= full.length)) {
                 focusReq = Triple(day, 0, cursor)
                 pendingFlip = BookPage.DayPart(day, 0)
             }
@@ -516,10 +544,7 @@ fun BookScreen(
             SwitchRow(stringResource(R.string.settings_voice), info.voice, subtitle = stringResource(R.string.settings_voice_desc)) { vm.setVoiceOn(info.id, it) }
         }
         Text(stringResource(R.string.drying_title), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp, top = 12.dp))
-        InkDrying.entries.forEach { dr ->
-            ChoiceRow(stringResource(if (dr == InkDrying.Day) R.string.drying_day else R.string.drying_week), null, vm.dryingOf(info) == dr) { vm.setDrying(info.id, dr) }
-        }
-        FieldHint(stringResource(R.string.drying_desc), Modifier.padding(horizontal = 8.dp))
+        FieldHint(stringResource(R.string.drying_fixed), Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
         MenuEntries(listOf(
             MenuEntry(null, stringResource(R.string.menu_more)),
             MenuEntry(Glyph.Grid, stringResource(R.string.shelf_and_settings)) { closeMenu(); onShelf() },
@@ -541,7 +566,6 @@ fun BookScreen(
         when {
             recording != null -> stopRecording()
             photoTools -> photoTools = false
-            striking -> striking = false
             ink != null -> ink = null
             menuOpen -> closeMenu()
             editing != null -> focusManager.clearFocus()
@@ -589,6 +613,13 @@ fun BookScreen(
                 Box(
                     Modifier
                         .size(pw, ph)
+                        .graphicsLayer {
+                            // Вирвана сторінка падає й тане.
+                            val f = tearDrop.value
+                            translationY = f * size.height * 0.35f
+                            rotationZ = f * 5f
+                            alpha = 1f - f
+                        }
                         .onGloballyPositioned {
                             bookCoords = it
                             com.blacklaunch.diary.ui.NoticeArea.rect = it.boundsInWindow()
@@ -672,7 +703,7 @@ fun BookScreen(
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
                                 val (sp, sa) = slotsFor(d)
-                                val split = splitFor(d.text, sp, sa)
+                                val split = splitDay(d)
                                 val years = if (p.day == today) {
                                     val t = LocalDate.ofEpochDay(today)
                                     dayList.lastOrNull { it < today && LocalDate.ofEpochDay(it).let { x -> x.monthValue == t.monthValue && x.dayOfMonth == t.dayOfMonth } }
@@ -690,13 +721,80 @@ fun BookScreen(
                                     ink = ink,
                                     yearsAgo = years,
                                     editable = true,
-                                    number = pageNumbers.getOrNull(i),
+                                    number = pageNumber[p],
                                     ribbon = { if (ribbon.day == p.day) ribbon.laid.value else if (open?.bookmark == p.day) 1f else 0f },
-                                    strikeMode = striking,
+                                    stub = p in stubs,
                                 )
                             }
                         }
                     }
+                }
+                // Вирвати сторінку — повільно вести пальцем униз по краю біля корінця (не від самого верху): з половини
+                // сторінка починає відриватися й видно попередження; довів майже донизу — вирвано назавжди.
+                val tearPage = currentPage as? BookPage.DayPart
+                if (open != null && tearPage != null) {
+                    val tearLabel = stringResource(R.string.tear_hint)
+                    val measurer2 = rememberTextMeasurer()
+                    Canvas(Modifier.size(pw, ph)) {
+                        val k = tearPull.value
+                        if (k <= 0.01f) return@Canvas
+                        // Рваний розрив біля корінця — росте за пальцем.
+                        val rnd = java.util.Random((tearPage.day * 13 + tearPage.part))
+                        val path = androidx.compose.ui.graphics.Path()
+                        val top = size.height * 0.1f
+                        val end = top + (size.height * 0.9f - top) * k
+                        var y = top
+                        path.moveTo(10.dp.toPx(), y)
+                        while (y < end) {
+                            y += (5f + rnd.nextFloat() * 8f) * this.density
+                            path.lineTo(10.dp.toPx() + (rnd.nextFloat() - 0.5f) * 6.dp.toPx(), y.coerceAtMost(end))
+                        }
+                        drawPath(path, Color.Black.copy(alpha = 0.85f), style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
+                        drawPath(path, Oled.TextSecondary.copy(alpha = 0.6f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+                        if (k > 0.4f) {
+                            val a = ((k - 0.4f) / 0.2f).coerceIn(0f, 1f)
+                            val l = measurer2.measure(tearLabel, androidx.compose.ui.text.TextStyle(color = Oled.Danger, fontSize = 18.sp, fontFamily = if (glass) com.blacklaunch.diary.ui.GlassFont else com.blacklaunch.diary.ui.HandFont, textAlign = TextAlign.Center), constraints = Constraints(maxWidth = (size.width * 0.8f).toInt()))
+                            drawRoundRect(Color(0xF21B1A17), topLeft = Offset((size.width - l.size.width) / 2 - 16.dp.toPx(), size.height * 0.45f - 12.dp.toPx()), size = androidx.compose.ui.geometry.Size(l.size.width + 32.dp.toPx(), l.size.height + 24.dp.toPx()), cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()), alpha = a)
+                            drawText(l, topLeft = Offset((size.width - l.size.width) / 2, size.height * 0.45f), alpha = a)
+                        }
+                    }
+                    Box(
+                        Modifier
+                            .offset(y = ph * 0.1f)
+                            .size(24.dp, ph * 0.9f)
+                            .pointerInput(tearPage, editing, ink) {
+                                if (editing != null || ink != null) return@pointerInput
+                                var pulled = 0f
+                                val full = ph.toPx() * 0.75f
+                                detectVerticalDragGestures(
+                                    onDragStart = { pulled = 0f },
+                                    onVerticalDrag = { c, dy ->
+                                        c.consume()
+                                        pulled = (pulled + dy).coerceAtLeast(0f)
+                                        val before = tearPull.value
+                                        val now = (pulled / full).coerceIn(0f, 1f)
+                                        if (before < 0.4f && now >= 0.4f) haptics.longPress()
+                                        scope.launch { tearPull.snapTo(now) }
+                                    },
+                                    onDragEnd = {
+                                        scope.launch {
+                                            if (tearPull.value >= 0.92f) {
+                                                haptics.longPress()
+                                                tearDrop.animateTo(1f, tween(320))
+                                                val d = vm.day(tearPage.day)
+                                                vm.tearPage(tearPage.day, tearPage.part, splitDay(d).split)
+                                                tearPull.snapTo(0f)
+                                                delay(60)
+                                                tearDrop.snapTo(0f)
+                                            } else {
+                                                tearPull.animateTo(0f, tween(250))
+                                            }
+                                        }
+                                    },
+                                    onDragCancel = { scope.launch { tearPull.animateTo(0f, tween(250)) } },
+                                )
+                            },
+                    )
                 }
                 // Закладка — пришита до корінця; кінчик звисає з-під книжки (і з-під закритої обкладинки).
                 if (open != null) {
@@ -742,6 +840,7 @@ fun BookScreen(
                     val day = currentDay
                     val part = (currentPage as? BookPage.DayPart)?.part ?: 0
                     val d = vm.day(day)
+                    val dry = DiaryViewModel.isDry(day)
                     fun photo(src: Int) { photoTools = false; if (roomFor(day, photo = true) || d.photo) host.addPhoto(day, src) else vm.show(R.string.no_room_photo) }
                     val tools = if (photoTools) listOf(
                         Tool(Glyph.Shutter, stringResource(R.string.photo_from_camera)) { photo(0) },
@@ -749,25 +848,28 @@ fun BookScreen(
                         Tool(Glyph.Folder, stringResource(R.string.photo_from_file)) { photo(2) },
                         Tool(Glyph.Close, stringResource(R.string.close)) { photoTools = false },
                     ) else listOf(
-                        Tool(Glyph.Pen, stringResource(R.string.ink_mode)) { striking = false; focusManager.clearFocus(); ink = InkSession(day, part) },
-                        Tool(Glyph.Strike, stringResource(R.string.tool_strike), active = striking) {
-                            striking = !striking
-                            if (striking) { focusManager.clearFocus(); vm.show(R.string.strike_hint) }
+                        Tool(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, part) },
+                        Tool(Glyph.Photo, stringResource(R.string.tool_photo)) {
+                            when {
+                                d.photo -> dialog = BookDialog.Photo(day)
+                                dry -> vm.show(R.string.page_dry)
+                                else -> photoTools = true
+                            }
                         },
-                        Tool(Glyph.Photo, stringResource(R.string.tool_photo)) { if (d.photo) dialog = BookDialog.Photo(day) else photoTools = true },
                         Tool(Glyph.Mic, stringResource(R.string.record)) {
                             when {
+                                dry -> vm.show(R.string.page_dry)
                                 d.audio -> vm.show(R.string.audio_exists)
                                 roomFor(day, photo = false) -> record(day)
                                 else -> vm.show(R.string.no_room_voice)
                             }
                         },
-                        Tool(Glyph.Pin, stringResource(R.string.place)) { dialog = BookDialog.Place(day) },
+                        Tool(Glyph.Pin, stringResource(R.string.place)) { if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.Place(day) },
                         Tool(Glyph.Search, stringResource(R.string.search)) { searching = true },
                         Tool(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar },
-                        Tool(Glyph.Settings, stringResource(R.string.menu)) { striking = false; openMenu() },
+                        Tool(Glyph.Settings, stringResource(R.string.menu)) { openMenu() },
                     )
-                    ToolPanel(gear, tools, pinned = striking || photoTools)
+                    ToolPanel(gear, tools, pinned = photoTools)
                 } else {
                     GearSpot(gear) { if (menuOpen) closeMenu() else openMenu() }
                 }

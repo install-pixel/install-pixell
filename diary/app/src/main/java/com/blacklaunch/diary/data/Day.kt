@@ -42,6 +42,8 @@ data class Day(
     /** Місце під фото / голос на цей день прибрали (свайпом) — його займає текст. */
     val noPhoto: Boolean = false,
     val noAudio: Boolean = false,
+    /** Вирвані сторінки дня (біт 1 — перша, біт 2 — друга): назавжди, номер лишається пропущеним. */
+    val torn: Int = 0,
     val audio: Boolean = false,
     val audioMs: Long = 0L,
     /** Обриси звуку (0…1) — для смужки запису. */
@@ -56,7 +58,7 @@ data class Day(
 
     /** Нічого зберігати: порожній і місця під фото / голос не прибирали. */
     val isEmpty: Boolean
-        get() = isBlank && !noPhoto && !noAudio
+        get() = isBlank && !noPhoto && !noAudio && torn == 0
 
     /**
      * Чорнило висихає: свіже, старше за [hours] годин, переходить у висохле; штрихи пера теж стають висохлими самі

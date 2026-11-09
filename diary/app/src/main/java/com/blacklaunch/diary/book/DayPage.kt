@@ -140,18 +140,21 @@ fun DayPage(
     number: Int? = null,
     ribbon: () -> Float = { 0f },
     strikeMode: Boolean = false,
+    stub: Boolean = false,
 ) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
     // Силует під прозорою сторінкою — лише малюнок, без редагування.
     val preview = LocalPagePreview.current
-    @Suppress("NAME_SHADOWING") val editable = editable && !preview
+    // Висохлий день: нічого не змінити — ні текст, ні фото, ні голос, ні місце (лише олівець, він окремо).
+    val dry = DiaryViewModel.isDry(day.day)
+    @Suppress("NAME_SHADOWING") val editable = editable && !preview && !dry
     val u = pageWidthPx / PageMetrics.WIDTH
     fun dp(v: Float): Dp = with(density) { (v * u).toDp() }
     val now = remember(day.updated) { System.currentTimeMillis() }
     val first = part == 0
     val textTop = if (first) PageMetrics.firstTextTop(photoSlot, audioSlot) else PageMetrics.TEXT_TOP_SECOND
-    val lineCount = if (first) PageMetrics.firstLines(day.photo, day.audio || host.recording?.day == day.day) else PageMetrics.secondLines
+    val lineCount = if (first) PageMetrics.firstLines(photoSlot, audioSlot) else PageMetrics.secondLines
     val lines = remember(textTop, lineCount, u) { List(lineCount) { i -> (textTop + (i + 1) * PageMetrics.LINE - PageMetrics.LINE * 0.14f) * u } }
     val style = pageTextStyle(u, density, glass)
     val locale = Locale.getDefault()
@@ -162,7 +165,13 @@ fun DayPage(
             // Усе на сторінці — в її межах: фото, що відсуваєш свайпом, за край книжки не виходить, а зникає за ним.
             .clip(RoundedCornerShape(BookCorner))
             // «Аркуш»: усе написане й намальоване лежить на папері — темніє й світлішає разом із заломами, бере зерно.
-            .paperRelief(glass),
+            .paperRelief(glass, (day.day % 997).toInt() + part * 31)
+            // Старіння: з віком сторінка тьмяніє, потирається, на ній з'являються плями — у кожної своє й назавжди те саме.
+            .drawWithContent {
+                drawContent()
+                drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
+                if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
+            },
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawPaper(u, (day.day % 997).toInt() + part * 31, lines)

@@ -127,6 +127,7 @@ object Backup {
         .put("caption", d.caption)
         .put("noPhoto", d.noPhoto)
         .put("noAudio", d.noAudio)
+        .put("torn", d.torn)
         .put("audio", d.audio)
         .put("audioMs", d.audioMs)
         .put("wave", DayCodec.waveToString(d.wave))
@@ -144,6 +145,7 @@ object Backup {
         caption = o.optString("caption"),
         noPhoto = o.optBoolean("noPhoto"),
         noAudio = o.optBoolean("noAudio"),
+        torn = o.optInt("torn"),
         audio = o.optBoolean("audio"),
         audioMs = o.optLong("audioMs"),
         wave = DayCodec.waveFromString(o.optString("wave")),

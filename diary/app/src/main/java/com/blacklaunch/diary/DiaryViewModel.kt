@@ -89,7 +89,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun info(id: String?): DiaryInfo? = shelf.firstOrNull { it.id == id }
 
     /** Налаштування окремого щоденника (кожен — свої; спільні налаштування їх не чіпають). */
-    fun dryingOf(info: DiaryInfo?): InkDrying = info?.drying ?: settings.inkDrying
+    /** Чорнило висихає через день — для всіх щоденників однаково, без вибору. */
+    @Suppress("UNUSED_PARAMETER")
+    fun dryingOf(info: DiaryInfo?): InkDrying = InkDrying.Day
     fun openAtBookmarkOf(info: DiaryInfo?): Boolean = info?.openAtBookmark ?: settings.openAtBookmark
 
     fun setDrying(id: String, drying: InkDrying) = saveShelf(shelf.map { if (it.id == id) it.copy(drying = drying) else it })
@@ -294,6 +296,42 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Новий текст дня. Висохла частина лишається як була (це перевіряє сторінка), решта — свіже чорнило. */
+    /**
+     * Вирвати сторінку дня — назавжди, без «Повернути». [split] — де текст переходить на другу сторінку. Перша: зникають
+     * фото, голос, місце, підпис, текст до [split] і малюнок першої сторінки; друга: текст від [split] і її малюнок.
+     */
+    fun tearPage(epochDay: Long, part: Int, split: Int) {
+        val o = open ?: return
+        val d = dayNow(epochDay)
+        val text = d.text
+        val cut = split.coerceIn(0, text.length)
+        val torn = if (part == 0) {
+            o.db.photoFile(epochDay).delete()
+            o.db.audioFile(epochDay).delete()
+            Photos.cache.remove("photo_${epochDay}_true")
+            Photos.cache.remove("photo_${epochDay}_false")
+            val keep = text.substring(cut)
+            val sealed = if (cut < d.sealed.length) d.sealed.substring(cut) else ""
+            d.copy(
+                place = "", caption = "", photo = false, audio = false, audioMs = 0, wave = emptyList(),
+                sealed = sealed, fresh = keep.substring(sealed.length),
+                strikes = d.strikes.filter { it.start >= cut }.map { Strike(it.start - cut, it.end - cut) },
+                ink = d.ink.filter { it.page != 0 },
+                torn = d.torn or 1,
+            )
+        } else {
+            val keep = text.substring(0, cut)
+            val sealed = d.sealed.take(cut)
+            d.copy(
+                sealed = sealed, fresh = keep.substring(sealed.length),
+                strikes = d.strikes.filter { it.end <= cut },
+                ink = d.ink.filter { it.page != 1 },
+                torn = d.torn or 2,
+            )
+        }
+        update(torn)
+    }
+
     fun editText(epochDay: Long, full: String) {
         val d = dayNow(epochDay)
         if (!full.startsWith(d.sealed)) return
@@ -489,6 +527,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     companion object {
         fun today(): Long = LocalDate.now().toEpochDay()
+
+        /** День висох: через день після нього вже нічого не змінити (ні текст, ні фото, ні голос) — лише олівець. */
+        fun isDry(epochDay: Long): Boolean = epochDay < today() - 1
 
         fun mergeStrikes(list: List<Strike>): List<Strike> {
             val sorted = list.sortedBy { it.start }

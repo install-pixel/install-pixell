@@ -46,7 +46,7 @@
     <string name="audio_removed">Nagranie usunięte</string>
     <string name="mic_denied">Bez zgody na mikrofon nie da się nagrać głosu</string>
 
-    <string name="ink_mode">Pisz piórem</string>
+    <string name="ink_mode">Ołówek</string>
     <string name="ink_hint">Pisz i rysuj palcem. Gumka ściera tylko świeży atrament.</string>
     <string name="ink_eraser">Gumka</string>
     <string name="ink_dry">Suchego atramentu nie da się zetrzeć</string>
@@ -188,4 +188,7 @@
     <string name="audio_exists">Nagranie tego dnia już jest — przesuń je w lewo, by nagrać nowe</string>
     <string name="menu_next">Przewróć — ustawienia →</string>
     <string name="page_next">Przewróć →</string>
+    <string name="tear_hint">Wyrwać stronę — na zawsze, bez powrotu ↓</string>
+    <string name="page_dry">Strona wyschła — teraz tylko ołówek</string>
+    <string name="drying_fixed">Atrament schnie po dniu: potem strony nie da się zmienić — ani tekstu, ani zdjęcia, ani głosu. Zostaje ołówek albo stronę można wyrwać (przeciągnij palcem w dół wzdłuż grzbietu).</string>
 </resources>

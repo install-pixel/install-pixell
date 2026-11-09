@@ -44,7 +44,7 @@
     <string name="audio_removed">Recording removed</string>
     <string name="mic_denied">Voice can\'t be recorded without microphone permission</string>
 
-    <string name="ink_mode">Write with a pen</string>
+    <string name="ink_mode">Pencil</string>
     <string name="ink_hint">Write and draw with your finger. The eraser only removes fresh ink.</string>
     <string name="ink_eraser">Eraser</string>
     <string name="ink_dry">Dry ink can\'t be erased</string>
@@ -186,4 +186,7 @@
     <string name="audio_exists">This day already has a recording — swipe it left to record a new one</string>
     <string name="menu_next">Turn the page — settings →</string>
     <string name="page_next">Turn the page →</string>
+    <string name="tear_hint">Tear out the page — forever, no way back ↓</string>
+    <string name="page_dry">The page has dried — only the pencil now</string>
+    <string name="drying_fixed">Ink dries after a day: then the page can\'t be changed — no text, photo or voice. The pencil stays, or the page can be torn out (drag down along the spine edge).</string>
 </resources>

@@ -45,6 +45,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
         if ("caption" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN caption TEXT NOT NULL DEFAULT ''")
         if ("no_photo" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN no_photo INTEGER NOT NULL DEFAULT 0")
         if ("no_audio" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN no_audio INTEGER NOT NULL DEFAULT 0")
+        if ("torn" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN torn INTEGER NOT NULL DEFAULT 0")
         val stored = meta("media_key")
         val raw = if (stored != null) {
             android.util.Base64.decode(stored, android.util.Base64.NO_WRAP)
@@ -68,7 +69,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
     }
 
     fun days(): List<Day> = db.rawQuery(
-        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption, no_photo, no_audio FROM day ORDER BY day",
+        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption, no_photo, no_audio, torn FROM day ORDER BY day",
         emptyArray<String>(),
     ).use { c ->
         val out = ArrayList<Day>(c.count)
@@ -89,6 +90,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
                 caption = c.getString(12),
                 noPhoto = c.getInt(13) != 0,
                 noAudio = c.getInt(14) != 0,
+                torn = c.getInt(15),
             )
         }
         out
@@ -112,6 +114,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
             put("caption", d.caption)
             put("no_photo", if (d.noPhoto) 1 else 0)
             put("no_audio", if (d.noAudio) 1 else 0)
+            put("torn", d.torn)
             put("audio", if (d.audio) 1 else 0)
             put("audio_ms", d.audioMs)
             put("wave", DayCodec.waveToString(d.wave))

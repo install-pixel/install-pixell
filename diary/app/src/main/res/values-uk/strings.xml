@@ -49,7 +49,7 @@
     <string name="mic_denied">Без дозволу на мікрофон голос не запишеш</string>
 
     <!-- Перо -->
-    <string name="ink_mode">Писати пером</string>
+    <string name="ink_mode">Олівець</string>
     <string name="ink_hint">Пиши й малюй пальцем. Гумка стирає лише свіже чорнило.</string>
     <string name="ink_eraser">Гумка</string>
     <string name="ink_dry">Висохле чорнило не стирається</string>
@@ -198,4 +198,7 @@
     <string name="audio_exists">Запис цього дня вже є — свайпни його вліво, щоб записати новий</string>
     <string name="menu_next">Гортай — налаштування →</string>
     <string name="page_next">Гортай →</string>
+    <string name="tear_hint">Вирвати сторінку — назавжди, без повернення ↓</string>
+    <string name="page_dry">Сторінка висохла — тепер лише олівець</string>
+    <string name="drying_fixed">Чорнило висихає через день: далі сторінку не змінити — ні текст, ні фото, ні голос. Лишається олівець, або сторінку можна вирвати (провести пальцем униз по краю біля корінця).</string>
 </resources>
