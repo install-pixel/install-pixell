@@ -165,8 +165,6 @@ fun CoverFace(
                 }
             }
         }
-        // Резинка — поверх усього (і назви), як справжня резинка поверх обкладинки.
-        if (!glass) Canvas(Modifier.fillMaxSize()) { drawBand(locked) }
     }
 }
 
@@ -211,7 +209,8 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
     }
     // Тло обкладинки.
     if (glass) {
-        drawRoundRect(Brush.verticalGradient(0f to Color(0xFF1A1A1A), 0.5f to Color(0xFF0B0B0B), 1f to Color(0xFF060606)), cornerRadius = cr)
+        // Товсте скло — ледь прозоре: крізь нього слабко видно першу сторінку (див. [com.blacklaunch.diary.book.FlipBook]).
+        drawRoundRect(Brush.verticalGradient(0f to Color(0xFF1A1A1A), 0.5f to Color(0xFF0B0B0B), 1f to Color(0xFF060606)), cornerRadius = cr, alpha = GLASS_COVER_ALPHA)
     } else {
         // Щільний чорний картон / шкіра — та сама фактура, що й у паперу, тільки темніша й з порами.
         PaperTexture.ensure()
@@ -233,20 +232,11 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
                 // «Аркуш»: на всю обкладинку олівець світиться сильніше, ніж маленьке фото дня, — трохи тьмяніше.
                 alpha = if (glass) 1f else 0.72f,
             )
-            if (glass) {
-                // Як фото дня: під товстим склом — притемнені «заломлені» краї й фаска (світла вгорі ліворуч, темна внизу
-                // праворуч).
-                val bevel = 9.dp.toPx()
-                val c = Offset(size.width / 2, size.height / 2)
-                drawRect(Brush.radialGradient(0.5f to Color.Transparent, 1f to Color(0x80000000), center = c, radius = maxOf(inner.width, inner.height) * 0.6f))
-                drawRect(Brush.verticalGradient(0f to Color(0x40FFFFFF), 1f to Color.Transparent, startY = inset, endY = inset + bevel), topLeft = Offset(inset, inset), size = Size(inner.width, bevel))
-                drawRect(Brush.horizontalGradient(0f to Color(0x2EFFFFFF), 1f to Color.Transparent, startX = inset, endX = inset + bevel), topLeft = Offset(inset, inset), size = Size(bevel, inner.height))
-                drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x59000000), startY = size.height - inset - bevel, endY = size.height - inset), topLeft = Offset(inset, size.height - inset - bevel), size = Size(inner.width, bevel))
-                drawRect(Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0x4D000000), startX = size.width - inset - bevel, endX = size.width - inset), topLeft = Offset(size.width - inset - bevel, inset), size = Size(bevel, inner.height))
-            }
+            if (glass) glassFilter(inset, inner)
         }
-    } else {
-        clipPath(innerPath) { drawPattern(pattern, glass, inset, inner) }
+    } else if (glass) {
+        // Без фото — чисте скло з тим самим «фільтром», що й на фото (товща, фаска), без жодних візерунків.
+        clipPath(innerPath) { glassFilter(inset, inner) }
     }
     if (glass) {
         // Товщина скла: два канти — зовнішній яскравий, внутрішній тьмяний; відблиск і косий відсвіт.
@@ -273,85 +263,6 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
     drawBookFrame(glass)
 }
 
-/** «Аркуш»: резинка-застібка праворуч — суцільна смуга (під нею нічого не просвічує), обведена двома лініями. */
-private fun DrawScope.drawBand(locked: Boolean) {
-    val x = size.width * 0.86f
-    drawPath(
-        Path().apply {
-            moveTo(x, -2f); quadraticTo(x + 2.dp.toPx(), size.height / 2, x - 1.dp.toPx(), size.height + 2f)
-            lineTo(x + 8.dp.toPx(), size.height + 2f); quadraticTo(x + 11.dp.toPx(), size.height / 2, x + 9.dp.toPx(), -2f); close()
-        },
-        Color(0xFF080808),
-    )
-    for (dx in listOf(0f, 9.dp.toPx())) {
-        drawPath(taperedPath(quadPoints(Offset(x + dx, -2f), Offset(x + dx + 2.dp.toPx(), size.height / 2), Offset(x + dx - 1.dp.toPx(), size.height + 2f), 40), 2.dp.toPx()), SheetInk.copy(alpha = if (locked) 0.8f else 0.5f))
-    }
-}
-
-/** Візерунок обкладинки без фото — щоб щоденники на полиці розрізнялись (сірим, без кольору). */
-private fun DrawScope.drawPattern(pattern: Int, glass: Boolean, inset: Float, inner: Size) {
-    val ink = if (glass) Color(0x12FFFFFF) else SheetInk.copy(alpha = 0.12f)
-    val w = 1.dp.toPx()
-    val left = inset
-    val top = inset
-    when (pattern % 6) {
-        0 -> Unit // чиста обкладинка
-        1 -> { // тонкі горизонтальні лінії
-            var y = top + 20.dp.toPx()
-            var i = 0
-            while (y < top + inner.height) {
-                if (glass) drawLine(ink, Offset(left, y), Offset(left + inner.width, y), w)
-                else drawPath(taperedPath(quadPoints(Offset(left + 6, y), Offset(left + inner.width / 2, y + sin(i * 1.3f) * 2), Offset(left + inner.width - 6, y), 24), 1.2.dp.toPx()), ink)
-                y += 18.dp.toPx(); i++
-            }
-        }
-        2 -> { // косі лінії
-            var x = left - inner.height
-            var i = 0
-            while (x < left + inner.width) {
-                val a = Offset(x, top + inner.height)
-                val b = Offset(x + inner.height, top)
-                if (glass) drawLine(ink, a, b, w) else pencilTick(a, b, 1.2.dp.toPx(), ink, i)
-                x += 22.dp.toPx(); i++
-            }
-        }
-        3 -> { // кола, що розходяться від центру
-            val c = Offset(left + inner.width / 2, top + inner.height * 0.62f)
-            for (k in 1..9) {
-                val rr = k * 22.dp.toPx()
-                if (glass) drawCircle(ink, rr, c, style = Stroke(w))
-                else drawPath(taperedPath(pencilLoop(Size(rr * 2, rr * 2), rr, k * 7, 1.dp.toPx()).map { it + c - Offset(rr, rr) }, 1.2.dp.toPx()), ink)
-            }
-        }
-        4 -> { // сітка точок
-            var y = top + 16.dp.toPx()
-            while (y < top + inner.height) {
-                var x = left + 16.dp.toPx()
-                while (x < left + inner.width) {
-                    drawCircle(ink.copy(alpha = ink.alpha * 1.6f), 1.2.dp.toPx(), Offset(x, y))
-                    x += 18.dp.toPx()
-                }
-                y += 18.dp.toPx()
-            }
-        }
-        else -> { // хвилі
-            var y = top + 24.dp.toPx()
-            var i = 0
-            while (y < top + inner.height) {
-                val pts = List(41) { k ->
-                    val x = left + inner.width * k / 40f
-                    Offset(x, y + sin(k * 0.5f + i) * 5.dp.toPx())
-                }
-                if (glass) {
-                    drawPath(Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) } }, ink, style = Stroke(w))
-                } else {
-                    drawPath(taperedPath(pts, 1.2.dp.toPx()), ink)
-                }
-                y += 26.dp.toPx(); i++
-            }
-        }
-    }
-}
 
 /** «Аркуш»: завитки олівцем у кутах обкладинки. */
 private fun DrawScope.drawCorners(inset: Float) {
@@ -374,3 +285,19 @@ private fun DrawScope.drawCorners(inset: Float) {
         pencilTick(c + Offset(d.x * s * 0.15f, d.y * s * 1.1f), c + Offset(d.x * s * 1.1f, d.y * s * 0.15f), 1.3.dp.toPx(), ink, i + 9)
     }
 }
+
+/** «Скло»: товща скла над обкладинкою — притемнені «заломлені» краї й фаска (світла вгорі ліворуч, темна внизу праворуч). */
+private fun DrawScope.glassFilter(inset: Float, inner: Size) {
+        // Як фото дня: під товстим склом — притемнені «заломлені» краї й фаска (світла вгорі ліворуч, темна внизу
+        // праворуч).
+        val bevel = 9.dp.toPx()
+        val c = Offset(size.width / 2, size.height / 2)
+        drawRect(Brush.radialGradient(0.5f to Color.Transparent, 1f to Color(0x80000000), center = c, radius = maxOf(inner.width, inner.height) * 0.6f))
+        drawRect(Brush.verticalGradient(0f to Color(0x40FFFFFF), 1f to Color.Transparent, startY = inset, endY = inset + bevel), topLeft = Offset(inset, inset), size = Size(inner.width, bevel))
+        drawRect(Brush.horizontalGradient(0f to Color(0x2EFFFFFF), 1f to Color.Transparent, startX = inset, endX = inset + bevel), topLeft = Offset(inset, inset), size = Size(bevel, inner.height))
+        drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x59000000), startY = size.height - inset - bevel, endY = size.height - inset), topLeft = Offset(inset, size.height - inset - bevel), size = Size(inner.width, bevel))
+        drawRect(Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0x4D000000), startX = size.width - inset - bevel, endX = size.width - inset), topLeft = Offset(size.width - inset - bevel, inset), size = Size(bevel, inner.height))
+}
+
+/** Наскільки непрозоре скло обкладинки (сторінки прозоріші — [GLASS_PAGE_ALPHA]). */
+const val GLASS_COVER_ALPHA = 0.94f

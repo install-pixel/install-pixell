@@ -50,7 +50,8 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>) {
     if (AppStyle.glass) {
         // Чорне скло за спільними правилами (THEMES.md): темне, ледь світліше вгорі, відблиск угорі. Додано лише товщу —
         // ледь помітний широкий кант біля краю, як у товстої темної плівки.
-        drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r))
+        // Скляний аркуш ледь прозорий: крізь нього слабко видно наступну сторінку (див. [FlipBook]).
+        drawRoundRect(Oled.Surface, cornerRadius = CornerRadius(r), alpha = GLASS_PAGE_ALPHA)
         clipPath(shape) {
             drawRect(Brush.verticalGradient(0f to Color(0x12FFFFFF), 1f to Color.Transparent, startY = 0f, endY = size.height * 0.35f))
             val band = 5.dp.toPx()
@@ -121,3 +122,6 @@ fun pageSize(avail: Size): Size {
     val w = minOf(avail.width, avail.height / PageMetrics.ASPECT)
     return Size(w, w * PageMetrics.ASPECT)
 }
+
+/** Наскільки непрозорий скляний аркуш: крізь решту видно силует наступної сторінки. */
+const val GLASS_PAGE_ALPHA = 0.86f

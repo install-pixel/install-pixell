@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,7 +32,11 @@ fun DiaryApp(vm: DiaryViewModel, onExit: () -> Unit, onLanguageChanged: () -> Un
         val current = vm.info(vm.current)
         AnimatedContent(
             targetState = current?.id,
-            transitionSpec = { (fadeIn(tween(320)) + scaleIn(tween(320), initialScale = 0.94f)) togetherWith fadeOut(tween(200)) },
+            // Полиця ↔ щоденник — м'яко: старе плавно тане й ледь віддаляється, нове проступає з легкого наближення.
+            transitionSpec = {
+                (fadeIn(tween(520, delayMillis = 140, easing = FastOutSlowInEasing)) + scaleIn(tween(620, easing = FastOutSlowInEasing), initialScale = 0.96f)) togetherWith
+                    (fadeOut(tween(380, easing = FastOutSlowInEasing)) + scaleOut(tween(420, easing = FastOutSlowInEasing), targetScale = 1.03f))
+            },
             label = "shelf",
         ) { id ->
             val info = vm.info(id)

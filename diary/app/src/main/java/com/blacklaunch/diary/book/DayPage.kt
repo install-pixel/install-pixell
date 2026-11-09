@@ -143,6 +143,9 @@ fun DayPage(
 ) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
+    // Силует під прозорою сторінкою — лише малюнок, без редагування.
+    val preview = LocalPagePreview.current
+    @Suppress("NAME_SHADOWING") val editable = editable && !preview
     val u = pageWidthPx / PageMetrics.WIDTH
     fun dp(v: Float): Dp = with(density) { (v * u).toDp() }
     val now = remember(day.updated) { System.currentTimeMillis() }
@@ -275,7 +278,7 @@ fun DayPage(
             widthPx = PageMetrics.textWidth * u,
             heightPx = lineCount * PageMetrics.LINE * u,
             enabled = editable && ink == null,
-            focusCursor = host.focusRequest(day.day, part)?.let { it - segStart },
+            focusCursor = if (preview) null else host.focusRequest(day.day, part)?.let { it - segStart },
             onFocusConsumed = { host.consumeFocus() },
             sink = host.textSink(day.day, part),
             onFocus = { host.onFocus(day.day, part, it) },
@@ -356,10 +359,12 @@ private fun Modifier.swipeAway(host: PageHost, key: String, enabled: Boolean, on
     val measurer = rememberTextMeasurer()
     val label = stringResource(R.string.swipe_delete)
     val glassNow = AppStyle.glass
+    val preview = LocalPagePreview.current
     var pageLeft by remember { mutableFloatStateOf(0f) }
     DisposableEffect(key) { onDispose { host.block(key, null) } }
     return this
         .onGloballyPositioned { c ->
+            if (preview) return@onGloballyPositioned
             val book = host.bookCoords ?: return@onGloballyPositioned
             val o = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return@onGloballyPositioned
             host.block(key, Rect(o, Size(c.size.width.toFloat(), c.size.height.toFloat())))

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -50,6 +51,9 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
+
+/** Сторінку малюють лише як силует під прозорою верхньою (нічого не реєструє й не редагується). */
+val LocalPagePreview = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /**
  * Стан гортання: яка сторінка відкрита і що зараз «у руці». Сторінку беруть не від самого краю (там системний жест
@@ -282,6 +286,18 @@ fun FlipBook(
         val top = state.top
         val under = state.under
         if (top == null || under == null) {
+            // «Скло»: аркуші ледь прозорі ([GLASS_PAGE_ALPHA], обкладинка — [GLASS_COVER_ALPHA]) — під поточною сторінкою
+            // лежить справжня наступна, і її силует трохи просвічує. Під час гортання вона та сама, тож прозорість
+            // природно росте разом із тим, наскільки сторінку піднято. Дотики до неї не доходять.
+            val peek = if (AppStyle.glass && state.index < currentCount - 1 && mayForward(state.index)) next(state.index).coerceIn(0, currentCount - 1) else null
+            if (peek != null && peek != state.index) key(peek) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(BookCorner))
+                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
+                ) { CompositionLocalProvider(LocalPagePreview provides true) { page(peek) } }
+            }
             key(state.index) { Box(Modifier.fillMaxSize()) { page(state.index) } }
         } else {
             // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
