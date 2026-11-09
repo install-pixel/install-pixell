@@ -300,4 +300,4 @@ private fun DrawScope.glassFilter(inset: Float, inner: Size) {
 }
 
 /** Наскільки непрозоре скло обкладинки (сторінки прозоріші — [GLASS_PAGE_ALPHA]). */
-const val GLASS_COVER_ALPHA = 0.94f
+const val GLASS_COVER_ALPHA = 0.91f

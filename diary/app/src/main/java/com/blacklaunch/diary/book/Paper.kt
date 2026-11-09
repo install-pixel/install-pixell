@@ -124,4 +124,4 @@ fun pageSize(avail: Size): Size {
 }
 
 /** Наскільки непрозорий скляний аркуш: крізь решту видно силует наступної сторінки. */
-const val GLASS_PAGE_ALPHA = 0.86f
+const val GLASS_PAGE_ALPHA = 0.83f
