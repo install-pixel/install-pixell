@@ -623,7 +623,8 @@ fun clock(ms: Long): String {
 internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale, caption: String = "", seed: Long = 0L) {
     val shape = RoundedCornerShape(10.dp)
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val captionSize = with(LocalDensity.current) { (maxWidth * 0.055f).toSp() }
+        // Від висоти фото (а не ширини): на вузькому вертикальному фото підпис не дрібніє; довгий — у два рядки.
+        val captionSize = with(LocalDensity.current) { minOf(maxHeight * 0.085f, maxWidth * 0.1f).toSp() }
         if (glass) {
             // «Скло»: фото лежить під товстою скляною пластиною — тінь під пластиною, фаска по краях (світла вгорі
             // ліворуч, темна внизу праворуч), притемнені «заломлені» краї й косий відблиск.
@@ -697,7 +698,8 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                         Text(
                             caption,
                             style = TextStyle(fontFamily = GlassFont, fontWeight = FontWeight.Light, fontSize = captionSize * 0.85f, color = Oled.TextPrimary),
-                            maxLines = 1,
+                            maxLines = 2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                         )
@@ -706,7 +708,8 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                     Text(
                         caption,
                         style = TextStyle(fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = captionSize, color = SheetInk, shadow = Shadow(Color.Black, blurRadius = 10f)),
-                        maxLines = 1,
+                        maxLines = 2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
