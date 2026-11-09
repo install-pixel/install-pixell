@@ -182,4 +182,8 @@
     <string name="settings_photos_desc">Wyłączone — cała strona na tekst</string>
     <string name="settings_voice">Nagrania głosowe</string>
     <string name="settings_voice_desc">Wyłączone — miejsce na nagranie oddane tekstowi</string>
+    <string name="tool_strike">Skreśl</string>
+    <string name="strike_hint">Przeciągnij palcem po suchych słowach, by je skreślić. Dotknij ikony ponownie, by wyjść</string>
+    <string name="tool_photo">Zdjęcie</string>
+    <string name="audio_exists">Nagranie tego dnia już jest — przesuń je w lewo, by nagrać nowe</string>
 </resources>

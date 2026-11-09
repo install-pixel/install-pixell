@@ -22,7 +22,7 @@ import kotlin.math.sin
 
 enum class Glyph {
     Keyboard, ScanQr, Photo, Gallery, Save, Star, StarEmpty, Print, Delete, Edit, Close, Back, Copy, Flash, Shutter, Wifi, Phone, TextT, Frame, Globe, Download, Mail, Pin, Person, Smile, Heart, ScanPhone, Undo, Grid, RotateLeft, RotateRight, Center, More, Settings, Template, Folder, Search, Plus, Share, Eraser,
-    Mic, Play, Pause, Stop, Lock, Unlock, Bookmark, Calendar, Pen, Book, Redo, Backup, Restore, Help,
+    Mic, Play, Pause, Stop, Lock, Unlock, Bookmark, Calendar, Pen, Book, Redo, Backup, Restore, Help, Strike,
 }
 
 @Composable
@@ -239,6 +239,8 @@ private fun strokes(glyph: Glyph): List<List<Offset>> = when (glyph) {
         line(8.5f, 13.2f, 15.5f, 17f),
     )
     // Лупа — пошук.
+    // Закреслити: два рядки «тексту» й риска через них.
+    Glyph.Strike -> listOf(line(5f, 8f, 19f, 8.2f), line(5f, 16f, 15f, 15.8f), line(3f, 12.3f, 21f, 11.7f))
     Glyph.Search -> listOf(arc(10.2f, 10.2f, 6f, -80f, 285f, 26), line(14.6f, 14.6f, 20.2f, 20.2f))
     // Три крапки — меню.
     Glyph.More -> listOf(arc(5.5f, 12f, 1.3f, 0f, 370f, 10), arc(12f, 12f, 1.3f, 0f, 370f, 10), arc(18.5f, 12f, 1.3f, 0f, 370f, 10))

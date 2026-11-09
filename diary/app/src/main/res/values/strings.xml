@@ -180,4 +180,8 @@
     <string name="settings_photos_desc">Off — the whole page is for text</string>
     <string name="settings_voice">Voice recordings</string>
     <string name="settings_voice_desc">Off — the recording space goes to text</string>
+    <string name="tool_strike">Strike out</string>
+    <string name="strike_hint">Drag your finger over dry words to strike them out. Tap the icon again to leave</string>
+    <string name="tool_photo">Photo</string>
+    <string name="audio_exists">This day already has a recording — swipe it left to record a new one</string>
 </resources>

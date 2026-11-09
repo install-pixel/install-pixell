@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.Key
@@ -120,6 +121,7 @@ fun PageText(
     sink: TextSink,
     onFocus: (Boolean) -> Unit,
     onBackAtStart: (() -> Unit)? = null,
+    strikeMode: Boolean = false,
     onCursor: (Rect) -> Unit,
     onStrike: (Int, Int) -> Unit,
     bookCoords: () -> LayoutCoordinates?,
@@ -245,7 +247,39 @@ fun PageText(
                     if (highlight != null && highlightAlpha.value > 0f) drawHighlight(l, highlight.first - segStart, highlight.last + 1 - segStart, segment.length, highlightAlpha.value)
                 },
         )
-        if (!focused && enabled) {
+        if (!focused && enabled && strikeMode) {
+            // Режим «закреслити» (нижня панель): просто веди пальцем по висохлих словах; клавіатура не з'являється.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .pointerInput(segStart, segEnd, localSealed) {
+                        detectDragGestures(
+                            onDragStart = { pos ->
+                                val off = layout?.getOffsetForPosition(pos) ?: return@detectDragGestures
+                                if (off < localSealed) { haptics.tick(); strikeFrom = off; strikeTo = off }
+                            },
+                            onDrag = { c, _ ->
+                                if (strikeFrom != null) {
+                                    c.consume()
+                                    strikeTo = layout?.getOffsetForPosition(c.position)?.coerceAtMost(localSealed)
+                                }
+                            },
+                            onDragEnd = {
+                                val a = strikeFrom
+                                val b = strikeTo
+                                strikeFrom = null
+                                strikeTo = null
+                                if (a != null && b != null) {
+                                    val (s, e) = wordRange(segment, minOf(a, b), maxOf(a, b))
+                                    val ge = (segStart + e).coerceAtMost(sealedLen)
+                                    if (ge > segStart + s) { haptics.longPress(); onStrike(segStart + s, ge) }
+                                }
+                            },
+                            onDragCancel = { strikeFrom = null; strikeTo = null },
+                        )
+                    },
+            )
+        } else if (!focused && enabled) {
             // Поки не пишеш: дотик — писати з цього місця; довге натискання й ведення — викреслити висохле.
             Box(
                 Modifier

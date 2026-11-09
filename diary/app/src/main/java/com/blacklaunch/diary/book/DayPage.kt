@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -138,6 +139,7 @@ fun DayPage(
     editable: Boolean,
     number: Int? = null,
     ribbon: () -> Float = { 0f },
+    strikeMode: Boolean = false,
 ) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
@@ -278,6 +280,7 @@ fun DayPage(
             sink = host.textSink(day.day, part),
             onFocus = { host.onFocus(day.day, part, it) },
             onBackAtStart = if (part == 1) ({ host.joinBack(day.day, segStart) }) else null,
+            strikeMode = strikeMode,
             onCursor = { host.onCursor(it) },
             onStrike = { s, e -> host.vm.addStrike(day.day, s, e) },
             bookCoords = { host.bookCoords },
@@ -481,7 +484,20 @@ private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modif
             .swipeAway(host, "photo_$day", editable) { host.vm.removePhoto(day) }
             .pointerInput(day) { detectTapGestures(onTap = { host.openPhoto(day) }, onLongPress = { host.openPhoto(day) }) },
     ) {
-        StyledPhoto(image, glass, Modifier.fillMaxSize(), ContentScale.Crop, caption = host.vm.day(day).caption, seed = day)
+        // Фото видно повністю, у його власній пропорції — вписане в місце (нічого не обрізається): вертикальне стоїть
+        // посередині, горизонтальне — на всю ширину.
+        val ratio = image?.let { it.width.toFloat() / it.height.coerceAtLeast(1) }
+        val slotRatio = width / height
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            StyledPhoto(
+                image,
+                glass,
+                if (ratio != null) Modifier.aspectRatio(ratio, matchHeightConstraintsFirst = ratio < slotRatio) else Modifier.fillMaxSize(),
+                ContentScale.Crop,
+                caption = host.vm.day(day).caption,
+                seed = day,
+            )
+        }
     }
 }
 
@@ -674,7 +690,8 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
         }
         // Підпис до фото: «Аркуш» — почерком просто в розмитому низу фото; «Скло» — на маленькій скляній плашечці.
         if (caption.isNotBlank()) {
-            Box(Modifier.align(Alignment.BottomCenter).offset(y = if (glass) 0.dp else maxHeight * 0.045f).padding(bottom = if (glass) maxHeight * 0.05f else 0.dp, start = 12.dp, end = 12.dp)) {
+            // Усередині фото (у розмитому низу «Аркуша»), а не під ним — інакше обрізався б по краю фото.
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = if (glass) maxHeight * 0.05f else maxHeight * 0.015f, start = 12.dp, end = 12.dp)) {
                 if (glass) {
                     com.blacklaunch.diary.book.GlassPlate(radius = 10.dp) {
                         Text(

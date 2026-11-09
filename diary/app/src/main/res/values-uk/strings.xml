@@ -192,4 +192,8 @@
     <string name="settings_photos_desc">Вимкнено — уся сторінка під текст</string>
     <string name="settings_voice">Голосові записи</string>
     <string name="settings_voice_desc">Вимкнено — місце під запис віддається тексту</string>
+    <string name="tool_strike">Закреслити</string>
+    <string name="strike_hint">Проведи пальцем по висохлих словах — закреслиш. Ще раз на значок — вийти</string>
+    <string name="tool_photo">Фото</string>
+    <string name="audio_exists">Запис цього дня вже є — свайпни його вліво, щоб записати новий</string>
 </resources>

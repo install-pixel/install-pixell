@@ -213,6 +213,9 @@ fun BookScreen(
     }
 
     var menuOpen by remember(info.id) { mutableStateOf(false) }
+    // Нижня панель: режим «закреслити» і розгорнутий вибір джерела фото.
+    var striking by remember(info.id) { mutableStateOf(false) }
+    var photoTools by remember(info.id) { mutableStateOf(false) }
     var menuReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     val pages: List<BookPage> = buildList {
         add(BookPage.Cover)
@@ -529,6 +532,8 @@ fun BookScreen(
     BackHandler {
         when {
             recording != null -> stopRecording()
+            photoTools -> photoTools = false
+            striking -> striking = false
             ink != null -> ink = null
             menuOpen -> closeMenu()
             editing != null -> focusManager.clearFocus()
@@ -672,6 +677,7 @@ fun BookScreen(
                                     editable = true,
                                     number = pageNumbers.getOrNull(i),
                                     ribbon = { if (ribbon.day == p.day) ribbon.laid.value else if (open?.bookmark == p.day) 1f else 0f },
+                                    strikeMode = striking,
                                 )
                             }
                         }
@@ -716,6 +722,37 @@ fun BookScreen(
                         val sec = rec.elapsed / 1000
                         Text("%d:%02d".format(sec / 60, sec % 60), color = Oled.TextPrimary, fontSize = 15.sp)
                     }
+                } else if (open != null && currentDay != null) {
+                    // Нижня панель — щоденні дії під рукою, без меню. «Фото» розгортає камеру / галерею / файл.
+                    val day = currentDay
+                    val part = (currentPage as? BookPage.DayPart)?.part ?: 0
+                    val d = vm.day(day)
+                    fun photo(src: Int) { photoTools = false; if (roomFor(day, photo = true) || d.photo) host.addPhoto(day, src) else vm.show(R.string.no_room_photo) }
+                    val tools = if (photoTools) listOf(
+                        Tool(Glyph.Shutter, stringResource(R.string.photo_from_camera)) { photo(0) },
+                        Tool(Glyph.Gallery, stringResource(R.string.photo_from_gallery)) { photo(1) },
+                        Tool(Glyph.Folder, stringResource(R.string.photo_from_file)) { photo(2) },
+                        Tool(Glyph.Close, stringResource(R.string.close)) { photoTools = false },
+                    ) else listOf(
+                        Tool(Glyph.Pen, stringResource(R.string.ink_mode)) { striking = false; focusManager.clearFocus(); ink = InkSession(day, part) },
+                        Tool(Glyph.Strike, stringResource(R.string.tool_strike), active = striking) {
+                            striking = !striking
+                            if (striking) { focusManager.clearFocus(); vm.show(R.string.strike_hint) }
+                        },
+                        Tool(Glyph.Photo, stringResource(R.string.tool_photo)) { if (d.photo) dialog = BookDialog.Photo(day) else photoTools = true },
+                        Tool(Glyph.Mic, stringResource(R.string.record)) {
+                            when {
+                                d.audio -> vm.show(R.string.audio_exists)
+                                roomFor(day, photo = false) -> record(day)
+                                else -> vm.show(R.string.no_room_voice)
+                            }
+                        },
+                        Tool(Glyph.Pin, stringResource(R.string.place)) { dialog = BookDialog.Place(day) },
+                        Tool(Glyph.Search, stringResource(R.string.search)) { searching = true },
+                        Tool(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar },
+                        Tool(Glyph.Settings, stringResource(R.string.menu)) { striking = false; openMenu() },
+                    )
+                    ToolPanel(gear, tools, pinned = striking || photoTools)
                 } else {
                     GearSpot(gear) { if (menuOpen) closeMenu() else openMenu() }
                 }
