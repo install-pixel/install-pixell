@@ -31,6 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
@@ -108,63 +112,82 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
     var restore by remember { mutableStateOf<Pair<android.net.Uri, Boolean>?>(null) }
     val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) restore = uri to false }
 
-    BackHandler { if (page) page = false else onExit() }
-    // Сторінка налаштувань «перегортається» поверх полиці від корінця (лівого краю).
-    val turn by animateFloatAsState(if (page) 1f else 0f, tween(if (page) 620 else 480, easing = FastOutSlowInEasing), label = "settingsPage")
+    // Загальні налаштування — сторінка, що за загальним правилом гортання (валик) лягає від корінця поверх полиці:
+    // сторінка 0 — налаштування, сторінка 1 — «порожня» (крізь неї видно полицю).
+    val turn = remember { com.blacklaunch.diary.book.FlipState(1) }
+    val scope = rememberCoroutineScope()
+    // Поки налаштування закриті, їхньої (порожньої) сторінки немає зовсім — дотики йдуть до корінців.
+    var settingsShown by remember { mutableStateOf(false) }
+    fun toggleSettings() {
+        if (turn.moving) return
+        scope.launch {
+            if (turn.index == 0) {
+                turn.flipTo(1)
+                settingsShown = false
+            } else {
+                settingsShown = true
+                // Кадр-два, щоб сторінка встигла стати на місце, — тоді вона лягає гортанням.
+                androidx.compose.runtime.withFrameNanos { }
+                androidx.compose.runtime.withFrameNanos { }
+                turn.flipTo(0)
+            }
+        }
+    }
+    BackHandler { if (turn.index == 0) toggleSettings() else onExit() }
+    fun diarySettings(id: String) { vm.settingsFor = id; vm.current = id }
     Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().revealsGear(gear)) {
       Box(Modifier.weight(1f).fillMaxWidth()) {
-       Column(Modifier.fillMaxSize()) {
-        Text(stringResource(R.string.shelf), color = Oled.TextPrimary, fontSize = 20.sp, modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        Column(
-            Modifier.weight(1f).fillMaxWidth().bouncyScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(28.dp),
-        ) {
-            vm.shelf.chunked(PER_SHELF).forEachIndexed { row, books ->
-                Column {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
-                        books.forEachIndexed { i, b ->
-                            Spine(
-                                b,
-                                height = (196 + ((b.id.hashCode() and 0x7fffffff) % 5) * 8).dp,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .combinedClickable(
-                                        onClick = { haptics.tap(); vm.current = b.id },
-                                        onLongClick = { haptics.longPress(); spineMenu = b },
-                                    ),
-                                seed = row * 10 + i,
-                            )
-                        }
-                        repeat(PER_SHELF - books.size) { Spacer(Modifier.weight(1f)) }
+        // Полиця на всю зону щоденника: корінці на всю висоту, гортається вбік; під кожним — шестерня.
+        Box(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 12.dp)) {
+            // Дошка — під корінцями (книжки стоять на ній), шестерні — під дошкою.
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp)) { ShelfPlank(0) }
+            Row(
+                Modifier.fillMaxSize().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                vm.shelf.forEachIndexed { i, b ->
+                    Column(Modifier.width(78.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Spine(
+                            b,
+                            height = androidx.compose.ui.unit.Dp.Unspecified,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(top = (((b.id.hashCode() and 0x7fffffff) % 5) * 6).dp)
+                                .combinedClickable(
+                                    onClick = { haptics.tap(); vm.current = b.id },
+                                    onLongClick = { haptics.longPress(); spineMenu = b },
+                                ),
+                            seed = i,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        GearSpot(gear, size = 44.dp) { diarySettings(b.id) }
                     }
-                    ShelfPlank(row)
                 }
             }
-            WindowHint(stringResource(R.string.shelf_hint))
         }
-       }
-        if (turn > 0.01f) {
-            SettingsBook(
-                onLanguageChanged = onLanguageChanged,
-                onNewDiary = { newDiary = true },
-                onRestore = { openBackup.launch(arrayOf("*/*")) },
-                modifier = Modifier
-                    .padding(8.dp)
-                    .graphicsLayer {
-                        transformOrigin = TransformOrigin(0f, 0.5f)
-                        rotationY = -100f * (1f - turn)
-                        cameraDistance = 14f * density
-                        alpha = if (turn < 0.15f) turn / 0.15f else 1f
-                    }
-                    // Непрозора підкладка: у «Склі» крізь налаштування не просвічує полиця під ними.
-                    .clip(RoundedCornerShape(com.blacklaunch.diary.book.BookCorner))
-                    .background(Color.Black),
-            )
+        if (settingsShown) com.blacklaunch.diary.book.FlipBook(
+            state = turn,
+            count = 2,
+            enabled = false,
+            modifier = Modifier.fillMaxSize().padding(8.dp),
+            canFlipForward = { false },
+        ) { i ->
+            if (i == 0) {
+                SettingsBook(
+                    onLanguageChanged = onLanguageChanged,
+                    onNewDiary = { newDiary = true },
+                    onRestore = { openBackup.launch(arrayOf("*/*")) },
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(com.blacklaunch.diary.book.BookCorner)).background(Color.Black),
+                    diaries = vm.shelf.map { it.id to it.name },
+                    onDiarySettings = { diarySettings(it) },
+                )
+            }
         }
       }
-        // Шестерня — там само, де в щоденнику; з'являється після дотику.
+        // Шестерня посередині — загальні налаштування (там само, де в щоденнику); з'являється після дотику.
         Box(Modifier.fillMaxWidth().height(GearRow), contentAlignment = Alignment.Center) {
-            GearSpot(gear) { page = !page }
+            GearSpot(gear) { toggleSettings() }
         }
     }
 
@@ -193,7 +216,7 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
 @Composable
 private fun Spine(info: DiaryInfo, height: androidx.compose.ui.unit.Dp, modifier: Modifier, seed: Int) {
     val glass = AppStyle.glass
-    Box(modifier.height(height).clip(RoundedCornerShape(8.dp))) {
+    Box(modifier.then(if (height != androidx.compose.ui.unit.Dp.Unspecified) Modifier.height(height) else Modifier).clip(RoundedCornerShape(8.dp))) {
         Canvas(Modifier.fillMaxSize()) {
             val r = 8.dp.toPx()
             if (glass) {
@@ -215,7 +238,7 @@ private fun Spine(info: DiaryInfo, height: androidx.compose.ui.unit.Dp, modifier
             style = TextStyle(
                 fontFamily = if (glass) GlassFont else HandFont,
                 fontWeight = if (glass) FontWeight.Light else FontWeight.Medium,
-                fontSize = if (glass) 16.sp else 21.sp,
+                fontSize = if (glass) 20.sp else 26.sp,
                 letterSpacing = if (glass) 1.5.sp else 0.sp,
                 color = Oled.TextPrimary,
                 shadow = if (glass) Shadow(Color(0x59FFFFFF), blurRadius = 12f) else null,

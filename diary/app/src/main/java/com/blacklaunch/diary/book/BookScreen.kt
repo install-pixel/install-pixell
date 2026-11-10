@@ -331,6 +331,8 @@ fun BookScreen(
     }
 
     // ——— Сторінка меню (шестерня) ———
+    // Налаштування щоденника відкрили з полиці (шестерня під корінцем) — закриваючи, повертаємось на полицю.
+    var menuFromShelf by remember(info.id) { mutableStateOf(false) }
     fun openMenu() {
         if (menuOpen) return
         focusManager.clearFocus()
@@ -340,7 +342,15 @@ fun BookScreen(
         pendingFlip = BookPage.Menu(0)
     }
     fun closeMenu() {
-        if (menuOpen) pendingFlip = menuReturn
+        if (!menuOpen) return
+        if (menuFromShelf) onShelf() else pendingFlip = menuReturn
+    }
+    LaunchedEffect(info.id) {
+        if (vm.settingsFor == info.id) {
+            vm.settingsFor = null
+            menuFromShelf = true
+            openMenu()
+        }
     }
 
     fun jumpToDay(day: Long, mark: IntRange? = null) {
@@ -527,7 +537,8 @@ fun BookScreen(
                 if (info.locked) add(MenuEntry(Glyph.Unlock, stringResource(R.string.lock_remove)) { dialog = BookDialog.LockRemove })
                 add(MenuEntry(Glyph.Backup, stringResource(R.string.backup)) { dialog = BookDialog.Backup })
             } else {
-                // Закритий на код: лише полиця й «забув код».
+                // Закритий на код: лише полиця й «забув код» (решта налаштувань — після коду: їх бачить лише власник).
+                add(MenuEntry(null, stringResource(R.string.locked_settings_hint)))
                 add(MenuEntry(Glyph.Grid, stringResource(R.string.shelf_and_settings)) { onShelf() })
                 if (info.locked) add(MenuEntry(Glyph.Delete, stringResource(R.string.forgot_code), Tone.Danger) { dialog = BookDialog.Forgot })
             }
@@ -873,11 +884,12 @@ fun BookScreen(
                         Tool(Glyph.Pin, stringResource(R.string.place)) { if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.Place(day) },
                         Tool(Glyph.Search, stringResource(R.string.search)) { searching = true },
                         Tool(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar },
-                        Tool(Glyph.Settings, stringResource(R.string.menu)) { openMenu() },
+                        // Шестерня — на полицю: там усі щоденники, налаштування кожного й загальні.
+                        Tool(Glyph.Settings, stringResource(R.string.shelf)) { onShelf() },
                     )
                     ToolPanel(gear, tools, pinned = photoTools)
                 } else {
-                    GearSpot(gear) { if (menuOpen) closeMenu() else openMenu() }
+                    GearSpot(gear) { if (menuOpen) closeMenu() else onShelf() }
                 }
             }
         }

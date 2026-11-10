@@ -191,4 +191,7 @@
     <string name="tear_hint">Wyrwać stronę — na zawsze, bez powrotu</string>
     <string name="page_dry">Strona wyschła — teraz tylko ołówek</string>
     <string name="drying_fixed">Atrament schnie po dniu: potem strony nie da się zmienić — ani tekstu, ani zdjęcia, ani głosu. Zostaje ołówek albo stronę można wyrwać (przytrzymaj lewy dolny róg i ciągnij w górę).</string>
+    <string name="diaries">Pamiętniki</string>
+    <string name="diaries_hint">Dotknij pamiętnika — otworzą się jego własne ustawienia (okładka, nazwa, zamek, zdjęcia i głos, kopia).</string>
+    <string name="locked_settings_hint">Pamiętnik jest zamknięty na kod — jego ustawienia zobaczysz po otwarciu kodem</string>
 </resources>

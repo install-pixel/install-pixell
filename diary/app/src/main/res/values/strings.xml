@@ -189,4 +189,7 @@
     <string name="tear_hint">Tear out the page — forever, no way back</string>
     <string name="page_dry">The page has dried — only the pencil now</string>
     <string name="drying_fixed">Ink dries after a day: then the page can\'t be changed — no text, photo or voice. The pencil stays, or the page can be torn out (hold the bottom-left corner and drag up).</string>
+    <string name="diaries">Diaries</string>
+    <string name="diaries_hint">Tap a diary to open its own settings (cover, name, lock, photos and voice, backup).</string>
+    <string name="locked_settings_hint">The diary is locked — its settings appear once you open it with the code</string>
 </resources>

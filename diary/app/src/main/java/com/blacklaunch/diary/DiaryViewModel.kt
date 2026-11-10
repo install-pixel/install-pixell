@@ -67,6 +67,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     var notice by mutableStateOf<Notice?>(null)
+
+    /** Шестерня під корінцем на полиці: щоденник відкривається одразу на своїх налаштуваннях. */
+    var settingsFor by mutableStateOf<String?>(null)
     private var noticeJob: Job? = null
 
     /** Чи ще готується (обробка фото, шифрування) — щоб показати, що щось відбувається. */

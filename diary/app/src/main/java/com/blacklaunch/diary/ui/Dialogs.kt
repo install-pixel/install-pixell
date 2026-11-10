@@ -163,7 +163,14 @@ private fun PasswordField(value: String, onChange: (String) -> Unit, placeholder
  * те саме гортання, що й у щоденнику: 0 — щоденники й стиль, 1 — мова й екран, 2 — довідка, далі — теми довідки.
  */
 @Composable
-fun SettingsBook(onLanguageChanged: () -> Unit, onNewDiary: () -> Unit, onRestore: () -> Unit, modifier: Modifier = Modifier) {
+fun SettingsBook(
+    onLanguageChanged: () -> Unit,
+    onNewDiary: () -> Unit,
+    onRestore: () -> Unit,
+    modifier: Modifier = Modifier,
+    diaries: List<Pair<String, String>> = emptyList(),
+    onDiarySettings: (String) -> Unit = {},
+) {
     val context = LocalContext.current
     val settings = remember { AppSettings(context) }
     var language by remember { mutableStateOf(settings.language) }
@@ -171,7 +178,10 @@ fun SettingsBook(onLanguageChanged: () -> Unit, onNewDiary: () -> Unit, onRestor
     val state = remember { com.blacklaunch.diary.book.FlipState(0) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val topics = HelpTopic.entries
-    val helpPage = 2
+    // 0 — загальне й стиль, 1 — щоденники (у кожного — свої налаштування), 2 — мова й екран, 3 — довідка, далі — теми.
+    val diariesPage = 1
+    val langPage = 2
+    val helpPage = 3
     fun go(i: Int) { scope.launch { state.flipTo(i) } }
     BackHandler(enabled = state.index > 0) { go(if (state.index > helpPage) helpPage else state.index - 1) }
     com.blacklaunch.diary.book.FlipBook(
@@ -184,7 +194,8 @@ fun SettingsBook(onLanguageChanged: () -> Unit, onNewDiary: () -> Unit, onRestor
     ) { i ->
         val title = when {
             i == 0 -> stringResource(R.string.settings)
-            i == 1 -> stringResource(R.string.settings_language)
+            i == diariesPage -> stringResource(R.string.diaries)
+            i == langPage -> stringResource(R.string.settings_language)
             i == helpPage -> stringResource(R.string.help)
             else -> stringResource(topics[i - helpPage - 1].title)
         }
@@ -209,7 +220,11 @@ fun SettingsBook(onLanguageChanged: () -> Unit, onNewDiary: () -> Unit, onRestor
                     }
                     WindowHint(stringResource(R.string.settings_hint))
                 }
-                i == 1 -> {
+                i == diariesPage -> {
+                    FieldHint(stringResource(R.string.diaries_hint), Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    diaries.forEach { (id, name) -> MenuRow(Glyph.Book, name, { onDiarySettings(id) }) }
+                }
+                i == langPage -> {
                     AppLanguage.entries.forEach { lang ->
                         val name = when (lang) {
                             AppLanguage.System -> stringResource(R.string.lang_system)
