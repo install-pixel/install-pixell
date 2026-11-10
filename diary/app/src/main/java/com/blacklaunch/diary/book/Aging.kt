@@ -190,9 +190,14 @@ fun DrawScope.drawRaggedEdge(x: Float, yTop: Float, seed: Int, glass: Boolean, o
  */
 fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean, marginPx: Float) {
     if (k <= 0.01f) return
-    val x = TEAR_X.toPx()
+    drawTornRemnant(TEAR_X.toPx(), size.height * (1f - k), size.height, seed, glass, fill = false)
+    drawTapes(k, seed, glass, marginPx)
+}
+
+/** Лише шматочки скотчу над розривом до висоти [k] (і на сторінці, і на клапті, коли його відклеюють). */
+fun DrawScope.drawTapes(k: Float, seed: Int, glass: Boolean, marginPx: Float, peeled: Boolean = false) {
+    if (k <= 0.01f) return
     val yTop = size.height * (1f - k)
-    drawTornRemnant(x, yTop, size.height, seed, glass, fill = false)
     val rnd = java.util.Random(seed * 31L + 5)
     val left = 1.5.dp.toPx()
     val w = (marginPx - 3.dp.toPx() - left).coerceAtLeast(10.dp.toPx())
@@ -204,7 +209,10 @@ fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean, marginPx: Float
         rotate(ang, pivot = Offset(left + w / 2, cy)) {
             val tl = Offset(left, cy - h / 2)
             val sz = Size(w, h)
-            if (glass) {
+            if (peeled) {
+                // Відклеєний — видно клейкий бік: світліший, ледь ворсистий.
+                drawRect((if (glass) Color(0xFFA4ADB8) else Color(0xFFA8977A)).copy(alpha = 0.9f), tl, sz)
+            } else if (glass) {
                 // Матовий скотч: світла каламутна смужка (крізь неї нічого не розібрати).
                 drawRect(Color(0xFF8E97A3).copy(alpha = 0.75f), tl, sz)
                 drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent), startY = tl.y, endY = tl.y + h), tl, sz)

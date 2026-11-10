@@ -651,6 +651,14 @@ fun BookScreen(
                         nextOf = { i -> if (i == 0) openTarget else i + 1 },
                         prevOf = { i -> if (pages.getOrNull(i) == BookPage.Menu(0)) pages.indexOf(menuReturn).coerceAtLeast(0) else i - 1 },
                         onStart = { focusManager.clearFocus() },
+                        blankUnder = {
+                            val day = currentDay ?: today
+                            DayPage(
+                                host = host, day = com.blacklaunch.diary.data.Day(day), part = 1, split = 0,
+                                photoSlot = false, audioSlot = false, pageWidthPx = size.width, hours = hours,
+                                highlight = null, ink = null, yearsAgo = null, editable = false,
+                            )
+                        },
                         blocked = { blockers.values.toList() },
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
@@ -733,7 +741,8 @@ fun BookScreen(
                                     editable = true,
                                     number = pageNumber[p],
                                     ribbon = { if (ribbon.day == p.day) ribbon.laid.value else if (open?.bookmark == p.day) 1f else 0f },
-                                    stub = p in stubs,
+                                    // Клаптик попередньої вирваної — поверх сторінки; поки цю виривають, він лежить окремо (зверху).
+                                    stub = p in stubs && !(flip.tearFinger != null && p == currentPage),
                                 )
                             }
                         }
@@ -744,11 +753,14 @@ fun BookScreen(
                 // передумав — розрив лишається, заклеєний скотчем (запам'ятовується найвища межа).
                 val tearPage = currentPage as? BookPage.DayPart
                 if (open != null && tearPage != null) {
+                    val stubHere = tearPage in stubs
                     Canvas(Modifier.size(pw, ph)) {
                         val k = flip.tear
-                        if (k <= 0.01f || flip.tearFall > 0f) return@Canvas
+                        if (flip.tearFinger == null) return@Canvas
                         // Клаптик, що лишається на корінці, — та сама лінія, що й заклеєна (продовжується, а не дублюється).
-                        drawTornRemnant(TEAR_X.toPx(), size.height * (1f - k), size.height, flip.tearSeed, glass, fill = true)
+                        if (k > 0.01f && flip.tearFall <= 0f) drawTornRemnant(TEAR_X.toPx(), size.height * (1f - k), size.height, flip.tearSeed, glass, fill = true)
+                        // Клаптик раніше вирваної сторінки — зверху над усім (і над кутом, що загинається).
+                        if (stubHere) drawTornStub((tearPage.day * 7 + tearPage.part).toInt(), glass)
                     }
                     Box(
                         Modifier
@@ -781,6 +793,9 @@ fun BookScreen(
                                     onDragStart = { pos ->
                                         lastTick = 0; warned = false
                                         flip.tearSeed = tearSeedOf(tearPage.day, tearPage.part)
+                                        flip.tapeK = already
+                                        flip.tapeSeed = tearSeedOf(tearPage.day, tearPage.part)
+                                        flip.tapeMargin = PageMetrics.MARGIN_LEFT * w / PageMetrics.WIDTH
                                         focusManager.clearFocus()
                                         follow(pos)
                                     },

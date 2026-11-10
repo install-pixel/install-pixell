@@ -82,6 +82,10 @@ class FlipState(initial: Int) {
     var tearFall by mutableFloatStateOf(0f)
     /** Де зараз палець, що тягне нижній лівий кут (координати сторінки); null — не виривають. */
     var tearFinger by mutableStateOf<Offset?>(null)
+    /** Колишній заклеєний розрив сторінки, що її виривають: скотч відклеюється й піднімається з кутом. */
+    var tapeK by mutableFloatStateOf(0f)
+    var tapeSeed by mutableStateOf(0)
+    var tapeMargin by mutableFloatStateOf(0f)
     var tearSeed by mutableStateOf(0)
 
     /** Чи рухається зараз сторінка (поки рухається — інші жести на сторінці не діють). */
@@ -151,6 +155,8 @@ fun FlipBook(
     prevOf: (Int) -> Int = { it - 1 },
     blocked: () -> List<Rect> = { emptyList() },
     onStart: () -> Unit = {},
+    /** Що лежить під сторінкою, яку виривають, коли за нею нічого немає: порожня сторінка (а не обкладинка). */
+    blankUnder: (@Composable () -> Unit)? = null,
     onFlipped: (Int) -> Unit = {},
     page: @Composable (Int) -> Unit,
 ) {
@@ -310,17 +316,22 @@ fun FlipBook(
             val tearing = state.tear > 0f || state.tearFall > 0f
             val peek = when {
                 // Виривають сторінку — під нею чітко видно ту, що лишиться: наступну (або попередню, якщо це остання).
-                tearing -> (if (state.index < currentCount - 1) state.index + 1 else state.index - 1).takeIf { it >= 0 }
+                tearing -> if (state.index < currentCount - 1) state.index + 1 else null
                 AppStyle.glass && state.index < currentCount - 1 && mayForward(state.index) -> next(state.index).coerceIn(0, currentCount - 1)
                 else -> null
             }
-            if (tearing && peek != null) key(peek) {
+            if (tearing) {
+                // Під вирваною — наступна сторінка, а якщо її немає — порожня (та, що з'явиться після виривання).
                 Box(
                     Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(BookCorner))
                         .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
-                ) { CompositionLocalProvider(LocalPagePreview provides true) { page(peek) } }
+                ) {
+                    CompositionLocalProvider(LocalPagePreview provides true) {
+                        if (peek != null) key(peek) { page(peek) } else blankUnder?.invoke()
+                    }
+                }
             } else if (peek != null && peek != state.index) key(peek) {
                 Box(
                     Modifier
@@ -340,7 +351,7 @@ fun FlipBook(
                             // Виривають: нижній лівий кут загинається за пальцем (видно зворот), корінець рветься знизу
                             // до лінії загину, верх сторінки лежить на місці. Вирвана — тане.
                             tearLayer.record { this@drawWithContent.drawContent() }
-                            drawPeel(TearGeometry(size.width, size.height, f), tearLayer, seedOf(state.index), state.tearSeed, alpha = 1f - state.tearFall)
+                            drawPeel(TearGeometry(size.width, size.height, f), tearLayer, seedOf(state.index), state.tearSeed, alpha = 1f - state.tearFall, state)
                         },
                 ) { page(state.index) }
             }
@@ -595,7 +606,7 @@ private class Blurred(private val underLayer: GraphicsLayer, val top: GraphicsLa
 }
 
 /** Загин нижнього лівого кута, що виривається: лежить решта, клапоть — зворот, тінь, рваний край на клапті. */
-private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed: Int, tearSeed: Int, alpha: Float) {
+private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed: Int, tearSeed: Int, alpha: Float, state: FlipState) {
     val glass = AppStyle.glass
     fun poly(pts: List<Offset>) = Path().apply {
         if (pts.isEmpty()) return@apply
@@ -651,6 +662,16 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
             }
             // Вигин біля загину: світліше на самому загині, далі тінь.
             drawRect(Brush.linearGradient(0f to Color.White.copy(alpha = if (glass) 0.16f else 0.10f), 0.25f to Color.Transparent, 0.7f to Color.Black.copy(alpha = 0.25f), start = m, end = m - n * 60.dp.toPx()))
+        }
+        // 3а) Скотч, що був на розриві, — відклеївся й піднявся з кутом: на клапті він там само (дзеркально),
+        //     видно його клейкий бік.
+        if (state.tapeK > 0.01f) clipPath(flap) {
+            drawIntoCanvas { c ->
+                c.save()
+                c.concat(mirror)
+                drawTapes(state.tapeK, state.tapeSeed, glass, state.tapeMargin, peeled = true)
+                c.restore()
+            }
         }
         // 4) Рваний край на клапті — та сама лінія розриву, дзеркально (серцевина й тінь, без «стібків»).
         val edge = g.tornEdge(48)

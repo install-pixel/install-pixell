@@ -299,7 +299,7 @@ fun DayPage(
             onCursor = { host.onCursor(it) },
             onStrike = { s, e -> host.vm.addStrike(day.day, s, e) },
             bookCoords = { host.bookCoords },
-            hint = stringResource(if (day.sealed.isEmpty()) R.string.write_hint else R.string.write_more_hint),
+            hint = if (!editable) "" else stringResource(if (day.sealed.isEmpty()) R.string.write_hint else R.string.write_more_hint),
             modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(textTop)),
         )
 
