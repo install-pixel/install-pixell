@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
@@ -131,3 +133,63 @@ fun pageSeed(day: Long, part: Int): Int = ((day % 997).toInt() + part * 31) or (
 /** Вік у днях за [pageSeed] (для старіння звороту). */
 @Suppress("FunctionName")
 fun DiaryViewModel_ageOf(seed: Int): Long = (com.blacklaunch.diary.DiaryViewModel.today() - (seed ushr 12)).coerceAtLeast(0)
+
+/**
+ * Рваний край паперу (скла) уздовж корінця — від [yTop] до низу сторінки: нерівна смуга світлішої серцевини з
+ * волокнами, як у справжнього розірваного аркуша. [x] — де лінія розриву; [outward] — у який бік стирчать волокна.
+ */
+fun DrawScope.drawRaggedEdge(x: Float, yTop: Float, seed: Int, glass: Boolean, outward: Float) {
+    if (yTop >= size.height) return
+    val rnd = java.util.Random(seed * 104729L + 11)
+    val core = if (glass) Color(0xFF3A3E46) else Color(0xFF6E665A)
+    val fiber = if (glass) Color(0x66C8D0DC) else Color(0x99E6DCC8)
+    val path = Path()
+    val pts = ArrayList<Offset>()
+    var y = size.height
+    while (y > yTop) {
+        pts += Offset(x + (rnd.nextFloat() - 0.5f) * 5f * density, y)
+        y -= (2.5f + rnd.nextFloat() * 6f) * density
+    }
+    pts += Offset(x, yTop)
+    // Смуга серцевини: від лінії розриву на кілька пікселів углиб аркуша.
+    path.moveTo(pts.first().x, pts.first().y)
+    pts.forEach { path.lineTo(it.x, it.y) }
+    for (i in pts.indices.reversed()) {
+        val p = pts[i]
+        val depth = (1.5f + rnd.nextFloat() * 3.5f) * density
+        path.lineTo(p.x - outward * depth, p.y)
+    }
+    path.close()
+    drawPath(path, core)
+    // Волокна, що стирчать із розриву.
+    pts.forEachIndexed { i, p ->
+        if (i % 2 == 0) {
+            val len = (2f + rnd.nextFloat() * 5f) * density
+            val ang = (rnd.nextFloat() - 0.5f) * 1.2f
+            drawLine(fiber, p, p + Offset(outward * len * cos(ang), len * sin(ang)), 0.6f * density)
+        }
+    }
+    // Тінь уздовж розриву — край піднятий.
+    drawLine(Color.Black.copy(alpha = 0.35f), Offset(x + outward * 2f * density, yTop), Offset(x + outward * 2f * density, size.height), 2f * density)
+}
+
+/** Надірвано й заклеєно: лінія розриву біля корінця до висоти [k] (0…1) і кілька смужок скотчу поперек. */
+fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean) {
+    if (k <= 0.01f) return
+    val x = 10.dp.toPx()
+    val yTop = size.height * (1f - k)
+    drawRaggedEdge(x, yTop, seed, glass, outward = 1f)
+    val rnd = java.util.Random(seed * 31L + 5)
+    val tape = if (glass) Color(0x26E6EEF8) else Color(0x40EADFC4)
+    val n = 1 + (k * 3.5f).toInt()
+    for (i in 0 until n) {
+        val cy = yTop + (size.height - yTop) * (i + 0.5f) / n + (rnd.nextFloat() - 0.5f) * 12f * density
+        val w = 34.dp.toPx()
+        val h = (11f + rnd.nextFloat() * 4f) * density
+        val ang = (rnd.nextFloat() - 0.5f) * 24f
+        rotate(ang, pivot = Offset(x, cy)) {
+            drawRect(tape, topLeft = Offset(x - w * 0.35f, cy - h / 2), size = Size(w, h))
+            drawLine(Color.White.copy(alpha = if (glass) 0.10f else 0.14f), Offset(x - w * 0.35f, cy - h / 2), Offset(x + w * 0.65f, cy - h / 2), 0.8f * density)
+        }
+    }
+}

@@ -46,6 +46,8 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
         if ("no_photo" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN no_photo INTEGER NOT NULL DEFAULT 0")
         if ("no_audio" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN no_audio INTEGER NOT NULL DEFAULT 0")
         if ("torn" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN torn INTEGER NOT NULL DEFAULT 0")
+        if ("tear0" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN tear0 REAL NOT NULL DEFAULT 0")
+        if ("tear1" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN tear1 REAL NOT NULL DEFAULT 0")
         val stored = meta("media_key")
         val raw = if (stored != null) {
             android.util.Base64.decode(stored, android.util.Base64.NO_WRAP)
@@ -69,7 +71,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
     }
 
     fun days(): List<Day> = db.rawQuery(
-        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption, no_photo, no_audio, torn FROM day ORDER BY day",
+        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption, no_photo, no_audio, torn, tear0, tear1 FROM day ORDER BY day",
         emptyArray<String>(),
     ).use { c ->
         val out = ArrayList<Day>(c.count)
@@ -91,6 +93,8 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
                 noPhoto = c.getInt(13) != 0,
                 noAudio = c.getInt(14) != 0,
                 torn = c.getInt(15),
+                tearTry0 = c.getFloat(16),
+                tearTry1 = c.getFloat(17),
             )
         }
         out
@@ -115,6 +119,8 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
             put("no_photo", if (d.noPhoto) 1 else 0)
             put("no_audio", if (d.noAudio) 1 else 0)
             put("torn", d.torn)
+            put("tear0", d.tearTry0)
+            put("tear1", d.tearTry1)
             put("audio", if (d.audio) 1 else 0)
             put("audio_ms", d.audioMs)
             put("wave", DayCodec.waveToString(d.wave))

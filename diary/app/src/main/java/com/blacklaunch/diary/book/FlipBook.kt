@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.drawWithContent
@@ -73,6 +74,11 @@ class FlipState(initial: Int) {
     /** Наскільки верхня сторінка перегорнута: 0 — лежить, 1 — повністю пішла за корінець. */
     internal val progress = Animatable(0f)
     internal var width by mutableFloatStateOf(0f)
+
+    /** Виривання поточної сторінки: наскільки відірвано (0…1) і «падіння» вирваної (0…1); [tearSeed] — для рваного краю. */
+    var tear by mutableFloatStateOf(0f)
+    var tearFall by mutableFloatStateOf(0f)
+    var tearSeed by mutableStateOf(0)
 
     /** Чи рухається зараз сторінка (поки рухається — інші жести на сторінці не діють). */
     val moving: Boolean get() = top != null
@@ -296,8 +302,21 @@ fun FlipBook(
             // «Скло»: аркуші ледь прозорі ([GLASS_PAGE_ALPHA], обкладинка — [GLASS_COVER_ALPHA]) — під поточною сторінкою
             // лежить справжня наступна, і її силует трохи просвічує. Під час гортання вона та сама, тож прозорість
             // природно росте разом із тим, наскільки сторінку піднято. Дотики до неї не доходять.
-            val peek = if (AppStyle.glass && state.index < currentCount - 1 && mayForward(state.index)) next(state.index).coerceIn(0, currentCount - 1) else null
-            if (peek != null && peek != state.index) key(peek) {
+            val tearing = state.tear > 0f || state.tearFall > 0f
+            val peek = when {
+                // Виривають сторінку — під нею чітко видно ту, що лишиться: наступну (або попередню, якщо це остання).
+                tearing -> (if (state.index < currentCount - 1) state.index + 1 else state.index - 1).takeIf { it >= 0 }
+                AppStyle.glass && state.index < currentCount - 1 && mayForward(state.index) -> next(state.index).coerceIn(0, currentCount - 1)
+                else -> null
+            }
+            if (tearing && peek != null) key(peek) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(BookCorner))
+                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
+                ) { CompositionLocalProvider(LocalPagePreview provides true) { page(peek) } }
+            } else if (peek != null && peek != state.index) key(peek) {
                 Box(
                     Modifier
                         .fillMaxSize()
@@ -306,7 +325,29 @@ fun FlipBook(
                         .blur(GlassBlur, BlurredEdgeTreatment.Unbounded),
                 ) { CompositionLocalProvider(LocalPagePreview provides true) { page(peek) } }
             }
-            key(state.index) { Box(Modifier.fillMaxSize()) { page(state.index) } }
+            key(state.index) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            if (!tearing) return@graphicsLayer
+                            // Корінець рветься знизу вгору: сторінка відходить нижнім лівим кутом (тримається ще вгорі), за
+                            // пальцем; вирвана — падає вниз із поворотом і тане.
+                            val t = state.tear
+                            val f = state.tearFall
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                            rotationZ = -t * 7f - f * 16f
+                            translationX = t * size.width * 0.07f + f * size.width * 0.25f
+                            translationY = f * size.height * 0.7f
+                            alpha = 1f - f * f
+                            shadowElevation = 12f * t
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            if (tearing) drawRaggedEdge(0f, size.height * (1f - maxOf(state.tear, if (state.tearFall > 0f) 1f else 0f)), state.tearSeed, AppStyle.glass, outward = -1f)
+                        },
+                ) { page(state.index) }
+            }
         } else {
             // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
             // Сторінка під низом — у тій самій формі книжки ([BookCorner]): нічого не визирає з-під верхньої.

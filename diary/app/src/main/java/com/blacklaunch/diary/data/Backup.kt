@@ -128,6 +128,8 @@ object Backup {
         .put("noPhoto", d.noPhoto)
         .put("noAudio", d.noAudio)
         .put("torn", d.torn)
+        .put("tear0", d.tearTry0.toDouble())
+        .put("tear1", d.tearTry1.toDouble())
         .put("audio", d.audio)
         .put("audioMs", d.audioMs)
         .put("wave", DayCodec.waveToString(d.wave))
@@ -146,6 +148,8 @@ object Backup {
         noPhoto = o.optBoolean("noPhoto"),
         noAudio = o.optBoolean("noAudio"),
         torn = o.optInt("torn"),
+        tearTry0 = o.optDouble("tear0", 0.0).toFloat(),
+        tearTry1 = o.optDouble("tear1", 0.0).toFloat(),
         audio = o.optBoolean("audio"),
         audioMs = o.optLong("audioMs"),
         wave = DayCodec.waveFromString(o.optString("wave")),

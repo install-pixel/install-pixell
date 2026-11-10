@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.input.pointer.pointerInput
@@ -305,9 +306,7 @@ fun BookScreen(
     }
 
     var dialog by remember { mutableStateOf<BookDialog?>(null) }
-    // Вирвати сторінку: наскільки протягнули по корінцю (0…1) і «падіння» вирваної.
-    val tearPull = remember { Animatable(0f) }
-    val tearDrop = remember { Animatable(0f) }
+
     var searching by remember { mutableStateOf(false) }
     var ink by remember { mutableStateOf<InkSession?>(null) }
     var highlight by remember { mutableStateOf<Pair<Long, IntRange>?>(null) }
@@ -613,13 +612,6 @@ fun BookScreen(
                 Box(
                     Modifier
                         .size(pw, ph)
-                        .graphicsLayer {
-                            // Вирвана сторінка падає й тане.
-                            val f = tearDrop.value
-                            translationY = f * size.height * 0.35f
-                            rotationZ = f * 5f
-                            alpha = 1f - f
-                        }
                         .onGloballyPositioned {
                             bookCoords = it
                             com.blacklaunch.diary.ui.NoticeArea.rect = it.boundsInWindow()
@@ -730,69 +722,72 @@ fun BookScreen(
                         }
                     }
                 }
-                // Вирвати сторінку — повільно вести пальцем униз по краю біля корінця (не від самого верху): з половини
-                // сторінка починає відриватися й видно попередження; довів майже донизу — вирвано назавжди.
+                // Вирвати сторінку — затиснути нижній лівий кут (біля корінця) і вести вгору: сторінка відривається за
+                // пальцем, під нею видно наступну. За половину — червоне попередження; довів до кінця — вирвано назавжди;
+                // передумав — розрив лишається, заклеєний скотчем (запам'ятовується найвища межа).
                 val tearPage = currentPage as? BookPage.DayPart
                 if (open != null && tearPage != null) {
                     val tearLabel = stringResource(R.string.tear_hint)
                     val measurer2 = rememberTextMeasurer()
                     Canvas(Modifier.size(pw, ph)) {
-                        val k = tearPull.value
-                        if (k <= 0.01f) return@Canvas
-                        // Рваний розрив біля корінця — росте за пальцем.
-                        val rnd = java.util.Random((tearPage.day * 13 + tearPage.part))
-                        val path = androidx.compose.ui.graphics.Path()
-                        val top = size.height * 0.1f
-                        val end = top + (size.height * 0.9f - top) * k
-                        var y = top
-                        path.moveTo(10.dp.toPx(), y)
-                        while (y < end) {
-                            y += (5f + rnd.nextFloat() * 8f) * this.density
-                            path.lineTo(10.dp.toPx() + (rnd.nextFloat() - 0.5f) * 6.dp.toPx(), y.coerceAtMost(end))
-                        }
-                        drawPath(path, Color.Black.copy(alpha = 0.85f), style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
-                        drawPath(path, Oled.TextSecondary.copy(alpha = 0.6f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
-                        if (k > 0.4f) {
-                            val a = ((k - 0.4f) / 0.2f).coerceIn(0f, 1f)
+                        val k = flip.tear
+                        if (k <= 0.01f || flip.tearFall > 0f) return@Canvas
+                        // Друга половина розриву — та, що лишається на корінці.
+                        drawRaggedEdge(8.dp.toPx(), size.height * (1f - k), flip.tearSeed + 1, glass, outward = 1f)
+                        if (k > 0.5f) {
+                            val a = ((k - 0.5f) / 0.12f).coerceIn(0f, 1f)
                             val l = measurer2.measure(tearLabel, androidx.compose.ui.text.TextStyle(color = Oled.Danger, fontSize = 18.sp, fontFamily = if (glass) com.blacklaunch.diary.ui.GlassFont else com.blacklaunch.diary.ui.HandFont, textAlign = TextAlign.Center), constraints = Constraints(maxWidth = (size.width * 0.8f).toInt()))
-                            drawRoundRect(Color(0xF21B1A17), topLeft = Offset((size.width - l.size.width) / 2 - 16.dp.toPx(), size.height * 0.45f - 12.dp.toPx()), size = androidx.compose.ui.geometry.Size(l.size.width + 32.dp.toPx(), l.size.height + 24.dp.toPx()), cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()), alpha = a)
-                            drawText(l, topLeft = Offset((size.width - l.size.width) / 2, size.height * 0.45f), alpha = a)
+                            drawRoundRect(Color(0xF21B1A17), topLeft = Offset((size.width - l.size.width) / 2 - 16.dp.toPx(), size.height * 0.4f - 12.dp.toPx()), size = androidx.compose.ui.geometry.Size(l.size.width + 32.dp.toPx(), l.size.height + 24.dp.toPx()), cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()), alpha = a)
+                            drawText(l, topLeft = Offset((size.width - l.size.width) / 2, size.height * 0.4f), alpha = a)
                         }
                     }
                     Box(
                         Modifier
-                            .offset(y = ph * 0.1f)
-                            .size(24.dp, ph * 0.9f)
-                            .pointerInput(tearPage, editing, ink) {
-                                if (editing != null || ink != null) return@pointerInput
+                            .offset(y = ph - 84.dp)
+                            .size(52.dp, 84.dp)
+                            .pointerInput(tearPage, ink) {
+                                if (ink != null) return@pointerInput
+                                val already = vm.day(tearPage.day).tearTry(tearPage.part)
                                 var pulled = 0f
-                                val full = ph.toPx() * 0.75f
-                                detectVerticalDragGestures(
-                                    onDragStart = { pulled = 0f },
-                                    onVerticalDrag = { c, dy ->
+                                var lastTick = 0
+                                val full = ph.toPx() * 0.8f
+                                detectDragGestures(
+                                    onDragStart = { pulled = 0f; lastTick = 0; flip.tearSeed = (tearPage.day * 17 + tearPage.part).toInt(); focusManager.clearFocus() },
+                                    onDrag = { c, d ->
                                         c.consume()
-                                        pulled = (pulled + dy).coerceAtLeast(0f)
-                                        val before = tearPull.value
-                                        val now = (pulled / full).coerceIn(0f, 1f)
-                                        if (before < 0.4f && now >= 0.4f) haptics.longPress()
-                                        scope.launch { tearPull.snapTo(now) }
+                                        pulled = (pulled - d.y + d.x * 0.3f).coerceAtLeast(0f)
+                                        // Уже надірване не «зростається»: розрив починається з найвищої колишньої межі.
+                                        val now = maxOf(already, (pulled / full).coerceIn(0f, 1f))
+                                        val tick = (now * 10).toInt()
+                                        if (tick != lastTick) { haptics.tick(); lastTick = tick }
+                                        if (flip.tear < 0.5f && now >= 0.5f) haptics.longPress()
+                                        flip.tear = now
                                     },
                                     onDragEnd = {
                                         scope.launch {
-                                            if (tearPull.value >= 0.92f) {
+                                            val k = flip.tear
+                                            if (k >= 0.92f) {
                                                 haptics.longPress()
-                                                tearDrop.animateTo(1f, tween(320))
+                                                val start = k
+                                                androidx.compose.animation.core.animate(0f, 1f, animationSpec = tween(700, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { v, _ ->
+                                                    flip.tear = start + (1f - start) * v
+                                                    flip.tearFall = v
+                                                }
                                                 val d = vm.day(tearPage.day)
                                                 vm.tearPage(tearPage.day, tearPage.part, splitDay(d).split)
-                                                tearPull.snapTo(0f)
-                                                delay(60)
-                                                tearDrop.snapTo(0f)
+                                                delay(30)
+                                                flip.tearFall = 0f
+                                                flip.tear = 0f
                                             } else {
-                                                tearPull.animateTo(0f, tween(250))
+                                                // Передумали: сторінка лягає назад, розрив лишається (заклеєний).
+                                                if (k > 0.02f) vm.setTearTry(tearPage.day, tearPage.part, k)
+                                                val from = k
+                                                androidx.compose.animation.core.animate(from, 0f, animationSpec = tween(320)) { v, _ -> flip.tear = v }
+                                                flip.tear = 0f
                                             }
                                         }
                                     },
-                                    onDragCancel = { scope.launch { tearPull.animateTo(0f, tween(250)) } },
+                                    onDragCancel = { flip.tear = 0f },
                                 )
                             },
                     )

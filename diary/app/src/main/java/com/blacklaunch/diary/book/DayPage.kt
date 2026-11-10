@@ -171,6 +171,8 @@ fun DayPage(
                 drawContent()
                 drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
                 if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
+                // Колись надірвали й передумали — розрив заклеєно скотчем.
+                drawTapedTear(day.tearTry(part), (day.day * 13 + part).toInt(), glass)
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {

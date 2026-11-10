@@ -44,6 +44,9 @@ data class Day(
     val noAudio: Boolean = false,
     /** Вирвані сторінки дня (біт 1 — перша, біт 2 — друга): назавжди, номер лишається пропущеним. */
     val torn: Int = 0,
+    /** Надірвано, але передумали: до якої висоти (0…1) — лишається видно, заклеєне скотчем. Окремо для 1-ї й 2-ї сторінки. */
+    val tearTry0: Float = 0f,
+    val tearTry1: Float = 0f,
     val audio: Boolean = false,
     val audioMs: Long = 0L,
     /** Обриси звуку (0…1) — для смужки запису. */
@@ -58,7 +61,9 @@ data class Day(
 
     /** Нічого зберігати: порожній і місця під фото / голос не прибирали. */
     val isEmpty: Boolean
-        get() = isBlank && !noPhoto && !noAudio && torn == 0
+        get() = isBlank && !noPhoto && !noAudio && torn == 0 && tearTry0 == 0f && tearTry1 == 0f
+
+    fun tearTry(part: Int): Float = if (part == 0) tearTry0 else tearTry1
 
     /**
      * Чорнило висихає: свіже, старше за [hours] годин, переходить у висохле; штрихи пера теж стають висохлими самі

@@ -332,6 +332,12 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         update(torn)
     }
 
+    /** Передумали вирвати: запам'ятати, до якої висоти надірвано (лише найвищу межу). */
+    fun setTearTry(epochDay: Long, part: Int, k: Float) {
+        val d = day(epochDay)
+        update(if (part == 0) d.copy(tearTry0 = maxOf(d.tearTry0, k)) else d.copy(tearTry1 = maxOf(d.tearTry1, k)))
+    }
+
     fun editText(epochDay: Long, full: String) {
         val d = dayNow(epochDay)
         if (!full.startsWith(d.sealed)) return
