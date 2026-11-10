@@ -53,7 +53,7 @@ fun DiaryApp(vm: DiaryViewModel, onExit: () -> Unit, onLanguageChanged: () -> Un
             }
         }
         val n = vm.notice
-        Banner(n?.let { stringResource(it.text) }, action = if (n?.undo != null) stringResource(R.string.undo_action) else null) {
+        Banner(n?.let { stringResource(it.text) }, action = if (n?.undo != null) stringResource(R.string.undo_action) else null, danger = n?.danger == true) {
             n?.undo?.invoke()
             vm.notice = null
         }

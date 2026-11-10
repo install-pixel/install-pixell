@@ -47,7 +47,7 @@ sealed interface OpenResult {
 }
 
 /** Сповіщення вгорі (з «Повернути», якщо є що повертати). */
-data class Notice(val text: Int, val undo: (() -> Unit)? = null, val id: Long = System.nanoTime())
+data class Notice(val text: Int, val undo: (() -> Unit)? = null, val id: Long = System.nanoTime(), val danger: Boolean = false)
 
 class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     val settings = AppSettings(app)
@@ -105,6 +105,16 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setOpenAtBookmark(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(openAtBookmark = on) else it })
+
+    /** Попередження червоним — тримається, доки його не приберуть ([clearNotice]). */
+    fun warn(message: Int) {
+        noticeJob?.cancel()
+        notice = Notice(message, danger = true)
+    }
+
+    fun clearNotice(message: Int) {
+        if (notice?.text == message) notice = null
+    }
 
     fun show(message: Int, undo: (() -> Unit)? = null) {
         notice = Notice(message, undo)

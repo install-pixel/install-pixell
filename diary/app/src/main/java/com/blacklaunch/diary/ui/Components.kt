@@ -381,7 +381,7 @@ fun SheetTextField(
  * в рамці олівцем. Дія («Повернути») — праворуч. Так само виглядають і підказки камери.
  */
 @Composable
-fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, danger: Boolean = false, onAction: () -> Unit = {}) {
     val glass = AppStyle.glass
     val font = if (glass) GlassFont else HandFont
     Row(
@@ -412,7 +412,7 @@ fun Notice(text: String, modifier: Modifier = Modifier, action: String? = null, 
     ) {
         Text(
             text,
-            color = Oled.TextPrimary,
+            color = if (danger) Oled.Danger else Oled.TextPrimary,
             fontFamily = font,
             fontSize = if (glass) 16.sp else 19.sp,
             textAlign = TextAlign.Center,
@@ -449,7 +449,7 @@ fun Modifier.noticePlace(): Modifier = statusBarsPadding().padding(start = 20.dp
 
 /** Сповіщення, що з'являється й тане («Збережено», «Видалено» + «Повернути», «Немає місця»…). */
 @Composable
-fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
+fun Banner(text: String?, action: String? = null, danger: Boolean = false, onAction: () -> Unit = {}) {
     var shown by remember { mutableStateOf("") }
     var shownAction by remember { mutableStateOf<String?>(null) }
     if (text != null) {
@@ -473,7 +473,7 @@ fun Banner(text: String?, action: String? = null, onAction: () -> Unit = {}) {
                     .width((area.width - 2 * inset).toDp())
             },
         ) {
-            Notice(shown, action = shownAction, onAction = onAction)
+            Notice(shown, action = shownAction, danger = danger, onAction = onAction)
         }
     }
 }

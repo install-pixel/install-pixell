@@ -727,19 +727,11 @@ fun BookScreen(
                 // передумав — розрив лишається, заклеєний скотчем (запам'ятовується найвища межа).
                 val tearPage = currentPage as? BookPage.DayPart
                 if (open != null && tearPage != null) {
-                    val tearLabel = stringResource(R.string.tear_hint)
-                    val measurer2 = rememberTextMeasurer()
                     Canvas(Modifier.size(pw, ph)) {
                         val k = flip.tear
                         if (k <= 0.01f || flip.tearFall > 0f) return@Canvas
-                        // Друга половина розриву — та, що лишається на корінці.
-                        drawRaggedEdge(8.dp.toPx(), size.height * (1f - k), flip.tearSeed + 1, glass, outward = 1f)
-                        if (k > 0.5f) {
-                            val a = ((k - 0.5f) / 0.12f).coerceIn(0f, 1f)
-                            val l = measurer2.measure(tearLabel, androidx.compose.ui.text.TextStyle(color = Oled.Danger, fontSize = 18.sp, fontFamily = if (glass) com.blacklaunch.diary.ui.GlassFont else com.blacklaunch.diary.ui.HandFont, textAlign = TextAlign.Center), constraints = Constraints(maxWidth = (size.width * 0.8f).toInt()))
-                            drawRoundRect(Color(0xF21B1A17), topLeft = Offset((size.width - l.size.width) / 2 - 16.dp.toPx(), size.height * 0.4f - 12.dp.toPx()), size = androidx.compose.ui.geometry.Size(l.size.width + 32.dp.toPx(), l.size.height + 24.dp.toPx()), cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()), alpha = a)
-                            drawText(l, topLeft = Offset((size.width - l.size.width) / 2, size.height * 0.4f), alpha = a)
-                        }
+                        // Половина розриву, що лишається на корінці.
+                        drawRaggedEdge(6.dp.toPx(), size.height * (1f - k), flip.tearSeed + 1, glass, outward = 1f)
                     }
                     Box(
                         Modifier
@@ -748,46 +740,64 @@ fun BookScreen(
                             .pointerInput(tearPage, ink) {
                                 if (ink != null) return@pointerInput
                                 val already = vm.day(tearPage.day).tearTry(tearPage.part)
-                                var pulled = 0f
+                                val w = pw.toPx()
+                                val h = ph.toPx()
+                                val zoneTop = h - 84.dp.toPx()
                                 var lastTick = 0
-                                val full = ph.toPx() * 0.8f
+                                var warned = false
+                                fun follow(pos: Offset) {
+                                    // Палець у координатах сторінки; кут не відводимо лівіше корінця й нижче низу.
+                                    val f = Offset(pos.x.coerceAtLeast(0f), (zoneTop + pos.y).coerceAtMost(h))
+                                    val g = TearGeometry(w, h, f)
+                                    flip.tearFinger = f
+                                    // Розрив — за тим, наскільки підняли палець (до кінця — на ~80 % висоти сторінки), але не нижче,
+                                    // ніж уже загнуто; уже надірване не «зростається» — межа не нижча за колишню.
+                                    val k = maxOf(already, g.tearHeight, ((h - f.y) / (h * 0.8f)).coerceIn(0f, 1f))
+                                    flip.tear = k
+                                    val tick = (k * 10).toInt()
+                                    if (tick != lastTick) { haptics.tick(); lastTick = tick }
+                                    if (!warned && k >= 0.5f) { warned = true; haptics.longPress(); vm.warn(R.string.tear_hint) }
+                                    if (warned && k < 0.45f) { warned = false; vm.clearNotice(R.string.tear_hint) }
+                                }
                                 detectDragGestures(
-                                    onDragStart = { pulled = 0f; lastTick = 0; flip.tearSeed = (tearPage.day * 17 + tearPage.part).toInt(); focusManager.clearFocus() },
-                                    onDrag = { c, d ->
-                                        c.consume()
-                                        pulled = (pulled - d.y + d.x * 0.3f).coerceAtLeast(0f)
-                                        // Уже надірване не «зростається»: розрив починається з найвищої колишньої межі.
-                                        val now = maxOf(already, (pulled / full).coerceIn(0f, 1f))
-                                        val tick = (now * 10).toInt()
-                                        if (tick != lastTick) { haptics.tick(); lastTick = tick }
-                                        if (flip.tear < 0.5f && now >= 0.5f) haptics.longPress()
-                                        flip.tear = now
+                                    onDragStart = { pos ->
+                                        lastTick = 0; warned = false
+                                        flip.tearSeed = (tearPage.day * 17 + tearPage.part).toInt()
+                                        focusManager.clearFocus()
+                                        follow(pos)
                                     },
+                                    onDrag = { c, _ -> c.consume(); follow(c.position) },
                                     onDragEnd = {
+                                        vm.clearNotice(R.string.tear_hint)
                                         scope.launch {
                                             val k = flip.tear
+                                            val from = flip.tearFinger ?: Offset(0f, h)
                                             if (k >= 0.92f) {
+                                                // Вирвали: кут іде далі вгору-праворуч, аркуш відходить увесь і тане.
                                                 haptics.longPress()
-                                                val start = k
-                                                androidx.compose.animation.core.animate(0f, 1f, animationSpec = tween(700, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { v, _ ->
-                                                    flip.tear = start + (1f - start) * v
-                                                    flip.tearFall = v
+                                                val to = Offset(w * 1.9f, -h * 0.5f)
+                                                androidx.compose.animation.core.animate(0f, 1f, animationSpec = tween(650, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { v, _ ->
+                                                    flip.tearFinger = from + (to - from) * v
+                                                    flip.tear = 1f
+                                                    flip.tearFall = ((v - 0.55f) / 0.45f).coerceIn(0f, 1f)
                                                 }
                                                 val d = vm.day(tearPage.day)
                                                 vm.tearPage(tearPage.day, tearPage.part, splitDay(d).split)
                                                 delay(30)
-                                                flip.tearFall = 0f
-                                                flip.tear = 0f
                                             } else {
-                                                // Передумали: сторінка лягає назад, розрив лишається (заклеєний).
+                                                // Передумали: кут лягає назад, розрив лишається (заклеєний скотчем).
                                                 if (k > 0.02f) vm.setTearTry(tearPage.day, tearPage.part, k)
-                                                val from = k
-                                                androidx.compose.animation.core.animate(from, 0f, animationSpec = tween(320)) { v, _ -> flip.tear = v }
-                                                flip.tear = 0f
+                                                val home = Offset(0f, h)
+                                                androidx.compose.animation.core.animate(0f, 1f, animationSpec = tween(320)) { v, _ ->
+                                                    flip.tearFinger = from + (home - from) * v
+                                                }
                                             }
+                                            flip.tearFinger = null
+                                            flip.tearFall = 0f
+                                            flip.tear = 0f
                                         }
                                     },
-                                    onDragCancel = { flip.tear = 0f },
+                                    onDragCancel = { vm.clearNotice(R.string.tear_hint); flip.tearFinger = null; flip.tear = 0f },
                                 )
                             },
                     )

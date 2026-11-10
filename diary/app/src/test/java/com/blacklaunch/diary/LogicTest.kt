@@ -1,6 +1,8 @@
 package com.blacklaunch.diary
 
 import com.blacklaunch.diary.book.CurlGeometry
+import com.blacklaunch.diary.book.TearGeometry
+import androidx.compose.ui.geometry.Offset
 import com.blacklaunch.diary.book.PageMetrics
 import com.blacklaunch.diary.book.splitPages
 import com.blacklaunch.diary.book.absorbBlankLines
@@ -266,5 +268,21 @@ class LogicTest {
         // Порожніх рядків немає — нічого не прибираємо (і текст не губиться).
         val full = (1..7).joinToString(nl) { "р$it" }
         assertEquals(full, absorbBlankLines(full, 0, fits))
+    }
+
+    @Test
+    fun tearPeelKeepsTopAndTearsSpine() {
+        // Кут потягли трохи вгору-праворуч: верх сторінки лежить, корінець розірвано лише знизу.
+        val g = TearGeometry(300f, 600f, finger = Offset(60f, 480f))
+        assertTrue(g.side(Offset(0f, 0f)) < 0f)
+        assertTrue(g.side(Offset(300f, 0f)) < 0f)
+        assertTrue(g.tearHeight in 0.05f..0.6f)
+        // Кут лягає під палець.
+        val c = g.reflect(Offset(0f, 600f))
+        assertEquals(60f, c.x, 0.5f)
+        assertEquals(480f, c.y, 0.5f)
+        // Потягли високо — корінець розірвано майже весь.
+        // Що вище палець — то вище загин доходить по корінцю.
+        assertTrue(TearGeometry(300f, 600f, Offset(60f, 100f)).tearHeight > g.tearHeight)
     }
 }

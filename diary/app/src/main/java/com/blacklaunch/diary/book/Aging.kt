@@ -173,23 +173,36 @@ fun DrawScope.drawRaggedEdge(x: Float, yTop: Float, seed: Int, glass: Boolean, o
     drawLine(Color.Black.copy(alpha = 0.35f), Offset(x + outward * 2f * density, yTop), Offset(x + outward * 2f * density, size.height), 2f * density)
 }
 
-/** Надірвано й заклеєно: лінія розриву біля корінця до висоти [k] (0…1) і кілька смужок скотчу поперек. */
-fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean) {
+/**
+ * Надірвано й заклеєно: лінія розриву біля корінця до висоти [k] (0…1) і кілька шматочків непрозорого скотчу —
+ * лише в лівому полі ([marginPx]), тож на рядки з текстом не заходять. «Аркуш» — паперовий (крафт), «Скло» — матовий.
+ */
+fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean, marginPx: Float) {
     if (k <= 0.01f) return
-    val x = 10.dp.toPx()
+    val x = 6.dp.toPx()
     val yTop = size.height * (1f - k)
     drawRaggedEdge(x, yTop, seed, glass, outward = 1f)
     val rnd = java.util.Random(seed * 31L + 5)
-    val tape = if (glass) Color(0x26E6EEF8) else Color(0x40EADFC4)
+    val left = 1.5.dp.toPx()
+    val w = (marginPx - 3.dp.toPx() - left).coerceAtLeast(10.dp.toPx())
     val n = 1 + (k * 3.5f).toInt()
     for (i in 0 until n) {
-        val cy = yTop + (size.height - yTop) * (i + 0.5f) / n + (rnd.nextFloat() - 0.5f) * 12f * density
-        val w = 34.dp.toPx()
-        val h = (11f + rnd.nextFloat() * 4f) * density
-        val ang = (rnd.nextFloat() - 0.5f) * 24f
-        rotate(ang, pivot = Offset(x, cy)) {
-            drawRect(tape, topLeft = Offset(x - w * 0.35f, cy - h / 2), size = Size(w, h))
-            drawLine(Color.White.copy(alpha = if (glass) 0.10f else 0.14f), Offset(x - w * 0.35f, cy - h / 2), Offset(x + w * 0.65f, cy - h / 2), 0.8f * density)
+        val h = (13f + rnd.nextFloat() * 4f) * density
+        val cy = (yTop + (size.height - yTop) * (i + 0.5f) / n + (rnd.nextFloat() - 0.5f) * 10f * density).coerceIn(yTop + h, size.height - h)
+        val ang = (rnd.nextFloat() - 0.5f) * 10f
+        rotate(ang, pivot = Offset(left + w / 2, cy)) {
+            val tl = Offset(left, cy - h / 2)
+            val sz = Size(w, h)
+            if (glass) {
+                // Матовий скотч: світла каламутна смужка (крізь неї нічого не розібрати).
+                drawRect(Color(0xFF8E97A3).copy(alpha = 0.75f), tl, sz)
+                drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent), startY = tl.y, endY = tl.y + h), tl, sz)
+            } else {
+                // Паперовий скотч-пластир: щільний, теплий, з нерівними торцями.
+                drawRect(Color(0xFF8C7A5A), tl, sz)
+                repeat(6) { drawCircle(Color(0xFF6F5F44).copy(alpha = 0.5f), 0.6f * density, Offset(tl.x + rnd.nextFloat() * w, tl.y + rnd.nextFloat() * h)) }
+            }
+            drawLine(Color.Black.copy(alpha = 0.35f), Offset(tl.x, tl.y + h), Offset(tl.x + w, tl.y + h), 1f * density)
         }
     }
 }

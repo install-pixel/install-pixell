@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -78,6 +80,8 @@ class FlipState(initial: Int) {
     /** Виривання поточної сторінки: наскільки відірвано (0…1) і «падіння» вирваної (0…1); [tearSeed] — для рваного краю. */
     var tear by mutableFloatStateOf(0f)
     var tearFall by mutableFloatStateOf(0f)
+    /** Де зараз палець, що тягне нижній лівий кут (координати сторінки); null — не виривають. */
+    var tearFinger by mutableStateOf<Offset?>(null)
     var tearSeed by mutableStateOf(0)
 
     /** Чи рухається зараз сторінка (поки рухається — інші жести на сторінці не діють). */
@@ -164,6 +168,7 @@ fun FlipBook(
     val flipped by rememberUpdatedState(onFlipped)
     val onStarted by rememberUpdatedState(onStart)
     val layer = rememberGraphicsLayer()
+    val tearLayer = rememberGraphicsLayer()
     // «Скло»: розмиті копії сторінки під низом і верхньої — крізь товсте скло видно лише розмиті обриси.
     val underBlur = rememberGraphicsLayer()
     val topBlur = rememberGraphicsLayer()
@@ -329,22 +334,13 @@ fun FlipBook(
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            if (!tearing) return@graphicsLayer
-                            // Корінець рветься знизу вгору: сторінка відходить нижнім лівим кутом (тримається ще вгорі), за
-                            // пальцем; вирвана — падає вниз із поворотом і тане.
-                            val t = state.tear
-                            val f = state.tearFall
-                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                            rotationZ = -t * 7f - f * 16f
-                            translationX = t * size.width * 0.07f + f * size.width * 0.25f
-                            translationY = f * size.height * 0.7f
-                            alpha = 1f - f * f
-                            shadowElevation = 12f * t
-                        }
                         .drawWithContent {
-                            drawContent()
-                            if (tearing) drawRaggedEdge(0f, size.height * (1f - maxOf(state.tear, if (state.tearFall > 0f) 1f else 0f)), state.tearSeed, AppStyle.glass, outward = -1f)
+                            val f = state.tearFinger
+                            if (!tearing || f == null) { drawContent(); return@drawWithContent }
+                            // Виривають: нижній лівий кут загинається за пальцем (видно зворот), корінець рветься знизу
+                            // до лінії загину, верх сторінки лежить на місці. Вирвана — тане.
+                            tearLayer.record { this@drawWithContent.drawContent() }
+                            drawPeel(TearGeometry(size.width, size.height, f), tearLayer, seedOf(state.index), state.tearSeed, alpha = 1f - state.tearFall)
                         },
                 ) { page(state.index) }
             }
@@ -595,4 +591,79 @@ private class Blurred(private val underLayer: GraphicsLayer, val top: GraphicsLa
         drawRect(Color.Black)
         drawLayer(underLayer)
     }
+}
+
+/** Загин нижнього лівого кута, що виривається: лежить решта, клапоть — зворот, тінь, рваний край на клапті. */
+private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed: Int, tearSeed: Int, alpha: Float) {
+    val glass = AppStyle.glass
+    fun poly(pts: List<Offset>) = Path().apply {
+        if (pts.isEmpty()) return@apply
+        moveTo(pts[0].x, pts[0].y)
+        for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
+        close()
+    }
+    val canvas = drawContext.canvas
+    canvas.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = alpha })
+    // 1) Решта сторінки — як лежала.
+    clipPath(poly(g.stay)) { drawLayer(layer) }
+    if (g.flap.size >= 3) {
+        val n = g.normal
+        val m = g.mid
+        // 2) Тінь клаптя на тому, що під ним, — біля загину густіше.
+        clipPath(poly(g.stay)) {
+            drawRect(Brush.linearGradient(0f to Color.Black.copy(alpha = 0.4f), 1f to Color.Transparent, start = m, end = m - n * 26.dp.toPx()))
+        }
+        // 3) Клапоть — зворот того самого аркуша.
+        val mirror = Matrix().apply {
+            val k = 2f * (m.x * n.x + m.y * n.y)
+            values[Matrix.ScaleX] = 1f - 2f * n.x * n.x
+            values[Matrix.SkewX] = -2f * n.x * n.y
+            values[Matrix.SkewY] = -2f * n.x * n.y
+            values[Matrix.ScaleY] = 1f - 2f * n.y * n.y
+            values[Matrix.TranslateX] = k * n.x
+            values[Matrix.TranslateY] = k * n.y
+        }
+        val flap = poly(g.flap)
+        clipPath(flap) {
+            val tex = PaperTexture.page
+            if (!glass && tex != null) {
+                val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
+                drawIntoCanvas { c ->
+                    c.save()
+                    c.concat(mirror)
+                    drawImage(tex, dstSize = dst)
+                    val v = PaperTexture.Variant.of(paperSeed)
+                    withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = Offset(size.width / 2, size.height / 2)) }) {
+                        PaperTexture.backShadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+                        PaperTexture.backLightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+                    }
+                    c.restore()
+                }
+            } else {
+                drawRect(Color(0xFF111215).copy(alpha = 0.78f))
+                drawIntoCanvas { c ->
+                    c.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = 0.16f })
+                    c.concat(mirror)
+                    drawLayer(layer)
+                    c.restore()
+                }
+            }
+            // Вигин біля загину: світліше на самому загині, далі тінь.
+            drawRect(Brush.linearGradient(0f to Color.White.copy(alpha = if (glass) 0.16f else 0.10f), 0.25f to Color.Transparent, 0.7f to Color.Black.copy(alpha = 0.25f), start = m, end = m - n * 60.dp.toPx()))
+        }
+        // 4) Рваний край на клапті (дзеркальний корінець) і грань клаптя.
+        val edge = g.tornEdge(48)
+        if (edge.size > 1) {
+            val rnd = java.util.Random(tearSeed * 7919L + 1)
+            val path = Path()
+            edge.forEachIndexed { i, p ->
+                val q = p + Offset((rnd.nextFloat() - 0.5f) * 4f * density, (rnd.nextFloat() - 0.5f) * 2f * density)
+                if (i == 0) path.moveTo(q.x, q.y) else path.lineTo(q.x, q.y)
+            }
+            drawPath(path, if (glass) Color(0xFF3A3E46) else Color(0xFF6E665A), style = Stroke(3.5f * density))
+            drawPath(path, if (glass) Color(0x66C8D0DC) else Color(0x99E6DCC8), style = Stroke(1f * density))
+        }
+        drawPath(flap, Color.White.copy(alpha = if (glass) 0.22f else 0.3f), style = Stroke(0.8f * density))
+    }
+    canvas.restore()
 }
