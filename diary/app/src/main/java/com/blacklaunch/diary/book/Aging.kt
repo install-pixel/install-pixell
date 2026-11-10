@@ -106,25 +106,11 @@ fun DrawScope.drawAging(ageDays: Long, seed: Int, glass: Boolean) {
 }
 
 /**
- * Рваний клаптик біля корінця — тут була вирвана сторінка: вузька смужка паперу (скла) з нерівним краєм уздовж
- * лівого боку наступної сторінки.
+ * Клаптик вирваної сторінки біля корінця: смужка паперу (скла) від корінця до рваного краю, ширша за подвійну лінію
+ * корінця (закриває її), з тінню на наступну сторінку — лежить зверху, а не намальований на ній.
  */
 fun DrawScope.drawTornStub(seed: Int, glass: Boolean) {
-    val rnd = java.util.Random(seed * 7919L + 3)
-    val base = 7.dp.toPx()
-    val path = Path().apply {
-        moveTo(0f, 0f)
-        var y = 0f
-        lineTo(base, 0f)
-        while (y < size.height) {
-            y += (4f + rnd.nextFloat() * 9f) * density
-            lineTo(base + (rnd.nextFloat() - 0.4f) * 5.dp.toPx(), y.coerceAtMost(size.height))
-        }
-        lineTo(0f, size.height)
-        close()
-    }
-    drawPath(path, if (glass) Color(0xFF101114) else Color(0xFF0E0C0A))
-    drawPath(path, if (glass) Color(0x30FFFFFF) else Color(0x40E8E0D0), style = Stroke(0.8f * density))
+    drawTornRemnant(16.dp.toPx(), 0f, size.height, seed, glass, fill = true)
 }
 
 /** «Зерно» паперу сторінки: від дня й частини (як у [DayPage]); з нього ж — вік для звороту. */
@@ -135,43 +121,68 @@ fun pageSeed(day: Long, part: Int): Int = ((day % 997).toInt() + part * 31) or (
 fun DiaryViewModel_ageOf(seed: Int): Long = (com.blacklaunch.diary.DiaryViewModel.today() - (seed ushr 12)).coerceAtLeast(0)
 
 /**
- * Рваний край паперу (скла) уздовж корінця — від [yTop] до низу сторінки: нерівна смуга світлішої серцевини з
- * волокнами, як у справжнього розірваного аркуша. [x] — де лінія розриву; [outward] — у який бік стирчать волокна.
+ * Лінія розриву біля корінця — одна й та сама для того самого аркуша: точки рахуються знизу вгору від того самого
+ * [seed], тож розрив, що продовжують, лягає рівно на колишній (не малюється другий). [x] — середня лінія розриву.
+ * [fill] — ще й смужка паперу від корінця до розриву з тінню праворуч (клаптик, що лишився); інакше — лише сам розрив
+ * (на цілій, заклеєній сторінці). Мікротріщини — рідкі, тонкі, нерівні, ідуть углиб паперу.
  */
-fun DrawScope.drawRaggedEdge(x: Float, yTop: Float, seed: Int, glass: Boolean, outward: Float) {
-    if (yTop >= size.height) return
+fun DrawScope.drawTornRemnant(x: Float, yTop: Float, yBottom: Float, seed: Int, glass: Boolean, fill: Boolean) {
+    if (yTop >= yBottom) return
     val rnd = java.util.Random(seed * 104729L + 11)
-    val core = if (glass) Color(0xFF3A3E46) else Color(0xFF6E665A)
-    val fiber = if (glass) Color(0x66C8D0DC) else Color(0x99E6DCC8)
-    val path = Path()
     val pts = ArrayList<Offset>()
     var y = size.height
     while (y > yTop) {
-        pts += Offset(x + (rnd.nextFloat() - 0.5f) * 5f * density, y)
-        y -= (2.5f + rnd.nextFloat() * 6f) * density
+        val p = Offset(x + (rnd.nextFloat() - 0.5f) * 6f * density, y)
+        if (y <= yBottom) pts += p
+        y -= (3f + rnd.nextFloat() * 7f) * density
     }
-    pts += Offset(x, yTop)
-    // Смуга серцевини: від лінії розриву на кілька пікселів углиб аркуша.
-    path.moveTo(pts.first().x, pts.first().y)
-    pts.forEach { path.lineTo(it.x, it.y) }
-    for (i in pts.indices.reversed()) {
-        val p = pts[i]
-        val depth = (1.5f + rnd.nextFloat() * 3.5f) * density
-        path.lineTo(p.x - outward * depth, p.y)
+    if (pts.isEmpty()) return
+    pts += Offset(pts.last().x, yTop)
+    if (fill) {
+        // Тінь клаптика на наступній сторінці.
+        val sh = Path().apply {
+            moveTo(pts.first().x, pts.first().y)
+            pts.forEach { lineTo(it.x + 2f * density, it.y) }
+            lineTo(pts.last().x + 9.dp.toPx(), yTop)
+            lineTo(pts.first().x + 9.dp.toPx(), pts.first().y)
+            close()
+        }
+        drawPath(sh, Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent), startX = x, endX = x + 9.dp.toPx()))
+        val strip = Path().apply {
+            moveTo(0f, pts.first().y)
+            pts.forEach { lineTo(it.x, it.y) }
+            lineTo(0f, yTop)
+            close()
+        }
+        drawPath(strip, if (glass) Color(0xFF16181C) else Color(0xFF1A1712))
+        drawLine(Color.White.copy(alpha = if (glass) 0.10f else 0.06f), Offset(x * 0.35f, yTop), Offset(x * 0.35f, pts.first().y), 1f * density)
     }
-    path.close()
-    drawPath(path, core)
-    // Волокна, що стирчать із розриву.
+    // Сам розрив — світла серцевина паперу (товща) і темна лінія тіні.
+    val edge = Path().apply {
+        moveTo(pts.first().x, pts.first().y)
+        pts.forEach { lineTo(it.x, it.y) }
+    }
+    drawPath(edge, if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), style = Stroke(2.6f * density))
+    drawPath(edge, Color.Black.copy(alpha = 0.45f), style = Stroke(0.8f * density))
+    // Рідкі мікротріщини углиб аркуша (праворуч від розриву).
+    val crack = Color.Black.copy(alpha = if (glass) 0.45f else 0.55f)
     pts.forEachIndexed { i, p ->
-        if (i % 2 == 0) {
-            val len = (2f + rnd.nextFloat() * 5f) * density
-            val ang = (rnd.nextFloat() - 0.5f) * 1.2f
-            drawLine(fiber, p, p + Offset(outward * len * cos(ang), len * sin(ang)), 0.6f * density)
+        if (i % 3 != 1 || rnd.nextFloat() > 0.55f) return@forEachIndexed
+        var q = p
+        var a = (rnd.nextFloat() - 0.5f) * 1.4f
+        repeat(2 + rnd.nextInt(3)) {
+            val len = (1.5f + rnd.nextFloat() * 3.5f) * density
+            val nq = q + Offset(kotlin.math.cos(a) * len, kotlin.math.sin(a) * len)
+            drawLine(crack, q, nq, 0.6f * density)
+            q = nq
+            a += (rnd.nextFloat() - 0.5f) * 0.9f
         }
     }
-    // Тінь уздовж розриву — край піднятий.
-    drawLine(Color.Black.copy(alpha = 0.35f), Offset(x + outward * 2f * density, yTop), Offset(x + outward * 2f * density, size.height), 2f * density)
 }
+
+/** Сумісність: розрив без смужки (для клаптя, що загинається). */
+fun DrawScope.drawRaggedEdge(x: Float, yTop: Float, seed: Int, glass: Boolean, outward: Float) =
+    drawTornRemnant(x, yTop, size.height, seed, glass, fill = outward > 0f)
 
 /**
  * Надірвано й заклеєно: лінія розриву біля корінця до висоти [k] (0…1) і кілька шматочків непрозорого скотчу —
@@ -179,9 +190,9 @@ fun DrawScope.drawRaggedEdge(x: Float, yTop: Float, seed: Int, glass: Boolean, o
  */
 fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean, marginPx: Float) {
     if (k <= 0.01f) return
-    val x = 6.dp.toPx()
+    val x = TEAR_X.toPx()
     val yTop = size.height * (1f - k)
-    drawRaggedEdge(x, yTop, seed, glass, outward = 1f)
+    drawTornRemnant(x, yTop, size.height, seed, glass, fill = false)
     val rnd = java.util.Random(seed * 31L + 5)
     val left = 1.5.dp.toPx()
     val w = (marginPx - 3.dp.toPx() - left).coerceAtLeast(10.dp.toPx())
@@ -206,3 +217,9 @@ fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean, marginPx: Float
         }
     }
 }
+
+/** Де біля корінця йде лінія розриву (однаково для живого розриву, заклеєного й клаптика). */
+val TEAR_X = 8.dp
+
+/** Зерно лінії розриву сторінки — одне на всі її стани. */
+fun tearSeedOf(day: Long, part: Int): Int = (day * 13 + part).toInt()

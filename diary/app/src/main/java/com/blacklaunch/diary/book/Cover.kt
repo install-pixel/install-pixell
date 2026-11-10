@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -83,7 +84,20 @@ fun CoverFace(
     val glass = AppStyle.glass
     val haptics = com.blacklaunch.diary.ui.LocalHaptics.current
     Box(modifier.fillMaxSize()) {
-        Canvas(Modifier.fillMaxSize()) { drawCover(photo, pattern, glass, locked) }
+        Canvas(Modifier.fillMaxSize()) {
+            drawCover(photo, pattern, glass, locked)
+            // «Аркуш»: обкладинка теж пожмакана — той самий природний рельєф (свій варіант), що й на сторінках.
+            if (!glass) {
+                val v = PaperTexture.Variant.of(COVER_SEED + pattern)
+                val dst = IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
+                clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, CornerRadius(BookCorner.toPx()))) }) {
+                    withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = center) }) {
+                        PaperTexture.shadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+                        PaperTexture.lightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+                    }
+                }
+            }
+        }
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             val heightPx = constraints.maxHeight.toFloat()
             // Одна й та сама змінна положення на весь час (жест і малювання бачать одне значення); збережене місце
@@ -298,6 +312,9 @@ private fun DrawScope.glassFilter(inset: Float, inner: Size) {
         drawRect(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0x59000000), startY = size.height - inset - bevel, endY = size.height - inset), topLeft = Offset(inset, size.height - inset - bevel), size = Size(inner.width, bevel))
         drawRect(Brush.horizontalGradient(0f to Color.Transparent, 1f to Color(0x4D000000), startX = size.width - inset - bevel, endX = size.width - inset), topLeft = Offset(size.width - inset - bevel, inset), size = Size(bevel, inner.height))
 }
+
+/** «Зерно» рельєфу обкладинки (до нього додається відтінок щоденника). */
+const val COVER_SEED = 7_919
 
 /** Наскільки непрозоре скло обкладинки (сторінки прозоріші — [GLASS_PAGE_ALPHA]). */
 const val GLASS_COVER_ALPHA = 0.91f

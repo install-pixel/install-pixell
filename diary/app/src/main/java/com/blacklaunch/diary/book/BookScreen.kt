@@ -634,7 +634,13 @@ fun BookScreen(
                         // Гортати можна й під час письма: щойно сторінка рушила — клавіатура ховається.
                         enabled = ink == null && recording == null,
                         heavy = { pages.getOrNull(it) == BookPage.Cover },
-                        paperSeed = { i -> (pages.getOrNull(i) as? BookPage.DayPart)?.let { pageSeed(it.day, it.part) } ?: 0 },
+                        paperSeed = { i ->
+                            when (val pg = pages.getOrNull(i)) {
+                                is BookPage.DayPart -> pageSeed(pg.day, pg.part)
+                                BookPage.Cover -> COVER_SEED + info.tint
+                                else -> 0
+                            }
+                        },
                         canFlipForward = { i ->
                             val next = if (i == 0) openTarget else i + 1
                             // У меню заходять лише шестернею; усередині меню — гортання між його сторінками.
@@ -741,8 +747,8 @@ fun BookScreen(
                     Canvas(Modifier.size(pw, ph)) {
                         val k = flip.tear
                         if (k <= 0.01f || flip.tearFall > 0f) return@Canvas
-                        // Половина розриву, що лишається на корінці.
-                        drawRaggedEdge(6.dp.toPx(), size.height * (1f - k), flip.tearSeed + 1, glass, outward = 1f)
+                        // Клаптик, що лишається на корінці, — та сама лінія, що й заклеєна (продовжується, а не дублюється).
+                        drawTornRemnant(TEAR_X.toPx(), size.height * (1f - k), size.height, flip.tearSeed, glass, fill = true)
                     }
                     Box(
                         Modifier
@@ -757,8 +763,9 @@ fun BookScreen(
                                 var lastTick = 0
                                 var warned = false
                                 fun follow(pos: Offset) {
-                                    // Палець у координатах сторінки; кут не відводимо лівіше корінця й нижче низу.
-                                    val f = Offset(pos.x.coerceAtLeast(0f), (zoneTop + pos.y).coerceAtMost(h))
+                                    // Рух — лише вгору: кут іде рівно, легенько набік (вліво-вправо палець не смикає сторінку).
+                                    val fy = (zoneTop + pos.y).coerceIn(-h * 0.2f, h)
+                                    val f = Offset((h - fy) * 0.38f, fy)
                                     val g = TearGeometry(w, h, f)
                                     flip.tearFinger = f
                                     // Розрив — за тим, наскільки підняли палець (до кінця — на ~80 % висоти сторінки), але не нижче,
@@ -773,7 +780,7 @@ fun BookScreen(
                                 detectDragGestures(
                                     onDragStart = { pos ->
                                         lastTick = 0; warned = false
-                                        flip.tearSeed = (tearPage.day * 17 + tearPage.part).toInt()
+                                        flip.tearSeed = tearSeedOf(tearPage.day, tearPage.part)
                                         focusManager.clearFocus()
                                         follow(pos)
                                     },
@@ -1031,7 +1038,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
                     image?.let {
-                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit, caption = vm.day(day).caption, seed = day)
+                        StyledPhoto(it, glass, Modifier.fillMaxWidth().aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1)), androidx.compose.ui.layout.ContentScale.Fit, caption = vm.day(day).caption, seed = day, dry = DiaryViewModel.isDry(day))
                     }
                 }
                 // Унизу — закрити, поруч шестерня (замінити чи прибрати фото).

@@ -542,14 +542,15 @@ private fun DrawScope.strip(
                     drawImage(tex, dstSize = dst)
                     // Зворот — той самий аркуш з другого боку: його власні заломи (той самий варіант, що й на лиці),
                     // дзеркально — геометрія звороту вже віддзеркалює.
-                    if (!heavy) {
+                    // Обкладинка теж: її картон пожмаканий так само — на звороті горбки там, де на лиці вм'ятини.
+                    run {
                         val v = PaperTexture.Variant.of(seed)
                         withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = Offset(size.width / 2, size.height / 2)) }) {
                             // Рельєф навпаки: вм'ятина з лиця тут — горбок (місце те саме, бо зворот віддзеркалено).
                             PaperTexture.backShadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
                             PaperTexture.backLightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
                         }
-                        drawAging(DiaryViewModel_ageOf(seed), seed * 31 + 7, glass = false)
+                        if (!heavy) drawAging(DiaryViewModel_ageOf(seed), seed * 31 + 7, glass = false)
                     }
                 }
             } else {
@@ -651,7 +652,7 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
             // Вигин біля загину: світліше на самому загині, далі тінь.
             drawRect(Brush.linearGradient(0f to Color.White.copy(alpha = if (glass) 0.16f else 0.10f), 0.25f to Color.Transparent, 0.7f to Color.Black.copy(alpha = 0.25f), start = m, end = m - n * 60.dp.toPx()))
         }
-        // 4) Рваний край на клапті (дзеркальний корінець) і грань клаптя.
+        // 4) Рваний край на клапті — та сама лінія розриву, дзеркально (серцевина й тінь, без «стібків»).
         val edge = g.tornEdge(48)
         if (edge.size > 1) {
             val rnd = java.util.Random(tearSeed * 7919L + 1)
@@ -660,8 +661,8 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
                 val q = p + Offset((rnd.nextFloat() - 0.5f) * 4f * density, (rnd.nextFloat() - 0.5f) * 2f * density)
                 if (i == 0) path.moveTo(q.x, q.y) else path.lineTo(q.x, q.y)
             }
-            drawPath(path, if (glass) Color(0xFF3A3E46) else Color(0xFF6E665A), style = Stroke(3.5f * density))
-            drawPath(path, if (glass) Color(0x66C8D0DC) else Color(0x99E6DCC8), style = Stroke(1f * density))
+            drawPath(path, if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), style = Stroke(2.6f * density))
+            drawPath(path, Color.Black.copy(alpha = 0.45f), style = Stroke(0.8f * density))
         }
         drawPath(flap, Color.White.copy(alpha = if (glass) 0.22f else 0.3f), style = Stroke(0.8f * density))
     }

@@ -172,7 +172,7 @@ fun DayPage(
                 drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
                 if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
                 // Колись надірвали й передумали — розрив заклеєно скотчем.
-                drawTapedTear(day.tearTry(part), (day.day * 13 + part).toInt(), glass, PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH)
+                drawTapedTear(day.tearTry(part), tearSeedOf(day.day, part), glass, PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH)
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -309,7 +309,8 @@ fun DayPage(
             part = part,
             pageWidth = pageWidthPx,
             session = ink?.takeIf { it.day == day.day && it.part == part },
-            dry = { day.isInkDry(it, now, hours) },
+            // Олівець — єдине, що працює й на висохлій сторінці: малюється, стирається, кольору не змінює.
+            dry = { false },
             onChange = { host.vm.setInk(day.day, it) },
             onDryErase = { host.dryHint() },
         )
@@ -513,6 +514,7 @@ private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modif
                 if (ratio != null) Modifier.aspectRatio(ratio, matchHeightConstraintsFirst = ratio < slotRatio) else Modifier.fillMaxSize(),
                 ContentScale.Crop,
                 caption = host.vm.day(day).caption,
+                dry = DiaryViewModel.isDry(day),
                 seed = day,
             )
         }
@@ -638,7 +640,9 @@ fun clock(ms: Long): String {
  * притемнені краї, відблиск); «Аркуш» — біла штриховка олівцем просто на папері, краї тануть. Жодних додаткових рамок.
  */
 @Composable
-internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale, caption: String = "", seed: Long = 0L) {
+internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier, scale: ContentScale, caption: String = "", seed: Long = 0L, dry: Boolean = false) {
+    // Висохлий день: підпис тьмяніший, як і текст — видно, що змінити вже не можна.
+    val captionInk = if (dry) DryInk else if (glass) Oled.TextPrimary else SheetInk
     val shape = RoundedCornerShape(10.dp)
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         // Від висоти фото (а не ширини): на вузькому вертикальному фото підпис не дрібніє; довгий — у два рядки.
@@ -716,7 +720,7 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                     com.blacklaunch.diary.book.GlassPlate(radius = 10.dp) {
                         Text(
                             caption,
-                            style = TextStyle(fontFamily = GlassFont, fontWeight = FontWeight.Light, fontSize = captionSize * 0.85f, color = Oled.TextPrimary),
+                            style = TextStyle(fontFamily = GlassFont, fontWeight = FontWeight.Light, fontSize = captionSize * 0.85f, color = captionInk),
                             maxLines = 2,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             overflow = TextOverflow.Ellipsis,
@@ -726,7 +730,7 @@ internal fun StyledPhoto(image: ImageBitmap?, glass: Boolean, modifier: Modifier
                 } else {
                     Text(
                         caption,
-                        style = TextStyle(fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = captionSize, color = SheetInk, shadow = Shadow(Color.Black, blurRadius = 10f)),
+                        style = TextStyle(fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = captionSize, color = captionInk, shadow = Shadow(Color.Black, blurRadius = 10f)),
                         maxLines = 2,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         overflow = TextOverflow.Ellipsis,

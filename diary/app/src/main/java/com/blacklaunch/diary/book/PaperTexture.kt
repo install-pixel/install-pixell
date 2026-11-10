@@ -107,7 +107,7 @@ object PaperTexture {
             }
             shade = shades[0]
             light = lights[0]
-            cover = sheet(W, H, seed = 29, base = intArrayOf(12, 11, 10), mottle = 5f, grainAmp = 4f, fibers = 600, creases = 2, wrinkles = 5, wear = 18f, pores = 4f).asImageBitmap()
+            cover = sheet(W, H, seed = 29, base = intArrayOf(12, 11, 10), mottle = 5f, grainAmp = 4f, fibers = 600, creases = 0, wrinkles = 0, wear = 18f, pores = 4f).asImageBitmap()
             grain = grainMap(W / 2, H / 2, seed = 5).asImageBitmap()
         }
     }

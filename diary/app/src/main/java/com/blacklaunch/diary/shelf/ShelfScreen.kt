@@ -140,7 +140,7 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
         // Полиця на всю зону щоденника: корінці на всю висоту, гортається вбік; під кожним — шестерня.
         Box(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 12.dp)) {
             // Дошка — під корінцями (книжки стоять на ній), шестерні — під дошкою.
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp)) { ShelfPlank(0) }
+            Box(Modifier.align(Alignment.BottomCenter)) { ShelfPlank(0) }
             Row(
                 Modifier.fillMaxSize().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -159,9 +159,10 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
                                     onLongClick = { haptics.longPress(); spineMenu = b },
                                 ),
                             seed = i,
+                            gear = gear,
+                            onGear = { diarySettings(b.id) },
                         )
-                        Spacer(Modifier.height(16.dp))
-                        GearSpot(gear, size = 44.dp) { diarySettings(b.id) }
+                        Spacer(Modifier.height(14.dp))
                     }
                 }
             }
@@ -214,7 +215,14 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
 
 /** Корінець щоденника: «Скло» — скляний брусок із гранями; «Аркуш» — обведений олівцем, зі смужками-палітурками. */
 @Composable
-private fun Spine(info: DiaryInfo, height: androidx.compose.ui.unit.Dp, modifier: Modifier, seed: Int) {
+private fun Spine(
+    info: DiaryInfo,
+    height: androidx.compose.ui.unit.Dp,
+    modifier: Modifier,
+    seed: Int,
+    gear: com.blacklaunch.diary.book.GearReveal? = null,
+    onGear: (() -> Unit)? = null,
+) {
     val glass = AppStyle.glass
     Box(modifier.then(if (height != androidx.compose.ui.unit.Dp.Unspecified) Modifier.height(height) else Modifier).clip(RoundedCornerShape(8.dp))) {
         Canvas(Modifier.fillMaxSize()) {
@@ -252,7 +260,11 @@ private fun Spine(info: DiaryInfo, height: androidx.compose.ui.unit.Dp, modifier
                 .padding(horizontal = 30.dp),
         )
         if (info.locked) {
-            GlyphIcon(Glyph.Lock, stringResource(R.string.locked), tint = Oled.TextSecondary, size = 16.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 26.dp))
+            GlyphIcon(Glyph.Lock, stringResource(R.string.locked), tint = Oled.TextSecondary, size = 16.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (onGear != null) 74.dp else 26.dp))
+        }
+        // Шестерня — на самому корінці внизу, як тиснення на палітурці: налаштування цього щоденника.
+        if (gear != null && onGear != null) {
+            GearSpot(gear, Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp), size = 44.dp, onClick = onGear)
         }
     }
 }
