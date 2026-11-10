@@ -318,6 +318,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         val d = dayNow(epochDay)
         val text = d.text
         val cut = split.coerceIn(0, text.length)
+        // Свіжа (ще не висохла) сторінка вирвалась — на її місці нова чиста: місце дня не зменшується, клаптика немає.
+        // Висохла — назавжди: лишається клаптик, сторінку дня втрачено.
+        val renew = !isDry(epochDay)
         val torn = if (part == 0) {
             o.db.photoFile(epochDay).delete()
             o.db.audioFile(epochDay).delete()
@@ -330,7 +333,8 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
                 sealed = sealed, fresh = keep.substring(sealed.length),
                 strikes = d.strikes.filter { it.start >= cut }.map { Strike(it.start - cut, it.end - cut) },
                 ink = d.ink.filter { it.page != 0 },
-                torn = d.torn or 1,
+                torn = if (renew) d.torn else d.torn or 1,
+                tearTry0 = if (renew) 0f else d.tearTry0,
             )
         } else {
             val keep = text.substring(0, cut)
@@ -339,7 +343,8 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
                 sealed = sealed, fresh = keep.substring(sealed.length),
                 strikes = d.strikes.filter { it.end <= cut },
                 ink = d.ink.filter { it.page != 1 },
-                torn = d.torn or 2,
+                torn = if (renew) d.torn else d.torn or 2,
+                tearTry1 = if (renew) 0f else d.tearTry1,
             )
         }
         update(torn)
