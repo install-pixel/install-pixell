@@ -121,6 +121,13 @@ fun DrawScope.drawTornStub(seed: Int, glass: Boolean) {
         lineTo(0f, size.height)
         close()
     }
-    drawPath(path, if (glass) Color(0xFF1C1E22) else Color(0xFF1E1B16))
-    drawPath(path, if (glass) Color(0x40FFFFFF) else Color(0x55E8E0D0), style = Stroke(0.8f * density))
+    drawPath(path, if (glass) Color(0xFF101114) else Color(0xFF0E0C0A))
+    drawPath(path, if (glass) Color(0x30FFFFFF) else Color(0x40E8E0D0), style = Stroke(0.8f * density))
 }
+
+/** «Зерно» паперу сторінки: від дня й частини (як у [DayPage]); з нього ж — вік для звороту. */
+fun pageSeed(day: Long, part: Int): Int = ((day % 997).toInt() + part * 31) or (day.toInt() shl 12)
+
+/** Вік у днях за [pageSeed] (для старіння звороту). */
+@Suppress("FunctionName")
+fun DiaryViewModel_ageOf(seed: Int): Long = (com.blacklaunch.diary.DiaryViewModel.today() - (seed ushr 12)).coerceAtLeast(0)

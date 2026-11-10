@@ -514,7 +514,7 @@ fun BookScreen(
         MenuEntries(buildList {
             val day = (back as? BookPage.DayPart)?.day
             if (open != null) {
-                if (day != null && vm.day(day).photo) {
+                if (day != null && vm.day(day).photo && !DiaryViewModel.isDry(day)) {
                     add(MenuEntry(null, stringResource(R.string.menu_page)))
                     add(MenuEntry(Glyph.Edit, stringResource(R.string.photo_caption)) { dialog = BookDialog.Caption(day) })
                 }
@@ -631,6 +631,7 @@ fun BookScreen(
                         // Гортати можна й під час письма: щойно сторінка рушила — клавіатура ховається.
                         enabled = ink == null && recording == null,
                         heavy = { pages.getOrNull(it) == BookPage.Cover },
+                        paperSeed = { i -> (pages.getOrNull(i) as? BookPage.DayPart)?.let { pageSeed(it.day, it.part) } ?: 0 },
                         canFlipForward = { i ->
                             val next = if (i == 0) openTarget else i + 1
                             // У меню заходять лише шестернею; усередині меню — гортання між його сторінками.
@@ -1022,8 +1023,13 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
                     Box(Modifier.size(56.dp).clip(CircleShape).clickable { haptics.tap(); onDismiss() }, contentAlignment = Alignment.Center) {
                         GlyphIcon(Glyph.Close, stringResource(R.string.close), tint = if (glass) Oled.TextPrimary else SheetInk)
                     }
-                    Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); menu = true }, contentAlignment = Alignment.Center) {
-                        GlyphIcon(Glyph.Settings, stringResource(R.string.menu), tint = Oled.TextSecondary, size = 24.dp)
+                    // Висохлий день — лише перегляд: ні підпису, ні заміни, ні видалення.
+                    if (!DiaryViewModel.isDry(day)) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); menu = true }, contentAlignment = Alignment.Center) {
+                            GlyphIcon(Glyph.Settings, stringResource(R.string.menu), tint = Oled.TextSecondary, size = 24.dp)
+                        }
+                    } else {
+                        Spacer(Modifier.size(44.dp))
                     }
                 }
             }

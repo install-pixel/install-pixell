@@ -61,6 +61,9 @@ object PaperTexture {
     private val reliefs = arrayOfNulls<FloatArray>(VARIANTS)
     private val shades = androidx.compose.runtime.mutableStateListOf<ImageBitmap?>().apply { repeat(VARIANTS) { add(null) } }
     private val lights = androidx.compose.runtime.mutableStateListOf<ImageBitmap?>().apply { repeat(VARIANTS) { add(null) } }
+    // Зворот того самого аркуша: рельєф навпаки — де на лиці вм'ятина, там горбок (і навпаки).
+    private val backShades = androidx.compose.runtime.mutableStateListOf<ImageBitmap?>().apply { repeat(VARIANTS) { add(null) } }
+    private val backLights = androidx.compose.runtime.mutableStateListOf<ImageBitmap?>().apply { repeat(VARIANTS) { add(null) } }
 
     /** Який варіант і як віддзеркалений — за «зерном» сторінки. */
     class Variant(val index: Int, val flipX: Boolean, val flipY: Boolean) {
@@ -74,6 +77,8 @@ object PaperTexture {
 
     fun shadeOf(v: Variant) = shades[v.index]
     fun lightOf(v: Variant) = lights[v.index]
+    fun backShadeOf(v: Variant) = backShades[v.index]
+    fun backLightOf(v: Variant) = backLights[v.index]
 
     /** Рельєф у точці (частки сторінки 0…1) з урахуванням віддзеркалення; ±кілька одиниць — для зламу ліній. */
     fun reliefAt(v: Variant, fx: Float, fy: Float): Float {
@@ -96,6 +101,9 @@ object PaperTexture {
                 reliefs[i] = r
                 shades[i] = reliefMap(r, RW, RH, dark = true).asImageBitmap()
                 lights[i] = reliefMap(r, RW, RH, dark = false).asImageBitmap()
+                val inv = FloatArray(r.size) { -r[it] }
+                backShades[i] = reliefMap(inv, RW, RH, dark = true).asImageBitmap()
+                backLights[i] = reliefMap(inv, RW, RH, dark = false).asImageBitmap()
             }
             shade = shades[0]
             light = lights[0]

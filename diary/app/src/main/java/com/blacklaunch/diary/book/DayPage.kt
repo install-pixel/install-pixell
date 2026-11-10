@@ -165,7 +165,7 @@ fun DayPage(
             // Усе на сторінці — в її межах: фото, що відсуваєш свайпом, за край книжки не виходить, а зникає за ним.
             .clip(RoundedCornerShape(BookCorner))
             // «Аркуш»: усе написане й намальоване лежить на папері — темніє й світлішає разом із заломами, бере зерно.
-            .paperRelief(glass, (day.day % 997).toInt() + part * 31)
+            .paperRelief(glass, pageSeed(day.day, part))
             // Старіння: з віком сторінка тьмяніє, потирається, на ній з'являються плями — у кожної своє й назавжди те саме.
             .drawWithContent {
                 drawContent()
@@ -174,7 +174,7 @@ fun DayPage(
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            drawPaper(u, (day.day % 997).toInt() + part * 31, lines)
+            drawPaper(u, pageSeed(day.day, part), lines)
             drawRibbonStrip(ribbon(), glass)
         }
 
@@ -278,7 +278,8 @@ fun DayPage(
         val segEnd = if (first) split.coerceAtMost(full.length) else full.length
         PageText(
             full = full,
-            sealedLen = day.sealed.length,
+            // Висохлий день — увесь текст висохлим чорнилом (тьмяніше): видно, що змінити вже не можна.
+            sealedLen = if (dry) day.text.length else day.sealed.length,
             segStart = segStart,
             segEnd = segEnd,
             strikes = day.strikes,

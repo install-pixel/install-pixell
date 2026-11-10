@@ -155,7 +155,10 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
                         rotationY = -100f * (1f - turn)
                         cameraDistance = 14f * density
                         alpha = if (turn < 0.15f) turn / 0.15f else 1f
-                    },
+                    }
+                    // Непрозора підкладка: у «Склі» крізь налаштування не просвічує полиця під ними.
+                    .clip(RoundedCornerShape(com.blacklaunch.diary.book.BookCorner))
+                    .background(Color.Black),
             )
         }
       }

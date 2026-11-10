@@ -73,7 +73,7 @@ import com.blacklaunch.diary.ui.theme.Oled
 
 /** Свіже чорнило — яскраве; висохле — трохи тьмяніше, як справжнє. */
 val FreshInk = Color(0xFFEDEDED)
-val DryInk = Color(0xFFC4C4C4)
+val DryInk = Color(0xFF9E9E9E)
 
 /**
  * Шрифт сторінки — у px від ширини сторінки, тож однаковий на будь-якому екрані й у будь-якому масштабі шрифту
@@ -185,7 +185,7 @@ fun PageText(
             TransformedText(
                 buildAnnotatedString {
                     append(text)
-                    if (n > 0) addStyle(SpanStyle(color = if (AppStyle.glass) DryInk else DryInk.copy(alpha = 0.8f)), 0, n)
+                    if (n > 0) addStyle(SpanStyle(color = if (AppStyle.glass) DryInk else DryInk.copy(alpha = 0.75f)), 0, n)
                 },
                 OffsetMapping.Identity,
             )
