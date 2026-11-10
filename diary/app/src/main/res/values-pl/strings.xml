@@ -190,5 +190,5 @@
     <string name="page_next">Przewróć →</string>
     <string name="tear_hint">Wyrwać stronę — na zawsze, bez powrotu ↓</string>
     <string name="page_dry">Strona wyschła — teraz tylko ołówek</string>
-    <string name="drying_fixed">Atrament schnie po dniu: potem strony nie da się zmienić — ani tekstu, ani zdjęcia, ani głosu. Zostaje ołówek albo stronę można wyrwać (przeciągnij palcem w dół wzdłuż grzbietu).</string>
+    <string name="drying_fixed">Atrament schnie po dniu: potem strony nie da się zmienić — ani tekstu, ani zdjęcia, ani głosu. Zostaje ołówek albo stronę można wyrwać (przytrzymaj lewy dolny róg i ciągnij w górę).</string>
 </resources>

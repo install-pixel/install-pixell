@@ -188,5 +188,5 @@
     <string name="page_next">Turn the page →</string>
     <string name="tear_hint">Tear out the page — forever, no way back ↓</string>
     <string name="page_dry">The page has dried — only the pencil now</string>
-    <string name="drying_fixed">Ink dries after a day: then the page can\'t be changed — no text, photo or voice. The pencil stays, or the page can be torn out (drag down along the spine edge).</string>
+    <string name="drying_fixed">Ink dries after a day: then the page can\'t be changed — no text, photo or voice. The pencil stays, or the page can be torn out (hold the bottom-left corner and drag up).</string>
 </resources>
