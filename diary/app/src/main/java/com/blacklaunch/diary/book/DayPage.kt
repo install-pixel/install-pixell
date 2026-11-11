@@ -191,11 +191,12 @@ fun DayPage(
                 }
                 // Клаптик раніше вирваної сторінки лежить ЗВЕРХУ: з-під нього видно лише те, що виглядає (скотч, розрив).
                 if (stub && !underTear) drawTornStub((day.day * 7 + part).toInt(), glass)
+                // Закладка-пошук — на кожній сторінці, поверх усього на ній (і клаптиків).
+                drawSearchRibbon(glass)
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawPaper(u, pageSeed(day.day, part), lines)
-            drawRibbonStrip(ribbon(), glass)
         }
 
         // Шапка: дата ліворуч, місце праворуч.
@@ -212,7 +213,7 @@ fun DayPage(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             // Правіше за закладку-пошук, що звисає згори біля корінця, — вона на дату не налягає.
-            modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT) + 12.dp, dp(PageMetrics.HEADER_TOP)).width(dp(if (first) 56f else 80f) - 12.dp),
+            modifier = Modifier.offset(SearchRibbonX + 20.dp, dp(PageMetrics.HEADER_TOP)).width(dp(if (first) 56f else 80f) - (SearchRibbonX + 20.dp - dp(PageMetrics.MARGIN_LEFT))),
         )
         if (first) {
             Row(
