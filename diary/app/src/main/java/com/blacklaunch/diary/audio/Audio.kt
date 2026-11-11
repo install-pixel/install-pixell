@@ -240,13 +240,7 @@ class ReverseCue(private val bytes: ByteArray, private val fromMs: Long, private
                         .build()
                     track.play()
                 }
-                val frames = pcm.size / ch
-                val outFrames = frames / speed
-                val out = ShortArray(outFrames * ch)
-                for (i in 0 until outFrames) {
-                    val src = frames - 1 - i * speed
-                    for (c in 0 until ch) out[i * ch + c] = pcm[src * ch + c]
-                }
+                val out = reverseFast(pcm, ch, rate)
                 var off = 0
                 while (running && off < out.size) {
                     val n = minOf(2048, out.size - off)
@@ -258,6 +252,35 @@ class ReverseCue(private val bytes: ByteArray, private val fromMs: Long, private
         } finally {
             track?.let { t -> runCatching { t.pause(); t.flush(); t.stop() }; runCatching { t.release() } }
         }
+    }
+
+    /**
+     * Задом наперед і в [speed] разів швидше, але без «писку»: висота голосу та сама, як і при перемотці вперед
+     * (там програвач теж прискорює, не змінюючи висоти). Перевернутий звук стискається накладанням коротких шматочків
+     * (по 40 мс, з плавними краями) — береться кожен [speed]-й, а не кожен [speed]-й семпл.
+     */
+    private fun reverseFast(pcm: ShortArray, ch: Int, rate: Int): ShortArray {
+        val frames = pcm.size / ch
+        val n = (rate * 0.04f).toInt().coerceAtLeast(64)
+        val hs = n / 2
+        val ha = hs * speed
+        if (frames <= n) return ShortArray(0)
+        val grains = (frames - n) / ha + 1
+        val outFrames = (grains - 1) * hs + n
+        val acc = FloatArray(outFrames * ch)
+        val win = FloatArray(n) { i -> (0.5f - 0.5f * kotlin.math.cos(2.0 * Math.PI * i / n).toFloat()) }
+        for (k in 0 until grains) {
+            val inPos = k * ha
+            val outPos = k * hs
+            for (i in 0 until n) {
+                // Читаємо перевернуте: кадр (frames - 1 - (inPos + i)).
+                val src = frames - 1 - (inPos + i)
+                if (src < 0) break
+                val w = win[i]
+                for (c in 0 until ch) acc[(outPos + i) * ch + c] += pcm[src * ch + c] * w
+            }
+        }
+        return ShortArray(acc.size) { acc[it].coerceIn(-32768f, 32767f).toInt().toShort() }
     }
 
     /** Розкодувати [fromUs, toUs) у PCM 16 біт: семпли, частота, канали. */
