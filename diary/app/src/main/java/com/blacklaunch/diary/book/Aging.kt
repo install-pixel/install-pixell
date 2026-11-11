@@ -110,7 +110,7 @@ fun DrawScope.drawAging(ageDays: Long, seed: Int, glass: Boolean) {
  * корінця (закриває її), з тінню на наступну сторінку — лежить зверху, а не намальований на ній.
  */
 fun DrawScope.drawTornStub(seed: Int, glass: Boolean) {
-    drawTornRemnant(16.dp.toPx(), 0f, size.height, seed, glass, fill = true)
+    drawTornRemnant(TEAR_X.toPx(), -8.dp.toPx(), size.height, seed, glass, fill = true)
 }
 
 /** «Зерно» паперу сторінки: від дня й частини (як у [DayPage]); з нього ж — вік для звороту. */
@@ -128,43 +128,40 @@ fun DiaryViewModel_ageOf(seed: Int): Long = (com.blacklaunch.diary.DiaryViewMode
  */
 fun DrawScope.drawTornRemnant(x: Float, yTop: Float, yBottom: Float, seed: Int, glass: Boolean, fill: Boolean) {
     if (yTop >= yBottom) return
-    val rnd = java.util.Random(seed * 104729L + 11)
-    val pts = ArrayList<Offset>()
-    var y = size.height
-    while (y > yTop) {
-        val p = Offset(x + (rnd.nextFloat() - 0.5f) * 6f * density, y)
-        if (y <= yBottom) pts += p
-        y -= (3f + rnd.nextFloat() * 7f) * density
-    }
-    if (pts.isEmpty()) return
-    pts += Offset(pts.last().x, yTop)
+    val pts = tearPoints(x, yTop, yBottom, seed)
+    if (pts.size < 2) return
+    val tip = pts.last()
+    val taper = 22.dp.toPx()
+    // Наскільки розрив «розкрився» в цьому місці: угорі сходить нанівець — кінчик загострений, без рівної лінії.
+    fun open(p: Offset) = ((p.y - tip.y) / taper).coerceIn(0f, 1f)
     if (fill) {
-        // Тінь клаптика на наступній сторінці.
+        // Тінь клаптика на наступній сторінці — угорі звужується до кінчика.
         val sh = Path().apply {
             moveTo(pts.first().x, pts.first().y)
-            pts.forEach { lineTo(it.x + 2f * density, it.y) }
-            lineTo(pts.last().x + 9.dp.toPx(), yTop)
-            lineTo(pts.first().x + 9.dp.toPx(), pts.first().y)
+            pts.forEach { lineTo(it.x + 2f * density * open(it), it.y) }
+            pts.asReversed().forEach { lineTo(it.x + 9.dp.toPx() * open(it), it.y) }
             close()
         }
         drawPath(sh, Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent), startX = x, endX = x + 9.dp.toPx()))
+        // Смужка, що лишилась, — угорі сходиться в гострий язичок до кінчика розриву.
         val strip = Path().apply {
             moveTo(0f, pts.first().y)
             pts.forEach { lineTo(it.x, it.y) }
-            lineTo(0f, yTop)
+            lineTo(x * 0.55f, tip.y + taper * 0.35f)
+            lineTo(0f, tip.y + taper)
             close()
         }
         drawPath(strip, if (glass) Color(0xFF16181C) else Color(0xFF1A1712))
-        drawLine(Color.White.copy(alpha = if (glass) 0.10f else 0.06f), Offset(x * 0.35f, yTop), Offset(x * 0.35f, pts.first().y), 1f * density)
+        drawLine(Color.White.copy(alpha = if (glass) 0.10f else 0.06f), Offset(x * 0.35f, tip.y + taper), Offset(x * 0.35f, pts.first().y), 1f * density)
     }
-    // Сам розрив — світла серцевина паперу (товща) і темна лінія тіні.
-    val edge = Path().apply {
-        moveTo(pts.first().x, pts.first().y)
-        pts.forEach { lineTo(it.x, it.y) }
+    // Сам розрив — світла серцевина паперу (товща) і темна лінія тіні; до кінчика тоншає.
+    for (i in 1 until pts.size) {
+        val o = open(pts[i])
+        drawLine(if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), pts[i - 1], pts[i], (0.7f + 1.9f * o) * density)
     }
-    drawPath(edge, if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), style = Stroke(2.6f * density))
-    drawPath(edge, Color.Black.copy(alpha = 0.45f), style = Stroke(0.8f * density))
+    for (i in 1 until pts.size) drawLine(Color.Black.copy(alpha = 0.45f), pts[i - 1], pts[i], (0.4f + 0.4f * open(pts[i])) * density)
     // Рідкі мікротріщини углиб аркуша (праворуч від розриву).
+    val rnd = java.util.Random(seed * 7_331L + 3)
     val crack = Color.Black.copy(alpha = if (glass) 0.45f else 0.55f)
     pts.forEachIndexed { i, p ->
         if (i % 3 != 1 || rnd.nextFloat() > 0.55f) return@forEachIndexed
@@ -178,6 +175,26 @@ fun DrawScope.drawTornRemnant(x: Float, yTop: Float, yBottom: Float, seed: Int, 
             a += (rnd.nextFloat() - 0.5f) * 0.9f
         }
     }
+}
+
+/**
+ * Точки лінії розриву знизу вгору — завжди ті самі для [seed] (розрив, що продовжують, лягає на колишній). Останні —
+ * гострий кінчик: розрив звужується й трохи відхиляється, а не обривається рівно.
+ */
+fun DrawScope.tearPoints(x: Float, yTop: Float, yBottom: Float, seed: Int): List<Offset> {
+    val rnd = java.util.Random(seed * 104729L + 11)
+    val pts = ArrayList<Offset>()
+    var y = size.height
+    while (y > yTop) {
+        val p = Offset(x + (rnd.nextFloat() - 0.5f) * 6f * density, y)
+        if (y <= yBottom) pts += p
+        y -= (3f + rnd.nextFloat() * 7f) * density
+    }
+    if (pts.isEmpty()) return pts
+    val lean = if (rnd.nextBoolean()) 1f else -1f
+    pts += Offset(pts.last().x + lean * 1.5f * density, yTop + 1f * density)
+    pts += Offset(pts.last().x + lean * 2.5f * density, yTop - 4f * density)
+    return pts
 }
 
 /** Сумісність: розрив без смужки (для клаптя, що загинається). */
@@ -227,7 +244,7 @@ fun DrawScope.drawTapes(k: Float, seed: Int, glass: Boolean, marginPx: Float, pe
 }
 
 /** Де біля корінця йде лінія розриву (однаково для живого розриву, заклеєного й клаптика). */
-val TEAR_X = 8.dp
+val TEAR_X = 16.dp
 
 /** Зерно лінії розриву сторінки — одне на всі її стани. */
 fun tearSeedOf(day: Long, part: Int): Int = (day * 13 + part).toInt()

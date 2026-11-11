@@ -46,6 +46,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.drawText
@@ -282,6 +284,13 @@ fun BookScreen(
     }
     LaunchedEffect(open == null) { if (open == null) { flip.index = 0; currentKey = BookPage.Cover } }
     val currentPage = pages.getOrNull(flip.index) ?: BookPage.Cover
+    // Клаптик раніше вирваної сторінки відгортається вліво, поки цю виривають, і повертається зверху, коли
+    // відпустили (сторінка вже лягла й заклеєна).
+    val stubFold by animateFloatAsState(
+        if (flip.tearFinger != null && currentPage in stubs) 1f else 0f,
+        tween(if (flip.tearFinger != null) 240 else 320),
+        label = "stubFold",
+    )
     // Підказка «Гортай обкладинку» — через 5 с на обкладинці, плавно.
     var hintShown by remember(info.id) { mutableStateOf(false) }
     LaunchedEffect(open != null, flip.index == 0) {
@@ -742,7 +751,7 @@ fun BookScreen(
                                     number = pageNumber[p],
                                     ribbon = { if (ribbon.day == p.day) ribbon.laid.value else if (open?.bookmark == p.day) 1f else 0f },
                                     // Клаптик попередньої вирваної — поверх сторінки; поки цю виривають, він лежить окремо (зверху).
-                                    stub = p in stubs && !(flip.tearFinger != null && p == currentPage),
+                                    stub = p in stubs && !(p == currentPage && (flip.tearFinger != null || stubFold > 0f)),
                                 )
                             }
                         }
@@ -754,13 +763,30 @@ fun BookScreen(
                 val tearPage = currentPage as? BookPage.DayPart
                 if (open != null && tearPage != null) {
                     val stubHere = tearPage in stubs
+                    val renew = !DiaryViewModel.isDry(tearPage.day)
                     Canvas(Modifier.size(pw, ph)) {
                         val k = flip.tear
-                        if (flip.tearFinger == null) return@Canvas
+                        if (flip.tearFinger == null && stubFold <= 0f) return@Canvas
                         // Клаптик, що лишається на корінці, — та сама лінія, що й заклеєна (продовжується, а не дублюється).
-                        if (k > 0.01f && flip.tearFall <= 0f) drawTornRemnant(TEAR_X.toPx(), size.height * (1f - k), size.height, flip.tearSeed, glass, fill = true)
-                        // Клаптик раніше вирваної сторінки — зверху над усім (і над кутом, що загинається).
-                        if (stubHere) drawTornStub((tearPage.day * 7 + tearPage.part).toInt(), glass)
+                        // Поки вирвана падає, він лишається; свіжа сторінка оновлюється — тоді й клаптик тане.
+                        val finger = flip.tearFinger
+                        if (finger != null && k > 0.01f) {
+                            // Клаптик — лише там, де аркуш уже піднявся (до лінії загину); вище — заклеєний розрив на самій
+                            // сторінці зі своїм скотчем. Коли вирвана падає — на всю висоту.
+                            val kk = if (flip.tearFall > 0f) 1f else TearGeometry(size.width, size.height, finger).tearHeight
+                            val a = if (renew) 1f - flip.tearFall else 1f
+                            drawIntoCanvas { c -> c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = a }) }
+                            drawTornRemnant(TEAR_X.toPx(), size.height * (1f - kk), size.height, flip.tearSeed, glass, fill = true)
+                            drawIntoCanvas { it.restore() }
+                        }
+                        // Клаптик раніше вирваної — зверху, але відгорнутий уліво (до корінця), щоб не плутався з розривом.
+                        if (stubHere) {
+                            val f = stubFold
+                            withTransform({ scale(1f - 0.82f * f, 1f, pivot = Offset.Zero) }) {
+                                drawTornStub((tearPage.day * 7 + tearPage.part).toInt(), glass)
+                            }
+                            if (f > 0f) drawRect(Color.Black.copy(alpha = 0.35f * f), size = androidx.compose.ui.geometry.Size(TEAR_X.toPx() * (1f - 0.82f * f), size.height))
+                        }
                     }
                     Box(
                         Modifier
@@ -768,7 +794,8 @@ fun BookScreen(
                             .size(52.dp, 84.dp)
                             .pointerInput(tearPage, ink) {
                                 if (ink != null) return@pointerInput
-                                val already = vm.day(tearPage.day).tearTry(tearPage.part)
+                                // Наскільки вже надірвано — читаємо щоразу на початку жесту (після «передумав» межа зростає).
+                                var already = 0f
                                 val w = pw.toPx()
                                 val h = ph.toPx()
                                 val zoneTop = h - 84.dp.toPx()
@@ -792,6 +819,7 @@ fun BookScreen(
                                 detectDragGestures(
                                     onDragStart = { pos ->
                                         lastTick = 0; warned = false
+                                        already = vm.day(tearPage.day).tearTry(tearPage.part)
                                         flip.tearSeed = tearSeedOf(tearPage.day, tearPage.part)
                                         flip.tapeK = already
                                         flip.tapeSeed = tearSeedOf(tearPage.day, tearPage.part)

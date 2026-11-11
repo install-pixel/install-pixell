@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -635,57 +636,73 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
             values[Matrix.TranslateX] = k * n.x
             values[Matrix.TranslateY] = k * n.y
         }
-        val flap = poly(g.flap)
-        clipPath(flap) {
-            val tex = PaperTexture.page
-            if (!glass && tex != null) {
-                val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
-                drawIntoCanvas { c ->
-                    c.save()
-                    c.concat(mirror)
+        // Клапоть — лише те, що праворуч від лінії розриву: смужка біля корінця лишається на місці (клаптик), тож
+        // ні крайня лінія книжки, ні корінець на клапоть не потрапляють. Усе нижче — в координатах самого аркуша, а
+        // [mirror] перекладає їх на зворот (дзеркально відносно лінії загину).
+        val tearX = TEAR_X.toPx()
+        val line = tearPoints(tearX, size.height * (1f - g.tearHeight), size.height, tearSeed).ifEmpty { listOf(Offset(tearX, size.height), Offset(tearX, size.height - 1f)) }
+        val far = maxOf(size.width, size.height) * 3f
+        fun side(right: Boolean) = Path().apply {
+            val edgeX = if (right) far else -far
+            moveTo(line.first().x, far)
+            line.forEach { lineTo(it.x, it.y) }
+            lineTo(line.last().x, -far)
+            lineTo(edgeX, -far)
+            lineTo(edgeX, far)
+            close()
+        }
+        val rightOfTear = side(true)
+        val leftOfTear = side(false)
+        val lifted = poly(g.lifted)
+        drawIntoCanvas { it.save(); it.concat(mirror) }
+        clipPath(lifted) {
+            clipPath(rightOfTear) {
+                val tex = PaperTexture.page
+                if (!glass && tex != null) {
+                    val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
                     drawImage(tex, dstSize = dst)
                     val v = PaperTexture.Variant.of(paperSeed)
                     withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = Offset(size.width / 2, size.height / 2)) }) {
                         PaperTexture.backShadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
                         PaperTexture.backLightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
                     }
-                    c.restore()
+                } else {
+                    // «Скло» прозоре: крізь зворот ледь видно написане з того боку.
+                    drawRect(Color(0xFF111215).copy(alpha = 0.78f), topLeft = Offset(-far, -far), size = Size(far * 2, far * 2))
+                    drawIntoCanvas { c ->
+                        c.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = 0.16f })
+                        drawLayer(layer)
+                        c.restore()
+                    }
                 }
-            } else {
-                drawRect(Color(0xFF111215).copy(alpha = 0.78f))
-                drawIntoCanvas { c ->
-                    c.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = 0.16f })
-                    c.concat(mirror)
-                    drawLayer(layer)
-                    c.restore()
+                // Вигин біля загину: світліше на самому загині, далі тінь.
+                drawRect(
+                    Brush.linearGradient(0f to Color.White.copy(alpha = if (glass) 0.16f else 0.10f), 0.25f to Color.Transparent, 0.7f to Color.Black.copy(alpha = 0.25f), start = m, end = m + n * 60.dp.toPx()),
+                    topLeft = Offset(-far, -far), size = Size(far * 2, far * 2),
+                )
+                drawPath(lifted, Color.White.copy(alpha = if (glass) 0.22f else 0.3f), style = Stroke(1.6f * density))
+            }
+            // 3а) Скотч, що тримав розрив, відклеївся й піднявся з кутом. Він заходив за розрив — ця частина виступає
+            //     за край клаптя (видно клейкий бік); на самому аркуші скотч з того боку: «Аркуш» його не пропускає,
+            //     крізь «Скло» видно тьмяно.
+            if (state.tapeK > 0.01f) {
+                clipPath(leftOfTear) { drawTapes(state.tapeK, state.tapeSeed, glass, state.tapeMargin, peeled = true) }
+                if (glass) clipPath(rightOfTear) {
+                    drawIntoCanvas { c ->
+                        c.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = 0.3f })
+                        drawTapes(state.tapeK, state.tapeSeed, glass, state.tapeMargin, peeled = false)
+                        c.restore()
+                    }
                 }
             }
-            // Вигин біля загину: світліше на самому загині, далі тінь.
-            drawRect(Brush.linearGradient(0f to Color.White.copy(alpha = if (glass) 0.16f else 0.10f), 0.25f to Color.Transparent, 0.7f to Color.Black.copy(alpha = 0.25f), start = m, end = m - n * 60.dp.toPx()))
-        }
-        // 3а) Скотч, що був на розриві, — відклеївся й піднявся з кутом: на клапті він там само (дзеркально),
-        //     видно його клейкий бік.
-        if (state.tapeK > 0.01f) clipPath(flap) {
-            drawIntoCanvas { c ->
-                c.save()
-                c.concat(mirror)
-                drawTapes(state.tapeK, state.tapeSeed, glass, state.tapeMargin, peeled = true)
-                c.restore()
+            // 4) Рваний край клаптя — та сама лінія розриву (серцевина й тінь), з гострим кінчиком угорі.
+            for (i in 1 until line.size) {
+                val o = ((line[i].y - line.last().y) / 22.dp.toPx()).coerceIn(0f, 1f)
+                drawLine(if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), line[i - 1], line[i], (0.7f + 1.9f * o) * density)
+                drawLine(Color.Black.copy(alpha = 0.45f), line[i - 1], line[i], (0.4f + 0.4f * o) * density)
             }
         }
-        // 4) Рваний край на клапті — та сама лінія розриву, дзеркально (серцевина й тінь, без «стібків»).
-        val edge = g.tornEdge(48)
-        if (edge.size > 1) {
-            val rnd = java.util.Random(tearSeed * 7919L + 1)
-            val path = Path()
-            edge.forEachIndexed { i, p ->
-                val q = p + Offset((rnd.nextFloat() - 0.5f) * 4f * density, (rnd.nextFloat() - 0.5f) * 2f * density)
-                if (i == 0) path.moveTo(q.x, q.y) else path.lineTo(q.x, q.y)
-            }
-            drawPath(path, if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), style = Stroke(2.6f * density))
-            drawPath(path, Color.Black.copy(alpha = 0.45f), style = Stroke(0.8f * density))
-        }
-        drawPath(flap, Color.White.copy(alpha = if (glass) 0.22f else 0.3f), style = Stroke(0.8f * density))
+        drawIntoCanvas { it.restore() }
     }
     canvas.restore()
 }

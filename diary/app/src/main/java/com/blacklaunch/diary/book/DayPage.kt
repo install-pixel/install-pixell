@@ -170,9 +170,10 @@ fun DayPage(
             .drawWithContent {
                 drawContent()
                 drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
-                if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
                 // Колись надірвали й передумали — розрив заклеєно скотчем.
                 drawTapedTear(day.tearTry(part), tearSeedOf(day.day, part), glass, PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH)
+                // Клаптик раніше вирваної сторінки лежить ЗВЕРХУ: з-під нього видно лише те, що виглядає (скотч, розрив).
+                if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
