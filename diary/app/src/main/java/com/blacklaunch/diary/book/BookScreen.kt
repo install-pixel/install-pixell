@@ -559,7 +559,6 @@ fun BookScreen(
     @Composable
     fun androidx.compose.foundation.layout.ColumnScope.DiarySettings() {
         Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SwitchRow(stringResource(R.string.open_bookmark_title), vm.openAtBookmarkOf(info), subtitle = stringResource(R.string.open_bookmark_desc)) { vm.setOpenAtBookmark(info.id, it) }
             SwitchRow(stringResource(R.string.settings_photos), info.photos, subtitle = stringResource(R.string.settings_photos_desc)) { vm.setPhotosOn(info.id, it) }
             SwitchRow(stringResource(R.string.settings_voice), info.voice, subtitle = stringResource(R.string.settings_voice_desc)) { vm.setVoiceOn(info.id, it) }
         }
@@ -595,7 +594,6 @@ fun BookScreen(
     }
 
     val gear = rememberGearReveal()
-    val ribbon = remember(info.id) { RibbonMotion(open?.bookmark != null && open.bookmark == currentDay) }
     Column(Modifier.fillMaxSize().background(Oled.Black).statusBarsPadding().navigationBarsPadding().revealsGear(gear)) {
         // Книга. Коли з'являється клавіатура, вся сторінка (папір, лінії й текст разом) підсувається вгору, щоб рядок
         // з курсором був над клавіатурою, — як коли підсовуєш щоденник. Тло лишається на місці.
@@ -628,8 +626,6 @@ fun BookScreen(
                     }
                     .size(pw, ph + RibbonBottom),
             ) {
-                // Кінчик закладки — під книжкою (виходить з-поміж сторінок, контур щоденника не перетинає).
-                if (open != null) RibbonTail(ribbon, pw, ph)
                 Box(
                     Modifier
                         .size(pw, ph)
@@ -750,7 +746,7 @@ fun BookScreen(
                                     yearsAgo = years,
                                     editable = true,
                                     number = pageNumber[p],
-                                    ribbon = { if (ribbon.day == p.day) ribbon.laid.value else if (open?.bookmark == p.day) 1f else 0f },
+                                    ribbon = { 0f },
                                     // Клаптик попередньої вирваної — поверх сторінки; поки цю виривають, він лежить окремо (зверху).
                                     stub = p in stubs && !(p == currentPage && (flip.tearFinger != null || stubFold > 0f)),
                                     tearFinger = if (p == currentPage) ({ flip.tearFinger }) else null,
@@ -799,6 +795,9 @@ fun BookScreen(
                                 // «Тріск паперу»: короткі слабкі поштовхи, лише коли розрив іде вгору далі, ніж уже було в цьому
                                 // жесті (назад — тиша); крок і сила трохи нерівні, як волокна.
                                 var peak = 0f
+                                var visPeak = 0f
+                                var tapes = emptyList<Float>()
+                                var peeled = BooleanArray(0)
                                 var nextStep = 0.015f
                                 val rnd = java.util.Random()
                                 var warned = false
@@ -812,11 +811,19 @@ fun BookScreen(
                                     // ніж уже загнуто; уже надірване не «зростається» — межа не нижча за колишню.
                                     val k = maxOf(already, g.tearHeight, ((h - f.y) / (h * 0.8f)).coerceIn(0f, 1f))
                                     flip.tear = k
-                                    if (k > peak + nextStep) {
-                                        peak = k
+                                    // Скільки розірвано насправді — де лінія загину перетинає корінець (так і малюється, і
+                                    // запам'ятовується). Вібрація — лише на новому папері: вище за все, що вже було розірвано
+                                    // (раніше чи в цьому ж жесті).
+                                    val torn = g.tearHeight
+                                    if (torn > visPeak) visPeak = torn
+                                    if (torn > peak + nextStep) {
+                                        peak = torn
                                         nextStep = 0.008f + rnd.nextFloat() * 0.02f
                                         haptics.tear(0.2f + rnd.nextFloat() * 0.45f)
                                     }
+                                    // Скотч відклеюється — коли лінія загину проходить його середину (раз на кожен шматочок).
+                                    val foldY = h * (1f - torn)
+                                    tapes.forEachIndexed { i, cy -> if (!peeled[i] && foldY < cy) { peeled[i] = true; haptics.tick() } }
                                     if (!warned && k >= 0.5f) { warned = true; haptics.longPress(); vm.warn(R.string.tear_hint) }
                                     if (warned && k < 0.45f) { warned = false; vm.clearNotice(R.string.tear_hint) }
                                 }
@@ -825,6 +832,9 @@ fun BookScreen(
                                         warned = false
                                         already = vm.day(tearPage.day).tearTry(tearPage.part)
                                         peak = already
+                                        visPeak = 0f
+                                        tapes = tapeLayout(already, tearSeedOf(tearPage.day, tearPage.part), h, 1.dp.toPx()).map { it.first }
+                                        peeled = BooleanArray(tapes.size)
                                         flip.tearSeed = tearSeedOf(tearPage.day, tearPage.part)
                                         flip.tapeK = already
                                         flip.tearRenew = renew
@@ -853,7 +863,8 @@ fun BookScreen(
                                                 delay(30)
                                             } else {
                                                 // Передумали: кут лягає назад, розрив лишається (заклеєний скотчем).
-                                                if (k > 0.02f) vm.setTearTry(tearPage.day, tearPage.part, k)
+                                                // Запам'ятовується рівно те, що видно: до лінії загину (а не за підйомом пальця).
+                                                if (visPeak > 0.02f) vm.setTearTry(tearPage.day, tearPage.part, visPeak)
                                                 val home = Offset(0f, h)
                                                 androidx.compose.animation.core.animate(0f, 1f, animationSpec = tween(320)) { v, _ ->
                                                     flip.tearFinger = from + (home - from) * v
@@ -869,21 +880,15 @@ fun BookScreen(
                             },
                     )
                 }
-                // Закладка — пришита до корінця; кінчик звисає з-під книжки (і з-під закритої обкладинки).
+                // Закладка-пошук — коротка стрічка згори біля корінця, поверх усього (і клаптиків вирваних): потягнув униз —
+                // пошук.
                 if (open != null) {
-                    val bm = open.bookmark
-                    BookmarkRibbon(
-                        motion = ribbon,
+                    SearchRibbon(
                         pageW = pw,
                         pageH = ph,
-                        day = currentDay,
-                        here = currentDay != null && bm == currentDay,
-                        elsewhere = bm != null && bm != currentDay && bm in dayList,
-                        enabled = currentDay != null && editing == null && ink == null && !flip.moving,
-                        onPlace = { vm.setBookmark(currentDay) },
-                        onRemove = { vm.setBookmark(null) },
-                        onJump = { bm?.let { jumpToDay(it) } },
-                        description = stringResource(R.string.bookmark),
+                        enabled = ink == null && !flip.moving && flip.tearFinger == null,
+                        onOpen = { focusManager.clearFocus(); searching = true },
+                        description = stringResource(R.string.search),
                     )
                 }
             }
@@ -938,7 +943,6 @@ fun BookScreen(
                             }
                         },
                         Tool(Glyph.Pin, stringResource(R.string.place)) { if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.Place(day) },
-                        Tool(Glyph.Search, stringResource(R.string.search)) { searching = true },
                         Tool(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar },
                         // Шестерня — на полицю: там усі щоденники, налаштування кожного й загальні.
                         Tool(Glyph.Settings, stringResource(R.string.shelf)) { onShelf() },

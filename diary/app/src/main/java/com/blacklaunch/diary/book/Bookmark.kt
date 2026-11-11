@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.sin
 
 /** Простір під сторінкою — там з книжки звисає кінчик стрічки. */
-val RibbonBottom = 30.dp
+val RibbonBottom = 0.dp
 
 /** Де лежить стрічка (частка ширини сторінки): ліве поле, де не пишеться текст. */
 private const val RIBBON_X = 0.042f
@@ -172,8 +172,9 @@ fun BookmarkRibbon(
 }
 
 /** Тіло стрічки: «Скло» — темне скло з гранями й відблиском; «Аркуш» — суцільна чорна тканина, обведена олівцем. */
-private fun DrawScope.ribbonBody(p: Path, x: Float, w: Float, top: Float, bottom: Float, glass: Boolean) {
+private fun DrawScope.ribbonBody(p: Path, x: Float, w: Float, top: Float, bottom: Float, glass: Boolean, solid: Boolean = false) {
     if (glass) {
+        if (solid) drawPath(p, Color(0xFF0E0E0E))
         drawPath(p, Brush.horizontalGradient(0f to Color(0xFF2C2C2C), 0.5f to Color(0xFF141414), 1f to Color(0xFF262626), startX = x - w / 2, endX = x + w / 2))
         drawPath(p, Color(0x80FFFFFF), style = Stroke(1.dp.toPx()))
         if (bottom - top > 6f) drawLine(Color(0x33FFFFFF), Offset(x - w * 0.18f, top + 2f), Offset(x - w * 0.18f, bottom - 2f), 1.dp.toPx())
@@ -187,6 +188,76 @@ private fun DrawScope.ribbonBody(p: Path, x: Float, w: Float, top: Float, bottom
         while (y < bottom - 4.dp.toPx()) {
             pencilTick(Offset(x - w * 0.35f, y + w * 0.3f), Offset(x + w * 0.35f, y - w * 0.3f), 0.9.dp.toPx(), SheetInk.copy(alpha = 0.28f), i++)
             y += 9.dp.toPx() + sin(i * 1.7f) * 1.5f
+        }
+    }
+}
+
+private val SearchRibbonWidth = 20.dp
+private val SearchRibbonLength = 46.dp
+
+/**
+ * Закладка-пошук: коротка тканинна стрічка, що завжди звисає згори біля корінця (поверх сторінок і клаптиків вирваних —
+ * не прозора). Потягнув униз (або торкнувся) — відкривається пошук. До кінця сторінки вона більше не розкладається.
+ */
+@Composable
+fun SearchRibbon(pageW: Dp, pageH: Dp, enabled: Boolean, onOpen: () -> Unit, description: String) {
+    val haptics = LocalHaptics.current
+    val scope = rememberCoroutineScope()
+    val glass = AppStyle.glass
+    val pull = remember { Animatable(0f) }
+    val sway = remember { Animatable(0f) }
+    val xDp = pageW * RIBBON_X + 4.dp
+    Box(Modifier.size(pageW, pageH)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val x = xDp.toPx()
+            val w = SearchRibbonWidth.toPx()
+            val top = 2.dp.toPx()
+            val end = top + SearchRibbonLength.toPx() + pull.value
+            val notch = w * 0.45f
+            rotate(sway.value, pivot = Offset(x, top)) {
+                val p = Path().apply {
+                    moveTo(x - w / 2, top); lineTo(x + w / 2, top); lineTo(x + w / 2, end)
+                    lineTo(x, end - notch); lineTo(x - w / 2, end); close()
+                }
+                // Тінь на сторінці під стрічкою — вона лежить зверху.
+                drawPath(Path().apply { addPath(p, Offset(1.5.dp.toPx(), 2.dp.toPx())) }, Color.Black.copy(alpha = 0.55f))
+                ribbonBody(p, x, w, top, end - notch, glass, solid = true)
+                if (!glass) drawPath(taperedPath(listOf(Offset(x - w / 2, end), Offset(x, end - notch), Offset(x + w / 2, end)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+                // Лупа на кінчику — щоб було видно, що це пошук.
+                val c = Offset(x - 1.dp.toPx(), end - notch - 9.dp.toPx())
+                val r = 3.6.dp.toPx()
+                val ink = if (glass) Color(0xCCFFFFFF) else SheetInk.copy(alpha = 0.9f)
+                drawCircle(ink, r, c, style = Stroke(1.3.dp.toPx()))
+                drawLine(ink, c + Offset(r * 0.7f, r * 0.7f), c + Offset(r * 1.7f, r * 1.7f), 1.5.dp.toPx())
+            }
+        }
+        if (enabled) {
+            Box(
+                Modifier
+                    .offset(xDp - 22.dp, 0.dp)
+                    .size(44.dp, SearchRibbonLength + 18.dp)
+                    .semantics { contentDescription = description }
+                    .pointerInput(Unit) { detectTapGestures { haptics.tap(); onOpen() } }
+                    .pointerInput(Unit) {
+                        var pulled = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = { pulled = 0f; haptics.tick() },
+                            onVerticalDrag = { ch, dy ->
+                                ch.consume()
+                                pulled += dy
+                                scope.launch {
+                                    pull.snapTo((pulled * 0.45f).coerceIn(0f, 40.dp.toPx()))
+                                    sway.snapTo((pulled / 40f).coerceIn(-4f, 4f) * 0.3f)
+                                }
+                            },
+                            onDragEnd = {
+                                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 300f)) }
+                                scope.launch { sway.animateTo(0f, spring(dampingRatio = 0.3f, stiffness = 80f)) }
+                                if (pulled > 40.dp.toPx()) { haptics.longPress(); onOpen() }
+                            },
+                        )
+                    },
+            )
         }
     }
 }

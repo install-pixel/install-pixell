@@ -245,15 +245,10 @@ fun DrawScope.drawTapedTear(k: Float, seed: Int, glass: Boolean, marginPx: Float
 /** Лише шматочки скотчу над розривом до висоти [k] (і на сторінці, і на клапті, коли його відклеюють). */
 fun DrawScope.drawTapes(k: Float, seed: Int, glass: Boolean, marginPx: Float, peeled: Boolean = false) {
     if (k <= 0.01f) return
-    val yTop = size.height * (1f - k)
-    val rnd = java.util.Random(seed * 31L + 5)
+    val rnd = java.util.Random(seed * 31L + 7)
     val left = 1.5.dp.toPx()
     val w = (marginPx - 3.dp.toPx() - left).coerceAtLeast(10.dp.toPx())
-    val n = 1 + (k * 3.5f).toInt()
-    for (i in 0 until n) {
-        val h = (13f + rnd.nextFloat() * 4f) * density
-        val cy = (yTop + (size.height - yTop) * (i + 0.5f) / n + (rnd.nextFloat() - 0.5f) * 10f * density).coerceIn(yTop + h, size.height - h)
-        val ang = (rnd.nextFloat() - 0.5f) * 10f
+    for ((cy, h, ang) in tapeLayout(k, seed, size.height, density)) {
         rotate(ang, pivot = Offset(left + w / 2, cy)) {
             val tl = Offset(left, cy - h / 2)
             val sz = Size(w, h)
@@ -271,6 +266,20 @@ fun DrawScope.drawTapes(k: Float, seed: Int, glass: Boolean, marginPx: Float, pe
             }
             drawLine(Color.Black.copy(alpha = 0.35f), Offset(tl.x, tl.y + h), Offset(tl.x + w, tl.y + h), 1f * density)
         }
+    }
+}
+
+/** Де лежать шматочки скотчу на розриві висотою [k]: (центр по висоті, висота, кут) — однаково для малювання й вібрації. */
+fun tapeLayout(k: Float, seed: Int, height: Float, density: Float): List<Triple<Float, Float, Float>> {
+    if (k <= 0.01f) return emptyList()
+    val yTop = height * (1f - k)
+    val rnd = java.util.Random(seed * 31L + 5)
+    val n = 1 + (k * 3.5f).toInt()
+    return List(n) { i ->
+        val h = (13f + rnd.nextFloat() * 4f) * density
+        val cy = (yTop + (height - yTop) * (i + 0.5f) / n + (rnd.nextFloat() - 0.5f) * 10f * density).coerceIn(yTop + h, height - h)
+        val ang = (rnd.nextFloat() - 0.5f) * 10f
+        Triple(cy, h, ang)
     }
 }
 
