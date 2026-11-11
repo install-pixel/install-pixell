@@ -621,28 +621,39 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
         close()
     }
     val canvas = drawContext.canvas
-    // 0) Клаптик, що лишається на корінці (ліворуч від розриву, де аркуш уже піднявся), — під клаптем, що загинається,
-    //    і під рештою сторінки. Поки вирвана падає — на всю висоту; свіжа оновлюється — тоді тане.
-    run {
-        val falling = state.tearFall > 0f
-        val kk = if (falling) 1f else g.tearHeight
-        if (kk > 0.005f) {
-            val liftedPath = poly(g.lifted)
-            canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint().apply { this.alpha = if (state.tearRenew) 1f - state.tearFall else 1f })
-            // Смужка — сама сторінка (той самий папір і колір), рівно там, де аркуш уже піднявся (обрізана лінією
-            // загину): ні шва, ні щілини біля загину.
-            val draw: DrawScope.() -> Unit = {
-                drawTornRemnant(TEAR_X.toPx(), size.height * (1f - kk) - 40.dp.toPx(), size.height, tearSeed, glass, fill = true, pointed = false) { strip ->
-                    clipPath(strip) { drawLayer(layer) }
-                }
-            }
-            if (falling) draw() else clipPath(liftedPath) { draw() }
-            canvas.restore()
+    // 0) Клаптик, що лишається на корінці (ліворуч від розриву, де аркуш уже піднявся), — сама сторінка, під клаптем,
+    //    що загинається. Лежить разом із рештою сторінки ОДНИМ шматком (одна межа обрізання), тож по лінії загину на ньому
+    //    немає шва. Поки вирвана падає — на всю висоту окремо (решта тане); свіжа оновлюється — тоді тане й він.
+    val falling = state.tearFall > 0f
+    val kk = if (falling) 1f else g.tearHeight
+    val tearX = TEAR_X.toPx()
+    val liftedPath = poly(g.lifted)
+    val strip = run {
+        val pts = tearPoints(tearX, size.height * (1f - kk) - 40.dp.toPx(), size.height, tearSeed, pointed = false)
+        Path().apply {
+            moveTo(0f, size.height)
+            pts.forEach { lineTo(it.x, it.y) }
+            lineTo(0f, pts.lastOrNull()?.y ?: size.height)
+            close()
         }
     }
+    val hasRemnant = kk > 0.005f
+    if (falling && hasRemnant) {
+        canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint().apply { this.alpha = if (state.tearRenew) 1f - state.tearFall else 1f })
+        clipPath(strip) { drawLayer(layer) }
+        drawTornRemnant(tearX, 0f, size.height, tearSeed, glass, fill = true, pointed = false) { }
+        canvas.restore()
+    }
     canvas.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = alpha })
-    // 1) Решта сторінки — як лежала.
-    clipPath(poly(g.stay)) { drawLayer(layer) }
+    // 1) Решта сторінки — як лежала (разом зі смужкою біля корінця).
+    val stayArea = if (!falling && hasRemnant) {
+        Path.combine(androidx.compose.ui.graphics.PathOperation.Union, poly(g.stay), Path.combine(androidx.compose.ui.graphics.PathOperation.Intersect, strip, liftedPath))
+    } else poly(g.stay)
+    clipPath(stayArea) { drawLayer(layer) }
+    // Розрив біля корінця: тінь смужки на сторінці під нею і сам рваний край — лише там, де аркуш піднявся.
+    if (!falling && hasRemnant) clipPath(liftedPath) {
+        drawTornRemnant(tearX, size.height * (1f - kk), size.height, tearSeed, glass, fill = true, pointed = false) { }
+    }
     if (g.flap.size >= 3) {
         val n = g.normal
         val m = g.mid
