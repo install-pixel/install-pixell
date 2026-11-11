@@ -107,6 +107,9 @@ class Player {
     fun resume() = runCatching { player?.start() }
     fun seek(ms: Int) = runCatching { player?.seekTo(ms) }
 
+    /** Швидкість програвання: перемотка вперед під час слухання — звук біжить швидше. */
+    fun speed(k: Float) = runCatching { player?.let { it.playbackParams = it.playbackParams.setSpeed(k) } }
+
     fun stop() {
         val p = player ?: return
         player = null

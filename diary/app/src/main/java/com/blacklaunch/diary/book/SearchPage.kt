@@ -399,12 +399,14 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
     LaunchedEffect(dragged) { if (dragged) playing = false }
     // Повільне наближення поточного фото під час показу.
     val zoom = remember { Animatable(1f) }
-    LaunchedEffect(pager.currentPage, playing) {
+    // Ключ — фото, на якому показ зупинився (settledPage), а не поточне: поточне міняється посеред гортання, і тоді
+    // гортання переривалось на півдорозі — два фото застрягали навпіл.
+    LaunchedEffect(pager.settledPage, playing) {
         zoom.snapTo(1f)
         if (!playing) return@LaunchedEffect
         launch { zoom.animateTo(1.08f, tween(SHOW_MS + 900, easing = LinearEasing)) }
         delay(SHOW_MS.toLong())
-        if (pager.currentPage < days.size - 1) pager.animateScrollToPage(pager.currentPage + 1, animationSpec = tween(900))
+        if (pager.settledPage < days.size - 1) pager.animateScrollToPage(pager.settledPage + 1, animationSpec = tween(900))
         else playing = false
     }
     com.blacklaunch.diary.ui.SmoothDialog(onDismissRequest = onDismiss) {
