@@ -676,14 +676,23 @@ fun BookScreen(
                             }
                         },
                         canFlipForward = { i ->
+                            // Пошук гортається вперед — назад на ту сторінку, з якої прийшли: коло замикається.
+                            if (pages.getOrNull(i) == BookPage.Search) pages.indexOf(searchReturn) >= 0 else run {
                             val next = if (i == 0) openTarget else i + 1
                             // У меню заходять лише шестернею; усередині меню — гортання між його сторінками.
                             val here = pages.getOrNull(i)
                             val there = pages.getOrNull(next)
                             !(i == 0 && open == null) && (here is BookPage.Menu) == (there is BookPage.Menu) &&
                                 (here == BookPage.Search) == (there == BookPage.Search)
+                            }
                         },
-                        nextOf = { i -> if (i == 0) openTarget else i + 1 },
+                        nextOf = { i ->
+                            when {
+                                i == 0 -> openTarget
+                                pages.getOrNull(i) == BookPage.Search -> pages.indexOf(searchReturn).coerceAtLeast(0)
+                                else -> i + 1
+                            }
+                        },
                         prevOf = { i ->
                             when (pages.getOrNull(i)) {
                                 BookPage.Menu(0) -> pages.indexOf(menuReturn).coerceAtLeast(0)
