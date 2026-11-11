@@ -126,3 +126,81 @@ class Player {
         override fun close() = Unit
     }
 }
+
+/**
+ * Дописати запис у кінець касети: два файли m4a (AAC) склеюються в один без перекодування — семпли другого йдуть одразу
+ * після першого. Тимчасові файли — лише в кеші програми й одразу стираються.
+ */
+object Tape {
+    /** Справжня тривалість запису (мс) — з самого файлу, а не з годинника. */
+    fun durationMs(bytes: ByteArray): Long? = runCatching {
+        val r = android.media.MediaMetadataRetriever()
+        try {
+            r.setDataSource(object : android.media.MediaDataSource() {
+                override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
+                    if (position >= bytes.size) return -1
+                    val n = minOf(size.toLong(), bytes.size - position).toInt()
+                    System.arraycopy(bytes, position.toInt(), buffer, offset, n)
+                    return n
+                }
+                override fun getSize(): Long = bytes.size.toLong()
+                override fun close() = Unit
+            })
+            r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+        } finally {
+            r.release()
+        }
+    }.getOrNull()
+
+    fun concat(a: ByteArray, b: ByteArray, cache: File): ByteArray? {
+        val fa = File.createTempFile("tape_a", ".m4a", cache)
+        val fb = File.createTempFile("tape_b", ".m4a", cache)
+        val out = File.createTempFile("tape_o", ".m4a", cache)
+        return try {
+            fa.writeBytes(a)
+            fb.writeBytes(b)
+            val muxer = android.media.MediaMuxer(out.path, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            var track = -1
+            var offset = 0L
+            val buf = java.nio.ByteBuffer.allocate(1 shl 20)
+            val info = android.media.MediaCodec.BufferInfo()
+            for (f in listOf(fa, fb)) {
+                val ex = android.media.MediaExtractor()
+                ex.setDataSource(f.path)
+                val ti = (0 until ex.trackCount).first { ex.getTrackFormat(it).getString(android.media.MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+                ex.selectTrack(ti)
+                if (track < 0) {
+                    track = muxer.addTrack(ex.getTrackFormat(ti))
+                    muxer.start()
+                }
+                var last = offset
+                // Час семплів у файлі може починатися не з нуля — рахуємо від першого, щоб між шматками не було тиші.
+                var first = -1L
+                while (true) {
+                    val n = ex.readSampleData(buf, 0)
+                    if (n < 0) break
+                    if (first < 0) first = ex.sampleTime
+                    info.offset = 0
+                    info.size = n
+                    info.presentationTimeUs = offset + (ex.sampleTime - first).coerceAtLeast(0)
+                    info.flags = android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
+                    muxer.writeSampleData(track, buf, info)
+                    last = info.presentationTimeUs
+                    ex.advance()
+                }
+                // Наступний — через один кадр AAC (1024 семпли при 44,1 кГц).
+                offset = last + 23_220
+                ex.release()
+            }
+            muxer.stop()
+            muxer.release()
+            out.readBytes()
+        } catch (e: Exception) {
+            null
+        } finally {
+            fa.delete()
+            fb.delete()
+            out.delete()
+        }
+    }
+}

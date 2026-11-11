@@ -1,5 +1,7 @@
 package com.blacklaunch.diary
 
+import com.blacklaunch.diary.audio.Tape
+
 import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
@@ -472,32 +474,59 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     // ——— Аудіо дня ———
 
-    fun saveAudio(epochDay: Long, bytes: ByteArray, ms: Long, wave: List<Float>) {
+    /**
+     * Записане — на сторону [side] (0 — A, 1 — B) касети дня. Якщо там уже є запис — допис у кінець (той самий файл далі),
+     * а місце, де він почався, позначається ([Day.takes]).
+     */
+    fun saveAudio(epochDay: Long, bytes: ByteArray, ms: Long, wave: List<Float>, side: Int = 0) {
         val o = open ?: return
         viewModelScope.launch {
-            withContext(io) { o.db.writeMedia(o.db.audioFile(epochDay), bytes) }
-            update(day(epochDay).copy(audio = true, audioMs = ms, wave = compactWave(wave), noAudio = false))
+            val d0 = day(epochDay)
+            val has = if (side == 0) d0.audio else d0.audioB
+            val oldMs = if (side == 0) d0.audioMs else d0.audioMsB
+            val file = if (side == 0) o.db.audioFile(epochDay) else o.db.audioFileB(epochDay)
+            val joined = withContext(io) {
+                val old = if (has) o.db.readMedia(file) else null
+                val all = if (old != null) Tape.concat(old, bytes, getApplication<Application>().cacheDir) else bytes
+                all?.also { o.db.writeMedia(file, it) }
+            }
+            if (joined == null) { show(R.string.record_failed); return@launch }
+            val d = day(epochDay)
+            // Тривалість — з самих файлів: що насправді записано й скільки тепер на стороні.
+            val newMs = withContext(io) { Tape.durationMs(bytes) } ?: ms
+            val total = withContext(io) { Tape.durationMs(joined) } ?: (if (has) oldMs + newMs else newMs)
+            val start = (total - newMs).coerceAtLeast(0)
+            val oldWave = if (side == 0) d.wave else d.waveB
+            val newWave = if (has) mergeWave(oldWave, start, wave, newMs) else compactWave(wave)
+            update(
+                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = if (has) d.takes + start else emptyList(), noAudio = false)
+                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = if (has) d.takesB + start else emptyList(), noAudio = false),
+            )
         }
     }
 
+    /** Прибрати касету дня (обидві сторони); кілька секунд можна повернути. */
     fun removeAudio(epochDay: Long) {
         val o = open ?: return
-        val file = o.db.audioFile(epochDay)
-        val keep = java.io.File(file.path + ".undo")
-        file.renameTo(keep)
+        val files = listOf(o.db.audioFile(epochDay), o.db.audioFileB(epochDay))
+        val keeps = files.map { java.io.File(it.path + ".undo") }
+        files.zip(keeps).forEach { (f, k) -> if (f.exists()) f.renameTo(k) }
         val before = day(epochDay)
         // Місце під голос лишається порожнім; прибирається окремо — свайпом по порожньому місцю або в налаштуваннях.
-        update(before.copy(audio = false, noAudio = false))
+        update(before.copy(audio = false, audioB = false, takes = emptyList(), takesB = emptyList(), noAudio = false))
         show(R.string.audio_removed) {
-            keep.renameTo(file)
-            update(day(epochDay).copy(audio = true, audioMs = before.audioMs, wave = before.wave, noAudio = false))
+            files.zip(keeps).forEach { (f, k) -> if (k.exists()) k.renameTo(f) }
+            update(day(epochDay).copy(
+                audio = before.audio, audioMs = before.audioMs, wave = before.wave, takes = before.takes,
+                audioB = before.audioB, audioMsB = before.audioMsB, waveB = before.waveB, takesB = before.takesB, noAudio = false,
+            ))
         }
-        viewModelScope.launch { delay(6000); if (!day(epochDay).audio) keep.delete() }
+        viewModelScope.launch { delay(6000); if (!day(epochDay).let { it.audio || it.audioB }) keeps.forEach { it.delete() } }
     }
 
-    suspend fun audio(epochDay: Long): ByteArray? {
+    suspend fun audio(epochDay: Long, side: Int = 0): ByteArray? {
         val o = open ?: return null
-        return withContext(io) { o.db.readMedia(o.db.audioFile(epochDay)) }
+        return withContext(io) { o.db.readMedia(if (side == 0) o.db.audioFile(epochDay) else o.db.audioFileB(epochDay)) }
     }
 
     // ——— Пошук ———
@@ -528,6 +557,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
                             out, password, o.info, o.days.values.sortedBy { it.day },
                             photo = { o.db.readMedia(o.db.photoFile(it)) },
                             audio = { o.db.readMedia(o.db.audioFile(it)) },
+                            audioB = { o.db.readMedia(o.db.audioFileB(it)) },
                             coverGlass = store.coverFile(o.info.id, true).takeIf { it.exists() }?.readBytes(),
                             coverSheet = store.coverFile(o.info.id, false).takeIf { it.exists() }?.readBytes(),
                         )
@@ -553,6 +583,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
                         contents.days.forEach { d -> db.save(d) }
                         contents.photos.forEach { (day, bytes) -> db.writeMedia(db.photoFile(day), bytes) }
                         contents.audios.forEach { (day, bytes) -> db.writeMedia(db.audioFile(day), bytes) }
+                        contents.audiosB.forEach { (day, bytes) -> db.writeMedia(db.audioFileB(day), bytes) }
                     }
                     var cover = false
                     if (contents.coverGlass != null && contents.coverSheet != null) {
@@ -597,6 +628,22 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         /** Обриси звуку — не більше 120 стовпчиків (стільки вміщається в смужку). */
+        /** Обриси старого запису й допису разом — кожен займає місце за своєю тривалістю. */
+        fun mergeWave(a: List<Float>, aMs: Long, b: List<Float>, bMs: Long, n: Int = 120): List<Float> {
+            val total = (aMs + bMs).coerceAtLeast(1)
+            val na = (n * aMs / total).toInt().coerceIn(1, n - 1)
+            return resample(a, na) + resample(b, n - na)
+        }
+
+        private fun resample(w: List<Float>, n: Int): List<Float> {
+            if (w.isEmpty()) return List(n) { 0f }
+            return List(n) { i ->
+                val a = (i * w.size / n).coerceAtMost(w.size - 1)
+                val b = ((i + 1) * w.size / n).coerceAtLeast(a + 1).coerceAtMost(w.size)
+                w.subList(a, b).maxOrNull() ?: 0f
+            }
+        }
+
         fun compactWave(w: List<Float>, n: Int = 120): List<Float> {
             if (w.size <= n) return w
             return List(n) { i ->

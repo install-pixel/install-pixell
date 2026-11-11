@@ -115,9 +115,11 @@ interface PageHost {
 }
 
 /** Іде запис голосу (для смужки — живі обриси й час). */
-class RecordingState(val day: Long) {
+class RecordingState(val day: Long, val side: Int = 0, val base: Long = 0L) {
     var wave by mutableStateOf<List<Float>>(emptyList())
     var elapsed by mutableStateOf(0L)
+    /** Гучність просто зараз (0…1) — для стрілки. */
+    var level by mutableStateOf(0f)
 }
 
 /**
@@ -272,7 +274,7 @@ fun DayPage(
             LaunchedEffect(day.photo) { host.block("photo_${day.day}", null) }
         }
         val rec = host.recording?.takeIf { it.day == day.day }
-        if (first && (day.audio || rec != null)) {
+        if (first && (day.audio || day.audioB || rec != null)) {
             AudioPlate(
                 host = host,
                 day = day,
@@ -295,7 +297,7 @@ fun DayPage(
                 onDismiss = { host.dismissSlot(day.day, photo = false) },
             )
         } else {
-            LaunchedEffect(day.audio) { host.block("audio_${day.day}", null) }
+            LaunchedEffect(day.audio, day.audioB) { host.block("audio_${day.day}", null) }
         }
 
         // Текст.
@@ -592,7 +594,7 @@ private fun AudioPlate(host: PageHost, day: Day, recording: RecordingState?, mod
             Box(Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFB0244F)))
             Spacer(Modifier.width(6.dp))
         }
-        Text(clock(recording?.elapsed ?: day.audioMs), color = if (recording != null) Color(0xFFB0244F) else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1)
+        Text(clock(recording?.elapsed ?: ((if (day.audio) day.audioMs else 0L) + (if (day.audioB) day.audioMsB else 0L))), color = if (recording != null) Color(0xFFB0244F) else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1)
     }
 }
 

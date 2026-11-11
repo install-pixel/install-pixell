@@ -1,26 +1,25 @@
 package com.blacklaunch.diary.book
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,10 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,208 +42,278 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.blacklaunch.diary.DiaryViewModel
 import com.blacklaunch.diary.R
 import com.blacklaunch.diary.audio.Player
 import com.blacklaunch.diary.data.Day
 import com.blacklaunch.diary.ui.AppStyle
-import com.blacklaunch.diary.ui.ConfirmDialog
+import com.blacklaunch.diary.ui.Limits
 import com.blacklaunch.diary.ui.LocalHaptics
 import com.blacklaunch.diary.ui.SheetInk
-import com.blacklaunch.diary.ui.Tone
-import com.blacklaunch.diary.ui.WindowHint
 import com.blacklaunch.diary.ui.taperedPath
 import com.blacklaunch.diary.ui.theme.Oled
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 private val RecRed = Color(0xFFB0244F)
+private val TapeBrown = Color(0xFF3B2E24)
 
-/** Що натиснуто на магнітофоні (клавіша «западає», поки триває дія). */
+/** Що натиснуто на магнітофоні (клавіша «западає», поки триває її дія). */
 private enum class Deck { Idle, Play, Pause, Rewind, Forward, Record }
 
+/** Наскільки товстішає повна котушка проти порожньої маточини. */
+private const val PACK_RATIO = 2.7f
+
+/** Швидкість перемотки — у скільки разів швидше за звичайну. */
+private const val WIND_SPEED = 24f
+
 /**
- * Магнітофон дня — сторінка на весь щоденник (щось середнє між диктофоном і старим касетником): угорі віконце касети
- * (котушки крутяться, стрічка перемотується з лівої на праву — видно, скільки лишилось), під ним — решітка динаміка й
- * стрілочний «контроль запису» з лічильником, унизу — великі клавіші: запис, назад, вперед, пуск, пауза, стоп.
- * [editable] = false (день висох) — лише слухати: запис не натискається.
+ * Магнітофон дня — сторінка на весь щоденник: угорі в шухлядці касета (сторони A і B — торкнись касети, щоб перевернути),
+ * під нею — решітка динаміка, праворуч стрілочний «контроль запису» й лічильник стрічки; унизу — великі клавіші до самого
+ * краю сторінки.
+ *
+ * Касета — справжня C90: на стороні 45 хвилин стрічки. Що записано — намотується на праву котушку рівно стільки, скільки
+ * записано; решта лежить на лівій. Запис дописується в кінець (позначки дописів — на лічильнику). Пуск з кінця — спершу
+ * перемотує на початок. Перемотати можна лише записане.
  */
 @Composable
-fun ColumnScope.RecorderPage(
+fun RecorderPage(
     vm: DiaryViewModel,
     day: Day,
+    title: String,
+    subtitle: String,
+    seed: Int,
     editable: Boolean,
     recording: RecordingState?,
-    onRecord: () -> Unit,
+    onRecord: (side: Int) -> Unit,
     onStopRecording: () -> Unit,
 ) {
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
     val glass = AppStyle.glass
+    var side by remember(day.day) { mutableIntStateOf(recording?.side ?: 0) }
+    val has = if (side == 0) day.audio else day.audioB
+    // Тривалість — лише якщо запис на цій стороні є (після видалення стара цифра лишається для «Повернути»).
+    val dur = if (side == 0) (if (day.audio) day.audioMs else 0L) else (if (day.audioB) day.audioMsB else 0L)
+    val takes = if (side == 0) day.takes else day.takesB
+    val wave = if (side == 0) day.wave else day.waveB
+    val isRec = recording != null && recording.side == side
     val player = remember(day.day) { Player() }
     DisposableEffect(day.day) { onDispose { player.stop() } }
-    var deck by remember { mutableStateOf(Deck.Idle) }
-    var loaded by remember(day.day, day.updated) { mutableStateOf<ByteArray?>(null) }
-    var position by remember(day.day) { mutableIntStateOf(0) }
-    var confirmReplace by remember { mutableStateOf(false) }
-    val total = (if (player.duration > 0) player.duration.toLong() else day.audioMs).coerceAtLeast(1L)
-    val isRec = recording != null
-    val shown = if (isRec) Deck.Record else deck
+    var deck by remember(day.day) { mutableStateOf(Deck.Idle) }
+    // Де стоїть стрічка (мс від початку сторони). Касету залишили там, де записали, — у кінці записаного.
+    var head by remember(day.day, side) { mutableFloatStateOf(dur.toFloat()) }
+    var loaded by remember(day.day, side, dur) { mutableStateOf<ByteArray?>(null) }
+    var job by remember { mutableStateOf<Job?>(null) }
+    val flip = remember(day.day) { Animatable(0f) }
 
-    // Позиція й стан під час програвання.
-    LaunchedEffect(deck) {
-        while (deck == Deck.Play) {
-            position = player.position
-            delay(50)
-        }
+    // Дописали — стрічка стоїть у кінці нового запису.
+    LaunchedEffect(dur) { if (deck == Deck.Idle || deck == Deck.Record) head = dur.toFloat() }
+    if (isRec) head = recording!!.base + recording.elapsed.toFloat()
+
+    suspend fun bytes(): ByteArray? = loaded ?: vm.audio(day.day, side).also { loaded = it }
+
+    /** Перемотати стрічку до [target] (з крутінням котушок), як справжня перемотка. */
+    suspend fun windTo(target: Float) {
+        val from = head
+        if (abs(target - from) < 50f) { head = target; return }
+        deck = if (target < from) Deck.Rewind else Deck.Forward
+        val ms = (abs(target - from) / WIND_SPEED).toInt().coerceIn(350, 2600)
+        val a = Animatable(from)
+        a.animateTo(target, tween(ms, easing = FastOutSlowInEasing)) { head = value }
+        deck = Deck.Idle
     }
 
-    suspend fun ensureLoaded(): ByteArray? = loaded ?: vm.audio(day.day).also { loaded = it }
+    fun cancelJob() { job?.cancel(); job = null }
 
     fun play() {
-        if (isRec || !day.audio) return
-        scope.launch {
-            if (deck == Deck.Pause && player.duration > 0) { player.resume(); deck = Deck.Play; return@launch }
-            val b = ensureLoaded() ?: return@launch
-            val from = position.takeIf { it in 1 until total.toInt() - 200 } ?: 0
-            if (player.play(b, from) { deck = Deck.Idle; position = 0 }) deck = Deck.Play
-        }
-    }
-
-    fun seekBy(ms: Int) {
-        if (isRec || !day.audio) return
-        scope.launch {
-            if (player.duration <= 0) {
-                val b = ensureLoaded() ?: return@launch
-                // Підготувати, не граючи: запустити й одразу на паузу.
-                if (!player.play(b, position) { deck = Deck.Idle; position = 0 }) return@launch
-                player.pause()
+        if (!has || isRec) return
+        if (deck == Deck.Pause && player.duration > 0) { player.resume(); deck = Deck.Play; return }
+        cancelJob()
+        job = scope.launch {
+            // З кінця — спершу перемотати на початок.
+            if (head >= dur - 300) windTo(0f)
+            val b = bytes() ?: return@launch
+            val ok = player.play(b, head.toInt().coerceAtLeast(0)) {
+                deck = Deck.Idle
+                head = dur.toFloat()
             }
-            position = (position + ms).coerceIn(0, player.duration.coerceAtLeast(1))
-            player.seek(position)
+            if (!ok) return@launch
+            deck = Deck.Play
+            while (deck == Deck.Play || deck == Deck.Pause) {
+                if (deck == Deck.Play) head = player.position.toFloat().coerceAtMost(dur.toFloat())
+                delay(40)
+            }
         }
     }
 
-    // Котушки: кут крутиться, поки грає, пише чи перемотується (перемотка — швидше).
-    var angle by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(shown) {
-        val speed = when (shown) {
-            Deck.Play, Deck.Record -> 1.6f
-            Deck.Rewind -> -7f
-            Deck.Forward -> 7f
-            else -> 0f
-        }
-        if (speed == 0f) return@LaunchedEffect
-        var last = 0L
+    fun stopAll() {
+        cancelJob()
+        player.stop()
+        deck = Deck.Idle
+    }
+
+    fun nudge(ms: Float) {
+        if (!has || isRec) return
+        head = (head + ms).coerceIn(0f, dur.toFloat())
+        if (player.duration > 0) player.seek(head.toInt())
+    }
+
+    // Котушки: кожна крутиться від того, скільки стрічки пройшло, і тим швидше, чим вона тонша (як справжні).
+    var angleL by remember { mutableFloatStateOf(0f) }
+    var angleR by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        var last = head
         while (true) {
-            withFrameNanos { t ->
-                if (last != 0L) angle += speed * (t - last) / 1e9f
-                last = t
+            withFrameNanos { }
+            val d = head - last
+            last = head
+            if (d != 0f) {
+                val f = (head / Limits.SIDE_MS).coerceIn(0f, 1f)
+                val rl = sqrt(1f + (1f - f) * (PACK_RATIO * PACK_RATIO - 1f))
+                val rr = sqrt(1f + f * (PACK_RATIO * PACK_RATIO - 1f))
+                // Пів оберту на секунду, поки маточина порожня; товста котушка — повільніше.
+                angleL += d * (PI.toFloat() / 1000f) / rl
+                angleR += d * (PI.toFloat() / 1000f) / rr
             }
         }
     }
 
-    // Скільки стрічки вже на правій котушці.
-    val progress = when {
-        isRec -> (recording!!.elapsed.toFloat() / com.blacklaunch.diary.ui.Limits.AUDIO_MS).coerceIn(0f, 1f)
-        else -> (position.toFloat() / total).coerceIn(0f, 1f)
-    }
-    // Стрілка: під час запису — гучність голосу, під час програвання — обриси запису в цьому місці.
     val rawLevel = when {
-        isRec -> recording!!.wave.lastOrNull() ?: 0f
-        deck == Deck.Play && day.wave.isNotEmpty() -> day.wave[(progress * (day.wave.size - 1)).toInt().coerceIn(0, day.wave.size - 1)]
+        isRec -> recording!!.level
+        deck == Deck.Play && wave.isNotEmpty() && dur > 0 -> wave[((head / dur) * (wave.size - 1)).toInt().coerceIn(0, wave.size - 1)]
         else -> 0f
     }
-    val level by animateFloatAsState(rawLevel, spring(dampingRatio = 0.5f, stiffness = 260f), label = "vu")
-
+    val level by animateFloatAsState(rawLevel, spring(dampingRatio = 0.45f, stiffness = 240f), label = "vu")
+    val shown = if (isRec) Deck.Record else deck
     val ink = if (glass) Oled.TextPrimary else SheetInk
-    val faint = ink.copy(alpha = if (glass) 0.35f else 0.45f)
+    val faint = ink.copy(alpha = if (glass) 0.30f else 0.42f)
 
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(end = 4.dp)) {
-        val w = maxWidth
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            // ——— Касета ———
-            Canvas(Modifier.fillMaxWidth().height(w * 0.62f)) {
-                drawCassette(glass, ink, faint, angle, progress, dateLabel = null)
-            }
-            // ——— Динамік і «контроль запису» ———
-            Row(Modifier.fillMaxWidth().height(w * 0.74f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Canvas(Modifier.weight(1f).fillMaxHeight()) { drawGrille(glass, ink, faint) }
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawMeter(glass, ink, faint, level, isRec) }
-                    val now = if (isRec) recording!!.elapsed else position.toLong()
-                    Text(
-                        if (isRec || !day.audio) clock(now) else "${clock(now)} / ${clock(day.audioMs)}",
-                        color = if (isRec) RecRed else Oled.TextPrimary,
-                        fontSize = 16.sp,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                    )
+    val keys: @Composable () -> Unit = {
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            DeckKey(Deck.Record, shown == Deck.Record, enabled = editable && recording == null, desc = stringResource(R.string.record), glass = glass) {
+                if (dur >= Limits.SIDE_MS - 1000) { vm.show(R.string.recorder_side_full); return@DeckKey }
+                stopAll()
+                job = scope.launch {
+                    // Пишемо в кінець записаного: стрічку спершу домотати туди.
+                    if (head < dur) windTo(dur.toFloat())
+                    haptics.longPress()
+                    onRecord(side)
                 }
             }
-            // ——— Клавіші ———
-            Row(Modifier.fillMaxWidth().height(96.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val canRec = editable && !isRec
-                DeckKey(Deck.Record, shown == Deck.Record, enabled = canRec || isRec, desc = stringResource(R.string.record), glass = glass) {
-                    if (isRec) return@DeckKey
-                    player.stop(); deck = Deck.Idle; position = 0
-                    if (day.audio) confirmReplace = true else { haptics.longPress(); onRecord() }
+            DeckKey(Deck.Rewind, shown == Deck.Rewind, enabled = has && !isRec, desc = stringResource(R.string.recorder_rewind), glass = glass, hold = { down ->
+                if (down) {
+                    if (deck == Deck.Play) player.pause()
+                    deck = Deck.Rewind
+                    job = scope.launch { while (deck == Deck.Rewind && head > 0f) { head = (head - 40f * WIND_SPEED).coerceAtLeast(0f); delay(40) } }
+                } else if (deck == Deck.Rewind) {
+                    if (player.duration > 0) { player.seek(head.toInt()); player.resume(); deck = Deck.Play } else deck = Deck.Idle
                 }
-                DeckKey(Deck.Rewind, shown == Deck.Rewind, enabled = day.audio && !isRec, desc = stringResource(R.string.recorder_rewind), glass = glass, hold = { down ->
-                    if (down) { deck = Deck.Rewind; scope.launch { while (deck == Deck.Rewind) { seekBy(-1500); delay(150) } } } else if (deck == Deck.Rewind) deck = if (player.playing) Deck.Play else Deck.Idle
-                }) { seekBy(-5000) }
-                DeckKey(Deck.Forward, shown == Deck.Forward, enabled = day.audio && !isRec, desc = stringResource(R.string.recorder_forward), glass = glass, hold = { down ->
-                    if (down) { deck = Deck.Forward; scope.launch { while (deck == Deck.Forward) { seekBy(1500); delay(150) } } } else if (deck == Deck.Forward) deck = if (player.playing) Deck.Play else Deck.Idle
-                }) { seekBy(5000) }
-                DeckKey(Deck.Play, shown == Deck.Play, enabled = day.audio && !isRec, desc = stringResource(R.string.play), glass = glass) { play() }
-                DeckKey(Deck.Pause, shown == Deck.Pause, enabled = day.audio && !isRec, desc = stringResource(R.string.recorder_pause), glass = glass) {
-                    when (deck) {
-                        Deck.Play -> { player.pause(); deck = Deck.Pause }
-                        Deck.Pause -> play()
-                        else -> Unit
-                    }
+            }) { nudge(-5000f) }
+            DeckKey(Deck.Forward, shown == Deck.Forward, enabled = has && !isRec, desc = stringResource(R.string.recorder_forward), glass = glass, hold = { down ->
+                if (down) {
+                    if (deck == Deck.Play) player.pause()
+                    deck = Deck.Forward
+                    job = scope.launch { while (deck == Deck.Forward && head < dur) { head = (head + 40f * WIND_SPEED).coerceAtMost(dur.toFloat()); delay(40) } }
+                } else if (deck == Deck.Forward) {
+                    if (player.duration > 0) { player.seek(head.toInt()); player.resume(); deck = Deck.Play } else deck = Deck.Idle
                 }
-                DeckKey(Deck.Idle, false, enabled = isRec || deck != Deck.Idle || position > 0, desc = stringResource(R.string.record_stop), glass = glass) {
-                    if (isRec) onStopRecording() else { player.stop(); deck = Deck.Idle; position = 0 }
+            }) { nudge(5000f) }
+            DeckKey(Deck.Play, shown == Deck.Play, enabled = has && !isRec, desc = stringResource(R.string.play), glass = glass) { play() }
+            DeckKey(Deck.Pause, shown == Deck.Pause, enabled = has && !isRec, desc = stringResource(R.string.recorder_pause), glass = glass) {
+                when (deck) {
+                    Deck.Play -> { player.pause(); deck = Deck.Pause }
+                    Deck.Pause -> { player.resume(); deck = Deck.Play }
+                    else -> Unit
                 }
             }
-            WindowHint(
-                stringResource(
-                    when {
-                        isRec -> R.string.recorder_hint_recording
-                        !editable -> R.string.recorder_hint_dry
-                        !day.audio -> R.string.recorder_hint_empty
-                        else -> R.string.recorder_hint
-                    },
-                ),
-            )
+            DeckKey(Deck.Idle, false, enabled = true, desc = stringResource(R.string.record_stop), glass = glass) {
+                if (isRec) onStopRecording() else stopAll()
+            }
         }
     }
-    if (confirmReplace) {
-        ConfirmDialog(
-            title = stringResource(R.string.recorder_replace_title),
-            text = stringResource(R.string.recorder_replace_text),
-            confirm = stringResource(R.string.record),
-            tone = Tone.Danger,
-            onDismiss = { confirmReplace = false },
-        ) { confirmReplace = false; haptics.longPress(); onRecord() }
+
+    PaperPage(title = title, subtitle = subtitle, seed = seed, edgeHeight = 118.dp, edge = keys) {
+        Column(Modifier.fillMaxSize().padding(end = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // ——— Шухлядка з касетою (торкнись — перевернути на іншу сторону) ———
+            Canvas(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1.05f)
+                    .semantics { contentDescription = if (side == 0) "A" else "B" }
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = deck == Deck.Idle && recording == null && !flip.isRunning) {
+                        haptics.tap()
+                        stopAll()
+                        scope.launch {
+                            flip.animateTo(90f, tween(220, easing = LinearEasing))
+                            side = 1 - side
+                            flip.snapTo(-90f)
+                            flip.animateTo(0f, tween(220, easing = LinearEasing))
+                        }
+                    },
+            ) {
+                drawDeckWell(glass, ink)
+                val c = cassetteRect(size)
+                val sx = cos(flip.value * PI.toFloat() / 180f)
+                withScaleX(sx, c.center) {
+                    drawCassette(c, glass, ink, faint, side, (head / Limits.SIDE_MS).coerceIn(0f, 1f), angleL, angleR, moving = shown != Deck.Idle && shown != Deck.Pause)
+                }
+                // Скло дверцят — легкий відблиск поверх.
+                if (glass) drawRoundRect(
+                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent, Color.White.copy(alpha = 0.03f)), start = Offset.Zero, end = Offset(size.width, size.height)),
+                    cornerRadius = CornerRadius(12.dp.toPx()),
+                )
+            }
+            // ——— Динамік і два прилади праворуч ———
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Canvas(Modifier.weight(1f).fillMaxHeight()) { drawGrille(glass, ink, faint) }
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawMeter(glass, ink, faint, level, isRec) }
+                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawCounter(glass, ink, faint, head.toLong(), dur, takes, isRec) }
+                }
+            }
+        }
     }
 }
 
+/** Касета, що перевертається, — стискається по ширині до ребра й розкривається іншою стороною. */
+private inline fun DrawScope.withScaleX(sx: Float, pivot: Offset, block: DrawScope.() -> Unit) {
+    val k = abs(sx).coerceIn(0.02f, 1f)
+    drawContext.canvas.save()
+    drawContext.canvas.translate(pivot.x, pivot.y)
+    drawContext.canvas.scale(k, 1f)
+    drawContext.canvas.translate(-pivot.x, -pivot.y)
+    block()
+    drawContext.canvas.restore()
+}
+
+/** Касета в шухлядці: пропорції справжньої (≈ 100 × 63 мм), посередині. */
+private fun cassetteRect(size: Size): Rect {
+    val pad = size.minDimension * 0.07f
+    val maxW = size.width - pad * 2
+    val maxH = size.height - pad * 2
+    val w = minOf(maxW, maxH * 1.58f)
+    val h = w / 1.58f
+    return Rect(Offset((size.width - w) / 2, (size.height - h) / 2), Size(w, h))
+}
+
 /**
- * Клавіша магнітофона: велика, «западає», поки натиснута чи поки триває її дія ([latched]). [hold] — для перемотки:
- * поки тримаєш — мотає (true — натиснули, false — відпустили); короткий дотик — [onClick].
+ * Клавіша магнітофона — велика, донизу до самого краю сторінки. «Западає», поки натиснута чи поки триває її дія.
+ * [hold] — для перемотки: тримаєш — мотає (true — натиснули, false — відпустили); короткий дотик — [onClick].
  */
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.DeckKey(
@@ -274,48 +343,43 @@ private fun androidx.compose.foundation.layout.RowScope.DeckKey(
                     pressed = true
                     haptics.tap()
                     var held = false
-                    val job = if (hold != null) scope.launch { delay(350); held = true; hold(true) } else null
+                    val j = if (hold != null) scope.launch { delay(320); held = true; hold(true) } else null
                     val up = waitForUpOrCancellation()
-                    job?.cancel()
+                    j?.cancel()
                     pressed = false
                     if (held) hold?.invoke(false) else if (up != null) onClick()
                 }
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val depth = 6.dp.toPx()
-            val top = depth * sink
-            val r = CornerRadius(7.dp.toPx())
-            val faceH = size.height - depth
-            // Тінь / бічна грань клавіші — видно, поки вона не натиснута.
-            drawRoundRect(
-                if (glass) Color(0xFF050506) else Color.Black.copy(alpha = 0.55f),
-                topLeft = Offset(0f, depth),
-                size = Size(size.width, faceH),
-                cornerRadius = r,
-            )
-            val faceTop = Offset(0f, top)
-            val faceSize = Size(size.width, faceH)
+            val travel = 9.dp.toPx()
+            val top = travel * sink
+            val r = CornerRadius(6.dp.toPx())
+            // Щілина над клавішею — темна (видно, коли клавіша запала).
+            drawRect(Color.Black.copy(alpha = 0.7f), size = Size(size.width, travel + 2f))
+            val face = Size(size.width, size.height - top + r.y)
+            val tl = Offset(0f, top)
+            val edgeY = top + size.height * 0.42f
             if (glass) {
                 drawRoundRect(
-                    Brush.verticalGradient(0f to Color(0xFF2A2B2F), 1f to Color(0xFF141518), startY = top, endY = top + faceH),
-                    topLeft = faceTop, size = faceSize, cornerRadius = r,
+                    Brush.verticalGradient(0f to Color(0xFF34353A), 0.18f to Color(0xFF26272B), 1f to Color(0xFF111215), startY = top, endY = size.height),
+                    topLeft = tl, size = face, cornerRadius = r,
                 )
-                drawRoundRect(Color.White.copy(alpha = if (down) 0.10f else 0.22f), topLeft = faceTop, size = faceSize, cornerRadius = r, style = Stroke(1.dp.toPx()))
-                drawLine(Color.White.copy(alpha = if (down) 0.06f else 0.18f), Offset(6.dp.toPx(), top + 2.dp.toPx()), Offset(size.width - 6.dp.toPx(), top + 2.dp.toPx()), 1.dp.toPx())
+                drawLine(Color.White.copy(alpha = if (down) 0.08f else 0.24f), Offset(r.x, top + 1.dp.toPx()), Offset(size.width - r.x, top + 1.dp.toPx()), 1.dp.toPx())
+                drawRoundRect(Color.White.copy(alpha = 0.10f), topLeft = tl, size = face, cornerRadius = r, style = Stroke(1.dp.toPx()))
+                // Ребро, де верх клавіші переходить у її передню стінку.
+                drawLine(Color.Black.copy(alpha = 0.5f), Offset(2.dp.toPx(), edgeY), Offset(size.width - 2.dp.toPx(), edgeY), 1.dp.toPx())
             } else {
-                drawRoundRect(Color(0xFF15130F), topLeft = faceTop, size = faceSize, cornerRadius = r)
-                val pts = listOf(
-                    Offset(r.x, top), Offset(size.width - r.x, top + 0.6f), Offset(size.width, top + r.y), Offset(size.width - 0.6f, top + faceH - r.y),
-                    Offset(size.width - r.x, top + faceH), Offset(r.x, top + faceH - 0.6f), Offset(0f, top + faceH - r.y), Offset(0.6f, top + r.y), Offset(r.x, top),
-                )
-                drawPath(taperedPath(pts, 1.8.dp.toPx()), SheetInk.copy(alpha = if (down) 0.95f else 0.75f))
+                drawRoundRect(Color(0xFF13110E), topLeft = tl, size = face, cornerRadius = r)
+                val b = size.height + r.y
+                val pts = listOf(Offset(0.6f, b), Offset(0f, top + r.y), Offset(r.x, top), Offset(size.width - r.x, top + 0.6f), Offset(size.width, top + r.y), Offset(size.width - 0.6f, b))
+                drawPath(taperedPath(pts, 1.8.dp.toPx()), SheetInk.copy(alpha = if (down) 0.95f else 0.8f))
+                drawPath(taperedPath(listOf(Offset(3.dp.toPx(), edgeY), Offset(size.width / 2, edgeY + 0.8f), Offset(size.width - 3.dp.toPx(), edgeY)), 1.2.dp.toPx()), SheetInk.copy(alpha = 0.45f))
             }
-            if (down) drawRoundRect(Color.Black.copy(alpha = 0.25f), topLeft = faceTop, size = faceSize, cornerRadius = r)
-            // Знак на клавіші.
-            val c = Offset(size.width / 2, top + faceH / 2)
-            val s = minOf(size.width, faceH) * 0.18f
-            val a = if (enabled) 0.9f else 0.3f
+            if (down) drawRect(Color.Black.copy(alpha = 0.22f), topLeft = tl, size = face)
+            val c = Offset(size.width / 2, top + size.height * 0.22f)
+            val s = minOf(size.width * 0.16f, 9.dp.toPx())
+            val a = if (enabled) 0.9f else 0.28f
             drawKeySymbol(kind, c, s, if (kind == Deck.Record) RecRed.copy(alpha = a) else ink.copy(alpha = a))
         }
     }
@@ -354,74 +418,131 @@ private fun DrawScope.frame(topLeft: Offset, sz: Size, radius: Float, glass: Boo
     }
 }
 
+/** Шухлядка (касетний відсік): заглиблення з дверцятами. */
+private fun DrawScope.drawDeckWell(glass: Boolean, ink: Color) {
+    val r = 12.dp.toPx()
+    drawRoundRect(if (glass) Color(0xFF0B0B0D) else Color.Black.copy(alpha = 0.5f), cornerRadius = CornerRadius(r))
+    // Внутрішня тінь — шухлядка глибока.
+    drawRoundRect(
+        Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.6f), 0.15f to Color.Transparent, 0.85f to Color.Transparent, 1f to Color.White.copy(alpha = if (glass) 0.04f else 0f)),
+        cornerRadius = CornerRadius(r),
+    )
+    frame(Offset.Zero, size, r, glass, ink, seed = 7)
+    val inset = 5.dp.toPx()
+    frame(Offset(inset, inset), Size(size.width - inset * 2, size.height - inset * 2), r - inset / 2, glass, ink, alpha = 0.45f, seed = 8)
+}
+
 /**
- * Касета у віконці: корпус, наклейка, віконце з двома котушками (на лівій — ще не прослухане, на правій — уже), стрічка
- * внизу через ролики. [angle] — оберт котушок (радіани), [progress] — скільки стрічки вже на правій.
+ * Касета: корпус із гвинтиками, наклейка з літерою сторони, віконце (крізь нього видно намотану стрічку), отвори для
+ * маточин, а знизу — виступ із прорізами, де стрічку видно лише в отворах (голівка, ролики).
+ * [progress] — скільки стрічки вже на правій котушці (від усієї сторони).
  */
-private fun DrawScope.drawCassette(glass: Boolean, ink: Color, faint: Color, angle: Float, progress: Float, dateLabel: String?) {
-    val w = size.width
-    val h = size.height
-    val bodyR = 10.dp.toPx()
-    if (glass) drawRoundRect(Brush.verticalGradient(0f to Color(0xFF1C1D21), 1f to Color(0xFF101114)), cornerRadius = CornerRadius(bodyR))
-    frame(Offset.Zero, size, bodyR, glass, ink, seed = 1)
-    // Наклейка — смуга вгорі.
-    val labelTop = h * 0.08f
-    val labelH = h * 0.62f
-    frame(Offset(w * 0.06f, labelTop), Size(w * 0.88f, labelH), 6.dp.toPx(), glass, ink, alpha = 0.6f, seed = 2)
-    for (i in 1..2) {
-        val y = labelTop + labelH * (0.12f + i * 0.07f)
-        drawLine(faint, Offset(w * 0.12f, y), Offset(w * 0.88f, y), 0.8.dp.toPx())
+private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: Color, side: Int, progress: Float, angleL: Float, angleR: Float, moving: Boolean) {
+    val w = rc.width
+    val h = rc.height
+    fun p(x: Float, y: Float) = Offset(rc.left + x * w, rc.top + y * h)
+    val shellR = w * 0.035f
+    val body = if (glass) Color(0xFF1B1C20) else Color(0xFF15130F)
+    drawRoundRect(body, rc.topLeft, rc.size, CornerRadius(shellR))
+    if (glass) drawRoundRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.07f), 1f to Color.Transparent, startY = rc.top, endY = rc.bottom), rc.topLeft, rc.size, CornerRadius(shellR))
+    frame(rc.topLeft, rc.size, shellR, glass, ink, seed = 11)
+    // Гвинтики в кутах і посередині знизу.
+    listOf(p(0.04f, 0.06f), p(0.96f, 0.06f), p(0.04f, 0.94f), p(0.96f, 0.94f), p(0.5f, 0.9f)).forEach {
+        drawCircle(faint, w * 0.014f, it, style = Stroke(1.dp.toPx()))
+        drawLine(faint, it - Offset(w * 0.009f, 0f), it + Offset(w * 0.009f, 0f), 1.dp.toPx())
     }
-    // Віконце з котушками.
-    val winL = w * 0.18f
-    val winR = w * 0.82f
-    val cy = labelTop + labelH * 0.62f
-    val hubR = h * 0.075f
-    val packMax = h * 0.22f
-    val leftC = Offset(w * 0.32f, cy)
-    val rightC = Offset(w * 0.68f, cy)
-    val leftR = hubR + (packMax - hubR) * sqrt(1f - progress)
-    val rightR = hubR + (packMax - hubR) * sqrt(progress)
-    // Віконце (прозоре, з відблиском): стрічку на котушках видно лише крізь нього, як у справжньої касети.
-    val winTop = cy - packMax * 0.75f
-    val winH = packMax * 1.5f
-    val tape = if (glass) Color(0xFF26231F) else SheetInk.copy(alpha = 0.16f)
-    clipRect(winL, winTop, winR, winTop + winH) {
-        drawCircle(tape, leftR, leftC)
-        drawCircle(tape, rightR, rightC)
+    // Наклейка.
+    val label = Rect(p(0.07f, 0.08f), p(0.93f, 0.68f))
+    drawRoundRect(if (glass) Color(0xFF26272B) else Color(0xFF1D1A15), label.topLeft, label.size, CornerRadius(w * 0.02f))
+    frame(label.topLeft, label.size, w * 0.02f, glass, ink, alpha = 0.55f, seed = 12)
+    // Лінійки для підпису.
+    for (i in 0..1) {
+        val y = label.top + label.height * (0.16f + i * 0.11f)
+        drawLine(faint, Offset(label.left + label.width * 0.2f, y), Offset(label.right - label.width * 0.05f, y), 0.8.dp.toPx())
+    }
+    // Літера сторони — велика, ліворуч на наклейці.
+    drawSideLetter(side, Offset(label.left + label.width * 0.09f, label.top + label.height * 0.2f), label.height * 0.13f, ink)
+    // Віконце між маточинами: крізь нього видно стрічку на котушках.
+    // Як у справжньої касети: маточини на ~42 мм одна від одної (на 100 мм ширини), віконце між ними.
+    val win = Rect(p(0.355f, 0.38f), p(0.645f, 0.64f))
+    val hubL = p(0.29f, 0.51f)
+    val hubR = p(0.71f, 0.51f)
+    val hubRad = w * 0.05f
+    val rl = hubRad * sqrt(1f + (1f - progress) * (PACK_RATIO * PACK_RATIO - 1f))
+    val rr = hubRad * sqrt(1f + progress * (PACK_RATIO * PACK_RATIO - 1f))
+    drawRoundRect(Color.Black.copy(alpha = 0.85f), win.topLeft, win.size, CornerRadius(w * 0.012f))
+    clipRect(win.left, win.top, win.right, win.bottom) {
+        val tape = if (glass) TapeBrown else SheetInk.copy(alpha = 0.18f)
+        drawCircle(tape, rl, hubL)
+        drawCircle(tape, rr, hubR)
         if (!glass) {
-            drawCircle(SheetInk.copy(alpha = 0.6f), leftR, leftC, style = Stroke(1.2.dp.toPx()))
-            drawCircle(SheetInk.copy(alpha = 0.6f), rightR, rightC, style = Stroke(1.2.dp.toPx()))
+            drawCircle(SheetInk.copy(alpha = 0.55f), rl, hubL, style = Stroke(1.dp.toPx()))
+            drawCircle(SheetInk.copy(alpha = 0.55f), rr, hubR, style = Stroke(1.dp.toPx()))
         }
+        // Межа між шарами — ледь видні кільця.
+        drawCircle(Color.Black.copy(alpha = 0.25f), (rl + hubRad) / 2, hubL, style = Stroke(0.6.dp.toPx()))
+        drawCircle(Color.Black.copy(alpha = 0.25f), (rr + hubRad) / 2, hubR, style = Stroke(0.6.dp.toPx()))
+        // Прозорий пластик віконця з відблиском.
+        drawRect(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent), start = win.topLeft, end = win.bottomRight), win.topLeft, win.size)
     }
-    frame(Offset(winL, winTop), Size(winR - winL, winH), 5.dp.toPx(), glass, ink, alpha = 0.7f, seed = 3)
-    if (glass) drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), start = Offset(winL, winTop), end = Offset(winR, winTop + winH)), Offset(winL, winTop), Size(winR - winL, winH), CornerRadius(5.dp.toPx()))
-    // Маточини зі спицями — крутяться.
+    frame(win.topLeft, win.size, w * 0.012f, glass, ink, alpha = 0.55f, seed = 13)
+    // Отвори для маточин і самі маточини з зубцями — крутяться.
     fun hub(c: Offset, a: Float) {
-        drawCircle(if (glass) Color(0xFF0C0C0E) else Color(0xFF15130F), hubR, c)
-        drawCircle(ink.copy(alpha = 0.8f), hubR, c, style = Stroke(1.4.dp.toPx()))
+        drawCircle(Color.Black.copy(alpha = 0.9f), hubRad * 1.25f, c)
+        drawCircle(ink.copy(alpha = 0.5f), hubRad * 1.25f, c, style = Stroke(1.dp.toPx()))
+        drawCircle(if (glass) Color(0xFFE9E6DF).copy(alpha = 0.85f) else SheetInk.copy(alpha = 0.8f), hubRad, c, style = Stroke(1.6.dp.toPx()))
         rotate(a * 180f / PI.toFloat(), c) {
             for (k in 0 until 6) {
                 val t = k * PI.toFloat() / 3f
-                drawLine(ink.copy(alpha = 0.85f), c + Offset(cos(t), sin(t)) * (hubR * 0.35f), c + Offset(cos(t), sin(t)) * (hubR * 0.9f), 1.6.dp.toPx(), cap = StrokeCap.Round)
+                val d = Offset(cos(t), sin(t))
+                drawLine(ink.copy(alpha = 0.85f), c + d * (hubRad * 0.55f), c + d * (hubRad * 0.95f), 2.dp.toPx(), cap = StrokeCap.Round)
             }
         }
-        drawCircle(ink.copy(alpha = 0.6f), hubR * 0.25f, c, style = Stroke(1.dp.toPx()))
     }
-    hub(leftC, angle)
-    hub(rightC, angle)
-    // Стрічка внизу: від котушок до роликів і між ними — повз голівку.
-    val rollY = h * 0.86f
-    val rollL = Offset(w * 0.14f, rollY)
-    val rollR = Offset(w * 0.86f, rollY)
-    val tapeLine = if (glass) Color(0xFF6B6157) else SheetInk.copy(alpha = 0.55f)
-    drawLine(tapeLine, Offset(leftC.x - leftR, leftC.y), rollL, 1.4.dp.toPx())
-    drawLine(tapeLine, rollL, rollR, 1.4.dp.toPx())
-    drawLine(tapeLine, Offset(rightC.x + rightR, rightC.y), rollR, 1.4.dp.toPx())
-    drawCircle(ink.copy(alpha = 0.7f), 3.dp.toPx(), rollL, style = Stroke(1.2.dp.toPx()))
-    drawCircle(ink.copy(alpha = 0.7f), 3.dp.toPx(), rollR, style = Stroke(1.2.dp.toPx()))
-    // Голівка — посередині під стрічкою.
-    frame(Offset(w * 0.44f, rollY + 2.dp.toPx()), Size(w * 0.12f, h * 0.08f), 2.dp.toPx(), glass, ink, alpha = 0.7f, seed = 4)
+    hub(hubL, angleL)
+    hub(hubR, angleR)
+    // Виступ знизу (трапеція) з прорізами.
+    val bumpPts = listOf(Offset(rc.left + w * 0.17f, rc.bottom), Offset(rc.left + w * 0.22f, rc.top + h * 0.78f), Offset(rc.left + w * 0.78f, rc.top + h * 0.78f), Offset(rc.left + w * 0.83f, rc.bottom))
+    val bump = Path().apply { moveTo(bumpPts[0].x, bumpPts[0].y); bumpPts.drop(1).forEach { lineTo(it.x, it.y) }; close() }
+    drawPath(bump, if (glass) Color(0xFF151619) else Color(0xFF110F0C))
+    if (glass) drawPath(bump, Color.White.copy(alpha = 0.16f), style = Stroke(1.dp.toPx()))
+    else drawPath(taperedPath(bumpPts, 1.4.dp.toPx()), SheetInk.copy(alpha = 0.6f))
+    // Прорізи: ролики (круглі), голівка (посередині), притиск — і стрічка, видна лише в них, по самому низу.
+    val tapeY = rc.bottom - h * 0.035f
+    val holes = listOf(
+        Rect(p(0.235f, 0.88f), Size(w * 0.05f, h * 0.10f)),
+        Rect(p(0.36f, 0.88f), Size(w * 0.07f, h * 0.10f)),
+        Rect(p(0.455f, 0.86f), Size(w * 0.09f, h * 0.12f)),
+        Rect(p(0.57f, 0.88f), Size(w * 0.07f, h * 0.10f)),
+        Rect(p(0.715f, 0.88f), Size(w * 0.05f, h * 0.10f)),
+    )
+    val tapeLine = if (glass) Color(0xFF6E5A47) else SheetInk.copy(alpha = 0.7f)
+    holes.forEachIndexed { i, hr ->
+        drawRoundRect(Color.Black, hr.topLeft, hr.size, CornerRadius(w * 0.006f))
+        clipRect(hr.left, hr.top, hr.right, hr.bottom) {
+            drawLine(tapeLine, Offset(hr.left, tapeY), Offset(hr.right, tapeY), 1.6.dp.toPx())
+            if (moving && glass) drawLine(Color.White.copy(alpha = 0.18f), Offset(hr.left, tapeY - 0.5f), Offset(hr.right, tapeY - 0.5f), 0.6.dp.toPx())
+        }
+        if (i == 0 || i == 4) drawCircle(faint, hr.width * 0.3f, hr.center + Offset(0f, -hr.height * 0.15f), style = Stroke(0.8.dp.toPx()))
+    }
+}
+
+/** Літера сторони касети — «A» чи «B». */
+private fun DrawScope.drawSideLetter(side: Int, c: Offset, s: Float, ink: Color) {
+    val st = 1.8.dp.toPx()
+    if (side == 0) {
+        drawLine(ink, c + Offset(-s * 0.6f, s), c + Offset(0f, -s), st, cap = StrokeCap.Round)
+        drawLine(ink, c + Offset(0f, -s), c + Offset(s * 0.6f, s), st, cap = StrokeCap.Round)
+        drawLine(ink, c + Offset(-s * 0.32f, s * 0.25f), c + Offset(s * 0.32f, s * 0.25f), st, cap = StrokeCap.Round)
+    } else {
+        val path = Path().apply {
+            moveTo(c.x - s * 0.45f, c.y + s)
+            lineTo(c.x - s * 0.45f, c.y - s)
+            cubicTo(c.x + s * 0.55f, c.y - s, c.x + s * 0.55f, c.y - s * 0.05f, c.x - s * 0.45f, c.y - s * 0.05f)
+            cubicTo(c.x + s * 0.7f, c.y - s * 0.05f, c.x + s * 0.7f, c.y + s, c.x - s * 0.45f, c.y + s)
+        }
+        drawPath(path, ink, style = Stroke(st, cap = StrokeCap.Round))
+    }
 }
 
 /** Решітка динаміка — квадратні комірки рядами (як на старих касетниках). */
@@ -437,33 +558,89 @@ private fun DrawScope.drawGrille(glass: Boolean, ink: Color, faint: Color) {
     val ch = (size.height - pad * 2 - gap * (rows - 1)) / rows
     for (y in 0 until rows) for (x in 0 until cols) {
         val tl = Offset(pad + x * (cell + gap), pad + y * (ch + gap))
-        drawRoundRect(if (glass) Color.Black.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.45f), tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()))
+        drawRoundRect(Color.Black.copy(alpha = if (glass) 0.75f else 0.45f), tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()))
         drawRoundRect(faint, tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()), style = Stroke(0.8.dp.toPx()))
     }
 }
 
-/** Стрілочний «контроль запису»: дуга з поділками, червона зона праворуч, стрілка від гучності [level] (0…1). */
+/** Стрілочний «контроль запису»: пласка дуга з поділками, червона зона праворуч, стрілка від гучності [level] (0…1). */
 private fun DrawScope.drawMeter(glass: Boolean, ink: Color, faint: Color, level: Float, recording: Boolean) {
     val r = 8.dp.toPx()
-    if (glass) drawRoundRect(Brush.verticalGradient(0f to Color(0xFF1E1F22), 1f to Color(0xFF121315)), cornerRadius = CornerRadius(r))
+    drawRoundRect(if (glass) Color(0xFF1E1F22) else Color(0xFF1A1813), cornerRadius = CornerRadius(r))
     frame(Offset.Zero, size, r, glass, ink, seed = 6)
-    val pivot = Offset(size.width / 2, size.height * 0.92f)
-    val rad = minOf(size.width * 0.42f, size.height * 0.78f)
-    val from = -140f
-    val sweep = 100f
+    // Стрілка обертається з-під низу приладу: видно лише верхню частину дуги — прилад низький і широкий.
+    val pivot = Offset(size.width / 2, size.height * 1.35f)
+    val rad = size.height * 1.12f
+    val half = Math.toDegrees(kotlin.math.asin((size.width * 0.40f / rad).toDouble().coerceAtMost(0.95))).toFloat()
+    val from = -90f - half
+    val sweep = half * 2
     fun at(deg: Float, rr: Float) = pivot + Offset(cos(deg * PI.toFloat() / 180f), sin(deg * PI.toFloat() / 180f)) * rr
-    // Поділки; останні — червоні.
-    for (i in 0..10) {
-        val d = from + sweep * i / 10f
-        val red = i >= 8
-        drawLine(if (red) RecRed.copy(alpha = 0.9f) else ink.copy(alpha = 0.7f), at(d, rad * 0.86f), at(d, rad * (if (i % 5 == 0) 1f else 0.95f)), (if (i % 5 == 0) 1.6f else 1.1f).dp.toPx())
+    clipRect(0f, 0f, size.width, size.height) {
+        for (i in 0..10) {
+            val d = from + sweep * i / 10f
+            val red = i >= 8
+            drawLine(if (red) RecRed.copy(alpha = 0.9f) else ink.copy(alpha = 0.7f), at(d, rad * 0.9f), at(d, rad * (if (i % 5 == 0) 1f else 0.96f)), (if (i % 5 == 0) 1.5f else 1f).dp.toPx())
+        }
+        drawArc(faint, from, sweep * 0.8f, false, topLeft = pivot - Offset(rad * 0.88f, rad * 0.88f), size = Size(rad * 1.76f, rad * 1.76f), style = Stroke(1.dp.toPx()))
+        drawArc(RecRed.copy(alpha = 0.7f), from + sweep * 0.8f, sweep * 0.2f, false, topLeft = pivot - Offset(rad * 0.88f, rad * 0.88f), size = Size(rad * 1.76f, rad * 1.76f), style = Stroke(2.dp.toPx()))
+        val d = from + sweep * level.coerceIn(0f, 1f)
+        drawLine(ink, at(d, rad * 0.55f), at(d, rad * 0.99f), 1.5.dp.toPx(), cap = StrokeCap.Round)
     }
-    drawArc(faint, from, sweep * 0.8f, false, topLeft = pivot - Offset(rad * 0.8f, rad * 0.8f), size = Size(rad * 1.6f, rad * 1.6f), style = Stroke(1.dp.toPx()))
-    drawArc(RecRed.copy(alpha = 0.7f), from + sweep * 0.8f, sweep * 0.2f, false, topLeft = pivot - Offset(rad * 0.8f, rad * 0.8f), size = Size(rad * 1.6f, rad * 1.6f), style = Stroke(2.dp.toPx()))
-    // Стрілка.
-    val d = from + sweep * level.coerceIn(0f, 1f)
-    drawLine(ink, pivot, at(d, rad * 0.98f), 1.6.dp.toPx(), cap = StrokeCap.Round)
-    drawCircle(ink, 3.dp.toPx(), pivot)
-    // Вогник запису.
-    if (recording) drawCircle(RecRed, 3.5.dp.toPx(), Offset(size.width - 12.dp.toPx(), 12.dp.toPx()))
+    if (glass) drawRoundRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.07f), 0.5f to Color.Transparent), cornerRadius = CornerRadius(r))
+    if (recording) drawCircle(RecRed, 3.5.dp.toPx(), Offset(size.width - 10.dp.toPx(), 10.dp.toPx()))
+}
+
+private fun Color.argb(): Int = android.graphics.Color.argb((alpha * 255).toInt(), (red * 255).toInt(), (green * 255).toInt(), (blue * 255).toInt())
+
+/**
+ * Лічильник стрічки (лише показує, не натискається): цифри, як на механічному лічильнику, і шкала від 0 до кінця записаного
+ * — з рисками там, де почались дописи, і бігунком там, де зараз стрічка.
+ */
+private fun DrawScope.drawCounter(glass: Boolean, ink: Color, faint: Color, head: Long, dur: Long, takes: List<Long>, recording: Boolean) {
+    val r = 8.dp.toPx()
+    drawRoundRect(if (glass) Color(0xFF1E1F22) else Color(0xFF1A1813), cornerRadius = CornerRadius(r))
+    frame(Offset.Zero, size, r, glass, ink, seed = 9)
+    // Цифри в окремих віконцях.
+    val digits = clock(head).padStart(5, '0').toCharArray()
+    // Цифри вміщаються і по висоті, і по ширині приладу.
+    val boxW = minOf(size.height * 0.42f * 0.62f, size.width * 0.78f / (digits.size + (digits.size - 1) * 0.12f))
+    val boxH = boxW / 0.62f
+    val gap = boxW * 0.12f
+    val totalW = digits.size * boxW + (digits.size - 1) * gap
+    var x = (size.width - totalW) / 2
+    val y = size.height * 0.12f
+    val paint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+        textSize = boxH * 0.72f
+        typeface = android.graphics.Typeface.MONOSPACE
+    }
+    digits.forEach { ch ->
+        if (ch == ':') {
+            paint.color = ink.copy(alpha = 0.8f).argb()
+            drawContext.canvas.nativeCanvas.drawText(":", x + boxW / 2, y + boxH * 0.75f, paint)
+        } else {
+            drawRoundRect(Color.Black.copy(alpha = 0.85f), Offset(x, y), Size(boxW, boxH), CornerRadius(2.dp.toPx()))
+            drawRoundRect(faint, Offset(x, y), Size(boxW, boxH), CornerRadius(2.dp.toPx()), style = Stroke(0.8.dp.toPx()))
+            paint.color = (if (recording) RecRed else ink).argb()
+            drawContext.canvas.nativeCanvas.drawText(ch.toString(), x + boxW / 2, y + boxH * 0.76f, paint)
+        }
+        x += boxW + gap
+    }
+    // Шкала записаного: від початку до кінця.
+    val l = size.width * 0.1f
+    val rr = size.width * 0.9f
+    val sy = size.height * 0.8f
+    drawLine(faint, Offset(l, sy), Offset(rr, sy), 1.dp.toPx())
+    drawLine(ink.copy(alpha = 0.6f), Offset(l, sy - 4.dp.toPx()), Offset(l, sy + 4.dp.toPx()), 1.dp.toPx())
+    drawLine(ink.copy(alpha = 0.6f), Offset(rr, sy - 4.dp.toPx()), Offset(rr, sy + 4.dp.toPx()), 1.dp.toPx())
+    if (dur > 0) {
+        takes.forEach { t ->
+            val tx = l + (rr - l) * (t.toFloat() / dur).coerceIn(0f, 1f)
+            drawLine(ink.copy(alpha = 0.8f), Offset(tx, sy - 5.dp.toPx()), Offset(tx, sy + 5.dp.toPx()), 1.2.dp.toPx())
+        }
+        val hx = l + (rr - l) * (head.toFloat() / dur).coerceIn(0f, 1f)
+        drawPath(Path().apply { moveTo(hx, sy - 1.dp.toPx()); lineTo(hx - 4.dp.toPx(), sy - 7.dp.toPx()); lineTo(hx + 4.dp.toPx(), sy - 7.dp.toPx()); close() }, if (recording) RecRed else ink)
+    }
+    if (glass) drawRoundRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.07f), 0.5f to Color.Transparent), cornerRadius = CornerRadius(r))
 }

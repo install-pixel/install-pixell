@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +27,17 @@ import com.blacklaunch.diary.ui.theme.Oled
  * У щоденнику на неї перегортають шестернею; на полиці вона «перегортається» поверх полиці.
  */
 @Composable
-fun PaperPage(title: String, subtitle: String?, seed: Int, modifier: Modifier = Modifier, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
+fun PaperPage(
+    title: String,
+    subtitle: String?,
+    seed: Int,
+    modifier: Modifier = Modifier,
+    footer: String? = null,
+    /** Сторінка-прилад (магнітофон): вміст займає всю висоту, без прокрутки, а [edge] — по всій ширині до нижнього краю. */
+    edgeHeight: androidx.compose.ui.unit.Dp = 0.dp,
+    edge: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
     ReportPaperSeed(seed)
@@ -38,14 +51,23 @@ fun PaperPage(title: String, subtitle: String?, seed: Int, modifier: Modifier = 
         Column(
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(start = with(density) { (PageMetrics.MARGIN_LEFT * u).toDp() }, end = 14.dp, top = 22.dp, bottom = 22.dp),
+                .then(if (edge == null) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                .padding(start = with(density) { (PageMetrics.MARGIN_LEFT * u).toDp() }, end = 14.dp, top = 22.dp, bottom = if (edge == null) 22.dp else edgeHeight + 12.dp),
         ) {
             Text(title, style = style.copy(fontSize = headerSize.sp, lineHeight = (headerSize * 1.25f).sp, color = Oled.TextPrimary))
             if (subtitle != null) {
                 Text(subtitle, style = style.copy(fontSize = (headerSize * 0.6f).sp, lineHeight = (headerSize * 0.8f).sp, color = Oled.TextSecondary))
             }
-            Column(Modifier.padding(top = 10.dp), content = content)
+            Column(Modifier.padding(top = 10.dp).then(if (edge == null) Modifier else Modifier.weight(1f)), content = content)
+        }
+        if (edge != null) {
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .align(androidx.compose.ui.Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(edgeHeight)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = BookCorner, bottomEnd = BookCorner)),
+            ) { edge() }
         }
         if (footer != null) {
             Text(

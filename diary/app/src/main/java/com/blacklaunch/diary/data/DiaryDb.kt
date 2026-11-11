@@ -48,6 +48,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
         if ("torn" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN torn INTEGER NOT NULL DEFAULT 0")
         if ("tear0" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN tear0 REAL NOT NULL DEFAULT 0")
         if ("tear1" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN tear1 REAL NOT NULL DEFAULT 0")
+        if ("tape" !in columns) db.execSQL("ALTER TABLE day ADD COLUMN tape TEXT NOT NULL DEFAULT ''")
         val stored = meta("media_key")
         val raw = if (stored != null) {
             android.util.Base64.decode(stored, android.util.Base64.NO_WRAP)
@@ -71,12 +72,12 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
     }
 
     fun days(): List<Day> = db.rawQuery(
-        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption, no_photo, no_audio, torn, tear0, tear1 FROM day ORDER BY day",
+        "SELECT day, place, sealed, fresh, fresh_since, strikes, ink, photo, audio, audio_ms, wave, updated, caption, no_photo, no_audio, torn, tear0, tear1, tape FROM day ORDER BY day",
         emptyArray<String>(),
     ).use { c ->
         val out = ArrayList<Day>(c.count)
         while (c.moveToNext()) {
-            out += Day(
+            out += DayCodec.withTape(Day(
                 day = c.getLong(0),
                 place = c.getString(1),
                 sealed = c.getString(2),
@@ -95,7 +96,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
                 torn = c.getInt(15),
                 tearTry0 = c.getFloat(16),
                 tearTry1 = c.getFloat(17),
-            )
+            ), c.getString(18))
         }
         out
     }
@@ -124,6 +125,7 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
             put("audio", if (d.audio) 1 else 0)
             put("audio_ms", d.audioMs)
             put("wave", DayCodec.waveToString(d.wave))
+            put("tape", DayCodec.tapeToJson(d))
             put("updated", d.updated)
         }
         db.insertWithOnConflict("day", null, v, SQLiteDatabase.CONFLICT_REPLACE)
@@ -138,6 +140,8 @@ class DiaryDb private constructor(private val db: SQLiteDatabase, val dir: File)
 
     fun photoFile(day: Long) = File(dir, "photo_$day.bin")
     fun audioFile(day: Long) = File(dir, "audio_$day.bin")
+    /** Сторона B касети дня. */
+    fun audioFileB(day: Long) = File(dir, "audio_${day}_b.bin")
 
     fun writeMedia(file: File, plain: ByteArray) {
         val iv = ByteArray(12).also { SecureRandom().nextBytes(it) }

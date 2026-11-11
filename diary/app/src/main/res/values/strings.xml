@@ -222,10 +222,5 @@
     <string name="recorder_rewind">Rewind</string>
     <string name="recorder_forward">Fast forward</string>
     <string name="recorder_pause">Pause</string>
-    <string name="recorder_hint">Play, pause, rewind (hold to wind fast). Record again replaces the recording of this day.</string>
-    <string name="recorder_hint_empty">Nothing recorded yet — press the red key to record.</string>
-    <string name="recorder_hint_recording">Recording… press the square key to stop.</string>
-    <string name="recorder_hint_dry">This day has dried — the recording can only be listened to.</string>
-    <string name="recorder_replace_title">Record again?</string>
-    <string name="recorder_replace_text">The previous recording of this day will be gone.</string>
+    <string name="recorder_side_full">This side of the cassette is full (45 minutes) — turn it over to side B.</string>
 </resources>

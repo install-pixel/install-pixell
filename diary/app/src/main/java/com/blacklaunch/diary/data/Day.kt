@@ -51,13 +51,20 @@ data class Day(
     val audioMs: Long = 0L,
     /** Обриси звуку (0…1) — для смужки запису. */
     val wave: List<Float> = emptyList(),
+    /** Де на стороні A починаються дописи (мс від початку): запис заново не стирає, а дописує в кінець. */
+    val takes: List<Long> = emptyList(),
+    /** Сторона B тієї самої касети дня. */
+    val audioB: Boolean = false,
+    val audioMsB: Long = 0L,
+    val waveB: List<Float> = emptyList(),
+    val takesB: List<Long> = emptyList(),
     val updated: Long = 0L,
 ) {
     val text: String get() = sealed + fresh
 
     /** Нічого не написано / не додано (для номерів сторінок). */
     val isBlank: Boolean
-        get() = place.isBlank() && text.isBlank() && ink.isEmpty() && !photo && !audio
+        get() = place.isBlank() && text.isBlank() && ink.isEmpty() && !photo && !audio && !audioB
 
     /** Нічого зберігати: порожній і місця під фото / голос не прибирали. */
     val isEmpty: Boolean
@@ -130,6 +137,33 @@ object DayCodec {
             val arr = JSONArray(s)
             List(arr.length()) { i -> arr.getJSONArray(i).let { Strike(it.getInt(0), it.getInt(1)) } }
         }.getOrDefault(emptyList())
+    }
+
+    /** Касета поза стороною A (дописи A, уся сторона B) — одним рядком JSON. */
+    fun tapeToJson(d: Day): String {
+        if (d.takes.isEmpty() && !d.audioB) return ""
+        return JSONObject()
+            .put("takes", JSONArray(d.takes))
+            .put("b", d.audioB)
+            .put("msB", d.audioMsB)
+            .put("waveB", waveToString(d.waveB))
+            .put("takesB", JSONArray(d.takesB))
+            .toString()
+    }
+
+    fun withTape(d: Day, s: String?): Day {
+        if (s.isNullOrBlank()) return d
+        return runCatching {
+            val o = JSONObject(s)
+            fun longs(a: JSONArray?) = if (a == null) emptyList() else List(a.length()) { a.getLong(it) }
+            d.copy(
+                takes = longs(o.optJSONArray("takes")),
+                audioB = o.optBoolean("b"),
+                audioMsB = o.optLong("msB"),
+                waveB = waveFromString(o.optString("waveB")),
+                takesB = longs(o.optJSONArray("takesB")),
+            )
+        }.getOrDefault(d)
     }
 
     fun waveToString(w: List<Float>): String = w.joinToString(",") { (it * 100).toInt().toString() }

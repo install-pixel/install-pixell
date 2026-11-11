@@ -217,6 +217,22 @@ class LogicTest {
     }
 
     @Test
+    fun tapeSidesAndTakesRoundTrip() {
+        val d = Day(100, audio = true, audioMs = 5000, takes = listOf(2000L), audioB = true, audioMsB = 3000, waveB = listOf(0.5f, 1f), takesB = listOf(1000L))
+        val back = DayCodec.withTape(Day(100, audio = true, audioMs = 5000), DayCodec.tapeToJson(d))
+        assertEquals(listOf(2000L), back.takes)
+        assertEquals(true, back.audioB)
+        assertEquals(3000L, back.audioMsB)
+        assertEquals(listOf(0.5f, 1f), back.waveB)
+        assertEquals(listOf(1000L), back.takesB)
+        assertEquals("", DayCodec.tapeToJson(Day(1)))
+        // Обриси допису займають місце за тривалістю.
+        val merged = DiaryViewModel.mergeWave(List(10) { 0.2f }, 3000, List(10) { 0.9f }, 1000, n = 8)
+        assertEquals(8, merged.size)
+        assertEquals(6, merged.count { it == 0.2f })
+    }
+
+    @Test
     fun searchPeriodsAndBest() {
         val today = 20000L
         val list = (0 until 60).map { Day(today - it, sealed = "день $it", photo = true, audio = it % 2 == 0) }

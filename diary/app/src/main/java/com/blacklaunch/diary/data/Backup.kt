@@ -39,6 +39,8 @@ object Backup {
         val audios: Map<Long, ByteArray>,
         val coverGlass: ByteArray?,
         val coverSheet: ByteArray?,
+        /** Сторона B касет. */
+        val audiosB: Map<Long, ByteArray> = emptyMap(),
     )
 
     fun write(
@@ -50,6 +52,7 @@ object Backup {
         audio: (Long) -> ByteArray?,
         coverGlass: ByteArray?,
         coverSheet: ByteArray?,
+        audioB: (Long) -> ByteArray? = { null },
     ) {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
         val key = SecretKeySpec(DiaryKeys.pbkdf2(password, salt, ITERATIONS), "AES")
@@ -71,6 +74,7 @@ object Backup {
             days.forEach { d ->
                 if (d.photo) photo(d.day)?.let { put("media/photo_${d.day}.jpg", it) }
                 if (d.audio) audio(d.day)?.let { put("media/audio_${d.day}.m4a", it) }
+                if (d.audioB) audioB(d.day)?.let { put("media/audioB_${d.day}.m4a", it) }
             }
             coverGlass?.let { put("cover_glass.jpg", it) }
             coverSheet?.let { put("cover_sheet.jpg", it) }
@@ -92,6 +96,7 @@ object Backup {
         var days = emptyList<Day>()
         val photos = HashMap<Long, ByteArray>()
         val audios = HashMap<Long, ByteArray>()
+        val audiosB = HashMap<Long, ByteArray>()
         var coverGlass: ByteArray? = null
         var coverSheet: ByteArray? = null
         ZipInputStream(ChunkedIn(data, key)).use { zip ->
@@ -106,13 +111,14 @@ object Backup {
                     }
                     e.name == "days.json" -> JSONArray(String(bytes)).let { a -> days = List(a.length()) { dayFromJson(a.getJSONObject(it)) } }
                     e.name.startsWith("media/photo_") -> e.name.removePrefix("media/photo_").removeSuffix(".jpg").toLongOrNull()?.let { photos[it] = bytes }
+                    e.name.startsWith("media/audioB_") -> e.name.removePrefix("media/audioB_").removeSuffix(".m4a").toLongOrNull()?.let { audiosB[it] = bytes }
                     e.name.startsWith("media/audio_") -> e.name.removePrefix("media/audio_").removeSuffix(".m4a").toLongOrNull()?.let { audios[it] = bytes }
                     e.name == "cover_glass.jpg" -> coverGlass = bytes
                     e.name == "cover_sheet.jpg" -> coverSheet = bytes
                 }
             }
         }
-        return Contents(name, created, tint, days, photos, audios, coverGlass, coverSheet)
+        return Contents(name, created, tint, days, photos, audios, coverGlass, coverSheet, audiosB)
     }
 
     private fun dayToJson(d: Day) = JSONObject()
@@ -133,9 +139,10 @@ object Backup {
         .put("audio", d.audio)
         .put("audioMs", d.audioMs)
         .put("wave", DayCodec.waveToString(d.wave))
+        .put("tape", DayCodec.tapeToJson(d))
         .put("updated", d.updated)
 
-    private fun dayFromJson(o: JSONObject) = Day(
+    private fun dayFromJson(o: JSONObject) = DayCodec.withTape(Day(
         day = o.getLong("day"),
         place = o.optString("place"),
         sealed = o.optString("sealed"),
@@ -154,7 +161,7 @@ object Backup {
         audioMs = o.optLong("audioMs"),
         wave = DayCodec.waveFromString(o.optString("wave")),
         updated = o.optLong("updated"),
-    )
+    ), o.optString("tape"))
 
     /**
      * Частина: [довжина][IV 12][шифротекст]. Номер частини й ознака «остання» — у додаткових даних GCM, тож переставити

@@ -242,7 +242,7 @@ fun BookScreen(
     fun slotsFor(d: com.blacklaunch.diary.data.Day, text: String = d.text): Pair<Boolean, Boolean> {
         if (d.torn and 1 != 0) return false to false
         val hasP = d.photo
-        val hasA = d.audio || recording?.day == d.day
+        val hasA = d.audio || d.audioB || recording?.day == d.day
         // Висохлий день — без місць-запрошень: додати вже нічого не можна.
         val open = !DiaryViewModel.isDry(d.day)
         val wantP = open && !hasP && info.photos && !d.noPhoto
@@ -451,24 +451,28 @@ fun BookScreen(
     }
 
     // ——— Запис голосу ———
-    fun startRecording(day: Long) {
+    // Пишеться на сторону касети [side] — у кінець того, що там уже є; стрічки на стороні — 45 хвилин.
+    fun startRecording(day: Long, side: Int) {
         if (recording != null) return
+        val d = vm.day(day)
+        val base = if (side == 0) (if (d.audio) d.audioMs else 0L) else (if (d.audioB) d.audioMsB else 0L)
+        if (base >= Limits.SIDE_MS - 1000) { vm.show(R.string.recorder_side_full); return }
         if (!recorder.start()) { vm.show(R.string.record_failed); return }
         haptics.longPress()
-        val st = RecordingState(day)
+        val st = RecordingState(day, side, base)
         recording = st
         scope.launch {
             while (recording === st) {
-                recorder.sample()
+                st.level = recorder.sample()
                 st.wave = DiaryViewModel.compactWave(recorder.wave.toList())
                 st.elapsed = recorder.elapsed
-                if (recorder.elapsed >= Limits.AUDIO_MS) break
+                if (base + recorder.elapsed >= Limits.SIDE_MS) break
                 delay(80)
             }
             if (recording === st) {
                 recording = null
                 val r = recorder.finish()
-                if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList()) else vm.show(R.string.record_short)
+                if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side) else vm.show(R.string.record_short)
             }
         }
     }
@@ -477,18 +481,18 @@ fun BookScreen(
         recording = null
         haptics.tap()
         val r = recorder.finish()
-        if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList()) else vm.show(R.string.record_short)
+        if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side) else vm.show(R.string.record_short)
     }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
-    var micFor by remember { mutableStateOf<Long?>(null) }
+    var micFor by remember { mutableStateOf<Pair<Long, Int>?>(null) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val d = micFor
         micFor = null
-        if (ok && d != null) startRecording(d) else if (!ok) vm.show(R.string.mic_denied)
+        if (ok && d != null) startRecording(d.first, d.second) else if (!ok) vm.show(R.string.mic_denied)
     }
-    fun record(day: Long) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording(day)
-        else { micFor = day; micPermission.launch(Manifest.permission.RECORD_AUDIO) }
+    fun record(day: Long, side: Int) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording(day, side)
+        else { micFor = day to side; micPermission.launch(Manifest.permission.RECORD_AUDIO) }
     }
 
     // ——— Вибір фото й файлів ———
@@ -836,18 +840,17 @@ fun BookScreen(
                                     )
                                 }
                             }
-                            is BookPage.Recorder -> PaperPage(
-                                title = stringResource(R.string.recorder_title),
-                                subtitle = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.getDefault()).format(LocalDate.ofEpochDay(p.day)),
-                                seed = info.tint * 7 + 71,
-                            ) {
+                            is BookPage.Recorder -> {
                                 val d = vm.day(p.day)
                                 RecorderPage(
                                     vm = vm,
                                     day = d,
+                                    title = stringResource(R.string.recorder_title),
+                                    subtitle = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.getDefault()).format(LocalDate.ofEpochDay(p.day)),
+                                    seed = info.tint * 7 + 71,
                                     editable = !DiaryViewModel.isDry(p.day),
                                     recording = recording?.takeIf { it.day == p.day },
-                                    onRecord = { if (d.audio || roomFor(p.day, photo = false)) record(p.day) else vm.show(R.string.no_room_voice) },
+                                    onRecord = { side -> if (d.audio || d.audioB || roomFor(p.day, photo = false)) record(p.day, side) else vm.show(R.string.no_room_voice) },
                                     onStopRecording = { stopRecording() },
                                 )
                             }
@@ -1079,8 +1082,8 @@ fun BookScreen(
                         },
                         Tool(Glyph.Mic, stringResource(R.string.record)) {
                             when {
-                                dry && !d.audio -> vm.show(R.string.page_dry)
-                                d.audio || roomFor(day, photo = false) -> openRecorder(day)
+                                dry && !d.audio && !d.audioB -> vm.show(R.string.page_dry)
+                                d.audio || d.audioB || roomFor(day, photo = false) -> openRecorder(day)
                                 else -> vm.show(R.string.no_room_voice)
                             }
                         },
