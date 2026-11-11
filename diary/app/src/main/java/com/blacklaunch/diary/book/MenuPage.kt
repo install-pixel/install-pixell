@@ -27,6 +27,7 @@ import com.blacklaunch.diary.ui.theme.Oled
 fun PaperPage(title: String, subtitle: String?, seed: Int, modifier: Modifier = Modifier, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
+    ReportPaperSeed(seed)
     BoxWithConstraints(modifier.fillMaxSize().paperRelief(glass, seed)) {
         val u = constraints.maxWidth / PageMetrics.WIDTH
         val style = pageTextStyle(u.coerceAtLeast(0.01f), density, glass)

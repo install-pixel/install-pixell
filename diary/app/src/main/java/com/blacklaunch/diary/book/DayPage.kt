@@ -162,6 +162,7 @@ fun DayPage(
     val lines = remember(textTop, lineCount, u) { List(lineCount) { i -> (textTop + (i + 1) * PageMetrics.LINE - PageMetrics.LINE * 0.14f) * u } }
     val style = pageTextStyle(u, density, glass)
     val locale = Locale.getDefault()
+    ReportPaperSeed(pageSeed(day.day, part))
 
     Box(
         Modifier

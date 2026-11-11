@@ -58,6 +58,20 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
+/**
+ * Кожна сторінка, що малює папір, сама каже, який у неї аркуш ([ReportPaperSeed]) — і зворот при перегортанні та
+ * вириванні береться саме з нього (ті самі заломи дзеркально, той самий вік). Тож будь-яка нова сторінка на
+ * [PaperPage] чи [DayPage] має правильний зворот без жодних налаштувань у [FlipBook].
+ */
+val LocalPaperSeed = androidx.compose.runtime.staticCompositionLocalOf<(Int) -> Unit> { {} }
+
+/** Сторінка повідомляє книжці свій аркуш (для звороту). */
+@Composable
+fun ReportPaperSeed(seed: Int) {
+    val sink = LocalPaperSeed.current
+    androidx.compose.runtime.SideEffect { sink(seed) }
+}
+
 /** Сторінку малюють лише як силует під прозорою верхньою (нічого не реєструє й не редагується). */
 val LocalPagePreview = androidx.compose.runtime.staticCompositionLocalOf { false }
 
@@ -172,7 +186,14 @@ fun FlipBook(
     val currentCount by rememberUpdatedState(count)
     val isEnabled by rememberUpdatedState(enabled)
     val isHeavy by rememberUpdatedState(heavy)
-    val seedOf by rememberUpdatedState(paperSeed)
+    val givenSeed by rememberUpdatedState(paperSeed)
+    // Аркуші, про які сказали самі сторінки; інакше — що дав [paperSeed].
+    val reported = androidx.compose.runtime.remember { HashMap<Int, Int>() }
+    val seedOf: (Int) -> Int = { i -> reported[i] ?: givenSeed(i) }
+    @Composable
+    fun pageWithPaper(i: Int) {
+        CompositionLocalProvider(LocalPaperSeed provides { s: Int -> reported[i] = s }) { page(i) }
+    }
     val mayForward by rememberUpdatedState(canFlipForward)
     val blockers by rememberUpdatedState(blocked)
     val next by rememberUpdatedState(nextOf)
@@ -359,7 +380,7 @@ fun FlipBook(
                             tearLayer.record { this@drawWithContent.drawContent() }
                             drawPeel(TearGeometry(size.width, size.height, f), tearLayer, seedOf(state.index), state.tearSeed, alpha = 1f - state.tearFall, state)
                         },
-                ) { page(state.index) }
+                ) { pageWithPaper(state.index) }
             }
         } else {
             // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
@@ -376,7 +397,7 @@ fun FlipBook(
                                 underBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
                             }
                         },
-                ) { page(under) }
+                ) { pageWithPaper(under) }
             }
             key(top) {
                 Box(
@@ -393,7 +414,7 @@ fun FlipBook(
                             val hv = isHeavy(top)
                             drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, if (glassNow) Blurred(underBlur, topBlur) else null, seedOf(top))
                         },
-                ) { page(top) }
+                ) { pageWithPaper(top) }
             }
         }
         // Розмір книги потрібен і без руху (для переходу «до сторінки»).
@@ -567,7 +588,8 @@ private fun DrawScope.strip(
                             PaperTexture.backShadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
                             PaperTexture.backLightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
                         }
-                        if (!heavy) drawAging(DiaryViewModel_ageOf(seed), seed * 31 + 7, glass = false)
+                        // Старіє лише аркуш дня (у його номері — день); сторінки меню й пошуку — без віку.
+                        if (!heavy && (seed ushr 12) != 0) drawAging(DiaryViewModel_ageOf(seed), seed * 31 + 7, glass = false)
                     }
                 }
             } else {

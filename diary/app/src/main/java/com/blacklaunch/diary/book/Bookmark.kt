@@ -248,7 +248,8 @@ fun DrawScope.drawSearchRibbon(glass: Boolean) {
         if (g > 0.01f) {
             val c = Offset(x - 0.8.dp.toPx(), end - notch - 9.dp.toPx())
             val r = 3.5.dp.toPx()
-            val ink = (if (glass) Color.White else SheetInk).copy(alpha = 0.85f * g)
+            // Лупа — ледь помітна, як витиснена на стрічці.
+            val ink = (if (glass) Color.White else SheetInk).copy(alpha = 0.28f * g)
             drawCircle(ink, r, c, style = Stroke(1.3.dp.toPx()))
             drawLine(ink, c + Offset(r * 0.7f, r * 0.7f), c + Offset(r * 1.7f, r * 1.7f), 1.5.dp.toPx())
         }
