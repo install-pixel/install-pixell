@@ -181,19 +181,28 @@ fun DrawScope.drawTornRemnant(
         drawLine(if (glass) Color(0xFF4A505A) else Color(0xFF7D7465), pts[i - 1], pts[i], (0.7f + 1.9f * o) * density)
     }
     for (i in 1 until pts.size) drawLine(Color.Black.copy(alpha = 0.45f), pts[i - 1], pts[i], (0.4f + 0.4f * open(pts[i])) * density)
-    // Рідкі мікротріщини углиб аркуша (праворуч від розриву).
+    // Рідкі мікротріщини — лише в папері, що лишився (ліворуч від розриву, до корінця): ні на сусідню сторінку, ні за
+    // лінію розриву не виходять.
+    val left = Path().apply {
+        moveTo(0f, pts.first().y)
+        pts.forEach { lineTo(it.x, it.y) }
+        lineTo(0f, tip.y)
+        close()
+    }
     val rnd = java.util.Random(seed * 7_331L + 3)
     val crack = Color.Black.copy(alpha = if (glass) 0.45f else 0.55f)
-    pts.forEachIndexed { i, p ->
-        if (i % 3 != 1 || rnd.nextFloat() > 0.55f) return@forEachIndexed
-        var q = p
-        var a = (rnd.nextFloat() - 0.5f) * 1.4f
-        repeat(2 + rnd.nextInt(3)) {
-            val len = (1.5f + rnd.nextFloat() * 3.5f) * density
-            val nq = q + Offset(kotlin.math.cos(a) * len, kotlin.math.sin(a) * len)
-            drawLine(crack, q, nq, 0.6f * density)
-            q = nq
-            a += (rnd.nextFloat() - 0.5f) * 0.9f
+    clipPath(left) {
+        pts.forEachIndexed { i, p ->
+            if (i % 3 != 1 || rnd.nextFloat() > 0.55f) return@forEachIndexed
+            var q = p
+            var a = kotlin.math.PI.toFloat() + (rnd.nextFloat() - 0.5f) * 1.4f
+            repeat(2 + rnd.nextInt(3)) {
+                val len = (1.5f + rnd.nextFloat() * 3.5f) * density
+                val nq = q + Offset(kotlin.math.cos(a) * len, kotlin.math.sin(a) * len)
+                drawLine(crack, q, nq, 0.6f * density)
+                q = nq
+                a += (rnd.nextFloat() - 0.5f) * 0.9f
+            }
         }
     }
 }
