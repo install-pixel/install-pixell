@@ -61,6 +61,9 @@ import kotlin.math.sin
 /** Сторінку малюють лише як силует під прозорою верхньою (нічого не реєструє й не редагується). */
 val LocalPagePreview = androidx.compose.runtime.staticCompositionLocalOf { false }
 
+/** Сторінка лежить під тією, яку виривають: її власні розриви й скотч сховані під клаптиком, не плутаються з новим. */
+val LocalUnderTear = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 /**
  * Стан гортання: яка сторінка відкрита і що зараз «у руці». Сторінку беруть не від самого краю (там системний жест
  * «Назад»), а в зовнішній третині — і перегортають пальцем; відпустив — вона або лягає, або повертається.
@@ -331,7 +334,7 @@ fun FlipBook(
                         .clip(RoundedCornerShape(BookCorner))
                         .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
                 ) {
-                    CompositionLocalProvider(LocalPagePreview provides true) {
+                    CompositionLocalProvider(LocalPagePreview provides true, LocalUnderTear provides true) {
                         if (peek != null) key(peek) { page(peek) } else blankUnder?.invoke()
                     }
                 }
@@ -626,10 +629,14 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
         if (kk > 0.005f) {
             val liftedPath = poly(g.lifted)
             canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint().apply { this.alpha = if (state.tearRenew) 1f - state.tearFall else 1f })
-            // Смужка — сама сторінка (той самий папір і колір), лише там, де аркуш уже піднявся: шва по лінії загину немає.
-            drawTornRemnant(TEAR_X.toPx(), size.height * (1f - kk), size.height, tearSeed, glass, fill = true) { strip ->
-                clipPath(strip) { if (falling) drawLayer(layer) else clipPath(liftedPath) { drawLayer(layer) } }
+            // Смужка — сама сторінка (той самий папір і колір), рівно там, де аркуш уже піднявся (обрізана лінією
+            // загину): ні шва, ні щілини біля загину.
+            val draw: DrawScope.() -> Unit = {
+                drawTornRemnant(TEAR_X.toPx(), size.height * (1f - kk) - 40.dp.toPx(), size.height, tearSeed, glass, fill = true, pointed = false) { strip ->
+                    clipPath(strip) { drawLayer(layer) }
+                }
             }
+            if (falling) draw() else clipPath(liftedPath) { draw() }
             canvas.restore()
         }
     }

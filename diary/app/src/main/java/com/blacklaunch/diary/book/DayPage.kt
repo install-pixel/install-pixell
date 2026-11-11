@@ -149,6 +149,7 @@ fun DayPage(
     val glass = AppStyle.glass
     // Силует під прозорою сторінкою — лише малюнок, без редагування.
     val preview = LocalPagePreview.current
+    val underTear = LocalUnderTear.current
     // Висохлий день: нічого не змінити — ні текст, ні фото, ні голос, ні місце (лише олівець, він окремо).
     val dry = DiaryViewModel.isDry(day.day)
     @Suppress("NAME_SHADOWING") val editable = editable && !preview && !dry
@@ -178,7 +179,8 @@ fun DayPage(
                 val tapeSeed = tearSeedOf(day.day, part)
                 val tapeMargin = PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH
                 val f = tearFinger?.invoke()
-                if (f == null || tapeK <= 0.01f) drawTapedTear(tapeK, tapeSeed, glass, tapeMargin)
+                if (underTear) Unit
+                else if (f == null || tapeK <= 0.01f) drawTapedTear(tapeK, tapeSeed, glass, tapeMargin)
                 else {
                     // Те, що піднялося, забрало свій скотч із собою (його малює клапоть) — тут лише те, що лежить.
                     val stay = TearGeometry(size.width, size.height, f).stay
@@ -188,7 +190,7 @@ fun DayPage(
                     clipPath(path) { drawTapedTear(tapeK, tapeSeed, glass, tapeMargin) }
                 }
                 // Клаптик раніше вирваної сторінки лежить ЗВЕРХУ: з-під нього видно лише те, що виглядає (скотч, розрив).
-                if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
+                if (stub && !underTear) drawTornStub((day.day * 7 + part).toInt(), glass)
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
