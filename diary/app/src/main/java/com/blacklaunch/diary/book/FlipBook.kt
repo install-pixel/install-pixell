@@ -63,13 +63,16 @@ import kotlin.math.sin
  * вириванні береться саме з нього (ті самі заломи дзеркально, той самий вік). Тож будь-яка нова сторінка на
  * [PaperPage] чи [DayPage] має правильний зворот без жодних налаштувань у [FlipBook].
  */
-val LocalPaperSeed = androidx.compose.runtime.staticCompositionLocalOf<(Int) -> Unit> { {} }
+val LocalPaperSeed = androidx.compose.runtime.staticCompositionLocalOf<(Int, Long) -> Unit> { { _, _ -> } }
 
-/** Сторінка повідомляє книжці свій аркуш (для звороту). */
+/**
+ * Сторінка повідомляє книжці свій аркуш (для звороту) і його вік у днях — за тими самими правилами старіння, що й лице:
+ * аркуш дня старіє від свого дня, сторінки без дати (меню, пошук, календар) — нові ([ageDays] = 0).
+ */
 @Composable
-fun ReportPaperSeed(seed: Int) {
+fun ReportPaperSeed(seed: Int, ageDays: Long = 0L) {
     val sink = LocalPaperSeed.current
-    androidx.compose.runtime.SideEffect { sink(seed) }
+    androidx.compose.runtime.SideEffect { sink(seed, ageDays) }
 }
 
 /** Сторінку малюють лише як силует під прозорою верхньою (нічого не реєструє й не редагується). */
@@ -188,11 +191,13 @@ fun FlipBook(
     val isHeavy by rememberUpdatedState(heavy)
     val givenSeed by rememberUpdatedState(paperSeed)
     // Аркуші, про які сказали самі сторінки; інакше — що дав [paperSeed].
-    val reported = androidx.compose.runtime.remember { HashMap<Int, Int>() }
-    val seedOf: (Int) -> Int = { i -> reported[i] ?: givenSeed(i) }
+    val reported = androidx.compose.runtime.remember { HashMap<Int, Pair<Int, Long>>() }
+    val seedOf: (Int) -> Int = { i -> reported[i]?.first ?: givenSeed(i) }
+    // Сторінка, що не сказала свого віку, — нова (не старіє).
+    val ageOf: (Int) -> Long = { i -> reported[i]?.second ?: 0L }
     @Composable
     fun pageWithPaper(i: Int) {
-        CompositionLocalProvider(LocalPaperSeed provides { s: Int -> reported[i] = s }) { page(i) }
+        CompositionLocalProvider(LocalPaperSeed provides { s: Int, a: Long -> reported[i] = s to a }) { page(i) }
     }
     val mayForward by rememberUpdatedState(canFlipForward)
     val blockers by rememberUpdatedState(blocked)
@@ -412,7 +417,7 @@ fun FlipBook(
                                 topBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
                             }
                             val hv = isHeavy(top)
-                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, if (glassNow) Blurred(underBlur, topBlur) else null, seedOf(top))
+                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, if (glassNow) Blurred(underBlur, topBlur) else null, seedOf(top), ageOf(top))
                         },
                 ) { pageWithPaper(top) }
             }
@@ -427,16 +432,16 @@ fun FlipBook(
  * валику й пласкою частиною, що лягла назад. Сторінку смужками перерозміщено по горизонталі — без нахилу, тож згин
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
-private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, blur: Blurred?, seed: Int) {
+private fun DrawScope.drawCurl(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, blur: Blurred?, seed: Int, age: Long) {
     // Усе — лише в межах книжки (із заокругленими кутами): аркуш пришитий до корінця й за книжку не виходить. Біля
     // корінця аркуш лягає ПОВЕРХ рамки сторінки під ним (на півтовщини лінії лівіше), а не під неї.
     val corner = BookCorner.toPx()
     val left = -1.5.dp.toPx()
     val bounds = Path().apply { addRoundRect(RoundRect(left, 0f, size.width, size.height, CornerRadius(corner))) }
-    clipPath(bounds) { curlContent(g, layer, heavy, corner, blur, seed) }
+    clipPath(bounds) { curlContent(g, layer, heavy, corner, blur, seed, age) }
 }
 
-private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, corner: Float, blur: Blurred?, seed: Int) {
+private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: Boolean, corner: Float, blur: Blurred?, seed: Int, age: Long) {
     val glass = AppStyle.glass
     val w = size.width
     val h = size.height
@@ -505,9 +510,9 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
                 if (x1 <= 0f || x0 >= w) continue
                 // Світло на звороті валика: найяскравіше посередині вигину — так око бачить, що аркуш круглий.
                 val mid = (t0 + t1) / 2f
-                strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)), blur = blur, seed = seed)
+                strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)), blur = blur, seed = seed, age = age)
             }
-            if (backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, blur = blur, seed = seed)
+            if (backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = heavy, glass = glass, blur = blur, seed = seed, age = age)
         }
     }
 
@@ -550,6 +555,7 @@ private fun DrawScope.strip(
     light: Float = 0f,
     blur: Blurred? = null,
     seed: Int = 0,
+    age: Long = 0L,
 ) {
     if (x1 - x0 < 0.01f) return
     val d0 = g.map(x0)
@@ -588,8 +594,8 @@ private fun DrawScope.strip(
                             PaperTexture.backShadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
                             PaperTexture.backLightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
                         }
-                        // Старіє лише аркуш дня (у його номері — день); сторінки меню й пошуку — без віку.
-                        if (!heavy && (seed ushr 12) != 0) drawAging(DiaryViewModel_ageOf(seed), seed * 31 + 7, glass = false)
+                        // Зворот старіє так само, як лице: вік каже сама сторінка (сторінки без дати — нові).
+                        if (!heavy && age > 0) drawAging(age, seed * 31 + 7, glass = false)
                     }
                 }
             } else {
