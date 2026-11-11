@@ -147,12 +147,14 @@ internal const val PHOTO_COLS = 4
  * «рік» і «найкраще» (добірка фото навмання).
  */
 @Composable
-fun ColumnScope.SearchPage(vm: DiaryViewModel, ui: SearchUi, found: Found, slice: IntRange, first: Boolean, active: Boolean, onOpen: (SearchHit) -> Unit) {
+fun ColumnScope.SearchPage(vm: DiaryViewModel, ui: SearchUi, found: Found, slice: IntRange, first: Boolean, active: Boolean, onCalendar: () -> Unit, onOpen: (SearchHit) -> Unit) {
     val haptics = LocalHaptics.current
     if (first) {
         val focus = remember { FocusRequester() }
         LaunchedEffect(active) { if (active && ui.mode == SearchMode.Notes && ui.query.isEmpty()) runCatching { focus.requestFocus() } }
         ModeTabs(ui.mode) { if (it != ui.mode) { haptics.tap(); ui.mode = it } }
+        // Поле, а праворуч — календарик: місяці сторінками, гортаються.
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         SheetTextField(
             ui.query,
             { ui.query = it.take(80) },
@@ -163,10 +165,14 @@ fun ColumnScope.SearchPage(vm: DiaryViewModel, ui: SearchUi, found: Found, slice
                     SearchMode.Audio -> R.string.search_hint_audio
                 },
             ),
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 4.dp),
+            modifier = Modifier.weight(1f),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             focusRequester = focus,
         )
+        Box(Modifier.padding(start = 6.dp).size(44.dp).clip(CircleShape).clickable { haptics.tap(); onCalendar() }, contentAlignment = Alignment.Center) {
+            GlyphIcon(Glyph.Calendar, stringResource(R.string.calendar), tint = Oled.TextSecondary, size = 24.dp)
+        }
+        }
         Spacer(Modifier.height(10.dp))
     }
     val part = if (slice.isEmpty()) emptyList() else found.hits.subList(slice.first, slice.last + 1)

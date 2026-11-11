@@ -124,16 +124,23 @@ sealed interface BookPage {
     data object Search : BookPage
     /** Наступні сторінки знахідок пошуку (у щоденнику нічого не прокручується). */
     data class SearchMore(val n: Int) : BookPage
+    /** Календар — сторінка на місяць ([ym] = рік * 12 + місяць - 1); відкривається з пошуку, місяці гортаються. */
+    data class Calendar(val ym: Int) : BookPage
 }
 
-private fun BookPage?.isSearch() = this == BookPage.Search || this is BookPage.SearchMore
+/** Сторінки, що належать пошуку (знахідки й календар): гортання вперед з останньої — туди, звідки прийшли. */
+private fun BookPage?.isSearch() = this == BookPage.Search || this is BookPage.SearchMore || this is BookPage.Calendar
+
+/** Наступна сторінка — того самого роду (знахідки за знахідками, місяць за місяцем). */
+private fun sameRun(a: BookPage?, b: BookPage?) = (a is BookPage.Calendar) == (b is BookPage.Calendar) && a.isSearch() && b.isSearch()
+
+private fun java.time.YearMonth.ym() = year * 12 + monthValue - 1
 
 /** Які вікна відкриті. */
 private sealed interface BookDialog {
     data class Place(val day: Long) : BookDialog
     data class Caption(val day: Long) : BookDialog
     data class Photo(val day: Long) : BookDialog
-    data object Calendar : BookDialog
     data object LockSet : BookDialog
     data class LockConfirm(val code: String) : BookDialog
     data object LockRemove : BookDialog
@@ -255,6 +262,7 @@ fun BookScreen(
 
     var menuOpen by remember(info.id) { mutableStateOf(false) }
     var searchOpen by remember(info.id) { mutableStateOf(false) }
+    var calendarOpen by remember(info.id) { mutableStateOf(false) }
     var searchReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     // Нижня панель: розгорнутий вибір джерела фото.
     var photoTools by remember(info.id) { mutableStateOf(false) }
@@ -294,6 +302,16 @@ fun BookScreen(
         searchSlices(searchFound, searchUi, pageDp.width.value, pageDp.height.value, density.fontScale)
     }
     LaunchedEffect(searchOpen) { if (!searchOpen) { searchUi.player.stop(); searchUi.playingDay = -1L } }
+    // Місяці календаря: від першого запису (чи створення щоденника) до поточного.
+    val calendarMonths: List<Int> = run {
+        val now = java.time.YearMonth.now().ym()
+        val firstDay = listOfNotNull(
+            open?.days?.keys?.minOrNull(),
+            java.time.Instant.ofEpochMilli(info.created).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay(),
+        ).minOrNull() ?: today
+        val first = java.time.YearMonth.from(LocalDate.ofEpochDay(firstDay)).ym().coerceAtMost(now)
+        (first..now).toList()
+    }
     val pages: List<BookPage> = buildList {
         add(BookPage.Cover)
         physical.forEach { (p, torn) -> if (!torn) add(p) }
@@ -304,6 +322,7 @@ fun BookScreen(
         if (searchOpen && open != null) {
             add(BookPage.Search)
             for (n in 1 until resultSlices.size) add(BookPage.SearchMore(n))
+            if (calendarOpen) calendarMonths.forEach { add(BookPage.Calendar(it)) }
         }
     }
     val flip = remember(info.id) { FlipState(0) }
@@ -701,7 +720,7 @@ fun BookScreen(
                             when {
                                 i == 0 -> openTarget
                                 // Пошук: далі — наступна сторінка знахідок, а після останньої — туди, звідки прийшли.
-                                pages.getOrNull(i).isSearch() -> if (pages.getOrNull(i + 1).isSearch()) i + 1 else pages.indexOf(searchReturn).coerceAtLeast(0)
+                                pages.getOrNull(i).isSearch() -> if (sameRun(pages.getOrNull(i), pages.getOrNull(i + 1))) i + 1 else pages.indexOf(searchReturn).coerceAtLeast(0)
                                 else -> i + 1
                             }
                         },
@@ -709,6 +728,8 @@ fun BookScreen(
                             when (pages.getOrNull(i)) {
                                 BookPage.Menu(0) -> pages.indexOf(menuReturn).coerceAtLeast(0)
                                 BookPage.Search -> pages.indexOf(searchReturn).coerceAtLeast(0)
+                                // Найдавніший місяць — назад на пошук.
+                                is BookPage.Calendar -> if (pages.getOrNull(i - 1) is BookPage.Calendar) i - 1 else pages.indexOf(BookPage.Search).coerceAtLeast(0)
                                 else -> i - 1
                             }
                         },
@@ -725,7 +746,8 @@ fun BookScreen(
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey !is BookPage.Menu) menuOpen = false
-                            if (!currentKey.isSearch()) searchOpen = false
+                            if (!currentKey.isSearch()) { searchOpen = false; calendarOpen = false }
+                            else if (currentKey !is BookPage.Calendar) calendarOpen = false
                             highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
                     ) { i ->
                         when (val p = pages.getOrNull(i)) {
@@ -785,6 +807,11 @@ fun BookScreen(
                                 ) {
                                     SearchPage(
                                         vm = vm,
+                                        onCalendar = {
+                                            focusManager.clearFocus()
+                                            calendarOpen = true
+                                            pendingFlip = BookPage.Calendar(java.time.YearMonth.now().ym())
+                                        },
                                         ui = searchUi,
                                         found = searchFound,
                                         slice = resultSlices.getOrNull(n) ?: IntRange.EMPTY,
@@ -792,6 +819,15 @@ fun BookScreen(
                                         active = currentPage == BookPage.Search && !flip.moving,
                                         onOpen = { h -> focusManager.clearFocus(); jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
                                     )
+                                }
+                            }
+                            is BookPage.Calendar -> PaperPage(
+                                title = monthTitle(java.time.YearMonth.of(p.ym / 12, p.ym % 12 + 1)),
+                                subtitle = info.name,
+                                seed = info.tint * 7 + 59 + p.ym * 3,
+                            ) {
+                                CalendarMonth(java.time.YearMonth.of(p.ym / 12, p.ym % 12 + 1), open?.days?.filterValues { !it.isBlank }?.keys.orEmpty()) { day ->
+                                    jumpToDay(day)
                                 }
                             }
                             is BookPage.Menu -> PaperPage(
@@ -1019,8 +1055,6 @@ fun BookScreen(
                                 else -> vm.show(R.string.no_room_voice)
                             }
                         },
-                        Tool(Glyph.Pin, stringResource(R.string.place)) { if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.Place(day) },
-                        Tool(Glyph.Calendar, stringResource(R.string.calendar)) { dialog = BookDialog.Calendar },
                         // Шестерня — на полицю: там усі щоденники, налаштування кожного й загальні.
                         Tool(Glyph.Settings, stringResource(R.string.shelf)) { onShelf() },
                     )
@@ -1083,11 +1117,6 @@ fun BookScreen(
             allowEmpty = true,
             onDismiss = { dialog = null },
         ) { vm.setCaption(dl.day, it) }
-        BookDialog.Calendar -> CalendarDialog(
-            written = open?.days?.keys?.toSet().orEmpty(),
-            start = currentDay ?: today,
-            onDismiss = { dialog = null },
-        ) { jumpToDay(it) }
         BookDialog.LockSet -> LockSetDialog(onDismiss = { dialog = null }) { code -> dialog = BookDialog.LockConfirm(code) }
         is BookDialog.LockConfirm -> ConfirmDialog(
             title = stringResource(R.string.lock_confirm_title),
