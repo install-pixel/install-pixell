@@ -226,4 +226,9 @@
         <item quantity="other">%d фото</item>
     </plurals>
     <string name="search_range">%1$d–%2$d з %3$d</string>
+    <string name="settings_carry_place">Переносити місце на новий день</string>
+    <string name="settings_carry_place_desc">Нова сторінка бере місце з попередньої. Для щоденника подорожей можна вимкнути</string>
+    <string name="camera_switch">Інша камера</string>
+    <string name="camera_permission">Дозволь камеру, щоб зробити фото дня</string>
+    <string name="flashlight">Ліхтарик</string>
 </resources>

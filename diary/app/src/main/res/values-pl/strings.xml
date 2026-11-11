@@ -216,4 +216,9 @@
         <item quantity="other">%d zdjęcia</item>
     </plurals>
     <string name="search_range">%1$d–%2$d z %3$d</string>
+    <string name="settings_carry_place">Przenoś miejsce na następny dzień</string>
+    <string name="settings_carry_place_desc">Nowa strona bierze miejsce z poprzedniej. W dzienniku podróży można wyłączyć</string>
+    <string name="camera_switch">Druga kamera</string>
+    <string name="camera_permission">Zezwól na aparat, aby zrobić zdjęcie dnia</string>
+    <string name="flashlight">Latarka</string>
 </resources>

@@ -471,38 +471,33 @@ fun BookScreen(
     val pickCover = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setCover(info.id, uri)
     }
-    // Камера: знімок пишеться в приватну теку програми (не в галерею й не у спільні файли), одразу шифрується в щоденник,
-    // а тимчасовий файл стирається. Окремий дозвіл на камеру не потрібен — знімає системна камера.
+    // Камера — своя ([DiaryCamera]), не системна: знімок пишеться в приватну теку програми (не в галерею й не у спільні
+    // файли), одразу шифрується в щоденник, а тимчасовий файл стирається.
     val shotFile = remember { java.io.File(context.cacheDir, "camera").apply { mkdirs() }.let { java.io.File(it, "shot.jpg") } }
     val shotUri = remember { androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".camera", shotFile) }
-    var shotFor by remember { mutableStateOf<Long?>(null) }
-    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        val target = shotFor
-        shotFor = null
-        when {
-            !ok || target == null -> shotFile.delete()
-            target == COVER_TARGET -> vm.setCover(info.id, shotUri, shotFile)
-            else -> vm.setPhoto(target, shotUri, shotFile)
-        }
+    var cameraFor by remember { mutableStateOf<Long?>(null) }
+    var askCameraFor by remember { mutableStateOf<Long?>(null) }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        val t = askCameraFor
+        askCameraFor = null
+        if (ok && t != null) cameraFor = t else if (!ok) vm.show(R.string.camera_permission)
     }
     fun shoot(target: Long) {
-        shotFor = target
-        vm.keepOpenOnce = true
-        runCatching { takePhoto.launch(shotUri) }.onFailure { shotFor = null; vm.show(R.string.camera_failed) }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) cameraFor = target
+        else { askCameraFor = target; vm.keepOpenOnce = true; cameraPermission.launch(Manifest.permission.CAMERA) }
     }
-    // З файлу (будь-яке зображення з файлового менеджера).
-    var fileFor by remember { mutableStateOf<Long?>(null) }
-    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        val target = fileFor
-        fileFor = null
-        if (uri != null && target != null) {
-            if (target == COVER_TARGET) vm.setCover(info.id, uri) else vm.setPhoto(target, uri)
+    fun shotTaken(target: Long, bitmap: android.graphics.Bitmap) {
+        scope.launch {
+            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { shotFile.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, it) } }.getOrDefault(false)
+            }
+            bitmap.recycle()
+            when {
+                !ok -> { shotFile.delete(); vm.show(R.string.camera_failed) }
+                target == COVER_TARGET -> vm.setCover(info.id, shotUri, shotFile)
+                else -> vm.setPhoto(target, shotUri, shotFile)
+            }
         }
-    }
-    fun fromFile(target: Long) {
-        fileFor = target
-        vm.keepOpenOnce = true
-        pickFile.launch(arrayOf("image/*"))
     }
     var backupPassword by remember { mutableStateOf<String?>(null) }
     val createBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -555,8 +550,7 @@ fun BookScreen(
         override fun addPhoto(day: Long, source: Int) {
             when (source) {
                 0 -> shoot(day)
-                1 -> { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
-                else -> fromFile(day)
+                else -> { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
             }
         }
         override fun recordVoice(day: Long) = record(day)
@@ -583,7 +577,6 @@ fun BookScreen(
                 add(MenuEntry(null, stringResource(R.string.menu_diary)))
                 add(MenuEntry(Glyph.Photo, stringResource(if (info.cover) R.string.cover_photo_change else R.string.cover_photo)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
                 add(MenuEntry(Glyph.Shutter, stringResource(R.string.cover_from_camera)) { shoot(COVER_TARGET) })
-                add(MenuEntry(Glyph.Folder, stringResource(R.string.cover_from_file)) { fromFile(COVER_TARGET) })
                 if (info.cover) add(MenuEntry(Glyph.Close, stringResource(R.string.cover_photo_remove)) { vm.removeCover(info.id) })
                 add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
                 add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
@@ -604,6 +597,7 @@ fun BookScreen(
         Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SwitchRow(stringResource(R.string.settings_photos), info.photos, subtitle = stringResource(R.string.settings_photos_desc)) { vm.setPhotosOn(info.id, it) }
             SwitchRow(stringResource(R.string.settings_voice), info.voice, subtitle = stringResource(R.string.settings_voice_desc)) { vm.setVoiceOn(info.id, it) }
+            SwitchRow(stringResource(R.string.settings_carry_place), info.carryPlace, subtitle = stringResource(R.string.settings_carry_place_desc)) { vm.setCarryPlace(info.id, it) }
         }
         Text(stringResource(R.string.drying_title), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp, top = 12.dp))
         FieldHint(stringResource(R.string.drying_fixed), Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
@@ -1007,7 +1001,6 @@ fun BookScreen(
                     val tools = if (photoTools) listOf(
                         Tool(Glyph.Shutter, stringResource(R.string.photo_from_camera)) { photo(0) },
                         Tool(Glyph.Gallery, stringResource(R.string.photo_from_gallery)) { photo(1) },
-                        Tool(Glyph.Folder, stringResource(R.string.photo_from_file)) { photo(2) },
                         Tool(Glyph.Close, stringResource(R.string.close)) { photoTools = false },
                     ) else listOf(
                         Tool(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, part) },
@@ -1052,6 +1045,15 @@ fun BookScreen(
 
 
     if (searchOpen) SearchShow(vm, searchUi, searchFound)
+    cameraFor?.let { target ->
+        com.blacklaunch.diary.ui.SmoothDialog(onDismissRequest = { cameraFor = null }) {
+            DiaryCamera(
+                onShot = { bmp -> cameraFor = null; shotTaken(target, bmp) },
+                onClose = { cameraFor = null },
+                onFail = { cameraFor = null; vm.show(R.string.camera_failed) },
+            )
+        }
+    }
 
     // ——— Вікна ———
     when (val dl = dialog) {
@@ -1060,7 +1062,7 @@ fun BookScreen(
             val recent = remember { open?.days?.values?.sortedByDescending { it.day }?.map { it.place }?.filter { it.isNotBlank() }?.distinct().orEmpty() }
             TextDialog(
                 title = stringResource(R.string.place),
-                initial = vm.day(dl.day).place,
+                initial = vm.day(dl.day).place.ifEmpty { vm.carriedPlace(dl.day).orEmpty() },
                 placeholder = stringResource(R.string.place_hint),
                 limit = Limits.PLACE,
                 suggestions = recent.filter { it != vm.day(dl.day).place },

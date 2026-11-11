@@ -98,6 +98,22 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun openAtBookmarkOf(info: DiaryInfo?): Boolean = info?.openAtBookmark ?: settings.openAtBookmark
 
     fun setDrying(id: String, drying: InkDrying) = saveShelf(shelf.map { if (it.id == id) it.copy(drying = drying) else it })
+    fun setCarryPlace(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(carryPlace = on) else it })
+
+    /**
+     * Місце, перенесене з попереднього дня: для свіжої сторінки без місця й без нічого написаного (якщо в щоденнику це
+     * ввімкнено). Показується на сторінці одразу, а записується в день, щойно на ньому щось з'явиться.
+     */
+    fun carriedPlace(epochDay: Long): String? {
+        val o = open ?: return null
+        if (shelf.firstOrNull { it.id == o.info.id }?.carryPlace == false) return null
+        val d = day(epochDay)
+        if (d.place.isNotBlank() || hasContent(d) || isDry(epochDay)) return null
+        return o.days.values.filter { it.day < epochDay && it.place.isNotBlank() }.maxByOrNull { it.day }?.place
+    }
+
+    private fun hasContent(d: Day) = d.text.isNotBlank() || d.ink.isNotEmpty() || d.photo || d.audio
+
     fun setPhotosOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(photos = on) else it })
     fun setVoiceOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(voice = on) else it })
 
@@ -288,8 +304,13 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     private val pending = HashMap<Long, Job>()
 
     /** Зберегти день — у стані одразу, на диск трохи згодом (поки пишеш, не на кожну літеру). */
-    fun update(d: Day) {
+    fun update(d0: Day) {
         val o = open ?: return
+        // Перше, що з'явилося на сторінці, — і місце з попереднього дня записується разом із ним.
+        val before = o.days[d0.day] ?: Day(d0.day)
+        val d = if (d0.place.isBlank() && before.place.isBlank() && !hasContent(before) && hasContent(d0)) {
+            carriedPlace(d0.day)?.let { d0.copy(place = it) } ?: d0
+        } else d0
         val stamped = d.copy(updated = System.currentTimeMillis())
         if (stamped.isEmpty) o.days.remove(d.day) else o.days[d.day] = stamped
         pending[d.day]?.cancel()

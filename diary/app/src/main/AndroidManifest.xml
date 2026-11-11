@@ -3,6 +3,8 @@
 
     <!-- Голосовий запис дня. Інтернету немає: щоденник ніколи нікуди нічого не надсилає. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- allowBackup=false: системна копія в хмару вимкнена — щоденник зберігається лише власною зашифрованою копією. -->

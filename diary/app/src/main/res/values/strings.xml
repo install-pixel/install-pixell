@@ -212,4 +212,9 @@
         <item quantity="other">%d photos</item>
     </plurals>
     <string name="search_range">%1$d–%2$d of %3$d</string>
+    <string name="settings_carry_place">Carry the place to the next day</string>
+    <string name="settings_carry_place_desc">A new page takes the place from the previous one. Turn off for a travel diary</string>
+    <string name="camera_switch">Switch camera</string>
+    <string name="camera_permission">Allow the camera to take a photo of the day</string>
+    <string name="flashlight">Flashlight</string>
 </resources>

@@ -228,15 +228,17 @@ fun DayPage(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
             ) {
+                val carried = if (day.place.isEmpty() && editable) host.vm.carriedPlace(day.day) else null
+                val shownPlace = day.place.ifEmpty { carried.orEmpty() }
                 Text(
-                    day.place.ifEmpty { stringResource(R.string.place_hint) },
-                    style = style.copy(fontSize = (headerSize * 0.9f).sp, lineHeight = (headerSize * 1.1f).sp, color = if (day.place.isEmpty()) Oled.TextSecondary.copy(alpha = 0.7f) else Oled.TextPrimary, textAlign = TextAlign.End),
+                    shownPlace.ifEmpty { stringResource(R.string.place_hint) },
+                    style = style.copy(fontSize = (headerSize * 0.9f).sp, lineHeight = (headerSize * 1.1f).sp, color = if (shownPlace.isEmpty()) Oled.TextSecondary.copy(alpha = 0.7f) else Oled.TextPrimary, textAlign = TextAlign.End),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.width(3.dp))
-                GlyphIcon(Glyph.Pin, stringResource(R.string.place), tint = if (day.place.isEmpty()) Oled.TextSecondary else Oled.TextPrimary, size = dp(4.4f))
+                GlyphIcon(Glyph.Pin, stringResource(R.string.place), tint = if (shownPlace.isEmpty()) Oled.TextSecondary else Oled.TextPrimary, size = dp(4.4f))
             }
         }
 
@@ -262,7 +264,7 @@ fun DayPage(
                 width = dp(PageMetrics.textWidth),
                 height = dp(PageMetrics.PHOTO_HEIGHT),
                 editable = editable,
-                actions = listOf(Glyph.Shutter to { host.addPhoto(day.day, 0) }, Glyph.Gallery to { host.addPhoto(day.day, 1) }, Glyph.Folder to { host.addPhoto(day.day, 2) }),
+                actions = listOf(Glyph.Shutter to { host.addPhoto(day.day, 0) }, Glyph.Gallery to { host.addPhoto(day.day, 1) }),
                 onDismiss = { host.dismissSlot(day.day, photo = true) },
             )
             y += PageMetrics.PHOTO_HEIGHT + PageMetrics.BLOCK_GAP
