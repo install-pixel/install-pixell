@@ -1204,5 +1204,6 @@ private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, on
 }
 
 /** День, на якому відкриється щоденник: закладка (якщо так налаштовано й вона є) чи сьогодні. */
-private fun openTargetDay(days: List<Long>, today: Long, bookmark: Long?, atBookmark: Boolean): Long =
-    if (atBookmark && bookmark != null && bookmark in days) bookmark else today
+/** Щоденник завжди відкривається на сьогоднішньому дні (закладки-позначки більше немає — вона стала пошуком). */
+@Suppress("UNUSED_PARAMETER")
+private fun openTargetDay(days: List<Long>, today: Long, bookmark: Long?, atBookmark: Boolean): Long = today

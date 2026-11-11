@@ -261,17 +261,11 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
     val scope = rememberCoroutineScope()
     val pull = remember { Animatable(0f) }
     val sway = remember { Animatable(0f) }
-    var glyphOn by remember { mutableStateOf(true) }
-    LaunchedEffect(gear.pokes) {
-        glyphOn = true
-        kotlinx.coroutines.delay(3_500)
-        glyphOn = false
-    }
-    val glyph by androidx.compose.animation.core.animateFloatAsState(if (glyphOn) 1f else 0f, tween(if (glyphOn) 250 else 800), label = "ribbonGlyph")
+    // Стрічка завжди однакова; єдиний рух — пружне розтягування, коли тягнеш униз.
     androidx.compose.runtime.SideEffect {
-        SearchRibbonState.glyph = glyph
+        SearchRibbonState.glyph = 1f
         SearchRibbonState.pull = pull.value
-        SearchRibbonState.sway = sway.value
+        SearchRibbonState.sway = 0f
     }
     Box(Modifier.size(pageW, pageH)) {
         if (enabled) {
@@ -280,7 +274,16 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
                     .offset(pageW * (RIBBON_X_U / PageMetrics.WIDTH) - 22.dp, 0.dp)
                     .size(44.dp, pageW * (RIBBON_LEN_U / PageMetrics.WIDTH) + 16.dp)
                     .semantics { contentDescription = description }
-                    .pointerInput(Unit) { detectTapGestures { haptics.tap(); onOpen() } }
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            haptics.tap()
+                            scope.launch {
+                                pull.animateTo(14.dp.toPx(), tween(90))
+                                pull.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = 320f))
+                            }
+                            onOpen()
+                        }
+                    }
                     .pointerInput(Unit) {
                         var pulled = 0f
                         detectVerticalDragGestures(
@@ -288,14 +291,10 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
                             onVerticalDrag = { ch, dy ->
                                 ch.consume()
                                 pulled += dy
-                                scope.launch {
-                                    pull.snapTo((pulled * 0.45f).coerceIn(0f, 40.dp.toPx()))
-                                    sway.snapTo((pulled / 40f).coerceIn(-4f, 4f) * 0.3f)
-                                }
+                                scope.launch { pull.snapTo((pulled * 0.45f).coerceIn(0f, 40.dp.toPx())) }
                             },
                             onDragEnd = {
-                                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 300f)) }
-                                scope.launch { sway.animateTo(0f, spring(dampingRatio = 0.3f, stiffness = 80f)) }
+                                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = 320f)) }
                                 if (pulled > 40.dp.toPx()) { haptics.longPress(); onOpen() }
                             },
                         )

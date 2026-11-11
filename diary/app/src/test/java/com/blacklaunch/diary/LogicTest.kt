@@ -205,6 +205,15 @@ class LogicTest {
     }
 
     @Test
+    fun searchByBareNumber() {
+        // Просто число: і число місяця, і місяць.
+        assertEquals(2, Searcher.search(days, "3", false, false).size)
+        assertEquals(1, Searcher.search(days, "12", false, false).size)
+        assertEquals(1, Searcher.search(days, "7", false, false).size)
+        assertEquals(0, Searcher.search(days, "25", false, false).size)
+    }
+
+    @Test
     fun searchFiltersAndHighlight() {
         val r = Searcher.search(days, "", photo = true, audio = false)
         assertEquals(1, r.size)

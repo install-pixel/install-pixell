@@ -25,6 +25,7 @@ data class SearchHit(
 object Searcher {
     private val DATE = Regex("""^(\d{1,2})[./\-](\d{1,2})(?:[./\-](\d{2,4}))?$""")
     private val YEAR = Regex("""^(19|20)\d{2}$""")
+    private val BARE = Regex("""^\d{1,2}$""")
 
     /** Початки назв місяців трьома мовами (і в різних відмінках) → номер місяця. */
     private val MONTHS: List<Pair<String, Int>> = listOf(
@@ -41,7 +42,11 @@ object Searcher {
         if (tokens.isEmpty() && !photo && !audio) return emptyList()
         var dayFilter: ((LocalDate) -> Boolean)? = null
         val words = ArrayList<String>()
+        // Просто число («11»): число місяця, місяць (до 12) — або те саме число в тексті чи місці.
+        val numbers = ArrayList<Int>()
         for (t in tokens) {
+            val bare = BARE.matchEntire(t)?.value?.toInt()
+            if (bare != null && bare in 1..31) { numbers += bare; continue }
             val f = dateFilter(t)
             if (f != null) {
                 val prev = dayFilter
@@ -60,7 +65,17 @@ object Searcher {
             val nText = norm(text)
             val nPlace = norm(d.place)
             if (words.any { !nText.contains(it) && !nPlace.contains(it) }) continue
-            val first = words.firstOrNull()
+            val numberInText = ArrayList<String>()
+            if (numbers.any { n ->
+                    val inDate = date.dayOfMonth == n || (n <= 12 && date.monthValue == n)
+                    val s = n.toString()
+                    val inText = nText.contains(s) || nPlace.contains(s)
+                    if (!inDate && inText) numberInText += s
+                    !inDate && !inText
+                }
+            ) continue
+            // Підсвічуємо перше слово; якщо слів немає — число, знайдене в тексті (а не в даті).
+            val first = words.firstOrNull() ?: numberInText.firstOrNull()
             val idx = if (first != null) nText.indexOf(first) else -1
             if (idx >= 0) {
                 out += hit(d.day, text, idx, idx + first!!.length, inPlace = false)

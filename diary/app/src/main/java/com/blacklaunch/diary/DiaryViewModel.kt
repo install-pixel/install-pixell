@@ -483,7 +483,8 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun search(query: String, photo: Boolean, audio: Boolean): List<SearchHit> {
         val o = open ?: return emptyList()
-        return Searcher.search(o.days.values.toList(), query, photo, audio, getApplication()).take(Limits.SEARCH_RESULTS)
+        // Лише ті дні, що є сторінками щоденника (порожні дні в книжці не показуються — і в пошуку теж).
+        return Searcher.search(o.days.values.filter { !it.isBlank }, query, photo, audio, getApplication()).take(Limits.SEARCH_RESULTS)
     }
 
     // ——— Резервна копія ———
