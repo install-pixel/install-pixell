@@ -149,7 +149,7 @@
     <string name="help_dry_t">Atrament wysycha</string>
     <string name="help_dry">Świeży atrament jest jasny i tekst można poprawiać. Po dniu (lub tygodniu — w Ustawieniach) wysycha: robi się trochę bledszy i nie da się go już zmienić.\n\nSuchy tekst można tylko skreślić: przytrzymaj palec na słowie i przesuń wzdłuż linii. W „Kartce” słowa przekreśla ołówek, w „Szkle” przykrywa je matowa szklana kropla.\n\nDopisać dzień można zawsze — nowy tekst idzie po suchym.</string>
     <string name="help_media_t">Zdjęcie i głos</string>
-    <string name="help_media">Zębatka → „Dodaj zdjęcie”: jedno zdjęcie na dzień. Staje się częścią strony: w „Szkle” — czarno-białe pod szkłem, w „Kartce” — szkic ołówkiem. Dotknij, aby zobaczyć większe.\n\nZębatka → „Nagraj głos”: jedno nagranie na dzień (do 5 minut). Okrągły przycisk — odtwórz / pauza; dotyk paska — przewiń.\n\nUsuń zdjęcie lub nagranie przesunięciem w lewo (z „Przywróć”).</string>
+    <string name="help_media">Zdjęcie dnia: ikony aparatu lub galerii na stronie (albo aparat na dole). Jedno zdjęcie dziennie; staje się częścią strony — w „Szkle” czarno-białe pod szkłem, w „Arkuszu” szkicem ołówkiem. Dotknij, aby zobaczyć większe.\n\nNagranie dnia: plakietka na stronie (albo mikrofon na dole) otwiera magnetofon. Jedna kaseta dziennie, strony A i B po 45 minut; nowe nagranie dopisuje się na końcu. Dotknij kasety, aby ją odwrócić.\n\nUsunąć zdjęcie lub kasetę — przesuń w lewo (z „Cofnij”).</string>
     <string name="help_bookmark_t">Zakładka</string>
     <string name="help_bookmark">Wstążka jest przyszyta do grzbietu, jej koniec zwisa spod książki po lewej. Pociągnij koniec w dół — wstążka położy się na tej stronie. Pociągnij jeszcze raz — zniknie.\n\nGdy zakładka jest na innej stronie, dotknij końca — pamiętnik przewróci się tam.</string>
     <string name="help_search_t">Szukanie i kalendarz</string>
@@ -222,7 +222,7 @@
     <string name="camera_permission">Zezwól na aparat, aby zrobić zdjęcie dnia</string>
     <string name="flashlight">Latarka</string>
     <string name="photo_retake">Zrób nowe zdjęcie</string>
-    <string name="recorder_title">Głos dnia</string>
+    <string name="recorder_title">Nagranie dnia</string>
     <string name="recorder_rewind">Do tyłu</string>
     <string name="recorder_forward">Do przodu</string>
     <string name="recorder_pause">Pauza</string>

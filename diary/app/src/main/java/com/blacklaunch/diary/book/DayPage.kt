@@ -572,14 +572,32 @@ private fun AudioPlate(host: PageHost, day: Day, recording: RecordingState?, mod
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Касетка.
-        Canvas(Modifier.size(height * 0.9f, height * 0.58f)) {
-            val r = 3.dp.toPx()
-            drawRoundRect(ink.copy(alpha = 0.8f), cornerRadius = CornerRadius(r), style = Stroke(1.3.dp.toPx()))
-            val cy = size.height * 0.48f
-            drawCircle(ink.copy(alpha = 0.8f), size.height * 0.16f, Offset(size.width * 0.3f, cy), style = Stroke(1.2.dp.toPx()))
-            drawCircle(ink.copy(alpha = 0.8f), size.height * 0.16f, Offset(size.width * 0.7f, cy), style = Stroke(1.2.dp.toPx()))
-            drawLine(ink.copy(alpha = 0.5f), Offset(size.width * 0.2f, size.height * 0.84f), Offset(size.width * 0.8f, size.height * 0.84f), 1.dp.toPx())
+        // Касетка — маленька, у справжніх пропорціях (≈ 100 × 63), по центру плашки.
+        Canvas(Modifier.size(height * 0.52f * 1.58f, height * 0.52f)) {
+            val w = size.width
+            val h = size.height
+            val line = ink.copy(alpha = 0.75f)
+            val st = 1.1.dp.toPx()
+            drawRoundRect(line, cornerRadius = CornerRadius(w * 0.07f), style = Stroke(st))
+            // Наклейка.
+            drawRoundRect(line.copy(alpha = 0.45f), topLeft = Offset(w * 0.09f, h * 0.12f), size = androidx.compose.ui.geometry.Size(w * 0.82f, h * 0.52f), cornerRadius = CornerRadius(w * 0.04f), style = Stroke(0.8.dp.toPx()))
+            // Віконце між котушками.
+            drawRoundRect(line.copy(alpha = 0.5f), topLeft = Offset(w * 0.37f, h * 0.30f), size = androidx.compose.ui.geometry.Size(w * 0.26f, h * 0.22f), cornerRadius = CornerRadius(w * 0.02f), style = Stroke(0.8.dp.toPx()))
+            // Котушки із зубчиками.
+            val cy = h * 0.41f
+            val rr = h * 0.13f
+            listOf(w * 0.27f, w * 0.73f).forEach { cx ->
+                drawCircle(line, rr, Offset(cx, cy), style = Stroke(st))
+                for (k in 0 until 3) {
+                    val t = k * 2.094f
+                    drawLine(line, Offset(cx, cy) + Offset(kotlin.math.cos(t), kotlin.math.sin(t)) * (rr * 0.35f), Offset(cx, cy) + Offset(kotlin.math.cos(t), kotlin.math.sin(t)) * (rr * 0.8f), 0.9.dp.toPx())
+                }
+            }
+            // Виступ знизу.
+            val bump = androidx.compose.ui.graphics.Path().apply {
+                moveTo(w * 0.2f, h); lineTo(w * 0.26f, h * 0.76f); lineTo(w * 0.74f, h * 0.76f); lineTo(w * 0.8f, h)
+            }
+            drawPath(bump, line.copy(alpha = 0.6f), style = Stroke(0.9.dp.toPx()))
         }
         Spacer(Modifier.width(12.dp))
         Text(

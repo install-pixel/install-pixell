@@ -270,7 +270,7 @@ fun RecorderPage(
                 val c = cassetteRect(size)
                 val sx = cos(flip.value * PI.toFloat() / 180f)
                 withScaleX(sx, c.center) {
-                    drawCassette(c, glass, ink, faint, side, (head / Limits.SIDE_MS).coerceIn(0f, 1f), angleL, angleR, moving = shown != Deck.Idle && shown != Deck.Pause)
+                    drawCassette(c, glass, ink, faint, side, (head / Limits.SIDE_MS).coerceIn(0f, 1f), angleL, angleR, moving = shown != Deck.Idle && shown != Deck.Pause, labelText = subtitle)
                 }
                 // Скло дверцят — легкий відблиск поверх.
                 if (glass) drawRoundRect(
@@ -437,7 +437,7 @@ private fun DrawScope.drawDeckWell(glass: Boolean, ink: Color) {
  * маточин, а знизу — виступ із прорізами, де стрічку видно лише в отворах (голівка, ролики).
  * [progress] — скільки стрічки вже на правій котушці (від усієї сторони).
  */
-private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: Color, side: Int, progress: Float, angleL: Float, angleR: Float, moving: Boolean) {
+private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: Color, side: Int, progress: Float, angleL: Float, angleR: Float, moving: Boolean, labelText: String) {
     val w = rc.width
     val h = rc.height
     fun p(x: Float, y: Float) = Offset(rc.left + x * w, rc.top + y * h)
@@ -462,6 +462,14 @@ private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: 
     }
     // Літера сторони — велика, ліворуч на наклейці.
     drawSideLetter(side, Offset(label.left + label.width * 0.09f, label.top + label.height * 0.2f), label.height * 0.13f, ink)
+    // Підпис на наклейці — дата дня (як від руки на справжній касеті).
+    val paint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        textSize = label.height * 0.13f
+        color = ink.copy(alpha = 0.85f).argb()
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, if (glass) android.graphics.Typeface.NORMAL else android.graphics.Typeface.ITALIC)
+    }
+    drawContext.canvas.nativeCanvas.drawText(labelText, label.left + label.width * 0.21f, label.top + label.height * 0.16f - 3.dp.toPx(), paint)
     // Віконце між маточинами: крізь нього видно стрічку на котушках.
     // Як у справжньої касети: маточини на ~42 мм одна від одної (на 100 мм ширини), віконце між ними.
     val win = Rect(p(0.355f, 0.38f), p(0.645f, 0.64f))

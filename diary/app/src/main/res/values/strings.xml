@@ -147,7 +147,7 @@
     <string name="help_dry_t">Ink dries</string>
     <string name="help_dry">Fresh ink is bright and the text can be corrected. After a day (or a week — in Settings) it dries: it gets a little duller and can no longer be changed.\n\nDry text can only be crossed out: hold a finger on a word and slide along the line. In “Sheet” the words are struck through with pencil; in “Glass” a frosted glass drop covers them.\n\nYou can always add to a day — new text goes after the dry part.</string>
     <string name="help_media_t">Photo and voice</string>
-    <string name="help_media">The gear → “Add a photo”: one photo per day. It becomes part of the page: black-and-white under glass in “Glass”, a pencil sketch in “Sheet”. Tap to see it bigger.\n\nThe gear → “Record voice”: one recording per day (up to 5 minutes). The round button plays / pauses; tap the strip to seek.\n\nRemove a photo or recording by swiping left (with “Undo”).</string>
+    <string name="help_media">Photo of the day: the camera or gallery icons on the page (or the camera at the bottom). One photo per day; it becomes part of the page — black-and-white under glass in “Glass”, a pencil sketch in “Sheet”. Tap it to see it bigger.\n\nRecording of the day: the plate on the page (or the microphone at the bottom) opens the tape recorder. One cassette per day, sides A and B of 45 minutes each; a new recording is added to the end. Tap the cassette to turn it over.\n\nTo remove a photo or the cassette — swipe it left (with “Undo”).</string>
     <string name="help_bookmark_t">Bookmark</string>
     <string name="help_bookmark">The ribbon is sewn to the spine; its tip hangs from under the book on the left. Pull the tip down — the ribbon lies on this page. Pull it again — it\'s removed.\n\nWhen the bookmark is on another page, tap the tip and the diary turns there.</string>
     <string name="help_search_t">Search and calendar</string>
@@ -218,7 +218,7 @@
     <string name="camera_permission">Allow the camera to take a photo of the day</string>
     <string name="flashlight">Flashlight</string>
     <string name="photo_retake">Retake with camera</string>
-    <string name="recorder_title">Voice of the day</string>
+    <string name="recorder_title">Recording of the day</string>
     <string name="recorder_rewind">Rewind</string>
     <string name="recorder_forward">Fast forward</string>
     <string name="recorder_pause">Pause</string>
