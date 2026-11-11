@@ -33,7 +33,7 @@
     <string name="cover_turn_hint">Przewróć okładkę palcem</string>
 
     <string name="photo_add">Dodaj zdjęcie</string>
-    <string name="photo_replace">Zmień zdjęcie</string>
+    <string name="photo_replace">Zamień z galerii</string>
     <string name="photo_remove">Usuń zdjęcie</string>
     <string name="photo_removed">Zdjęcie usunięte</string>
     <string name="photo_failed">Nie udało się otworzyć zdjęcia</string>
@@ -221,4 +221,5 @@
     <string name="camera_switch">Druga kamera</string>
     <string name="camera_permission">Zezwól na aparat, aby zrobić zdjęcie dnia</string>
     <string name="flashlight">Latarka</string>
+    <string name="photo_retake">Zrób nowe zdjęcie</string>
 </resources>

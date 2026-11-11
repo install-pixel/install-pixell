@@ -1074,7 +1074,7 @@ fun BookScreen(
         is BookDialog.Photo -> PhotoViewer(vm, dl.day, onDismiss = { dialog = null }, onReplace = {
             photoFor = dl.day
             vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-        }, onDelete = { vm.removePhoto(dl.day) }, onCaption = { dialog = BookDialog.Caption(dl.day) })
+        }, onRetake = { shoot(dl.day) }, onDelete = { vm.removePhoto(dl.day) }, onCaption = { dialog = BookDialog.Caption(dl.day) })
         is BookDialog.Caption -> TextDialog(
             title = stringResource(R.string.photo_caption),
             initial = vm.day(dl.day).caption,
@@ -1147,7 +1147,7 @@ private fun LockSetDialog(onDismiss: () -> Unit, onFix: (String) -> Unit) {
 
 /** Фото дня великим (теж оброблене під тему — оригінал виглядав би чужим). Хрестик унизу, «⋯» — замінити, прибрати. */
 @Composable
-private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, onReplace: () -> Unit, onDelete: () -> Unit, onCaption: () -> Unit) {
+private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, onReplace: () -> Unit, onRetake: () -> Unit, onDelete: () -> Unit, onCaption: () -> Unit) {
     val haptics = LocalHaptics.current
     var image by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -1196,6 +1196,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
     if (menu) {
         MenuDialog(null, listOf(
             MenuEntry(Glyph.Edit, stringResource(R.string.photo_caption)) { onDismiss(); onCaption() },
+            MenuEntry(Glyph.Shutter, stringResource(R.string.photo_retake)) { onDismiss(); onRetake() },
             MenuEntry(Glyph.Gallery, stringResource(R.string.photo_replace)) { onDismiss(); onReplace() },
             MenuEntry(Glyph.Delete, stringResource(R.string.photo_remove), Tone.Danger) { onDismiss(); onDelete() },
         ), onDismiss = { menu = false })

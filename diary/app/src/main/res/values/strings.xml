@@ -31,7 +31,7 @@
     <string name="cover_turn_hint">Turn the cover with your finger</string>
 
     <string name="photo_add">Add a photo</string>
-    <string name="photo_replace">Replace photo</string>
+    <string name="photo_replace">Replace from gallery</string>
     <string name="photo_remove">Remove photo</string>
     <string name="photo_removed">Photo removed</string>
     <string name="photo_failed">Couldn\'t open the photo</string>
@@ -217,4 +217,5 @@
     <string name="camera_switch">Switch camera</string>
     <string name="camera_permission">Allow the camera to take a photo of the day</string>
     <string name="flashlight">Flashlight</string>
+    <string name="photo_retake">Retake with camera</string>
 </resources>
