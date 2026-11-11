@@ -268,7 +268,7 @@ fun RecorderPage(
     }
 
     PaperPage(title = title, subtitle = subtitle, seed = seed, edgeHeight = 118.dp, edge = keys) {
-        Column(Modifier.fillMaxSize().padding(end = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // ——— Шухлядка з касетою (торкнись — перевернути на іншу сторону) ———
             Canvas(
                 Modifier

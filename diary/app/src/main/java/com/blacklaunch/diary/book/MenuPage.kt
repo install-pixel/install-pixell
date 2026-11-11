@@ -52,7 +52,13 @@ fun PaperPage(
             Modifier
                 .fillMaxSize()
                 .then(if (edge == null) Modifier.verticalScroll(rememberScrollState()) else Modifier)
-                .padding(start = with(density) { (PageMetrics.MARGIN_LEFT * u).toDp() }, end = 14.dp, top = 22.dp, bottom = if (edge == null) 22.dp else edgeHeight + 12.dp),
+                // Сторінка-прилад — однакові поля з обох боків (прилад рівно посередині); звичайна — поле зліва під корінцем.
+                .padding(
+                    start = if (edge == null) with(density) { (PageMetrics.MARGIN_LEFT * u).toDp() } else 18.dp,
+                    end = if (edge == null) 14.dp else 18.dp,
+                    top = 22.dp,
+                    bottom = if (edge == null) 22.dp else edgeHeight + 12.dp,
+                ),
         ) {
             Text(title, style = style.copy(fontSize = headerSize.sp, lineHeight = (headerSize * 1.25f).sp, color = Oled.TextPrimary))
             if (subtitle != null) {
