@@ -647,8 +647,11 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
         val n = g.normal
         val m = g.mid
         // 2) Тінь клаптя на тому, що під ним, — біля загину густіше.
+        //    Лише праворуч від розриву: смужка біля корінця під клаптем не лежить — лінії загину на ній не видно.
         clipPath(poly(g.stay)) {
-            drawRect(Brush.linearGradient(0f to Color.Black.copy(alpha = 0.4f), 1f to Color.Transparent, start = m, end = m - n * 26.dp.toPx()))
+            clipRect(left = TEAR_X.toPx() + 3.5f * density) {
+                drawRect(Brush.linearGradient(0f to Color.Black.copy(alpha = 0.4f), 1f to Color.Transparent, start = m, end = m - n * 26.dp.toPx()))
+            }
         }
         // 3) Клапоть — зворот того самого аркуша.
         val mirror = Matrix().apply {
