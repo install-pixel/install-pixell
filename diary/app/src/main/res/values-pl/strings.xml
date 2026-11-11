@@ -116,7 +116,7 @@
     <string name="filter_audio">Z głosem</string>
     <string name="month_prev">Poprzedni miesiąc</string>
     <string name="month_next">Następny miesiąc</string>
-    <string name="calendar_hint">Dni z wpisami są zakreślone. Dotknij dnia, aby tam przejść — albo pustego, aby go dopisać.</string>
+    <string name="calendar_hint">Dni z wpisami są zakreślone. Dotknij takiego dnia, aby tam przejść.</string>
 
     <string name="settings_style">Styl</string>
     <string name="style_glass">Szkło</string>
@@ -153,7 +153,7 @@
     <string name="help_bookmark_t">Zakładka</string>
     <string name="help_bookmark">Wstążka jest przyszyta do grzbietu, jej koniec zwisa spod książki po lewej. Pociągnij koniec w dół — wstążka położy się na tej stronie. Pociągnij jeszcze raz — zniknie.\n\nGdy zakładka jest na innej stronie, dotknij końca — pamiętnik przewróci się tam.</string>
     <string name="help_search_t">Szukanie i kalendarz</string>
-    <string name="help_search">Szukanie — zakładka u góry strony: pociągnij ją w dół. Słowa, liczby, daty, miesiące, lata, miejsce, a także „tydzień”, „miesiąc”, „rok”. Dotknij wyniku — pamiętnik przewróci na ten dzień i podświetli słowo. „Zdjęcia” i „Audio” — tylko zdjęcia (z pokazem) lub tylko nagrania.\n\nKalendarzyk obok pola szukania: miesiące jako strony, dni z wpisami są zakreślone. Można też otworzyć pusty miniony dzień, żeby go dopisać.\n\nJeśli tego dnia rok (lub kilka lat) temu coś zapisano — na dzisiejszej stronie na dole jest zagięty róg.</string>
+    <string name="help_search">Szukanie — zakładka u góry strony: pociągnij ją w dół. Słowa, liczby, daty, miesiące, lata, miejsce, a także „tydzień”, „miesiąc”, „rok”. Dotknij wyniku — pamiętnik przewróci na ten dzień i podświetli słowo. „Zdjęcia” i „Audio” — tylko zdjęcia (z pokazem) lub tylko nagrania.\n\nKalendarzyk obok pola szukania: miesiące jako strony, dni z wpisami są zakreślone.\n\nJeśli tego dnia rok (lub kilka lat) temu coś zapisano — na dzisiejszej stronie na dole jest zagięty róg.</string>
     <string name="help_lock_t">Zamek</string>
     <string name="help_lock">Zębatka → „Załóż zamek”: pokręć czterema bębenkami i zatwierdź. Odtąd pamiętnik otwiera się tylko tym kodem.\n\nKodu nie da się zresetować ani przypomnieć. Jeśli zostanie zapomniany — pamiętnik można tylko usunąć.\n\nWszystkie zapiski są zawsze zaszyfrowane w telefonie (także bez zamka). Gdy pamiętnik z zamkiem jest otwarty, zrzuty ekranu są wyłączone; gdy aplikacja przejdzie w tło — zamyka się.</string>
     <string name="help_shelf_t">Kilka pamiętników</string>

@@ -81,13 +81,12 @@ fun androidx.compose.foundation.layout.ColumnScope.CalendarMonth(month: YearMont
                             val ep = date.toEpochDay()
                             val has = ep in written
                             val isToday = date == today
-                            val future = date.isAfter(today)
                             Box(
                                 Modifier
                                     .fillMaxSize()
                                     .padding(3.dp)
                                     .clip(CircleShape)
-                                    .clickable(enabled = !future) { haptics.tap(); onPick(ep) },
+                                    .clickable(enabled = has || isToday) { haptics.tap(); onPick(ep) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (has || isToday) {
@@ -103,9 +102,9 @@ fun androidx.compose.foundation.layout.ColumnScope.CalendarMonth(month: YearMont
                                 Text(
                                     n.toString(),
                                     color = when {
-                                        future -> Oled.TextSecondary.copy(alpha = 0.3f)
                                         has || isToday -> Oled.TextPrimary
-                                        else -> Oled.TextSecondary
+                                        // Порожні дні — лише для орієнтиру: не натискаються.
+                                        else -> Oled.TextSecondary.copy(alpha = 0.35f)
                                     },
                                     fontSize = 16.sp,
                                 )

@@ -114,7 +114,7 @@
     <string name="filter_audio">Has voice</string>
     <string name="month_prev">Previous month</string>
     <string name="month_next">Next month</string>
-    <string name="calendar_hint">Days with entries are circled. Tap a day to turn to it — or an empty one to write it.</string>
+    <string name="calendar_hint">Days with entries are circled. Tap one to turn to it.</string>
 
     <string name="settings_style">Style</string>
     <string name="style_glass">Glass</string>
@@ -151,7 +151,7 @@
     <string name="help_bookmark_t">Bookmark</string>
     <string name="help_bookmark">The ribbon is sewn to the spine; its tip hangs from under the book on the left. Pull the tip down — the ribbon lies on this page. Pull it again — it\'s removed.\n\nWhen the bookmark is on another page, tap the tip and the diary turns there.</string>
     <string name="help_search_t">Search and calendar</string>
-    <string name="help_search">Search — the ribbon at the top of the page: pull it down. Words, numbers, dates, months, years, place, and “week”, “month”, “year”. Tap a result — the diary turns to that day and highlights the word. Photos and Audio — only photos (with a slideshow) or only recordings.\n\nThe calendar icon next to the search field: month pages, days with entries are circled. You can also open an empty past day to write it.\n\nIf something was written on this day a year (or more) ago, today\'s page has a folded corner at the bottom.</string>
+    <string name="help_search">Search — the ribbon at the top of the page: pull it down. Words, numbers, dates, months, years, place, and “week”, “month”, “year”. Tap a result — the diary turns to that day and highlights the word. Photos and Audio — only photos (with a slideshow) or only recordings.\n\nThe calendar icon next to the search field: month pages, days with entries are circled.\n\nIf something was written on this day a year (or more) ago, today\'s page has a folded corner at the bottom.</string>
     <string name="help_lock_t">Lock</string>
     <string name="help_lock">The gear → “Set a lock”: turn the four wheels and lock in. From then on the diary opens only with that code.\n\nThe code can\'t be reset or recovered. If it\'s forgotten, the diary can only be erased.\n\nEverything written is always encrypted on the phone (even without a lock). While a locked diary is open, screenshots are disabled; as soon as the app goes to the background, it closes.</string>
     <string name="help_shelf_t">Several diaries</string>
