@@ -85,6 +85,8 @@ class FlipState(initial: Int) {
     var tearFinger by mutableStateOf<Offset?>(null)
     /** Колишній заклеєний розрив сторінки, що її виривають: скотч відклеюється й піднімається з кутом. */
     var tapeK by mutableFloatStateOf(0f)
+    /** Виривають свіжу сторінку: вона оновиться, тож і клаптик на корінці тане разом із нею. */
+    var tearRenew by mutableStateOf(false)
     var tapeSeed by mutableStateOf(0)
     var tapeMargin by mutableFloatStateOf(0f)
     var tearSeed by mutableStateOf(0)
@@ -616,6 +618,16 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
         close()
     }
     val canvas = drawContext.canvas
+    // 0) Клаптик, що лишається на корінці (ліворуч від розриву, де аркуш уже піднявся), — під клаптем, що загинається,
+    //    і під рештою сторінки. Поки вирвана падає — на всю висоту; свіжа оновлюється — тоді тане.
+    run {
+        val kk = if (state.tearFall > 0f) 1f else g.tearHeight
+        if (kk > 0.005f) {
+            canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint().apply { this.alpha = if (state.tearRenew) 1f - state.tearFall else 1f })
+            drawTornRemnant(TEAR_X.toPx(), size.height * (1f - kk), size.height, tearSeed, glass, fill = true)
+            canvas.restore()
+        }
+    }
     canvas.saveLayer(Rect(-size.width, -size.height, size.width * 2, size.height * 2), Paint().apply { this.alpha = alpha })
     // 1) Решта сторінки — як лежала.
     clipPath(poly(g.stay)) { drawLayer(layer) }

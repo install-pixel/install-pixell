@@ -765,20 +765,7 @@ fun BookScreen(
                     val stubHere = tearPage in stubs
                     val renew = !DiaryViewModel.isDry(tearPage.day)
                     Canvas(Modifier.size(pw, ph)) {
-                        val k = flip.tear
                         if (flip.tearFinger == null && stubFold <= 0f) return@Canvas
-                        // Клаптик, що лишається на корінці, — та сама лінія, що й заклеєна (продовжується, а не дублюється).
-                        // Поки вирвана падає, він лишається; свіжа сторінка оновлюється — тоді й клаптик тане.
-                        val finger = flip.tearFinger
-                        if (finger != null && k > 0.01f) {
-                            // Клаптик — лише там, де аркуш уже піднявся (до лінії загину); вище — заклеєний розрив на самій
-                            // сторінці зі своїм скотчем. Коли вирвана падає — на всю висоту.
-                            val kk = if (flip.tearFall > 0f) 1f else TearGeometry(size.width, size.height, finger).tearHeight
-                            val a = if (renew) 1f - flip.tearFall else 1f
-                            drawIntoCanvas { c -> c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = a }) }
-                            drawTornRemnant(TEAR_X.toPx(), size.height * (1f - kk), size.height, flip.tearSeed, glass, fill = true)
-                            drawIntoCanvas { it.restore() }
-                        }
                         // Клаптик раніше вирваної — зверху, але відгорнутий уліво (до корінця), щоб не плутався з розривом.
                         if (stubHere) {
                             val f = stubFold
@@ -822,6 +809,7 @@ fun BookScreen(
                                         already = vm.day(tearPage.day).tearTry(tearPage.part)
                                         flip.tearSeed = tearSeedOf(tearPage.day, tearPage.part)
                                         flip.tapeK = already
+                                        flip.tearRenew = renew
                                         flip.tapeSeed = tearSeedOf(tearPage.day, tearPage.part)
                                         flip.tapeMargin = PageMetrics.MARGIN_LEFT * w / PageMetrics.WIDTH
                                         focusManager.clearFocus()
