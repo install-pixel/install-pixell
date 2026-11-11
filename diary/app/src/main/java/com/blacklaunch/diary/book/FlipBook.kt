@@ -232,7 +232,7 @@ fun FlipBook(
                         val edge = 22.dp.toPx()
                         val p = down.position
                         if (blockers().any { it.contains(p) }) continue
-                        val fwdZone = p.x > w * 0.6f && p.x < w - edge && state.index < currentCount - 1 && mayForward(state.index)
+                        val fwdZone = p.x > w * 0.6f && p.x < w - edge && (state.index < currentCount - 1 || next(state.index) in 0 until state.index) && mayForward(state.index)
                         val backZone = p.x < w * 0.4f && p.x > edge && state.index > 0
                         if (!fwdZone && !backZone) continue
                         val tracker = VelocityTracker()
@@ -323,7 +323,7 @@ fun FlipBook(
             val peek = when {
                 // Виривають сторінку — під нею чітко видно ту, що лишиться: наступну (або попередню, якщо це остання).
                 tearing -> if (state.index < currentCount - 1) state.index + 1 else null
-                AppStyle.glass && state.index < currentCount - 1 && mayForward(state.index) -> next(state.index).coerceIn(0, currentCount - 1)
+                AppStyle.glass && (state.index < currentCount - 1 || next(state.index) in 0 until state.index) && mayForward(state.index) -> next(state.index).coerceIn(0, currentCount - 1)
                 else -> null
             }
             if (tearing) {

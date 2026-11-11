@@ -122,7 +122,11 @@ sealed interface BookPage {
     data class Menu(val n: Int) : BookPage
     /** Пошук — сторінка, на яку перегортає закладка-пошук; назад — туди, звідки прийшли. */
     data object Search : BookPage
+    /** Наступні сторінки знахідок пошуку (у щоденнику нічого не прокручується). */
+    data class SearchMore(val n: Int) : BookPage
 }
+
+private fun BookPage?.isSearch() = this == BookPage.Search || this is BookPage.SearchMore
 
 /** Які вікна відкриті. */
 private sealed interface BookDialog {
@@ -184,6 +188,7 @@ fun BookScreen(
 
     // Розміри сторінки й поділ тексту між двома сторінками дня.
     var pageW by remember { mutableStateOf(0f) }
+    var pageDp by remember { mutableStateOf(androidx.compose.ui.unit.DpSize.Zero) }
     val u = pageW / PageMetrics.WIDTH
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val style = pageTextStyle(u.coerceAtLeast(0.01f), density, glass)
@@ -281,6 +286,14 @@ fun BookScreen(
             prevTorn = false
         }
     }
+    val searchUi = remember(info.id) { SearchUi() }
+    val searchFound = remember(searchOpen, searchUi.query, searchUi.mode, searchUi.shuffle) {
+        if (searchOpen) vm.find(searchUi.query, searchUi.mode) else com.blacklaunch.diary.search.Found(emptyList(), null, false)
+    }
+    val resultSlices = remember(searchFound, searchUi.mode, searchUi.query, pageDp, density.fontScale) {
+        searchSlices(searchFound, searchUi, pageDp.width.value, pageDp.height.value, density.fontScale)
+    }
+    LaunchedEffect(searchOpen) { if (!searchOpen) { searchUi.player.stop(); searchUi.playingDay = -1L } }
     val pages: List<BookPage> = buildList {
         add(BookPage.Cover)
         physical.forEach { (p, torn) -> if (!torn) add(p) }
@@ -288,7 +301,10 @@ fun BookScreen(
             add(BookPage.Menu(0))
             if (open != null) add(BookPage.Menu(1))
         }
-        if (searchOpen && open != null) add(BookPage.Search)
+        if (searchOpen && open != null) {
+            add(BookPage.Search)
+            for (n in 1 until resultSlices.size) add(BookPage.SearchMore(n))
+        }
     }
     val flip = remember(info.id) { FlipState(0) }
     var currentKey by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
@@ -639,6 +655,7 @@ fun BookScreen(
             val pw = with(density) { size.width.toDp() }
             val ph = with(density) { size.height.toDp() }
             LaunchedEffect(size.width) { pageW = size.width }
+            LaunchedEffect(pw, ph) { pageDp = androidx.compose.ui.unit.DpSize(pw, ph) }
             // Книжка — посередині вільного місця (вона вужча за екран, тож зверху й знизу лишається тло).
             val top = ((maxHeight - ph - RibbonBottom) / 2).coerceAtLeast(0.dp)
             Box(
@@ -677,19 +694,20 @@ fun BookScreen(
                         },
                         canFlipForward = { i ->
                             // Пошук гортається вперед — назад на ту сторінку, з якої прийшли: коло замикається.
-                            if (pages.getOrNull(i) == BookPage.Search) pages.indexOf(searchReturn) >= 0 else run {
+                            if (pages.getOrNull(i).isSearch()) pages.indexOf(searchReturn) >= 0 else run {
                             val next = if (i == 0) openTarget else i + 1
                             // У меню заходять лише шестернею; усередині меню — гортання між його сторінками.
                             val here = pages.getOrNull(i)
                             val there = pages.getOrNull(next)
                             !(i == 0 && open == null) && (here is BookPage.Menu) == (there is BookPage.Menu) &&
-                                (here == BookPage.Search) == (there == BookPage.Search)
+                                !there.isSearch()
                             }
                         },
                         nextOf = { i ->
                             when {
                                 i == 0 -> openTarget
-                                pages.getOrNull(i) == BookPage.Search -> pages.indexOf(searchReturn).coerceAtLeast(0)
+                                // Пошук: далі — наступна сторінка знахідок, а після останньої — туди, звідки прийшли.
+                                pages.getOrNull(i).isSearch() -> if (pages.getOrNull(i + 1).isSearch()) i + 1 else pages.indexOf(searchReturn).coerceAtLeast(0)
                                 else -> i + 1
                             }
                         },
@@ -713,7 +731,7 @@ fun BookScreen(
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey !is BookPage.Menu) menuOpen = false
-                            if (currentKey != BookPage.Search) searchOpen = false
+                            if (!currentKey.isSearch()) searchOpen = false
                             highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
                     ) { i ->
                         when (val p = pages.getOrNull(i)) {
@@ -763,16 +781,24 @@ fun BookScreen(
                                     }
                                 }
                             }
-                            BookPage.Search -> PaperPage(
-                                title = stringResource(R.string.search),
-                                subtitle = info.name,
-                                seed = info.tint * 7 + 41,
-                            ) {
-                                SearchPage(
-                                    vm = vm,
-                                    active = currentPage == BookPage.Search && !flip.moving,
-                                    onOpen = { h -> focusManager.clearFocus(); jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
-                                )
+                            BookPage.Search, is BookPage.SearchMore -> {
+                                val n = (p as? BookPage.SearchMore)?.n ?: 0
+                                PaperPage(
+                                    title = stringResource(R.string.search),
+                                    subtitle = info.name,
+                                    seed = info.tint * 7 + 41 + n * 13,
+                                    footer = searchFooter(searchFound, resultSlices, n),
+                                ) {
+                                    SearchPage(
+                                        vm = vm,
+                                        ui = searchUi,
+                                        found = searchFound,
+                                        slice = resultSlices.getOrNull(n) ?: IntRange.EMPTY,
+                                        first = n == 0,
+                                        active = currentPage == BookPage.Search && !flip.moving,
+                                        onOpen = { h -> focusManager.clearFocus(); jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
+                                    )
+                                }
                             }
                             is BookPage.Menu -> PaperPage(
                                 title = if (p.n == 0) info.name else stringResource(R.string.settings_this_diary),
@@ -1024,6 +1050,8 @@ fun BookScreen(
         }, onDone = { ink = null }) }
     }
 
+
+    if (searchOpen) SearchShow(vm, searchUi, searchFound)
 
     // ——— Вікна ———
     when (val dl = dialog) {

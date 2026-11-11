@@ -211,4 +211,5 @@
         <item quantity="one">%d photo</item>
         <item quantity="other">%d photos</item>
     </plurals>
+    <string name="search_range">%1$d–%2$d of %3$d</string>
 </resources>
