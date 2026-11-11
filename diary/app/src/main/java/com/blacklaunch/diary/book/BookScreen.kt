@@ -773,9 +773,10 @@ fun BookScreen(
                             // Гортається навколо корінця, як сторінка: ширина — косинус кута; стає ребром біля корінця
                             // (за корінець, поза сторінку, не малюємо), трохи темніє, поки повернутий від світла.
                             val sf: Float = stubFold
-                            val angle = sf * 1.40f
+                            // Повністю стає ребром — і за корінцем його не видно: жодних стиснутих рисочок біля краю.
+                            val angle = sf * (Math.PI.toFloat() / 2f)
                             val c = kotlin.math.cos(angle)
-                            withTransform({ scale(c, 1f, pivot = Offset.Zero) }) {
+                            if (c > 0.04f) withTransform({ scale(c, 1f, pivot = Offset.Zero) }) {
                                 drawTornStub((tearPage.day * 7 + tearPage.part).toInt(), glass)
                                 if (sf > 0f) drawRect(
                                     androidx.compose.ui.graphics.Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.10f * sf), 1f to Color.Black.copy(alpha = 0.30f * sf), startX = 0f, endX = TEAR_X.toPx()),
