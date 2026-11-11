@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -122,7 +123,8 @@ fun RecorderPage(
     val flip = remember(day.day) { Animatable(0f) }
 
     // Дописали — стрічка стоїть у кінці нового запису.
-    LaunchedEffect(dur, side) { if (deck == Deck.Idle || deck == Deck.Record) head = dur.toFloat() }
+    // (Лише коли змінився сам запис, а не сторона: перевернута касета стоїть там, де стрічка.)
+    LaunchedEffect(day.audioMs, day.audioMsB) { if (deck == Deck.Idle || deck == Deck.Record) head = dur.toFloat() }
     if (isRec) head = recording!!.base + recording.elapsed.toFloat()
 
     suspend fun bytes(): ByteArray? = loaded ?: vm.audio(day.day, side).also { loaded = it }
@@ -145,7 +147,7 @@ fun RecorderPage(
         if (deck == Deck.Pause && player.duration > 0) { player.resume(); deck = Deck.Play; return }
         cancelJob()
         job = scope.launch {
-            // З кінця — спершу перемотати на початок.
+            // З кінця (чи з порожньої частини стрічки після перевертання) — спершу перемотати на початок запису.
             if (head >= dur - 300) windTo(0f)
             val b = bytes() ?: return@launch
             val ok = player.play(b, head.toInt().coerceAtLeast(0)) {
@@ -157,17 +159,35 @@ fun RecorderPage(
         }
     }
 
-    // Поки грає (і поки мотає вперед зі звуком) — стрічка йде за програвачем.
+    // Поки грає (і поки мотає зі звуком) — стрічка йде плавно, кадр за кадром, звіряючись із програвачем.
     var cue by remember { mutableStateOf(false) }
+    var reverse by remember { mutableStateOf<com.blacklaunch.diary.audio.ReverseCue?>(null) }
     LaunchedEffect(deck, cue) {
-        while (deck == Deck.Play || (deck == Deck.Forward && cue)) {
-            head = player.position.toFloat().coerceAtMost(dur.toFloat())
-            delay(40)
+        val speed = when {
+            deck == Deck.Play -> 1f
+            deck == Deck.Forward && cue -> 3f
+            deck == Deck.Rewind && cue -> -3f
+            else -> return@LaunchedEffect
+        }
+        var base = head
+        var baseT = 0L
+        var lastSync = 0L
+        while (true) {
+            val t = withFrameNanos { it }
+            if (baseT == 0L) { baseT = t; lastSync = t }
+            var h = base + (t - baseT) / 1e6f * speed
+            // Раз на чверть секунди — звірити з програвачем (крім «назад», там грає свій звук).
+            if (speed > 0 && t - lastSync > 250_000_000L) {
+                base = player.position.toFloat(); baseT = t; lastSync = t; h = base
+            }
+            head = h.coerceIn(0f, dur.toFloat())
+            if (speed < 0 && head <= 0f) break
         }
     }
 
     fun stopAll() {
         cancelJob()
+        reverse?.stop(); reverse = null
         player.stop()
         cue = false
         deck = Deck.Idle
@@ -182,29 +202,17 @@ fun RecorderPage(
 
     fun nudge(ms: Float) {
         if (!has || isRec) return
-        head = (head + ms).coerceIn(0f, dur.toFloat())
+        // Вперед — лише по записаному; назад — завжди (і з порожньої частини стрічки після перевертання).
+        if (ms > 0 && head >= dur) return
+        head = if (ms > 0) (head + ms).coerceAtMost(dur.toFloat()) else (head + ms).coerceIn(0f, maxOf(dur.toFloat(), head))
         if (player.duration > 0) player.seek(head.toInt())
     }
 
-    // Котушки: кожна крутиться від того, скільки стрічки пройшло, і тим швидше, чим вона тонша (як справжні).
-    var angleL by remember { mutableFloatStateOf(0f) }
-    var angleR by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) {
-        var last = head
-        while (true) {
-            withFrameNanos { }
-            val d = head - last
-            last = head
-            if (d != 0f) {
-                val f = (head / Limits.SIDE_MS).coerceIn(0f, 1f)
-                val rl = sqrt(1f + (1f - f) * (PACK_RATIO * PACK_RATIO - 1f))
-                val rr = sqrt(1f + f * (PACK_RATIO * PACK_RATIO - 1f))
-                // Пів оберту на секунду, поки маточина порожня; товста котушка — повільніше.
-                angleL += d * (PI.toFloat() / 1000f) / rl
-                angleR += d * (PI.toFloat() / 1000f) / rr
-            }
-        }
-    }
+    // Котушки: кут — точна функція того, де стрічка (а не накопичена сума), тож маточина й намотка на ній завжди
+    // разом, без смикань. Тонка котушка крутиться швидше за товсту — так і в справжній касеті (стрічка йде з однаковою
+    // швидкістю, а коло різне).
+    val angleL = reelAngle(head, left = true)
+    val angleR = reelAngle(head, left = false)
 
     val rawLevel = when {
         isRec -> recording!!.level
@@ -230,10 +238,21 @@ fun RecorderPage(
             }
             DeckKey(Deck.Rewind, shown == Deck.Rewind, enabled = has && !isRec, desc = stringResource(R.string.recorder_rewind), glass = glass, hold = { down ->
                 if (down) {
-                    if (deck == Deck.Play) player.pause()
-                    deck = Deck.Rewind
-                    job = scope.launch { while (deck == Deck.Rewind && head > 0f) { head = (head - 40f * WIND_SPEED).coerceAtLeast(0f); delay(40) } }
+                    val b = loaded
+                    if (deck == Deck.Play && b != null) {
+                        // Під час слухання — назад зі звуком: задом наперед і прискорено.
+                        player.pause()
+                        reverse = com.blacklaunch.diary.audio.ReverseCue(b, head.toLong()).also { it.start() }
+                        cue = true
+                        deck = Deck.Rewind
+                    } else {
+                        if (deck == Deck.Play) player.pause()
+                        deck = Deck.Rewind
+                        job = scope.launch { while (deck == Deck.Rewind && head > 0f) { head = (head - 40f * WIND_SPEED).coerceAtLeast(0f); delay(40) } }
+                    }
                 } else if (deck == Deck.Rewind) {
+                    reverse?.stop(); reverse = null
+                    cue = false
                     if (player.duration > 0) { player.seek(head.toInt()); player.resume(); deck = Deck.Play } else deck = Deck.Idle
                 }
             }) { nudge(-5000f) }
@@ -244,7 +263,7 @@ fun RecorderPage(
                         player.speed(3f)
                         cue = true
                         deck = Deck.Forward
-                    } else {
+                    } else if (head < dur) {
                         deck = Deck.Forward
                         job = scope.launch { while (deck == Deck.Forward && head < dur) { head = (head + 40f * WIND_SPEED).coerceAtMost(dur.toFloat()); delay(40) } }
                     }
@@ -268,6 +287,7 @@ fun RecorderPage(
     }
 
     PaperPage(title = title, subtitle = subtitle, seed = seed, edgeHeight = 118.dp, edge = keys) {
+        val holesHolder = LocalReliefHoles.current
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // ——— Шухлядка з касетою (торкнись — перевернути на іншу сторону) ———
             Canvas(
@@ -275,15 +295,24 @@ fun RecorderPage(
                     .fillMaxWidth()
                     .weight(1.05f)
                     .semantics { contentDescription = if (side == 0) "A" else "B" }
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = deck == Deck.Idle && recording == null && !flip.isRunning) {
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = (deck == Deck.Idle || deck == Deck.Pause) && recording == null && !flip.isRunning) {
                         haptics.tap()
                         stopAll()
                         scope.launch {
                             flip.animateTo(90f, tween(220, easing = LinearEasing))
+                            // Одна стрічка: перевернув — що на A вже прокрутилось, на B ще попереду (котушки міняються місцями).
                             side = 1 - side
+                            head = (Limits.SIDE_MS - head).coerceIn(0f, Limits.SIDE_MS.toFloat())
                             flip.snapTo(-90f)
                             flip.animateTo(0f, tween(220, easing = LinearEasing))
                         }
+                    }
+                    .onGloballyPositioned { c ->
+                        // Касета — пластик: на ній немає заломів паперу.
+                        val page = holesHolder?.page ?: return@onGloballyPositioned
+                        val off = page.localPositionOf(c, Offset.Zero)
+                        val r = cassetteRect(Size(c.size.width.toFloat(), c.size.height.toFloat())).translate(off)
+                        holesHolder.rects["cassette"] = androidx.compose.ui.geometry.RoundRect(r, CornerRadius(r.width * 0.035f))
                     },
             ) {
                 drawDeckWell(glass, ink)
@@ -314,6 +343,19 @@ fun RecorderPage(
             }
         }
     }
+}
+
+/**
+ * Кут котушки (радіани) для місця на стрічці [head]: інтеграл від швидкості стрічки, поділеної на радіус намотки.
+ * Порожня маточина — пів оберту на секунду звичайного ходу.
+ */
+private fun reelAngle(head: Float, left: Boolean): Float {
+    val c = (PACK_RATIO * PACK_RATIO - 1.0)
+    val side = Limits.SIDE_MS.toDouble()
+    val f = (head / side).coerceIn(0.0, 1.0)
+    val k = PI / 1000.0 * side * 2.0 / c
+    val a = if (left) -k * sqrt(1.0 + (1.0 - f) * c) else k * sqrt(1.0 + f * c)
+    return (a % (2 * PI)).toFloat()
 }
 
 /** Касета, що перевертається, — стискається по ширині до ребра й розкривається іншою стороною. */
@@ -502,7 +544,8 @@ private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: 
     drawContext.canvas.nativeCanvas.drawText(labelText, label.left + label.width * 0.21f, label.top + label.height * 0.16f - 3.dp.toPx(), paint)
     // Віконце між маточинами: крізь нього видно стрічку на котушках.
     // Як у справжньої касети: маточини на ~42 мм одна від одної (на 100 мм ширини), віконце між ними.
-    val win = Rect(p(0.355f, 0.38f), p(0.645f, 0.64f))
+    // Між віконцем і отворами маточин — стінка корпусу (так, як можна відлити насправді).
+    val win = Rect(p(0.395f, 0.40f), p(0.605f, 0.62f))
     val hubL = p(0.29f, 0.51f)
     val hubR = p(0.71f, 0.51f)
     val hubRad = w * 0.05f
@@ -521,15 +564,18 @@ private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: 
         fun packTexture(c: Offset, rad: Float, a: Float) {
             drawCircle(Color.Black.copy(alpha = 0.25f), (rad + hubRad) / 2, c, style = Stroke(0.6.dp.toPx()))
             if (rad < hubRad * 1.3f) return
+            // М'які відблиски на намотці (розмиті, без різких ліній) — крутяться разом із котушкою.
+            val hi = if (glass) Color.White else SheetInk
+            val a1 = if (glass) 0.09f else 0.16f
             rotate(a * 180f / PI.toFloat(), c) {
-                val tex = if (glass) Color.White.copy(alpha = 0.07f) else SheetInk.copy(alpha = 0.22f)
-                for (k in 0 until 7) {
-                    val t = k * 0.9f + (k % 3) * 0.37f
-                    val d = Offset(cos(t), sin(t))
-                    val a0 = hubRad * (1.25f + (k % 3) * 0.15f)
-                    drawLine(tex, c + d * a0, c + d * (rad * (0.88f - (k % 2) * 0.12f)), (0.8f + (k % 2) * 0.6f).dp.toPx())
-                }
-                drawArc(Color.Black.copy(alpha = 0.18f), 20f, 110f, false, topLeft = c - Offset(rad * 0.75f, rad * 0.75f), size = Size(rad * 1.5f, rad * 1.5f), style = Stroke(0.7.dp.toPx()))
+                drawCircle(
+                    Brush.sweepGradient(
+                        0f to Color.Transparent, 0.07f to hi.copy(alpha = a1), 0.16f to Color.Transparent,
+                        0.5f to Color.Transparent, 0.58f to hi.copy(alpha = a1 * 0.7f), 0.68f to Color.Transparent, 1f to Color.Transparent,
+                        center = c,
+                    ),
+                    rad, c,
+                )
             }
         }
         packTexture(hubL, rl, angleL)

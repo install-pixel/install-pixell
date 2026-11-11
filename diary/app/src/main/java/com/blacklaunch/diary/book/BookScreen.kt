@@ -1045,7 +1045,8 @@ fun BookScreen(
         // місці завжди видно «стоп» із часом: зупинити запис можна звідусіль.
         if (ink == null) {
             Box(Modifier.fillMaxWidth().height(GearRow), contentAlignment = Alignment.Center) {
-                val rec = recording
+                // На магнітофоні час запису вже видно на приладі — тут не дублюємо.
+                val rec = recording?.takeIf { currentPage !is BookPage.Recorder }
                 if (rec != null) {
                     Row(
                         Modifier

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +42,8 @@ fun PaperPage(
     val density = LocalDensity.current
     val glass = AppStyle.glass
     ReportPaperSeed(seed)
-    BoxWithConstraints(modifier.fillMaxSize().paperRelief(glass, seed)) {
+    val holes = androidx.compose.runtime.remember { ReliefHoles() }
+    BoxWithConstraints(modifier.fillMaxSize().onGloballyPositioned { holes.page = it }.paperRelief(glass, seed, holes)) {
         val u = constraints.maxWidth / PageMetrics.WIDTH
         val style = pageTextStyle(u.coerceAtLeast(0.01f), density, glass)
         val headerSize = (if (glass) 5f else 6.2f) * u / (density.density * density.fontScale)
@@ -64,7 +66,9 @@ fun PaperPage(
             if (subtitle != null) {
                 Text(subtitle, style = style.copy(fontSize = (headerSize * 0.6f).sp, lineHeight = (headerSize * 0.8f).sp, color = Oled.TextSecondary))
             }
-            Column(Modifier.padding(top = 10.dp).then(if (edge == null) Modifier else Modifier.weight(1f)), content = content)
+            androidx.compose.runtime.CompositionLocalProvider(LocalReliefHoles provides holes) {
+                Column(Modifier.padding(top = 10.dp).then(if (edge == null) Modifier else Modifier.weight(1f)), content = content)
+            }
         }
         if (edge != null) {
             androidx.compose.foundation.layout.Box(

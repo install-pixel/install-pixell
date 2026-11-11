@@ -1,5 +1,7 @@
 package com.blacklaunch.diary.book
 
+import androidx.compose.ui.graphics.drawscope.clipPath
+
 import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -368,14 +370,34 @@ object PaperTexture {
  * «Аркуш»: накласти на вміст сторінки рельєф паперу (заломи, витерті краї) і зерно — усе написане лягає на папір.
  * У «Склі» нічого не робить.
  */
-fun androidx.compose.ui.Modifier.paperRelief(glass: Boolean, seed: Int = 0): androidx.compose.ui.Modifier =
+fun androidx.compose.ui.Modifier.paperRelief(glass: Boolean, seed: Int = 0, holes: ReliefHoles? = null): androidx.compose.ui.Modifier =
     if (glass) this else this.drawWithContent {
         drawContent()
         val dst = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
         val v = PaperTexture.Variant.of(seed)
-        withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = center) }) {
-            PaperTexture.shadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
-            PaperTexture.lightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+        val cut = holes?.rects?.values?.toList().orEmpty()
+        val paint: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
+            withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = center) }) {
+                PaperTexture.shadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+                PaperTexture.lightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+            }
+            PaperTexture.grain?.let { drawImage(it, dstSize = dst, alpha = 0.75f, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
         }
-        PaperTexture.grain?.let { drawImage(it, dstSize = dst, alpha = 0.75f, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+        if (cut.isEmpty()) paint() else {
+            // Речі, що не з паперу (касета), — без заломів і зерна.
+            val path = androidx.compose.ui.graphics.Path().apply {
+                fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
+                addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+                cut.forEach { addRoundRect(it) }
+            }
+            clipPath(path) { paint() }
+        }
     }
+
+/** Місця на сторінці, де рельєфу паперу не треба (касета — вона пластикова). */
+class ReliefHoles {
+    val rects = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.ui.geometry.RoundRect>()
+    var page: androidx.compose.ui.layout.LayoutCoordinates? = null
+}
+
+val LocalReliefHoles = androidx.compose.runtime.staticCompositionLocalOf<ReliefHoles?> { null }

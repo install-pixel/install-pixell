@@ -117,7 +117,7 @@ class Player {
         runCatching { p.release() }
     }
 
-    private class BytesSource(private val data: ByteArray) : MediaDataSource() {
+    internal class BytesSource(private val data: ByteArray) : MediaDataSource() {
         override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
             if (position >= data.size) return -1
             val n = minOf(size.toLong(), data.size - position).toInt()
@@ -204,6 +204,122 @@ object Tape {
             fa.delete()
             fb.delete()
             out.delete()
+        }
+    }
+}
+
+/**
+ * Перемотка назад під час слухання — звук задом наперед і прискорено (як на магнітофоні, коли тримаєш «назад»).
+ * Шматками по 4 с від [fromMs] до початку: кожен розкодовується, перевертається й іде в динамік утричі швидше.
+ */
+class ReverseCue(private val bytes: ByteArray, private val fromMs: Long, private val speed: Int = 3) {
+    @Volatile private var running = true
+
+    fun start() {
+        Thread { runCatching { run() } }.apply { isDaemon = true; start() }
+    }
+
+    fun stop() { running = false }
+
+    private fun run() {
+        var endUs = fromMs * 1000
+        var track: android.media.AudioTrack? = null
+        try {
+            while (running && endUs > 0) {
+                val startUs = (endUs - 4_000_000L).coerceAtLeast(0L)
+                val dec = decode(startUs, endUs) ?: break
+                val (pcm, rate, ch) = dec
+                if (track == null) {
+                    val cfg = if (ch == 1) android.media.AudioFormat.CHANNEL_OUT_MONO else android.media.AudioFormat.CHANNEL_OUT_STEREO
+                    val min = android.media.AudioTrack.getMinBufferSize(rate, cfg, android.media.AudioFormat.ENCODING_PCM_16BIT)
+                    track = android.media.AudioTrack.Builder()
+                        .setAudioAttributes(android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                        .setAudioFormat(android.media.AudioFormat.Builder().setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(cfg).build())
+                        .setBufferSizeInBytes(min * 2)
+                        .setTransferMode(android.media.AudioTrack.MODE_STREAM)
+                        .build()
+                    track.play()
+                }
+                val frames = pcm.size / ch
+                val outFrames = frames / speed
+                val out = ShortArray(outFrames * ch)
+                for (i in 0 until outFrames) {
+                    val src = frames - 1 - i * speed
+                    for (c in 0 until ch) out[i * ch + c] = pcm[src * ch + c]
+                }
+                var off = 0
+                while (running && off < out.size) {
+                    val n = minOf(2048, out.size - off)
+                    track.write(out, off, n)
+                    off += n
+                }
+                endUs = startUs
+            }
+        } finally {
+            track?.let { t -> runCatching { t.pause(); t.flush(); t.stop() }; runCatching { t.release() } }
+        }
+    }
+
+    /** Розкодувати [fromUs, toUs) у PCM 16 біт: семпли, частота, канали. */
+    private fun decode(fromUs: Long, toUs: Long): Triple<ShortArray, Int, Int>? {
+        val ex = android.media.MediaExtractor()
+        var codec: android.media.MediaCodec? = null
+        try {
+            ex.setDataSource(Player.BytesSource(bytes))
+            val ti = (0 until ex.trackCount).firstOrNull { ex.getTrackFormat(it).getString(android.media.MediaFormat.KEY_MIME)?.startsWith("audio/") == true } ?: return null
+            ex.selectTrack(ti)
+            val fmt = ex.getTrackFormat(ti)
+            var rate = fmt.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE)
+            var ch = fmt.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT)
+            val c = android.media.MediaCodec.createDecoderByType(fmt.getString(android.media.MediaFormat.KEY_MIME)!!)
+            codec = c
+            c.configure(fmt, null, null, 0)
+            c.start()
+            ex.seekTo(fromUs, android.media.MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            val out = java.io.ByteArrayOutputStream()
+            val info = android.media.MediaCodec.BufferInfo()
+            var inDone = false
+            while (running) {
+                if (!inDone) {
+                    val ii = c.dequeueInputBuffer(5000)
+                    if (ii >= 0) {
+                        val buf = c.getInputBuffer(ii)!!
+                        val n = ex.readSampleData(buf, 0)
+                        if (n < 0 || ex.sampleTime >= toUs) {
+                            c.queueInputBuffer(ii, 0, 0, 0, android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            inDone = true
+                        } else {
+                            c.queueInputBuffer(ii, 0, n, ex.sampleTime, 0)
+                            ex.advance()
+                        }
+                    }
+                }
+                val oi = c.dequeueOutputBuffer(info, 5000)
+                if (oi == android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    rate = c.outputFormat.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE)
+                    ch = c.outputFormat.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT)
+                } else if (oi >= 0) {
+                    if (info.size > 0 && info.presentationTimeUs >= fromUs && info.presentationTimeUs < toUs) {
+                        val ob = c.getOutputBuffer(oi)!!
+                        val arr = ByteArray(info.size)
+                        ob.position(info.offset)
+                        ob.get(arr, 0, info.size)
+                        out.write(arr)
+                    }
+                    c.releaseOutputBuffer(oi, false)
+                    if (info.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                }
+            }
+            val raw = out.toByteArray()
+            val shorts = ShortArray(raw.size / 2)
+            java.nio.ByteBuffer.wrap(raw).order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shorts)
+            return Triple(shorts, rate, ch.coerceAtLeast(1))
+        } catch (e: Exception) {
+            return null
+        } finally {
+            runCatching { codec?.stop() }
+            runCatching { codec?.release() }
+            ex.release()
         }
     }
 }
