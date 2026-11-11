@@ -110,7 +110,7 @@
     <string name="restore_failed">To nie jest kopia pamiętnika albo plik jest uszkodzony</string>
 
     <string name="search_hint">Słowo, data lub miejsce</string>
-    <string name="search_explain">Szukaj słowami z tekstu lub miejsca, datą („12.03”, „12.03.2025”), miesiącem („marzec”) lub rokiem („2025”). Można łączyć: „morze lipiec”.</string>
+    <string name="search_explain">Szukaj słowami z tekstu lub miejsca, liczbą („11” — 11. dzień lub listopad), datą („12.03”), miesiącem („marzec”), rokiem („2025”) lub okresem: „tydzień”, „miesiąc”, „rok”. Można łączyć: „morze lipiec”.</string>
     <string name="search_nothing">Nic nie znaleziono</string>
     <string name="filter_photo">Ze zdjęciem</string>
     <string name="filter_audio">Z głosem</string>
@@ -194,4 +194,25 @@
     <string name="diaries">Pamiętniki</string>
     <string name="diaries_hint">Dotknij pamiętnika — otworzą się jego własne ustawienia (okładka, nazwa, zamek, zdjęcia i głos, kopia).</string>
     <string name="locked_settings_hint">Pamiętnik jest zamknięty na kod — jego ustawienia zobaczysz po otwarciu kodem</string>
+    <string name="search_mode_notes">Notatki</string>
+    <string name="search_mode_photo">Zdjęcia</string>
+    <string name="search_mode_audio">Audio</string>
+    <string name="search_hint_photo">„tydzień”, „najlepsze z miesiąca”, słowo…</string>
+    <string name="search_hint_audio">„tydzień”, „miesiąc”, data lub słowo…</string>
+    <string name="search_show">Pokaz</string>
+    <string name="search_best_week">Wszystkie zdjęcia z ostatniego tygodnia</string>
+    <string name="search_best_month">Po jednym losowym zdjęciu z każdego tygodnia miesiąca</string>
+    <string name="search_best_year">Po jednym losowym zdjęciu z każdego miesiąca roku</string>
+    <string name="search_best_again">Wybierz inne</string>
+    <string name="search_best_nothing">Brak zdjęć w tym czasie</string>
+    <string name="search_photo_nothing">Nie znaleziono zdjęć</string>
+    <string name="search_photo_explain">Tylko zdjęcia. Wpisz „tydzień”, „miesiąc” lub „rok” — albo „najlepsze z miesiąca”: po jednym losowym zdjęciu z każdego tygodnia. Słowa i daty szukają w notatkach tych dni.</string>
+    <string name="search_audio_nothing">Nie znaleziono nagrań</string>
+    <string name="search_audio_explain">Tylko nagrania głosu — słuchaj od razu tutaj. Wpisz „tydzień”, „miesiąc”, „rok”, datę lub słowo z notatki tego dnia.</string>
+    <plurals name="search_photos">
+        <item quantity="one">%d zdjęcie</item>
+        <item quantity="few">%d zdjęcia</item>
+        <item quantity="many">%d zdjęć</item>
+        <item quantity="other">%d zdjęcia</item>
+    </plurals>
 </resources>

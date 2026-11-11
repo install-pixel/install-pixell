@@ -8,6 +8,9 @@ import com.blacklaunch.diary.book.splitPages
 import com.blacklaunch.diary.book.absorbBlankLines
 import com.blacklaunch.diary.book.wordRange
 import com.blacklaunch.diary.data.Day
+import com.blacklaunch.diary.search.Period
+import com.blacklaunch.diary.search.Query
+import com.blacklaunch.diary.search.SearchMode
 import com.blacklaunch.diary.data.DayCodec
 import com.blacklaunch.diary.data.InkLine
 import com.blacklaunch.diary.data.Strike
@@ -211,6 +214,21 @@ class LogicTest {
         assertEquals(1, Searcher.search(days, "12", false, false).size)
         assertEquals(1, Searcher.search(days, "7", false, false).size)
         assertEquals(0, Searcher.search(days, "25", false, false).size)
+    }
+
+    @Test
+    fun searchPeriodsAndBest() {
+        val today = 20000L
+        val list = (0 until 60).map { Day(today - it, sealed = "день $it", photo = true, audio = it % 2 == 0) }
+        assertEquals(Query("", Period.Week, false), Searcher.parse("фото за останній тиждень"))
+        assertEquals(Query("", Period.Month, true), Searcher.parse("найкраще за місяць"))
+        assertEquals(Query("sea", Period.Year, false), Searcher.parse("sea last year"))
+        assertEquals(7, Searcher.find(list, "тиждень", SearchMode.Photo, today).hits.size)
+        assertEquals(4, Searcher.find(list, "audio week", SearchMode.Audio, today).hits.size)
+        // Найкраще за місяць — по одному з кожного тижня (31 день — 5 тижнів), за тиждень — усі.
+        assertEquals(5, Searcher.find(list, "найкраще місяць", SearchMode.Photo, today).hits.size)
+        assertEquals(7, Searcher.find(list, "best week", SearchMode.Photo, today).hits.size)
+        assertEquals(31, Searcher.find(list, "місяць", SearchMode.Notes, today).hits.size)
     }
 
     @Test

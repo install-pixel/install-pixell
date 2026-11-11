@@ -108,7 +108,7 @@
     <string name="restore_failed">This isn\'t a diary backup, or the file is damaged</string>
 
     <string name="search_hint">Word, date or place</string>
-    <string name="search_explain">Search by words from the text or place, a date (“12.03”, “12.03.2025”), a month (“March”) or a year (“2025”). Combine them: “sea July”.</string>
+    <string name="search_explain">Search by words from the text or place, a number (“11” — the 11th or November), a date (“12.03”), a month (“March”), a year (“2025”) or a period: “week”, “month”, “year”. Combine them: “sea July”.</string>
     <string name="search_nothing">Nothing found</string>
     <string name="filter_photo">Has photo</string>
     <string name="filter_audio">Has voice</string>
@@ -192,4 +192,23 @@
     <string name="diaries">Diaries</string>
     <string name="diaries_hint">Tap a diary to open its own settings (cover, name, lock, photos and voice, backup).</string>
     <string name="locked_settings_hint">The diary is locked — its settings appear once you open it with the code</string>
+    <string name="search_mode_notes">Notes</string>
+    <string name="search_mode_photo">Photos</string>
+    <string name="search_mode_audio">Audio</string>
+    <string name="search_hint_photo">“week”, “best of the month”, a word…</string>
+    <string name="search_hint_audio">“week”, “month”, a date or a word…</string>
+    <string name="search_show">Slideshow</string>
+    <string name="search_best_week">All photos of the last week</string>
+    <string name="search_best_month">One random photo from each week of the month</string>
+    <string name="search_best_year">One random photo from each month of the year</string>
+    <string name="search_best_again">Pick others</string>
+    <string name="search_best_nothing">No photos in this period</string>
+    <string name="search_photo_nothing">No photos found</string>
+    <string name="search_photo_explain">Only photos. Type “week”, “month” or “year” — or “best of the month”: one random photo from each week. Words and dates search the notes of those days.</string>
+    <string name="search_audio_nothing">No recordings found</string>
+    <string name="search_audio_explain">Only voice recordings, listen right here. Type “week”, “month”, “year”, a date or a word from that day’s note.</string>
+    <plurals name="search_photos">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
 </resources>

@@ -80,7 +80,6 @@ import com.blacklaunch.diary.OpenResult
 import com.blacklaunch.diary.R
 import com.blacklaunch.diary.audio.Recorder
 import com.blacklaunch.diary.data.DiaryInfo
-import com.blacklaunch.diary.search.SearchPageContent
 import com.blacklaunch.diary.ui.AppStyle
 import com.blacklaunch.diary.ui.ConfirmDialog
 import com.blacklaunch.diary.ui.EqualWidthRow
@@ -760,8 +759,8 @@ fun BookScreen(
                                 subtitle = info.name,
                                 seed = info.tint * 7 + 41,
                             ) {
-                                SearchPageContent(
-                                    search = { q, ph, au -> vm.search(q, ph, au) },
+                                SearchPage(
+                                    vm = vm,
                                     active = currentPage == BookPage.Search && !flip.moving,
                                     onOpen = { h -> focusManager.clearFocus(); jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
                                 )

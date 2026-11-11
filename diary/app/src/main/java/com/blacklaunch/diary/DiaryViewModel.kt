@@ -487,6 +487,13 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         return Searcher.search(o.days.values.filter { !it.isBlank }, query, photo, audio, getApplication()).take(Limits.SEARCH_RESULTS)
     }
 
+    /** Пошук у режимі (нотатки / фото / голос) з періодами й «найкраще» — див. [Searcher.find]. */
+    fun find(query: String, mode: com.blacklaunch.diary.search.SearchMode): com.blacklaunch.diary.search.Found {
+        val o = open ?: return com.blacklaunch.diary.search.Found(emptyList(), null, false)
+        val f = Searcher.find(o.days.values.filter { !it.isBlank }, query, mode, java.time.LocalDate.now().toEpochDay())
+        return f.copy(hits = f.hits.take(Limits.SEARCH_RESULTS))
+    }
+
     // ——— Резервна копія ———
 
     fun backup(uri: Uri, password: String) {

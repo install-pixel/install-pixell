@@ -5,6 +5,21 @@ import com.blacklaunch.diary.data.Day
 import java.text.Normalizer
 import java.time.LocalDate
 
+/** Що шукаємо: нотатки повністю, лише фото чи лише голос. */
+enum class SearchMode { Notes, Photo, Audio }
+
+/** Період, сказаний словом: «тиждень», «місяць», «рік» — останні N днів. */
+enum class Period(val days: Int) { Week(7), Month(31), Year(366) }
+
+/** Розібраний запит: решта слів / дат, період і чи просили «найкраще». */
+data class Query(val rest: String, val period: Period?, val best: Boolean)
+
+/**
+ * Результат пошуку. [best] — це добірка «найкраще»: по одному випадковому фото з кожного тижня (місяць) чи місяця (рік);
+ * [hits] тоді вже вибрані.
+ */
+data class Found(val hits: List<SearchHit>, val period: Period?, val best: Boolean)
+
 /** Знахідка: день, де саме в тексті ([start]…[end] — у повному тексті дня; -1 — збіг у даті чи місці) і уривок. */
 data class SearchHit(
     val day: Long,
@@ -37,9 +52,65 @@ object Searcher {
         "jul" to 7, "aug" to 8, "sep" to 9, "oct" to 10, "nov" to 11, "dec" to 12,
     )
 
-    fun search(days: List<Day>, query: String, photo: Boolean, audio: Boolean, context: Context? = null): List<SearchHit> {
+    /** Розбирає «фото за останній тиждень», «найкраще за місяць», «audio year» тощо трьома мовами. */
+    fun parse(query: String): Query {
         val tokens = query.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (tokens.isEmpty() && !photo && !audio) return emptyList()
+        var period: Period? = null
+        var best = false
+        val rest = ArrayList<String>()
+        for (t in tokens) {
+            val n = norm(t).trim(',', '.', '!', '?', '«', '»', '"')
+            val p = periodOf(n)
+            when {
+                p != null -> period = p
+                BEST.any { n.startsWith(it) } -> best = true
+                else -> rest += t
+            }
+        }
+        // Службові слова («за», «останній», «фото»…) мають сенс лише поруч із періодом чи «найкраще».
+        val kept = if (period != null || best) rest.filter { norm(it).trim(',', '.') !in FILLER } else rest
+        return Query(kept.joinToString(" "), period, best)
+    }
+
+    private val BEST by lazy { listOf("найкращ", "найліпш", "best", "najlep").map { norm(it) } }
+    private val FILLER by lazy {
+        setOf(
+            "за", "останній", "останні", "останнє", "остання", "минулий", "цей", "цьому", "цього",
+            "фото", "фотографії", "аудіо", "голос", "записи", "з", "кожного",
+            "last", "past", "the", "this", "for", "of", "in", "photo", "photos", "audio", "voice", "from", "every",
+            "ostatni", "ostatnie", "ostatnia", "za", "z", "w", "ten", "tym", "zdjęcia", "zdjęcie", "głos", "nagrania",
+        ).map { norm(it) }.toSet()
+    }
+
+    private fun periodOf(n: String): Period? = when {
+        n.startsWith(norm("тижд")) || n.startsWith(norm("тижн")) || n == "week" || n == "weeks" || n.startsWith("tydz") || n.startsWith("tygod") -> Period.Week
+        n.startsWith(norm("місяц")) || n == "month" || n == "months" || n.startsWith("miesi") -> Period.Month
+        n == norm("рік") || n == norm("року") || n == "year" || n == "years" || n == "rok" || n == "roku" -> Period.Year
+        else -> null
+    }
+
+    /**
+     * Пошук у режимі [mode]: слова й дати — як завжди, плюс період («тиждень», «місяць», «рік» — від [today] назад) і
+     * «найкраще» (лише фото: за тиждень — усі, за місяць — по одному з тижня, за рік — по одному з місяця, навмання).
+     */
+    fun find(days: List<Day>, query: String, mode: SearchMode, today: Long, random: kotlin.random.Random = kotlin.random.Random): Found {
+        val q = parse(query)
+        val best = q.best && mode == SearchMode.Photo
+        val period = q.period ?: if (best) Period.Month else null
+        val pool = if (period != null) days.filter { it.day in (today - period.days + 1)..today } else days
+        var hits = search(pool, q.rest, mode == SearchMode.Photo, mode == SearchMode.Audio, all = period != null)
+        if (best && period != Period.Week) {
+            hits = hits
+                .groupBy { h -> if (period == Period.Year) LocalDate.ofEpochDay(h.day).let { it.year * 12L + it.monthValue } else Math.floorDiv(today - h.day, 7L) }
+                .values.map { it.random(random) }
+                .sortedByDescending { it.day }
+        }
+        return Found(hits, period, best)
+    }
+
+    fun search(days: List<Day>, query: String, photo: Boolean, audio: Boolean, context: Context? = null, all: Boolean = false): List<SearchHit> {
+        val tokens = query.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (tokens.isEmpty() && !photo && !audio && !all) return emptyList()
         var dayFilter: ((LocalDate) -> Boolean)? = null
         val words = ArrayList<String>()
         // Просто число («11»): число місяця, місяць (до 12) — або те саме число в тексті чи місці.
