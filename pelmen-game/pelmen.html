@@ -28,6 +28,7 @@
     padding:0;
   }
   .hudbtn:active { transform:scale(.92); }
+  button { font-weight:900; }
   #btnSound { right:3%; }
   #btnPause { left:3%; display:none; }
   .hudbtn svg { width:55%; height:55%; }
@@ -41,9 +42,9 @@
   @keyframes popIn { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
   @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
   .title { font-size:calc(var(--u)*11); line-height:1; letter-spacing:1px; color:#fff;
-    text-shadow:0 calc(var(--u)*.8) 0 #0006, 0 0 0 #000; -webkit-text-stroke:calc(var(--u)*.35) #3b2412; }
+    text-shadow:calc(var(--u)*0.55) 0 0 #3b2412, calc(var(--u)*-0.55) 0 0 #3b2412, 0 calc(var(--u)*0.55) 0 #3b2412, 0 calc(var(--u)*-0.55) 0 #3b2412, calc(var(--u)*0.39) calc(var(--u)*0.39) 0 #3b2412, calc(var(--u)*-0.39) calc(var(--u)*0.39) 0 #3b2412, calc(var(--u)*0.39) calc(var(--u)*-0.39) 0 #3b2412, calc(var(--u)*-0.39) calc(var(--u)*-0.39) 0 #3b2412, 0 calc(var(--u)*1.3) 0 #0006; }
   .subtitle { font-size:calc(var(--u)*5); color:#ffd166; margin-top:calc(var(--u)*1.5);
-    -webkit-text-stroke:calc(var(--u)*.2) #3b2412; }
+    text-shadow:calc(var(--u)*0.32) 0 0 #3b2412, calc(var(--u)*-0.32) 0 0 #3b2412, 0 calc(var(--u)*0.32) 0 #3b2412, 0 calc(var(--u)*-0.32) 0 #3b2412, calc(var(--u)*0.22) calc(var(--u)*0.22) 0 #3b2412, calc(var(--u)*-0.22) calc(var(--u)*0.22) 0 #3b2412, calc(var(--u)*0.22) calc(var(--u)*-0.22) 0 #3b2412, calc(var(--u)*-0.22) calc(var(--u)*-0.22) 0 #3b2412; }
   .card { background:rgba(255,255,255,.1); border-radius:calc(var(--u)*4); padding:calc(var(--u)*4);
     width:100%; margin-top:calc(var(--u)*5); animation:popIn .35s ease-out; }
   .btn {
@@ -72,8 +73,8 @@
   .grid button.cur { background:#ffb703; }
   .grid button:disabled { background:rgba(255,255,255,.12); color:#fff6; }
   .comment { font-size:calc(var(--u)*7.4); line-height:1.15; color:#fff; animation:popIn .4s ease-out;
-    -webkit-text-stroke:calc(var(--u)*.25) #3b2412; }
-  .bigscore { font-size:calc(var(--u)*14); color:#ffd166; line-height:1.1; -webkit-text-stroke:calc(var(--u)*.35) #3b2412; }
+    text-shadow:calc(var(--u)*0.4) 0 0 #3b2412, calc(var(--u)*-0.4) 0 0 #3b2412, 0 calc(var(--u)*0.4) 0 #3b2412, 0 calc(var(--u)*-0.4) 0 #3b2412, calc(var(--u)*0.28) calc(var(--u)*0.28) 0 #3b2412, calc(var(--u)*-0.28) calc(var(--u)*0.28) 0 #3b2412, calc(var(--u)*0.28) calc(var(--u)*-0.28) 0 #3b2412, calc(var(--u)*-0.28) calc(var(--u)*-0.28) 0 #3b2412; }
+  .bigscore { font-size:calc(var(--u)*14); color:#ffd166; line-height:1.1; text-shadow:calc(var(--u)*0.6) 0 0 #3b2412, calc(var(--u)*-0.6) 0 0 #3b2412, 0 calc(var(--u)*0.6) 0 #3b2412, 0 calc(var(--u)*-0.6) 0 #3b2412, calc(var(--u)*0.42) calc(var(--u)*0.42) 0 #3b2412, calc(var(--u)*-0.42) calc(var(--u)*0.42) 0 #3b2412, calc(var(--u)*0.42) calc(var(--u)*-0.42) 0 #3b2412, calc(var(--u)*-0.42) calc(var(--u)*-0.42) 0 #3b2412; }
   .newrec { display:inline-block; background:#ff6f59; color:#fff; border-radius:calc(var(--u)*3);
     padding:calc(var(--u)*1.2) calc(var(--u)*3); font-size:calc(var(--u)*4.6); margin-top:calc(var(--u)*2);
     animation:pulse .8s ease-in-out infinite; }
@@ -514,7 +515,7 @@ function addVertical(from, span, x, jumper) {
   // from: 'top' | 'bottom'; span: 1 або 2 доріжки
   const kind = from === 'top' ? (Math.random() < 0.65 ? 'knife' : 'fork') : (Math.random() < 0.65 ? 'fork' : 'knife');
   const reach = span === 1 ? LANE_H - 26 : LANE_H * 2 - 26;
-  const w = kind === 'knife' ? 40 : 46;
+  const w = kind === 'knife' ? (span === 1 ? 40 : 46) : (span === 1 ? 44 : 52);
   const L = reach + 20; // +20 — частина, що встромлена у стіл
   const o = {
     type: 'vert', kind, x, w, reach, L,
@@ -865,7 +866,7 @@ function render() {
   }
 
   // пельмень
-  if (state !== 'over' || true) drawPelmen(PX, player.y);
+  if (state !== 'menu') drawPelmen(PX, player.y);
 
   // частинки
   for (const p of particles) {
@@ -903,15 +904,50 @@ function render() {
   if (flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (flash * 0.6) + ')'; ctx.fillRect(0, 0, W, H); }
 }
 
+const FONT = '"Arial Black","Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+function paintText(c, text, x, y, size, color, stroke, align) {
+  c.font = '900 ' + size + 'px ' + FONT;
+  c.textAlign = align; c.textBaseline = 'middle';
+  c.lineJoin = 'round';
+  if (stroke !== 'transparent') {
+    c.lineWidth = Math.max(3, size * 0.16);
+    c.strokeStyle = stroke;
+    c.strokeText(text, x, y);
+  }
+  c.fillStyle = color;
+  c.fillText(text, x, y);
+}
+// Напис спершу малюється повністю непрозорим на окремому полотні, а вже потім
+// накладається з прозорістю — так літера лишається суцільною, без видимих «швів».
+const textCache = new Map();
+function textSprite(text, size, color, stroke) {
+  const key = text + '|' + size + '|' + color + '|' + stroke + '|' + scale;
+  let sp = textCache.get(key);
+  if (sp) return sp;
+  if (textCache.size > 120) textCache.clear();
+  const cv = document.createElement('canvas');
+  const c = cv.getContext('2d');
+  c.font = '900 ' + size + 'px ' + FONT;
+  const pad = Math.max(3, size * 0.16) + 4;
+  const w = c.measureText(text).width + pad * 2, h = size * 1.4 + pad * 2;
+  cv.width = Math.ceil(w * scale); cv.height = Math.ceil(h * scale);
+  c.scale(scale, scale);
+  paintText(c, text, w / 2, h / 2, size, color, stroke, 'center');
+  sp = { cv, w, h };
+  textCache.set(key, sp);
+  return sp;
+}
 function outlinedText(text, x, y, size, color, stroke = '#2a1a0c', align = 'center') {
-  ctx.font = '900 ' + size + 'px "Arial Black","Segoe UI",Roboto,Helvetica,Arial,sans-serif';
-  ctx.textAlign = align; ctx.textBaseline = 'middle';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = Math.max(3, size * 0.16);
-  ctx.strokeStyle = stroke;
-  ctx.strokeText(text, x, y);
-  ctx.fillStyle = color;
-  ctx.fillText(text, x, y);
+  size = Math.round(size);
+  if (ctx.globalAlpha < 0.999 || /^#[0-9a-f]{8}$/i.test(color)) {
+    const sp = textSprite(text, size, color, stroke);
+    const pad = Math.max(3, size * 0.16) + 4;
+    let dx = x - sp.w / 2;
+    if (align === 'left') dx = x - pad; else if (align === 'right') dx = x - sp.w + pad;
+    ctx.drawImage(sp.cv, dx, y - sp.h / 2, sp.w, sp.h);
+    return;
+  }
+  paintText(ctx, text, x, y, size, color, stroke, align);
 }
 
 /* ---- фон: плитка на стіні + полиця з силуетами ---- */
@@ -1140,8 +1176,8 @@ function drawVert(o) {
 
 // злі очі на ножі/виделці-стрибуні
 function drawUtensilFace(o, jx) {
-  const hl = Math.min(80, o.L * 0.36);
-  const along = o.kind === 'knife' ? (hl + 10 + o.L) / 2 : o.L - 62; // від основи
+  const hl = o.L * 0.36;
+  const along = o.kind === 'knife' ? (hl + 10 + o.L) / 2 : o.L * 0.66; // від основи
   const fy = o.down ? o.baseY + along : o.baseY - along;
   const fx = o.x + jx + (o.kind === 'knife' ? (o.down ? 3 : -3) : 0);
   ctx.save();
@@ -1176,7 +1212,7 @@ function drawUtensil(kind, len, w, evil) {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const OUT = '#39424c';
   if (kind === 'knife') {
-    const hl = Math.min(80, len * 0.36);     // ручка
+    const hl = len * 0.36;                    // ручка (пропорційно довжині)
     const bt = -hl - 9;                       // початок леза
     const top = -len;
     const hw = w * 0.3;
@@ -1230,19 +1266,20 @@ function drawUtensil(kind, len, w, evil) {
     ctx.beginPath(); ctx.moveTo(L + 4, bt - 4); ctx.lineTo(L + 4, top + w * 1.15);
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
   } else {
-    // --- столова виделка однією деталлю ---
-    const hl = Math.min(92, len * 0.44);      // ручка
-    const neck = Math.min(34, len * 0.14);    // шийка, що розширюється в головку
+    // --- столова виделка однією деталлю, усі частини пропорційні довжині ---
+    const hl = len * 0.5;                     // ручка
+    const neck = len * 0.14;                  // шийка, що розширюється в головку
     const headY = -hl - neck;                 // де починається головка
-    const gapY = headY - 12;                  // дно проміжків між зубцями
+    const gapY = headY - len * 0.07;          // дно проміжків між зубцями (зубці ≈ 29%)
     const top = -len;
-    const tipLen = 9;
-    const g = 4.5, tw = (w - g * 3) / 4;
+    const tipLen = Math.min(12, len * 0.05);
+    const g = w * 0.1, tw = (w - g * 3) / 4;
     const L = -w / 2, R = w / 2;
+    const hb = w * 0.15, hm = w * 0.26, hn = w * 0.1;   // ширина ручки: основа, середина, шийка
     ctx.beginPath();
-    ctx.moveTo(-6.5, 8);
-    ctx.quadraticCurveTo(-11.5, -hl * 0.55, -4.5, -hl);            // ручка (трохи ширша внизу)
-    ctx.quadraticCurveTo(-4.5, headY + neck * 0.35, L, headY);     // шийка → плече
+    ctx.moveTo(-hb, 8);
+    ctx.quadraticCurveTo(-hm, -hl * 0.55, -hn, -hl);              // ручка (трохи ширша посередині)
+    ctx.quadraticCurveTo(-hn, headY + neck * 0.35, L, headY);     // шийка → плече
     ctx.lineTo(L, top + tipLen);
     for (let i = 0; i < 4; i++) {
       const x0 = L + i * (tw + g), x1 = x0 + tw;
@@ -1255,8 +1292,8 @@ function drawUtensil(kind, len, w, evil) {
       }
     }
     ctx.lineTo(R, headY);
-    ctx.quadraticCurveTo(4.5, headY + neck * 0.35, 4.5, -hl);
-    ctx.quadraticCurveTo(11.5, -hl * 0.55, 6.5, 8);
+    ctx.quadraticCurveTo(hn, headY + neck * 0.35, hn, -hl);
+    ctx.quadraticCurveTo(hm, -hl * 0.55, hb, 8);
     ctx.closePath();
     const fg = ctx.createLinearGradient(L, 0, R, 0);
     if (evil) { fg.addColorStop(0, '#ffe3df'); fg.addColorStop(0.5, '#e6bfba'); fg.addColorStop(1, '#f7dcd8'); }
@@ -1266,14 +1303,14 @@ function drawUtensil(kind, len, w, evil) {
     ctx.lineWidth = 3; ctx.strokeStyle = OUT; ctx.stroke();
     // відблиски
     ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(-3.5, -6); ctx.quadraticCurveTo(-6.5, -hl * 0.55, -2.5, -hl + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-hb * 0.5, -6); ctx.quadraticCurveTo(-hm * 0.55, -hl * 0.55, -hn * 0.5, -hl + 4); ctx.stroke();
     for (let i = 0; i < 4; i++) {
       const x0 = L + i * (tw + g) + 2.2;
       ctx.beginPath(); ctx.moveTo(x0, gapY - 3); ctx.lineTo(x0, top + tipLen + 3); ctx.stroke();
     }
     // ледь помітна виїмка на ручці
     ctx.strokeStyle = 'rgba(90,105,120,.35)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(2.5, -10); ctx.quadraticCurveTo(4.5, -hl * 0.55, 1.5, -hl + 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hb * 0.4, -10); ctx.quadraticCurveTo(hm * 0.4, -hl * 0.55, hn * 0.3, -hl + 8); ctx.stroke();
   }
 }
 function drawPin(o) {
@@ -1320,28 +1357,16 @@ function drawGrater(o) {
 }
 
 /* ---- ПЕЛЬМЕНЬ ---- */
-// Справжній пельмень: кругленький і пухкий, з гладким швом по верху
-// (без защипів, як у вареника) і склеєними «вушками» ззаду.
+// Кругленький куполок: круглий верх, боки трохи розходяться донизу,
+// низ трохи опуклий, через верхній край — складочки тіста.
 function pelmenBody() {
   ctx.beginPath();
-  ctx.moveTo(-50, 8);
-  ctx.bezierCurveTo(-52, -36, 52, -36, 50, 8);
-  ctx.bezierCurveTo(50, 35, -50, 35, -50, 8);
-  ctx.closePath();
-}
-function pelmenSeam() {
-  ctx.beginPath();
-  ctx.moveTo(-45, -1);
-  ctx.bezierCurveTo(-42, -47, 42, -47, 45, -1);
-  ctx.bezierCurveTo(37, -31, -37, -31, -45, -1);
-  ctx.closePath();
-}
-function pelmenEars() {
-  // склеєні кінчики тіста — маленький хвостик-«вушко» ззаду
-  ctx.beginPath();
-  ctx.moveTo(-42, 4);
-  ctx.quadraticCurveTo(-70, 2, -68, 21);
-  ctx.quadraticCurveTo(-62, 33, -40, 25);
+  ctx.moveTo(-50, 24);
+  ctx.bezierCurveTo(-49, -14, -33, -48, 0, -48);
+  ctx.bezierCurveTo(33, -48, 49, -14, 50, 24);
+  ctx.quadraticCurveTo(52, 33, 42, 34);
+  ctx.quadraticCurveTo(0, 40, -42, 34);
+  ctx.quadraticCurveTo(-52, 33, -50, 24);
   ctx.closePath();
 }
 
@@ -1351,55 +1376,47 @@ function drawPelmen(x, y) {
   ctx.translate(x, y);
   // тінь
   ctx.fillStyle = 'rgba(0,0,0,.12)';
-  ctx.beginPath(); ctx.ellipse(0, 38, 46 * (1 - p.splat * 0.2), 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 40, 46 * (1 - p.splat * 0.2), 8, 0, 0, Math.PI * 2); ctx.fill();
 
   let sx = 1 + p.squash * 0.6, sy = 1 - p.squash * 0.5;
   if (Math.abs(p.vy) > 50) { sx = 1 - p.squash * 0.35; sy = 1 + p.squash * 0.6; }
   if (p.dead) {
     const k = easeOut(p.splat);
     sx = lerp(1, 1.9, k); sy = lerp(1, 0.32, k);
-    ctx.translate(0, 18 * k);
+    ctx.translate(0, 20 * k);
   }
   const tilt = clamp(p.vy / 4000, -0.18, 0.18);
   ctx.rotate(tilt);
   ctx.scale(sx, sy);
 
-  const OUT = '#6b4423';
-  ctx.lineJoin = 'round';
-  // вушка (склеєні кінчики) — позаду тіла
-  ctx.fillStyle = '#efd09a';
-  pelmenEars(); ctx.fill();
-  ctx.lineWidth = 3.5; ctx.strokeStyle = OUT; ctx.stroke();
-  ctx.strokeStyle = 'rgba(140,95,50,.5)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-48, 13); ctx.quadraticCurveTo(-58, 15, -63, 22); ctx.stroke();
-
+  const OUT = '#7a4a22';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   // тіло
-  const g = ctx.createRadialGradient(-14, -10, 6, 0, 4, 60);
-  g.addColorStop(0, '#fff9ea'); g.addColorStop(0.6, '#f8e3b6'); g.addColorStop(1, '#ecc98d');
+  const g = ctx.createRadialGradient(-12, -16, 8, 0, 0, 62);
+  g.addColorStop(0, '#fffaf0'); g.addColorStop(0.65, '#fde6c4'); g.addColorStop(1, '#f3cf9a');
   ctx.fillStyle = g;
   pelmenBody(); ctx.fill();
-  ctx.lineWidth = 4; ctx.strokeStyle = OUT; ctx.stroke();
+  ctx.lineWidth = 4.5; ctx.strokeStyle = OUT; ctx.stroke();
 
-  // шов (тонкий тісто-гребінець) — гладкий
-  const sg = ctx.createLinearGradient(0, -40, 0, -10);
-  sg.addColorStop(0, '#fff6df'); sg.addColorStop(1, '#efd29e');
-  ctx.fillStyle = sg;
-  pelmenSeam(); ctx.fill();
-  ctx.lineWidth = 3.5; ctx.strokeStyle = OUT; ctx.stroke();
-  // м'які складочки тіста під швом
-  ctx.strokeStyle = 'rgba(170,120,70,.35)'; ctx.lineWidth = 2;
-  for (const fx of [-30, -12, 8, 27]) {
-    ctx.beginPath(); ctx.moveTo(fx, -20 + Math.abs(fx) * 0.2); ctx.quadraticCurveTo(fx + 3, -12, fx + 1, -6); ctx.stroke();
+  // складочки через верхній край
+  ctx.strokeStyle = OUT; ctx.lineWidth = 5;
+  for (const fx of [-27, -13, 1, 15, 28]) {
+    const ty = -48 * Math.sqrt(Math.max(0, 1 - (fx / 56) * (fx / 56)));
+    const nx = fx / 60, ny = -1;              // приблизно радіально від центру
+    const len = Math.hypot(nx, ny);
+    const ux = nx / len, uy = ny / len;
+    ctx.beginPath();
+    ctx.moveTo(fx + ux * 5, ty + uy * 5);
+    ctx.lineTo(fx - ux * 11, ty - uy * 11);
+    ctx.stroke();
   }
-  // відблиски
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  ctx.beginPath(); ctx.ellipse(-22, -32, 9, 3.2, -0.35, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.45)';
-  ctx.beginPath(); ctx.ellipse(-30, -4, 7, 4, -0.6, 0, Math.PI * 2); ctx.fill();
+  // відблиск
+  ctx.fillStyle = 'rgba(255,255,255,.65)';
+  ctx.beginPath(); ctx.ellipse(-28, -18, 6, 10, 0.5, 0, Math.PI * 2); ctx.fill();
 
-  // обличчя — трохи ближче до «носа» (вперед)
+  // обличчя дивиться прямо
   ctx.save();
-  ctx.translate(6, 7);
+  ctx.translate(0, 6);
   drawFace(p);
   ctx.restore();
   ctx.restore();
