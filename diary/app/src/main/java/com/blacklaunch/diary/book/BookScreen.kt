@@ -126,6 +126,8 @@ sealed interface BookPage {
     data class SearchMore(val n: Int) : BookPage
     /** Календар — сторінка на місяць ([ym] = рік * 12 + місяць - 1); відкривається з пошуку, місяці гортаються. */
     data class Calendar(val ym: Int) : BookPage
+    /** Магнітофон дня — на весь щоденник; назад і вперед — туди, звідки прийшли. */
+    data class Recorder(val day: Long) : BookPage
 }
 
 /** Сторінки, що належать пошуку (знахідки й календар): гортання вперед з останньої — туди, звідки прийшли. */
@@ -263,6 +265,8 @@ fun BookScreen(
     var menuOpen by remember(info.id) { mutableStateOf(false) }
     var searchOpen by remember(info.id) { mutableStateOf(false) }
     var calendarOpen by remember(info.id) { mutableStateOf(false) }
+    var recorderFor by remember(info.id) { mutableStateOf<Long?>(null) }
+    var recorderReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     var searchReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     // Нижня панель: розгорнутий вибір джерела фото.
     var photoTools by remember(info.id) { mutableStateOf(false) }
@@ -324,6 +328,7 @@ fun BookScreen(
             for (n in 1 until resultSlices.size) add(BookPage.SearchMore(n))
             if (calendarOpen) calendarMonths.forEach { add(BookPage.Calendar(it)) }
         }
+        recorderFor?.let { if (open != null) add(BookPage.Recorder(it)) }
     }
     val flip = remember(info.id) { FlipState(0) }
     var currentKey by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
@@ -400,6 +405,14 @@ fun BookScreen(
         menuOpen = true
         pendingFlip = BookPage.Menu(0)
     }
+    /** Магнітофон дня — сторінкою на весь щоденник. */
+    fun openRecorder(day: Long) {
+        focusManager.clearFocus()
+        ink = null
+        if (currentKey !is BookPage.Recorder) recorderReturn = currentKey
+        recorderFor = day
+        pendingFlip = BookPage.Recorder(day)
+    }
     fun openSearch() {
         if (searchOpen) return
         focusManager.clearFocus()
@@ -444,8 +457,6 @@ fun BookScreen(
         haptics.longPress()
         val st = RecordingState(day)
         recording = st
-        // Запис видно на першій сторінці дня (смужка з «стоп») — гортаємо туди, звідки б не почали (меню, 2-га сторінка).
-        pendingFlip = BookPage.DayPart(day, 0)
         scope.launch {
             while (recording === st) {
                 recorder.sample()
@@ -572,7 +583,7 @@ fun BookScreen(
                 else -> { photoFor = day; vm.keepOpenOnce = true; pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
             }
         }
-        override fun recordVoice(day: Long) = record(day)
+        override fun recordVoice(day: Long) = openRecorder(day)
         override fun dismissSlot(day: Long, photo: Boolean) = vm.dismissSlot(day, photo)
         override fun joinBack(day: Long, at: Int) {
             // Backspace на початку другої сторінки — стерти останній символ першої (якщо він не висох).
@@ -707,18 +718,20 @@ fun BookScreen(
                         },
                         canFlipForward = { i ->
                             // Пошук гортається вперед — назад на ту сторінку, з якої прийшли: коло замикається.
-                            if (pages.getOrNull(i).isSearch()) pages.indexOf(searchReturn) >= 0 else run {
+                            if (pages.getOrNull(i) is BookPage.Recorder) pages.indexOf(recorderReturn) >= 0
+                            else if (pages.getOrNull(i).isSearch()) pages.indexOf(searchReturn) >= 0 else run {
                             val next = if (i == 0) openTarget else i + 1
                             // У меню заходять лише шестернею; усередині меню — гортання між його сторінками.
                             val here = pages.getOrNull(i)
                             val there = pages.getOrNull(next)
                             !(i == 0 && open == null) && (here is BookPage.Menu) == (there is BookPage.Menu) &&
-                                !there.isSearch()
+                                !there.isSearch() && there !is BookPage.Recorder
                             }
                         },
                         nextOf = { i ->
                             when {
                                 i == 0 -> openTarget
+                                pages.getOrNull(i) is BookPage.Recorder -> pages.indexOf(recorderReturn).coerceAtLeast(0)
                                 // Пошук: далі — наступна сторінка знахідок, а після останньої — туди, звідки прийшли.
                                 pages.getOrNull(i).isSearch() -> if (sameRun(pages.getOrNull(i), pages.getOrNull(i + 1))) i + 1 else pages.indexOf(searchReturn).coerceAtLeast(0)
                                 else -> i + 1
@@ -728,6 +741,7 @@ fun BookScreen(
                             when (pages.getOrNull(i)) {
                                 BookPage.Menu(0) -> pages.indexOf(menuReturn).coerceAtLeast(0)
                                 BookPage.Search -> pages.indexOf(searchReturn).coerceAtLeast(0)
+                                is BookPage.Recorder -> pages.indexOf(recorderReturn).coerceAtLeast(0)
                                 // Найдавніший місяць — назад на пошук.
                                 is BookPage.Calendar -> if (pages.getOrNull(i - 1) is BookPage.Calendar) i - 1 else pages.indexOf(BookPage.Search).coerceAtLeast(0)
                                 else -> i - 1
@@ -746,6 +760,7 @@ fun BookScreen(
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey !is BookPage.Menu) menuOpen = false
+                            if (currentKey !is BookPage.Recorder) recorderFor = null
                             if (!currentKey.isSearch()) { searchOpen = false; calendarOpen = false }
                             else if (currentKey !is BookPage.Calendar) calendarOpen = false
                             highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
@@ -820,6 +835,21 @@ fun BookScreen(
                                         onOpen = { h -> focusManager.clearFocus(); jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
                                     )
                                 }
+                            }
+                            is BookPage.Recorder -> PaperPage(
+                                title = stringResource(R.string.recorder_title),
+                                subtitle = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.getDefault()).format(LocalDate.ofEpochDay(p.day)),
+                                seed = info.tint * 7 + 71,
+                            ) {
+                                val d = vm.day(p.day)
+                                RecorderPage(
+                                    vm = vm,
+                                    day = d,
+                                    editable = !DiaryViewModel.isDry(p.day),
+                                    recording = recording?.takeIf { it.day == p.day },
+                                    onRecord = { if (d.audio || roomFor(p.day, photo = false)) record(p.day) else vm.show(R.string.no_room_voice) },
+                                    onStopRecording = { stopRecording() },
+                                )
                             }
                             is BookPage.Calendar -> PaperPage(
                                 title = monthTitle(java.time.YearMonth.of(p.ym / 12, p.ym % 12 + 1)),
@@ -1049,9 +1079,8 @@ fun BookScreen(
                         },
                         Tool(Glyph.Mic, stringResource(R.string.record)) {
                             when {
-                                dry -> vm.show(R.string.page_dry)
-                                d.audio -> vm.show(R.string.audio_exists)
-                                roomFor(day, photo = false) -> record(day)
+                                dry && !d.audio -> vm.show(R.string.page_dry)
+                                d.audio || roomFor(day, photo = false) -> openRecorder(day)
                                 else -> vm.show(R.string.no_room_voice)
                             }
                         },

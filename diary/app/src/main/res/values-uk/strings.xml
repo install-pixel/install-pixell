@@ -232,4 +232,14 @@
     <string name="camera_permission">Дозволь камеру, щоб зробити фото дня</string>
     <string name="flashlight">Ліхтарик</string>
     <string name="photo_retake">Сфотографувати заново</string>
+    <string name="recorder_title">Голос дня</string>
+    <string name="recorder_rewind">Назад</string>
+    <string name="recorder_forward">Вперед</string>
+    <string name="recorder_pause">Пауза</string>
+    <string name="recorder_hint">Пуск, пауза, перемотка (тримай — мотає швидко). Запис заново замінить запис цього дня.</string>
+    <string name="recorder_hint_empty">Ще нічого не записано — натисни червону клавішу.</string>
+    <string name="recorder_hint_recording">Іде запис… квадратна клавіша — зупинити.</string>
+    <string name="recorder_hint_dry">Цей день висох — запис можна лише слухати.</string>
+    <string name="recorder_replace_title">Записати заново?</string>
+    <string name="recorder_replace_text">Попередній запис цього дня зникне.</string>
 </resources>

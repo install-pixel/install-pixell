@@ -222,4 +222,14 @@
     <string name="camera_permission">Zezwól na aparat, aby zrobić zdjęcie dnia</string>
     <string name="flashlight">Latarka</string>
     <string name="photo_retake">Zrób nowe zdjęcie</string>
+    <string name="recorder_title">Głos dnia</string>
+    <string name="recorder_rewind">Do tyłu</string>
+    <string name="recorder_forward">Do przodu</string>
+    <string name="recorder_pause">Pauza</string>
+    <string name="recorder_hint">Start, pauza, przewijanie (przytrzymaj — szybko). Nowe nagranie zastąpi nagranie tego dnia.</string>
+    <string name="recorder_hint_empty">Jeszcze nic nie nagrano — naciśnij czerwony klawisz.</string>
+    <string name="recorder_hint_recording">Nagrywanie… kwadratowy klawisz — zatrzymać.</string>
+    <string name="recorder_hint_dry">Ten dzień wysechł — nagrania można tylko słuchać.</string>
+    <string name="recorder_replace_title">Nagrać od nowa?</string>
+    <string name="recorder_replace_text">Poprzednie nagranie tego dnia zniknie.</string>
 </resources>

@@ -273,7 +273,7 @@ fun DayPage(
         }
         val rec = host.recording?.takeIf { it.day == day.day }
         if (first && (day.audio || rec != null)) {
-            AudioStrip(
+            AudioPlate(
                 host = host,
                 day = day,
                 recording = rec,
@@ -551,107 +551,48 @@ private fun PhotoBlock(host: PageHost, day: Long, version: Long, modifier: Modif
  * Смужка голосу — як програвач лаунчера: ліворуч капсула з обрисами звуку й часом (дотик чи ведення — перемотати),
  * праворуч кругла кнопка «грати / пауза». Поки йде запис — живі обриси, час і кнопка «стоп» (вишнева — мікрофон слухає).
  */
+/**
+ * Голос дня на сторінці — маленька плашка: касетка, «Запис голосу» й тривалість (під час запису — червоний вогник і час).
+ * Дотик — магнітофон на весь щоденник (там слухати, перемотувати, записати заново). Свайп убік — прибрати запис.
+ */
 @Composable
-private fun AudioStrip(host: PageHost, day: Day, recording: RecordingState?, modifier: Modifier, width: Dp, height: Dp, editable: Boolean) {
+private fun AudioPlate(host: PageHost, day: Day, recording: RecordingState?, modifier: Modifier, width: Dp, height: Dp, editable: Boolean) {
     val haptics = LocalHaptics.current
-    val scope = rememberCoroutineScope()
     val glass = AppStyle.glass
-    val player = remember(day.day) { Player() }
-    var playing by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }
-    var bytes by remember(day.day, day.updated) { mutableStateOf<ByteArray?>(null) }
-    DisposableEffect(day.day) { onDispose { player.stop() } }
-    LaunchedEffect(playing) {
-        while (playing) {
-            val d = player.duration
-            if (d > 0) progress = player.position / d.toFloat()
-            delay(50)
+    val ink = if (glass) Oled.TextPrimary else SheetInk
+    Row(
+        modifier
+            .size(width, height)
+            .swipeAway(host, "audio_${day.day}", editable && recording == null) { host.vm.removeAudio(day.day) }
+            .pencilFrame(height / 2, seed = 23)
+            .clip(RoundedCornerShape(height / 2))
+            .clickable { haptics.tap(); host.recordVoice(day.day) }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Касетка.
+        Canvas(Modifier.size(height * 0.9f, height * 0.58f)) {
+            val r = 3.dp.toPx()
+            drawRoundRect(ink.copy(alpha = 0.8f), cornerRadius = CornerRadius(r), style = Stroke(1.3.dp.toPx()))
+            val cy = size.height * 0.48f
+            drawCircle(ink.copy(alpha = 0.8f), size.height * 0.16f, Offset(size.width * 0.3f, cy), style = Stroke(1.2.dp.toPx()))
+            drawCircle(ink.copy(alpha = 0.8f), size.height * 0.16f, Offset(size.width * 0.7f, cy), style = Stroke(1.2.dp.toPx()))
+            drawLine(ink.copy(alpha = 0.5f), Offset(size.width * 0.2f, size.height * 0.84f), Offset(size.width * 0.8f, size.height * 0.84f), 1.dp.toPx())
         }
-    }
-    val total = if (recording != null) recording.elapsed else day.audioMs
-    val wave = recording?.wave ?: day.wave
-    fun toggle() {
-        haptics.tap()
-        if (recording != null) { host.stopRecording(); return }
-        if (playing) {
-            player.pause(); playing = false
-        } else {
-            scope.launch {
-                val b = bytes ?: host.vm.audio(day.day).also { bytes = it } ?: return@launch
-                val from = if (progress in 0.01f..0.99f) (progress * player.duration.coerceAtLeast(day.audioMs.toInt())).toInt() else 0
-                if (player.duration > 0 && progress in 0.01f..0.99f) { player.resume(); playing = true }
-                else playing = player.play(b, from) { playing = false; progress = 0f }
-            }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            stringResource(R.string.recorder_title),
+            color = Oled.TextPrimary,
+            fontFamily = if (glass) GlassFont else HandFont,
+            fontSize = if (glass) 15.sp else 19.sp,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        if (recording != null) {
+            Box(Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFB0244F)))
+            Spacer(Modifier.width(6.dp))
         }
-    }
-    Row(modifier.size(width, height).swipeAway(host, "audio_${day.day}", editable && recording == null) { player.stop(); playing = false; host.vm.removeAudio(day.day) }, verticalAlignment = Alignment.CenterVertically) {
-        Row(
-            Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .pencilFrame(height / 2, seed = 23)
-                .padding(start = 12.dp, end = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Canvas(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .pointerInput(day.day, recording) {
-                        if (recording != null) return@pointerInput
-                        fun seekTo(x: Float) {
-                            progress = (x / size.width).coerceIn(0f, 1f)
-                            if (player.duration > 0) player.seek((progress * player.duration).toInt())
-                        }
-                        detectTapGestures { seekTo(it.x) }
-                    },
-            ) {
-                val bars = wave.ifEmpty { List(40) { 0.08f } }
-                val n = bars.size.coerceAtLeast(1)
-                val step = size.width / n
-                val mid = size.height / 2
-                bars.forEachIndexed { i, v ->
-                    val h = (0.12f + v * 0.88f) * size.height * 0.42f
-                    val x = i * step + step / 2
-                    val done = recording != null || (i + 0.5f) / n <= progress
-                    val color = when {
-                        recording != null -> Color(0xFFB0244F).copy(alpha = 0.9f)
-                        done -> Oled.TextPrimary
-                        else -> Oled.TextSecondary.copy(alpha = 0.45f)
-                    }
-                    if (glass) {
-                        drawLine(color, Offset(x, mid - h), Offset(x, mid + h), (step * 0.55f).coerceIn(1f, 4.dp.toPx()), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                    } else {
-                        pencilTick(Offset(x, mid - h), Offset(x + 0.6f, mid + h), (step * 0.6f).coerceIn(1f, 3.dp.toPx()), color, i)
-                    }
-                }
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(clock(if (playing || progress > 0f) (progress * total).toLong() else total), color = if (recording != null) Color(0xFFB0244F) else Oled.TextSecondary, fontSize = 12.sp, maxLines = 1)
-        }
-        Spacer(Modifier.width(8.dp))
-        val ring = height
-        Box(
-            Modifier
-                .size(ring)
-                .then(
-                    if (glass) Modifier.clip(CircleShape).background(Oled.Knob).border(1.dp, if (recording != null) androidx.compose.ui.graphics.SolidColor(Color(0xFFB0244F)) else Oled.Glint, CircleShape)
-                    else Modifier.pencilFrame(ring / 2, seed = 29, ink = if (recording != null) Color(0xFFB0244F) else SheetInk).clip(CircleShape),
-                )
-                .clickable { toggle() },
-            contentAlignment = Alignment.Center,
-        ) {
-            GlyphIcon(
-                when {
-                    recording != null -> Glyph.Stop
-                    playing -> Glyph.Pause
-                    else -> Glyph.Play
-                },
-                stringResource(if (recording != null) R.string.record_stop else R.string.play),
-                tint = if (recording != null) Color(0xFFB0244F) else Oled.TextPrimary,
-                size = ring * 0.42f,
-            )
-        }
+        Text(clock(recording?.elapsed ?: day.audioMs), color = if (recording != null) Color(0xFFB0244F) else Oled.TextSecondary, fontSize = 13.sp, maxLines = 1)
     }
 }
 
