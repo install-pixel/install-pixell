@@ -218,9 +218,13 @@ object SearchRibbonState {
 fun DrawScope.drawSearchRibbon(glass: Boolean) {
     val u = size.width / PageMetrics.WIDTH
     val x = RIBBON_X_U * u
-    val w = RIBBON_W_U * u
-    val end = RIBBON_LEN_U * u + SearchRibbonState.pull
-    val notch = w * 0.42f
+    val w0 = RIBBON_W_U * u
+    val rest = RIBBON_LEN_U * u
+    val stretch = SearchRibbonState.pull.coerceAtLeast(0f)
+    val end = rest + stretch
+    // Тканина, що розтягується, трохи тоншає (і повертає ширину, коли відпускає) — розмір у спокої завжди той самий.
+    val w = w0 * (1f - 0.10f * (stretch / rest).coerceIn(0f, 1f))
+    val notch = w0 * 0.42f
     rotate(SearchRibbonState.sway, pivot = Offset(x, 0f)) {
         val p = Path().apply {
             moveTo(x - w / 2, -2f); lineTo(x + w / 2, -2f); lineTo(x + w / 2, end)
@@ -278,8 +282,8 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
                         detectTapGestures {
                             haptics.tap()
                             scope.launch {
-                                pull.animateTo(14.dp.toPx(), tween(90))
-                                pull.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = 320f))
+                                pull.animateTo(12.dp.toPx(), tween(110, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                                springBack(pull)
                             }
                             onOpen()
                         }
@@ -291,10 +295,13 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
                             onVerticalDrag = { ch, dy ->
                                 ch.consume()
                                 pulled += dy
-                                scope.launch { pull.snapTo((pulled * 0.45f).coerceIn(0f, 40.dp.toPx())) }
+                                // Гума: спершу йде за пальцем, далі опирається дедалі сильніше.
+                                val max = 46.dp.toPx()
+                                val d = pulled.coerceAtLeast(0f)
+                                scope.launch { pull.snapTo(max * (1f - kotlin.math.exp(-d / max))) }
                             },
                             onDragEnd = {
-                                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = 320f)) }
+                                scope.launch { springBack(pull) }
                                 if (pulled > 40.dp.toPx()) { haptics.longPress(); onOpen() }
                             },
                         )
@@ -302,4 +309,26 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
             )
         }
     }
+}
+
+/**
+ * Відпущена стрічка стягується до свого розміру й кілька разів ледь пружинить, щоразу менше, — але ніколи не стає
+ * коротшою, ніж у спокої (|cos| — відскок від своєї довжини, а не провал під неї).
+ */
+private suspend fun springBack(pull: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>) {
+    val a = pull.value
+    if (a <= 0f) return
+    val dur = 640_000_000L
+    var start = -1L
+    while (true) {
+        val now = androidx.compose.runtime.withFrameNanos { it }
+        if (start < 0) start = now
+        val t = ((now - start).toFloat() / dur).coerceAtMost(1f)
+        val ph = t * 3.0f * kotlin.math.PI.toFloat()
+        // перша чверть хвилі — стягування до свого розміру; далі — згасаючі відскоки вниз (не під свій розмір)
+        val v = if (ph < kotlin.math.PI.toFloat() / 2) kotlin.math.cos(ph) else kotlin.math.abs(kotlin.math.cos(ph)) * 0.32f
+        pull.snapTo(a * kotlin.math.exp(-3.6f * t) * v)
+        if (t >= 1f) break
+    }
+    pull.snapTo(0f)
 }
