@@ -266,10 +266,11 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
     val pull = remember { Animatable(0f) }
     val sway = remember { Animatable(0f) }
     // Стрічка завжди однакова; єдиний рух — пружне розтягування, коли тягнеш униз.
-    androidx.compose.runtime.SideEffect {
+    // Кожен кадр руху — одразу в спільний стан, з якого малюють сторінки (не чекаючи перекомпонування).
+    androidx.compose.runtime.LaunchedEffect(Unit) {
         SearchRibbonState.glyph = 1f
-        SearchRibbonState.pull = pull.value
         SearchRibbonState.sway = 0f
+        androidx.compose.runtime.snapshotFlow { pull.value }.collect { SearchRibbonState.pull = it }
     }
     Box(Modifier.size(pageW, pageH)) {
         if (enabled) {
@@ -283,9 +284,8 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
                             haptics.tap()
                             scope.launch {
                                 pull.animateTo(12.dp.toPx(), tween(110, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                                springBack(pull)
+                                springBack(pull) { onOpen() }
                             }
-                            onOpen()
                         }
                     }
                     .pointerInput(Unit) {
@@ -301,8 +301,9 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
                                 scope.launch { pull.snapTo(max * (1f - kotlin.math.exp(-d / max))) }
                             },
                             onDragEnd = {
-                                scope.launch { springBack(pull) }
-                                if (pulled > 40.dp.toPx()) { haptics.longPress(); onOpen() }
+                                val open = pulled > 40.dp.toPx()
+                                if (open) haptics.longPress()
+                                scope.launch { springBack(pull) { if (open) onOpen() } }
                             },
                         )
                     },
@@ -315,10 +316,10 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
  * Відпущена стрічка стягується до свого розміру й кілька разів ледь пружинить, щоразу менше, — але ніколи не стає
  * коротшою, ніж у спокої (|cos| — відскок від своєї довжини, а не провал під неї).
  */
-private suspend fun springBack(pull: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>) {
+private suspend fun springBack(pull: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>, then: () -> Unit = {}) {
     val a = pull.value
-    if (a <= 0f) return
-    val dur = 640_000_000L
+    if (a <= 0f) { then(); return }
+    val dur = 520_000_000L
     var start = -1L
     while (true) {
         val now = androidx.compose.runtime.withFrameNanos { it }
@@ -331,4 +332,6 @@ private suspend fun springBack(pull: Animatable<Float, androidx.compose.animatio
         if (t >= 1f) break
     }
     pull.snapTo(0f)
+    // Пошук — коли стрічка вже заспокоїлась: повертаючись, бачиш її нерухомою.
+    then()
 }
