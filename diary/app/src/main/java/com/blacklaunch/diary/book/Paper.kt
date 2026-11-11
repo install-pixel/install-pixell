@@ -81,7 +81,6 @@ fun DrawScope.drawPaper(unit: Float, seed: Int, lines: List<Float>) {
             // Корінець — тінь палітурки й подвійна лінія олівцем.
             drawRect(Brush.horizontalGradient(0f to Color(0x66000000), 1f to Color.Transparent, startX = 0f, endX = 5f * unit))
         }
-        drawPath(taperedPath(quadPoints(Offset(3.2f * unit, 2f * unit), Offset(3.6f * unit, size.height / 2), Offset(3.1f * unit, size.height - 2f * unit), 40), 1.2f * density), SheetInk.copy(alpha = 0.25f))
         val variant = PaperTexture.Variant.of(seed)
         lines.forEachIndexed { i, y ->
             val a = PageMetrics.MARGIN_LEFT * unit * 0.7f

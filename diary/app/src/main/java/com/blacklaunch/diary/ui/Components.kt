@@ -465,12 +465,14 @@ fun Banner(text: String?, action: String? = null, danger: Boolean = false, onAct
             exit = fadeOut(tween(CLOSE_MS)) + slideOutVertically(tween(CLOSE_MS)) { -it / 4 },
             modifier = if (area == null) Modifier.noticePlace()
             else with(density) {
-                // Усередині верхнього краю щоденника, з відступом від рамки.
+                // Усередині верхнього краю щоденника, з відступом від рамки; ліворуч — ширше: рваний край біля корінця
+                // (клаптик вирваної, розрив) лишається видно.
                 val inset = 6.dp.toPx()
+                val left = 26.dp.toPx()
                 Modifier
                     .align(Alignment.TopStart)
-                    .offset { androidx.compose.ui.unit.IntOffset((area.left + inset).toInt(), (area.top + inset).toInt()) }
-                    .width((area.width - 2 * inset).toDp())
+                    .offset { androidx.compose.ui.unit.IntOffset((area.left + left).toInt(), (area.top + inset).toInt()) }
+                    .width((area.width - left - inset).toDp())
             },
         ) {
             Notice(shown, action = shownAction, danger = danger, onAction = onAction)

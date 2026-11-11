@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.drawText
@@ -141,6 +142,8 @@ fun DayPage(
     ribbon: () -> Float = { 0f },
     strikeMode: Boolean = false,
     stub: Boolean = false,
+    /** Цю сторінку зараз виривають: палець (кут) — скотч лишається лише на тій частині, що лежить. */
+    tearFinger: (() -> androidx.compose.ui.geometry.Offset?)? = null,
 ) {
     val density = LocalDensity.current
     val glass = AppStyle.glass
@@ -171,7 +174,19 @@ fun DayPage(
                 drawContent()
                 drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
                 // Колись надірвали й передумали — розрив заклеєно скотчем.
-                drawTapedTear(day.tearTry(part), tearSeedOf(day.day, part), glass, PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH)
+                val tapeK = day.tearTry(part)
+                val tapeSeed = tearSeedOf(day.day, part)
+                val tapeMargin = PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH
+                val f = tearFinger?.invoke()
+                if (f == null || tapeK <= 0.01f) drawTapedTear(tapeK, tapeSeed, glass, tapeMargin)
+                else {
+                    // Те, що піднялося, забрало свій скотч із собою (його малює клапоть) — тут лише те, що лежить.
+                    val stay = TearGeometry(size.width, size.height, f).stay
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        if (stay.isNotEmpty()) { moveTo(stay[0].x, stay[0].y); stay.drop(1).forEach { lineTo(it.x, it.y) }; close() }
+                    }
+                    clipPath(path) { drawTapedTear(tapeK, tapeSeed, glass, tapeMargin) }
+                }
                 // Клаптик раніше вирваної сторінки лежить ЗВЕРХУ: з-під нього видно лише те, що виглядає (скотч, розрив).
                 if (stub) drawTornStub((day.day * 7 + part).toInt(), glass)
             },
