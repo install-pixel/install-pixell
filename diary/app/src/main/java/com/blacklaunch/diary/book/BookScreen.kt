@@ -80,7 +80,7 @@ import com.blacklaunch.diary.OpenResult
 import com.blacklaunch.diary.R
 import com.blacklaunch.diary.audio.Recorder
 import com.blacklaunch.diary.data.DiaryInfo
-import com.blacklaunch.diary.search.SearchScreen
+import com.blacklaunch.diary.search.SearchPageContent
 import com.blacklaunch.diary.ui.AppStyle
 import com.blacklaunch.diary.ui.ConfirmDialog
 import com.blacklaunch.diary.ui.EqualWidthRow
@@ -121,6 +121,8 @@ sealed interface BookPage {
      * розміру, без прокрутки; між ними — таке саме гортання. Повертаються туди, звідки прийшли.
      */
     data class Menu(val n: Int) : BookPage
+    /** Пошук — сторінка, на яку перегортає закладка-пошук; назад — туди, звідки прийшли. */
+    data object Search : BookPage
 }
 
 /** Які вікна відкриті. */
@@ -196,12 +198,23 @@ fun BookScreen(
         if (first > 0 && text.length < first * 12 && text.count { it == '\n' } < first - 1) return PageSplit(text.length, true, 1)
         val key = "$photo$audio$torn" + text
         splitCache[key]?.let { return it }
-        val l = measurer.measure(text, style, constraints = Constraints(maxWidth = (PageMetrics.textWidth * u).toInt().coerceAtLeast(1)))
+        // Текст, що починається вгорі сторінки (перша без фото й голосу, друга завжди), — перший рядок із відступом за
+        // закладкою-пошуком; тож першу сторінку й продовження міряємо окремо, кожну зі своїм відступом.
+        val indent = ribbonIndentPx(u, density)
+        val cons = Constraints(maxWidth = (PageMetrics.textWidth * u).toInt().coerceAtLeast(1))
+        fun usedLines(l: androidx.compose.ui.text.TextLayoutResult, t: String): Int {
+            // Пробіли й порожні рядки в кінці дня місця не займають — рахуємо лише до останнього написаного символу.
+            val trimmed = t.trimEnd().length
+            return if (trimmed == 0) 0 else l.getLineForOffset(trimmed - 1) + 1
+        }
+        val l = measurer.measure(indentFirstParagraph(text, if (!photo && !audio) indent else 0f, density), style, constraints = cons)
         val starts = List(l.lineCount) { l.getLineStart(it) }
-        // Пробіли й порожні рядки в кінці дня місця не займають — рахуємо лише до останнього написаного символу.
-        val trimmed = text.trimEnd().length
-        val used = if (trimmed == 0) 0 else l.getLineForOffset(trimmed - 1) + 1
-        val r = splitPages(text.length, starts, first, second).copy(fits = used <= first + second, lines = used)
+        val base = splitPages(text.length, starts, first, second)
+        val used = if (base.split >= text.length) usedLines(l, text) else {
+            val rest = text.substring(base.split)
+            first + usedLines(measurer.measure(indentFirstParagraph(rest, indent, density), style, constraints = cons), rest)
+        }
+        val r = base.copy(fits = used <= first + second, lines = used)
         if (splitCache.size > 200) splitCache.clear()
         splitCache[key] = r
         return r
@@ -237,6 +250,8 @@ fun BookScreen(
     }
 
     var menuOpen by remember(info.id) { mutableStateOf(false) }
+    var searchOpen by remember(info.id) { mutableStateOf(false) }
+    var searchReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
     // Нижня панель: розгорнутий вибір джерела фото.
     var photoTools by remember(info.id) { mutableStateOf(false) }
     var menuReturn by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
@@ -274,6 +289,7 @@ fun BookScreen(
             add(BookPage.Menu(0))
             if (open != null) add(BookPage.Menu(1))
         }
+        if (searchOpen && open != null) add(BookPage.Search)
     }
     val flip = remember(info.id) { FlipState(0) }
     var currentKey by remember(info.id) { mutableStateOf<BookPage>(BookPage.Cover) }
@@ -317,7 +333,6 @@ fun BookScreen(
 
     var dialog by remember { mutableStateOf<BookDialog?>(null) }
 
-    var searching by remember { mutableStateOf(false) }
     var ink by remember { mutableStateOf<InkSession?>(null) }
     var highlight by remember { mutableStateOf<Pair<Long, IntRange>?>(null) }
     var editing by remember { mutableStateOf<Pair<Long, Int>?>(null) }
@@ -350,6 +365,19 @@ fun BookScreen(
         menuReturn = currentKey
         menuOpen = true
         pendingFlip = BookPage.Menu(0)
+    }
+    fun openSearch() {
+        if (searchOpen) return
+        focusManager.clearFocus()
+        ink = null
+        searchReturn = currentKey
+        searchOpen = true
+        pendingFlip = BookPage.Search
+    }
+    fun closeSearch() {
+        if (!searchOpen) return
+        focusManager.clearFocus()
+        pendingFlip = searchReturn
     }
     fun closeMenu() {
         if (!menuOpen) return
@@ -587,6 +615,7 @@ fun BookScreen(
             photoTools -> photoTools = false
             ink != null -> ink = null
             menuOpen -> closeMenu()
+            searchOpen -> closeSearch()
             editing != null -> focusManager.clearFocus()
             flip.index > 0 -> scope.launch { currentKey = BookPage.Cover; flip.flipTo(0) }
             else -> onShelf()
@@ -652,10 +681,17 @@ fun BookScreen(
                             // У меню заходять лише шестернею; усередині меню — гортання між його сторінками.
                             val here = pages.getOrNull(i)
                             val there = pages.getOrNull(next)
-                            !(i == 0 && open == null) && (here is BookPage.Menu) == (there is BookPage.Menu)
+                            !(i == 0 && open == null) && (here is BookPage.Menu) == (there is BookPage.Menu) &&
+                                (here == BookPage.Search) == (there == BookPage.Search)
                         },
                         nextOf = { i -> if (i == 0) openTarget else i + 1 },
-                        prevOf = { i -> if (pages.getOrNull(i) == BookPage.Menu(0)) pages.indexOf(menuReturn).coerceAtLeast(0) else i - 1 },
+                        prevOf = { i ->
+                            when (pages.getOrNull(i)) {
+                                BookPage.Menu(0) -> pages.indexOf(menuReturn).coerceAtLeast(0)
+                                BookPage.Search -> pages.indexOf(searchReturn).coerceAtLeast(0)
+                                else -> i - 1
+                            }
+                        },
                         onStart = { focusManager.clearFocus() },
                         blankUnder = {
                             val day = currentDay ?: today
@@ -669,6 +705,7 @@ fun BookScreen(
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey !is BookPage.Menu) menuOpen = false
+                            if (currentKey != BookPage.Search) searchOpen = false
                             highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
                     ) { i ->
                         when (val p = pages.getOrNull(i)) {
@@ -717,6 +754,17 @@ fun BookScreen(
                                         }
                                     }
                                 }
+                            }
+                            BookPage.Search -> PaperPage(
+                                title = stringResource(R.string.search),
+                                subtitle = info.name,
+                                seed = info.tint * 7 + 41,
+                            ) {
+                                SearchPageContent(
+                                    search = { q, ph, au -> vm.search(q, ph, au) },
+                                    active = currentPage == BookPage.Search && !flip.moving,
+                                    onOpen = { h -> focusManager.clearFocus(); jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
+                                )
                             }
                             is BookPage.Menu -> PaperPage(
                                 title = if (p.n == 0) info.name else stringResource(R.string.settings_this_diary),
@@ -883,13 +931,13 @@ fun BookScreen(
                 }
                 // Закладка-пошук — коротка стрічка згори біля корінця, поверх усього (і клаптиків вирваних): потягнув униз —
                 // пошук.
-                if (open != null && currentPage != BookPage.Cover) {
+                if (open != null && currentPage is BookPage.DayPart) {
                     SearchRibbon(
                         gear = gear,
                         pageW = pw,
                         pageH = ph,
                         enabled = ink == null && !flip.moving && flip.tearFinger == null,
-                        onOpen = { focusManager.clearFocus(); searching = true },
+                        onOpen = { openSearch() },
                         description = stringResource(R.string.search),
                     )
                 }
@@ -968,13 +1016,6 @@ fun BookScreen(
         }, onDone = { ink = null }) }
     }
 
-    if (searching) {
-        SearchScreen(
-            search = { q, ph, au -> vm.search(q, ph, au) },
-            onClose = { searching = false },
-            onOpen = { h -> searching = false; jumpToDay(h.day, if (h.start >= 0) h.start until h.end else null) },
-        )
-    }
 
     // ——— Вікна ———
     when (val dl = dialog) {

@@ -213,7 +213,7 @@ fun DayPage(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             // Правіше за закладку-пошук, що звисає згори біля корінця, — вона на дату не налягає.
-            modifier = Modifier.offset(SearchRibbonX + 20.dp, dp(PageMetrics.HEADER_TOP)).width(dp(if (first) 56f else 80f) - (SearchRibbonX + 20.dp - dp(PageMetrics.MARGIN_LEFT))),
+            modifier = Modifier.offset(dp(RIBBON_RIGHT_U + 2.2f), dp(PageMetrics.HEADER_TOP)).width(dp((if (first) 56f else 80f) - (RIBBON_RIGHT_U + 2.2f - PageMetrics.MARGIN_LEFT))),
         )
         if (first) {
             Row(
@@ -321,6 +321,8 @@ fun DayPage(
             bookCoords = { host.bookCoords },
             hint = if (!editable) "" else stringResource(if (day.sealed.isEmpty()) R.string.write_hint else R.string.write_more_hint),
             modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(textTop)),
+            // Текст угорі сторінки — перший рядок за закладкою-пошуком.
+            indentFirst = if (!first || (!photoSlot && !audioSlot)) ribbonIndentPx(u, density) else 0f,
         )
 
         // Перо — поверх усієї сторінки.

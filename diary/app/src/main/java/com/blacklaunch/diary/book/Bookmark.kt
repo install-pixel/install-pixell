@@ -195,10 +195,14 @@ private fun DrawScope.ribbonBody(p: Path, x: Float, w: Float, top: Float, bottom
     }
 }
 
-private val SearchRibbonWidth = 18.dp
-private val SearchRibbonLength = 80.dp
-/** Де висить (середина): помітно правіше за клаптики вирваних сторінок біля корінця. */
-val SearchRibbonX = 36.dp
+/**
+ * Закладка-пошук — в одиницях сторінки ([PageMetrics], ширина = 100), як і все на сторінці: на будь-якому екрані лежить
+ * однаково відносно тексту. Середина — правіше за клаптики вирваних сторінок; кінчик — вище за другий рядок.
+ */
+const val RIBBON_X_U = 8.8f
+const val RIBBON_W_U = 4.4f
+const val RIBBON_LEN_U = 19f
+val RIBBON_RIGHT_U get() = RIBBON_X_U + RIBBON_W_U / 2
 
 /** Стан стрічки-пошуку, спільний для всіх сторінок: як далеко потягнули, хитання й видимість лупи. */
 object SearchRibbonState {
@@ -212,9 +216,10 @@ object SearchRibbonState {
  * місці: що лежить зверху (обкладинка, сторінка, що перегортається), те її й закриває.
  */
 fun DrawScope.drawSearchRibbon(glass: Boolean) {
-    val x = SearchRibbonX.toPx()
-    val w = SearchRibbonWidth.toPx()
-    val end = SearchRibbonLength.toPx() + SearchRibbonState.pull
+    val u = size.width / PageMetrics.WIDTH
+    val x = RIBBON_X_U * u
+    val w = RIBBON_W_U * u
+    val end = RIBBON_LEN_U * u + SearchRibbonState.pull
     val notch = w * 0.42f
     rotate(SearchRibbonState.sway, pivot = Offset(x, 0f)) {
         val p = Path().apply {
@@ -272,8 +277,8 @@ fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpe
         if (enabled) {
             Box(
                 Modifier
-                    .offset(SearchRibbonX - 22.dp, 0.dp)
-                    .size(44.dp, SearchRibbonLength + 16.dp)
+                    .offset(pageW * (RIBBON_X_U / PageMetrics.WIDTH) - 22.dp, 0.dp)
+                    .size(44.dp, pageW * (RIBBON_LEN_U / PageMetrics.WIDTH) + 16.dp)
                     .semantics { contentDescription = description }
                     .pointerInput(Unit) { detectTapGestures { haptics.tap(); onOpen() } }
                     .pointerInput(Unit) {

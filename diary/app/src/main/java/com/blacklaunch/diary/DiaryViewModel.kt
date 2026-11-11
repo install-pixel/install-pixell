@@ -424,8 +424,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         file.renameTo(keep)
         // Підпис — частина фото: зникає разом із ним (і повертається разом із ним через «Повернути»).
         val caption = day(epochDay).caption
-        // Разом із фото зникає й місце під нього — його займає текст (через «Повернути» — усе назад).
-        update(day(epochDay).copy(photo = false, caption = "", noPhoto = true))
+        // Місце під фото лишається порожнім (можна вставити інше); прибирається лише окремо — свайпом по порожньому місцю
+        // або в налаштуваннях щоденника.
+        update(day(epochDay).copy(photo = false, caption = "", noPhoto = false))
         show(R.string.photo_removed) {
             keep.renameTo(file)
             update(day(epochDay).copy(photo = true, caption = caption, noPhoto = false))
@@ -464,7 +465,8 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         val keep = java.io.File(file.path + ".undo")
         file.renameTo(keep)
         val before = day(epochDay)
-        update(before.copy(audio = false, noAudio = true))
+        // Місце під голос лишається порожнім; прибирається окремо — свайпом по порожньому місцю або в налаштуваннях.
+        update(before.copy(audio = false, noAudio = false))
         show(R.string.audio_removed) {
             keep.renameTo(file)
             update(day(epochDay).copy(audio = true, audioMs = before.audioMs, wave = before.wave, noAudio = false))

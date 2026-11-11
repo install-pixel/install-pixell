@@ -138,3 +138,72 @@ fun SearchScreen(search: (String, Boolean, Boolean) -> List<SearchHit>, onClose:
         }
     }
 }
+
+/**
+ * Пошук — сторінка щоденника (закладка-пошук перегортає на неї, назад — гортанням або «назад», як і всі сторінки): поле,
+ * «Є фото» / «Є голос», знайдені дні. Дотик — щоденник перегортається на цей день і підсвічує знайдене.
+ * [active] — сторінка відкрита (тоді поле одразу готове до письма).
+ */
+@Composable
+fun androidx.compose.foundation.layout.ColumnScope.SearchPageContent(
+    search: (String, Boolean, Boolean) -> List<SearchHit>,
+    active: Boolean,
+    onOpen: (SearchHit) -> Unit,
+) {
+    val haptics = LocalHaptics.current
+    var query by remember { mutableStateOf("") }
+    var photo by remember { mutableStateOf(false) }
+    var audio by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(active) { if (active) runCatching { focus.requestFocus() } }
+    val hits = remember(query, photo, audio) { search(query, photo, audio) }
+    val locale = Locale.getDefault()
+    SheetTextField(
+        query,
+        { query = it.take(80) },
+        stringResource(R.string.search_hint),
+        modifier = Modifier.fillMaxWidth().padding(end = 4.dp),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        focusRequester = focus,
+    )
+    Row(Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChoiceChip(stringResource(R.string.filter_photo), photo) { photo = !photo }
+        ChoiceChip(stringResource(R.string.filter_audio), audio) { audio = !audio }
+    }
+    if (query.isBlank() && !photo && !audio) {
+        WindowHint(stringResource(R.string.search_explain))
+    } else if (hits.isEmpty()) {
+        WindowHint(stringResource(R.string.search_nothing))
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 4.dp)) {
+        hits.take(60).forEach { h ->
+            androidx.compose.runtime.key(h.day * 31 + h.start) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .pencilFrame(16.dp, seed = (h.day % 50).toInt(), alpha = 0.5f)
+                        .clickable { haptics.tap(); onOpen(h) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Text(DateTimeFormatter.ofPattern("d MMMM yyyy, EEEE", locale).format(LocalDate.ofEpochDay(h.day)), color = Oled.TextSecondary, fontSize = 13.sp)
+                    if (h.snippet.isNotBlank()) {
+                        Text(
+                            buildAnnotatedString {
+                                val a = h.snippetFrom.coerceIn(0, h.snippet.length)
+                                val b = h.snippetTo.coerceIn(a, h.snippet.length)
+                                append(h.snippet.substring(0, a))
+                                withStyle(SpanStyle(color = Oled.TextPrimary, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)) { append(h.snippet.substring(a, b)) }
+                                append(h.snippet.substring(b))
+                            },
+                            color = Oled.TextPrimary.copy(alpha = 0.8f),
+                            fontSize = 16.sp,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

@@ -59,6 +59,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.sp
 import com.blacklaunch.diary.data.Strike
 import com.blacklaunch.diary.ui.AppStyle
@@ -100,6 +101,25 @@ fun interface TextSink {
 }
 
 /**
+ * Перший рядок сторінки звисаючою закладкою-пошуком частково закритий — відступ лише першому абзацу сторінки
+ * ([indentPx] у px). Те саме і в розкладці для поділу на сторінки, і на самій сторінці — рядки збігаються.
+ */
+fun indentFirstParagraph(text: String, indentPx: Float, density: androidx.compose.ui.unit.Density): AnnotatedString {
+    if (indentPx <= 0f || text.isEmpty()) return AnnotatedString(text)
+    val end = text.indexOf(10.toChar()).let { if (it < 0) text.length else it }
+    val sp = with(density) { indentPx.toSp() }
+    return buildAnnotatedString {
+        append(text)
+        addStyle(androidx.compose.ui.text.ParagraphStyle(textIndent = androidx.compose.ui.text.style.TextIndent(firstLine = sp)), 0, end)
+    }
+}
+
+/** Скільки px відступу треба першому рядку, щоб текст починався за закладкою-пошуком. */
+@Suppress("UNUSED_PARAMETER")
+fun ribbonIndentPx(u: Float, density: androidx.compose.ui.unit.Density): Float =
+    ((RIBBON_RIGHT_U + 1.4f - PageMetrics.MARGIN_LEFT) * u).coerceAtLeast(0f)
+
+/**
  * Текст однієї сторінки дня: шматок [segStart]…[segEnd] повного тексту [full]. Поки не пишеш — дотик ставить курсор
  * (і відкриває клавіатуру), а довге натискання й ведення по висохлому — викреслює. Поки пишеш — звичайне поле, але
  * висохле не змінюється (це стереже книга, [TextSink]).
@@ -127,6 +147,7 @@ fun PageText(
     bookCoords: () -> LayoutCoordinates?,
     hint: String,
     modifier: Modifier = Modifier,
+    indentFirst: Float = 0f,
 ) {
     val density = LocalDensity.current
     val haptics = LocalHaptics.current
@@ -179,12 +200,12 @@ fun PageText(
     }
 
     // Висохле — тьмяніше (лише колір; розкладка тексту та сама).
-    val dry = remember(localSealed) {
+    val dry = remember(localSealed, indentFirst) {
         VisualTransformation { text ->
             val n = localSealed.coerceAtMost(text.length)
             TransformedText(
                 buildAnnotatedString {
-                    append(text)
+                    append(indentFirstParagraph(text.text, indentFirst, density))
                     if (n > 0) addStyle(SpanStyle(color = if (AppStyle.glass) DryInk else DryInk.copy(alpha = 0.75f)), 0, n)
                 },
                 OffsetMapping.Identity,
@@ -196,7 +217,7 @@ fun PageText(
     val hDp = with(density) { heightPx.toDp() }
     Box(modifier.size(wDp, hDp)) {
         if (segment.isEmpty() && !focused && segStart == 0) {
-            Text(hint, style = style.copy(color = Oled.TextSecondary))
+            Text(hint, style = style.copy(color = Oled.TextSecondary), modifier = Modifier.padding(start = with(density) { indentFirst.toDp() }))
         }
         BasicTextField(
             value = value,
