@@ -286,7 +286,8 @@ fun RecorderPage(
         }
     }
 
-    PaperPage(title = title, subtitle = subtitle, seed = seed, edgeHeight = 118.dp, edge = keys) {
+    // Дата вже написана на касеті — під заголовком її не повторюємо.
+    PaperPage(title = title, subtitle = null, seed = seed, edgeHeight = 118.dp, edge = keys) {
         val holesHolder = LocalReliefHoles.current
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // ——— Шухлядка з касетою (торкнись — перевернути на іншу сторону) ———
@@ -413,12 +414,13 @@ private fun androidx.compose.foundation.layout.RowScope.DeckKey(
                 awaitEachGesture {
                     awaitFirstDown()
                     pressed = true
-                    haptics.tap()
+                    haptics.keyDown()
                     var held = false
                     val j = if (hasHold) scope.launch { delay(320); held = true; holdNow?.invoke(true) } else null
                     val up = waitForUpOrCancellation()
                     j?.cancel()
                     pressed = false
+                    haptics.keyUp()
                     if (held) holdNow?.invoke(false) else if (up != null) click()
                 }
             },

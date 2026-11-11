@@ -41,6 +41,24 @@ class Haptics(private val view: View?, private val enabled: Boolean) {
         perform(if (android.os.Build.VERSION.SDK_INT >= 27) HapticFeedbackConstants.TEXT_HANDLE_MOVE else HapticFeedbackConstants.CLOCK_TICK)
     }
 
+    /** Клавіша (магнітофон) пішла вниз — тугий клац. */
+    fun keyDown() = primitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, 1f, HapticFeedbackConstants.KEYBOARD_TAP)
+
+    /** Клавіша піднялась — легкий, глухіший відскок (інше відчуття, ніж натискання). */
+    fun keyUp() = primitive(android.os.VibrationEffect.Composition.PRIMITIVE_TICK, 0.45f, if (android.os.Build.VERSION.SDK_INT >= 27) HapticFeedbackConstants.KEYBOARD_RELEASE else HapticFeedbackConstants.CLOCK_TICK)
+
+    private fun primitive(p: Int, scale: Float, fallback: Int) {
+        if (!enabled || view == null) return
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            val vib = (view.context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
+            if (vib != null && vib.areAllPrimitivesSupported(p)) {
+                vib.vibrate(android.os.VibrationEffect.startComposition().addPrimitive(p, scale).compose())
+                return
+            }
+        }
+        perform(fallback)
+    }
+
     private fun perform(type: Int) {
         if (enabled) view?.performHapticFeedback(type)
     }
