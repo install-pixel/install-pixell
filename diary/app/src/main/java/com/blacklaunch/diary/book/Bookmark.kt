@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -192,50 +194,73 @@ private fun DrawScope.ribbonBody(p: Path, x: Float, w: Float, top: Float, bottom
     }
 }
 
-private val SearchRibbonWidth = 20.dp
-private val SearchRibbonLength = 46.dp
+private val SearchRibbonWidth = 18.dp
+private val SearchRibbonLength = 64.dp
+/** Де висить (середина): правіше за клаптики вирваних сторінок біля корінця. */
+private val SearchRibbonX = 27.dp
 
 /**
- * Закладка-пошук: коротка тканинна стрічка, що завжди звисає згори біля корінця (поверх сторінок і клаптиків вирваних —
- * не прозора). Потягнув униз (або торкнувся) — відкривається пошук. До кінця сторінки вона більше не розкладається.
+ * Закладка-пошук: тканинна стрічка, що виходить з-поміж сторінок угорі біля корінця й звисає на кожній сторінці (на
+ * обкладинці її немає). Непрозора, лежить поверх сторінки й клаптиків. Потягнув униз (або торкнувся) — пошук. Лупа на
+ * кінчику з'являється, як нижня панель: після дотику, і тане.
  */
 @Composable
-fun SearchRibbon(pageW: Dp, pageH: Dp, enabled: Boolean, onOpen: () -> Unit, description: String) {
+fun SearchRibbon(gear: GearReveal, pageW: Dp, pageH: Dp, enabled: Boolean, onOpen: () -> Unit, description: String) {
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
     val glass = AppStyle.glass
     val pull = remember { Animatable(0f) }
     val sway = remember { Animatable(0f) }
-    val xDp = pageW * RIBBON_X + 4.dp
+    var glyphOn by remember { mutableStateOf(true) }
+    LaunchedEffect(gear.pokes) {
+        glyphOn = true
+        kotlinx.coroutines.delay(3_500)
+        glyphOn = false
+    }
+    val glyph by androidx.compose.animation.core.animateFloatAsState(if (glyphOn) 1f else 0f, tween(if (glyphOn) 250 else 800), label = "ribbonGlyph")
     Box(Modifier.size(pageW, pageH)) {
-        Canvas(Modifier.fillMaxSize()) {
-            val x = xDp.toPx()
+        Canvas(Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(BookCorner))) {
+            val x = SearchRibbonX.toPx()
             val w = SearchRibbonWidth.toPx()
-            val top = 2.dp.toPx()
-            val end = top + SearchRibbonLength.toPx() + pull.value
-            val notch = w * 0.45f
-            rotate(sway.value, pivot = Offset(x, top)) {
+            val end = SearchRibbonLength.toPx() + pull.value
+            val notch = w * 0.42f
+            rotate(sway.value, pivot = Offset(x, 0f)) {
                 val p = Path().apply {
-                    moveTo(x - w / 2, top); lineTo(x + w / 2, top); lineTo(x + w / 2, end)
+                    moveTo(x - w / 2, -2f); lineTo(x + w / 2, -2f); lineTo(x + w / 2, end)
                     lineTo(x, end - notch); lineTo(x - w / 2, end); close()
                 }
-                // Тінь на сторінці під стрічкою — вона лежить зверху.
-                drawPath(Path().apply { addPath(p, Offset(1.5.dp.toPx(), 2.dp.toPx())) }, Color.Black.copy(alpha = 0.55f))
-                ribbonBody(p, x, w, top, end - notch, glass, solid = true)
-                if (!glass) drawPath(taperedPath(listOf(Offset(x - w / 2, end), Offset(x, end - notch), Offset(x + w / 2, end)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.85f))
-                // Лупа на кінчику — щоб було видно, що це пошук.
-                val c = Offset(x - 1.dp.toPx(), end - notch - 9.dp.toPx())
-                val r = 3.6.dp.toPx()
-                val ink = if (glass) Color(0xCCFFFFFF) else SheetInk.copy(alpha = 0.9f)
-                drawCircle(ink, r, c, style = Stroke(1.3.dp.toPx()))
-                drawLine(ink, c + Offset(r * 0.7f, r * 0.7f), c + Offset(r * 1.7f, r * 1.7f), 1.5.dp.toPx())
+                // М'яка тінь на сторінці — стрічка лежить зверху.
+                drawPath(Path().apply { addPath(p, Offset(1.5.dp.toPx(), 1.5.dp.toPx())) }, Color.Black.copy(alpha = 0.5f))
+                if (glass) {
+                    drawPath(p, Brush.horizontalGradient(0f to Color(0xFF2A2A2A), 0.5f to Color(0xFF131313), 1f to Color(0xFF242424), startX = x - w / 2, endX = x + w / 2))
+                    drawPath(p, Color(0x59FFFFFF), style = Stroke(0.8.dp.toPx()))
+                } else {
+                    drawPath(p, Color(0xFF060606))
+                    drawPath(taperedPath(listOf(Offset(x - w / 2, 0f), Offset(x - w / 2 + 0.6f, end / 2), Offset(x - w / 2, end)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.8f))
+                    drawPath(taperedPath(listOf(Offset(x + w / 2, 0f), Offset(x + w / 2 - 0.6f, end / 2), Offset(x + w / 2, end)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.8f))
+                    drawPath(taperedPath(listOf(Offset(x - w / 2, end), Offset(x, end - notch), Offset(x + w / 2, end)), 1.6.dp.toPx()), SheetInk.copy(alpha = 0.8f))
+                }
+                // Відблиски тканини: м'який світлий полиск ближче до лівого краю і ледь помітний — посередині.
+                clipPath(p) {
+                    drawRect(Brush.horizontalGradient(0f to Color.Transparent, 0.3f to Color.White.copy(alpha = if (glass) 0.10f else 0.06f), 0.55f to Color.Transparent, startX = x - w / 2, endX = x + w / 2), topLeft = Offset(x - w / 2, 0f), size = androidx.compose.ui.geometry.Size(w, end))
+                    // Виходить з-поміж сторінок: угорі темніше.
+                    drawRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent, startY = 0f, endY = 10.dp.toPx()), topLeft = Offset(x - w / 2, 0f), size = androidx.compose.ui.geometry.Size(w, 10.dp.toPx()))
+                }
+                // Лупа на кінчику — з'являється й тане, як нижня панель.
+                if (glyph > 0.01f) {
+                    val c = Offset(x - 0.8.dp.toPx(), end - notch - 9.dp.toPx())
+                    val r = 3.5.dp.toPx()
+                    val ink = (if (glass) Color.White else SheetInk).copy(alpha = 0.85f * glyph)
+                    drawCircle(ink, r, c, style = Stroke(1.3.dp.toPx()))
+                    drawLine(ink, c + Offset(r * 0.7f, r * 0.7f), c + Offset(r * 1.7f, r * 1.7f), 1.5.dp.toPx())
+                }
             }
         }
         if (enabled) {
             Box(
                 Modifier
-                    .offset(xDp - 22.dp, 0.dp)
-                    .size(44.dp, SearchRibbonLength + 18.dp)
+                    .offset(SearchRibbonX - 22.dp, 0.dp)
+                    .size(44.dp, SearchRibbonLength + 16.dp)
                     .semantics { contentDescription = description }
                     .pointerInput(Unit) { detectTapGestures { haptics.tap(); onOpen() } }
                     .pointerInput(Unit) {

@@ -781,17 +781,14 @@ fun BookScreen(
                             }
                         }
                     }
-                    Box(
-                        Modifier
-                            .offset(y = ph - 84.dp)
-                            .size(52.dp, 84.dp)
-                            .pointerInput(tearPage, ink) {
+                    fun Modifier.tearInput(zoneH: androidx.compose.ui.unit.Dp): Modifier = this
+                            .pointerInput(tearPage, ink, zoneH) {
                                 if (ink != null) return@pointerInput
                                 // Наскільки вже надірвано — читаємо щоразу на початку жесту (після «передумав» межа зростає).
                                 var already = 0f
                                 val w = pw.toPx()
                                 val h = ph.toPx()
-                                val zoneTop = h - 84.dp.toPx()
+                                val zoneTop = h - zoneH.toPx()
                                 // «Тріск паперу»: короткі слабкі поштовхи, лише коли розрив іде вгору далі, ніж уже було в цьому
                                 // жесті (назад — тиша); крок і сила трохи нерівні, як волокна.
                                 var peak = 0f
@@ -877,13 +874,18 @@ fun BookScreen(
                                     },
                                     onDragCancel = { vm.clearNotice(R.string.tear_hint); flip.tearFinger = null; flip.tear = 0f },
                                 )
-                            },
-                    )
+                            }
+                    // Де брати: кутик біля корінця (вище, у полі) і смужка вздовж низу майже до номера сторінки (нижче
+                    // за останній рядок — дотики до тексту не забирає).
+                    listOf(52.dp to 84.dp, (pw / 2 - 30.dp) to 46.dp).forEach { (zw, zh) ->
+                        Box(Modifier.offset(y = ph - zh).size(zw, zh).tearInput(zh))
+                    }
                 }
                 // Закладка-пошук — коротка стрічка згори біля корінця, поверх усього (і клаптиків вирваних): потягнув униз —
                 // пошук.
-                if (open != null) {
+                if (open != null && currentPage != BookPage.Cover) {
                     SearchRibbon(
+                        gear = gear,
                         pageW = pw,
                         pageH = ph,
                         enabled = ink == null && !flip.moving && flip.tearFinger == null,

@@ -211,7 +211,8 @@ fun DayPage(
             style = style.copy(fontSize = headerSize.sp, lineHeight = (headerSize * 1.2f).sp, color = if (first) Oled.TextPrimary else Oled.TextSecondary),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(PageMetrics.HEADER_TOP)).width(dp(if (first) 56f else 80f)),
+            // Правіше за закладку-пошук, що звисає згори біля корінця, — вона на дату не налягає.
+            modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT) + 12.dp, dp(PageMetrics.HEADER_TOP)).width(dp(if (first) 56f else 80f) - 12.dp),
         )
         if (first) {
             Row(
