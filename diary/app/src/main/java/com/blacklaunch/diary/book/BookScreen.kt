@@ -796,7 +796,11 @@ fun BookScreen(
                                 val w = pw.toPx()
                                 val h = ph.toPx()
                                 val zoneTop = h - 84.dp.toPx()
-                                var lastTick = 0
+                                // «Тріск паперу»: короткі слабкі поштовхи, лише коли розрив іде вгору далі, ніж уже було в цьому
+                                // жесті (назад — тиша); крок і сила трохи нерівні, як волокна.
+                                var peak = 0f
+                                var nextStep = 0.015f
+                                val rnd = java.util.Random()
                                 var warned = false
                                 fun follow(pos: Offset) {
                                     // Рух — лише вгору: кут іде рівно, легенько набік (вліво-вправо палець не смикає сторінку).
@@ -808,15 +812,19 @@ fun BookScreen(
                                     // ніж уже загнуто; уже надірване не «зростається» — межа не нижча за колишню.
                                     val k = maxOf(already, g.tearHeight, ((h - f.y) / (h * 0.8f)).coerceIn(0f, 1f))
                                     flip.tear = k
-                                    val tick = (k * 10).toInt()
-                                    if (tick != lastTick) { haptics.tick(); lastTick = tick }
+                                    if (k > peak + nextStep) {
+                                        peak = k
+                                        nextStep = 0.008f + rnd.nextFloat() * 0.02f
+                                        haptics.tear(0.2f + rnd.nextFloat() * 0.45f)
+                                    }
                                     if (!warned && k >= 0.5f) { warned = true; haptics.longPress(); vm.warn(R.string.tear_hint) }
                                     if (warned && k < 0.45f) { warned = false; vm.clearNotice(R.string.tear_hint) }
                                 }
                                 detectDragGestures(
                                     onDragStart = { pos ->
-                                        lastTick = 0; warned = false
+                                        warned = false
                                         already = vm.day(tearPage.day).tearTry(tearPage.part)
+                                        peak = already
                                         flip.tearSeed = tearSeedOf(tearPage.day, tearPage.part)
                                         flip.tapeK = already
                                         flip.tearRenew = renew

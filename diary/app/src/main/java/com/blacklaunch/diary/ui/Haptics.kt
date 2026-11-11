@@ -20,6 +20,27 @@ class Haptics(private val view: View?, private val enabled: Boolean) {
     /** Перемикання профілю свайпом. */
     fun tick() = perform(HapticFeedbackConstants.CLOCK_TICK)
 
+    /**
+     * Папір рветься: дуже короткий слабкий «тріск» ([strength] 0…1). Де телефон уміє — найлегший примітив вібрації
+     * (нерівна сила від разу до разу дає відчуття волокон), інакше — найлегший системний відгук.
+     */
+    fun tear(strength: Float) {
+        if (!enabled || view == null) return
+        val ctx = view.context
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            val vib = (ctx.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
+            if (vib != null && vib.areAllPrimitivesSupported(android.os.VibrationEffect.Composition.PRIMITIVE_LOW_TICK)) {
+                vib.vibrate(
+                    android.os.VibrationEffect.startComposition()
+                        .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_LOW_TICK, strength.coerceIn(0.05f, 1f))
+                        .compose(),
+                )
+                return
+            }
+        }
+        perform(if (android.os.Build.VERSION.SDK_INT >= 27) HapticFeedbackConstants.TEXT_HANDLE_MOVE else HapticFeedbackConstants.CLOCK_TICK)
+    }
+
     private fun perform(type: Int) {
         if (enabled) view?.performHapticFeedback(type)
     }
