@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -129,12 +130,16 @@ fun RecorderPage(
     val recMode = if (side == 0) day.modeA else day.modeB
     val listening = deck != Deck.Idle
     LaunchedEffect(voiceMode, recMode, side) { player.denoise(if (voiceMode > recMode) voiceMode else 0) }
+    // Відкрив сторону з записом — ручка одразу стає туди, на чому її записано (видно, чи можна ще покращити).
+    LaunchedEffect(day.day, side, recMode, has) { if (has && recording == null) onVoiceMode(recMode) }
     // Де стоїть стрічка (мс від початку сторони). Касету залишили там, де записали, — у кінці записаного.
     var head by remember(day.day) { mutableFloatStateOf(dur.toFloat()) }
     var loaded by remember(day.day, side, dur) { mutableStateOf<ByteArray?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
     val flip = remember(day.day) { Animatable(0f) }
     val eject = remember(day.day) { Animatable(0f) }
+    // Лапки й напрямні, що тримають касету: 1 — затиснули, 0 — розійшлися (щоб касету вийняти чи перевернути).
+    val grip = remember(day.day) { Animatable(1f) }
     // Касета повертається в шухлядку, коли повертаєшся з вікна «Поділитися».
     var awaitReturn by remember { mutableStateOf(false) }
     var wentAway by remember { mutableStateOf(false) }
@@ -144,7 +149,7 @@ fun RecorderPage(
             if (e == androidx.lifecycle.Lifecycle.Event.ON_PAUSE && awaitReturn) wentAway = true
             if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME && awaitReturn && wentAway) {
                 awaitReturn = false
-                scope.launch { delay(250); eject.animateTo(0f, tween(480, easing = FastOutSlowInEasing)) }
+                scope.launch { delay(250); eject.animateTo(0f, tween(480, easing = FastOutSlowInEasing)); grip.animateTo(1f, tween(200, easing = FastOutSlowInEasing)) }
             }
         }
         lifecycle.addObserver(obs)
@@ -154,7 +159,7 @@ fun RecorderPage(
     val sideNow by androidx.compose.runtime.rememberUpdatedState({ side })
     val hasNow by androidx.compose.runtime.rememberUpdatedState({ if (side == 0) day.audio else day.audioB })
     val onShareNow by androidx.compose.runtime.rememberUpdatedState(onShare)
-    val canTouchCassette by androidx.compose.runtime.rememberUpdatedState({ (deck == Deck.Idle || deck == Deck.Pause) && recording == null && !flip.isRunning && !eject.isRunning })
+    val canTouchCassette by androidx.compose.runtime.rememberUpdatedState({ (deck == Deck.Idle || deck == Deck.Pause) && recording == null && !flip.isRunning && !eject.isRunning && !grip.isRunning })
 
     // Дописали — стрічка стоїть у кінці нового запису.
     // (Лише коли змінився сам запис, а не сторона: перевернута касета стоїть там, де стрічка.)
@@ -374,12 +379,14 @@ fun RecorderPage(
                                 haptics.tap()
                                 stopAll()
                                 scope.launch {
+                                    grip.animateTo(0f, tween(160, easing = FastOutSlowInEasing))
                                     flip.animateTo(90f, tween(220, easing = LinearEasing))
                                     // Одна стрічка: перевернув — що на A вже прокрутилось, на B ще попереду (котушки міняються місцями).
                                     side = 1 - side
                                     head = (Limits.SIDE_MS - head).coerceIn(0f, Limits.SIDE_MS.toFloat())
                                     flip.snapTo(-90f)
                                     flip.animateTo(0f, tween(220, easing = LinearEasing))
+                                    grip.animateTo(1f, tween(180, easing = FastOutSlowInEasing))
                                 }
                             },
                             onLongPress = {
@@ -388,13 +395,14 @@ fun RecorderPage(
                                 haptics.longPress()
                                 stopAll()
                                 scope.launch {
+                                    grip.animateTo(0f, tween(180, easing = FastOutSlowInEasing))
                                     eject.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
                                     awaitReturn = true
                                     wentAway = false
                                     onShareNow(sideNow())
                                     // Якщо вікно «Поділитися» так і не відкрилось — повернути касету за мить.
                                     delay(2500)
-                                    if (awaitReturn && !wentAway) { awaitReturn = false; eject.animateTo(0f, tween(420, easing = FastOutSlowInEasing)) }
+                                    if (awaitReturn && !wentAway) { awaitReturn = false; eject.animateTo(0f, tween(420, easing = FastOutSlowInEasing)); grip.animateTo(1f, tween(180)) }
                                 }
                             },
                         )
@@ -412,6 +420,8 @@ fun RecorderPage(
                 val sx = cos(flip.value * PI.toFloat() / 180f)
                 // Механізм під касетою: голівка, притискний ролик, ведучий вал — касета на них стоїть.
                 drawMechanism(c, glass, ink, faint, engaged = shown == Deck.Play || shown == Deck.Record)
+                // Штирі шухлядки, що крутять котушки: стирчать крізь отвори касети, а без касети лишаються на місці.
+                drawSpindles(c, glass, ink, angleL, angleR)
                 // Виймаєш касету — вона висувається вгору й ховається за краєм шухлядки (поза сторінку не малюємо).
                 val lift = eject.value * (c.bottom + 4.dp.toPx())
                 drawContext.canvas.save()
@@ -422,7 +432,7 @@ fun RecorderPage(
                 }
                 drawContext.canvas.restore()
                 // Пази й притискні лапки: касета вставлена в шухлядку, а не висить.
-                drawHolders(c, glass, ink)
+                drawHolders(c, glass, ink, grip.value)
                 // Скло дверцят — легкий відблиск поверх.
                 if (glass) drawRoundRect(
                     Brush.linearGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent, Color.White.copy(alpha = 0.03f)), start = Offset.Zero, end = Offset(size.width, size.height)),
@@ -434,8 +444,8 @@ fun RecorderPage(
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Canvas(Modifier.fillMaxWidth().weight(1f)) { drawGrille(glass, ink, faint) }
                     NoiseKnob(
-                        mode = if (recording != null) recording.mode else if (listening) maxOf(voiceMode, recMode) else voiceMode,
-                        minMode = if (listening && recording == null) recMode else 0,
+                        mode = if (recording != null) recording.mode else if (has) maxOf(voiceMode, recMode) else voiceMode,
+                        minMode = if (has && recording == null) recMode else 0,
                         enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f).noFlip(host, "knob_${day.day}")) { onVoiceMode(it) }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -790,6 +800,20 @@ private fun DrawScope.drawDeckWell(glass: Boolean, ink: Color) {
  * [progress] — скільки стрічки вже на правій котушці (від усієї сторони).
  */
 private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: Color, side: Int, progress: Float, angleL: Float, angleR: Float, moving: Boolean, labelText: String) {
+    // Наскрізні отвори в маточинах: крізь них видно штирі шухлядки (або порожнечу, коли касету вийняли).
+    val hr = rc.width * 0.05f * 0.7f
+    val holes = Path().apply {
+        fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
+        addRect(rc.inflate(8.dp.toPx()))
+        addOval(Rect(Offset(rc.left + rc.width * 0.29f, rc.top + rc.height * 0.51f), hr))
+        addOval(Rect(Offset(rc.left + rc.width * 0.71f, rc.top + rc.height * 0.51f), hr))
+    }
+    clipPath(holes) {
+        drawCassetteBody(rc, glass, ink, faint, side, progress, angleL, angleR, moving, labelText)
+    }
+}
+
+private fun DrawScope.drawCassetteBody(rc: Rect, glass: Boolean, ink: Color, faint: Color, side: Int, progress: Float, angleL: Float, angleR: Float, moving: Boolean, labelText: String) {
     val w = rc.width
     val h = rc.height
     fun p(x: Float, y: Float) = Offset(rc.left + x * w, rc.top + y * h)
@@ -866,14 +890,16 @@ private fun DrawScope.drawCassette(rc: Rect, glass: Boolean, ink: Color, faint: 
     frame(win.topLeft, win.size, w * 0.012f, glass, ink, alpha = 0.55f, seed = 13)
     // Отвори для маточин і самі маточини з зубцями — крутяться.
     fun hub(c: Offset, a: Float) {
-        drawCircle(Color.Black.copy(alpha = 0.9f), hubRad * 1.25f, c)
+        // Отвір у корпусі (темна щілина), у ньому — маточина котушки з зубцями всередину; середина порожня —
+        // туди заходить штир шухлядки (його видно крізь касету).
+        drawCircle(Color.Black.copy(alpha = 0.9f), hubRad * 1.125f, c, style = Stroke(hubRad * 0.25f))
         drawCircle(ink.copy(alpha = 0.5f), hubRad * 1.25f, c, style = Stroke(1.dp.toPx()))
         drawCircle(if (glass) Color(0xFFE9E6DF).copy(alpha = 0.85f) else SheetInk.copy(alpha = 0.8f), hubRad, c, style = Stroke(1.6.dp.toPx()))
         rotate(a * 180f / PI.toFloat(), c) {
             for (k in 0 until 6) {
                 val t = k * PI.toFloat() / 3f
                 val d = Offset(cos(t), sin(t))
-                drawLine(ink.copy(alpha = 0.85f), c + d * (hubRad * 0.55f), c + d * (hubRad * 0.95f), 2.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(ink.copy(alpha = 0.85f), c + d * (hubRad * 0.72f), c + d * (hubRad * 0.97f), 2.dp.toPx(), cap = StrokeCap.Round)
             }
         }
     }
@@ -979,14 +1005,39 @@ private fun DrawScope.drawMeter(glass: Boolean, ink: Color, faint: Color, level:
     if (recording) drawCircle(RecRed, 3.5.dp.toPx(), Offset(size.width - 10.dp.toPx(), 10.dp.toPx()))
 }
 
+/**
+ * Штирі шухлядки (вали, що крутять котушки): шліцьові, у тих самих місцях, що й маточини касети. Крутяться разом із
+ * котушками; коли касету вийняли — стоять на місці.
+ */
+private fun DrawScope.drawSpindles(rc: Rect, glass: Boolean, ink: Color, angleL: Float, angleR: Float) {
+    val w = rc.width
+    val hubRad = w * 0.05f
+    val metal = if (glass) Color(0xFF8E9097) else SheetInk.copy(alpha = 0.85f)
+    listOf(Offset(rc.left + w * 0.29f, rc.top + rc.height * 0.51f) to angleL, Offset(rc.left + w * 0.71f, rc.top + rc.height * 0.51f) to angleR).forEach { (c, a) ->
+        // Основа штиря.
+        drawCircle(if (glass) Color(0xFF1A1B1E) else Color(0xFF13110E), hubRad * 0.66f, c)
+        drawCircle(if (glass) Color.White.copy(alpha = 0.18f) else SheetInk.copy(alpha = 0.5f), hubRad * 0.66f, c, style = Stroke(1.dp.toPx()))
+        rotate(a * 180f / PI.toFloat(), c) {
+            // Шліци — три зубці, що чіпляють маточину.
+            for (k in 0 until 3) {
+                val t = k * 2f * PI.toFloat() / 3f
+                val d = Offset(cos(t), sin(t))
+                drawLine(metal, c + d * (hubRad * 0.12f), c + d * (hubRad * 0.6f), 2.4.dp.toPx(), cap = StrokeCap.Round)
+            }
+        }
+        drawCircle(metal, hubRad * 0.13f, c)
+    }
+}
+
 /** Пази шухлядки: бічні напрямні, за які касета зачеплена, і дві притискні лапки зверху. */
-private fun DrawScope.drawHolders(rc: Rect, glass: Boolean, ink: Color) {
+private fun DrawScope.drawHolders(rc: Rect, glass: Boolean, ink: Color, grip: Float = 1f) {
     val metal = if (glass) Color(0xFF2C2D31) else Color(0xFF1C1914)
     val edge = if (glass) Color.White.copy(alpha = 0.22f) else SheetInk.copy(alpha = 0.7f)
     val t = rc.height * 0.08f
-    // Бічні напрямні: обхоплюють нижні кути касети.
+    val open = 1f - grip
+    // Бічні напрямні: обхоплюють нижні кути касети; щоб вийняти чи перевернути — розходяться вбоки.
     listOf(-1f, 1f).forEach { sgn ->
-        val x = if (sgn < 0) rc.left - t * 0.55f else rc.right - t * 0.45f
+        val x = (if (sgn < 0) rc.left - t * 0.55f else rc.right - t * 0.45f) + sgn * open * t * 1.3f
         val rr = Rect(Offset(x, rc.top + rc.height * 0.55f), Size(t, rc.height * 0.47f))
         drawRoundRect(metal, rr.topLeft, rr.size, CornerRadius(t * 0.3f))
         drawRoundRect(edge, rr.topLeft, rr.size, CornerRadius(t * 0.3f), style = Stroke(1.dp.toPx()))
@@ -995,7 +1046,8 @@ private fun DrawScope.drawHolders(rc: Rect, glass: Boolean, ink: Color) {
     // Притискні лапки зверху (як на дверцятах, що тримають касету).
     listOf(0.2f, 0.8f).forEach { fx ->
         val cx = rc.left + rc.width * fx
-        val rr = Rect(Offset(cx - rc.width * 0.05f, rc.top - t * 0.55f), Size(rc.width * 0.1f, t))
+        // Притискні лапки відкидаються вгору.
+        val rr = Rect(Offset(cx - rc.width * 0.05f, rc.top - t * 0.55f - open * t * 1.1f), Size(rc.width * 0.1f, t))
         drawRoundRect(metal, rr.topLeft, rr.size, CornerRadius(t * 0.35f))
         drawRoundRect(edge, rr.topLeft, rr.size, CornerRadius(t * 0.35f), style = Stroke(1.dp.toPx()))
     }
