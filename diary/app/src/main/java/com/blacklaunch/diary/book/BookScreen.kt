@@ -452,14 +452,16 @@ fun BookScreen(
 
     // ——— Запис голосу ———
     // Пишеться на сторону касети [side] — у кінець того, що там уже є; стрічки на стороні — 45 хвилин.
-    fun startRecording(day: Long, side: Int) {
+    fun startRecording(day: Long, side: Int, cutAt: Long? = null) {
         if (recording != null) return
         val d = vm.day(day)
-        val base = if (side == 0) (if (d.audio) d.audioMs else 0L) else (if (d.audioB) d.audioMsB else 0L)
+        val full = if (side == 0) (if (d.audio) d.audioMs else 0L) else (if (d.audioB) d.audioMsB else 0L)
+        // Запис поверх — з місця, де стоїть стрічка; інакше — у кінець записаного.
+        val base = cutAt?.coerceIn(0L, full) ?: full
         if (base >= Limits.SIDE_MS - 1000) { vm.show(R.string.recorder_side_full); return }
-        if (!recorder.start()) { vm.show(R.string.record_failed); return }
+        if (!recorder.start(info.voiceMode)) { vm.show(R.string.record_failed); return }
         haptics.longPress()
-        val st = RecordingState(day, side, base)
+        val st = RecordingState(day, side, base, cutAt?.takeIf { it < full })
         recording = st
         scope.launch {
             while (recording === st) {
@@ -472,27 +474,46 @@ fun BookScreen(
             if (recording === st) {
                 recording = null
                 val r = recorder.finish()
-                if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side) else vm.show(R.string.record_short)
+                if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side, st.cutAt) else vm.show(R.string.record_short)
             }
         }
+    }
+    fun pauseRecording(on: Boolean) {
+        val st = recording ?: return
+        if (on) recorder.pause() else recorder.resume()
+        st.paused = on
     }
     fun stopRecording() {
         val st = recording ?: return
         recording = null
         haptics.tap()
         val r = recorder.finish()
-        if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side) else vm.show(R.string.record_short)
+        if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side, st.cutAt) else vm.show(R.string.record_short)
     }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
-    var micFor by remember { mutableStateOf<Pair<Long, Int>?>(null) }
+    var micFor by remember { mutableStateOf<Triple<Long, Int, Long?>?>(null) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val d = micFor
         micFor = null
-        if (ok && d != null) startRecording(d.first, d.second) else if (!ok) vm.show(R.string.mic_denied)
+        if (ok && d != null) startRecording(d.first, d.second, d.third) else if (!ok) vm.show(R.string.mic_denied)
     }
-    fun record(day: Long, side: Int) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording(day, side)
-        else { micFor = day to side; micPermission.launch(Manifest.permission.RECORD_AUDIO) }
+    fun record(day: Long, side: Int, cutAt: Long? = null) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording(day, side, cutAt)
+        else { micFor = Triple(day, side, cutAt); micPermission.launch(Manifest.permission.RECORD_AUDIO) }
+    }
+    /** Поділитися стороною касети — одразу системне вікно «Поділитися». */
+    fun shareTape(day: Long, side: Int) {
+        scope.launch {
+            val f = vm.exportAudio(day, side) ?: return@launch
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".camera", f)
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "audio/mp4"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            vm.keepOpenOnce = true
+            runCatching { context.startActivity(android.content.Intent.createChooser(send, null).addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+        }
     }
 
     // ——— Вибір фото й файлів ———
@@ -850,8 +871,12 @@ fun BookScreen(
                                     seed = info.tint * 7 + 71,
                                     editable = !DiaryViewModel.isDry(p.day),
                                     recording = recording?.takeIf { it.day == p.day },
-                                    onRecord = { side -> if (d.audio || d.audioB || roomFor(p.day, photo = false)) record(p.day, side) else vm.show(R.string.no_room_voice) },
+                                    onRecord = { side, cutAt -> if (d.audio || d.audioB || roomFor(p.day, photo = false)) record(p.day, side, cutAt) else vm.show(R.string.no_room_voice) },
                                     onStopRecording = { stopRecording() },
+                                    onPauseRecording = { pauseRecording(it) },
+                                    voiceMode = info.voiceMode,
+                                    onVoiceMode = { vm.setVoiceMode(info.id, it) },
+                                    onShare = { side -> shareTape(p.day, side) },
                                 )
                             }
                             is BookPage.Calendar -> PaperPage(

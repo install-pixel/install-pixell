@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -100,8 +101,13 @@ fun RecorderPage(
     seed: Int,
     editable: Boolean,
     recording: RecordingState?,
-    onRecord: (side: Int) -> Unit,
+    /** Записати на сторону: [cutAt] = null — у кінець записаного; число — поверх, з цього місця (решта стирається). */
+    onRecord: (side: Int, cutAt: Long?) -> Unit,
     onStopRecording: () -> Unit,
+    onPauseRecording: (Boolean) -> Unit,
+    voiceMode: Int,
+    onVoiceMode: (Int) -> Unit,
+    onShare: (side: Int) -> Unit,
 ) {
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
@@ -121,6 +127,12 @@ fun RecorderPage(
     var loaded by remember(day.day, side, dur) { mutableStateOf<ByteArray?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
     val flip = remember(day.day) { Animatable(0f) }
+    val eject = remember(day.day) { Animatable(0f) }
+    // Для жестів по касеті (обробник один на весь час — беремо свіжі значення).
+    val sideNow by androidx.compose.runtime.rememberUpdatedState({ side })
+    val hasNow by androidx.compose.runtime.rememberUpdatedState({ if (side == 0) day.audio else day.audioB })
+    val onShareNow by androidx.compose.runtime.rememberUpdatedState(onShare)
+    val canTouchCassette by androidx.compose.runtime.rememberUpdatedState({ (deck == Deck.Idle || deck == Deck.Pause) && recording == null && !flip.isRunning && !eject.isRunning })
 
     // Дописали — стрічка стоїть у кінці нового запису.
     // (Лише коли змінився сам запис, а не сторона: перевернута касета стоїть там, де стрічка.)
@@ -226,14 +238,30 @@ fun RecorderPage(
 
     val keys: @Composable () -> Unit = {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            DeckKey(Deck.Record, shown == Deck.Record, enabled = editable && recording == null, desc = stringResource(R.string.record), glass = glass) {
+            DeckKey(Deck.Record, shown == Deck.Record, enabled = editable && recording == null, desc = stringResource(R.string.record), glass = glass, hold = { down ->
+                // Утримання «Запису» — запис поверх, з місця, де стоїть стрічка (як на магнітофоні: перемотав назад
+                // і пишеш заново — старе далі стирається). Невдалий шматок так і переписується.
+                if (!down) return@DeckKey
+                if (has && head < dur - 300) {
+                    stopAll()
+                    haptics.longPress()
+                    onRecord(side, head.toLong())
+                } else {
+                    stopAll()
+                    job = scope.launch {
+                        if (head < dur) windTo(dur.toFloat())
+                        haptics.longPress()
+                        onRecord(side, null)
+                    }
+                }
+            }) {
                 if (dur >= Limits.SIDE_MS - 1000) { vm.show(R.string.recorder_side_full); return@DeckKey }
                 stopAll()
                 job = scope.launch {
-                    // Пишемо в кінець записаного: стрічку спершу домотати туди.
+                    // Короткий дотик — у кінець записаного: стрічку спершу домотати туди.
                     if (head < dur) windTo(dur.toFloat())
                     haptics.longPress()
-                    onRecord(side)
+                    onRecord(side, null)
                 }
             }
             DeckKey(Deck.Rewind, shown == Deck.Rewind, enabled = has && !isRec, desc = stringResource(R.string.recorder_rewind), glass = glass, hold = { down ->
@@ -273,7 +301,8 @@ fun RecorderPage(
                 }
             }) { nudge(5000f) }
             DeckKey(Deck.Play, shown == Deck.Play, enabled = has && !isRec, desc = stringResource(R.string.play), glass = glass) { play() }
-            DeckKey(Deck.Pause, shown == Deck.Pause, enabled = has && !isRec, desc = stringResource(R.string.recorder_pause), glass = glass) {
+            DeckKey(Deck.Pause, shown == Deck.Pause || (isRec && recording!!.paused), enabled = isRec || has, desc = stringResource(R.string.recorder_pause), glass = glass) {
+                if (isRec) { onPauseRecording(!recording!!.paused); return@DeckKey }
                 when (deck) {
                     Deck.Play -> { player.pause(); deck = Deck.Pause }
                     Deck.Pause -> { player.resume(); deck = Deck.Play }
@@ -296,17 +325,34 @@ fun RecorderPage(
                     .fillMaxWidth()
                     .weight(1.05f)
                     .semantics { contentDescription = if (side == 0) "A" else "B" }
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = (deck == Deck.Idle || deck == Deck.Pause) && recording == null && !flip.isRunning) {
-                        haptics.tap()
-                        stopAll()
-                        scope.launch {
-                            flip.animateTo(90f, tween(220, easing = LinearEasing))
-                            // Одна стрічка: перевернув — що на A вже прокрутилось, на B ще попереду (котушки міняються місцями).
-                            side = 1 - side
-                            head = (Limits.SIDE_MS - head).coerceIn(0f, Limits.SIDE_MS.toFloat())
-                            flip.snapTo(-90f)
-                            flip.animateTo(0f, tween(220, easing = LinearEasing))
-                        }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                if (!canTouchCassette()) return@detectTapGestures
+                                haptics.tap()
+                                stopAll()
+                                scope.launch {
+                                    flip.animateTo(90f, tween(220, easing = LinearEasing))
+                                    // Одна стрічка: перевернув — що на A вже прокрутилось, на B ще попереду (котушки міняються місцями).
+                                    side = 1 - side
+                                    head = (Limits.SIDE_MS - head).coerceIn(0f, Limits.SIDE_MS.toFloat())
+                                    flip.snapTo(-90f)
+                                    flip.animateTo(0f, tween(220, easing = LinearEasing))
+                                }
+                            },
+                            onLongPress = {
+                                // Затиснув касету — виймаєш її, і одразу системне «Поділитися» цією стороною.
+                                if (!canTouchCassette() || !hasNow()) return@detectTapGestures
+                                haptics.longPress()
+                                stopAll()
+                                scope.launch {
+                                    eject.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+                                    onShareNow(sideNow())
+                                    delay(900)
+                                    eject.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
+                                }
+                            },
+                        )
                     }
                     .onGloballyPositioned { c ->
                         // Касета — пластик: на ній немає заломів паперу.
@@ -321,9 +367,15 @@ fun RecorderPage(
                 val sx = cos(flip.value * PI.toFloat() / 180f)
                 // Механізм під касетою: голівка, притискний ролик, ведучий вал — касета на них стоїть.
                 drawMechanism(c, glass, ink, faint, engaged = shown == Deck.Play || shown == Deck.Record)
+                // Виймаєш касету — вона висувається вгору й ховається за краєм шухлядки (поза сторінку не малюємо).
+                val lift = eject.value * (c.bottom + 4.dp.toPx())
+                drawContext.canvas.save()
+                drawContext.canvas.clipRect(0f, 0f, size.width, size.height)
+                drawContext.canvas.translate(0f, -lift)
                 withScaleX(sx, c.center) {
                     drawCassette(c, glass, ink, faint, side, (head / Limits.SIDE_MS).coerceIn(0f, 1f), angleL, angleR, moving = shown != Deck.Idle && shown != Deck.Pause, labelText = subtitle)
                 }
+                drawContext.canvas.restore()
                 // Пази й притискні лапки: касета вставлена в шухлядку, а не висить.
                 drawHolders(c, glass, ink)
                 // Скло дверцят — легкий відблиск поверх.
@@ -334,12 +386,15 @@ fun RecorderPage(
             }
             // ——— Динамік і два прилади праворуч ———
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Canvas(Modifier.weight(1f).fillMaxHeight()) { drawGrille(glass, ink, faint) }
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawGrille(glass, ink, faint) }
+                    NoiseKnob(voiceMode, enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f)) { onVoiceMode(it) }
+                }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     // Час цього запису: поки пишеш — скільки вже, інакше — скільки тривав останній допис.
                     val takeMs = if (isRec) recording!!.elapsed else if (has) dur - (takes.lastOrNull() ?: 0L) else 0L
                     Canvas(Modifier.fillMaxWidth().weight(1f)) { drawMeter(glass, ink, faint, level, isRec, takeMs) }
-                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawCounter(glass, ink, faint, head.toLong(), dur, takes, isRec) }
+                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawCounter(glass, ink, faint, head.toLong(), dur, takes, isRec, if (isRec) recording!!.base else null, if (isRec) recording!!.cutAt else null) }
                 }
             }
         }
@@ -358,6 +413,88 @@ private fun reelAngle(head: Float, left: Boolean): Float {
     val a = if (left) -k * sqrt(1.0 + (1.0 - f) * c) else k * sqrt(1.0 + f * c)
     return (a % (2 * PI)).toFloat()
 }
+
+/**
+ * Крутілка «шумодав» на панелі: 0 — як є (усе довкола), «голос» — зріз гулу й тихіший фон між словами (і вбудоване в
+ * телефон шумозаглушення), «шумодав» — сильніше: ще й вирівнювання гучності. Дотик — наступна позиція, можна й крутити
+ * пальцем. Поки йде запис — не крутиться.
+ */
+@Composable
+private fun NoiseKnob(mode: Int, enabled: Boolean, glass: Boolean, modifier: Modifier, onMode: (Int) -> Unit) {
+    val haptics = LocalHaptics.current
+    val labels = listOf(stringResource(R.string.knob_0), stringResource(R.string.knob_voice), stringResource(R.string.knob_clean))
+    val angle by animateFloatAsState(-60f + 60f * mode, spring(dampingRatio = 0.6f, stiffness = 500f), label = "knob")
+    val modeNow by androidx.compose.runtime.rememberUpdatedState(mode)
+    val onModeNow by androidx.compose.runtime.rememberUpdatedState(onMode)
+    val ink = if (glass) Oled.TextPrimary else SheetInk
+    Canvas(
+        modifier
+            .semantics { contentDescription = labels[mode] }
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    val c = Offset(size.width / 2f, size.height * 0.58f)
+                    var moved = false
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull() ?: break
+                        if (!ch.pressed) break
+                        val d = ch.position - c
+                        if ((ch.position - down.position).getDistance() > 12.dp.toPx()) {
+                            moved = true
+                            // Кут пальця навколо крутілки → найближча позиція (−60° / 0° / +60°).
+                            val deg = Math.toDegrees(kotlin.math.atan2(d.x.toDouble(), -d.y.toDouble())).toFloat()
+                            val m = ((deg + 90f) / 60f).roundToIntSafe().coerceIn(0, 2)
+                            if (m != modeNow) { haptics.keyDown(); onModeNow(m) }
+                        }
+                        ch.consume()
+                    }
+                    if (!moved) { haptics.keyDown(); onModeNow((modeNow + 1) % 3) }
+                }
+            },
+    ) {
+        val r = 8.dp.toPx()
+        drawRoundRect(if (glass) Color(0xFF1E1F22) else Color(0xFF1A1813), cornerRadius = CornerRadius(r))
+        frame(Offset.Zero, size, r, glass, ink, seed = 14)
+        val c = Offset(size.width / 2f, size.height * 0.58f)
+        val kr = minOf(size.width * 0.2f, size.height * 0.27f)
+        // Позначки позицій і підписи.
+        val paint = android.graphics.Paint().apply {
+            isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.CENTER
+            textSize = minOf(size.height * 0.13f, 12.dp.toPx())
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.NORMAL)
+        }
+        for (k in 0..2) {
+            val a = Math.toRadians((-60.0 + 60.0 * k) - 90.0)
+            val dir = Offset(cos(a).toFloat(), sin(a).toFloat())
+            val on = k == mode
+            drawLine(if (on) ink else ink.copy(alpha = 0.45f), c + dir * (kr * 1.18f), c + dir * (kr * 1.38f), (if (on) 2f else 1.2f).dp.toPx(), cap = StrokeCap.Round)
+            paint.color = (if (on) ink else ink.copy(alpha = if (enabled) 0.55f else 0.3f)).argb()
+            val tp = c + dir * (kr * 1.75f)
+            drawContext.canvas.nativeCanvas.drawText(labels[k], tp.x, tp.y + paint.textSize * 0.35f, paint)
+        }
+        // Сама крутілка: ребриста, з рискою-покажчиком.
+        drawCircle(if (glass) Color(0xFF2A2B30) else Color(0xFF15130F), kr, c)
+        rotate(angle, c) {
+            for (k in 0 until 24) {
+                val a = k * (2 * PI.toFloat() / 24)
+                val d = Offset(cos(a), sin(a))
+                drawLine(ink.copy(alpha = 0.25f), c + d * (kr * 0.86f), c + d * kr, 1.dp.toPx())
+            }
+            drawLine(ink, c + Offset(0f, -kr * 0.25f), c + Offset(0f, -kr * 0.85f), 2.2.dp.toPx(), cap = StrokeCap.Round)
+        }
+        if (glass) {
+            drawCircle(Color.White.copy(alpha = 0.22f), kr, c, style = Stroke(1.dp.toPx()))
+            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent), center = c - Offset(kr * 0.3f, kr * 0.3f), radius = kr), kr, c)
+        } else {
+            drawCircle(SheetInk.copy(alpha = 0.8f), kr, c, style = Stroke(1.6.dp.toPx()))
+        }
+    }
+}
+
+private fun Float.roundToIntSafe(): Int = kotlin.math.round(this).toInt()
 
 /** Касета, що перевертається, — стискається по ширині до ребра й розкривається іншою стороною. */
 private inline fun DrawScope.withScaleX(sx: Float, pivot: Offset, block: DrawScope.() -> Unit) {
@@ -761,7 +898,10 @@ private fun Color.argb(): Int = android.graphics.Color.argb((alpha * 255).toInt(
  * Лічильник стрічки (лише показує, не натискається): цифри, як на механічному лічильнику, і шкала від 0 до кінця записаного
  * — з рисками там, де почались дописи, і бігунком там, де зараз стрічка.
  */
-private fun DrawScope.drawCounter(glass: Boolean, ink: Color, faint: Color, head: Long, dur: Long, takes: List<Long>, recording: Boolean) {
+private fun DrawScope.drawCounter(glass: Boolean, ink: Color, faint: Color, head: Long, dur0: Long, takes: List<Long>, recording: Boolean, recFrom: Long? = null, cutAt: Long? = null) {
+    // Під час запису шкала тягнеться до поточного місця: записане — як є, що стирається (запис поверх) — бліде червоне,
+    // нове — червоне.
+    val dur = if (recFrom != null) maxOf(dur0, head) else dur0
     val r = 8.dp.toPx()
     drawRoundRect(if (glass) Color(0xFF1E1F22) else Color(0xFF1A1813), cornerRadius = CornerRadius(r))
     frame(Offset.Zero, size, r, glass, ink, seed = 9)
@@ -797,13 +937,18 @@ private fun DrawScope.drawCounter(glass: Boolean, ink: Color, faint: Color, head
     val rr = size.width * 0.9f
     val sy = size.height * 0.8f
     if (dur > 0) {
-        val bounds = (listOf(0L) + takes.filter { it in 1 until dur } + listOf(dur)).distinct()
+        val kept = cutAt ?: (if (recFrom != null) recFrom else dur0)
+        val keptEnd = minOf(kept, dur0)
+        val bounds = (listOf(0L) + takes.filter { it in 1 until keptEnd } + listOf(keptEnd)).distinct()
         val gapPx = 3.dp.toPx()
         for (k in 0 until bounds.size - 1) {
             val x0 = l + (rr - l) * bounds[k].toFloat() / dur + (if (k > 0) gapPx / 2 else 0f)
             val x1 = l + (rr - l) * bounds[k + 1].toFloat() / dur - (if (k < bounds.size - 2) gapPx / 2 else 0f)
             if (x1 > x0) drawLine(ink.copy(alpha = 0.7f), Offset(x0, sy), Offset(x1, sy), 2.dp.toPx(), cap = StrokeCap.Butt)
         }
+        fun xOf(t: Long) = l + (rr - l) * (t.toFloat() / dur).coerceIn(0f, 1f)
+        if (cutAt != null && cutAt < dur0) drawLine(RecRed.copy(alpha = 0.35f), Offset(xOf(cutAt), sy + 4.dp.toPx()), Offset(xOf(dur0), sy + 4.dp.toPx()), 2.dp.toPx())
+        if (recFrom != null && head > recFrom) drawLine(RecRed, Offset(xOf(recFrom) + 1.5.dp.toPx(), sy), Offset(xOf(head), sy), 2.dp.toPx())
         val hx = l + (rr - l) * (head.toFloat() / dur).coerceIn(0f, 1f)
         drawPath(Path().apply { moveTo(hx, sy - 2.dp.toPx()); lineTo(hx - 4.dp.toPx(), sy - 8.dp.toPx()); lineTo(hx + 4.dp.toPx(), sy - 8.dp.toPx()); close() }, if (recording) RecRed else ink)
     } else {

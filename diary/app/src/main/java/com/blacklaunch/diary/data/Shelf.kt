@@ -39,6 +39,8 @@ data class DiaryInfo(
     val voice: Boolean = true,
     /** Нова сторінка бере місце з попередньої (для щоденника подорожей можна вимкнути). */
     val carryPlace: Boolean = true,
+    /** Крутілка магнітофона: 0 — як є, 1 — голос, 2 — шумодав. */
+    val voiceMode: Int = 0,
 )
 
 /** Полиця — маленький JSON-файл у приватній теці програми. */
@@ -119,6 +121,7 @@ class ShelfStore(context: Context) {
         photos = optBoolean("photos", true),
         voice = optBoolean("voice", true),
         carryPlace = optBoolean("carryPlace", true),
+        voiceMode = optInt("voiceMode", 0),
     )
 
     private fun DiaryInfo.toJson() = JSONObject()
@@ -137,4 +140,5 @@ class ShelfStore(context: Context) {
         .put("photos", photos)
         .put("voice", voice)
         .put("carryPlace", carryPlace)
+        .put("voiceMode", voiceMode)
 }

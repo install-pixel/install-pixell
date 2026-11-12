@@ -100,6 +100,21 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun openAtBookmarkOf(info: DiaryInfo?): Boolean = info?.openAtBookmark ?: settings.openAtBookmark
 
     fun setDrying(id: String, drying: InkDrying) = saveShelf(shelf.map { if (it.id == id) it.copy(drying = drying) else it })
+    fun setVoiceMode(id: String, mode: Int) = saveShelf(shelf.map { if (it.id == id) it.copy(voiceMode = mode.coerceIn(0, 2)) else it })
+
+    /**
+     * Розшифрована копія сторони касети — щоб поділитися (системне вікно «Поділитися»). Лежить у кеші лише до наступного
+     * разу (тека щоразу чиститься).
+     */
+    suspend fun exportAudio(epochDay: Long, side: Int): java.io.File? {
+        val bytes = audio(epochDay, side) ?: return null
+        return withContext(io) {
+            val dir = java.io.File(getApplication<Application>().cacheDir, "share").apply { deleteRecursively(); mkdirs() }
+            val date = java.time.LocalDate.ofEpochDay(epochDay)
+            java.io.File(dir, "${date}_${if (side == 0) "A" else "B"}.m4a").also { it.writeBytes(bytes) }
+        }
+    }
+
     fun setCarryPlace(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(carryPlace = on) else it })
 
     /**
@@ -478,16 +493,22 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
      * Записане — на сторону [side] (0 — A, 1 — B) касети дня. Якщо там уже є запис — допис у кінець (той самий файл далі),
      * а місце, де він почався, позначається ([Day.takes]).
      */
-    fun saveAudio(epochDay: Long, bytes: ByteArray, ms: Long, wave: List<Float>, side: Int = 0) {
+    fun saveAudio(epochDay: Long, bytes: ByteArray, ms: Long, wave: List<Float>, side: Int = 0, cutAt: Long? = null) {
         val o = open ?: return
         viewModelScope.launch {
             val d0 = day(epochDay)
-            val has = if (side == 0) d0.audio else d0.audioB
-            val oldMs = if (side == 0) d0.audioMs else d0.audioMsB
+            val had = if (side == 0) d0.audio else d0.audioB
+            val fullMs = if (side == 0) d0.audioMs else d0.audioMsB
+            // Запис поверх: усе після [cutAt] стирається (як на стрічці), далі — новий запис.
+            val cut = cutAt?.takeIf { had && it < fullMs - 100 }
+            val has = had && (cut == null || cut > 300)
+            val oldMs = cut ?: fullMs
             val file = if (side == 0) o.db.audioFile(epochDay) else o.db.audioFileB(epochDay)
             val joined = withContext(io) {
-                val old = if (has) o.db.readMedia(file) else null
-                val all = if (old != null) Tape.concat(old, bytes, getApplication<Application>().cacheDir) else bytes
+                val cache = getApplication<Application>().cacheDir
+                val old0 = if (has) o.db.readMedia(file) else null
+                val old = if (old0 != null && cut != null) Tape.trim(old0, cut, cache) else old0
+                val all = if (old != null) Tape.concat(old, bytes, cache) else bytes
                 all?.also { o.db.writeMedia(file, it) }
             }
             if (joined == null) { show(R.string.record_failed); return@launch }
@@ -496,11 +517,13 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
             val newMs = withContext(io) { Tape.durationMs(bytes) } ?: ms
             val total = withContext(io) { Tape.durationMs(joined) } ?: (if (has) oldMs + newMs else newMs)
             val start = (total - newMs).coerceAtLeast(0)
-            val oldWave = if (side == 0) d.wave else d.waveB
+            val oldWave0 = if (side == 0) d.wave else d.waveB
+            val oldWave = if (cut != null && fullMs > 0) oldWave0.take((oldWave0.size * cut / fullMs).toInt().coerceAtLeast(1)) else oldWave0
+            val keepTakes: (List<Long>) -> List<Long> = { t -> if (cut != null) t.filter { it < cut } else t }
             val newWave = if (has) mergeWave(oldWave, start, wave, newMs) else compactWave(wave)
             update(
-                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = if (has) d.takes + start else emptyList(), noAudio = false)
-                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = if (has) d.takesB + start else emptyList(), noAudio = false),
+                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = if (has) keepTakes(d.takes) + start else emptyList(), noAudio = false)
+                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = if (has) keepTakes(d.takesB) + start else emptyList(), noAudio = false),
             )
         }
     }

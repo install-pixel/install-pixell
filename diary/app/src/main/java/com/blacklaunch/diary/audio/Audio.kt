@@ -8,73 +8,265 @@ import android.os.Build
 import java.io.File
 
 /**
- * Запис голосу дня. Пишеться в тимчасовий файл у кеші, після зупинки — зашифровується в щоденник, а тимчасовий
- * стирається ([finish]).
+ * Запис голосу дня — сам, без системного диктофона: мікрофон → обробка ([VoiceDsp]) → AAC у тимчасовий файл у кеші;
+ * після зупинки файл зашифровується в щоденник, а тимчасовий стирається ([finish]).
+ * [start] з режимом крутілки: 0 — «як є» (усе довкола), 1 — «голос», 2 — «шумодав».
+ * Можна ставити на паузу (як «запис + пауза» на магнітофоні): на паузі нічого не пишеться, а час не йде.
  */
 class Recorder(private val context: Context) {
-    private var recorder: MediaRecorder? = null
+    private var record: android.media.AudioRecord? = null
+    private var thread: Thread? = null
     private var file: File? = null
-    private var started = 0L
+    private val effects = ArrayList<android.media.audiofx.AudioEffect>()
+    @Volatile private var running = false
+    @Volatile private var paused = false
+    @Volatile private var failed = false
+    @Volatile private var level = 0f
+    @Volatile private var frames = 0L
+    private val rate = 44_100
+    // Справжній час запису без пауз: більше звуку, ніж минуло часу, не пишемо (мікрофон інколи віддає накопичене пачкою).
+    @Volatile private var activeNs = 0L
+    @Volatile private var activeSince = 0L
+    private fun activeNow(): Long = activeNs + (if (!paused && activeSince > 0) System.nanoTime() - activeSince else 0L)
 
     /** Обриси звуку (0…1) під час запису — кожні ~80 мс. */
     val wave = ArrayList<Float>()
 
-    fun start(): Boolean {
-        val f = File(context.cacheDir, "rec_${System.nanoTime()}.m4a")
-        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
-        return runCatching {
-            r.setAudioSource(MediaRecorder.AudioSource.MIC)
-            r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            r.setAudioChannels(1)
-            r.setAudioSamplingRate(44_100)
-            r.setAudioEncodingBitRate(64_000)
-            r.setOutputFile(f.path)
-            r.prepare()
-            r.start()
-            recorder = r
-            file = f
-            started = System.currentTimeMillis()
-            wave.clear()
-            true
-        }.getOrElse {
-            runCatching { r.release() }
-            f.delete()
-            false
+    val isPaused: Boolean get() = paused
+
+    @android.annotation.SuppressLint("MissingPermission")
+    fun start(mode: Int = 0): Boolean {
+        if (running) return false
+        val src = if (mode == 0) android.media.MediaRecorder.AudioSource.MIC else android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION
+        val min = android.media.AudioRecord.getMinBufferSize(rate, android.media.AudioFormat.CHANNEL_IN_MONO, android.media.AudioFormat.ENCODING_PCM_16BIT)
+        val ar = runCatching { android.media.AudioRecord(src, rate, android.media.AudioFormat.CHANNEL_IN_MONO, android.media.AudioFormat.ENCODING_PCM_16BIT, maxOf(min, 8192) * 2) }.getOrNull() ?: return false
+        if (ar.state != android.media.AudioRecord.STATE_INITIALIZED) { ar.release(); return false }
+        // Вбудовані в телефон фільтри: шумозаглушення (з «голосу») і вирівнювання гучності (на «шумодаві»).
+        if (mode >= 1 && android.media.audiofx.NoiseSuppressor.isAvailable()) {
+            runCatching { android.media.audiofx.NoiseSuppressor.create(ar.audioSessionId)?.also { it.enabled = true; effects += it } }
         }
+        if (mode >= 2 && android.media.audiofx.AutomaticGainControl.isAvailable()) {
+            runCatching { android.media.audiofx.AutomaticGainControl.create(ar.audioSessionId)?.also { it.enabled = true; effects += it } }
+        }
+        val fmt = android.media.MediaFormat.createAudioFormat(android.media.MediaFormat.MIMETYPE_AUDIO_AAC, rate, 1).apply {
+            setInteger(android.media.MediaFormat.KEY_AAC_PROFILE, android.media.MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+            setInteger(android.media.MediaFormat.KEY_BIT_RATE, 96_000)
+            setInteger(android.media.MediaFormat.KEY_MAX_INPUT_SIZE, 16_384)
+        }
+        val codec = runCatching {
+            android.media.MediaCodec.createEncoderByType(android.media.MediaFormat.MIMETYPE_AUDIO_AAC).apply {
+                configure(fmt, null, null, android.media.MediaCodec.CONFIGURE_FLAG_ENCODE)
+                start()
+            }
+        }.getOrNull()
+        if (codec == null) { releaseEffects(); ar.release(); return false }
+        val f = File(context.cacheDir, "rec_${System.nanoTime()}.m4a")
+        val muxer = runCatching { android.media.MediaMuxer(f.path, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4) }.getOrNull()
+        if (muxer == null || runCatching { ar.startRecording() }.isFailure) {
+            runCatching { codec.stop() }; codec.release(); muxer?.release(); releaseEffects(); ar.release(); f.delete()
+            return false
+        }
+        record = ar
+        file = f
+        frames = 0
+        level = 0f
+        failed = false
+        paused = false
+        activeNs = 0L
+        activeSince = System.nanoTime()
+        running = true
+        wave.clear()
+        val dsp = VoiceDsp(mode, rate)
+        thread = Thread {
+            val buf = ShortArray(1024)
+            val info = android.media.MediaCodec.BufferInfo()
+            var track = -1
+            var started = false
+            fun drain(eos: Boolean) {
+                while (true) {
+                    val oi = codec.dequeueOutputBuffer(info, if (eos) 10_000 else 0)
+                    when {
+                        oi == android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                            track = muxer.addTrack(codec.outputFormat); muxer.start(); started = true
+                        }
+                        oi >= 0 -> {
+                            val ob = codec.getOutputBuffer(oi)
+                            if (ob != null && started && info.size > 0 && info.flags and android.media.MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0) {
+                                muxer.writeSampleData(track, ob, info)
+                            }
+                            codec.releaseOutputBuffer(oi, false)
+                            if (info.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) return
+                        }
+                        else -> if (!eos) return
+                    }
+                }
+            }
+            try {
+                while (running) {
+                    if (paused) { Thread.sleep(20); drain(false); continue }
+                    val n = ar.read(buf, 0, buf.size)
+                    if (n <= 0 || paused) continue
+                    if ((frames + n) * 1_000_000_000L / rate > activeNow() + 400_000_000L) continue
+                    dsp.process(buf, n)
+                    level = dsp.level
+                    var off = 0
+                    while (off < n) {
+                        val ii = codec.dequeueInputBuffer(10_000)
+                        if (ii < 0) { drain(false); continue }
+                        val ib = codec.getInputBuffer(ii)!!
+                        ib.clear()
+                        val cnt = minOf(n - off, ib.capacity() / 2)
+                        ib.order(java.nio.ByteOrder.nativeOrder()).asShortBuffer().put(buf, off, cnt)
+                        codec.queueInputBuffer(ii, 0, cnt * 2, frames * 1_000_000L / rate, 0)
+                        frames += cnt
+                        off += cnt
+                    }
+                    drain(false)
+                }
+                var ii = -1
+                for (k in 0 until 50) { ii = codec.dequeueInputBuffer(10_000); if (ii >= 0) break; drain(false) }
+                if (ii >= 0) codec.queueInputBuffer(ii, 0, 0, frames * 1_000_000L / rate, android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                drain(true)
+            } catch (e: Exception) {
+                failed = true
+            } finally {
+                runCatching { codec.stop() }
+                runCatching { codec.release() }
+                runCatching { if (started) muxer.stop() }
+                runCatching { muxer.release() }
+                runCatching { ar.stop() }
+                runCatching { ar.release() }
+                releaseEffects()
+            }
+        }.apply { isDaemon = true; start() }
+        return true
+    }
+
+    private fun releaseEffects() {
+        effects.forEach { runCatching { it.release() } }
+        effects.clear()
     }
 
     /** Поточна гучність 0…1 (викликати періодично, поки пишемо). */
     fun sample(): Float {
-        val amp = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
-        val v = (kotlin.math.sqrt(amp / 32767f)).coerceIn(0f, 1f)
-        wave += v
+        val v = if (paused) 0f else level
+        if (!paused) wave += v
         return v
     }
 
-    val elapsed: Long get() = if (recorder == null) 0L else System.currentTimeMillis() - started
+    /** Скільки вже записано (без пауз). */
+    val elapsed: Long get() = frames * 1000L / rate
 
-    /** Зупинити: байти запису й тривалість (null — не вийшло, напр. запис коротший за секунду). */
+    fun pause() {
+        if (!running || paused) return
+        activeNs += System.nanoTime() - activeSince
+        paused = true
+        runCatching { record?.stop() }
+    }
+
+    fun resume() {
+        if (!running || !paused) return
+        runCatching { record?.startRecording() }
+        activeSince = System.nanoTime()
+        paused = false
+    }
+
+    /** Зупинити: байти запису й тривалість (null — не вийшло). */
     fun finish(): Pair<ByteArray, Long>? {
-        val r = recorder ?: return null
-        val f = file
+        if (!running) return null
         val ms = elapsed
-        recorder = null
+        if (paused) runCatching { record?.startRecording() }
+        paused = false
+        running = false
+        runCatching { thread?.join(4000) }
+        thread = null
+        record = null
+        val f = file
         file = null
-        val ok = runCatching { r.stop() }.isSuccess
-        runCatching { r.release() }
-        val bytes = if (ok && f != null && f.exists()) f.readBytes() else null
+        val bytes = if (!failed && f != null && f.exists() && f.length() > 0) f.readBytes() else null
         f?.delete()
         return bytes?.let { it to ms }
     }
 
     fun cancel() {
-        val r = recorder ?: return
-        recorder = null
-        runCatching { r.stop() }
-        runCatching { r.release() }
+        if (!running) return
+        running = false
+        paused = false
+        runCatching { thread?.join(1500) }
+        thread = null
+        record = null
         file?.delete()
         file = null
+    }
+}
+
+/**
+ * Обробка голосу просто під час запису (усе на телефоні, без мережі):
+ * - зріз низького гулу (холодильник, машини, вітер) — фільтр високих частот;
+ * - «шумові ворота»: між словами фон тихішає;
+ * - на «шумодаві» ще й стиснення гучності: тихі слова підтягуються, гучні не ріжуть вухо.
+ * Режим 0 — нічого не змінює, лише міряє гучність для стрілки.
+ */
+class VoiceDsp(private val mode: Int, rate: Int) {
+    var level = 0f
+        private set
+    // Фільтр високих частот (біквад Баттерворта).
+    private val b0: Float; private val b1: Float; private val b2: Float; private val a1: Float; private val a2: Float
+    private var x1 = 0f; private var x2 = 0f; private var y1 = 0f; private var y2 = 0f
+    private var env = 0f
+    private var gain = 1f
+    private val attack: Float
+    private val release: Float
+    private val envAtk: Float
+    private val envRel: Float
+
+    init {
+        val fc = if (mode >= 2) 120.0 else 85.0
+        val w0 = 2.0 * Math.PI * fc / rate
+        val q = 0.7071
+        val alpha = kotlin.math.sin(w0) / (2 * q)
+        val cs = kotlin.math.cos(w0)
+        val a0 = 1 + alpha
+        b0 = ((1 + cs) / 2 / a0).toFloat()
+        b1 = (-(1 + cs) / a0).toFloat()
+        b2 = ((1 + cs) / 2 / a0).toFloat()
+        a1 = (-2 * cs / a0).toFloat()
+        a2 = ((1 - alpha) / a0).toFloat()
+        attack = (1 - kotlin.math.exp(-1.0 / (0.005 * rate))).toFloat()
+        release = (1 - kotlin.math.exp(-1.0 / (0.18 * rate))).toFloat()
+        envAtk = (1 - kotlin.math.exp(-1.0 / (0.002 * rate))).toFloat()
+        envRel = (1 - kotlin.math.exp(-1.0 / (0.08 * rate))).toFloat()
+    }
+
+    fun process(buf: ShortArray, n: Int) {
+        var peak = 0f
+        val gateOpen = if (mode >= 2) 0.022f else 0.012f
+        val floor = if (mode >= 2) 0.12f else 0.3f
+        for (i in 0 until n) {
+            var x = buf[i] / 32768f
+            if (mode >= 1) {
+                val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+                x2 = x1; x1 = x; y2 = y1; y1 = y
+                x = y
+                val a = kotlin.math.abs(x)
+                env += (a - env) * (if (a > env) envAtk else envRel)
+                val target = if (env > gateOpen) 1f else floor
+                gain += (target - gain) * (if (target > gain) attack else release)
+                x *= gain
+                if (mode >= 2) {
+                    // Стиснення понад поріг 3:1 і підтягування, м'яке обмеження на краях.
+                    val t = 0.2f
+                    val ax = kotlin.math.abs(x)
+                    if (ax > t) x = kotlin.math.sign(x) * (t + (ax - t) / 3f)
+                    x *= 1.7f
+                    x = x / (1f + kotlin.math.abs(x) * 0.25f)
+                }
+                buf[i] = (x * 32767f).coerceIn(-32768f, 32767f).toInt().toShort()
+            }
+            val a = kotlin.math.abs(x)
+            if (a > peak) peak = a
+        }
+        level = kotlin.math.sqrt(peak).coerceIn(0f, 1f)
     }
 }
 
@@ -135,6 +327,42 @@ class Player {
  * після першого. Тимчасові файли — лише в кеші програми й одразу стираються.
  */
 object Tape {
+    /** Обрізати запис до [endMs] (те, що далі, стирається — як запис поверх на магнітофоні). */
+    fun trim(bytes: ByteArray, endMs: Long, cache: File): ByteArray? {
+        val fa = File.createTempFile("tape_t", ".m4a", cache)
+        val out = File.createTempFile("tape_to", ".m4a", cache)
+        return try {
+            fa.writeBytes(bytes)
+            val ex = android.media.MediaExtractor()
+            ex.setDataSource(fa.path)
+            val ti = (0 until ex.trackCount).first { ex.getTrackFormat(it).getString(android.media.MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+            ex.selectTrack(ti)
+            val muxer = android.media.MediaMuxer(out.path, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val track = muxer.addTrack(ex.getTrackFormat(ti))
+            muxer.start()
+            val buf = java.nio.ByteBuffer.allocate(1 shl 20)
+            val info = android.media.MediaCodec.BufferInfo()
+            var first = -1L
+            while (true) {
+                val n = ex.readSampleData(buf, 0)
+                if (n < 0) break
+                if (first < 0) first = ex.sampleTime
+                val t = ex.sampleTime - first
+                if (t >= endMs * 1000) break
+                info.offset = 0; info.size = n; info.presentationTimeUs = t; info.flags = android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
+                muxer.writeSampleData(track, buf, info)
+                ex.advance()
+            }
+            ex.release()
+            muxer.stop(); muxer.release()
+            out.readBytes()
+        } catch (e: Exception) {
+            null
+        } finally {
+            fa.delete(); out.delete()
+        }
+    }
+
     /** Справжня тривалість запису (мс) — з самого файлу, а не з годинника. */
     fun durationMs(bytes: ByteArray): Long? = runCatching {
         val r = android.media.MediaMetadataRetriever()

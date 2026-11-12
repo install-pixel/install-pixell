@@ -2,4 +2,6 @@
 <!-- Лише тимчасовий знімок камери: приватний кеш програми, тека camera/. -->
 <paths>
     <cache-path name="camera" path="camera/" />
+    <!-- Запис, яким діляться: розшифрована копія лише на час відправки. -->
+    <cache-path name="share" path="share/" />
 </paths>
