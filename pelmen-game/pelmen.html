@@ -95,8 +95,6 @@
   .ach .tx b { display:block; font-size:calc(var(--u)*4.2); }
   .ach .tx span { font-size:calc(var(--u)*3.3); opacity:.75; font-family:"Segoe UI",Roboto,Arial,sans-serif; font-weight:700; }
   .ach.off { opacity:.5; }
-  .btn.daily { background:linear-gradient(#9be7ff,#3fb6e8); box-shadow:0 calc(var(--u)*1.4) 0 #1d7ea6; color:#0d2b3a; font-size:calc(var(--u)*5.2); }
-  .btn.daily .sub { opacity:.85; }
   .row2 .btn.tg { font-size:calc(var(--u)*3.6); padding:calc(var(--u)*2) 0; }
   .btn.tg.off { opacity:.5; }
   #btnSkipTut { position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:auto; padding:calc(var(--u)*2) calc(var(--u)*5);
@@ -127,7 +125,6 @@
         <button id="wNext">▶</button>
       </div>
       <div class="grid" id="lvlGrid"></div>
-      <button class="btn daily" id="btnDaily">ВИКЛИК ДНЯ<span class="sub" id="dailySub"></span></button>
       <div class="row2">
         <button class="btn small" id="btnSkins">Скіни</button>
         <button class="btn small" id="btnAch">Досягнення</button>
@@ -280,15 +277,6 @@ const WORLD_TIPS = [null, 'Плита: обережно, пара з конфо�
   'Духовка: жар з решітки!', 'Морозилка: ще слизькіше!', 'Ресторан: офіціанти кидають таці!', 'Їдальня: таці літають!',
   'Фудкорт: неонові вогні', 'Кухня шеф-кухаря: усе й одразу!'];
 const isSlippery = () => { const w = Math.floor(level / 10); return w === 2 || w === 5; };
-// Виклик дня
-const MODS = [
-  { id: 'forks',   name: 'Тільки виделки',     desc: 'усі ножі стали виделками' },
-  { id: 'fast',    name: 'Швидкий пельмень',   desc: 'швидкість x1.2' },
-  { id: 'bonus',   name: 'Бонусна лихоманка',  desc: 'бонуси втричі частіше' },
-  { id: 'nobonus', name: 'Без бонусів',        desc: 'тільки ти і ножі' },
-  { id: 'cream',   name: 'Сметанний день',     desc: 'сметанка всюди, очки x2' },
-  { id: 'night',   name: 'Нічна кухня',        desc: 'темно — дивись уважно' },
-];
 const isBossLevel = g => g % 10 === 9;
 
 const ACH = [
@@ -326,7 +314,7 @@ const AMB = [null, 'steam', 'snow', 'bubble', 'ember', 'snow', 'sparkle', 'steam
    ========================================================= */
 const SAVE_KEY = 'pelmen_escape_v1';
 let save = { best:0, maxLevel:0, muted:false, creamTotal:0, deaths:0, bestCombo:0, seen:{}, ach:{}, skin:'classic',
-  nearTotal:0, bossWins:{}, bonusTried:{}, music:true, vibro:true, tut:false, daily:{}, dailyStreak:0, dailyLast:'' };
+  nearTotal:0, bossWins:{}, bonusTried:{}, music:true, vibro:true, tut:false };
 try {
   const raw = localStorage.getItem(SAVE_KEY);
   if (raw) Object.assign(save, JSON.parse(raw));
@@ -570,7 +558,6 @@ let event = null, eventPlan = null, momDark = 0;   // випадкова под�
 let boss = null, bossPending = false, bossPlan = null, bossDone = false;
 let toasts = [], achTick = 0;
 let tut = null;          // навчання на першому запуску
-let daily = null;        // виклик дня {date, mod, g}
 let bubbles = [];        // мильні бульбашки (світ «Мийка»)
 let lastWorldTip = -1;
 
@@ -587,8 +574,7 @@ function resetPlayer() {
 
 function startRun(g, opts = {}) {
   ensureAudio();
-  daily = opts.daily || null;
-  tut = opts.tut || (!save.tut && g === 0 && !daily) ? { step: 0, t: 0, wait: 0 } : null;
+  tut = opts.tut || (!save.tut && g === 0) ? { step: 0, t: 0, wait: 0 } : null;
   bubbles = []; lastWorldTip = -1;
   level = clamp(g, 0, TOTAL_LEVELS - 1);
   startLevel = level;
@@ -610,13 +596,6 @@ function startRun(g, opts = {}) {
 function beginLevel(first) {
   P = levelParams(level);
   if (Math.floor(level / 10) === 9) P.specialP = clamp(P.specialP + 0.08, 0, 0.5);
-  if (daily) {
-    const m = daily.mod;
-    if (m === 'fast') P.speed *= 1.2;
-    if (m === 'bonus') P.bonusP = Math.min(0.4, Math.max(0.09, P.bonusP) * 3);
-    if (m === 'nobonus') P.bonusP = 0;
-    if (m === 'cream') P.creamEvery = 1;
-  }
   targetSpeed = P.speed;
   if (first) speed = P.speed * 0.6;
   traveled = 0;
@@ -639,7 +618,6 @@ function beginLevel(first) {
   }
   const wi = Math.floor(level / 10);
   if (WORLD_TIPS[wi] && wi !== lastWorldTip) { lastWorldTip = wi; if (!tut) toast('Світ ' + (wi + 1) + ': ' + WORLDS[wi].name, WORLD_TIPS[wi].split(': ')[1], '#ffd166', 3); }
-  if (daily) eventPlan = eventPlan && eventPlan.kind === 'mom' ? null : eventPlan;
   if (level >= 1 && !save.seen.nmtip) {
     save.seen.nmtip = 1; persist();
     toast('Порада', 'ухиляйся в останню мить — «ЛЕДЬ НЕ!» дає очки', '#8ef0ff', 4);
@@ -792,7 +770,6 @@ function spawnWave() {
 
 function addVertical(from, span, x, jumper, forceKind) {
   // from: 'top' | 'bottom'; span: 1 або 2 доріжки
-  if (daily && daily.mod === 'forks') forceKind = 'fork';
   const kind = forceKind || (from === 'top' ? (Math.random() < 0.65 ? 'knife' : 'fork') : (Math.random() < 0.65 ? 'fork' : 'knife'));
   const reach = span === 1 ? LANE_H - 26 : LANE_H * 2 - 26;
   const w = kind === 'knife' ? (span === 1 ? 40 : 46) : (span === 1 ? 44 : 52);
@@ -1905,25 +1882,6 @@ function drawTut() {
   ctx.restore();
 }
 
-/* ---------- виклик дня ---------- */
-function todayKey(d = new Date()) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-function dailyInfo() {
-  const key = todayKey();
-  let h = 2166136261;
-  for (const ch of key) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
-  const w = h % 10;
-  const g = w * 10 + 3 + ((h >>> 5) % 6);
-  const mod = MODS[(h >>> 9) % MODS.length];
-  return { date: key, g, mod: mod.id, modName: mod.name, modDesc: mod.desc };
-}
-function startDaily() {
-  const d = dailyInfo();
-  const y = new Date(); y.setDate(y.getDate() - 1);
-  if (save.dailyLast !== d.date) { save.dailyStreak = save.dailyLast === todayKey(y) ? (save.dailyStreak || 0) + 1 : 1; save.dailyLast = d.date; persist(); }
-  startRun(d.g, { daily: d });
-  showBanner('ВИКЛИК ДНЯ', d.modName + ' — ' + d.modDesc, '#9be7ff', 2.6);
-}
-
 /* ---------- досягнення / скіни / підказки ---------- */
 function toast(text, sub, color = '#ffd166', dur = 2.6, keep = false) { toasts.push({ text, sub, color, dur, t: 0, keep }); }
 function unlock(id) {
@@ -2067,7 +2025,7 @@ function collectCream(c) {
   runCream++;
   runBestCombo = Math.max(runBestCombo, combo);
   const mult = Math.min(combo, 10);
-  const pts = 10 * mult * scoreMul() * (daily && daily.mod === 'cream' ? 2 : 1);
+  const pts = 10 * mult * scoreMul();
   scoreF += pts; score = Math.floor(scoreF);
   player.happy = 0.45;
   SFX.cream(combo);
@@ -2095,7 +2053,7 @@ function completeLevel() {
   if (level === TOTAL_LEVELS - 1) unlock('finish');
   if (level < TOTAL_LEVELS - 1) {
     level++;
-    if (level > save.maxLevel && !daily) { save.maxLevel = level; persist(); }
+    if (level > save.maxLevel) { save.maxLevel = level; persist(); }
     if (finishedWorld) {
       SFX.world();
       showBanner('СВІТ ' + (Math.floor(level / 10) + 1) + '!', WORLDS[Math.floor(level / 10)].name, '#ffd166', 2.2);
@@ -2132,10 +2090,6 @@ function die(o) {
     const isDough = Math.random() < 0.6;
     addParticle(PX, player.y, Math.cos(a) * s, Math.sin(a) * s - 80, isDough ? rand(5, 11) : rand(4, 8),
       isDough ? pick(['#fbe7bd', '#f3d59a', '#fff1d0']) : pick(['#a0673f', '#8a5531', '#b97f4f']), rand(0.7, 1.2), 900, isDough ? 0 : 1);
-  }
-  if (daily) {
-    const rec = save.daily[daily.date] || 0;
-    if (score > rec) { save.daily = { [daily.date]: score }; }
   }
   vib([60, 40, 90]);
   save.deaths++;
@@ -2214,13 +2168,6 @@ function render() {
   // смуги-скатертини
   drawBorder(FIELD_TOP, wd);
   drawBorder(FIELD_BOT, wd);
-
-  // нічна кухня (виклик дня): темрява, але попередження видно
-  if (daily && daily.mod === 'night' && state !== 'menu') {
-    const g = ctx.createRadialGradient(PX + 120, player.y, 60, PX + 120, player.y, 340);
-    g.addColorStop(0, 'rgba(5,8,20,0)'); g.addColorStop(1, 'rgba(5,8,20,.82)');
-    ctx.fillStyle = g; ctx.fillRect(-20, FIELD_TOP, W + 40, FIELD_H);
-  }
 
   // попередження
   for (const o of obstacles) {
@@ -3003,7 +2950,7 @@ function drawObstacle(o) {
     }
     ctx.translate(o.x + 75, y);
     ctx.rotate(-Math.PI / 2);
-    drawUtensil(daily && daily.mod === 'forks' ? 'fork' : 'knife', 150, 30);
+    drawUtensil('knife', 150, 30);
     ctx.restore();
   }
 }
@@ -3556,7 +3503,7 @@ function openMenu() {
   applyTheme();
   btnPause.style.display = 'none';
   $('btnSkipTut').style.display = 'none';
-  tut = null; daily = null;
+  tut = null;
   buildMenu();
   showOverlay(ovMenu);
 }
@@ -3579,8 +3526,6 @@ function buildMenu() {
   }
   $('menuStats').innerHTML = 'Рекорд: <b>' + save.best + '</b> &nbsp;·&nbsp; Найдалі: <b>' + lvlName(save.maxLevel) + '</b>';
   $('btnAch').textContent = 'Досягнення ' + ACH.filter(a => save.ach[a.id]).length + '/' + ACH.length;
-  const d = dailyInfo();
-  $('dailySub').textContent = d.modName + ' · рекорд сьогодні ' + (save.daily[d.date] || 0) + (save.dailyStreak > 1 && save.dailyLast === d.date ? ' · серія ' + save.dailyStreak : '');
   renderToggles();
 }
 $('wPrev').addEventListener('click', () => { if (menuWorld > 0) { menuWorld--; SFX.click(); buildMenu(); } });
@@ -3644,7 +3589,6 @@ function renderToggles() {
   for (const id of ['btnMusic', 'btnMusic2']) $(id).classList.toggle('off', !save.music);
   $('btnVibro').classList.toggle('off', !save.vibro);
 }
-$('btnDaily').addEventListener('click', () => { startDaily(); });
 for (const id of ['btnMusic', 'btnMusic2']) $(id).addEventListener('click', () => { ensureAudio(); save.music = !save.music; persist(); renderToggles(); SFX.click(); });
 $('btnVibro').addEventListener('click', () => { save.vibro = !save.vibro; persist(); renderToggles(); SFX.click(); vib(30); });
 $('btnTut').addEventListener('click', () => { SFX.click(); startRun(0, { tut: { step: 0, t: 0, wait: 0 } }); });
@@ -3684,13 +3628,11 @@ function showGameOver() {
   $('overStats').innerHTML = 'Рекорд: <b>' + save.best + '</b> &nbsp;·&nbsp; Сметанок: <b>' + runCream + '</b>' +
     (runBestCombo > 1 ? ' &nbsp;·&nbsp; Комбо: <b>x' + runBestCombo + '</b>' : '') +
     (runNear > 0 ? '<br>«Ледь не»: <b>' + runNear + '</b>' : '');
-  if (daily) $('overStats').innerHTML += '<br>Виклик дня «' + daily.modName + '»: рекорд сьогодні <b>' + (save.daily[daily.date] || 0) + '</b> · серія днів: <b>' + save.dailyStreak + '</b>';
   if (isNewRecord) SFX.record();
   showOverlay(ovOver);
 }
 $('btnAgain').addEventListener('click', () => {
   if (performance.now() - overShownAt < 350) return; // від випадкового тапу
-  if (daily) { startRun(daily.g, { daily }); return; }
   startRun(level);
 });
 $('btnOverMenu').addEventListener('click', () => { SFX.click(); openMenu(); });
@@ -3723,7 +3665,7 @@ window.__pelmen = { get: () => ({ state, level, score, speed, obstacles, creams,
     ctx.fillStyle = '#1d3a34'; ctx.fillRect(0, 0, size, size); const sc = size / 150; ctx.setTransform(sc, 0, 0, sc, 0, 0);
     ctx.fillStyle = '#cfeee3'; ctx.beginPath(); ctx.arc(75, 75, 60, 0, Math.PI * 2); ctx.fill();
     drawPelmen(75, 80, { squash: 0, vy: 0, dead: false, splat: 0, blink: 0, happy: 0.5, scared: 0, look: 0 }, NOFX, 'classic'); ctx = old; return cv.toDataURL('image/png'); },
-  daily: () => startDaily(), tutInfo: () => tut && { step: tut.step },
+  tutInfo: () => tut && { step: tut.step },
   ev: k => startEvent(k), bossNow: () => { bossPending = true; }, info: () => ({ boss: boss && { hp: boss.hp, phase: boss.phase, kind: boss.kind }, event: event && event.kind, ach: Object.keys(save.ach) }),
   move: moveTo, threat: threatensLane, start: startRun, LANES, PX };
 
