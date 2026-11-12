@@ -788,7 +788,9 @@ fun BookScreen(
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
                             if (currentKey !is BookPage.Menu) menuOpen = false
                             if (currentKey !is BookPage.Recorder) recorderFor = null
-                            if (!currentKey.isSearch()) { searchOpen = false; calendarOpen = false }
+                            // Магнітофон, відкритий із пошуку, — частина пошуку: назад повертаєшся до знахідок.
+                            val inSearchRecorder = currentKey is BookPage.Recorder && recorderReturn.isSearch()
+                            if (!currentKey.isSearch() && !inSearchRecorder) { searchOpen = false; calendarOpen = false }
                             else if (currentKey !is BookPage.Calendar) calendarOpen = false
                             highlight = highlight?.takeIf { h -> (pages.getOrNull(i) as? BookPage.DayPart)?.day == h.first } },
                     ) { i ->
@@ -849,6 +851,7 @@ fun BookScreen(
                                 ) {
                                     SearchPage(
                                         vm = vm,
+                                        onRecorder = { d -> focusManager.clearFocus(); openRecorder(d) },
                                         onCalendar = {
                                             focusManager.clearFocus()
                                             calendarOpen = true
@@ -869,7 +872,7 @@ fun BookScreen(
                                     vm = vm,
                                     day = d,
                                     title = stringResource(R.string.recorder_title),
-                                    subtitle = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.getDefault()).format(LocalDate.ofEpochDay(p.day)),
+                                    subtitle = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy", java.util.Locale.getDefault()).format(LocalDate.ofEpochDay(p.day)),
                                     seed = info.tint * 7 + 71,
                                     editable = !DiaryViewModel.isDry(p.day),
                                     recording = recording?.takeIf { it.day == p.day },

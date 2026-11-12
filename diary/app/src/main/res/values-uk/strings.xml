@@ -117,8 +117,8 @@
     <string name="restore_failed">Це не копія щоденника або файл пошкоджено</string>
 
     <!-- Пошук і календар -->
-    <string name="search_hint">Слово, дата чи місце</string>
-    <string name="search_explain">Шукай словами з тексту чи місця, числом («11» — 11-те число чи листопад), датою («12.03»), місяцем («березень»), роком («2025») чи періодом: «тиждень», «місяць», «рік». Можна разом: «море липень».</string>
+    <string name="search_hint">Слово, дата чи період</string>
+    <string name="search_explain">Шукай нотатки за словами, датами й періодами.</string>
     <string name="search_nothing">Нічого не знайшлося</string>
     <string name="filter_photo">Є фото</string>
     <string name="filter_audio">Є голос</string>
@@ -207,8 +207,8 @@
     <string name="search_mode_notes">Нотатки</string>
     <string name="search_mode_photo">Фото</string>
     <string name="search_mode_audio">Аудіо</string>
-    <string name="search_hint_photo">«тиждень», «найкраще за місяць», слово…</string>
-    <string name="search_hint_audio">«тиждень», «місяць», дата чи слово…</string>
+    <string name="search_hint_photo">Слово, дата чи період</string>
+    <string name="search_hint_audio">Слово, дата чи період</string>
     <string name="search_show">Показ</string>
     <string name="search_best_week">Усі фото за останній тиждень</string>
     <string name="search_best_month">По одному фото навмання з кожного тижня місяця</string>
@@ -216,9 +216,9 @@
     <string name="search_best_again">Вибрати інші</string>
     <string name="search_best_nothing">За цей час фото немає</string>
     <string name="search_photo_nothing">Фото не знайшлося</string>
-    <string name="search_photo_explain">Лише фото. Напиши «тиждень», «місяць» чи «рік» — або «найкраще за місяць»: по одному фото навмання з кожного тижня. Слова й дати шукаються в нотатках тих днів.</string>
+    <string name="search_photo_explain">Лише фото: за словами з нотаток, датами й періодами. Попроси найкраще — по одному фото з кожної частини періоду.</string>
     <string name="search_audio_nothing">Записів не знайшлося</string>
-    <string name="search_audio_explain">Лише записи голосу — слухай просто тут. Напиши «тиждень», «місяць», «рік», дату чи слово з нотатки того дня.</string>
+    <string name="search_audio_explain">Лише записи: за словами з нотаток, датами й періодами.</string>
     <plurals name="search_photos">
         <item quantity="one">%d фото</item>
         <item quantity="few">%d фото</item>
@@ -238,4 +238,5 @@
     <string name="recorder_pause">Пауза</string>
     <string name="recorder_side_full">Ця сторона касети записана до кінця (45 хвилин) — переверни на сторону B.</string>
     <string name="knob_title">ШУМОДАВ</string>
+    <string name="open_recorder">Відкрити магнітофон</string>
 </resources>

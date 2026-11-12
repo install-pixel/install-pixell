@@ -109,8 +109,8 @@
     <string name="restore_done">Pamiętnik przywrócony</string>
     <string name="restore_failed">To nie jest kopia pamiętnika albo plik jest uszkodzony</string>
 
-    <string name="search_hint">Słowo, data lub miejsce</string>
-    <string name="search_explain">Szukaj słowami z tekstu lub miejsca, liczbą („11” — 11. dzień lub listopad), datą („12.03”), miesiącem („marzec”), rokiem („2025”) lub okresem: „tydzień”, „miesiąc”, „rok”. Można łączyć: „morze lipiec”.</string>
+    <string name="search_hint">Słowo, data lub okres</string>
+    <string name="search_explain">Szukaj notatek po słowach, datach i okresach.</string>
     <string name="search_nothing">Nic nie znaleziono</string>
     <string name="filter_photo">Ze zdjęciem</string>
     <string name="filter_audio">Z głosem</string>
@@ -197,8 +197,8 @@
     <string name="search_mode_notes">Notatki</string>
     <string name="search_mode_photo">Zdjęcia</string>
     <string name="search_mode_audio">Audio</string>
-    <string name="search_hint_photo">„tydzień”, „najlepsze z miesiąca”, słowo…</string>
-    <string name="search_hint_audio">„tydzień”, „miesiąc”, data lub słowo…</string>
+    <string name="search_hint_photo">Słowo, data lub okres</string>
+    <string name="search_hint_audio">Słowo, data lub okres</string>
     <string name="search_show">Pokaz</string>
     <string name="search_best_week">Wszystkie zdjęcia z ostatniego tygodnia</string>
     <string name="search_best_month">Po jednym losowym zdjęciu z każdego tygodnia miesiąca</string>
@@ -206,9 +206,9 @@
     <string name="search_best_again">Wybierz inne</string>
     <string name="search_best_nothing">Brak zdjęć w tym czasie</string>
     <string name="search_photo_nothing">Nie znaleziono zdjęć</string>
-    <string name="search_photo_explain">Tylko zdjęcia. Wpisz „tydzień”, „miesiąc” lub „rok” — albo „najlepsze z miesiąca”: po jednym losowym zdjęciu z każdego tygodnia. Słowa i daty szukają w notatkach tych dni.</string>
+    <string name="search_photo_explain">Tylko zdjęcia: po słowach z notatek, datach i okresach. Poproś o najlepsze — po jednym zdjęciu z każdej części okresu.</string>
     <string name="search_audio_nothing">Nie znaleziono nagrań</string>
-    <string name="search_audio_explain">Tylko nagrania głosu — słuchaj od razu tutaj. Wpisz „tydzień”, „miesiąc”, „rok”, datę lub słowo z notatki tego dnia.</string>
+    <string name="search_audio_explain">Tylko nagrania: po słowach z notatek, datach i okresach.</string>
     <plurals name="search_photos">
         <item quantity="one">%d zdjęcie</item>
         <item quantity="few">%d zdjęcia</item>
@@ -228,4 +228,5 @@
     <string name="recorder_pause">Pauza</string>
     <string name="recorder_side_full">Ta strona kasety jest pełna (45 minut) — odwróć na stronę B.</string>
     <string name="knob_title">ODSZUMIANIE</string>
+    <string name="open_recorder">Otwórz magnetofon</string>
 </resources>

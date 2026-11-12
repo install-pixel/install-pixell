@@ -49,6 +49,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
@@ -147,7 +150,7 @@ internal const val PHOTO_COLS = 4
  * «рік» і «найкраще» (добірка фото навмання).
  */
 @Composable
-fun ColumnScope.SearchPage(vm: DiaryViewModel, ui: SearchUi, found: Found, slice: IntRange, first: Boolean, active: Boolean, onCalendar: () -> Unit, onOpen: (SearchHit) -> Unit) {
+fun ColumnScope.SearchPage(vm: DiaryViewModel, ui: SearchUi, found: Found, slice: IntRange, first: Boolean, active: Boolean, onCalendar: () -> Unit, onRecorder: (Long) -> Unit = {}, onOpen: (SearchHit) -> Unit) {
     val haptics = LocalHaptics.current
     if (first) {
         val focus = remember { FocusRequester() }
@@ -178,8 +181,8 @@ fun ColumnScope.SearchPage(vm: DiaryViewModel, ui: SearchUi, found: Found, slice
     val part = if (slice.isEmpty()) emptyList() else found.hits.subList(slice.first, slice.last + 1)
     when (ui.mode) {
         SearchMode.Notes -> NotesResults(found, part, ui.query, first, onOpen)
-        SearchMode.Photo -> PhotoResults(vm, found, part, slice.first, first, onShow = { i, auto -> ui.show = i to auto }, onShuffle = { haptics.tap(); ui.shuffle++ })
-        SearchMode.Audio -> AudioResults(vm, ui, part, first)
+        SearchMode.Photo -> PhotoResults(vm, found, part, slice.first, first, ui.query, onShow = { i, auto -> ui.show = i to auto }, onShuffle = { haptics.tap(); ui.shuffle++ })
+        SearchMode.Audio -> AudioResults(vm, ui, part, first, onRecorder)
     }
 }
 
@@ -254,7 +257,7 @@ private fun NotesResults(found: Found, part: List<SearchHit>, query: String, fir
                         .clickable { haptics.tap(); onOpen(h) }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
-                    Text(DateTimeFormatter.ofPattern("d MMMM yyyy, EEEE", locale).format(LocalDate.ofEpochDay(h.day)), color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1)
+                    Text(DateTimeFormatter.ofPattern("dd.MM.yyyy", locale).format(LocalDate.ofEpochDay(h.day)), color = Oled.TextSecondary, fontSize = 13.sp, maxLines = 1)
                     // Завжди два рядки — сторінка знає, скільки знахідок на ній уміститься.
                     Text(
                         buildAnnotatedString {
@@ -278,12 +281,12 @@ private fun NotesResults(found: Found, part: List<SearchHit>, query: String, fir
 
 /** Фото: на першій сторінці — «Показ» (і «Вибрати інші» для добірки), далі — сітка маленьких мініатюр із підписом. */
 @Composable
-private fun PhotoResults(vm: DiaryViewModel, found: Found, part: List<SearchHit>, offset: Int, first: Boolean, onShow: (Int, Boolean) -> Unit, onShuffle: () -> Unit) {
+private fun PhotoResults(vm: DiaryViewModel, found: Found, part: List<SearchHit>, offset: Int, first: Boolean, query: String, onShow: (Int, Boolean) -> Unit, onShuffle: () -> Unit) {
     val haptics = LocalHaptics.current
     val glass = AppStyle.glass
     if (found.hits.isEmpty()) {
+        if (query.isBlank()) { WindowHint(stringResource(R.string.search_photo_explain)); return }
         WindowHint(stringResource(if (found.best) R.string.search_best_nothing else R.string.search_photo_nothing))
-        WindowHint(stringResource(R.string.search_photo_explain))
         return
     }
     if (first) {
@@ -373,7 +376,7 @@ private fun Thumb(vm: DiaryViewModel, day: Long, modifier: Modifier, onClick: ()
             StyledPhoto(image, glass, Modifier.fillMaxSize(), ContentScale.Crop, seed = day, dry = DiaryViewModel.isDry(day))
         }
         Text(
-            caption.ifBlank { DateTimeFormatter.ofPattern("d MMM", locale).format(LocalDate.ofEpochDay(day)) },
+            caption.ifBlank { DateTimeFormatter.ofPattern("dd.MM.yy", locale).format(LocalDate.ofEpochDay(day)) },
             color = Oled.TextSecondary,
             fontSize = 11.sp,
             maxLines = 1,
@@ -449,7 +452,7 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
                             )
                         }
                         Text(
-                            DateTimeFormatter.ofPattern("d MMMM yyyy", locale).format(LocalDate.ofEpochDay(day)),
+                            DateTimeFormatter.ofPattern("dd.MM.yyyy", locale).format(LocalDate.ofEpochDay(day)),
                             color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f),
                             fontSize = 14.sp,
                             modifier = Modifier.padding(top = 14.dp),
@@ -472,23 +475,27 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
 
 private const val SHOW_MS = 3200
 
-/** Аудіо: лише записи, по одному в рядок — дата, смужка, кнопка; слухаєш просто тут, одночасно грає один. */
+/** Аудіо: лише записи, по одному в рядок — касетка (відкрити магнітофон), дата, смужка, кнопка. */
 @Composable
-private fun AudioResults(vm: DiaryViewModel, ui: SearchUi, part: List<SearchHit>, first: Boolean) {
+private fun AudioResults(vm: DiaryViewModel, ui: SearchUi, part: List<SearchHit>, first: Boolean, onRecorder: (Long) -> Unit) {
     if (first && part.isEmpty()) {
-        WindowHint(stringResource(R.string.search_audio_nothing))
-        WindowHint(stringResource(R.string.search_audio_explain))
+        if (ui.query.isBlank()) WindowHint(stringResource(R.string.search_audio_explain))
+        else WindowHint(stringResource(R.string.search_audio_nothing))
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(end = 4.dp)) {
         part.forEach { h ->
-            key(h.day) { AudioRow(vm, h.day, ui) }
+            key(h.day) { AudioRow(vm, h.day, ui, onRecorder) }
         }
     }
 }
 
+/**
+ * Рядок запису в пошуку: увесь запис дня — сторона A, а за нею B (одна смужка). Касетка ліворуч — відкрити магнітофон
+ * (там зручніше довгі записи: перемотка по відрізках, сторони; висохлий день — лише слухати).
+ */
 @Composable
-private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi) {
+private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi, onRecorder: (Long) -> Unit) {
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
     val glass = AppStyle.glass
@@ -496,28 +503,66 @@ private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi) {
     val day = vm.day(epochDay)
     val player = ui.player
     val mine = ui.playingDay == epochDay
+    val msA = if (day.audio) day.audioMs else 0L
+    val msB = if (day.audioB) day.audioMsB else 0L
+    val total = (msA + msB).coerceAtLeast(1L)
+    val wave = remember(day.wave, day.waveB, msA, msB) {
+        DiaryViewModel.stitchWave(listOfNotNull(if (day.audio) day.wave to msA else null, if (day.audioB) day.waveB to msB else null), 60)
+    }
     var playing by remember { mutableStateOf(false) }
+    var sideNow by remember { mutableIntStateOf(0) }
     var progress by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(mine) { if (!mine) { playing = false; progress = 0f } }
     LaunchedEffect(playing) {
         while (playing) {
-            val d = player.duration
-            if (d > 0) progress = player.position / d.toFloat()
+            val base = if (sideNow == 1) msA else 0L
+            progress = ((base + player.position) / total.toFloat()).coerceIn(0f, 1f)
             delay(50)
+        }
+    }
+    fun playFrom(side: Int, fromMs: Int) {
+        scope.launch {
+            val b = vm.audio(epochDay, side) ?: return@launch
+            player.stop()
+            ui.playingDay = epochDay
+            sideNow = side
+            playing = player.play(b, fromMs) {
+                // Скінчилась сторона A — далі B, якщо є.
+                if (side == 0 && day.audioB) playFrom(1, 0) else { playing = false; progress = 0f }
+            }
         }
     }
     fun toggle() {
         haptics.tap()
         if (playing) { player.pause(); playing = false; return }
-        scope.launch {
-            if (mine && player.duration > 0 && progress in 0.01f..0.99f) { player.resume(); playing = true; return@launch }
-            val b = vm.audio(epochDay) ?: return@launch
-            player.stop()
-            ui.playingDay = epochDay
-            playing = player.play(b, 0) { playing = false; progress = 0f }
-        }
+        if (mine && player.duration > 0 && progress in 0.01f..0.99f) { player.resume(); playing = true; return }
+        playFrom(if (day.audio) 0 else 1, 0)
+    }
+    fun seekTo(f: Float) {
+        val t = (f * total).toLong()
+        val side = if (t < msA || !day.audioB) 0 else 1
+        val local = (if (side == 0) t else t - msA).toInt()
+        progress = f
+        if (mine && sideNow == side && player.duration > 0) player.seek(local) else if (mine) playFrom(side, local)
     }
     Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Касетка — у магнітофон.
+        Box(
+            Modifier.size(40.dp, 44.dp).clip(RoundedCornerShape(8.dp)).clickable { haptics.tap(); player.stop(); playing = false; onRecorder(epochDay) },
+            contentAlignment = Alignment.Center,
+        ) {
+            val ink = if (glass) Oled.TextPrimary else SheetInk
+            Canvas(Modifier.size(26.dp, 17.dp)) {
+                val w = size.width
+                val h = size.height
+                val line = ink.copy(alpha = 0.75f)
+                drawRoundRect(line, cornerRadius = CornerRadius(w * 0.08f), style = Stroke(1.1.dp.toPx()))
+                drawRoundRect(line.copy(alpha = 0.45f), topLeft = Offset(w * 0.1f, h * 0.14f), size = Size(w * 0.8f, h * 0.5f), cornerRadius = CornerRadius(w * 0.04f), style = Stroke(0.8.dp.toPx()))
+                drawCircle(line, h * 0.13f, Offset(w * 0.3f, h * 0.4f), style = Stroke(1.dp.toPx()))
+                drawCircle(line, h * 0.13f, Offset(w * 0.7f, h * 0.4f), style = Stroke(1.dp.toPx()))
+                drawPath(androidx.compose.ui.graphics.Path().apply { moveTo(w * 0.22f, h); lineTo(w * 0.28f, h * 0.76f); lineTo(w * 0.72f, h * 0.76f); lineTo(w * 0.78f, h) }, line.copy(alpha = 0.6f), style = Stroke(0.9.dp.toPx()))
+            }
+        }
         Text(
             // Дата цифрами — завжди однакової ширини (назви місяців різної довжини й різними мовами).
             DateTimeFormatter.ofPattern("dd.MM.yy", locale).format(LocalDate.ofEpochDay(epochDay)),
@@ -525,7 +570,7 @@ private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi) {
             fontSize = 13.sp,
             maxLines = 1,
             style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
-            modifier = Modifier.width(64.dp),
+            modifier = Modifier.width(60.dp),
         )
         Row(Modifier.weight(1f).fillMaxHeight().pencilFrame(22.dp, seed = (epochDay % 40).toInt() + 23).padding(start = 12.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Canvas(
@@ -533,29 +578,25 @@ private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi) {
                     .weight(1f)
                     .fillMaxHeight()
                     .pointerInput(epochDay, mine) {
-                        detectTapGestures { p ->
-                            if (!mine) return@detectTapGestures
-                            progress = (p.x / size.width).coerceIn(0f, 1f)
-                            if (player.duration > 0) player.seek((progress * player.duration).toInt())
-                        }
+                        detectTapGestures { p -> if (mine) seekTo((p.x / size.width).coerceIn(0f, 1f)) }
                     },
             ) {
-                val bars = day.wave.ifEmpty { List(40) { 0.08f } }
+                val bars = wave.ifEmpty { List(40) { 0.08f } }
                 val n = bars.size.coerceAtLeast(1)
                 val step = size.width / n
                 val mid = size.height / 2
                 bars.forEachIndexed { i, v ->
-                    val h = (0.12f + v * 0.88f) * size.height * 0.42f
+                    val hh = (0.12f + v * 0.88f) * size.height * 0.42f
                     val x = i * step + step / 2
                     val color = if ((i + 0.5f) / n <= progress) Oled.TextPrimary else Oled.TextSecondary.copy(alpha = 0.45f)
-                    if (glass) drawLine(color, Offset(x, mid - h), Offset(x, mid + h), (step * 0.55f).coerceIn(1f, 4.dp.toPx()), cap = StrokeCap.Round)
-                    else pencilTick(Offset(x, mid - h), Offset(x + 0.6f, mid + h), (step * 0.6f).coerceIn(1f, 3.dp.toPx()), color, i)
+                    if (glass) drawLine(color, Offset(x, mid - hh), Offset(x, mid + hh), (step * 0.55f).coerceIn(1f, 4.dp.toPx()), cap = StrokeCap.Round)
+                    else pencilTick(Offset(x, mid - hh), Offset(x + 0.6f, mid + hh), (step * 0.6f).coerceIn(1f, 3.dp.toPx()), color, i)
                 }
             }
             Spacer(Modifier.width(8.dp))
             // Час — однакові за шириною цифри й стала ширина: смужка поруч не смикається, поки цифри біжать.
             Text(
-                clock(if (playing || progress > 0f) (progress * day.audioMs).toLong() else day.audioMs),
+                clock(if (playing || progress > 0f) (progress * total).toLong() else total),
                 color = Oled.TextSecondary,
                 fontSize = 12.sp,
                 maxLines = 1,

@@ -447,7 +447,9 @@ fun RecorderPage(
             // ——— Динамік і два прилади праворуч ———
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawGrille(glass, ink, faint) }
+                    // Динамік «дихає», лише коли з нього йде звук (слухаєш), не під час запису.
+                    val speaker = if (deck == Deck.Play || (cue && (deck == Deck.Forward))) level else 0f
+                    Canvas(Modifier.fillMaxWidth().weight(1f)) { drawGrille(glass, ink, faint, speaker) }
                     NoiseKnob(
                         // Стоїть — ручка вільна (0 / 1 / 2 для нового запису). Слухаєш — показує, на чому записано (нижче не
                         // опуститись, вище — додається наживо). Пишеш — те, на чому пишеш.
@@ -957,7 +959,7 @@ private fun DrawScope.drawSideLetter(side: Int, c: Offset, s: Float, ink: Color)
 }
 
 /** Решітка динаміка — квадратні комірки рядами (як на старих касетниках). */
-private fun DrawScope.drawGrille(glass: Boolean, ink: Color, faint: Color) {
+private fun DrawScope.drawGrille(glass: Boolean, ink: Color, faint: Color, push: Float = 0f) {
     val r = 8.dp.toPx()
     if (glass) drawRoundRect(Brush.verticalGradient(0f to Color(0xFF17181B), 1f to Color(0xFF0E0F11)), cornerRadius = CornerRadius(r))
     frame(Offset.Zero, size, r, glass, ink, seed = 5)
@@ -967,10 +969,26 @@ private fun DrawScope.drawGrille(glass: Boolean, ink: Color, faint: Color) {
     val cell = (size.width - pad * 2 - gap * (cols - 1)) / cols
     val rows = ((size.height - pad * 2 + gap) / (cell * 0.8f + gap)).toInt().coerceAtLeast(1)
     val ch = (size.height - pad * 2 - gap * (rows - 1)) / rows
+    // Під сіткою — дифузор: коли грає, він ледь проступає крізь комірки й «дихає» від центру (сильніше — де гучніше).
+    val mid = Offset(size.width / 2, size.height / 2)
+    val reach = maxOf(size.width, size.height) * 0.6f
+    // Тихий голос теж має бути помітний — підсилюємо слабкі рівні.
+    @Suppress("NAME_SHADOWING") val push = kotlin.math.sqrt(push.coerceIn(0f, 1f))
+    if (push > 0.01f) {
+        drawCircle(
+            Brush.radialGradient(listOf((if (glass) Color.White else SheetInk).copy(alpha = 0.16f * push), Color.Transparent), center = mid, radius = reach * (0.55f + 0.35f * push)),
+            reach, mid,
+        )
+    }
     for (y in 0 until rows) for (x in 0 until cols) {
-        val tl = Offset(pad + x * (cell + gap), pad + y * (ch + gap))
-        drawRoundRect(Color.Black.copy(alpha = if (glass) 0.75f else 0.45f), tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()))
-        drawRoundRect(faint, tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()), style = Stroke(0.8.dp.toPx()))
+        val base = Offset(pad + x * (cell + gap), pad + y * (ch + gap))
+        val cc = base + Offset(cell / 2, ch / 2)
+        val near = (1f - ((cc - mid).getDistance() / reach)).coerceIn(0f, 1f)
+        // Комірки ближче до центру ледь розходяться від нього — як сітка над рухливим дифузором.
+        val shift = (cc - mid) * (0.03f * push * near)
+        val tl = base + shift
+        drawRoundRect(Color.Black.copy(alpha = (if (glass) 0.75f else 0.45f) * (1f - 0.35f * push * near)), tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()))
+        drawRoundRect(faint.copy(alpha = faint.alpha * (1f + 0.8f * push * near)), tl, Size(cell, ch), CornerRadius(1.5.dp.toPx()), style = Stroke(0.8.dp.toPx()))
     }
 }
 
@@ -1020,31 +1038,62 @@ private fun DrawScope.drawSpindles(rc: Rect, glass: Boolean, ink: Color, angleL:
     val w = rc.width
     val hubRad = w * 0.05f
     listOf(Offset(rc.left + w * 0.29f, rc.top + rc.height * 0.51f) to angleL, Offset(rc.left + w * 0.71f, rc.top + rc.height * 0.51f) to angleR).forEach { (c, a) ->
-        val r = hubRad * 0.66f
+        val r = hubRad * 0.68f
+        val deg = a * 180f / PI.toFloat()
         if (glass) {
-            // Металевий купол: світло згори зліва, до краю темніє, верхівка — світла цятка.
-            drawCircle(Brush.radialGradient(listOf(Color(0xFFB9BCC4), Color(0xFF6E7179), Color(0xFF2A2C31), Color(0xFF15161A)), center = c - Offset(r * 0.28f, r * 0.32f), radius = r * 1.25f), r, c)
-            drawCircle(Color.White.copy(alpha = 0.16f), r, c, style = Stroke(1.dp.toPx()))
+            // Гніздо: темний зазор довкола штиря (видно, що він окремо від маточини касети).
+            drawCircle(Color.Black, r * 1.02f, c)
+            // Фланець — точене кільце; відблиск на ньому крутиться разом зі штирем.
+            rotate(deg, c) {
+                drawCircle(
+                    Brush.sweepGradient(
+                        0f to Color(0xFF3B3D43), 0.12f to Color(0xFF8D9098), 0.25f to Color(0xFF3B3D43),
+                        0.5f to Color(0xFF2A2C31), 0.62f to Color(0xFF6E7178), 0.75f to Color(0xFF2A2C31), 1f to Color(0xFF3B3D43),
+                        center = c,
+                    ),
+                    r * 0.86f, c,
+                )
+            }
+            // Купол: світло згори зліва, м'яко темніє до краю.
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFE2E4E9), Color(0xFF9A9DA5), Color(0xFF44474D)), center = c - Offset(r * 0.22f, r * 0.26f), radius = r * 0.8f), r * 0.6f, c)
+            drawCircle(Color.Black.copy(alpha = 0.35f), r * 0.6f, c, style = Stroke(1.2.dp.toPx()))
         } else {
-            // «Аркуш»: купол олівцем — кільця, що сходяться до верхівки, і тінь штрихами знизу справа.
-            drawCircle(Color(0xFF13110E), r, c)
-            drawCircle(SheetInk.copy(alpha = 0.8f), r, c, style = Stroke(1.3.dp.toPx()))
-            drawCircle(SheetInk.copy(alpha = 0.35f), r * 0.62f, c - Offset(r * 0.08f, r * 0.1f), style = Stroke(0.9.dp.toPx()))
-            drawCircle(SheetInk.copy(alpha = 0.25f), r * 0.32f, c - Offset(r * 0.14f, r * 0.18f), style = Stroke(0.8.dp.toPx()))
+            drawCircle(Color.Black.copy(alpha = 0.7f), r * 1.02f, c)
+            drawCircle(Color(0xFF15130F), r * 0.86f, c)
+            drawCircle(SheetInk.copy(alpha = 0.7f), r * 0.86f, c, style = Stroke(1.2.dp.toPx()))
+            drawCircle(SheetInk.copy(alpha = 0.85f), r * 0.6f, c, style = Stroke(1.3.dp.toPx()))
+            // Тінь купола штрихами знизу справа.
+            for (k in 0 until 5) {
+                val y = c.y + r * (0.08f + k * 0.11f)
+                val half = sqrt((r * r * 0.36f - (y - c.y) * (y - c.y)).coerceAtLeast(0f))
+                drawLine(SheetInk.copy(alpha = 0.2f), Offset(c.x, y), Offset(c.x + half * 0.95f, y - r * 0.05f), 0.8.dp.toPx())
+            }
         }
-        // Шліци — три ребра, що збігаються до верхівки (тоншають до центру) і крутяться разом із котушкою.
-        rotate(a * 180f / PI.toFloat(), c) {
+        // Шліци — три ребра на куполі: з освітленим і затіненим боком, тоншають до верхівки; крутяться зі штирем.
+        rotate(deg, c) {
             for (k in 0 until 3) {
                 val t = k * 2f * PI.toFloat() / 3f
                 val d = Offset(cos(t), sin(t))
-                val pts = listOf(c + d * (r * 0.95f), c + d * (r * 0.55f), c + d * (r * 0.12f))
-                drawPath(taperedPath(pts, 2.6.dp.toPx()), if (glass) Color(0xFFDADDE3).copy(alpha = 0.9f) else SheetInk.copy(alpha = 0.9f))
+                val nrm = Offset(-d.y, d.x)
+                val tip = c + d * (r * 0.1f)
+                val outer = c + d * (r * 0.84f)
+                val half = r * 0.11f
+                val lit = Path().apply { moveTo(tip.x, tip.y); lineTo(outer.x + nrm.x * half, outer.y + nrm.y * half); lineTo(outer.x, outer.y); close() }
+                val dark = Path().apply { moveTo(tip.x, tip.y); lineTo(outer.x, outer.y); lineTo(outer.x - nrm.x * half, outer.y - nrm.y * half); close() }
+                if (glass) {
+                    drawPath(lit, Color(0xFFE4E6EB).copy(alpha = 0.9f))
+                    drawPath(dark, Color(0xFF55585F))
+                } else {
+                    drawPath(lit, SheetInk.copy(alpha = 0.85f))
+                    drawPath(dark, SheetInk.copy(alpha = 0.35f))
+                }
             }
         }
-        // Верхівка купола.
-        drawCircle(if (glass) Color.White.copy(alpha = 0.9f) else SheetInk, r * 0.11f, c)
+        // Верхівка — точка, де сходяться ребра.
+        drawCircle(if (glass) Color.White.copy(alpha = 0.95f) else SheetInk, r * 0.09f, c)
     }
 }
+
 
 
 /** Пази шухлядки: бічні напрямні, за які касета зачеплена, і дві притискні лапки зверху. */

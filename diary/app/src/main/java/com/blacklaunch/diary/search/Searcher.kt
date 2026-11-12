@@ -94,6 +94,8 @@ object Searcher {
      * «найкраще» (лише фото: за тиждень — усі, за місяць — по одному з тижня, за рік — по одному з місяця, навмання).
      */
     fun find(days: List<Day>, query: String, mode: SearchMode, today: Long, random: kotlin.random.Random = kotlin.random.Random): Found {
+        // Поки нічого не написав — нічого й не знаходимо (і для фото, і для записів): спершу підказка.
+        if (query.isBlank()) return Found(emptyList(), null, false)
         val q = parse(query)
         val best = q.best && mode == SearchMode.Photo
         val period = q.period ?: if (best) Period.Month else null
@@ -129,7 +131,7 @@ object Searcher {
         val out = ArrayList<SearchHit>()
         for (d in days.sortedByDescending { it.day }) {
             if (photo && !d.photo) continue
-            if (audio && !d.audio) continue
+            if (audio && !d.audio && !d.audioB) continue
             val date = LocalDate.ofEpochDay(d.day)
             if (dayFilter != null && !dayFilter(date)) continue
             val text = d.text
