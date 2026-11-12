@@ -277,12 +277,22 @@ fun DayPage(
         }
         val rec = host.recording?.takeIf { it.day == day.day }
         if (first && (day.audio || day.audioB || rec != null)) {
+            // Плашка запису — тієї самої ширини, що й фото над нею (вертикальне фото вужче — і плашка вужча, по центру).
+            val glassNow = AppStyle.glass
+            var photoRatio by remember(day.day, glassNow, day.photo) {
+                mutableStateOf(if (day.photo) host.vm.cachedPhoto(day.day, glassNow)?.let { it.width.toFloat() / it.height.coerceAtLeast(1) } else null)
+            }
+            LaunchedEffect(day.day, glassNow, day.photo, day.updated) {
+                if (day.photo) host.vm.photo(day.day, glassNow)?.let { photoRatio = it.width.toFloat() / it.height.coerceAtLeast(1) }
+            }
+            val plateW = photoRatio?.let { minOf(PageMetrics.textWidth, PageMetrics.PHOTO_HEIGHT * it) } ?: PageMetrics.textWidth
+            val plateX = PageMetrics.MARGIN_LEFT + (PageMetrics.textWidth - plateW) / 2
             AudioPlate(
                 host = host,
                 day = day,
                 recording = rec,
-                modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)),
-                width = dp(PageMetrics.textWidth),
+                modifier = Modifier.offset(dp(plateX), dp(y)),
+                width = dp(plateW),
                 height = dp(PageMetrics.AUDIO_HEIGHT),
                 editable = editable,
             )
@@ -601,15 +611,20 @@ private fun AudioPlate(host: PageHost, day: Day, recording: RecordingState?, mod
             }
             drawPath(bump, line.copy(alpha = 0.6f), style = Stroke(0.9.dp.toPx()))
         }
-        Spacer(Modifier.width(18.dp))
-        Text(
-            stringResource(R.string.recorder_title),
-            color = Oled.TextPrimary,
-            fontFamily = if (glass) GlassFont else HandFont,
-            fontSize = if (glass) 15.sp else 19.sp,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
+        // Вузька плашка (під вертикальним фото) — лише касетка й час, без напису (щоб не обрізався).
+        if (width >= 230.dp) {
+            Spacer(Modifier.width(18.dp))
+            Text(
+                stringResource(R.string.recorder_title),
+                color = Oled.TextPrimary,
+                fontFamily = if (glass) GlassFont else HandFont,
+                fontSize = if (glass) 15.sp else 19.sp,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
         if (recording != null) {
             Box(Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFB0244F)))
             Spacer(Modifier.width(6.dp))
