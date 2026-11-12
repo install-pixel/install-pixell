@@ -568,15 +568,27 @@ private fun NoiseKnob(mode: Int, minMode: Int, enabled: Boolean, glass: Boolean,
                     drawLine(Color.White.copy(alpha = 0.10f), c + d.rotated(0.05f) * (kr * 0.84f), c + d.rotated(0.05f) * (kr * 0.99f), 0.8.dp.toPx())
                 }
             }
-            // Верх ручки — опукла кришка з відблиском (світло згори зліва, не крутиться).
+            // Верх ручки — точена кришка: м'які розмиті відблиски по колу (як на шліфованому металі), що повертаються
+            // разом із ручкою — уся ручка крутиться як одне ціле, без різких ліній.
             val top = kr * 0.78f
-            drawCircle(Brush.radialGradient(listOf(Color(0xFF4A4C53), Color(0xFF232428), Color(0xFF17181B)), center = c - Offset(top * 0.35f, top * 0.45f), radius = top * 1.5f), top, c)
-            drawCircle(Color.White.copy(alpha = 0.18f), top, c, style = Stroke(1.dp.toPx()))
-            drawArc(Color.White.copy(alpha = 0.22f), 200f, 70f, false, topLeft = c - Offset(top * 0.82f, top * 0.82f), size = Size(top * 1.64f, top * 1.64f), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
-            drawCircle(Color.White.copy(alpha = 0.16f), kr, c, style = Stroke(1.dp.toPx()))
+            drawCircle(Brush.radialGradient(listOf(Color(0xFF3A3C42), Color(0xFF222327), Color(0xFF17181B)), center = c, radius = top * 1.2f), top, c)
             rotate(shownAngle, c) {
+                drawCircle(
+                    Brush.sweepGradient(
+                        0f to Color.Transparent, 0.06f to Color.White.copy(alpha = 0.05f), 0.14f to Color.White.copy(alpha = 0.13f),
+                        0.22f to Color.White.copy(alpha = 0.04f), 0.32f to Color.Transparent,
+                        0.52f to Color.Transparent, 0.6f to Color.White.copy(alpha = 0.04f), 0.66f to Color.White.copy(alpha = 0.08f),
+                        0.74f to Color.White.copy(alpha = 0.03f), 0.84f to Color.Transparent, 1f to Color.Transparent,
+                        center = c,
+                    ),
+                    top, c,
+                )
+                // Центр кришки трохи темніший — відблиски тануть до середини, а не обриваються.
+                drawCircle(Brush.radialGradient(listOf(Color(0xFF222327).copy(alpha = 0.85f), Color.Transparent), center = c, radius = top * 0.55f), top * 0.55f, c)
                 drawLine(Color.White, c + Offset(0f, -top * 0.2f), c + Offset(0f, -top * 0.92f), 2.6.dp.toPx(), cap = StrokeCap.Round)
             }
+            drawCircle(Color.White.copy(alpha = 0.14f), top, c, style = Stroke(1.dp.toPx()))
+            drawCircle(Color.White.copy(alpha = 0.16f), kr, c, style = Stroke(1.dp.toPx()))
         } else {
             // «Аркуш»: олівцем — дві кромки, ребра по колу, тіньова штриховка знизу справа, риска-покажчик.
             drawCircle(Color(0xFF15130F), kr, c)
