@@ -877,6 +877,7 @@ fun BookScreen(
                                     voiceMode = info.voiceMode,
                                     onVoiceMode = { vm.setVoiceMode(info.id, it) },
                                     onShare = { side -> shareTape(p.day, side) },
+                                    host = host,
                                 )
                             }
                             is BookPage.Calendar -> PaperPage(

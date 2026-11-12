@@ -237,7 +237,5 @@
     <string name="recorder_forward">Вперед</string>
     <string name="recorder_pause">Пауза</string>
     <string name="recorder_side_full">Ця сторона касети записана до кінця (45 хвилин) — переверни на сторону B.</string>
-    <string name="knob_0" translatable="false">0</string>
-    <string name="knob_voice">голос</string>
-    <string name="knob_clean">шумодав</string>
+    <string name="knob_title">ШУМОДАВ</string>
 </resources>

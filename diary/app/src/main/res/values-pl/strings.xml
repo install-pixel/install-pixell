@@ -227,7 +227,5 @@
     <string name="recorder_forward">Do przodu</string>
     <string name="recorder_pause">Pauza</string>
     <string name="recorder_side_full">Ta strona kasety jest pełna (45 minut) — odwróć na stronę B.</string>
-    <string name="knob_0" translatable="false">0</string>
-    <string name="knob_voice">głos</string>
-    <string name="knob_clean">odszum</string>
+    <string name="knob_title">ODSZUMIANIE</string>
 </resources>

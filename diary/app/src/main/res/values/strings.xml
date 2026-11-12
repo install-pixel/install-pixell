@@ -223,7 +223,5 @@
     <string name="recorder_forward">Fast forward</string>
     <string name="recorder_pause">Pause</string>
     <string name="recorder_side_full">This side of the cassette is full (45 minutes) — turn it over to side B.</string>
-    <string name="knob_0" translatable="false">0</string>
-    <string name="knob_voice">voice</string>
-    <string name="knob_clean">denoise</string>
+    <string name="knob_title">DENOISE</string>
 </resources>

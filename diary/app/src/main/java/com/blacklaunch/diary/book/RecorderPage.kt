@@ -108,6 +108,8 @@ fun RecorderPage(
     voiceMode: Int,
     onVoiceMode: (Int) -> Unit,
     onShare: (side: Int) -> Unit,
+    /** Книжка: щоб жест на крутілці не гортав сторінку (як і на фото чи записі на сторінці дня). */
+    host: PageHost? = null,
 ) {
     val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
@@ -388,7 +390,7 @@ fun RecorderPage(
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Canvas(Modifier.fillMaxWidth().weight(1f)) { drawGrille(glass, ink, faint) }
-                    NoiseKnob(voiceMode, enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f)) { onVoiceMode(it) }
+                    NoiseKnob(voiceMode, enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f).noFlip(host, "knob_${day.day}")) { onVoiceMode(it) }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     // Час цього запису: поки пишеш — скільки вже, інакше — скільки тривав останній допис.
@@ -415,86 +417,159 @@ private fun reelAngle(head: Float, left: Boolean): Float {
 }
 
 /**
- * Крутілка «шумодав» на панелі: 0 — як є (усе довкола), «голос» — зріз гулу й тихіший фон між словами (і вбудоване в
- * телефон шумозаглушення), «шумодав» — сильніше: ще й вирівнювання гучності. Дотик — наступна позиція, можна й крутити
- * пальцем. Поки йде запис — не крутиться.
+ * Галетний перемикач «ШУМОДАВ» на панелі: три положення — 0 (вимкнено), 1 (легкий), 2 (сильний).
+ * Повертається жестом, як справжня ручка: ведеш пальцем по колу (чи просто вбік / вгору-вниз) — ручка йде за пальцем
+ * і клацає (з вібрацією) на кожному положенні; відпустив — стає точно в найближче. Поки йде запис — не крутиться.
  */
 @Composable
 private fun NoiseKnob(mode: Int, enabled: Boolean, glass: Boolean, modifier: Modifier, onMode: (Int) -> Unit) {
     val haptics = LocalHaptics.current
-    val labels = listOf(stringResource(R.string.knob_0), stringResource(R.string.knob_voice), stringResource(R.string.knob_clean))
-    val angle by animateFloatAsState(-60f + 60f * mode, spring(dampingRatio = 0.6f, stiffness = 500f), label = "knob")
+    val title = stringResource(R.string.knob_title)
+    // Поки палець крутить — ручка йде за ним (зсув у градусах від положення); відпустив — до найближчого клацання.
+    var drag by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    val target = -60f + 60f * mode
+    val shownAngle by animateFloatAsState(if (dragging) (target + drag).coerceIn(-75f, 75f) else target, if (dragging) spring(stiffness = 4000f) else spring(dampingRatio = 0.55f, stiffness = 600f), label = "knob")
     val modeNow by androidx.compose.runtime.rememberUpdatedState(mode)
     val onModeNow by androidx.compose.runtime.rememberUpdatedState(onMode)
     val ink = if (glass) Oled.TextPrimary else SheetInk
     Canvas(
         modifier
-            .semantics { contentDescription = labels[mode] }
+            .semantics { contentDescription = "$title $mode" }
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown()
-                    val c = Offset(size.width / 2f, size.height * 0.58f)
-                    var moved = false
+                    val c = Offset(size.width / 2f, size.height * 0.62f)
+                    var last = down.position
+                    var acc = 0f
+                    dragging = true
+                    drag = 0f
                     while (true) {
                         val ev = awaitPointerEvent()
                         val ch = ev.changes.firstOrNull() ?: break
                         if (!ch.pressed) break
-                        val d = ch.position - c
-                        if ((ch.position - down.position).getDistance() > 12.dp.toPx()) {
-                            moved = true
-                            // Кут пальця навколо крутілки → найближча позиція (−60° / 0° / +60°).
-                            val deg = Math.toDegrees(kotlin.math.atan2(d.x.toDouble(), -d.y.toDouble())).toFloat()
-                            val m = ((deg + 90f) / 60f).roundToIntSafe().coerceIn(0, 2)
-                            if (m != modeNow) { haptics.keyDown(); onModeNow(m) }
+                        val p = ch.position
+                        // Поворот = кут руху пальця навколо центру ручки (за годинниковою — більше).
+                        val a0 = kotlin.math.atan2((last.y - c.y).toDouble(), (last.x - c.x).toDouble())
+                        val a1 = kotlin.math.atan2((p.y - c.y).toDouble(), (p.x - c.x).toDouble())
+                        var d = Math.toDegrees(a1 - a0).toFloat()
+                        if (d > 180f) d -= 360f
+                        if (d < -180f) d += 360f
+                        // Біля самого центру кут скаче — там рахуємо простим рухом убік / вгору.
+                        if ((p - c).getDistance() < 14.dp.toPx()) d = ((p.x - last.x) - (p.y - last.y)) * 0.8f
+                        acc += d
+                        last = p
+                        // Кожні ~40° — наступне положення (з клацанням).
+                        val step = when {
+                            acc > 40f && modeNow < 2 -> 1
+                            acc < -40f && modeNow > 0 -> -1
+                            else -> 0
                         }
+                        if (step != 0) {
+                            acc -= 60f * step
+                            haptics.keyDown()
+                            onModeNow(modeNow + step)
+                        }
+                        drag = acc.coerceIn(-30f, 30f)
                         ch.consume()
                     }
-                    if (!moved) { haptics.keyDown(); onModeNow((modeNow + 1) % 3) }
+                    dragging = false
+                    drag = 0f
                 }
             },
     ) {
         val r = 8.dp.toPx()
         drawRoundRect(if (glass) Color(0xFF1E1F22) else Color(0xFF1A1813), cornerRadius = CornerRadius(r))
         frame(Offset.Zero, size, r, glass, ink, seed = 14)
-        val c = Offset(size.width / 2f, size.height * 0.58f)
-        val kr = minOf(size.width * 0.2f, size.height * 0.27f)
-        // Позначки позицій і підписи.
         val paint = android.graphics.Paint().apply {
             isAntiAlias = true
             textAlign = android.graphics.Paint.Align.CENTER
-            textSize = minOf(size.height * 0.13f, 12.dp.toPx())
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.NORMAL)
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
         }
+        // Напис угорі, як шовкографія на панелі.
+        paint.textSize = minOf(size.height * 0.11f, 12.dp.toPx())
+        paint.letterSpacing = 0.12f
+        paint.color = ink.copy(alpha = if (enabled) 0.8f else 0.45f).argb()
+        drawContext.canvas.nativeCanvas.drawText(title, size.width / 2, size.height * 0.15f, paint)
+        val c = Offset(size.width / 2f, size.height * 0.62f)
+        val kr = minOf(size.width * 0.19f, size.height * 0.25f)
+        // Поділки й цифри положень.
+        paint.letterSpacing = 0f
+        paint.textSize = minOf(size.height * 0.12f, 13.dp.toPx())
         for (k in 0..2) {
             val a = Math.toRadians((-60.0 + 60.0 * k) - 90.0)
             val dir = Offset(cos(a).toFloat(), sin(a).toFloat())
             val on = k == mode
-            drawLine(if (on) ink else ink.copy(alpha = 0.45f), c + dir * (kr * 1.18f), c + dir * (kr * 1.38f), (if (on) 2f else 1.2f).dp.toPx(), cap = StrokeCap.Round)
+            drawLine(if (on) ink else ink.copy(alpha = 0.45f), c + dir * (kr * 1.22f), c + dir * (kr * 1.42f), (if (on) 2.2f else 1.3f).dp.toPx(), cap = StrokeCap.Round)
             paint.color = (if (on) ink else ink.copy(alpha = if (enabled) 0.55f else 0.3f)).argb()
-            val tp = c + dir * (kr * 1.75f)
-            drawContext.canvas.nativeCanvas.drawText(labels[k], tp.x, tp.y + paint.textSize * 0.35f, paint)
+            val tp = c + dir * (kr * 1.72f)
+            drawContext.canvas.nativeCanvas.drawText(k.toString(), tp.x, tp.y + paint.textSize * 0.36f, paint)
         }
-        // Сама крутілка: ребриста, з рискою-покажчиком.
-        drawCircle(if (glass) Color(0xFF2A2B30) else Color(0xFF15130F), kr, c)
-        rotate(angle, c) {
-            for (k in 0 until 24) {
-                val a = k * (2 * PI.toFloat() / 24)
-                val d = Offset(cos(a), sin(a))
-                drawLine(ink.copy(alpha = 0.25f), c + d * (kr * 0.86f), c + d * kr, 1.dp.toPx())
-            }
-            drawLine(ink, c + Offset(0f, -kr * 0.25f), c + Offset(0f, -kr * 0.85f), 2.2.dp.toPx(), cap = StrokeCap.Round)
-        }
+        // Тінь під ручкою — вона випукла, стоїть над панеллю.
+        drawCircle(Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent), center = c + Offset(kr * 0.12f, kr * 0.22f), radius = kr * 1.35f), kr * 1.35f, c + Offset(kr * 0.12f, kr * 0.22f))
         if (glass) {
-            drawCircle(Color.White.copy(alpha = 0.22f), kr, c, style = Stroke(1.dp.toPx()))
-            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent), center = c - Offset(kr * 0.3f, kr * 0.3f), radius = kr), kr, c)
+            // Спідниця ручки (нижня ширша частина) з ребрами, що крутяться разом із ручкою.
+            drawCircle(Brush.verticalGradient(listOf(Color(0xFF3A3B41), Color(0xFF16171A)), startY = c.y - kr, endY = c.y + kr), kr, c)
+            rotate(shownAngle, c) {
+                for (k in 0 until 30) {
+                    val a = k * (2 * PI.toFloat() / 30)
+                    val d = Offset(cos(a), sin(a))
+                    drawLine(Color.Black.copy(alpha = 0.55f), c + d * (kr * 0.84f), c + d * (kr * 0.99f), 1.4.dp.toPx())
+                    drawLine(Color.White.copy(alpha = 0.10f), c + d.rotated(0.05f) * (kr * 0.84f), c + d.rotated(0.05f) * (kr * 0.99f), 0.8.dp.toPx())
+                }
+            }
+            // Верх ручки — опукла кришка з відблиском (світло згори зліва, не крутиться).
+            val top = kr * 0.78f
+            drawCircle(Brush.radialGradient(listOf(Color(0xFF4A4C53), Color(0xFF232428), Color(0xFF17181B)), center = c - Offset(top * 0.35f, top * 0.45f), radius = top * 1.5f), top, c)
+            drawCircle(Color.White.copy(alpha = 0.18f), top, c, style = Stroke(1.dp.toPx()))
+            drawArc(Color.White.copy(alpha = 0.22f), 200f, 70f, false, topLeft = c - Offset(top * 0.82f, top * 0.82f), size = Size(top * 1.64f, top * 1.64f), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
+            drawCircle(Color.White.copy(alpha = 0.16f), kr, c, style = Stroke(1.dp.toPx()))
+            rotate(shownAngle, c) {
+                drawLine(Color.White, c + Offset(0f, -top * 0.2f), c + Offset(0f, -top * 0.92f), 2.6.dp.toPx(), cap = StrokeCap.Round)
+            }
         } else {
-            drawCircle(SheetInk.copy(alpha = 0.8f), kr, c, style = Stroke(1.6.dp.toPx()))
+            // «Аркуш»: олівцем — дві кромки, ребра по колу, тіньова штриховка знизу справа, риска-покажчик.
+            drawCircle(Color(0xFF15130F), kr, c)
+            drawCircle(SheetInk.copy(alpha = 0.85f), kr, c, style = Stroke(1.6.dp.toPx()))
+            rotate(shownAngle, c) {
+                for (k in 0 until 30) {
+                    val a = k * (2 * PI.toFloat() / 30)
+                    val d = Offset(cos(a), sin(a))
+                    drawLine(SheetInk.copy(alpha = 0.45f), c + d * (kr * 0.84f), c + d * (kr * 0.98f), 1.dp.toPx())
+                }
+            }
+            val top = kr * 0.78f
+            drawCircle(SheetInk.copy(alpha = 0.7f), top, c, style = Stroke(1.2.dp.toPx()))
+            for (k in 0 until 7) {
+                val y = c.y + top * (0.15f + k * 0.11f)
+                val half = kotlin.math.sqrt((top * top - (y - c.y) * (y - c.y)).coerceAtLeast(0f))
+                drawLine(SheetInk.copy(alpha = 0.18f), Offset(c.x + half * 0.1f, y), Offset(c.x + half * 0.95f, y - top * 0.08f), 0.8.dp.toPx())
+            }
+            rotate(shownAngle, c) {
+                drawLine(SheetInk, c + Offset(0f, -top * 0.2f), c + Offset(0f, -top * 0.92f), 2.4.dp.toPx(), cap = StrokeCap.Round)
+            }
         }
     }
 }
 
+private fun Offset.rotated(rad: Float): Offset = Offset(x * cos(rad) - y * sin(rad), x * sin(rad) + y * cos(rad))
+
 private fun Float.roundToIntSafe(): Int = kotlin.math.round(this).toInt()
+
+/** Тут сторінка не гортається: жести (крутілка) лишаються приладу. */
+@Composable
+private fun Modifier.noFlip(host: PageHost?, key: String): Modifier {
+    if (host == null) return this
+    val preview = LocalPagePreview.current
+    DisposableEffect(key) { onDispose { host.block(key, null) } }
+    return this.onGloballyPositioned { c ->
+        if (preview) return@onGloballyPositioned
+        val book = host.bookCoords ?: return@onGloballyPositioned
+        val o = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return@onGloballyPositioned
+        host.block(key, Rect(o, Size(c.size.width.toFloat(), c.size.height.toFloat())))
+    }
+}
 
 /** Касета, що перевертається, — стискається по ширині до ребра й розкривається іншою стороною. */
 private inline fun DrawScope.withScaleX(sx: Float, pivot: Offset, block: DrawScope.() -> Unit) {
