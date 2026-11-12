@@ -2,6 +2,7 @@ package com.blacklaunch.diary.book
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -405,11 +406,11 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
     // Ключ — фото, на якому показ зупинився (settledPage), а не поточне: поточне міняється посеред гортання, і тоді
     // гортання переривалось на півдорозі — два фото застрягали навпіл.
     LaunchedEffect(pager.settledPage, playing) {
-        zoom.snapTo(1f)
+        // Показ — спокійно: кожне фото просто стоїть кілька секунд, без наближення (наближення між фото давало стрибки),
+        // а перехід до наступного — плавний (зсув і розчинення).
         if (!playing) return@LaunchedEffect
-        launch { zoom.animateTo(1.08f, tween(SHOW_MS + 900, easing = LinearEasing)) }
         delay(SHOW_MS.toLong())
-        if (pager.settledPage < days.size - 1) pager.animateScrollToPage(pager.settledPage + 1, animationSpec = tween(900))
+        if (pager.settledPage < days.size - 1) pager.animateScrollToPage(pager.settledPage + 1, animationSpec = tween(1100, easing = FastOutSlowInEasing))
         else playing = false
     }
     com.blacklaunch.diary.ui.SmoothDialog(onDismissRequest = onDismiss) {
@@ -439,7 +440,7 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
                                     .fillMaxWidth()
                                     .aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1))
                                     .graphicsLayer {
-                                        val z = if (i == pager.currentPage) zoom.value else 1f
+                                        val z = 1f
                                         scaleX = z; scaleY = z
                                         // Сусідні фото тануть, поки гортається: перехід — плавний, не різкий зсув.
                                         val off = kotlin.math.abs((pager.currentPage - i) + pager.currentPageOffsetFraction)

@@ -175,6 +175,8 @@ fun FlipBook(
     paperSeed: (Int) -> Int = { 0 },
     canFlipForward: (Int) -> Boolean = { true },
     nextOf: (Int) -> Int = { it + 1 },
+    /** Яку сторінку видно крізь скло, поки нічого не гортають (за обкладинкою — першу, а не ту, що відкриється). */
+    peekOf: ((Int) -> Int?)? = null,
     prevOf: (Int) -> Int = { it - 1 },
     blocked: () -> List<Rect> = { emptyList() },
     onStart: () -> Unit = {},
@@ -349,7 +351,7 @@ fun FlipBook(
             val peek = when {
                 // Виривають сторінку — під нею чітко видно ту, що лишиться: наступну (або попередню, якщо це остання).
                 tearing -> if (state.index < currentCount - 1) state.index + 1 else null
-                AppStyle.glass && (state.index < currentCount - 1 || next(state.index) in 0 until state.index) && mayForward(state.index) -> next(state.index).coerceIn(0, currentCount - 1)
+                AppStyle.glass && (state.index < currentCount - 1 || next(state.index) in 0 until state.index) && mayForward(state.index) -> (peekOf?.invoke(state.index) ?: next(state.index)).coerceIn(0, currentCount - 1)
                 else -> null
             }
             if (tearing) {

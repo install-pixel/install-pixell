@@ -764,6 +764,8 @@ fun BookScreen(
                                 else -> i + 1
                             }
                         },
+                        // Крізь скляну обкладинку видно першу сторінку щоденника; гортнеш — відкривається сьогоднішня.
+                        peekOf = { i -> if (i == 0 && pages.size > 1) 1 else null },
                         prevOf = { i ->
                             when (pages.getOrNull(i)) {
                                 BookPage.Menu(0) -> pages.indexOf(menuReturn).coerceAtLeast(0)
