@@ -1,0 +1,42 @@
+# Публікує гру «Пельмень: Втеча від виделки» на GitHub Pages,
+# щоб її можна було відкрити з телефона і «Додати на головний екран».
+name: Пельмень — публікація гри
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'pelmen-game/**'
+      - '.github/workflows/pelmen-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pelmen-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Зібрати сайт
+        run: |
+          mkdir -p _site
+          cp pelmen-game/pelmen.html _site/index.html
+          cp pelmen-game/pelmen.html pelmen-game/manifest.webmanifest pelmen-game/sw.js pelmen-game/icon-*.png _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Пельмень: Втеча від виделки</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root { --hud:#1d3a34; --accent:#ff6f59; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -92,6 +95,12 @@
   .ach .tx b { display:block; font-size:calc(var(--u)*4.2); }
   .ach .tx span { font-size:calc(var(--u)*3.3); opacity:.75; font-family:"Segoe UI",Roboto,Arial,sans-serif; font-weight:700; }
   .ach.off { opacity:.5; }
+  .btn.daily { background:linear-gradient(#9be7ff,#3fb6e8); box-shadow:0 calc(var(--u)*1.4) 0 #1d7ea6; color:#0d2b3a; font-size:calc(var(--u)*5.2); }
+  .btn.daily .sub { opacity:.85; }
+  .row2 .btn.tg { font-size:calc(var(--u)*3.6); padding:calc(var(--u)*2) 0; }
+  .btn.tg.off { opacity:.5; }
+  #btnSkipTut { position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:auto; padding:calc(var(--u)*2) calc(var(--u)*5);
+    font-size:calc(var(--u)*3.6); display:none; z-index:5; margin:0; }
   .muted-line { font-size:calc(var(--u)*3.8); opacity:.75; margin-top:calc(var(--u)*1.5); }
 </style>
 </head>
@@ -103,6 +112,8 @@
     <svg viewBox="0 0 24 24" fill="#fff"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
   </button>
   <button class="hudbtn" id="btnSound" aria-label="Звук"></button>
+
+  <button class="btn small" id="btnSkipTut">Пропустити навчання</button>
 
   <!-- МЕНЮ -->
   <div class="overlay" id="ovMenu" style="background:rgba(10,20,18,.78)">
@@ -116,9 +127,15 @@
         <button id="wNext">▶</button>
       </div>
       <div class="grid" id="lvlGrid"></div>
+      <button class="btn daily" id="btnDaily">ВИКЛИК ДНЯ<span class="sub" id="dailySub"></span></button>
       <div class="row2">
         <button class="btn small" id="btnSkins">Скіни</button>
         <button class="btn small" id="btnAch">Досягнення</button>
+      </div>
+      <div class="row2">
+        <button class="btn small tg" id="btnMusic">♪ Музика</button>
+        <button class="btn small tg" id="btnVibro">Вібрація</button>
+        <button class="btn small tg" id="btnTut">Як грати</button>
       </div>
       <div class="stats" id="menuStats"></div>
     </div>
@@ -148,7 +165,10 @@
     <div class="title" style="font-size:calc(var(--u)*12)">ПАУЗА</div>
     <div class="card">
       <button class="btn big" id="btnResume">ГРАТИ ДАЛІ</button>
-      <button class="btn small" id="btnPauseMenu">Меню</button>
+      <div class="row2">
+        <button class="btn small tg" id="btnMusic2">♪ Музика</button>
+        <button class="btn small" id="btnPauseMenu">Меню</button>
+      </div>
     </div>
   </div>
 
@@ -247,8 +267,28 @@ const EVENTS = {
   mom:   { at: 20, name: 'МАМА ПРИЙШЛА!', sub: 'а ну марш у каструлю!' },
 };
 // Боси — на останньому підрівні кожного світу (1-10, 2-10, ...)
-const BOSS_KINDS = ['fork', 'cleaver', 'pan'];
-const BOSS_NAMES = { fork: 'ГІГАНТСЬКА ВИДЕЛКА', cleaver: 'ГІГАНТСЬКИЙ ТЕСАК', pan: 'ГІГАНТСЬКА СКОВОРОДА' };
+const BOSS_BY_WORLD = ['fork', 'cleaver', 'pan', 'pin', 'grater', 'micro', 'pin', 'grater', 'micro', 'chef'];
+const BOSS_NAMES = { fork: 'ГІГАНТСЬКА ВИДЕЛКА', cleaver: 'ГІГАНТСЬКИЙ ТЕСАК', pan: 'ГІГАНТСЬКА СКОВОРОДА',
+  pin: 'ГІГАНТСЬКА КАЧАЛКА', grater: 'ГІГАНТСЬКА ТЕРКА', micro: 'ЗЛА МІКРОХВИЛЬОВКА', chef: 'ШЕФ-КУХАР' };
+const BOSS_SEQ = {
+  fork: ['thrust2', 'shots', 'double'], cleaver: ['chop', 'shots', 'chop2'], pan: ['thrust1', 'shots', 'chop2'],
+  pin: ['press', 'thrust1', 'press2'], grater: ['thrust2', 'shots', 'press'], micro: ['beam', 'shots', 'beam2'],
+};
+const CHEF_ATTACKS = ['thrust2', 'shots', 'double', 'chop', 'chop2', 'press', 'press2', 'beam', 'beam2'];
+// Фішки світів
+const WORLD_TIPS = [null, 'Плита: обережно, пара з конфорок!', 'Холодильник: слизька підлога!', 'Мийка: лови мильні бульбашки!',
+  'Духовка: жар з решітки!', 'Морозилка: ще слизькіше!', 'Ресторан: офіціанти кидають таці!', 'Їдальня: таці літають!',
+  'Фудкорт: неонові вогні', 'Кухня шеф-кухаря: усе й одразу!'];
+const isSlippery = () => { const w = Math.floor(level / 10); return w === 2 || w === 5; };
+// Виклик дня
+const MODS = [
+  { id: 'forks',   name: 'Тільки виделки',     desc: 'усі ножі стали виделками' },
+  { id: 'fast',    name: 'Швидкий пельмень',   desc: 'швидкість x1.2' },
+  { id: 'bonus',   name: 'Бонусна лихоманка',  desc: 'бонуси втричі частіше' },
+  { id: 'nobonus', name: 'Без бонусів',        desc: 'тільки ти і ножі' },
+  { id: 'cream',   name: 'Сметанний день',     desc: 'сметанка всюди, очки x2' },
+  { id: 'night',   name: 'Нічна кухня',        desc: 'темно — дивись уважно' },
+];
 const isBossLevel = g => g % 10 === 9;
 
 const ACH = [
@@ -286,7 +326,7 @@ const AMB = [null, 'steam', 'snow', 'bubble', 'ember', 'snow', 'sparkle', 'steam
    ========================================================= */
 const SAVE_KEY = 'pelmen_escape_v1';
 let save = { best:0, maxLevel:0, muted:false, creamTotal:0, deaths:0, bestCombo:0, seen:{}, ach:{}, skin:'classic',
-  nearTotal:0, bossWins:{}, bonusTried:{} };
+  nearTotal:0, bossWins:{}, bonusTried:{}, music:true, vibro:true, tut:false, daily:{}, dailyStreak:0, dailyLast:'' };
 try {
   const raw = localStorage.getItem(SAVE_KEY);
   if (raw) Object.assign(save, JSON.parse(raw));
@@ -364,9 +404,85 @@ const SFX = {
   win()    { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, 0.18, 'triangle', 0.13, null, i * 0.09)); },
   ach()    { [988, 1319, 1760].forEach((f, i) => tone(f, 0.14, 'sine', 0.12, null, i * 0.08)); },
   mom()    { tone(260, 0.25, 'sawtooth', 0.09, 200); tone(330, 0.3, 'sawtooth', 0.09, 250, 0.22); },
+  pop()    { tone(900, 0.06, 'sine', 0.12, 1600); },
+  zap()    { tone(220, 0.45, 'sawtooth', 0.07, 110); noise(0.4, 0.08, 3000, 0, 'bandpass'); },
+  steam()  { noise(0.5, 0.18, 2500, 0, 'highpass'); },
   jump()   { noise(0.22, 0.12, 3000, 0, 'bandpass'); tone(900, 0.2, 'sawtooth', 0.05, 250); },
   thunk()  { tone(150, 0.12, 'square', 0.12, 70); noise(0.08, 0.2, 1800); tone(1800, 0.25, 'triangle', 0.04, 1500, 0.02); },
 };
+
+/* =========================================================
+   МУЗИКА (генерується в браузері, без файлів)
+   ========================================================= */
+const TRACKS = {
+  main: { bpm: 124, root: 60, chords: [[0, 4, 7], [-3, 0, 4], [-7, -3, 0], [-5, -1, 2]],
+    mel: [12,null,16,null,19,null,16,null, 14,null,12,null,9,null,null,null,
+          9,null,12,null,16,null,12,null, 11,null,9,null,7,null,null,null,
+          5,null,9,null,12,null,9,null, 14,null,12,null,9,null,null,null,
+          7,null,11,null,14,null,11,null, 12,null,null,null,null,null,null,null] },
+  boss: { bpm: 146, root: 57, dark: true, chords: [[0, 3, 7], [-4, 0, 3], [-2, 2, 5], [-5, -1, 2]],
+    mel: [12,12,15,12, 19,null,17,15, 12,null,15,17, 19,17,15,12,
+          8,8,12,8, 15,null,12,8, 7,null,8,12, 15,12,8,7,
+          10,10,14,10, 17,null,14,10, 12,null,14,17, 19,17,14,12,
+          7,7,11,7, 14,null,11,7, 11,null,14,19, 23,null,null,null] },
+};
+let musicGain = null, musicOn = false, musicTrack = null, musicNext = 0, musicStep = 0, musicTimer = null;
+function startMusic(name) {
+  if (!actx) return;
+  if (musicOn && musicTrack === name) return;
+  musicTrack = name; musicOn = true; musicStep = 0; musicNext = actx.currentTime + 0.08;
+  if (!musicGain) { musicGain = actx.createGain(); musicGain.connect(master); }
+  const t = actx.currentTime;
+  musicGain.gain.cancelScheduledValues(t);
+  musicGain.gain.setValueAtTime(0.0001, t);
+  musicGain.gain.exponentialRampToValueAtTime(0.5, t + 0.5);
+  if (!musicTimer) musicTimer = setInterval(musicTick, 30);
+}
+function stopMusic() {
+  if (!musicOn) return;
+  musicOn = false; musicTrack = null;
+  if (musicGain && actx) { musicGain.gain.cancelScheduledValues(actx.currentTime); musicGain.gain.setTargetAtTime(0.0001, actx.currentTime, 0.06); }
+}
+function musicTick() {
+  if (!musicOn || !actx) return;
+  const T = TRACKS[musicTrack], st = 60 / T.bpm / 4;
+  if (musicNext < actx.currentTime - 0.3) musicNext = actx.currentTime + 0.05;   // після паузи вкладки
+  while (musicNext < actx.currentTime + 0.15) { playStep(T, musicStep, musicNext, st); musicStep = (musicStep + 1) % 64; musicNext += st; }
+}
+function mnote(midi, t, dur, type, vol) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(440 * Math.pow(2, (midi - 69) / 12), t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + dur + 0.02);
+}
+function mnoise(t, dur, vol, freq, type) {
+  const sN = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+  sN.buffer = noiseBuf; f.type = type; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  sN.connect(f); f.connect(g); g.connect(musicGain); sN.start(t); sN.stop(t + dur + 0.02);
+}
+function playStep(T, i, t, st) {
+  const bar = Math.floor(i / 16), k = i % 16, ch = T.chords[bar];
+  if (k % 4 === 0 || (T.dark && k % 2 === 0)) mnote(T.root - 24 + ch[(!T.dark && k % 8 === 4) ? 2 : 0], t, st * (T.dark ? 1.6 : 3), 'triangle', 0.24);
+  if (k % 4 === 2) for (const n of ch) mnote(T.root + n, t, st * 1.2, 'square', 0.022);
+  const m = T.mel[i];
+  if (m !== null && m !== undefined) mnote(T.root + m, t, st * (T.dark ? 1.3 : 1.8), T.dark ? 'sawtooth' : 'square', T.dark ? 0.035 : 0.045);
+  if (k % 8 === 0) {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    g.gain.setValueAtTime(0.32, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 0.16);
+  }
+  if (k % 8 === 4) mnoise(t, 0.12, 0.1, 1800, 'bandpass');
+  if (k % 2 === 1) mnoise(t, 0.03, 0.035, 7000, 'highpass');
+}
+function updateMusicState() {
+  if (!actx) return;
+  let want = null;
+  if (save.music && !save.muted && !document.hidden && state !== 'paused') want = boss && boss.phase !== 'dying' ? 'boss' : 'main';
+  if (want !== musicTrack) { stopMusic(); if (want) startMusic(want); }
+}
+function vib(ms) { if (save.vibro && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
 
 /* =========================================================
    ЕКРАН / МАСШТАБ
@@ -453,6 +569,10 @@ let lastBonus = null;
 let event = null, eventPlan = null, momDark = 0;   // випадкова подія
 let boss = null, bossPending = false, bossPlan = null, bossDone = false;
 let toasts = [], achTick = 0;
+let tut = null;          // навчання на першому запуску
+let daily = null;        // виклик дня {date, mod, g}
+let bubbles = [];        // мильні бульбашки (світ «Мийка»)
+let lastWorldTip = -1;
 
 const player = {
   y: LANES[1], lane: 1, fromY: LANES[1], toY: LANES[1], t: 1, dur: 0.15,
@@ -465,8 +585,11 @@ function resetPlayer() {
     vy: 0, squash: 0, happy: 0, scared: 0, dead: false, splat: 0, look: 0 });
 }
 
-function startRun(g) {
+function startRun(g, opts = {}) {
   ensureAudio();
+  daily = opts.daily || null;
+  tut = opts.tut || (!save.tut && g === 0 && !daily) ? { step: 0, t: 0, wait: 0 } : null;
+  bubbles = []; lastWorldTip = -1;
   level = clamp(g, 0, TOTAL_LEVELS - 1);
   startLevel = level;
   score = 0; scoreF = 0; combo = 0; runBestCombo = 0; runCream = 0;
@@ -481,10 +604,19 @@ function startRun(g) {
   countdown = 0;
   showOverlay(null);
   btnPause.style.display = 'flex';
+  $('btnSkipTut').style.display = tut ? 'block' : 'none';
 }
 
 function beginLevel(first) {
   P = levelParams(level);
+  if (Math.floor(level / 10) === 9) P.specialP = clamp(P.specialP + 0.08, 0, 0.5);
+  if (daily) {
+    const m = daily.mod;
+    if (m === 'fast') P.speed *= 1.2;
+    if (m === 'bonus') P.bonusP = Math.min(0.4, Math.max(0.09, P.bonusP) * 3);
+    if (m === 'nobonus') P.bonusP = 0;
+    if (m === 'cream') P.creamEvery = 1;
+  }
   targetSpeed = P.speed;
   if (first) speed = P.speed * 0.6;
   traveled = 0;
@@ -505,11 +637,14 @@ function beginLevel(first) {
     if (fresh.length && Math.random() < 0.75) eventPlan = { kind: fresh[0], at: rand(0.3, 0.55) };
     else if (avail.length && Math.random() < clamp(0.3 + level * 0.004, 0, 0.55)) eventPlan = { kind: pick(avail), at: rand(0.3, 0.6) };
   }
+  const wi = Math.floor(level / 10);
+  if (WORLD_TIPS[wi] && wi !== lastWorldTip) { lastWorldTip = wi; if (!tut) toast('Світ ' + (wi + 1) + ': ' + WORLDS[wi].name, WORLD_TIPS[wi].split(': ')[1], '#ffd166', 3); }
+  if (daily) eventPlan = eventPlan && eventPlan.kind === 'mom' ? null : eventPlan;
   if (level >= 1 && !save.seen.nmtip) {
     save.seen.nmtip = 1; persist();
     toast('Порада', 'ухиляйся в останню мить — «ЛЕДЬ НЕ!» дає очки', '#8ef0ff', 4);
   }
-  if (first) {
+  if (first && !tut) {
     banner = { text: 'РІВЕНЬ ' + lvlName(level), sub: WORLDS[w].name, t: 0, dur: 1.6, color: '#fff' };
   }
 }
@@ -599,12 +734,14 @@ function spawnWave() {
   if (event && event.kind === 'horde') return hordeWave();
   if (waveCount > 2 && Math.random() < P.specialP) {
     const avail = Object.keys(UNLOCK).filter(k => level >= UNLOCK[k]);
+    const wi = Math.floor(level / 10);
+    if (wi === 1 || wi === 4) avail.push('steam', 'steam');    // плита / духовка
     if (avail.length) {
       let tot = 0;
       const ws = avail.map(k => { const w = level - UNLOCK[k] < 3 ? 3 : 1; tot += w; return w; }); // новинки — частіше
       let r = Math.random() * tot, k = avail[0];
       for (let i = 0; i < avail.length; i++) { r -= ws[i]; if (r <= 0) { k = avail[i]; break; } }
-      if (!save.seen[k]) { save.seen[k] = 1; persist(); showBanner('НОВЕ: ' + OB_NAMES[k], OB_HINTS[k], '#ff9f6b', 2.4); }
+      if (OB_NAMES[k] && !save.seen[k]) { save.seen[k] = 1; persist(); showBanner('НОВЕ: ' + OB_NAMES[k], OB_HINTS[k], '#ff9f6b', 2.4); }
       return SPAWN[k]();
     }
   }
@@ -655,6 +792,7 @@ function spawnWave() {
 
 function addVertical(from, span, x, jumper, forceKind) {
   // from: 'top' | 'bottom'; span: 1 або 2 доріжки
+  if (daily && daily.mod === 'forks') forceKind = 'fork';
   const kind = forceKind || (from === 'top' ? (Math.random() < 0.65 ? 'knife' : 'fork') : (Math.random() < 0.65 ? 'fork' : 'knife'));
   const reach = span === 1 ? LANE_H - 26 : LANE_H * 2 - 26;
   const w = kind === 'knife' ? (span === 1 ? 40 : 46) : (span === 1 ? 44 : 52);
@@ -683,7 +821,10 @@ function addMiddle(x) {
 function addSide(lane, x, forceSlow) {
   // летючий ніж: з'являється попередження, потім ніж влітає швидше за потік,
   // але прибуває до пельменя рівно тоді, коли прибула б звичайна перешкода.
-  obstacles.push({ type: 'side', lane, vx: x, x: W + 200, launched: false, w: 150, h: 26, passed: false, spin: 0, k: forceSlow ? 1.5 : SIDE_K });
+  const wi = Math.floor(level / 10);
+  const tray = (wi === 6 || wi === 7) && Math.random() < 0.6;   // ресторан / їдальня: таця
+  obstacles.push({ type: 'side', lane, vx: x, x: W + 200, launched: false, w: 150, h: 26, passed: false, spin: 0, tray,
+    k: tray ? 1.4 : (forceSlow ? 1.5 : SIDE_K) });
   return 150;
 }
 
@@ -748,19 +889,19 @@ function update(dt) {
 
   speed += (targetSpeed * speedMul - speed) * Math.min(1, dt * 1.5);
   const dx = speed * dt;
-  traveled += dx;
+  if (!tut) traveled += dx;
   bgScroll += dx * 0.3;
   lineScroll += dx;
 
   // очки за виживання
-  scoreF += dt * 10 * (1 + level * 0.03) * scoreMul();
+  if (!tut) scoreF += dt * 10 * (1 + level * 0.03) * scoreMul();
   const ns = Math.floor(scoreF);
   if (ns !== score) score = ns;
 
   // рух пельменя
   if (player.t < 1) {
     player.t = Math.min(1, player.t + dt / player.dur);
-    const ny = lerp(player.fromY, player.toY, easeOut(player.t));
+    const ny = lerp(player.fromY, player.toY, isSlippery() ? easeOutBack(player.t) : easeOut(player.t));
     player.vy = (ny - player.y) / Math.max(dt, 0.001);
     player.y = ny;
   } else {
@@ -777,7 +918,8 @@ function update(dt) {
     showBanner('УВАГА!', 'щось велике наближається…', '#ff4d4d', 1.8);
   }
   if (eventPlan && !event && prog >= eventPlan.at) { startEvent(eventPlan.kind); eventPlan = null; }
-  const paused = bossPending || boss || (event && event.kind === 'mom');
+  if (tut) updateTut(dt);
+  const paused = tut || bossPending || boss || (event && event.kind === 'mom');
   if (paused) sinceLast = 0;
   else if (!levelEnding) {
     sinceLast += dt;
@@ -807,6 +949,7 @@ function update(dt) {
     moveObstacle(o, dt);
     if (o.dead) continue;
     if (hitTest(o)) {
+      if (o.tut) { smash(o, 'tut'); if (tut) { tut.step = 4; tut.wait = 0; tut.spawned = false; } addPopup('Ой! Ще раз — ухиляйся', PX + 60, player.y - 60, '#ffffff', 20); continue; }
       if (chili) { smash(o, 'chili'); continue; }
       if (invuln > 0) continue;
       if (shield) { shield = false; invuln = 0.9; smash(o, 'butter'); continue; }
@@ -837,6 +980,21 @@ function update(dt) {
 
   player.scared = nearest < 150 ? 1 : 0;
   player.look = nearest < 280 ? 1 : 0;
+
+  // мильні бульбашки
+  for (const q of bubbles) {
+    q.x -= dx * 0.85; q.y += Math.sin(time * 2 + q.ph) * 0.4;
+    if (!q.got) {
+      const ddx = q.x - PX, ddy = q.y - player.y;
+      if (ddx * ddx + ddy * ddy < (HIT_R + q.r) * (HIT_R + q.r)) {
+        q.got = true; SFX.pop(); addScore(5 * scoreMul()); addPopup('+' + 5 * scoreMul(), q.x, q.y - 26, '#bfefff', 18, 0.6);
+        for (let i = 0; i < 8; i++) addParticle(q.x, q.y, rand(-150, 150), rand(-150, 150), rand(2, 4), 'rgba(220,245,255,.9)', 0.35, 0);
+      }
+    }
+  }
+  bubbles = bubbles.filter(q => !q.got && q.x > -30);
+  if (Math.floor(level / 10) === 3 && !tut && !boss && Math.random() < dt * 0.9 && bubbles.length < 6)
+    bubbles.push({ x: W + 30, y: LANES[randi(0, 2)] + rand(-30, 30), r: rand(12, 18), ph: rand(0, 6), got: false });
 
   // бонуси на полі
   for (const b of pickups) {
@@ -1003,6 +1161,12 @@ function spoonDir(o) { const a = o.top ? -o.raise : Math.PI + o.raise; return [-
 function spoonPivotY(o) { return o.top ? FIELD_TOP - 10 : FIELD_BOT + 10; }
 
 const SPAWN = {
+  steam() {
+    obstacles.push({ type: 'steam', x: SPAWN_X, popped: false, popT: 0, span: 1, wob: Math.random() * 6,
+      popX: Math.min(W - 50, PX + 36 + HIT_R + vmax() * P.react) });
+    waveExtra = 0.3;
+    return 70;
+  },
   jumper() {
     const from = Math.random() < 0.5 ? 'top' : 'bottom';
     const span = Math.random() < clamp((level - 8) * 0.02, 0, 0.4) ? 2 : 1;
@@ -1060,6 +1224,120 @@ const SPAWN = {
 };
 
 const OBT = {
+  // ---- ПАРА З КОНФОРКИ: конфорка світиться, потім б'є стовп пари вгору ----
+  steam: {
+    move(o, dt) {
+      o.x -= speed * dt;
+      if (!o.popped && o.x <= o.popX) {
+        o.popped = true; o.popT = 0;
+        const tl = targetLane();
+        o.span = tl === 2 ? 1 : (tl === 1 ? 2 : randi(1, 2));
+        SFX.steam();
+      }
+      if (o.popped && o.popT < 1) o.popT = Math.min(1, o.popT + dt / 0.18);
+    },
+    ext(o) { return o.span * LANE_H - 18; },
+    shapes(o) { if (!o.popped) return []; const L = this.ext(o) * o.popT; return [['r', o.x - 30, FIELD_BOT - L, 60, L + 10]]; },
+    threat(o, lane) { if (!o.popped || this.past(o)) return false; const y0 = FIELD_BOT - this.ext(o); return LANES[lane] + HIT_R > y0; },
+    front(o) { return o.popped ? o.x - 30 - PX : 9999; },
+    past(o) { return o.x + 30 < PX - HIT_R; },
+    gone(o) { return o.x < -100; },
+    draw(o) {
+      const glow = 0.5 + 0.5 * Math.sin(time * 12 + o.wob);
+      ctx.save();
+      ctx.fillStyle = '#2a2f36'; ctx.beginPath(); ctx.ellipse(o.x, FIELD_BOT - 4, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,' + Math.round(90 + 80 * glow) + ',40,.95)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(o.x, FIELD_BOT - 4, 30, 7, 0, 0, Math.PI * 2); ctx.stroke();
+      if (o.popped) {
+        const L = this.ext(o) * o.popT;
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        for (let k = 0; k < 9; k++) {
+          const yy = FIELD_BOT - (k + 0.5) * L / 9, r = 26 + Math.sin(time * 9 + k * 1.7) * 5;
+          if (yy < FIELD_BOT - L - 10) continue;
+          ctx.beginPath(); ctx.arc(o.x + Math.sin(time * 7 + k) * 6, yy, r, 0, Math.PI * 2); ctx.fill();
+        }
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        for (const k of [-12, 0, 12]) { ctx.beginPath(); ctx.moveTo(o.x + k, FIELD_BOT - 14); ctx.quadraticCurveTo(o.x + k + 6, FIELD_BOT - 26 - glow * 6, o.x + k, FIELD_BOT - 38); ctx.stroke(); }
+      }
+      ctx.restore();
+      if (!o.popped && !o.dead && o.x < W + 20) drawMarker(o.x - 58, LANES[1], -1);
+    },
+  },
+  // ---- БОС: прес на всю ширину (качалка / терка) ----
+  bpress: {
+    move(o, dt) {
+      if (o.delay > 0) { o.delay -= dt; if (o.delay <= 0) { pressSetup(o); o.t = 0; } return; }
+      o.t += dt;
+      const W0 = o.warn, DN = 0.16, HOLD = 0.45, UP = 0.3;
+      if (o.t < W0) { o.ph = 0; o.k = 0; }
+      else if (o.t < W0 + DN) { o.ph = 1; o.k = (o.t - W0) / DN; }
+      else if (o.t < W0 + DN + HOLD) { if (o.ph === 1) { SFX.thunk(); shake = Math.max(shake, 0.4); if (boss) boss.lunge = 0.8; } o.ph = 2; o.k = 1; }
+      else if (o.t < W0 + DN + HOLD + UP) { o.ph = 3; o.k = 1 - (o.t - W0 - DN - HOLD) / UP; }
+      else { o.ph = 4; o.k = 0; }
+    },
+    ext(o) { return o.span * LANE_H - 18; },
+    shapes(o) {
+      if (o.delay > 0 || !o.ph || o.ph === 4) return [];
+      const L = this.ext(o) * o.k;
+      return o.top ? [['r', -40, FIELD_TOP - 20, W + 80, L + 20]] : [['r', -40, FIELD_BOT - L, W + 80, L + 20]];
+    },
+    threat(o, lane) {
+      if (o.delay > 0 || o.ph === 4) return false;
+      const L = this.ext(o), y0 = o.top ? FIELD_TOP : FIELD_BOT - L, y1 = o.top ? FIELD_TOP + L : FIELD_BOT;
+      return y1 > LANES[lane] - HIT_R && y0 < LANES[lane] + HIT_R;
+    },
+    front(o) { if (o.delay > 0) return 9999; return o.ph === 0 ? (o.warn - o.t) * 600 : (o.ph < 4 ? -10 : 9999); },
+    past(o) { return o.ph === 4; },
+    gone(o) { return o.ph === 4; },
+    warn(o) {
+      if (o.delay > 0 || o.ph !== 0) return;
+      const L = this.ext(o), y0 = o.top ? FIELD_TOP : FIELD_BOT - L;
+      const a = 0.18 + 0.2 * Math.abs(Math.sin(time * (10 + 20 * o.t / o.warn)));
+      ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = '#ff2d2d'; ctx.fillRect(0, y0, W, L); ctx.restore();
+      for (const mx of [W * 0.3, W * 0.7]) drawMarker(mx, o.top ? y0 + L - 26 : y0 + 26, o.top ? 1 : -1);
+    },
+    draw(o) { if (o.delay > 0 || !o.ph || o.ph === 4) return; drawBossPress(o.vis, o.top, this.ext(o) * o.k); },
+  },
+  // ---- БОС: промінь мікрохвильовки через усю доріжку ----
+  bbeam: {
+    move(o, dt) {
+      if (o.delay > 0) { o.delay -= dt; if (o.delay <= 0) { o.lanes = [targetLane()]; o.t = 0; } return; }
+      o.t += dt;
+      if (o.t < o.warn) o.ph = 0;
+      else if (o.t < o.warn + 0.45) { if (o.ph === 0) { SFX.zap(); if (boss) boss.lunge = 0.6; } o.ph = 1; }
+      else o.ph = 4;
+    },
+    shapes(o) {
+      if (o.delay > 0 || o.ph !== 1) return [];
+      return o.lanes.map(l => ['r', -40, LANES[l] - LANE_H / 2 + 16, W + 80, LANE_H - 32]);
+    },
+    threat(o, lane) { return o.delay <= 0 && o.ph < 4 && o.lanes.includes(lane); },
+    front(o) { if (o.delay > 0) return 9999; return o.ph === 0 ? (o.warn - o.t) * 600 : (o.ph === 1 ? -10 : 9999); },
+    past(o) { return o.ph === 4; },
+    gone(o) { return o.ph === 4; },
+    warn(o) {
+      if (o.delay > 0 || o.ph !== 0) return;
+      const a = 0.15 + 0.25 * Math.abs(Math.sin(time * (12 + 24 * o.t / o.warn)));
+      ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = '#ffb703';
+      for (const l of o.lanes) ctx.fillRect(0, LANES[l] - LANE_H / 2 + 8, W, LANE_H - 16);
+      ctx.restore();
+      for (const l of o.lanes) drawWarning(LANES[l]);
+    },
+    draw(o) {
+      if (o.delay > 0 || o.ph !== 1) return;
+      for (const l of o.lanes) {
+        const y0 = LANES[l] - LANE_H / 2 + 16, h = LANE_H - 32;
+        const g = ctx.createLinearGradient(0, y0, 0, y0 + h);
+        g.addColorStop(0, 'rgba(255,183,3,.15)'); g.addColorStop(0.5, 'rgba(255,240,170,.95)'); g.addColorStop(1, 'rgba(255,183,3,.15)');
+        ctx.fillStyle = g; ctx.fillRect(0, y0, W, h);
+        ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 10) { const yy = LANES[l] + Math.sin(x * 0.08 + time * 40) * 18; if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy); }
+        ctx.stroke();
+      }
+    },
+  },
   // ---- МАМИНА РУКА З ШУМІВКОЮ: проводить по доріжці справа наліво ----
   sweep: {
     move(o, dt) {
@@ -1479,8 +1757,8 @@ function bossWarn() { return Math.max(0.75, 1.05 - (boss ? boss.w : 0) * 0.03); 
 function spawnBoss() {
   bossPending = false;
   const w = Math.floor(level / 10);
-  const kind = BOSS_KINDS[w % 3];
-  const hp = 6 + Math.min(4, Math.floor(w / 2));
+  const kind = BOSS_BY_WORLD[w];
+  const hp = kind === 'chef' ? 12 : 6 + Math.min(4, Math.floor(w / 2));
   boss = { kind, w, hp, maxHp: hp, phase: 'enter', t: 0, x: W + 160, atk: 0, busy: false, cd: 0.6, lunge: 0, hurt: 0 };
   SFX.boss(); shake = Math.max(shake, 0.8);
   showBanner('БОС: ' + BOSS_NAMES[kind], 'вистояти ' + hp + ' атак', '#ff6b6b', 2.4);
@@ -1532,6 +1810,12 @@ function pairLanes() {
   const tl = targetLane();
   return tl === 1 ? (Math.random() < 0.5 ? [0, 1] : [1, 2]) : (tl === 0 ? [0, 1] : [1, 2]);
 }
+function pressSetup(o) {
+  const tl = targetLane();
+  if (tl === 0) { o.top = true; o.span = randi(1, 2); }
+  else if (tl === 2) { o.top = false; o.span = randi(1, 2); }
+  else { o.top = Math.random() < 0.5; o.span = 2; }
+}
 function chopSetup(o) {
   const tl = targetLane();
   if (tl === 0) { o.top = true; o.span = Math.random() < 0.5 ? 1 : 2; }
@@ -1541,11 +1825,18 @@ function chopSetup(o) {
 }
 function bossAttack() {
   const k = boss.kind, w = boss.w, warn = bossWarn(), i = boss.atk++;
-  const push = o => { o.boss = true; o.vis = k; o.warn = warn; o.t = 0; o.ph = 0; obstacles.push(o); };
+  const pushBase = o => { o.boss = true; o.vis = k; o.warn = warn; o.t = 0; o.ph = 0; obstacles.push(o); };
   const nShots = 3 + Math.min(2, Math.floor(w / 3));
-  const seq = { fork: ['thrust2', 'shots', 'double'], cleaver: ['chop', 'shots', 'chop2'], pan: ['thrust1', 'shots', 'chop2'] }[k];
-  const a = seq[i % seq.length];
-  if (a === 'thrust2') push({ type: 'bthrust', lanes: pairLanes(), delay: 0, hx: W + 160 });
+  const a = k === 'chef' ? pick(CHEF_ATTACKS) : BOSS_SEQ[k][i % BOSS_SEQ[k].length];
+  const visFor = { thrust2: 'fork', thrust1: 'pan', double: 'fork', shots: 'cleaver', chop: 'cleaver', chop2: 'pan', press: 'pin', press2: 'pin' };
+  const push0 = pushBase;
+  const push2 = o => { push0(o); if (k === 'chef') o.vis = visFor[a] || 'cleaver'; };
+  const push = push2;
+  if (a === 'press') { const o = { type: 'bpress', delay: 0, k: 0 }; pressSetup(o); push(o); }
+  else if (a === 'press2') { const o = { type: 'bpress', delay: 0, k: 0 }; pressSetup(o); push(o); push({ type: 'bpress', delay: 1.05, k: 0, top: true, span: 1 }); }
+  else if (a === 'beam') push({ type: 'bbeam', lanes: [targetLane()], delay: 0 });
+  else if (a === 'beam2') { push({ type: 'bbeam', lanes: [targetLane()], delay: 0 }); push({ type: 'bbeam', lanes: null, delay: 0.9 }); }
+  else if (a === 'thrust2') push({ type: 'bthrust', lanes: pairLanes(), delay: 0, hx: W + 160 });
   else if (a === 'thrust1') push({ type: 'bthrust', lanes: [targetLane()], delay: 0, hx: W + 160 });
   else if (a === 'double') {
     push({ type: 'bthrust', lanes: [targetLane()], delay: 0, hx: W + 160 });
@@ -1557,6 +1848,80 @@ function bossAttack() {
     const o = { type: 'bchop', delay: 0, k: 0 }; chopSetup(o); push(o);
     push({ type: 'bchop', delay: 1.0, k: 0, top: true, span: 1, x: PX });
   }
+}
+
+/* ---------- навчання ---------- */
+const TUT_TEXT = ['Свайпни ВГОРУ', 'Свайпни ВНИЗ', 'Тапни — і ти в центрі', 'Лови сметанку!', 'Ухиляйся від ножа!', 'Чудово! Поїхали!'];
+function updateTut(dt) {
+  tut.t += dt;
+  const p = player, done = p.t >= 1;
+  if (tut.wait > 0) { tut.wait -= dt; if (tut.wait <= 0) { tut.step++; tut.t = 0; tut.spawned = false; } return; }
+  const next = () => { tut.wait = 0.5; SFX.level(); addPopup(pick(['Так!', 'Клас!', 'Супер!']), PX + 60, p.y - 60, '#ffd166', 24); };
+  if (tut.step === 0 && done && p.lane === 0) next();
+  else if (tut.step === 1 && done && p.lane === 2) next();
+  else if (tut.step === 2 && done && p.lane === 1) next();
+  else if (tut.step === 3) {
+    if (!tut.spawned) { tut.spawned = true; tut.c0 = runCream; creams.push({ x: W + 40, y: LANES[0], lane: 0, got: false, missed: false, bob: 0, rain: true }); }
+    if (runCream > tut.c0) next();
+    else if (!creams.length) tut.spawned = false;
+  } else if (tut.step === 4) {
+    if (!tut.spawned) { tut.spawned = true; addVertical(p.lane === 2 ? 'bottom' : 'top', 1, SPAWN_X, false, 'knife'); obstacles[obstacles.length - 1].tut = true;
+      if (p.lane === 1) { obstacles.pop(); addMiddle(SPAWN_X); obstacles[obstacles.length - 1].tut = true; } }
+    if (obstacles.length && obstacles.every(o => o.dead || obPast(o)) && !obstacles.some(o => o.dead)) next();
+  } else if (tut.step >= 5) {
+    if (tut.t > 1.2) finishTut();
+  }
+}
+function finishTut() {
+  tut = null; save.tut = true; persist();
+  $('btnSkipTut').style.display = 'none';
+  sinceLast = 0; nextGap = 0.8;
+}
+function drawTut() {
+  const st = Math.min(tut.step, 5);
+  const pulse = 1 + 0.06 * Math.sin(time * 6);
+  ctx.save(); ctx.translate(W / 2, FIELD_TOP + 70); ctx.scale(pulse, pulse);
+  outlinedText(TUT_TEXT[st], 0, 0, 32, '#ffffff');
+  ctx.restore();
+  outlinedText('крок ' + Math.min(st + 1, 5) + ' з 5', W / 2, FIELD_TOP + 106, 15, '#ffffffbb', 'transparent');
+  if (st > 2 || tut.wait > 0) return;
+  // рука-підказка
+  const hx = W / 2 + 70, cy = LANES[1];
+  const k = (time * 1.2) % 1;
+  let hy = cy;
+  if (st === 0) hy = cy + 60 - k * 140;
+  else if (st === 1) hy = cy - 60 + k * 140;
+  ctx.save();
+  ctx.globalAlpha = st === 2 ? 0.9 : Math.sin(Math.PI * k);
+  if (st < 2) {
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hx, st === 0 ? cy + 60 : cy - 60); ctx.lineTo(hx, hy); ctx.stroke();
+  } else {
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(hx, hy, 20 + k * 26, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = '#ffd9b8'; ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(hx, hy, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------- виклик дня ---------- */
+function todayKey(d = new Date()) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dailyInfo() {
+  const key = todayKey();
+  let h = 2166136261;
+  for (const ch of key) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const w = h % 10;
+  const g = w * 10 + 3 + ((h >>> 5) % 6);
+  const mod = MODS[(h >>> 9) % MODS.length];
+  return { date: key, g, mod: mod.id, modName: mod.name, modDesc: mod.desc };
+}
+function startDaily() {
+  const d = dailyInfo();
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (save.dailyLast !== d.date) { save.dailyStreak = save.dailyLast === todayKey(y) ? (save.dailyStreak || 0) + 1 : 1; save.dailyLast = d.date; persist(); }
+  startRun(d.g, { daily: d });
+  showBanner('ВИКЛИК ДНЯ', d.modName + ' — ' + d.modDesc, '#9be7ff', 2.6);
 }
 
 /* ---------- досягнення / скіни / підказки ---------- */
@@ -1599,6 +1964,7 @@ function spawnPickup(x, freeLanes, creamLane) {
 
 function collectBonus(b) {
   b.got = true;
+  vib(15);
   save.bonusTried[b.kind] = 1;
   if (Object.keys(save.bonusTried).length >= 5) unlock('bonus5');
   persist();
@@ -1673,6 +2039,7 @@ function smash(o, why) {
   o.fvx = rand(120, 320); o.fvy = -rand(350, 650); o.fvr = rand(-10, 10);
   addScore(15 * scoreMul());
   SFX.smash();
+  vib(25);
   shake = Math.max(shake, 0.3);
   const hx = why === 'pepper' ? clamp(o.cx, 20, W - 20) : PX + 36, hy = why === 'pepper' ? o.cy : player.y;
   for (let i = 0; i < 10; i++) addParticle(hx, hy, rand(-200, 260), rand(-260, 160), rand(2.5, 5), pick(['#ffffff', '#dfe6ec', '#ffd166']), 0.5, 500, 1);
@@ -1700,7 +2067,7 @@ function collectCream(c) {
   runCream++;
   runBestCombo = Math.max(runBestCombo, combo);
   const mult = Math.min(combo, 10);
-  const pts = 10 * mult * scoreMul();
+  const pts = 10 * mult * scoreMul() * (daily && daily.mod === 'cream' ? 2 : 1);
   scoreF += pts; score = Math.floor(scoreF);
   player.happy = 0.45;
   SFX.cream(combo);
@@ -1728,7 +2095,7 @@ function completeLevel() {
   if (level === TOTAL_LEVELS - 1) unlock('finish');
   if (level < TOTAL_LEVELS - 1) {
     level++;
-    if (level > save.maxLevel) { save.maxLevel = level; persist(); }
+    if (level > save.maxLevel && !daily) { save.maxLevel = level; persist(); }
     if (finishedWorld) {
       SFX.world();
       showBanner('СВІТ ' + (Math.floor(level / 10) + 1) + '!', WORLDS[Math.floor(level / 10)].name, '#ffd166', 2.2);
@@ -1766,6 +2133,11 @@ function die(o) {
     addParticle(PX, player.y, Math.cos(a) * s, Math.sin(a) * s - 80, isDough ? rand(5, 11) : rand(4, 8),
       isDough ? pick(['#fbe7bd', '#f3d59a', '#fff1d0']) : pick(['#a0673f', '#8a5531', '#b97f4f']), rand(0.7, 1.2), 900, isDough ? 0 : 1);
   }
+  if (daily) {
+    const rec = save.daily[daily.date] || 0;
+    if (score > rec) { save.daily = { [daily.date]: score }; }
+  }
+  vib([60, 40, 90]);
   save.deaths++;
   if (save.deaths >= 50) unlock('deaths50');
   checkRunAch();
@@ -1816,6 +2188,13 @@ function render() {
     drawCream(c.x, c.y + Math.sin(time * 4 + c.bob) * 4 - fall * fall * (c.y - FIELD_TOP + 40));
   }
   for (const b of pickups) drawPickup(b.kind, b.x, b.y + Math.sin(time * 4 + b.bob) * 4, 1, true);
+  for (const q of bubbles) {
+    ctx.save(); ctx.globalAlpha = 0.8;
+    ctx.fillStyle = 'rgba(200,240,255,.25)'; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(q.x - q.r * 0.35, q.y - q.r * 0.35, q.r * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 
   // перешкоди (обрізані по полю — так вони «встромлені» у скатертину)
   ctx.save();
@@ -1835,6 +2214,13 @@ function render() {
   // смуги-скатертини
   drawBorder(FIELD_TOP, wd);
   drawBorder(FIELD_BOT, wd);
+
+  // нічна кухня (виклик дня): темрява, але попередження видно
+  if (daily && daily.mod === 'night' && state !== 'menu') {
+    const g = ctx.createRadialGradient(PX + 120, player.y, 60, PX + 120, player.y, 340);
+    g.addColorStop(0, 'rgba(5,8,20,0)'); g.addColorStop(1, 'rgba(5,8,20,.82)');
+    ctx.fillStyle = g; ctx.fillRect(-20, FIELD_TOP, W + 40, FIELD_H);
+  }
 
   // попередження
   for (const o of obstacles) {
@@ -1878,6 +2264,7 @@ function render() {
 
   if (banner) drawBanner();
   if (state !== 'menu') drawToast();
+  if (tut && state === 'play') drawTut();
 
   if (countdown > 0 && state === 'play') {
     const n = Math.ceil(countdown);
@@ -2341,7 +2728,17 @@ function drawMomArm(hx, y) {
 function drawBossArm(vis, hx, y0, y1) {
   const h = y1 - y0, cy = (y0 + y1) / 2;
   ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = '#39424c'; ctx.lineWidth = 4;
-  if (vis === 'fork') {
+  if (vis === 'pin' || vis === 'grater') {
+    if (vis === 'pin') {
+      const g = ctx.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, '#c98a4b'); g.addColorStop(0.5, '#f0c891'); g.addColorStop(1, '#a86b37');
+      ctx.fillStyle = g; ctx.strokeStyle = '#5a3414'; rr(hx, y0 + 6, W + 300, h - 12, (h - 12) / 2); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#dfe6ec'; rr(hx, y0, W + 300, h, 12); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#7d8a96';
+      for (let yy = y0 + 14; yy < y1 - 10; yy += 24) for (let xx = hx + 14; xx < W + 20; xx += 28) { rr(xx, yy, 12, 6, 3); ctx.fill(); }
+    }
+  } else if (vis === 'fork' || vis === 'chef') {
     const g = ctx.createLinearGradient(0, y0, 0, y1);
     g.addColorStop(0, '#f8fbfd'); g.addColorStop(0.5, '#c9d2db'); g.addColorStop(1, '#eef3f7');
     ctx.fillStyle = g;
@@ -2373,8 +2770,16 @@ function drawBossShot(vis, x, y, rot) {
   if (vis === 'fork') {
     ctx.fillStyle = '#eef3f7'; ctx.strokeStyle = '#39424c'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(8, -8); ctx.lineTo(26, -7); ctx.lineTo(26, 7); ctx.lineTo(8, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
-  } else if (vis === 'cleaver') {
+  } else if (vis === 'cleaver' || vis === 'chef') {
     ctx.rotate(rot); ctx.translate(0, 34); drawUtensil('knife', 70, 22, true);
+  } else if (vis === 'grater') {
+    ctx.rotate(rot * 0.5);
+    ctx.fillStyle = '#ff8c2b'; ctx.strokeStyle = '#7a3a0a'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(18, -9); ctx.lineTo(18, 9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2a9d43'; ctx.fillRect(18, -6, 8, 12);
+  } else if (vis === 'micro' || vis === 'pin') {
+    ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#d9c7a8'; ctx.lineWidth = 2.5;
+    for (const [px, py, r] of [[-8, -4, 11], [6, -8, 10], [6, 7, 11], [-6, 9, 9]]) { ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
   } else {
     // смажене яйце
     ctx.rotate(rot * 0.3);
@@ -2406,6 +2811,26 @@ function drawBossChop(vis, x, top, L) {
   }
   ctx.restore();
 }
+function drawBossPress(vis, top, L) {
+  ctx.save();
+  ctx.translate(0, top ? FIELD_TOP - 20 : FIELD_BOT + 20);
+  if (top) ctx.scale(1, -1);
+  const len = L + 20;
+  ctx.lineJoin = 'round'; ctx.strokeStyle = '#5a3414'; ctx.lineWidth = 4;
+  if (vis === 'grater') {
+    ctx.fillStyle = '#dfe6ec'; ctx.strokeStyle = '#39424c'; ctx.fillRect(-20, -len, W + 40, len); ctx.strokeRect(-20, -len, W + 40, len);
+    ctx.fillStyle = '#7d8a96';
+    for (let y = -len + 20; y < -10; y += 26) for (let x = 10 + ((y / 26) % 2 ? 12 : 0); x < W; x += 26) { rr(x, y, 12, 6, 3); ctx.fill(); }
+  } else {
+    // розкатане тісто + качалка на краю
+    ctx.fillStyle = '#f7e3bd'; ctx.fillRect(-20, -len, W + 40, len - 20);
+    ctx.fillStyle = 'rgba(200,160,100,.25)'; for (let x = 0; x < W; x += 34) ctx.fillRect(x, -len, 3, len - 20);
+    const g = ctx.createLinearGradient(0, -len - 28, 0, -len + 28);
+    g.addColorStop(0, '#c98a4b'); g.addColorStop(0.5, '#ecc08a'); g.addColorStop(1, '#a86b37');
+    ctx.fillStyle = g; rr(-20, -len - 28, W + 40, 56, 26); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawBoss() {
   const b = boss;
   if (!b) return;
@@ -2417,6 +2842,48 @@ function drawBoss() {
   if (b.kind === 'fork') {
     ctx.save(); ctx.translate(x, FIELD_BOT + 30 + bob); drawUtensil('fork', FIELD_H + 60, 120, true); ctx.restore();
     drawMeanFace(x, midY + 30, 2.6, b.phase !== 'dying');
+  } else if (b.kind === 'pin') {
+    ctx.save(); ctx.translate(x + 10, midY);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = '#5a3414'; ctx.lineWidth = 4;
+    const g = ctx.createLinearGradient(-60, 0, 60, 0);
+    g.addColorStop(0, '#b77a41'); g.addColorStop(0.5, '#f0c891'); g.addColorStop(1, '#a86b37');
+    ctx.fillStyle = '#9a6232'; rr(-18, -FIELD_H * 0.62, 36, 70, 14); ctx.fill(); ctx.stroke(); rr(-18, FIELD_H * 0.44, 36, 70, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = g; rr(-60, -FIELD_H * 0.5, 120, FIELD_H * 0.98, 40); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    drawMeanFace(x - 10, midY, 2.6, b.phase !== 'dying');
+  } else if (b.kind === 'grater') {
+    ctx.save(); ctx.translate(x + 20, midY);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = '#39424c'; ctx.lineWidth = 4;
+    ctx.fillStyle = '#ff6f59'; rr(-40, -FIELD_H * 0.52, 80, 40, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#dfe6ec';
+    ctx.beginPath(); ctx.moveTo(-62, -FIELD_H * 0.44); ctx.lineTo(62, -FIELD_H * 0.44); ctx.lineTo(84, FIELD_H * 0.48); ctx.lineTo(-84, FIELD_H * 0.48); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#7d8a96';
+    for (let r = 0; r < 12; r++) for (let c = 0; c < 4; c++) { rr(-56 + c * 30 - r * 1.2, -FIELD_H * 0.36 + r * 36, 14, 7, 3); ctx.fill(); }
+    ctx.restore();
+    drawMeanFace(x, midY - 30, 2.6, b.phase !== 'dying');
+  } else if (b.kind === 'micro') {
+    ctx.save(); ctx.translate(x + 40, midY);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = '#39424c'; ctx.lineWidth = 4;
+    ctx.fillStyle = '#e9edf1'; rr(-110, -110, 220, 220, 22); ctx.fill(); ctx.stroke();
+    const glow = 0.6 + 0.4 * Math.sin(time * 9);
+    ctx.fillStyle = 'rgba(255,190,60,' + glow + ')'; rr(-96, -86, 130, 172, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#39424c';
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(70, -70 + k * 30, 9, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    drawMeanFace(x + 9, midY - 10, 2.4, b.phase !== 'dying');
+  } else if (b.kind === 'chef') {
+    ctx.save(); ctx.translate(x + 40, midY + 30);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = '#5a3414'; ctx.lineWidth = 4;
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#9aa3ad';
+    for (const [cx, cy, r] of [[-70, -170, 50], [20, -190, 60], [-20, -230, 55]]) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    rr(-110, -150, 190, 50, 10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd9b8'; ctx.strokeStyle = '#7a4a22';
+    ctx.beginPath(); ctx.arc(-20, -20, 110, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4a2c14';
+    ctx.beginPath(); ctx.moveTo(-20, 10); ctx.bezierCurveTo(-60, 0, -100, 30, -110, 10); ctx.bezierCurveTo(-90, 50, -40, 40, -20, 24);
+    ctx.bezierCurveTo(0, 40, 40, 50, 60, 10); ctx.bezierCurveTo(50, 30, 10, 0, -20, 10); ctx.fill();
+    ctx.restore();
+    drawMeanFace(x + 20, midY - 30, 2.8, b.phase !== 'dying');
   } else if (b.kind === 'cleaver') {
     ctx.save(); ctx.translate(x, FIELD_BOT + 30 + bob);
     ctx.lineJoin = 'round'; ctx.strokeStyle = '#39424c'; ctx.lineWidth = 4;
@@ -2456,7 +2923,19 @@ function drawToast() {
   ctx.fillText(t.sub, W / 2, y + 48);
   ctx.restore();
 }
+function drawNeon() {
+  if (Math.floor(level / 10) !== 8) return;
+  const on = Math.sin(time * 3) > -0.85 && Math.random() > 0.02;
+  ctx.save();
+  ctx.globalAlpha = on ? 0.55 : 0.15;
+  const x = W - ((bgScroll * 0.5) % (W + 300)) + 100;
+  ctx.font = '900 30px "Arial Black",Arial,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 6; ctx.strokeStyle = '#ff4fa3'; ctx.strokeText('ПЕЛЬМЕНІ', x, FIELD_TOP + 60);
+  ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.strokeText('ПЕЛЬМЕНІ', x, FIELD_TOP + 60);
+  ctx.restore();
+}
 function drawEventFx() {
+  drawNeon();
   if (momDark > 0.01) { ctx.fillStyle = 'rgba(10,0,30,' + (momDark * 0.28) + ')'; ctx.fillRect(-20, FIELD_TOP, W + 40, FIELD_H); }
   if (event && event.kind === 'rain') {
     ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -2510,9 +2989,21 @@ function drawObstacle(o) {
     for (let i = -1; i <= 1; i++) {
       ctx.beginPath(); ctx.moveTo(o.x + 80, y + i * 9); ctx.lineTo(o.x + 115 + ((time * 997 + i * 31) % 30), y + i * 9); ctx.stroke();
     }
+    if (o.tray) {
+      // таця з тарілками
+      ctx.translate(o.x, y);
+      ctx.rotate(Math.sin(o.spin * 8) * 0.05);
+      ctx.lineJoin = 'round'; ctx.strokeStyle = '#4a2c14'; ctx.lineWidth = 3;
+      ctx.fillStyle = '#c47a3c'; rr(-75, 2, 150, 14, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#9aa3ad';
+      for (const px of [-42, 0, 42]) { ctx.beginPath(); ctx.ellipse(px, 0, 19, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+      ctx.fillStyle = '#ff9f6b'; ctx.beginPath(); ctx.arc(0, -6, 8, Math.PI, 0); ctx.fill();
+      ctx.restore();
+      return;
+    }
     ctx.translate(o.x + 75, y);
     ctx.rotate(-Math.PI / 2);
-    drawUtensil('knife', 150, 30);
+    drawUtensil(daily && daily.mod === 'forks' ? 'fork' : 'knife', 150, 30);
     ctx.restore();
   }
 }
@@ -3011,7 +3502,7 @@ function drawHUD(wd) {
     if (f > 0.02) { rr(bx2, hy - 6, Math.max(12, bw2 * f), 12, 6); ctx.fill(); }
   }
   if (shield) { drawPickup('butter', W - 118, hy, 0.5, false); outlinedText('ЩИТ', W - 96, hy, 16, '#ffd166', '#2a1a0c', 'left'); }
-  outlinedText('рекорд ' + Math.max(save.best, score), W / 2, 778, 15, '#ffffff99', 'transparent');
+  if (!tut) outlinedText('рекорд ' + Math.max(save.best, score), W / 2, 778, 15, '#ffffff99', 'transparent');
 }
 
 function drawBanner() {
@@ -3064,6 +3555,8 @@ function openMenu() {
   resetPlayer();
   applyTheme();
   btnPause.style.display = 'none';
+  $('btnSkipTut').style.display = 'none';
+  tut = null; daily = null;
   buildMenu();
   showOverlay(ovMenu);
 }
@@ -3086,6 +3579,9 @@ function buildMenu() {
   }
   $('menuStats').innerHTML = 'Рекорд: <b>' + save.best + '</b> &nbsp;·&nbsp; Найдалі: <b>' + lvlName(save.maxLevel) + '</b>';
   $('btnAch').textContent = 'Досягнення ' + ACH.filter(a => save.ach[a.id]).length + '/' + ACH.length;
+  const d = dailyInfo();
+  $('dailySub').textContent = d.modName + ' · рекорд сьогодні ' + (save.daily[d.date] || 0) + (save.dailyStreak > 1 && save.dailyLast === d.date ? ' · серія ' + save.dailyStreak : '');
+  renderToggles();
 }
 $('wPrev').addEventListener('click', () => { if (menuWorld > 0) { menuWorld--; SFX.click(); buildMenu(); } });
 $('wNext').addEventListener('click', () => { menuWorld++; SFX.click(); buildMenu(); });
@@ -3144,6 +3640,15 @@ function buildAch() {
   }
 }
 $('btnSkins').addEventListener('click', () => { SFX.click(); buildSkins(); showOverlay(ovSkins); });
+function renderToggles() {
+  for (const id of ['btnMusic', 'btnMusic2']) $(id).classList.toggle('off', !save.music);
+  $('btnVibro').classList.toggle('off', !save.vibro);
+}
+$('btnDaily').addEventListener('click', () => { startDaily(); });
+for (const id of ['btnMusic', 'btnMusic2']) $(id).addEventListener('click', () => { ensureAudio(); save.music = !save.music; persist(); renderToggles(); SFX.click(); });
+$('btnVibro').addEventListener('click', () => { save.vibro = !save.vibro; persist(); renderToggles(); SFX.click(); vib(30); });
+$('btnTut').addEventListener('click', () => { SFX.click(); startRun(0, { tut: { step: 0, t: 0, wait: 0 } }); });
+$('btnSkipTut').addEventListener('click', e => { e.stopPropagation(); SFX.click(); if (tut) { creams = []; obstacles = []; finishTut(); } });
 $('btnAch').addEventListener('click', () => { SFX.click(); buildAch(); showOverlay(ovAch); });
 $('btnSkinsBack').addEventListener('click', () => { SFX.click(); buildMenu(); showOverlay(ovMenu); });
 $('btnAchBack').addEventListener('click', () => { SFX.click(); buildMenu(); showOverlay(ovMenu); });
@@ -3157,6 +3662,7 @@ function pauseGame() {
 }
 function resumeGame() {
   if (state !== 'paused') return;
+  renderToggles();
   ensureAudio();
   state = 'play';
   countdown = 1.5;           // коротке «3-2-1», щоб встигнути зорієнтуватись
@@ -3178,11 +3684,13 @@ function showGameOver() {
   $('overStats').innerHTML = 'Рекорд: <b>' + save.best + '</b> &nbsp;·&nbsp; Сметанок: <b>' + runCream + '</b>' +
     (runBestCombo > 1 ? ' &nbsp;·&nbsp; Комбо: <b>x' + runBestCombo + '</b>' : '') +
     (runNear > 0 ? '<br>«Ледь не»: <b>' + runNear + '</b>' : '');
+  if (daily) $('overStats').innerHTML += '<br>Виклик дня «' + daily.modName + '»: рекорд сьогодні <b>' + (save.daily[daily.date] || 0) + '</b> · серія днів: <b>' + save.dailyStreak + '</b>';
   if (isNewRecord) SFX.record();
   showOverlay(ovOver);
 }
 $('btnAgain').addEventListener('click', () => {
   if (performance.now() - overShownAt < 350) return; // від випадкового тапу
+  if (daily) { startRun(daily.g, { daily }); return; }
   startRun(level);
 });
 $('btnOverMenu').addEventListener('click', () => { SFX.click(); openMenu(); });
@@ -3203,6 +3711,7 @@ function frame(now) {
   const sdt = dt / steps;
   for (let i = 0; i < steps; i++) update(sdt);
   render();
+  updateMusicState();
   requestAnimationFrame(frame);
 }
 
@@ -3210,11 +3719,20 @@ function frame(now) {
 window.__pelmen = { get: () => ({ state, level, score, speed, obstacles, creams, player, combo, pickups, power, shield, runNear }),
   front: frontDist, past: obPast, collect: k => collectBonus({ kind: k, x: PX, y: player.y }),
   force: k => { const w = SPAWN[k](); return w; },
+  icon: size => { const cv = document.createElement('canvas'); cv.width = cv.height = size; const old = ctx; ctx = cv.getContext('2d');
+    ctx.fillStyle = '#1d3a34'; ctx.fillRect(0, 0, size, size); const sc = size / 150; ctx.setTransform(sc, 0, 0, sc, 0, 0);
+    ctx.fillStyle = '#cfeee3'; ctx.beginPath(); ctx.arc(75, 75, 60, 0, Math.PI * 2); ctx.fill();
+    drawPelmen(75, 80, { squash: 0, vy: 0, dead: false, splat: 0, blink: 0, happy: 0.5, scared: 0, look: 0 }, NOFX, 'classic'); ctx = old; return cv.toDataURL('image/png'); },
+  daily: () => startDaily(), tutInfo: () => tut && { step: tut.step },
   ev: k => startEvent(k), bossNow: () => { bossPending = true; }, info: () => ({ boss: boss && { hp: boss.hp, phase: boss.phase, kind: boss.kind }, event: event && event.kind, ach: Object.keys(save.ach) }),
   move: moveTo, threat: threatensLane, start: startRun, LANES, PX };
 
 openMenu();
 requestAnimationFrame(frame);
+// встановлення як застосунок: працює, коли гру відкрито з сайту (https), а не як файл
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
 })();
 </script>
 </body>
