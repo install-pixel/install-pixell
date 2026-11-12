@@ -130,8 +130,6 @@ fun RecorderPage(
     val recMode = if (side == 0) day.modeA else day.modeB
     val listening = deck != Deck.Idle
     LaunchedEffect(voiceMode, recMode, side) { player.denoise(if (voiceMode > recMode) voiceMode else 0) }
-    // Відкрив сторону з записом — ручка одразу стає туди, на чому її записано (видно, чи можна ще покращити).
-    LaunchedEffect(day.day, side, recMode, has) { if (has && recording == null) onVoiceMode(recMode) }
     // Де стоїть стрічка (мс від початку сторони). Касету залишили там, де записали, — у кінці записаного.
     var head by remember(day.day) { mutableFloatStateOf(dur.toFloat()) }
     var loaded by remember(day.day, side, dur) { mutableStateOf<ByteArray?>(null) }
@@ -424,6 +422,9 @@ fun RecorderPage(
                 drawSpindles(c, glass, ink, angleL, angleR)
                 // Виймаєш касету — вона висувається вгору й ховається за краєм шухлядки (поза сторінку не малюємо).
                 val lift = eject.value * (c.bottom + 4.dp.toPx())
+                // Поки касету виймають чи перевертають — лапки розійшлися й лежать під нею (касета йде поверх них).
+                val holdersUnder = eject.value > 0f || grip.value < 1f
+                if (holdersUnder) drawHolders(c, glass, ink, grip.value)
                 drawContext.canvas.save()
                 drawContext.canvas.clipRect(0f, 0f, size.width, size.height)
                 drawContext.canvas.translate(0f, -lift)
@@ -432,7 +433,7 @@ fun RecorderPage(
                 }
                 drawContext.canvas.restore()
                 // Пази й притискні лапки: касета вставлена в шухлядку, а не висить.
-                drawHolders(c, glass, ink, grip.value)
+                if (!holdersUnder) drawHolders(c, glass, ink, grip.value)
                 // Скло дверцят — легкий відблиск поверх.
                 if (glass) drawRoundRect(
                     Brush.linearGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent, Color.White.copy(alpha = 0.03f)), start = Offset.Zero, end = Offset(size.width, size.height)),
@@ -444,8 +445,10 @@ fun RecorderPage(
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Canvas(Modifier.fillMaxWidth().weight(1f)) { drawGrille(glass, ink, faint) }
                     NoiseKnob(
-                        mode = if (recording != null) recording.mode else if (has) maxOf(voiceMode, recMode) else voiceMode,
-                        minMode = if (has && recording == null) recMode else 0,
+                        // Стоїть — ручка вільна (0 / 1 / 2 для нового запису). Слухаєш — показує, на чому записано (нижче не
+                        // опуститись, вище — додається наживо). Пишеш — те, на чому пишеш.
+                        mode = if (recording != null) recording.mode else if (listening) maxOf(voiceMode, recMode) else voiceMode,
+                        minMode = if (listening && recording == null) recMode else 0,
                         enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f).noFlip(host, "knob_${day.day}")) { onVoiceMode(it) }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
