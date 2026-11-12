@@ -218,7 +218,7 @@
     <string name="camera_permission">Allow the camera to take a photo of the day</string>
     <string name="flashlight">Flashlight</string>
     <string name="photo_retake">Retake with camera</string>
-    <string name="recorder_title">Recording of the day</string>
+    <string name="recorder_title">Audio of the day</string>
     <string name="recorder_rewind">Rewind</string>
     <string name="recorder_forward">Fast forward</string>
     <string name="recorder_pause">Pause</string>

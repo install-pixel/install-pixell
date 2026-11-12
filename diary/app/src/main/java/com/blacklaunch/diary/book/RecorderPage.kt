@@ -126,14 +126,18 @@ fun RecorderPage(
     DisposableEffect(day.day) { onDispose { player.stop() } }
     var deck by remember(day.day) { mutableStateOf(Deck.Idle) }
     // Крутілка діє й на слухання — наживо, поверх записаного.
-    // Сторона записана на якомусь положенні шумодава — при слуханні нижче нього не опуститись, а вище — додається наживо.
-    val recMode = if (side == 0) day.modeA else day.modeB
-    val listening = deck != Deck.Idle
-    LaunchedEffect(voiceMode, recMode, side) { player.denoise(if (voiceMode > recMode) voiceMode else 0) }
     // Де стоїть стрічка (мс від початку сторони). Касету залишили там, де записали, — у кінці записаного.
     var head by remember(day.day) { mutableFloatStateOf(dur.toFloat()) }
     var loaded by remember(day.day, side, dur) { mutableStateOf<ByteArray?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
+    // Кожен відрізок записаний на своєму положенні шумодава. Слухаєш — ручка показує положення того відрізка, де зараз
+    // стрічка (нижче не опуститись, вище — додається наживо); перейшла стрічка в інший відрізок — ручка йде за ним.
+    // Те, що накрутив під час слухання, — лише для слухання; для нового запису ручка така, як поставив до того.
+    val listening = deck != Deck.Idle
+    val segMode = day.modeAt(side, head.toLong())
+    var listenLevel by remember(day.day) { mutableIntStateOf(0) }
+    LaunchedEffect(listening) { if (listening) listenLevel = 0 }
+    LaunchedEffect(listenLevel, segMode) { player.denoise(if (listenLevel > segMode) listenLevel else 0) }
     val flip = remember(day.day) { Animatable(0f) }
     val eject = remember(day.day) { Animatable(0f) }
     // Лапки й напрямні, що тримають касету: 1 — затиснули, 0 — розійшлися (щоб касету вийняти чи перевернути).
@@ -447,9 +451,9 @@ fun RecorderPage(
                     NoiseKnob(
                         // Стоїть — ручка вільна (0 / 1 / 2 для нового запису). Слухаєш — показує, на чому записано (нижче не
                         // опуститись, вище — додається наживо). Пишеш — те, на чому пишеш.
-                        mode = if (recording != null) recording.mode else if (listening) maxOf(voiceMode, recMode) else voiceMode,
-                        minMode = if (listening && recording == null) recMode else 0,
-                        enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f).noFlip(host, "knob_${day.day}")) { onVoiceMode(it) }
+                        mode = if (recording != null) recording.mode else if (listening) maxOf(listenLevel, segMode) else voiceMode,
+                        minMode = if (listening && recording == null) segMode else 0,
+                        enabled = recording == null, glass = glass, modifier = Modifier.fillMaxWidth().weight(1f).noFlip(host, "knob_${day.day}")) { if (listening) listenLevel = it else onVoiceMode(it) }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     // Час цього запису: поки пишеш — скільки вже, інакше — скільки тривав останній допис.
@@ -1015,22 +1019,33 @@ private fun DrawScope.drawMeter(glass: Boolean, ink: Color, faint: Color, level:
 private fun DrawScope.drawSpindles(rc: Rect, glass: Boolean, ink: Color, angleL: Float, angleR: Float) {
     val w = rc.width
     val hubRad = w * 0.05f
-    val metal = if (glass) Color(0xFF8E9097) else SheetInk.copy(alpha = 0.85f)
     listOf(Offset(rc.left + w * 0.29f, rc.top + rc.height * 0.51f) to angleL, Offset(rc.left + w * 0.71f, rc.top + rc.height * 0.51f) to angleR).forEach { (c, a) ->
-        // Основа штиря.
-        drawCircle(if (glass) Color(0xFF1A1B1E) else Color(0xFF13110E), hubRad * 0.66f, c)
-        drawCircle(if (glass) Color.White.copy(alpha = 0.18f) else SheetInk.copy(alpha = 0.5f), hubRad * 0.66f, c, style = Stroke(1.dp.toPx()))
+        val r = hubRad * 0.66f
+        if (glass) {
+            // Металевий купол: світло згори зліва, до краю темніє, верхівка — світла цятка.
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFB9BCC4), Color(0xFF6E7179), Color(0xFF2A2C31), Color(0xFF15161A)), center = c - Offset(r * 0.28f, r * 0.32f), radius = r * 1.25f), r, c)
+            drawCircle(Color.White.copy(alpha = 0.16f), r, c, style = Stroke(1.dp.toPx()))
+        } else {
+            // «Аркуш»: купол олівцем — кільця, що сходяться до верхівки, і тінь штрихами знизу справа.
+            drawCircle(Color(0xFF13110E), r, c)
+            drawCircle(SheetInk.copy(alpha = 0.8f), r, c, style = Stroke(1.3.dp.toPx()))
+            drawCircle(SheetInk.copy(alpha = 0.35f), r * 0.62f, c - Offset(r * 0.08f, r * 0.1f), style = Stroke(0.9.dp.toPx()))
+            drawCircle(SheetInk.copy(alpha = 0.25f), r * 0.32f, c - Offset(r * 0.14f, r * 0.18f), style = Stroke(0.8.dp.toPx()))
+        }
+        // Шліци — три ребра, що збігаються до верхівки (тоншають до центру) і крутяться разом із котушкою.
         rotate(a * 180f / PI.toFloat(), c) {
-            // Шліци — три зубці, що чіпляють маточину.
             for (k in 0 until 3) {
                 val t = k * 2f * PI.toFloat() / 3f
                 val d = Offset(cos(t), sin(t))
-                drawLine(metal, c + d * (hubRad * 0.12f), c + d * (hubRad * 0.6f), 2.4.dp.toPx(), cap = StrokeCap.Round)
+                val pts = listOf(c + d * (r * 0.95f), c + d * (r * 0.55f), c + d * (r * 0.12f))
+                drawPath(taperedPath(pts, 2.6.dp.toPx()), if (glass) Color(0xFFDADDE3).copy(alpha = 0.9f) else SheetInk.copy(alpha = 0.9f))
             }
         }
-        drawCircle(metal, hubRad * 0.13f, c)
+        // Верхівка купола.
+        drawCircle(if (glass) Color.White.copy(alpha = 0.9f) else SheetInk, r * 0.11f, c)
     }
 }
+
 
 /** Пази шухлядки: бічні напрямні, за які касета зачеплена, і дві притискні лапки зверху. */
 private fun DrawScope.drawHolders(rc: Rect, glass: Boolean, ink: Color, grip: Float = 1f) {

@@ -232,7 +232,7 @@
     <string name="camera_permission">Дозволь камеру, щоб зробити фото дня</string>
     <string name="flashlight">Ліхтарик</string>
     <string name="photo_retake">Сфотографувати заново</string>
-    <string name="recorder_title">Запис дня</string>
+    <string name="recorder_title">Аудіозапис дня</string>
     <string name="recorder_rewind">Назад</string>
     <string name="recorder_forward">Вперед</string>
     <string name="recorder_pause">Пауза</string>

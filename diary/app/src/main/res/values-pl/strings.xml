@@ -222,7 +222,7 @@
     <string name="camera_permission">Zezwól na aparat, aby zrobić zdjęcie dnia</string>
     <string name="flashlight">Latarka</string>
     <string name="photo_retake">Zrób nowe zdjęcie</string>
-    <string name="recorder_title">Nagranie dnia</string>
+    <string name="recorder_title">Nagranie audio dnia</string>
     <string name="recorder_rewind">Do tyłu</string>
     <string name="recorder_forward">Do przodu</string>
     <string name="recorder_pause">Pauza</string>

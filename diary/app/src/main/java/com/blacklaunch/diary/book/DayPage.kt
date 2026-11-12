@@ -601,7 +601,7 @@ private fun AudioPlate(host: PageHost, day: Day, recording: RecordingState?, mod
             }
             drawPath(bump, line.copy(alpha = 0.6f), style = Stroke(0.9.dp.toPx()))
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(18.dp))
         Text(
             stringResource(R.string.recorder_title),
             color = Oled.TextPrimary,

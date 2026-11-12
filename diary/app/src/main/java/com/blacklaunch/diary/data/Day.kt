@@ -61,6 +61,9 @@ data class Day(
     /** На якому положенні шумодава записана сторона (найсильніше з дописів): нижче його при слуханні не опуститись. */
     val modeA: Int = 0,
     val modeB: Int = 0,
+    /** Положення шумодава для кожного відрізка сторони (відрізків на один більше, ніж [takes]). */
+    val takeModes: List<Int> = emptyList(),
+    val takeModesB: List<Int> = emptyList(),
     val updated: Long = 0L,
 ) {
     val text: String get() = sealed + fresh
@@ -74,6 +77,14 @@ data class Day(
         get() = isBlank && !noPhoto && !noAudio && torn == 0 && tearTry0 == 0f && tearTry1 == 0f
 
     fun tearTry(part: Int): Float = if (part == 0) tearTry0 else tearTry1
+
+    /** На якому положенні шумодава записано відрізок стрічки, де зараз [t] (мс), на стороні [side]. */
+    fun modeAt(side: Int, t: Long): Int {
+        val tk = if (side == 0) takes else takesB
+        val tm = if (side == 0) takeModes else takeModesB
+        val idx = tk.count { it <= t }
+        return tm.getOrNull(idx) ?: (if (side == 0) modeA else modeB)
+    }
 
     /**
      * Чорнило висихає: свіже, старше за [hours] годин, переходить у висохле; штрихи пера теж стають висохлими самі
@@ -144,7 +155,7 @@ object DayCodec {
 
     /** Касета поза стороною A (дописи A, уся сторона B) — одним рядком JSON. */
     fun tapeToJson(d: Day): String {
-        if (d.takes.isEmpty() && !d.audioB && d.modeA == 0 && d.modeB == 0) return ""
+        if (d.takes.isEmpty() && !d.audioB && d.modeA == 0 && d.modeB == 0 && d.takeModes.all { it == 0 }) return ""
         return JSONObject()
             .put("takes", JSONArray(d.takes))
             .put("b", d.audioB)
@@ -153,6 +164,8 @@ object DayCodec {
             .put("takesB", JSONArray(d.takesB))
             .put("modeA", d.modeA)
             .put("modeB", d.modeB)
+            .put("tmA", JSONArray(d.takeModes))
+            .put("tmB", JSONArray(d.takeModesB))
             .toString()
     }
 
@@ -169,6 +182,8 @@ object DayCodec {
                 takesB = longs(o.optJSONArray("takesB")),
                 modeA = o.optInt("modeA"),
                 modeB = o.optInt("modeB"),
+                takeModes = o.optJSONArray("tmA")?.let { a -> List(a.length()) { a.getInt(it) } }.orEmpty(),
+                takeModesB = o.optJSONArray("tmB")?.let { a -> List(a.length()) { a.getInt(it) } }.orEmpty(),
             )
         }.getOrDefault(d)
     }

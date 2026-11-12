@@ -550,11 +550,19 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
                 wave to newMs,
                 if (hasSuffix) part(to, fullMs) to (fullMs - to) else null,
             ))
-            val oldMode = if (side == 0) d.modeA else d.modeB
-            val newMode = if (!hasPrefix && !hasSuffix) mode else maxOf(oldMode, mode)
+            // Положення шумодава для кожного відрізка: старі — як були записані, новий — з яким писали зараз.
+            val newEnd = start + newMs
+            val modes = (listOf(0L) + takes).map { st ->
+                when {
+                    hasPrefix && st < from -> d.modeAt(side, st)
+                    st >= start && st < newEnd -> mode
+                    else -> d.modeAt(side, st - shift)
+                }
+            }
+            val newMode = modes.maxOrNull() ?: mode
             update(
-                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = takes, modeA = newMode, noAudio = false)
-                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = takes, modeB = newMode, noAudio = false),
+                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = takes, modeA = newMode, takeModes = modes, noAudio = false)
+                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = takes, modeB = newMode, takeModesB = modes, noAudio = false),
             )
         }
     }

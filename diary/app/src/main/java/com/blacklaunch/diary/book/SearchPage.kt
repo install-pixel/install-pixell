@@ -519,11 +519,13 @@ private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi) {
     }
     Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            DateTimeFormatter.ofPattern("d MMM", locale).format(LocalDate.ofEpochDay(epochDay)),
+            // Дата цифрами — завжди однакової ширини (назви місяців різної довжини й різними мовами).
+            DateTimeFormatter.ofPattern("dd.MM.yy", locale).format(LocalDate.ofEpochDay(epochDay)),
             color = Oled.TextSecondary,
             fontSize = 13.sp,
             maxLines = 1,
-            modifier = Modifier.width(54.dp),
+            style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+            modifier = Modifier.width(64.dp),
         )
         Row(Modifier.weight(1f).fillMaxHeight().pencilFrame(22.dp, seed = (epochDay % 40).toInt() + 23).padding(start = 12.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Canvas(
@@ -551,7 +553,16 @@ private fun AudioRow(vm: DiaryViewModel, epochDay: Long, ui: SearchUi) {
                 }
             }
             Spacer(Modifier.width(8.dp))
-            Text(clock(if (playing || progress > 0f) (progress * day.audioMs).toLong() else day.audioMs), color = Oled.TextSecondary, fontSize = 12.sp, maxLines = 1)
+            // Час — однакові за шириною цифри й стала ширина: смужка поруч не смикається, поки цифри біжать.
+            Text(
+                clock(if (playing || progress > 0f) (progress * day.audioMs).toLong() else day.audioMs),
+                color = Oled.TextSecondary,
+                fontSize = 12.sp,
+                maxLines = 1,
+                style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                modifier = Modifier.width(38.dp),
+            )
         }
         Spacer(Modifier.width(8.dp))
         Box(
