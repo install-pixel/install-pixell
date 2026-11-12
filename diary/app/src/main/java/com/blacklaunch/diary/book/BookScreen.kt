@@ -452,29 +452,31 @@ fun BookScreen(
 
     // ——— Запис голосу ———
     // Пишеться на сторону касети [side] — у кінець того, що там уже є; стрічки на стороні — 45 хвилин.
-    fun startRecording(day: Long, side: Int, cutAt: Long? = null) {
+    fun startRecording(day: Long, side: Int, cutFrom: Long? = null, cutTo: Long? = null) {
         if (recording != null) return
         val d = vm.day(day)
         val full = if (side == 0) (if (d.audio) d.audioMs else 0L) else (if (d.audioB) d.audioMsB else 0L)
-        // Запис поверх — з місця, де стоїть стрічка; інакше — у кінець записаного.
-        val base = cutAt?.coerceIn(0L, full) ?: full
-        if (base >= Limits.SIDE_MS - 1000) { vm.show(R.string.recorder_side_full); return }
+        // Переписати відрізок [cutFrom, cutTo) — з місця, де стоїть стрічка; інакше — у кінець записаного.
+        val replace = cutFrom != null && cutFrom < full - 100
+        val base = if (replace) cutFrom!!.coerceIn(0L, full) else full
+        val tail = if (replace) full - (cutTo ?: full).coerceIn(base, full) else 0L
+        if (base + tail >= Limits.SIDE_MS - 1000) { vm.show(R.string.recorder_side_full); return }
         if (!recorder.start(info.voiceMode)) { vm.show(R.string.record_failed); return }
         haptics.longPress()
-        val st = RecordingState(day, side, base, cutAt?.takeIf { it < full })
+        val st = RecordingState(day, side, base, if (replace) base else null, if (replace) (cutTo ?: full).coerceIn(base, full) else null, info.voiceMode)
         recording = st
         scope.launch {
             while (recording === st) {
                 st.level = recorder.sample()
                 st.wave = DiaryViewModel.compactWave(recorder.wave.toList())
                 st.elapsed = recorder.elapsed
-                if (base + recorder.elapsed >= Limits.SIDE_MS) break
+                if (base + recorder.elapsed + (if (st.cutTo != null) full - st.cutTo else 0L) >= Limits.SIDE_MS) break
                 delay(80)
             }
             if (recording === st) {
                 recording = null
                 val r = recorder.finish()
-                if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side, st.cutAt) else vm.show(R.string.record_short)
+                if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side, st.cutFrom, st.cutTo, st.mode) else vm.show(R.string.record_short)
             }
         }
     }
@@ -488,18 +490,18 @@ fun BookScreen(
         recording = null
         haptics.tap()
         val r = recorder.finish()
-        if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side, st.cutAt) else vm.show(R.string.record_short)
+        if (r != null && r.second >= 800) vm.saveAudio(st.day, r.first, r.second, recorder.wave.toList(), st.side, st.cutFrom, st.cutTo, st.mode) else vm.show(R.string.record_short)
     }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
-    var micFor by remember { mutableStateOf<Triple<Long, Int, Long?>?>(null) }
+    var micFor by remember { mutableStateOf<List<Long?>?>(null) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val d = micFor
         micFor = null
-        if (ok && d != null) startRecording(d.first, d.second, d.third) else if (!ok) vm.show(R.string.mic_denied)
+        if (ok && d != null) startRecording(d[0]!!, d[1]!!.toInt(), d[2], d[3]) else if (!ok) vm.show(R.string.mic_denied)
     }
-    fun record(day: Long, side: Int, cutAt: Long? = null) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording(day, side, cutAt)
-        else { micFor = Triple(day, side, cutAt); micPermission.launch(Manifest.permission.RECORD_AUDIO) }
+    fun record(day: Long, side: Int, cutFrom: Long? = null, cutTo: Long? = null) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording(day, side, cutFrom, cutTo)
+        else { micFor = listOf(day, side.toLong(), cutFrom, cutTo); micPermission.launch(Manifest.permission.RECORD_AUDIO) }
     }
     /** Поділитися стороною касети — одразу системне вікно «Поділитися». */
     fun shareTape(day: Long, side: Int) {
@@ -871,7 +873,7 @@ fun BookScreen(
                                     seed = info.tint * 7 + 71,
                                     editable = !DiaryViewModel.isDry(p.day),
                                     recording = recording?.takeIf { it.day == p.day },
-                                    onRecord = { side, cutAt -> if (d.audio || d.audioB || roomFor(p.day, photo = false)) record(p.day, side, cutAt) else vm.show(R.string.no_room_voice) },
+                                    onRecord = { side, from, to -> if (d.audio || d.audioB || roomFor(p.day, photo = false)) record(p.day, side, from, to) else vm.show(R.string.no_room_voice) },
                                     onStopRecording = { stopRecording() },
                                     onPauseRecording = { pauseRecording(it) },
                                     voiceMode = info.voiceMode,

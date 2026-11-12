@@ -115,7 +115,7 @@ interface PageHost {
 }
 
 /** Іде запис голосу (для смужки — живі обриси й час). */
-class RecordingState(val day: Long, val side: Int = 0, val base: Long = 0L, val cutAt: Long? = null) {
+class RecordingState(val day: Long, val side: Int = 0, val base: Long = 0L, val cutFrom: Long? = null, val cutTo: Long? = null, val mode: Int = 0) {
     /** «Запис + пауза»: стрічка стоїть, нічого не пишеться. */
     var paused by mutableStateOf(false)
     var wave by mutableStateOf<List<Float>>(emptyList())

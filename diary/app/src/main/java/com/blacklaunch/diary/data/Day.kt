@@ -58,6 +58,9 @@ data class Day(
     val audioMsB: Long = 0L,
     val waveB: List<Float> = emptyList(),
     val takesB: List<Long> = emptyList(),
+    /** На якому положенні шумодава записана сторона (найсильніше з дописів): нижче його при слуханні не опуститись. */
+    val modeA: Int = 0,
+    val modeB: Int = 0,
     val updated: Long = 0L,
 ) {
     val text: String get() = sealed + fresh
@@ -141,13 +144,15 @@ object DayCodec {
 
     /** Касета поза стороною A (дописи A, уся сторона B) — одним рядком JSON. */
     fun tapeToJson(d: Day): String {
-        if (d.takes.isEmpty() && !d.audioB) return ""
+        if (d.takes.isEmpty() && !d.audioB && d.modeA == 0 && d.modeB == 0) return ""
         return JSONObject()
             .put("takes", JSONArray(d.takes))
             .put("b", d.audioB)
             .put("msB", d.audioMsB)
             .put("waveB", waveToString(d.waveB))
             .put("takesB", JSONArray(d.takesB))
+            .put("modeA", d.modeA)
+            .put("modeB", d.modeB)
             .toString()
     }
 
@@ -162,6 +167,8 @@ object DayCodec {
                 audioMsB = o.optLong("msB"),
                 waveB = waveFromString(o.optString("waveB")),
                 takesB = longs(o.optJSONArray("takesB")),
+                modeA = o.optInt("modeA"),
+                modeB = o.optInt("modeB"),
             )
         }.getOrDefault(d)
     }

@@ -366,6 +366,47 @@ class Player {
  * після першого. Тимчасові файли — лише в кеші програми й одразу стираються.
  */
 object Tape {
+    /** Шматок запису від [fromMs] до кінця (час — від нуля). */
+    fun slice(bytes: ByteArray, fromMs: Long, cache: File): ByteArray? {
+        val fa = File.createTempFile("tape_s", ".m4a", cache)
+        val out = File.createTempFile("tape_so", ".m4a", cache)
+        return try {
+            fa.writeBytes(bytes)
+            val ex = android.media.MediaExtractor()
+            ex.setDataSource(fa.path)
+            val ti = (0 until ex.trackCount).first { ex.getTrackFormat(it).getString(android.media.MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+            ex.selectTrack(ti)
+            val muxer = android.media.MediaMuxer(out.path, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val track = muxer.addTrack(ex.getTrackFormat(ti))
+            muxer.start()
+            val buf = java.nio.ByteBuffer.allocate(1 shl 20)
+            val info = android.media.MediaCodec.BufferInfo()
+            var first = -1L
+            var base = -1L
+            var wrote = false
+            while (true) {
+                val n = ex.readSampleData(buf, 0)
+                if (n < 0) break
+                if (first < 0) first = ex.sampleTime
+                val t = ex.sampleTime - first
+                if (t >= fromMs * 1000) {
+                    if (base < 0) base = t
+                    info.offset = 0; info.size = n; info.presentationTimeUs = t - base; info.flags = android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
+                    muxer.writeSampleData(track, buf, info)
+                    wrote = true
+                }
+                ex.advance()
+            }
+            ex.release()
+            muxer.stop(); muxer.release()
+            if (wrote) out.readBytes() else null
+        } catch (e: Exception) {
+            null
+        } finally {
+            fa.delete(); out.delete()
+        }
+    }
+
     /** Обрізати запис до [endMs] (те, що далі, стирається — як запис поверх на магнітофоні). */
     fun trim(bytes: ByteArray, endMs: Long, cache: File): ByteArray? {
         val fa = File.createTempFile("tape_t", ".m4a", cache)

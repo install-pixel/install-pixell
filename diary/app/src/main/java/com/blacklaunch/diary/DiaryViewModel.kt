@@ -493,37 +493,68 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
      * Записане — на сторону [side] (0 — A, 1 — B) касети дня. Якщо там уже є запис — допис у кінець (той самий файл далі),
      * а місце, де він почався, позначається ([Day.takes]).
      */
-    fun saveAudio(epochDay: Long, bytes: ByteArray, ms: Long, wave: List<Float>, side: Int = 0, cutAt: Long? = null) {
+    /**
+     * Записане — на сторону [side] касети дня. [cutFrom] = null — допис у кінець; інакше — заміна шматка
+     * [cutFrom, cutTo) (поточного відрізка): що до нього й після — лишається, новий запис стає на його місце.
+     * [mode] — положення шумодава, на якому писали.
+     */
+    fun saveAudio(epochDay: Long, bytes: ByteArray, ms: Long, wave: List<Float>, side: Int = 0, cutFrom: Long? = null, cutTo: Long? = null, mode: Int = 0) {
         val o = open ?: return
         viewModelScope.launch {
             val d0 = day(epochDay)
             val had = if (side == 0) d0.audio else d0.audioB
             val fullMs = if (side == 0) d0.audioMs else d0.audioMsB
-            // Запис поверх: усе після [cutAt] стирається (як на стрічці), далі — новий запис.
-            val cut = cutAt?.takeIf { had && it < fullMs - 100 }
-            val has = had && (cut == null || cut > 300)
-            val oldMs = cut ?: fullMs
+            val replace = had && cutFrom != null && cutFrom < fullMs - 100
+            val from = if (replace) cutFrom!!.coerceAtLeast(0) else fullMs
+            val to = if (replace) (cutTo ?: fullMs).coerceIn(from, fullMs) else fullMs
             val file = if (side == 0) o.db.audioFile(epochDay) else o.db.audioFileB(epochDay)
-            val joined = withContext(io) {
-                val cache = getApplication<Application>().cacheDir
-                val old0 = if (has) o.db.readMedia(file) else null
-                val old = if (old0 != null && cut != null) Tape.trim(old0, cut, cache) else old0
-                val all = if (old != null) Tape.concat(old, bytes, cache) else bytes
+            val cache = getApplication<Application>().cacheDir
+            val result = withContext(io) {
+                val old = if (had) o.db.readMedia(file) else null
+                val prefix = when {
+                    old == null -> null
+                    !replace -> old
+                    from > 300 -> Tape.trim(old, from, cache)
+                    else -> null
+                }
+                val suffix = if (old != null && replace && to < fullMs - 100) Tape.slice(old, to, cache) else null
+                var all: ByteArray? = bytes
+                if (prefix != null) all = Tape.concat(prefix, bytes, cache)
+                if (all != null && suffix != null) all = Tape.concat(all, suffix, cache)
                 all?.also { o.db.writeMedia(file, it) }
+                Triple(all, prefix != null, suffix != null)
             }
-            if (joined == null) { show(R.string.record_failed); return@launch }
+            val joined = result.first ?: run { show(R.string.record_failed); return@launch }
+            val hasPrefix = result.second
+            val hasSuffix = result.third
             val d = day(epochDay)
             // Тривалість — з самих файлів: що насправді записано й скільки тепер на стороні.
             val newMs = withContext(io) { Tape.durationMs(bytes) } ?: ms
-            val total = withContext(io) { Tape.durationMs(joined) } ?: (if (has) oldMs + newMs else newMs)
-            val start = (total - newMs).coerceAtLeast(0)
-            val oldWave0 = if (side == 0) d.wave else d.waveB
-            val oldWave = if (cut != null && fullMs > 0) oldWave0.take((oldWave0.size * cut / fullMs).toInt().coerceAtLeast(1)) else oldWave0
-            val keepTakes: (List<Long>) -> List<Long> = { t -> if (cut != null) t.filter { it < cut } else t }
-            val newWave = if (has) mergeWave(oldWave, start, wave, newMs) else compactWave(wave)
+            val total = withContext(io) { Tape.durationMs(joined) } ?: ((if (hasPrefix) from else 0L) + newMs + (if (hasSuffix) fullMs - to else 0L))
+            val start = if (hasPrefix) from else 0L
+            val oldTakes = if (side == 0) d.takes else d.takesB
+            val oldWave = if (side == 0) d.wave else d.waveB
+            val shift = start + newMs - to
+            val takes = buildList {
+                if (hasPrefix) { addAll(oldTakes.filter { it < from }); add(start) }
+                if (hasSuffix) { add(start + newMs); addAll(oldTakes.filter { it > to }.map { it + shift }) }
+            }.filter { it in 1 until total }.distinct().sorted()
+            fun part(a: Long, b: Long): List<Float> {
+                if (oldWave.isEmpty() || fullMs <= 0) return emptyList()
+                val i0 = (oldWave.size * a / fullMs).toInt().coerceIn(0, oldWave.size)
+                val i1 = (oldWave.size * b / fullMs).toInt().coerceIn(i0, oldWave.size)
+                return oldWave.subList(i0, i1)
+            }
+            val newWave = stitchWave(listOfNotNull(
+                if (hasPrefix) part(0, from) to start else null,
+                wave to newMs,
+                if (hasSuffix) part(to, fullMs) to (fullMs - to) else null,
+            ))
+            val oldMode = if (side == 0) d.modeA else d.modeB
+            val newMode = if (!hasPrefix && !hasSuffix) mode else maxOf(oldMode, mode)
             update(
-                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = if (has) keepTakes(d.takes) + start else emptyList(), noAudio = false)
-                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = if (has) keepTakes(d.takesB) + start else emptyList(), noAudio = false),
+                if (side == 0) d.copy(audio = true, audioMs = total, wave = newWave, takes = takes, modeA = newMode, noAudio = false)
+                else d.copy(audioB = true, audioMsB = total, waveB = newWave, takesB = takes, modeB = newMode, noAudio = false),
             )
         }
     }
@@ -651,6 +682,17 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         /** Обриси звуку — не більше 120 стовпчиків (стільки вміщається в смужку). */
+        /** Обриси кількох шматків разом — кожен займає місце за своєю тривалістю. */
+        fun stitchWave(parts: List<Pair<List<Float>, Long>>, n: Int = 120): List<Float> {
+            val total = parts.sumOf { it.second }.coerceAtLeast(1)
+            val out = ArrayList<Float>(n)
+            parts.forEachIndexed { k, (w, ms) ->
+                val cnt = if (k == parts.size - 1) n - out.size else (n * ms / total).toInt().coerceIn(1, n - out.size)
+                if (cnt > 0) out += resample(w, cnt)
+            }
+            return out
+        }
+
         /** Обриси старого запису й допису разом — кожен займає місце за своєю тривалістю. */
         fun mergeWave(a: List<Float>, aMs: Long, b: List<Float>, bMs: Long, n: Int = 120): List<Float> {
             val total = (aMs + bMs).coerceAtLeast(1)
