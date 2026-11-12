@@ -273,6 +273,42 @@ class VoiceDsp(private val mode: Int, rate: Int) {
 /** Програвання з пам'яті (розшифроване не лягає на диск). */
 class Player {
     private var player: MediaPlayer? = null
+    private var dyn: android.media.audiofx.DynamicsProcessing? = null
+    private var denoise = 0
+
+    /**
+     * Шумодав і при слуханні — наживо, поверх уже записаного (вбудована в Android обробка звуку): 0 — як є,
+     * 1 — зріз гулу й тихіший фон між словами, 2 — сильніше, ще й вирівнювання гучності.
+     */
+    fun denoise(mode: Int) {
+        denoise = mode
+        val p = player ?: return
+        if (android.os.Build.VERSION.SDK_INT < 28) return
+        runCatching {
+            if (mode == 0) { dyn?.enabled = false; return }
+            val d = dyn ?: run {
+                val cfg = android.media.audiofx.DynamicsProcessing.Config.Builder(
+                    android.media.audiofx.DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION, 2,
+                    true, 2, true, 1, false, 0, true,
+                ).build()
+                android.media.audiofx.DynamicsProcessing(0, p.audioSessionId, cfg).also { dyn = it }
+            }
+            val strong = mode >= 2
+            // Зріз низького гулу.
+            d.setPreEqBandAllChannelsTo(0, android.media.audiofx.DynamicsProcessing.EqBand(true, if (strong) 120f else 90f, -30f))
+            d.setPreEqBandAllChannelsTo(1, android.media.audiofx.DynamicsProcessing.EqBand(true, 20_000f, 0f))
+            // «Шумові ворота» між словами і (на 2) стиснення гучності.
+            d.setMbcBandAllChannelsTo(0, android.media.audiofx.DynamicsProcessing.MbcBand(
+                true, 20_000f,
+                3f, 160f,
+                if (strong) 3f else 1f, if (strong) -26f else 0f, 6f,
+                if (strong) -40f else -48f, if (strong) 4f else 2f,
+                0f, if (strong) 7f else 0f,
+            ))
+            d.setLimiterAllChannelsTo(android.media.audiofx.DynamicsProcessing.Limiter(true, true, 0, 1f, 60f, 10f, -2f, 0f))
+            d.enabled = true
+        }
+    }
 
     val playing: Boolean get() = runCatching { player?.isPlaying == true }.getOrDefault(false)
     val position: Int get() = runCatching { player?.currentPosition ?: 0 }.getOrDefault(0)
@@ -286,8 +322,9 @@ class Player {
             p.setOnCompletionListener { onDone() }
             p.prepare()
             if (from > 0) p.seekTo(from)
-            p.start()
             player = p
+            denoise(denoise)
+            p.start()
             true
         }.getOrElse {
             runCatching { p.release() }
@@ -303,6 +340,8 @@ class Player {
     fun speed(k: Float) = runCatching { player?.let { it.playbackParams = it.playbackParams.setSpeed(k) } }
 
     fun stop() {
+        runCatching { dyn?.release() }
+        dyn = null
         val p = player ?: return
         player = null
         runCatching { p.stop() }

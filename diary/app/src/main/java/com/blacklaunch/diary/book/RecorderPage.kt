@@ -124,6 +124,8 @@ fun RecorderPage(
     val player = remember(day.day) { Player() }
     DisposableEffect(day.day) { onDispose { player.stop() } }
     var deck by remember(day.day) { mutableStateOf(Deck.Idle) }
+    // Крутілка діє й на слухання — наживо, поверх записаного.
+    LaunchedEffect(voiceMode) { player.denoise(voiceMode) }
     // Де стоїть стрічка (мс від початку сторони). Касету залишили там, де записали, — у кінці записаного.
     var head by remember(day.day) { mutableFloatStateOf(dur.toFloat()) }
     var loaded by remember(day.day, side, dur) { mutableStateOf<ByteArray?>(null) }
