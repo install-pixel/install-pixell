@@ -100,6 +100,8 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun openAtBookmarkOf(info: DiaryInfo?): Boolean = info?.openAtBookmark ?: settings.openAtBookmark
 
     fun setDrying(id: String, drying: InkDrying) = saveShelf(shelf.map { if (it.id == id) it.copy(drying = drying) else it })
+    fun setOpenFirst(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(openFirst = on) else it })
+
     fun setVoiceMode(id: String, mode: Int) = saveShelf(shelf.map { if (it.id == id) it.copy(voiceMode = mode.coerceIn(0, 2)) else it })
 
     /**

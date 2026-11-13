@@ -397,21 +397,49 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
     val haptics = LocalHaptics.current
     val glass = AppStyle.glass
     val locale = Locale.getDefault()
+    val scope = rememberCoroutineScope()
     val pager = rememberPagerState(initialPage = start.coerceIn(0, (days.size - 1).coerceAtLeast(0))) { days.size }
+    // Показ (сцена): фото одне за одним — кожне плавно наближається, наступне проступає крізь попереднє (змішуються).
     var playing by remember { mutableStateOf(auto) }
-    val dragged by pager.interactionSource.collectIsDraggedAsState()
-    LaunchedEffect(dragged) { if (dragged) playing = false }
-    // Повільне наближення поточного фото під час показу.
-    val zoom = remember { Animatable(1f) }
-    // Ключ — фото, на якому показ зупинився (settledPage), а не поточне: поточне міняється посеред гортання, і тоді
-    // гортання переривалось на півдорозі — два фото застрягали навпіл.
-    LaunchedEffect(pager.settledPage, playing) {
-        // Показ — спокійно: кожне фото просто стоїть кілька секунд, без наближення (наближення між фото давало стрибки),
-        // а перехід до наступного — плавний (зсув і розчинення).
+    var ended by remember { mutableStateOf(false) }
+    var idx by remember { mutableIntStateOf(pager.currentPage) }
+    var prevIdx by remember { mutableStateOf<Int?>(null) }
+    val fade = remember { Animatable(1f) }
+    val settle = remember { Animatable(0f) }
+    val starts = remember { HashMap<Int, Long>() }
+    var now by remember { mutableLongStateOf(0L) }
+    val stage = playing || ended
+    LaunchedEffect(stage) {
+        while (stage) { androidx.compose.runtime.withFrameMillis { now = it } }
+    }
+    LaunchedEffect(playing) {
         if (!playing) return@LaunchedEffect
-        delay(SHOW_MS.toLong())
-        if (pager.settledPage < days.size - 1) pager.animateScrollToPage(pager.settledPage + 1, animationSpec = tween(1100, easing = FastOutSlowInEasing))
-        else playing = false
+        if (ended) { ended = false; idx = 0 }
+        settle.snapTo(0f)
+        starts.clear()
+        androidx.compose.runtime.withFrameMillis { starts[idx] = it; now = it }
+        while (true) {
+            delay(SHOW_MS.toLong())
+            if (idx >= days.size - 1) {
+                // Кінець: останнє фото м'яко повертається до звичайного розміру й з'являється «Кінець».
+                ended = true
+                playing = false
+                settle.animateTo(1f, tween(1400, easing = FastOutSlowInEasing))
+                break
+            }
+            prevIdx = idx
+            idx += 1
+            androidx.compose.runtime.withFrameMillis { starts[idx] = it }
+            fade.snapTo(0f)
+            fade.animateTo(1f, tween(FADE_MS, easing = FastOutSlowInEasing))
+            prevIdx = null
+        }
+    }
+    fun stopToPager() {
+        if (!stage) return
+        playing = false
+        ended = false
+        scope.launch { pager.scrollToPage(idx) }
     }
     com.blacklaunch.diary.ui.SmoothDialog(onDismissRequest = onDismiss) {
         Box(
@@ -428,53 +456,92 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
                 ),
         ) {
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-                HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { i ->
-                    val day = days[i]
-                    var image by remember(day, glass) { mutableStateOf<ImageBitmap?>(vm.cachedPhoto(day, glass)) }
-                    LaunchedEffect(day, glass) { if (image == null) image = vm.photo(day, glass) }
-                    Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        image?.let {
-                            StyledPhoto(
-                                it, glass,
-                                Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1))
-                                    .graphicsLayer {
-                                        val z = 1f
-                                        scaleX = z; scaleY = z
-                                        // Сусідні фото тануть, поки гортається: перехід — плавний, не різкий зсув.
-                                        val off = kotlin.math.abs((pager.currentPage - i) + pager.currentPageOffsetFraction)
-                                        alpha = (1f - off * 0.7f).coerceIn(0f, 1f)
-                                    },
-                                ContentScale.Fit,
-                                caption = vm.day(day).caption,
-                                seed = day,
-                                dry = DiaryViewModel.isDry(day),
-                            )
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (stage) {
+                        // Сцена показу: дотик — зупинити й гортати самому.
+                        Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { stopToPager() } }) {
+                            fun zoomOf(i: Int): Float {
+                                val st = starts[i] ?: return 1f
+                                val t = ((now - st).toFloat() / (SHOW_MS + FADE_MS)).coerceIn(0f, 1.4f)
+                                val z = 1f + 0.14f * t
+                                return if (ended && i == idx) z + (1f - z) * settle.value else z
+                            }
+                            prevIdx?.let { pi -> ShowSlide(vm, days[pi], glass, locale, zoomOf(pi), 1f, pi) }
+                            ShowSlide(vm, days[idx], glass, locale, zoomOf(idx), if (prevIdx != null) fade.value else 1f, idx)
+                            if (ended) {
+                                Text(
+                                    stringResource(R.string.show_end),
+                                    color = (if (glass) Oled.TextPrimary else SheetInk).copy(alpha = settle.value),
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+                                )
+                            }
                         }
-                        Text(
-                            DateTimeFormatter.ofPattern("dd.MM.yyyy", locale).format(LocalDate.ofEpochDay(day)),
-                            color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f),
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(top = 14.dp),
-                        )
+                    } else {
+                        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { i ->
+                            val off = kotlin.math.abs((pager.currentPage - i) + pager.currentPageOffsetFraction)
+                            ShowSlide(vm, days[i], glass, locale, 1f, (1f - off * 0.7f).coerceIn(0f, 1f), i)
+                        }
                     }
                 }
                 Row(Modifier.padding(bottom = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                    Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.tap(); playing = !playing }, contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).clickable {
+                            haptics.tap()
+                            if (playing) stopToPager() else { if (!stage) idx = pager.currentPage; playing = true }
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         GlyphIcon(if (playing) Glyph.Pause else Glyph.Play, stringResource(R.string.search_show), tint = if (glass) Oled.TextSecondary else SheetInk, size = 24.dp)
                     }
                     Box(Modifier.size(56.dp).clip(CircleShape).clickable { haptics.tap(); onDismiss() }, contentAlignment = Alignment.Center) {
                         GlyphIcon(Glyph.Close, stringResource(R.string.close), tint = if (glass) Oled.TextPrimary else SheetInk)
                     }
-                    Text("${pager.currentPage + 1} / ${days.size}", color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.width(44.dp))
+                    Text("${(if (stage) idx else pager.currentPage) + 1} / ${days.size}", color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.width(44.dp))
                 }
             }
         }
     }
 }
 
-private const val SHOW_MS = 3200
+/** Одне фото показу: у своїй пропорції, з датою під ним; [zoom] — наближення, [alpha] — прозорість (змішування). */
+@Composable
+private fun ShowSlide(vm: DiaryViewModel, day: Long, glass: Boolean, locale: Locale, zoom: Float, alpha: Float, index: Int) {
+    var image by remember(day, glass) { mutableStateOf<ImageBitmap?>(vm.cachedPhoto(day, glass)) }
+    LaunchedEffect(day, glass) { if (image == null) image = vm.photo(day, glass) }
+    Column(
+        Modifier.fillMaxSize().padding(20.dp).graphicsLayer { this.alpha = alpha },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        image?.let {
+            StyledPhoto(
+                it, glass,
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1))
+                    .graphicsLayer {
+                        scaleX = zoom; scaleY = zoom
+                        // Легкий дрейф під час наближення — то вліво, то вправо (як у фільмі).
+                        translationX = (zoom - 1f) * size.width * (if (index % 2 == 0) 0.18f else -0.18f)
+                    },
+                ContentScale.Fit,
+                caption = vm.day(day).caption,
+                seed = day,
+                dry = DiaryViewModel.isDry(day),
+            )
+        }
+        Text(
+            DateTimeFormatter.ofPattern("dd.MM.yyyy", locale).format(LocalDate.ofEpochDay(day)),
+            color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f),
+            fontSize = 14.sp,
+            modifier = Modifier.padding(top = 14.dp),
+        )
+    }
+}
+
+private const val SHOW_MS = 3600
+private const val FADE_MS = 1500
 
 /** Аудіо: лише записи, по одному в рядок — касетка (відкрити магнітофон), дата, смужка, кнопка. */
 @Composable

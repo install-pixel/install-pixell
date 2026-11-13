@@ -50,7 +50,7 @@
 
     <!-- Перо -->
     <string name="ink_mode">Олівець</string>
-    <string name="ink_hint">Пиши й малюй пальцем. Гумка стирає лише свіже чорнило.</string>
+    <string name="ink_hint">Веди — олівець іде за пальцем. Затримай — пише. Двічі торкнись — пише одразу.</string>
     <string name="ink_eraser">Гумка</string>
     <string name="ink_dry">Висохле чорнило не стирається</string>
 
@@ -239,4 +239,15 @@
     <string name="recorder_side_full">Ця сторона касети записана до кінця (45 хвилин) — переверни на сторону B.</string>
     <string name="knob_title">ШУМОДАВ</string>
     <string name="open_recorder">Відкрити магнітофон</string>
+    <string name="settings_open_today">Відкривати на сьогоднішньому дні</string>
+    <string name="settings_open_today_desc">Вимкнено — щоденник відкривається з першої сторінки</string>
+    <string name="show_end">Кінець</string>
+    <string name="ink_hard">Твердий олівець</string>
+    <string name="ink_soft">М\'який олівець</string>
+    <string name="ink_pen">Ручка</string>
+    <string name="ink_marker">Маркер</string>
+    <string name="ink_size">Товщина</string>
+    <string name="ink_style">Лінія</string>
+    <string name="ink_eraser_hard">Точна гумка</string>
+    <string name="ink_eraser_soft">М\'яка гумка</string>
 </resources>

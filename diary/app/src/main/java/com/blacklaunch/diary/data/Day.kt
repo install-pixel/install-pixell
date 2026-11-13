@@ -15,6 +15,10 @@ class InkLine(
     val factors: FloatArray,
     val width: Float,
     val time: Long,
+    /** Інструмент: 0 ручка, 1 твердий олівець, 2 м'який, 3 маркер, 10 гумка, 11 м'яка гумка. */
+    val kind: Int = 0,
+    /** Лінія: 0 суцільна, 1 пунктир, 2 крапки, 3 хвиля. */
+    val style: Int = 0,
 )
 
 /** Викреслене у висохлому тексті: [start] включно, [end] — ні (індекси символів [Day.sealed]). */
@@ -116,6 +120,8 @@ object DayCodec {
             o.put("x", JSONArray().also { a -> l.xs.forEach { a.put(r(it)) } })
             o.put("y", JSONArray().also { a -> l.ys.forEach { a.put(r(it)) } })
             if (l.factors.isNotEmpty()) o.put("f", JSONArray().also { a -> l.factors.forEach { a.put(r2(it)) } })
+            if (l.kind != 0) o.put("k", l.kind)
+            if (l.style != 0) o.put("s", l.style)
             arr.put(o)
         }
         return arr.toString()
@@ -137,6 +143,8 @@ object DayCodec {
                     factors = if (f == null) FloatArray(0) else FloatArray(f.length()) { f.getDouble(it).toFloat() },
                     width = o.optDouble("w", 0.006).toFloat(),
                     time = o.optLong("t"),
+                    kind = o.optInt("k"),
+                    style = o.optInt("s"),
                 )
             }
         }.getOrDefault(emptyList())

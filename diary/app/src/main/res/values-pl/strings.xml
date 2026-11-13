@@ -47,7 +47,7 @@
     <string name="mic_denied">Bez zgody na mikrofon nie da się nagrać głosu</string>
 
     <string name="ink_mode">Ołówek</string>
-    <string name="ink_hint">Pisz i rysuj palcem. Gumka ściera tylko świeży atrament.</string>
+    <string name="ink_hint">Prowadź — ołówek idzie za palcem. Przytrzymaj — pisze. Dotknij dwa razy — pisze od razu.</string>
     <string name="ink_eraser">Gumka</string>
     <string name="ink_dry">Suchego atramentu nie da się zetrzeć</string>
 
@@ -229,4 +229,15 @@
     <string name="recorder_side_full">Ta strona kasety jest pełna (45 minut) — odwróć na stronę B.</string>
     <string name="knob_title">ODSZUMIANIE</string>
     <string name="open_recorder">Otwórz magnetofon</string>
+    <string name="settings_open_today">Otwieraj na dzisiejszym dniu</string>
+    <string name="settings_open_today_desc">Wyłączone — pamiętnik otwiera się od pierwszej strony</string>
+    <string name="show_end">Koniec</string>
+    <string name="ink_hard">Twardy ołówek</string>
+    <string name="ink_soft">Miękki ołówek</string>
+    <string name="ink_pen">Długopis</string>
+    <string name="ink_marker">Marker</string>
+    <string name="ink_size">Grubość</string>
+    <string name="ink_style">Linia</string>
+    <string name="ink_eraser_hard">Dokładna gumka</string>
+    <string name="ink_eraser_soft">Miękka gumka</string>
 </resources>
