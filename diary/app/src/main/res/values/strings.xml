@@ -228,12 +228,19 @@
     <string name="settings_open_today">Open at today</string>
     <string name="settings_open_today_desc">Off — the diary opens at its first page</string>
     <string name="show_end">The end</string>
-    <string name="ink_hard">Hard pencil</string>
-    <string name="ink_soft">Soft pencil</string>
-    <string name="ink_pen">Pen</string>
     <string name="ink_marker">Marker</string>
     <string name="ink_size">Size</string>
     <string name="ink_style">Line</string>
     <string name="ink_eraser_hard">Precise eraser</string>
-    <string name="ink_eraser_soft">Soft eraser</string>
+    <string name="ink_eraser_soft">Soft eraser (blurred edge)</string>
+    <string name="ink_pencil">Pencil</string>
+    <string name="ink_underline">Underline</string>
+    <string name="ink_smooth">Smoothing</string>
+    <string name="ink_shape_line">Line</string>
+    <string name="ink_shape_rect">Frame</string>
+    <string name="ink_shape_oval">Oval</string>
+    <string name="ink_opacity">Opacity</string>
+    <string name="ink_tint_none">No tint</string>
+    <string name="ink_tint_red">Light red</string>
+    <string name="ink_tint_blue">Light blue</string>
 </resources>

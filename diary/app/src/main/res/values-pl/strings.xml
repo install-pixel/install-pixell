@@ -232,12 +232,19 @@
     <string name="settings_open_today">Otwieraj na dzisiejszym dniu</string>
     <string name="settings_open_today_desc">Wyłączone — pamiętnik otwiera się od pierwszej strony</string>
     <string name="show_end">Koniec</string>
-    <string name="ink_hard">Twardy ołówek</string>
-    <string name="ink_soft">Miękki ołówek</string>
-    <string name="ink_pen">Długopis</string>
     <string name="ink_marker">Marker</string>
     <string name="ink_size">Grubość</string>
     <string name="ink_style">Linia</string>
     <string name="ink_eraser_hard">Dokładna gumka</string>
-    <string name="ink_eraser_soft">Miękka gumka</string>
+    <string name="ink_eraser_soft">Miękka gumka (rozmyta krawędź)</string>
+    <string name="ink_pencil">Ołówek</string>
+    <string name="ink_underline">Podkreślenie</string>
+    <string name="ink_smooth">Wygładzanie</string>
+    <string name="ink_shape_line">Linia</string>
+    <string name="ink_shape_rect">Ramka</string>
+    <string name="ink_shape_oval">Owal</string>
+    <string name="ink_opacity">Przezroczystość</string>
+    <string name="ink_tint_none">Bez odcienia</string>
+    <string name="ink_tint_red">Jasnoczerwony</string>
+    <string name="ink_tint_blue">Jasnoniebieski</string>
 </resources>

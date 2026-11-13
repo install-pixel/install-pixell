@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -398,49 +401,72 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
     val glass = AppStyle.glass
     val locale = Locale.getDefault()
     val scope = rememberCoroutineScope()
-    val pager = rememberPagerState(initialPage = start.coerceIn(0, (days.size - 1).coerceAtLeast(0))) { days.size }
-    // Показ (сцена): фото одне за одним — кожне плавно наближається, наступне проступає крізь попереднє (змішуються).
-    var playing by remember { mutableStateOf(auto) }
+    val n = days.size
+    val first = start.coerceIn(0, (n - 1).coerceAtLeast(0))
+    // Плівка: кадри в рамочках, перфорація згори й знизу. [pos] — де стоїть камера (у кадрах; дробове — між кадрами),
+    // [zoom] — наближення (1 — кадр на весь екран, менше — видно шматок плівки).
+    val images = remember { androidx.compose.runtime.mutableStateMapOf<Long, ImageBitmap>() }
+    val pos = remember { Animatable(first - LEADER) }
+    val zoom = remember { Animatable(FAR) }
+    val endA = remember { Animatable(0f) }
+    var playing by remember { mutableStateOf(false) }
     var ended by remember { mutableStateOf(false) }
-    var idx by remember { mutableIntStateOf(pager.currentPage) }
-    var prevIdx by remember { mutableStateOf<Int?>(null) }
-    val fade = remember { Animatable(1f) }
-    val settle = remember { Animatable(0f) }
-    val starts = remember { HashMap<Int, Long>() }
-    var now by remember { mutableLongStateOf(0L) }
-    val stage = playing || ended
-    LaunchedEffect(stage) {
-        while (stage) { androidx.compose.runtime.withFrameMillis { now = it } }
-    }
-    LaunchedEffect(playing) {
-        if (!playing) return@LaunchedEffect
-        if (ended) { ended = false; idx = 0 }
-        settle.snapTo(0f)
-        starts.clear()
-        androidx.compose.runtime.withFrameMillis { starts[idx] = it; now = it }
-        while (true) {
-            delay(SHOW_MS.toLong())
-            if (idx >= days.size - 1) {
-                // Кінець: останнє фото м'яко повертається до звичайного розміру й з'являється «Кінець».
-                ended = true
-                playing = false
-                settle.animateTo(1f, tween(1400, easing = FastOutSlowInEasing))
-                break
-            }
-            prevIdx = idx
-            idx += 1
-            androidx.compose.runtime.withFrameMillis { starts[idx] = it }
-            fade.snapTo(0f)
-            fade.animateTo(1f, tween(FADE_MS, easing = FastOutSlowInEasing))
-            prevIdx = null
+    var opened by remember { mutableStateOf(false) }
+    val cur = pos.value.let { kotlin.math.round(it).toInt() }.coerceIn(0, (n - 1).coerceAtLeast(0))
+    LaunchedEffect(cur, glass) {
+        for (k in listOf(cur, cur + 1, cur - 1, cur + 2, cur + 3)) {
+            val d = days.getOrNull(k) ?: continue
+            if (d in images) continue
+            (vm.cachedPhoto(d, glass) ?: vm.photo(d, glass))?.let { images[d] = it }
         }
     }
-    fun stopToPager() {
-        if (!stage) return
-        playing = false
-        ended = false
-        scope.launch { pager.scrollToPage(idx) }
+    // Відкриття: плівка заїжджає здалеку й наближається разом із першим кадром.
+    suspend fun open(to: Int) {
+        kotlinx.coroutines.coroutineScope {
+            launch { zoom.animateTo(1f, tween(OPEN_MS, easing = FastOutSlowInEasing)) }
+            pos.animateTo(to.toFloat(), tween(OPEN_MS, easing = FastOutSlowInEasing))
+        }
     }
+    LaunchedEffect(Unit) {
+        open(first)
+        opened = true
+        playing = auto
+    }
+    LaunchedEffect(playing, opened) {
+        if (!opened) return@LaunchedEffect
+        if (!playing) {
+            if (!ended) pos.animateTo(kotlin.math.round(pos.value).coerceIn(0f, (n - 1).toFloat()), tween(500, easing = FastOutSlowInEasing))
+            return@LaunchedEffect
+        }
+        if (ended) {
+            // Спочатку: плівку перемотано, вона знову заїжджає.
+            ended = false
+            launch { endA.animateTo(0f, tween(400)) }
+            pos.snapTo(-LEADER)
+            zoom.snapTo(FAR)
+            open(0)
+        }
+        while (true) {
+            val at = kotlin.math.round(pos.value).coerceIn(0f, (n - 1).toFloat())
+            if (kotlin.math.abs(pos.value - at) > 0.01f) pos.animateTo(at, tween(600, easing = FastOutSlowInEasing))
+            delay(HOLD_MS.toLong())
+            if (at.toInt() >= n - 1) {
+                // Кінець плівки: камера відступає, видно хвіст плівки й напис «Кінець».
+                kotlinx.coroutines.coroutineScope {
+                    launch { zoom.animateTo(FAR, tween(END_MS, easing = FastOutSlowInEasing)) }
+                    launch { delay(END_MS / 2L); endA.animateTo(1f, tween(END_MS / 2)) }
+                    pos.animateTo(n - 1 + LEADER * 0.8f, tween(END_MS, easing = FastOutSlowInEasing))
+                }
+                ended = true
+                playing = false
+                break
+            }
+            pos.animateTo(at + 1f, tween(GLIDE_MS, easing = FastOutSlowInEasing))
+        }
+    }
+    val bg = if (glass) Color.Black else PaperTexture.PAGE_BASE
+    val ink = if (glass) Oled.TextPrimary else SheetInk
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     com.blacklaunch.diary.ui.SmoothDialog(onDismissRequest = onDismiss) {
         Box(
             Modifier
@@ -456,39 +482,168 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
                 ),
         ) {
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    if (stage) {
-                        // Сцена показу: дотик — зупинити й гортати самому.
-                        Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { stopToPager() } }) {
-                            fun zoomOf(i: Int): Float {
-                                val st = starts[i] ?: return 1f
-                                val t = ((now - st).toFloat() / (SHOW_MS + FADE_MS)).coerceIn(0f, 1.4f)
-                                val z = 1f + 0.14f * t
-                                return if (ended && i == idx) z + (1f - z) * settle.value else z
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val wPx = with(density) { maxWidth.toPx() }
+                    val hPx = with(density) { maxHeight.toPx() }
+                    // Розміри плівки: висота кадру однакова, ширина — за пропорцією фото (як кадр на плівці).
+                    val fh = minOf(wPx / 1.75f, hPx * 0.45f)
+                    val rb = fh * 0.22f
+                    val gap = fh * 0.08f
+                    val std = fh * 1.333f
+                    fun widthOf(k: Int): Float = images[days[k]]?.let { fh * (it.width.toFloat() / it.height.coerceAtLeast(1)).coerceIn(0.62f, 1.5f) } ?: std
+                    val lefts = FloatArray(n)
+                    val widths = FloatArray(n)
+                    var x = 0f
+                    for (k in 0 until n) { widths[k] = widthOf(k); lefts[k] = x; x += widths[k] + gap }
+                    val stripEnd = x - gap
+                    fun centerOf(k: Int) = lefts[k] + widths[k] / 2
+                    fun camAt(p: Float): Float = when {
+                        n == 0 -> 0f
+                        p <= 0f -> centerOf(0) + p * (std + gap)
+                        p >= n - 1 -> centerOf(n - 1) + (p - (n - 1)) * (std + gap)
+                        else -> {
+                            val a = kotlin.math.floor(p).toInt()
+                            val f = p - a
+                            centerOf(a) + (centerOf(a + 1) - centerOf(a)) * f
+                        }
+                    }
+                    val stepPx = std + gap
+                    Canvas(
+                        Modifier
+                            .fillMaxSize()
+                            .pointerInput(n) {
+                                detectTapGestures {
+                                    haptics.tap()
+                                    if (opened) playing = !playing
+                                }
                             }
-                            prevIdx?.let { pi -> ShowSlide(vm, days[pi], glass, locale, zoomOf(pi), 1f, pi) }
-                            ShowSlide(vm, days[idx], glass, locale, zoomOf(idx), if (prevIdx != null) fade.value else 1f, idx)
-                            if (ended) {
-                                Text(
-                                    stringResource(R.string.show_end),
-                                    color = (if (glass) Oled.TextPrimary else SheetInk).copy(alpha = settle.value),
-                                    fontSize = 18.sp,
-                                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+                            .pointerInput(n) {
+                                val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        tracker.resetTracking()
+                                        playing = false
+                                        if (ended) {
+                                            ended = false
+                                            scope.launch { endA.animateTo(0f, tween(300)) }
+                                            scope.launch { zoom.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        val v = tracker.calculateVelocity().x
+                                        val target = kotlin.math.round(pos.value - v * 0.18f / (stepPx * zoom.value)).coerceIn(0f, (n - 1).toFloat())
+                                        scope.launch {
+                                            if (zoom.value < 1f) launch { zoom.animateTo(1f, tween(600)) }
+                                            pos.animateTo(target, androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = 120f))
+                                        }
+                                    },
+                                ) { change, dx ->
+                                    tracker.addPosition(change.uptimeMillis, change.position)
+                                    change.consume()
+                                    scope.launch { pos.snapTo((pos.value - dx / (stepPx * zoom.value)).coerceIn(-0.4f, n - 1 + 0.4f)) }
+                                }
+                            },
+                    ) {
+                        if (n == 0) return@Canvas
+                        val z = zoom.value
+                        val p = pos.value
+                        val camX = camAt(p)
+                        val sh = fh + 2 * rb
+                        val top = size.height / 2 - sh / 2
+                        val leader = LEADER * stepPx
+                        val left = lefts[0] - leader
+                        val right = stripEnd + leader
+                        val viewL = camX - size.width / 2 / z - 10f
+                        val viewR = camX + size.width / 2 / z + 10f
+                        val film = if (glass) Color(0xFF1B1B1B) else Color(0xFF0B0A08)
+                        val line = 1.2.dp.toPx() / z
+                        withTransform({
+                            translate(size.width / 2 - camX, 0f)
+                            scale(z, z, Offset(camX, size.height / 2))
+                        }) {
+                            // Сама плівка: тіло, на кінцях — косо обрізаний хвіст.
+                            val body = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(left + rb, top); lineTo(right - rb, top); lineTo(right, top + rb * 1.4f)
+                                lineTo(right, top + sh); lineTo(left, top + sh); lineTo(left, top + rb * 1.4f); close()
+                            }
+                            drawPath(body, film)
+                            // Ледь світліші краї (як на справжній плівці — прозора основа).
+                            drawPath(body, ink.copy(alpha = if (glass) 0.18f else 0.55f), style = Stroke(line))
+                            // Перфорація: прямокутні дірочки з заокругленими кутами, крізь них — тло.
+                            val hw = rb * 0.36f
+                            val hh = rb * 0.4f
+                            val pitch = rb * 0.82f
+                            var hx = left + rb * 1.6f
+                            if (hx < viewL) hx += kotlin.math.floor((viewL - hx) / pitch) * pitch
+                            while (hx < right - rb * 1.2f && hx < viewR) {
+                                for (hy in floatArrayOf(top + rb * 0.12f, top + sh - rb * 0.12f - hh)) {
+                                    drawRoundRect(bg, Offset(hx, hy), Size(hw, hh), CornerRadius(hw * 0.25f))
+                                    if (!glass) drawRoundRect(ink.copy(alpha = 0.45f), Offset(hx, hy), Size(hw, hh), CornerRadius(hw * 0.25f), style = Stroke(line))
+                                }
+                                hx += pitch
+                            }
+                            // Кадри.
+                            for (k in 0 until n) {
+                                val fl = lefts[k]
+                                val fw = widths[k]
+                                if (fl + fw < viewL || fl > viewR) continue
+                                val ft = top + rb
+                                drawRect(Color(0xFF050505), Offset(fl, ft), Size(fw, fh))
+                                images[days[k]]?.let { img ->
+                                    val a = img.width.toFloat() / img.height.coerceAtLeast(1)
+                                    var dw = fw
+                                    var dh = fw / a
+                                    if (dh > fh) { dh = fh; dw = fh * a }
+                                    drawImage(
+                                        img,
+                                        dstOffset = androidx.compose.ui.unit.IntOffset((fl + (fw - dw) / 2).toInt(), (ft + (fh - dh) / 2).toInt()),
+                                        dstSize = androidx.compose.ui.unit.IntSize(dw.toInt(), dh.toInt()),
+                                        filterQuality = androidx.compose.ui.graphics.FilterQuality.Medium,
+                                    )
+                                }
+                                // Рамочка кадру й притемнення сусідніх (поточний — яскравий).
+                                val dim = (kotlin.math.abs(k - p)).coerceIn(0f, 1f) * 0.5f
+                                if (dim > 0.01f) drawRect(Color.Black.copy(alpha = dim), Offset(fl, ft), Size(fw, fh))
+                                drawRect(ink.copy(alpha = 0.55f), Offset(fl, ft), Size(fw, fh), style = Stroke(line))
+                                // Дата на краю плівки, як друк на справжній плівці.
+                                val label = measurer.measure(
+                                    DateTimeFormatter.ofPattern("dd.MM.yy", locale).format(LocalDate.ofEpochDay(days[k])) + "  ${k + 1}",
+                                    androidx.compose.ui.text.TextStyle(color = ink.copy(alpha = 0.45f), fontSize = (rb * 0.22f / density.fontScale / density.density).sp),
                                 )
+                                drawText(label, topLeft = Offset(fl + fw * 0.06f, top + sh - rb + (rb * 0.88f - hh) / 2 - label.size.height / 2f))
                             }
                         }
-                    } else {
-                        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { i ->
-                            val off = kotlin.math.abs((pager.currentPage - i) + pager.currentPageOffsetFraction)
-                            ShowSlide(vm, days[i], glass, locale, 1f, (1f - off * 0.7f).coerceIn(0f, 1f), i)
+                    }
+                    // Під плівкою — дата й підпис поточного кадру; наприкінці — «Кінець».
+                    val below = with(density) { (hPx / 2 + (fh + 2 * rb) * zoom.value / 2).toDp() + 14.dp }
+                    Column(Modifier.fillMaxWidth().padding(top = below, start = 24.dp, end = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        val near = 1f - (kotlin.math.abs(pos.value - cur) * 2f).coerceIn(0f, 1f)
+                        val a = near * (1f - endA.value) * ((zoom.value - FAR) / (1f - FAR)).coerceIn(0f, 1f)
+                        if (n > 0) {
+                            Text(
+                                DateTimeFormatter.ofPattern("dd.MM.yyyy", locale).format(LocalDate.ofEpochDay(days[cur])),
+                                color = ink.copy(alpha = 0.7f * a),
+                                fontSize = 14.sp,
+                            )
+                            val cap = vm.day(days[cur]).caption
+                            if (cap.isNotBlank()) Text(cap, color = ink.copy(alpha = a), fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                         }
+                    }
+                    if (endA.value > 0f) {
+                        Text(
+                            stringResource(R.string.show_end),
+                            color = ink.copy(alpha = endA.value),
+                            fontSize = 20.sp,
+                            modifier = Modifier.align(Alignment.Center).padding(top = with(density) { (fh * FAR + 2 * rb * FAR).toDp() } + 80.dp),
+                        )
                     }
                 }
                 Row(Modifier.padding(bottom = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                     Box(
                         Modifier.size(44.dp).clip(CircleShape).clickable {
                             haptics.tap()
-                            if (playing) stopToPager() else { if (!stage) idx = pager.currentPage; playing = true }
+                            if (opened) playing = !playing
                         },
                         contentAlignment = Alignment.Center,
                     ) {
@@ -497,51 +652,21 @@ private fun PhotoShow(vm: DiaryViewModel, days: List<Long>, start: Int, auto: Bo
                     Box(Modifier.size(56.dp).clip(CircleShape).clickable { haptics.tap(); onDismiss() }, contentAlignment = Alignment.Center) {
                         GlyphIcon(Glyph.Close, stringResource(R.string.close), tint = if (glass) Oled.TextPrimary else SheetInk)
                     }
-                    Text("${(if (stage) idx else pager.currentPage) + 1} / ${days.size}", color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.width(44.dp))
+                    Text("${cur + 1} / $n", color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f), fontSize = 13.sp, modifier = Modifier.width(44.dp))
                 }
             }
         }
     }
 }
 
-/** Одне фото показу: у своїй пропорції, з датою під ним; [zoom] — наближення, [alpha] — прозорість (змішування). */
-@Composable
-private fun ShowSlide(vm: DiaryViewModel, day: Long, glass: Boolean, locale: Locale, zoom: Float, alpha: Float, index: Int) {
-    var image by remember(day, glass) { mutableStateOf<ImageBitmap?>(vm.cachedPhoto(day, glass)) }
-    LaunchedEffect(day, glass) { if (image == null) image = vm.photo(day, glass) }
-    Column(
-        Modifier.fillMaxSize().padding(20.dp).graphicsLayer { this.alpha = alpha },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        image?.let {
-            StyledPhoto(
-                it, glass,
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(it.width.toFloat() / it.height.coerceAtLeast(1))
-                    .graphicsLayer {
-                        scaleX = zoom; scaleY = zoom
-                        // Легкий дрейф під час наближення — то вліво, то вправо (як у фільмі).
-                        translationX = (zoom - 1f) * size.width * (if (index % 2 == 0) 0.18f else -0.18f)
-                    },
-                ContentScale.Fit,
-                caption = vm.day(day).caption,
-                seed = day,
-                dry = DiaryViewModel.isDry(day),
-            )
-        }
-        Text(
-            DateTimeFormatter.ofPattern("dd.MM.yyyy", locale).format(LocalDate.ofEpochDay(day)),
-            color = if (glass) Oled.TextSecondary else SheetInk.copy(alpha = 0.7f),
-            fontSize = 14.sp,
-            modifier = Modifier.padding(top = 14.dp),
-        )
-    }
-}
-
-private const val SHOW_MS = 3600
-private const val FADE_MS = 1500
+/** Скільки «кадрів» порожньої плівки перед першим кадром і після останнього. */
+private const val LEADER = 1.7f
+/** Наближення, з якого плівка заїжджає й до якого відступає наприкінці. */
+private const val FAR = 0.5f
+private const val OPEN_MS = 2000
+private const val HOLD_MS = 2800
+private const val GLIDE_MS = 1800
+private const val END_MS = 2400
 
 /** Аудіо: лише записи, по одному в рядок — касетка (відкрити магнітофон), дата, смужка, кнопка. */
 @Composable

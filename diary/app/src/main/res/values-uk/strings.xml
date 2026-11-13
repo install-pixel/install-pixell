@@ -242,12 +242,19 @@
     <string name="settings_open_today">Відкривати на сьогоднішньому дні</string>
     <string name="settings_open_today_desc">Вимкнено — щоденник відкривається з першої сторінки</string>
     <string name="show_end">Кінець</string>
-    <string name="ink_hard">Твердий олівець</string>
-    <string name="ink_soft">М\'який олівець</string>
-    <string name="ink_pen">Ручка</string>
     <string name="ink_marker">Маркер</string>
     <string name="ink_size">Товщина</string>
     <string name="ink_style">Лінія</string>
     <string name="ink_eraser_hard">Точна гумка</string>
-    <string name="ink_eraser_soft">М\'яка гумка</string>
+    <string name="ink_eraser_soft">М\'яка гумка (розмитий край)</string>
+    <string name="ink_pencil">Олівець</string>
+    <string name="ink_underline">Підкреслення</string>
+    <string name="ink_smooth">Згладжування</string>
+    <string name="ink_shape_line">Лінія</string>
+    <string name="ink_shape_rect">Рамка</string>
+    <string name="ink_shape_oval">Овал</string>
+    <string name="ink_opacity">Прозорість</string>
+    <string name="ink_tint_none">Без відтінку</string>
+    <string name="ink_tint_red">Легкий червоний</string>
+    <string name="ink_tint_blue">Легкий синій</string>
 </resources>

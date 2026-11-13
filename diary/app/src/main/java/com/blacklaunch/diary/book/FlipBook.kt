@@ -218,6 +218,7 @@ fun FlipBook(
     val underBlur = rememberGraphicsLayer()
     val topBlur = rememberGraphicsLayer()
     val backLayer = rememberGraphicsLayer()
+    val stackLayer = rememberGraphicsLayer()
 
     fun heavyNow() = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
 
@@ -414,6 +415,19 @@ fun FlipBook(
             }
             // Зворот стосу — остання сторінка в ньому: малюється невидимо, лише в окремий шар.
             val backIdx = if (state.forward) backOf?.invoke(top, under)?.takeIf { it in 0 until currentCount && it != top } else null
+            // Перегортається стос: крізь його ще не перегорнуту частину далі видно першу сторінку стосу (вона ж
+            // гортається разом з обкладинкою), а не ту, що відкривається під ним.
+            val frontIdx = if (backIdx != null) (top + 1).takeIf { it < under } else null
+            if (frontIdx != null) key("front$frontIdx") {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .drawWithContent {
+                            stackLayer.record { this@drawWithContent.drawContent() }
+                            stackLayer.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                        },
+                ) { CompositionLocalProvider(LocalPagePreview provides true) { pageWithPaper(frontIdx) } }
+            }
             if (backIdx != null) key("back$backIdx") {
                 Box(
                     Modifier
@@ -438,7 +452,8 @@ fun FlipBook(
                             }
                             val hv = isHeavy(top)
                             val back = backIdx?.let { b -> CurlBack(heavy = false, blur = if (glassNow) Blurred(underBlur, backLayer) else null, seed = seedOf(b), age = ageOf(b)) }
-                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, if (glassNow) Blurred(underBlur, topBlur) else null, seedOf(top), ageOf(top), back)
+                            val frontBlur = if (!glassNow) null else if (frontIdx != null) Blurred(stackLayer, topBlur) else Blurred(underBlur, topBlur)
+                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, frontBlur, seedOf(top), ageOf(top), back)
                         },
                 ) { pageWithPaper(top) }
             }
