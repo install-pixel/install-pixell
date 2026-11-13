@@ -162,7 +162,7 @@ fun DayPage(
     val now = remember(day.updated) { System.currentTimeMillis() }
     val first = part == 0
     val textTop = if (first) PageMetrics.firstTextTop(photoSlot, audioSlot) else PageMetrics.TEXT_TOP_SECOND
-    val lineCount = if (first) PageMetrics.firstLines(photoSlot, audioSlot) else PageMetrics.secondLines
+    val lineCount = if (part == CANVAS_PART) 0 else if (first) PageMetrics.firstLines(photoSlot, audioSlot) else PageMetrics.secondLines
     val lines = remember(textTop, lineCount, u) { List(lineCount) { i -> (textTop + (i + 1) * PageMetrics.LINE - PageMetrics.LINE * 0.14f) * u } }
     val style = pageTextStyle(u, density, glass)
     val locale = Locale.getDefault()
@@ -213,6 +213,35 @@ fun DayPage(
     ) {
         Canvas(Modifier.fillMaxSize()) {
             drawPaper(u, pageSeed(day.day, part), lines)
+        }
+
+        // Полотно: чистий аркуш без ліній — лише дата згори, малюнок і номер сторінки. Тексту, фото й голосу тут немає.
+        if (part == CANVAS_PART) {
+            val ch = (if (glass) 3.6f else 4.5f) * u / (density.density * density.fontScale)
+            Text(
+                DateTimeFormatter.ofPattern("d MMMM", locale).format(LocalDate.ofEpochDay(day.day)) + " · " + stringResource(R.string.page_canvas),
+                style = style.copy(fontSize = ch.sp, lineHeight = (ch * 1.2f).sp, color = Oled.TextSecondary),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.offset(dp(RIBBON_RIGHT_U + 2.2f), dp(PageMetrics.HEADER_TOP)).width(dp(80f - (RIBBON_RIGHT_U + 2.2f - PageMetrics.MARGIN_LEFT))),
+            )
+            if (number != null) {
+                Text(
+                    number.toString(),
+                    style = style.copy(fontSize = (ch * 0.8f).sp, lineHeight = (ch * 0.9f).sp, color = Oled.TextSecondary, textAlign = TextAlign.Center),
+                    modifier = Modifier.offset(dp(PageMetrics.WIDTH / 2 - 8f), dp(PageMetrics.HEIGHT - 6.6f)).width(dp(16f)),
+                )
+            }
+            InkLayer(
+                lines = day.ink,
+                part = part,
+                pageWidth = pageWidthPx,
+                session = ink?.takeIf { it.day == day.day && it.part == part },
+                dry = { dry },
+                onChange = { host.vm.setInk(day.day, it) },
+                onDryErase = { host.dryHint() },
+            )
+            return@Box
         }
 
         // Шапка: дата ліворуч, місце праворуч.

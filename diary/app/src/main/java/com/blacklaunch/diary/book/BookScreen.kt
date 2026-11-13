@@ -156,6 +156,7 @@ private sealed interface BookDialog {
     data object Backup : BookDialog
     data object Erase : BookDialog
     data object Forgot : BookDialog
+    data class CanvasDelete(val day: Long) : BookDialog
 }
 
 /**
@@ -290,6 +291,8 @@ fun BookScreen(
             val second = if (t and 1 != 0) day.text.isNotBlank() || day.ink.any { it.page == 1 } || d == today || d in extraDays
             else shown && (split.split < day.text.length || day.ink.any { it.page == 1 })
             if (t and 2 != 0) add(BookPage.DayPart(d, 1) to true) else if (second) add(BookPage.DayPart(d, 1) to false)
+            // Полотно дня — окремий чистий аркуш після сторінок дня (якщо його створили).
+            if (shown && day.ink.any { it.page == CANVAS_PART }) add(BookPage.DayPart(d, CANVAS_PART) to false)
         }
     }
     val pageNumber = HashMap<BookPage, Int>()
@@ -946,7 +949,8 @@ fun BookScreen(
                 // Вирвати сторінку — затиснути нижній лівий кут (біля корінця) і вести вгору: сторінка відривається за
                 // пальцем, під нею видно наступну. За половину — червоне попередження; довів до кінця — вирвано назавжди;
                 // передумав — розрив лишається, заклеєний скотчем (запам'ятовується найвища межа).
-                val tearPage = currentPage as? BookPage.DayPart
+                // Полотно не виривається (його прибирають кнопкою на нижній панелі).
+                val tearPage = (currentPage as? BookPage.DayPart)?.takeIf { it.part < CANVAS_PART }
                 if (open != null && tearPage != null) {
                     val stubHere = tearPage in stubs
                     val renew = !DiaryViewModel.isDry(tearPage.day)
@@ -1120,6 +1124,24 @@ fun BookScreen(
                             // Висохлий день — малюнок, як і текст, уже не змінити.
                             if (dry) vm.show(R.string.page_dry) else { focusManager.clearFocus(); ink = InkSession(day, part) }
                         },
+                    ) + if (part == CANVAS_PART) listOf(
+                        // На полотні: прибрати полотно (з підтвердженням).
+                        Tool(Glyph.Delete, stringResource(R.string.canvas_delete)) {
+                            if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.CanvasDelete(day)
+                        },
+                        Tool(Glyph.Settings, stringResource(R.string.shelf)) { onShelf() },
+                    ) else listOf(
+                        // Полотно: чистий аркуш для малювання після сторінок дня (є — перейти до нього).
+                        Tool(Glyph.Frame, stringResource(R.string.canvas)) {
+                            when {
+                                d.ink.any { it.page == CANVAS_PART } -> pendingFlip = BookPage.DayPart(day, CANVAS_PART)
+                                dry -> vm.show(R.string.page_dry)
+                                else -> {
+                                    vm.setInk(day, d.ink + com.blacklaunch.diary.data.InkLine(CANVAS_PART, FloatArray(0), FloatArray(0), FloatArray(0), 0f, System.currentTimeMillis(), InkKind.CANVAS))
+                                    pendingFlip = BookPage.DayPart(day, CANVAS_PART)
+                                }
+                            }
+                        },
                         Tool(Glyph.Photo, stringResource(R.string.tool_photo)) {
                             when {
                                 d.photo -> dialog = BookDialog.Photo(day)
@@ -1155,7 +1177,8 @@ fun BookScreen(
             vm.setInk(s.day, next)
         }, onClear = {
             val all = vm.day(s.day).ink
-            val rest = all.filter { it.page != s.part }
+            // Позначка полотна лишається: очищається малюнок, а не саме полотно.
+            val rest = all.filter { it.page != s.part || it.kind == InkKind.CANVAS }
             if (rest.size != all.size) {
                 s.undo += all
                 s.redo.clear()
@@ -1212,6 +1235,16 @@ fun BookScreen(
             tone = Tone.Confirm,
             onDismiss = { dialog = null },
         ) { vm.setPin(dl.code) }
+        is BookDialog.CanvasDelete -> ConfirmDialog(
+            title = stringResource(R.string.canvas_delete),
+            text = stringResource(R.string.canvas_delete_text),
+            confirm = stringResource(R.string.canvas_delete_go),
+            tone = Tone.Danger,
+            onDismiss = { dialog = null },
+        ) {
+            vm.setInk(dl.day, vm.day(dl.day).ink.filter { it.page != CANVAS_PART })
+            pendingFlip = BookPage.DayPart(dl.day, 0)
+        }
         BookDialog.LockRemove -> ConfirmDialog(
             title = stringResource(R.string.lock_remove),
             text = stringResource(R.string.lock_remove_text),

@@ -248,4 +248,9 @@
     <string name="ink_spray">Spray can</string>
     <string name="ink_tint">Tint</string>
     <string name="ink_clear">Clear the drawing</string>
+    <string name="canvas">Canvas — a blank sheet to draw on</string>
+    <string name="page_canvas">canvas</string>
+    <string name="canvas_delete">Remove the canvas</string>
+    <string name="canvas_delete_text">The canvas and everything drawn on it will be removed.</string>
+    <string name="canvas_delete_go">Remove</string>
 </resources>

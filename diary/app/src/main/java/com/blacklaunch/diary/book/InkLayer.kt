@@ -73,6 +73,8 @@ object InkKind {
     const val BRUSH = 6
     const val FILL = 7
     const val SPRAY = 8
+    /** Позначка «у дня є полотно» (без точок, не малюється). */
+    const val CANVAS = 30
     const val ERASER = 10
     const val ERASER_SOFT = 11
 }
@@ -92,6 +94,9 @@ object InkStyle {
     const val WAVY = 3
     val LINES = intArrayOf(SOLID, DASHED, WAVY)
 }
+
+/** Номер «сторінки» полотна дня ([InkLine.page]): окремий чистий аркуш після сторінок дня. */
+const val CANVAS_PART = 2
 
 /** Прозорість олівця, пензлика, підкреслення: повна, легша, ледь (щоб і по тексту читалося). */
 internal val InkAlphas = floatArrayOf(1f, 0.6f, 0.32f)

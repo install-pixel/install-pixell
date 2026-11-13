@@ -262,4 +262,9 @@
     <string name="ink_spray">Балончик</string>
     <string name="ink_tint">Відтінок</string>
     <string name="ink_clear">Очистити малюнок</string>
+    <string name="canvas">Полотно — чистий аркуш для малювання</string>
+    <string name="page_canvas">полотно</string>
+    <string name="canvas_delete">Прибрати полотно</string>
+    <string name="canvas_delete_text">Полотно й усе, що на ньому намальовано, буде прибрано.</string>
+    <string name="canvas_delete_go">Прибрати</string>
 </resources>

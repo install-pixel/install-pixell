@@ -252,4 +252,9 @@
     <string name="ink_spray">Spray</string>
     <string name="ink_tint">Odcień</string>
     <string name="ink_clear">Wyczyść rysunek</string>
+    <string name="canvas">Płótno — czysta kartka do rysowania</string>
+    <string name="page_canvas">płótno</string>
+    <string name="canvas_delete">Usuń płótno</string>
+    <string name="canvas_delete_text">Płótno i wszystko, co na nim narysowano, zostanie usunięte.</string>
+    <string name="canvas_delete_go">Usuń</string>
 </resources>
