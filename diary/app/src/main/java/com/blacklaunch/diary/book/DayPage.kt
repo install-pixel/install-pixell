@@ -190,7 +190,7 @@ fun DayPage(
                 drawContent()
                 drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
                 // Колись надірвали й передумали — розрив заклеєно скотчем.
-                val tapeK = day.tearTry(part)
+                val tapeK = if (part >= CANVAS_PART) 0f else day.tearTry(part)
                 val tapeSeed = tearSeedOf(day.day, part)
                 val tapeMargin = PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH
                 val f = tearFinger?.invoke()

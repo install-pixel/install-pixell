@@ -21,6 +21,8 @@ class InkLine(
     val style: Int = 0,
     /** Гумка: [time] штриха, який лише вона стирає (верхній шар); 0 — стирає все під собою. */
     val target: Long = 0L,
+    /** Колір ARGB (альфа — прозорість); 0 — давній штрих (колір і прозорість — у [style]). */
+    val color: Int = 0,
 )
 
 /** Викреслене у висохлому тексті: [start] включно, [end] — ні (індекси символів [Day.sealed]). */
@@ -125,6 +127,7 @@ object DayCodec {
             if (l.kind != 0) o.put("k", l.kind)
             if (l.style != 0) o.put("s", l.style)
             if (l.target != 0L) o.put("g", l.target)
+            if (l.color != 0) o.put("c", l.color)
             arr.put(o)
         }
         return arr.toString()
@@ -149,6 +152,7 @@ object DayCodec {
                     kind = o.optInt("k"),
                     style = o.optInt("s"),
                     target = o.optLong("g"),
+                    color = o.optInt("c"),
                 )
             }
         }.getOrDefault(emptyList())

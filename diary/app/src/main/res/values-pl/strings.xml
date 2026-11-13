@@ -257,4 +257,12 @@
     <string name="canvas_delete">Usuń płótno</string>
     <string name="canvas_delete_text">Płótno i wszystko, co na nim narysowano, zostanie usunięte.</string>
     <string name="canvas_delete_go">Usuń</string>
+    <string name="ink_lasso">Lasso: zaznacz, przesuń, zmień rozmiar lub kolor</string>
+    <string name="ink_color">Kolor</string>
+    <string name="ink_color_ink">Kolor atramentu</string>
+    <string name="ink_auto_shapes">Przytrzymaj na końcu — kształt się wyrówna</string>
+    <string name="ink_spray_mode">Aerograf lub farba w sprayu</string>
+    <string name="ink_eraser_stroke">Gumka całych linii</string>
+    <string name="ink_duplicate">Powiel zaznaczenie</string>
+    <string name="ink_delete_sel">Usuń zaznaczenie</string>
 </resources>

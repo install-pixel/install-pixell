@@ -267,4 +267,12 @@
     <string name="canvas_delete">Прибрати полотно</string>
     <string name="canvas_delete_text">Полотно й усе, що на ньому намальовано, буде прибрано.</string>
     <string name="canvas_delete_go">Прибрати</string>
+    <string name="ink_lasso">Ласо: виділити, посунути, змінити розмір чи колір</string>
+    <string name="ink_color">Колір</string>
+    <string name="ink_color_ink">Колір чорнила</string>
+    <string name="ink_auto_shapes">Затримай у кінці — фігура вирівняється</string>
+    <string name="ink_spray_mode">Аерограф чи фарба з балончика</string>
+    <string name="ink_eraser_stroke">Гумка цілими штрихами</string>
+    <string name="ink_duplicate">Дублювати виділене</string>
+    <string name="ink_delete_sel">Видалити виділене</string>
 </resources>

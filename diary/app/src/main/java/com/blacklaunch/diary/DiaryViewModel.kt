@@ -361,6 +361,8 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         // Свіжа (ще не висохла) сторінка вирвалась — на її місці нова чиста: місце дня не зменшується, клаптика немає.
         // Висохла — назавжди: лишається клаптик, сторінку дня втрачено.
         val renew = !isDry(epochDay)
+        // Полотно вирвали — його просто немає (з малюнком), клаптика не лишається.
+        if (part == 2) { update(d.copy(ink = d.ink.filter { it.page != 2 })); return }
         val torn = if (part == 0) {
             o.db.photoFile(epochDay).delete()
             o.db.audioFile(epochDay).delete()
@@ -392,6 +394,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Передумали вирвати: запам'ятати, до якої висоти надірвано (лише найвищу межу). */
     fun setTearTry(epochDay: Long, part: Int, k: Float) {
+        if (part > 1) return
         val d = day(epochDay)
         update(if (part == 0) d.copy(tearTry0 = maxOf(d.tearTry0, k)) else d.copy(tearTry1 = maxOf(d.tearTry1, k)))
     }

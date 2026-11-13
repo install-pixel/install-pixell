@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -36,6 +37,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.blacklaunch.diary.data.InkLine
@@ -49,17 +51,22 @@ import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * П'ять інструментів: олівець (вільне письмо), пензлик (мазок щетинками чи суцільний), підкреслення (рівні лінії й
- * фігури — лінія, рамка, овал), маркер (напівпрозорий, з легким відтінком) і гумка (точна чи м'яка — з розмитим краєм;
- * стирає шарами: спершу верхній штрих, пройшов там ще раз — усе).
+ * Інструменти: олівець (вільне письмо), пензлик (мазок чи заливка), балончик (аерограф чи фарба з балончика),
+ * підкреслення (рівні лінії й фігури), маркер (напівпрозорий), гумка (точна, м'яка чи цілими штрихами) і ласо
+ * (виділити намальоване, посунути, змінити розмір чи колір). Товщина — плавно від [minW] до [maxW] (частки ширини
+ * сторінки), рівномірно на око.
  */
-enum class InkTool(val kind: Int, val sizes: FloatArray) {
-    Pencil(InkKind.PENCIL, floatArrayOf(0.0034f, 0.0054f, 0.0085f)),
-    Brush(InkKind.BRUSH, floatArrayOf(0.012f, 0.022f, 0.036f)),
-    Spray(InkKind.SPRAY, floatArrayOf(0.035f, 0.06f, 0.095f)),
-    Underline(InkKind.UNDERLINE, floatArrayOf(0.0040f, 0.0064f, 0.0100f)),
-    Marker(InkKind.MARKER, floatArrayOf(0.018f, 0.028f, 0.040f)),
-    Eraser(InkKind.ERASER, floatArrayOf(0.016f, 0.030f, 0.055f)),
+enum class InkTool(val kind: Int, val minW: Float, val maxW: Float, val defSize: Float, val defAlpha: Float) {
+    Pencil(InkKind.PENCIL, 0.0015f, 0.03f, 0.35f, 1f),
+    Brush(InkKind.BRUSH, 0.005f, 0.09f, 0.45f, 0.9f),
+    Spray(InkKind.SPRAY, 0.02f, 0.24f, 0.42f, 0.85f),
+    Underline(InkKind.UNDERLINE, 0.002f, 0.03f, 0.4f, 1f),
+    Marker(InkKind.MARKER, 0.01f, 0.085f, 0.4f, 0.32f),
+    Eraser(InkKind.ERASER, 0.008f, 0.14f, 0.35f, 1f),
+    Lasso(InkKind.LASSO, 0.004f, 0.004f, 0f, 1f);
+
+    /** Товщина для положення повзунка [t] (0…1): логарифмічно — кожен крок однаково помітний. */
+    fun widthAt(t: Float): Float = minW * Math.pow((maxW / minW).toDouble(), t.coerceIn(0f, 1f).toDouble()).toFloat()
 }
 
 /** Вид штриха, що зберігається ([InkLine.kind]). 0…2 — давні (ручка, твердий і м'який олівці), лише показуються. */
@@ -73,19 +80,23 @@ object InkKind {
     const val BRUSH = 6
     const val FILL = 7
     const val SPRAY = 8
-    /** Позначка «у дня є полотно» (без точок, не малюється). */
-    const val CANVAS = 30
     const val ERASER = 10
     const val ERASER_SOFT = 11
+    /** Позначка «у дня є полотно» (без точок, не малюється). */
+    const val CANVAS = 30
+    /** Ласо — не штрих, лише інструмент. */
+    const val LASSO = -1
 }
 
 /**
  * Вигляд лінії ([InkLine.style]):
- *  - олівець: `лінія + 10 × прозорість`;
- *  - пензлик і заливка: `фактура (0 щетинки, 1 суцільна) + 2 × зафарбовування + 10 × прозорість + 100 × відтінок`;
- *  - балончик: `10 × прозорість + 100 × відтінок`;
- *  - підкреслення: `лінія + 4 × фігура (0 лінія, 1 рамка, 2 овал) + 100 × прозорість`;
- *  - маркер: `100 + 10 × відтінок + прозорість`.
+ *  - олівець: лінія (0 суцільна, 1 пунктир, 3 хвиля);
+ *  - пензлик і заливка: `фактура (0 щетинки, 1 суцільна) + 2 × зафарбовування`;
+ *  - балончик: 0 аерограф, 1 фарба з балончика;
+ *  - підкреслення: `лінія + 4 × фігура (0 лінія, 1 рамка, 2 овал)`;
+ *  - маркер: 100.
+ * Колір і прозорість — у [InkLine.color]. Давні штрихи (color = 0) ще несуть відтінок і прозорість у style — їх
+ * показуємо, як раніше.
  */
 object InkStyle {
     const val SOLID = 0
@@ -98,111 +109,143 @@ object InkStyle {
 /** Номер «сторінки» полотна дня ([InkLine.page]): окремий чистий аркуш після сторінок дня. */
 const val CANVAS_PART = 2
 
-/** Прозорість олівця, пензлика, підкреслення: повна, легша, ледь (щоб і по тексту читалося). */
-internal val InkAlphas = floatArrayOf(1f, 0.6f, 0.32f)
-/** Відтінки маркера: нейтральний (колір чорнила), легкий червоний, легкий синій. */
-internal val MarkerTints = listOf(Color.Unspecified, Color(0xFFFF8A80), Color(0xFF82B1FF))
-/** Прозорість маркера: ледь, помірно, насичено. */
-internal val MarkerAlphas = floatArrayOf(0.16f, 0.28f, 0.42f)
+/** «Колір чорнила теми» (у [InkLine.color] — замість справжнього RGB): у «Склі» світле, на «Аркуші» — білий олівець. */
+const val INK_RGB = 0x010101
 
 /**
- * Режим малювання на сторінці. Олівець — окремо від пальця: палець ставиш будь-де, олівець іде на стільки, на скільки
- * провів пальцем (як курсор на тачпаді), тож кінчик ніколи не закритий. Затримав палець — клац, висувається стрижень і
- * пише; відпустив — стрижень ховається. Подвійний дотик — стрижень лишається висунутим (пише одразу).
- * Вибір інструментів запам'ятовується між сеансами.
+ * Палітра — приглушені кольори, що не кричать на темному склі й папері: чорнило теми, графіт, крейда, теплі (червоні,
+ * теракота, охра, пісок), зелені, бірюза, сині, фіалка, рожевий, горіх.
+ */
+internal val Palette = intArrayOf(
+    INK_RGB, 0x8C8F96, 0xE6E2DA, 0xD27A70,
+    0xA8564F, 0xD39B66, 0xD6C277, 0xA9C27C,
+    0x6FAF8A, 0x5FA9A6, 0x72A3CF, 0x7486C9,
+    0x9884C9, 0xC985AE, 0xA4825F, 0xC7B498,
+)
+
+/** ARGB штриха з кольору палітри й прозорості (0…1). */
+fun inkArgb(rgb: Int, alpha: Float): Int = ((alpha * 255f).toInt().coerceIn(8, 255) shl 24) or (rgb and 0xFFFFFF)
+
+/** Давні таблиці (для штрихів, намальованих до палітри). */
+internal val InkAlphas = floatArrayOf(1f, 0.6f, 0.32f)
+internal val MarkerTints = listOf(Color.Unspecified, Color(0xFFFF8A80), Color(0xFF82B1FF))
+internal val MarkerAlphas = floatArrayOf(0.16f, 0.28f, 0.42f)
+
+/** Копія штриха з іншими точками / товщиною / кольором (ласо, перефарбування). */
+internal fun InkLine.with(
+    xs: FloatArray = this.xs, ys: FloatArray = this.ys, factors: FloatArray = this.factors,
+    width: Float = this.width, time: Long = this.time, color: Int = this.color,
+): InkLine = InkLine(page, xs, ys, factors, width, time, kind, style, target, color)
+
+/**
+ * Режим малювання на сторінці. Пальцем — курсор, як на тачпаді: палець ставиш будь-де, інструмент іде на стільки, на
+ * скільки провів. Затримав — клац, інструмент опускається і пише; відпустив — піднімається. Подвійний дотик — лишається
+ * опущеним. Стилусом — пише одразу там, де торкнувся, з натиском (долоня в цей час не заважає).
+ * Вибір інструментів, товщини, прозорості й кольорів запам'ятовується між сеансами.
  */
 @Stable
 class InkSession(val day: Long, val part: Int) {
     var tool by mutableStateOf(last.tool)
-    private val sizes = HashMap(last.sizes)
-    var size: Int
-        get() { sizeTick; return sizes[tool] ?: 1 }
-        set(v) { sizes[tool] = v; last.sizes[tool] = v; sizeTick++ }
-    var sizeTick by mutableIntStateOf(0)
-    /** Олівець: вигляд лінії, прозорість і згладжування (0 — немає, 1 — помірне, 2 — сильне). */
+    private val sizes = mutableStateMapOf<InkTool, Float>().apply { putAll(last.sizes) }
+    private val alphas = mutableStateMapOf<InkTool, Float>().apply { putAll(last.alphas) }
+    /** Положення повзунка товщини вибраного інструмента (0…1). */
+    var size: Float
+        get() = sizes[tool] ?: tool.defSize
+        set(v) { sizes[tool] = v; last.sizes[tool] = v }
+    /** Прозорість вибраного інструмента (0.08…1). */
+    var opacity: Float
+        get() = alphas[tool] ?: tool.defAlpha
+        set(v) { alphas[tool] = v; last.alphas[tool] = v }
+    /** Колір (RGB або [INK_RGB]) — спільний для всіх інструментів. */
+    var color by mutableIntStateOf(last.color)
+    val recent = mutableStateListOf<Int>().apply { addAll(last.recent) }
     var pencilStyle by mutableIntStateOf(last.pencilStyle)
-    var pencilAlpha by mutableIntStateOf(last.pencilAlpha)
     var smooth by mutableIntStateOf(last.smooth)
-    /** Пензлик: мазок (0 щетинки, 1 суцільний) і прозорість. */
+    /** Олівець: затримав у кінці — коло, рамка, трикутник чи лінія вирівнюються. */
+    var autoShapes by mutableStateOf(last.autoShapes)
     var brushMode by mutableIntStateOf(last.brushMode)
-    /** Пензлик: 0 — мазок, 1 — зафарбовування (водиш — фарбує широко; опустив і підняв усередині обрису — заливає). */
     var brushFill by mutableIntStateOf(last.brushFill)
-    var brushAlpha by mutableIntStateOf(last.brushAlpha)
-    var brushTint by mutableIntStateOf(last.brushTint)
-    /** Балончик: прозорість і відтінок. */
-    var sprayAlpha by mutableIntStateOf(last.sprayAlpha)
-    var sprayTint by mutableIntStateOf(last.sprayTint)
-    /** Наближення сторінки двома пальцями: масштаб (1…4) і зсув (пікселі екрана). */
-    var zoom by mutableFloatStateOf(1f)
-    var tx by mutableFloatStateOf(0f)
-    var ty by mutableFloatStateOf(0f)
-    /** Підкреслення: вигляд лінії, фігура (0 лінія, 1 рамка, 2 овал) і прозорість. */
+    var sprayMode by mutableIntStateOf(last.sprayMode)
     var lineStyle by mutableIntStateOf(last.lineStyle)
     var shape by mutableIntStateOf(last.shape)
-    var lineAlpha by mutableIntStateOf(last.lineAlpha)
-    /** Маркер: прозорість (0…2) і відтінок (0 нейтральний, 1 червоний, 2 синій). */
-    var markerAlpha by mutableIntStateOf(last.markerAlpha)
-    var tint by mutableIntStateOf(last.tint)
-    var softEraser by mutableStateOf(last.softEraser)
-    /** Де кінчик олівця (пікселі сторінки); null — ще не ставили (стане посередині). */
+    /** Гумка: 0 точна, 1 м'яка, 2 цілими штрихами. */
+    var eraserMode by mutableIntStateOf(last.eraserMode)
+    /** Піпетка: наступне «опускання» бере колір з-під кінчика. */
+    var picking by mutableStateOf(false)
+    /** Шухлядка над панеллю: 0 — закрита, 1 — налаштування інструмента, 2 — кольори. */
+    var drawer by mutableIntStateOf(0)
+    /** Де кінчик (пікселі сторінки); null — ще не ставили (стане посередині). */
     var pen by mutableStateOf<Offset?>(null)
-    /** Стрижень висунутий (пише). */
     var lead by mutableStateOf(false)
-    /** Подвійним дотиком зафіксовано: стрижень лишається висунутим. */
     var locked by mutableStateOf(false)
     internal var lastTapAt = 0L
     val undo = mutableStateListOf<List<InkLine>>()
     val redo = mutableStateListOf<List<InkLine>>()
+    /** Наближення сторінки двома пальцями: масштаб (1…4) і зсув (пікселі екрана). */
+    var zoom by mutableFloatStateOf(1f)
+    var tx by mutableFloatStateOf(0f)
+    var ty by mutableFloatStateOf(0f)
+    /** Виділене ласо: time штрихів і їхня рамка (частки ширини сторінки). */
+    var selection by mutableStateOf<Set<Long>>(emptySet())
+    var selBounds by mutableStateOf<Rect?>(null)
 
-    val width: Float get() = tool.sizes[size.coerceIn(0, 2)]
-    val kind: Int get() = if (tool == InkTool.Eraser) (if (softEraser) InkKind.ERASER_SOFT else InkKind.ERASER) else tool.kind
+    val width: Float get() = tool.widthAt(size)
+    val kind: Int get() = if (tool == InkTool.Eraser) (if (eraserMode == 1) InkKind.ERASER_SOFT else InkKind.ERASER) else tool.kind
     val style: Int get() = when (tool) {
-        InkTool.Pencil -> pencilStyle + 10 * pencilAlpha
-        InkTool.Brush -> brushMode + 2 * brushFill + 10 * brushAlpha + 100 * brushTint
-        InkTool.Spray -> 10 * sprayAlpha + 100 * sprayTint
-        InkTool.Underline -> lineStyle + 4 * shape + 100 * lineAlpha
-        InkTool.Marker -> 100 + 10 * tint + markerAlpha
-        InkTool.Eraser -> InkStyle.SOLID
+        InkTool.Pencil -> pencilStyle
+        InkTool.Brush -> brushMode + 2 * brushFill
+        InkTool.Spray -> sprayMode
+        InkTool.Underline -> lineStyle + 4 * shape
+        InkTool.Marker -> 100
+        else -> 0
     }
+    val argb: Int get() = inkArgb(color, opacity)
+
+    fun useColor(rgb: Int) {
+        color = rgb
+        recent.remove(rgb)
+        recent.add(0, rgb)
+        while (recent.size > 6) recent.removeAt(recent.size - 1)
+        last.color = rgb
+        last.recent = recent.toList()
+    }
+
+    fun clearSelection() { selection = emptySet(); selBounds = null }
 
     /** Запам'ятати вибір (для наступного сеансу). */
     fun remember() {
-        last.tool = tool; last.pencilStyle = pencilStyle; last.pencilAlpha = pencilAlpha; last.smooth = smooth
-        last.brushMode = brushMode; last.brushFill = brushFill; last.brushAlpha = brushAlpha; last.brushTint = brushTint
-        last.sprayAlpha = sprayAlpha; last.sprayTint = sprayTint
-        last.lineStyle = lineStyle; last.shape = shape; last.lineAlpha = lineAlpha
-        last.markerAlpha = markerAlpha; last.tint = tint; last.softEraser = softEraser
+        last.tool = tool; last.pencilStyle = pencilStyle; last.smooth = smooth; last.autoShapes = autoShapes
+        last.brushMode = brushMode; last.brushFill = brushFill; last.sprayMode = sprayMode
+        last.lineStyle = lineStyle; last.shape = shape; last.eraserMode = eraserMode
     }
 
     private object last {
         var tool = InkTool.Pencil
-        val sizes = HashMap<InkTool, Int>()
+        val sizes = HashMap<InkTool, Float>()
+        val alphas = HashMap<InkTool, Float>()
+        var color = INK_RGB
+        var recent: List<Int> = emptyList()
         var pencilStyle = InkStyle.SOLID
-        var pencilAlpha = 0
         var smooth = 1
+        var autoShapes = true
         var brushMode = 0
         var brushFill = 0
-        var brushAlpha = 0
-        var brushTint = 0
-        var sprayAlpha = 1
-        var sprayTint = 0
+        var sprayMode = 1
         var lineStyle = InkStyle.SOLID
         var shape = 0
-        var lineAlpha = 0
-        var markerAlpha = 1
-        var tint = 0
-        var softEraser = false
+        var eraserMode = 0
     }
 }
 
 private const val HOLD_MS = 260L
+/** Крапка — лише коли інструмент опустили й ще потримали нерухомо (випадково не ставиться). */
+private const val DOT_MS = 420L
+/** Затримав олівець у кінці лінії — фігура вирівнюється. */
+private const val SNAP_MS = 650L
 
 /**
  * Шар малювання над сторінкою: показує намальоване, а в режимі малювання ([session] не null) — інструмент-курсор.
- * Гумка — теж штрих: стирає те, що під нею, не чіпаючи самої сторінки. Шарами: перший прохід — лише верхній штрих там,
- * де торкнулась; прохід там, де вже стирала, — усе під собою.
- *
- * Олівець не тремтить разом із пальцем: лінія тягнеться за кінчиком, як на нитці, а сусідні точки ще й усереднюються.
+ * Гумка — теж штрих: стирає те, що під нею, не чіпаючи самої сторінки.
  */
 @Composable
 fun InkLayer(
@@ -220,6 +263,12 @@ fun InkLayer(
     val change by rememberUpdatedState(onChange)
     var live by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var liveFactors by remember { mutableStateOf<List<Float>>(emptyList()) }
+    // Ласо, поки обводиш (пікселі), і штрихи, що зараз пересуваються (уже перетворені).
+    var lassoPath by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var moving by remember { mutableStateOf<List<InkLine>?>(null) }
+    // Гумка цілими штрихами: що вже зачепила (зникне, коли відпустиш).
+    var hidden by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val stylusAt = remember { longArrayOf(0L) }
     val active = session != null
     val leadAnim by animateFloatAsState(if (session?.lead == true || session?.locked == true) 1f else 0f, spring(dampingRatio = 0.75f, stiffness = 700f), label = "lead")
     Canvas(
@@ -230,6 +279,18 @@ fun InkLayer(
                     val s = session!!
                     awaitEachGesture {
                         val down = awaitFirstDown()
+                        val stylus = down.type == PointerType.Stylus || down.type == PointerType.Eraser
+                        if (stylus) stylusAt[0] = down.uptimeMillis
+                        else if (down.uptimeMillis - stylusAt[0] < 1500L) {
+                            // Долоня, поки пишеш стилусом, — не малює й нічого не рухає.
+                            down.consume()
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                e.changes.forEach { it.consume() }
+                                if (e.changes.none { it.pressed }) break
+                            }
+                            return@awaitEachGesture
+                        }
                         down.consume()
                         val w = pageWidth.coerceAtLeast(1f)
                         val h = size.height.toFloat()
@@ -245,22 +306,30 @@ fun InkLayer(
                         val mm = density * 160f / 25.4f
                         val stepPx = Ink.STEP_MM * mm
                         val still = 4.dp.toPx()
-                        val tool = s.tool
+                        val eraserTip = down.type == PointerType.Eraser
+                        val tool = if (eraserTip) InkTool.Eraser else s.tool
+                        val kind = if (eraserTip) InkKind.ERASER else s.kind
+                        val style = if (eraserTip) 0 else s.style
+                        val widthN = if (eraserTip) InkTool.Eraser.widthAt(0.45f) else s.width
+                        val argb = s.argb
                         val shapes = tool == InkTool.Underline
                         val filling = tool == InkTool.Brush && s.brushFill == 1
+                        val strokeEraser = tool == InkTool.Eraser && !eraserTip && s.eraserMode == 2
+                        val lasso = tool == InkTool.Lasso
+                        val spray = tool == InkTool.Spray
                         // «Нитка»: на скільки кінчик може відійти від лінії, перш ніж потягне її за собою.
-                        val string = mm * when (tool) {
+                        val string = if (stylus) mm * 0.12f else mm * when (tool) {
                             InkTool.Pencil -> floatArrayOf(0.15f, 1.1f, 2.2f)[s.smooth.coerceIn(0, 2)]
-                            InkTool.Brush -> if (filling) 0.6f else 1.2f
+                            InkTool.Brush -> 1.2f
                             InkTool.Marker -> 1.4f
                             InkTool.Eraser -> 0.5f
-                            InkTool.Underline -> 0f
-                            InkTool.Spray -> 0.8f
+                            InkTool.Spray -> 0.6f
+                            else -> 0f
                         }
                         // Ще й усереднення сусідніх точок (півширина вікна в точках, крок 0,4 мм): дрібний зигзаг зникає.
-                        val avg = when (tool) {
+                        val avg = if (stylus) 1 else when (tool) {
                             InkTool.Pencil -> intArrayOf(0, 3, 6)[s.smooth.coerceIn(0, 2)]
-                            InkTool.Brush, InkTool.Marker, InkTool.Spray -> 3
+                            InkTool.Brush, InkTool.Marker -> 3
                             else -> 0
                         }
                         fun shown(pts: List<Offset>): List<Offset> = if (avg == 0 || pts.size < 3) pts.toList() else List(pts.size) { i ->
@@ -271,11 +340,14 @@ fun InkLayer(
                             Offset(sx / (2 * k + 1), sy / (2 * k + 1))
                         }
                         var finger = down.position
-                        var target = s.pen!!
+                        var target = if (stylus) clampPen(down.position) else s.pen!!
+                        if (stylus) s.pen = target
                         var moved = 0f
                         var movedDrawing = 0f
                         var stillSince = down.uptimeMillis
                         var drawing = false
+                        var beganAt = 0L
+                        var snapped = false
                         var anchor = target
                         val pts = ArrayList<Offset>()
                         val fs = ArrayList<Float>()
@@ -283,22 +355,54 @@ fun InkLayer(
                         var factor = 1f
                         var lastTime = down.uptimeMillis
                         var lastEvent = down.uptimeMillis
+                        // Ласо: 0 — обводимо, 1 — посуваємо виділене, 2 — змінюємо розмір (тягнемо за ріжок).
+                        var lassoMode = 0
+                        val selStart = s.selBounds
+                        fun pressureFactor(p: Float) = (0.35f + 0.9f * p).coerceIn(0.3f, 1.3f)
+                        fun hideAt(p: Offset) {
+                            val q = Offset(p.x / w, p.y / w)
+                            val r = widthN / 2f
+                            val hit = current.filter { it.page == part && it.kind in DRAWN && it.time !in hidden && hits(it, q, r) }
+                            if (hit.isNotEmpty()) { hidden = hidden + hit.map { it.time }; haptics.tick() }
+                        }
                         fun begin() {
                             drawing = true
+                            beganAt = android.os.SystemClock.uptimeMillis()
                             s.lead = true
                             brush = target
                             anchor = target
                             movedDrawing = 0f
+                            snapped = false
                             pts.clear(); fs.clear()
-                            pts += brush; fs += 1f
+                            if (s.picking) return
+                            if (lasso) {
+                                val q = Offset(target.x / w, target.y / w)
+                                val b = s.selBounds
+                                val grab = 4f * mm / w
+                                lassoMode = when {
+                                    b != null && s.selection.isNotEmpty() && (q - b.bottomRight).getDistance() < grab * 1.6f -> 2
+                                    b != null && s.selection.isNotEmpty() && b.inflate(grab).contains(q) -> 1
+                                    else -> { s.clearSelection(); 0 }
+                                }
+                                if (lassoMode == 0) lassoPath = listOf(target)
+                                return
+                            }
+                            pts += brush; fs += if (stylus) pressureFactor(down.pressure) else 1f
                             if (shapes) { pts += brush; fs += 1f }
+                            if (strokeEraser) hideAt(brush)
                             live = pts.toList(); liveFactors = fs.toList()
                         }
-                        if (s.locked) begin()
+                        if (stylus || s.locked) begin()
                         while (true) {
-                            // Чекаємо руху, але не довше, ніж до «затримки» (щоб висунути стрижень).
+                            // Чекаємо руху; без нього — до «затримки» (опустити інструмент), до вирівнювання фігури
+                            // чи до наступного «пшику» балончика (фарба набирається, поки тримаєш).
                             val nowT = android.os.SystemClock.uptimeMillis()
-                            val wait = if (!drawing) (HOLD_MS - (nowT - stillSince)).coerceAtLeast(1L) else 10_000L
+                            val wait = when {
+                                !drawing -> (HOLD_MS - (nowT - stillSince)).coerceAtLeast(1L)
+                                spray && !s.picking -> 28L
+                                tool == InkTool.Pencil && s.autoShapes && !snapped && !stylus && pts.size > 8 -> (SNAP_MS - (nowT - stillSince)).coerceAtLeast(1L)
+                                else -> 10_000L
+                            }
                             val ev = withTimeoutOrNull(wait) { awaitPointerEvent() }
                             if (ev == null) {
                                 lastEvent = android.os.SystemClock.uptimeMillis()
@@ -306,13 +410,24 @@ fun InkLayer(
                                     haptics.keyDown()
                                     begin()
                                     stillSince = lastEvent
+                                } else if (spray && !s.picking) {
+                                    if (pts.size < 6000) { pts += brush; fs += 1f; live = pts.toList(); liveFactors = fs.toList() }
+                                } else if (tool == InkTool.Pencil && s.autoShapes && !snapped && pts.size > 8 && lastEvent - stillSince >= SNAP_MS - 5) {
+                                    snapped = true
+                                    val shape = recognize(shown(pts), mm)
+                                    if (shape != null) {
+                                        haptics.tick()
+                                        pts.clear(); pts.addAll(shape)
+                                        fs.clear(); repeat(pts.size) { fs += 1f }
+                                        live = pts.toList(); liveFactors = fs.toList()
+                                    }
                                 }
                                 continue
                             }
-                            if (ev.changes.count { it.pressed } >= 2) {
+                            if (ev.changes.count { it.pressed } >= 2 && !stylus) {
                                 // Два пальці: розвів — наближення (до ×4, не менше за сторінку), повів — зсув. Малювання
                                 // при цьому скасовується.
-                                live = emptyList(); liveFactors = emptyList()
+                                live = emptyList(); liveFactors = emptyList(); lassoPath = emptyList(); moving = null; hidden = emptySet()
                                 if (!s.locked) s.lead = false
                                 var e: androidx.compose.ui.input.pointer.PointerEvent = ev
                                 var prevC: Offset? = null
@@ -349,7 +464,7 @@ fun InkLayer(
                             lastEvent = c.uptimeMillis
                             if (!c.pressed) break
                             c.consume()
-                            val d = c.position - finger
+                            val d = if (stylus) c.position - target else c.position - finger
                             finger = c.position
                             val dist = d.getDistance()
                             if (dist > 0f) {
@@ -358,47 +473,113 @@ fun InkLayer(
                                 target = clampPen(target + d)
                             }
                             if (dist > still * 0.25f) stillSince = c.uptimeMillis
-                            // Заливка не малює — лише веде кінчик до місця, яке залити.
-                            if (!drawing || filling) { s.pen = target; continue }
+                            if (!drawing || filling || s.picking) { s.pen = target; continue }
+                            if (lasso) {
+                                s.pen = target
+                                when (lassoMode) {
+                                    0 -> lassoPath = lassoPath + target
+                                    else -> {
+                                        val b0 = selStart ?: continue
+                                        val off = Offset((target.x - anchor.x) / w, (target.y - anchor.y) / w)
+                                        val sc = if (lassoMode == 2) ((b0.width + off.x) / b0.width.coerceAtLeast(1e-4f)).coerceIn(0.15f, 6f) else 1f
+                                        val move = if (lassoMode == 1) off else Offset.Zero
+                                        moving = current.filter { it.time in s.selection && it.page == part }.map { transform(it, b0.topLeft, sc, move) }
+                                        s.selBounds = Rect(b0.left + move.x, b0.top + move.y, b0.left + move.x + b0.width * sc, b0.top + move.y + b0.height * sc)
+                                    }
+                                }
+                                continue
+                            }
                             if (shapes) {
-                                // Підкреслення: від точки, де висунувся стрижень, до кінчика — рівно.
+                                // Підкреслення: від точки, де опустили, до кінчика — рівно.
                                 s.pen = target
                                 pts[1] = if (s.shape == 0) snapLine(anchor, target) else target
                                 live = pts.toList()
                                 continue
                             }
+                            if (snapped && pts.size > 0 && tool == InkTool.Pencil) { s.pen = target; continue }
                             val gapV = target - brush
                             val gapLen = gapV.getDistance()
                             if (gapLen > string) brush += gapV * (1f - string / gapLen)
                             s.pen = brush
+                            if (strokeEraser) { hideAt(brush); continue }
                             val step = hypot(brush.x - pts.last().x, brush.y - pts.last().y)
                             if (step >= stepPx) {
-                                val dt = (c.uptimeMillis - lastTime).coerceAtLeast(1)
-                                val speed = step / mm / dt
-                                val tf = 1.1f - 0.35f * (speed / Ink.FAST).coerceIn(0f, 1f)
-                                factor += (tf - factor) * 0.25f
+                                if (stylus) factor = pressureFactor(c.pressure) else {
+                                    val dt = (c.uptimeMillis - lastTime).coerceAtLeast(1)
+                                    val speed = step / mm / dt
+                                    val tf = 1.1f - 0.35f * (speed / Ink.FAST).coerceIn(0f, 1f)
+                                    factor += (tf - factor) * 0.25f
+                                }
                                 pts += brush; fs += factor
                                 lastTime = c.uptimeMillis
                                 live = shown(pts); liveFactors = fs.toList()
                             }
                         }
-                        // Відпустив палець.
-                        val tap = moved < 10.dp.toPx() && (lastEvent - down.uptimeMillis) < 230
+                        // Відпустив палець (чи підняв стилус).
+                        val tap = !stylus && moved < 10.dp.toPx() && (lastEvent - down.uptimeMillis) < 230
                         if (tap) {
-                            if (down.uptimeMillis - s.lastTapAt < 330) {
+                            if (lasso && s.selection.isNotEmpty()) { s.clearSelection(); haptics.tick() }
+                            else if (down.uptimeMillis - s.lastTapAt < 330) {
                                 s.locked = !s.locked
                                 s.lastTapAt = 0L
                                 haptics.longPress()
                             } else s.lastTapAt = down.uptimeMillis
                             pts.clear()
                         }
+                        val heldStill = drawing && !tap && movedDrawing < still * 0.5f && lastEvent - beganAt >= DOT_MS
                         live = emptyList(); liveFactors = emptyList()
                         if (!s.locked && s.lead) { s.lead = false; if (!tap) haptics.keyUp() }
                         if (s.locked) s.lead = true
+                        if (stylus) s.pen = target
+                        // Піпетка: колір з-під кінчика.
+                        if (s.picking) {
+                            if (drawing && !tap) {
+                                val rgb = sampleColor(current, part, w, h, s.pen ?: target, density)
+                                if (rgb != null) { s.useColor(rgb); s.picking = false; haptics.longPress() } else haptics.tick()
+                            }
+                            return@awaitEachGesture
+                        }
+                        // Ласо: обвів — виділив; посунув / розтягнув — записати.
+                        if (lasso) {
+                            if (lassoMode == 0) {
+                                val poly = lassoPath.map { Offset(it.x / w, it.y / w) }
+                                lassoPath = emptyList()
+                                if (drawing && poly.size > 4) {
+                                    val sel = current.filter { it.page == part && it.kind in DRAWN && inside(it, poly) }
+                                    if (sel.isNotEmpty()) {
+                                        s.selection = sel.map { it.time }.toSet()
+                                        s.selBounds = boundsOf(sel)
+                                        haptics.longPress()
+                                    }
+                                }
+                            } else {
+                                val mv = moving
+                                moving = null
+                                if (mv != null) {
+                                    val byTime = mv.associateBy { it.time }
+                                    s.undo += current
+                                    s.redo.clear()
+                                    change(current.map { byTime[it.time] ?: it })
+                                    s.selBounds = boundsOf(mv)
+                                }
+                            }
+                            return@awaitEachGesture
+                        }
+                        // Гумка цілими штрихами: прибрати все, що зачепила.
+                        if (strokeEraser) {
+                            val gone = hidden
+                            hidden = emptySet()
+                            if (gone.isNotEmpty()) {
+                                s.undo += current
+                                s.redo.clear()
+                                change(current.filter { it.time !in gone })
+                            }
+                            return@awaitEachGesture
+                        }
                         // Заливка: пензлик опустили й підняли, не рухаючи, — зафарбувати замкнене місце під кінчиком.
                         if (filling) {
                             if (drawing && !tap && movedDrawing < still) {
-                                val fill = floodFill(current, part, w, h, s.pen ?: brush, density, s.style)
+                                val fill = floodFill(current, part, w, h, s.pen ?: brush, density, style, argb)
                                 if (fill != null) {
                                     s.undo += current
                                     s.redo.clear()
@@ -407,24 +588,26 @@ fun InkLayer(
                             }
                             return@awaitEachGesture
                         }
-                        // Крапка: стрижень висунули (затримали палець) і підняли, не рухаючи. Звичайний дотик крапки не
-                        // ставить — тож випадкових крапок немає.
-                        if (!shapes && tool != InkTool.Eraser && drawing && !tap && movedDrawing < still && pts.size == 1) {
-                            pts += pts[0] + Offset(0.01f, 0f); fs += 1f
-                            haptics.tick()
+                        // Крапка: опустили, ще потримали нерухомо й підняли (олівець, пензлик, маркер).
+                        if (!shapes && !spray && tool != InkTool.Eraser && pts.size == 1) {
+                            if (heldStill) {
+                                pts += pts[0] + Offset(0.01f, 0f); fs += 1f
+                                haptics.tick()
+                            } else pts.clear()
                         }
                         val enough = if (shapes) pts.size == 2 && (pts[1] - pts[0]).getDistance() > mm * 2f else pts.size >= 2
                         if (enough) {
-                            if (!shapes) { val sm = shown(pts); pts.clear(); pts.addAll(sm) }
+                            if (!shapes && !snapped) { val sm = shown(pts); pts.clear(); pts.addAll(sm) }
                             val line = InkLine(
                                 page = part,
                                 xs = FloatArray(pts.size) { pts[it].x / w },
                                 ys = FloatArray(pts.size) { pts[it].y / w },
                                 factors = if (shapes) FloatArray(0) else FloatArray(fs.size) { fs[it] },
-                                width = s.width,
+                                width = widthN,
                                 time = System.currentTimeMillis(),
-                                kind = s.kind,
-                                style = s.style,
+                                kind = kind,
+                                style = style,
+                                color = if (kind >= InkKind.ERASER) 0 else argb,
                             )
                             if (line.kind >= InkKind.ERASER) {
                                 val hitDry = current.any { it.page == part && it.kind < InkKind.ERASER && dry(it) }
@@ -439,47 +622,265 @@ fun InkLayer(
             ),
     ) {
         val w = size.width
+        val shownLines = moving?.let { mv -> val m = mv.associateBy { it.time }; lines.map { m[it.time] ?: it } } ?: lines
         // Увесь малюнок — в окремому шарі: гумка стирає лише намальоване, а не папір під ним.
         drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        drawInk(lines, part, w, dry)
+        drawInk(shownLines, part, w, dry, hidden)
         if (live.size >= 2 && session != null) {
+            val tl = session.tool
             drawLayered(
                 FloatArray(live.size) { live[it].x / w },
                 FloatArray(live.size) { live[it].y / w },
                 FloatArray(liveFactors.size) { liveFactors[it] },
                 session.width * w, w, false, session.kind, session.style,
+                if (tl == InkTool.Eraser) 0 else session.argb,
             )
         }
         drawContext.canvas.restore()
-        // Інструмент-курсор: не виходить за сторінку і не росте, коли сторінку наближено.
         if (session != null) {
+            val ink = if (AppStyle.glass) Oled.TextPrimary else SheetInk
+            val z = session.zoom
+            // Ласо, поки обводиш, і рамка виділеного з ріжком для розміру.
+            if (lassoPath.size > 1) {
+                drawPath(polyline(FloatArray(lassoPath.size) { lassoPath[it].x }, FloatArray(lassoPath.size) { lassoPath[it].y }), ink.copy(alpha = 0.8f), style = Stroke(1.4.dp.toPx() / z, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx() / z, 4.dp.toPx() / z))))
+            }
+            session.selBounds?.takeIf { session.selection.isNotEmpty() }?.let { b ->
+                val r = Rect(b.left * w, b.top * w, b.right * w, b.bottom * w).inflate(4.dp.toPx() / z)
+                drawRect(ink.copy(alpha = 0.75f), r.topLeft, r.size, style = Stroke(1.2.dp.toPx() / z, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx() / z, 4.dp.toPx() / z))))
+                drawCircle(ink.copy(alpha = 0.9f), 6.dp.toPx() / z, r.bottomRight)
+                drawCircle(Color.Black.copy(alpha = 0.6f), 3.5.dp.toPx() / z, r.bottomRight)
+            }
+            // Інструмент-курсор: не виходить за сторінку і не росте, коли сторінку наближено.
             val p = session.pen ?: Offset(size.width * 0.5f, size.height * 0.45f)
             clipRect {
-                scale(1f / session.zoom, 1f / session.zoom, p) { drawToolCursor(p, session, session.width * w * session.zoom, leadAnim) }
+                scale(1f / z, 1f / z, p) { drawToolCursor(p, session, session.width * w * z, leadAnim) }
             }
         }
     }
 }
 
+/** Що малюється (і що можна виділити ласо чи стерти цілим штрихом). */
+private val DRAWN = setOf(InkKind.PEN, InkKind.HARD, InkKind.SOFT, InkKind.MARKER, InkKind.PENCIL, InkKind.UNDERLINE, InkKind.BRUSH, InkKind.FILL, InkKind.SPRAY)
+
+// ---------- Геометрія штрихів (частки ширини сторінки) ----------
+
+/** Відстань від точки до ламаної. */
+private fun distTo(xs: FloatArray, ys: FloatArray, q: Offset): Float {
+    if (xs.isEmpty()) return Float.MAX_VALUE
+    if (xs.size == 1) return hypot(xs[0] - q.x, ys[0] - q.y)
+    var best = Float.MAX_VALUE
+    for (i in 0 until xs.size - 1) {
+        val ax = xs[i]; val ay = ys[i]
+        val dx = xs[i + 1] - ax; val dy = ys[i + 1] - ay
+        val l2 = dx * dx + dy * dy
+        val t = if (l2 < 1e-12f) 0f else (((q.x - ax) * dx + (q.y - ay) * dy) / l2).coerceIn(0f, 1f)
+        val d = hypot(ax + dx * t - q.x, ay + dy * t - q.y)
+        if (d < best) best = d
+    }
+    return best
+}
+
+/** Ламана, якою штрих лежить на сторінці (підкреслення — уся фігура, а не дві точки). */
+private fun shapeOf(l: InkLine): Pair<FloatArray, FloatArray> {
+    if (l.kind != InkKind.UNDERLINE || l.xs.size < 2) return l.xs to l.ys
+    val a = Offset(l.xs[0], l.ys[0])
+    val b = Offset(l.xs[l.xs.size - 1], l.ys[l.ys.size - 1])
+    return when ((l.style % 100) / 4) {
+        1 -> roundRectPoints(a, b, l.width * 2f, 0.004f)
+        2 -> ovalPoints(a, b, 0.004f, 0f)
+        else -> l.xs to l.ys
+    }
+}
+
+/** Чи зачіпає коло [q], [r] штрих [l]. */
+private fun hits(l: InkLine, q: Offset, r: Float): Boolean {
+    if (l.kind == InkKind.FILL) {
+        val hh = l.width / 2f
+        for (i in l.xs.indices) if (kotlin.math.abs(l.ys[i] - q.y) <= hh + r && q.x >= l.xs[i] - r && q.x <= (l.factors.getOrNull(i) ?: l.xs[i]) + r) return true
+        return false
+    }
+    val (xs, ys) = shapeOf(l)
+    val reach = if (l.kind == InkKind.SPRAY) l.width / 2f else l.width / 2f
+    return distTo(xs, ys, q) <= reach + r
+}
+
+/** Точка в многокутнику (парність перетинів). */
+private fun inPoly(p: Offset, poly: List<Offset>): Boolean {
+    var c = false
+    var j = poly.size - 1
+    for (i in poly.indices) {
+        val a = poly[i]; val b = poly[j]
+        if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y + 1e-9f) + a.x) c = !c
+        j = i
+    }
+    return c
+}
+
+/** Штрих у ласо: щонайменше 60 % його точок усередині. */
+private fun inside(l: InkLine, poly: List<Offset>): Boolean {
+    val (xs, ys) = if (l.kind == InkKind.FILL) FloatArray(l.xs.size) { (l.xs[it] + (l.factors.getOrNull(it) ?: l.xs[it])) / 2f } to l.ys else shapeOf(l)
+    if (xs.isEmpty()) return false
+    val stepI = maxOf(1, xs.size / 60)
+    var inn = 0
+    var all = 0
+    var i = 0
+    while (i < xs.size) { all++; if (inPoly(Offset(xs[i], ys[i]), poly)) inn++; i += stepI }
+    return inn >= all * 0.6f
+}
+
+/** Рамка навколо штрихів (з їхньою товщиною). */
+private fun boundsOf(ls: List<InkLine>): Rect? {
+    var l = Float.MAX_VALUE; var t = Float.MAX_VALUE; var r = -Float.MAX_VALUE; var b = -Float.MAX_VALUE
+    ls.forEach { ln ->
+        val (xs, ys) = shapeOf(ln)
+        val hw = ln.width / 2f
+        for (i in xs.indices) {
+            val x0 = xs[i]
+            val x1 = if (ln.kind == InkKind.FILL) ln.factors.getOrNull(i) ?: x0 else x0
+            l = minOf(l, x0 - hw); r = maxOf(r, x1 + hw); t = minOf(t, ys[i] - hw); b = maxOf(b, ys[i] + hw)
+        }
+    }
+    return if (l == Float.MAX_VALUE) null else Rect(l, t, r, b)
+}
+
+/** Перетворити штрих: масштаб [sc] від точки [pivot], потім зсув [off]. */
+private fun transform(l: InkLine, pivot: Offset, sc: Float, off: Offset): InkLine {
+    fun tx(x: Float) = (x - pivot.x) * sc + pivot.x + off.x
+    fun ty(y: Float) = (y - pivot.y) * sc + pivot.y + off.y
+    return l.with(
+        xs = FloatArray(l.xs.size) { tx(l.xs[it]) },
+        ys = FloatArray(l.ys.size) { ty(l.ys[it]) },
+        factors = if (l.kind == InkKind.FILL) FloatArray(l.factors.size) { tx(l.factors[it]) } else l.factors,
+        width = l.width * sc,
+    )
+}
+
+/**
+ * Розпізнати фігуру в ламаній (пікселі): майже пряма — лінія; замкнена з трьома кутами — трикутник, з чотирма —
+ * прямокутник (рівний, якщо сторони майже горизонтальні й вертикальні); кругла — коло чи овал. Інакше — null (лишається,
+ * як намальовано).
+ */
+private fun recognize(pts: List<Offset>, mm: Float): List<Offset>? {
+    if (pts.size < 8) return null
+    var len = 0f
+    for (i in 1 until pts.size) len += (pts[i] - pts[i - 1]).getDistance()
+    if (len < mm * 8f) return null
+    val a = pts.first()
+    val b = pts.last()
+    fun dense(poly: List<Offset>): List<Offset> {
+        val xs = FloatArray(poly.size) { poly[it].x }
+        val ys = FloatArray(poly.size) { poly[it].y }
+        val (rx, ry) = resample(xs, ys, Ink.STEP_MM * mm)
+        return List(rx.size) { Offset(rx[it], ry[it]) }
+    }
+    // Лінія.
+    val chord = (b - a).getDistance()
+    if (chord > len * 0.9f) {
+        val dir = (b - a) / chord.coerceAtLeast(1e-3f)
+        val dev = pts.maxOf { kotlin.math.abs((it.x - a.x) * dir.y - (it.y - a.y) * dir.x) }
+        if (dev < maxOf(len * 0.05f, mm * 1.2f)) return dense(listOf(a, snapLine(a, b)))
+        return null
+    }
+    val minX = pts.minOf { it.x }; val maxX = pts.maxOf { it.x }
+    val minY = pts.minOf { it.y }; val maxY = pts.maxOf { it.y }
+    val diag = hypot(maxX - minX, maxY - minY)
+    if (chord > maxOf(diag * 0.28f, mm * 5f)) return null
+    // Замкнена: кути (спрощення ламаної).
+    val closed = pts + a
+    val simp = douglasPeucker(closed, diag * 0.09f)
+    val corners = simp.size - 1
+    if (corners == 3 || corners == 4) {
+        val poly = simp.dropLast(1)
+        if (corners == 4) {
+            val axis = (0 until 4).all { i ->
+                val p = poly[i]; val q = poly[(i + 1) % 4]
+                val ang = Math.toDegrees(kotlin.math.atan2((q.y - p.y).toDouble(), (q.x - p.x).toDouble())).let { ((it % 90) + 90) % 90 }
+                ang < 14 || ang > 76
+            }
+            val quad = if (axis) listOf(Offset(minX, minY), Offset(maxX, minY), Offset(maxX, maxY), Offset(minX, maxY)) else poly
+            return dense(quad + quad.first() + quad[1].let { quad.first() + (it - quad.first()) * 0.06f })
+        }
+        return dense(poly + poly.first() + (poly.first() + (poly[1] - poly.first()) * 0.06f))
+    }
+    // Коло / овал.
+    val cx = (minX + maxX) / 2f
+    val cy = (minY + maxY) / 2f
+    val rx = ((maxX - minX) / 2f).coerceAtLeast(1f)
+    val ry = ((maxY - minY) / 2f).coerceAtLeast(1f)
+    val err = pts.sumOf { kotlin.math.abs(hypot((it.x - cx) / rx, (it.y - cy) / ry) - 1f).toDouble() } / pts.size
+    if (err < 0.11) {
+        val n = 96
+        return List(n + 6) { i ->
+            val ang = -PI.toFloat() / 2 + 2f * PI.toFloat() * i / n
+            Offset(cx + rx * cos(ang), cy + ry * sin(ang))
+        }
+    }
+    return null
+}
+
+/** Спрощення ламаної (Дуглас — Пекер). */
+private fun douglasPeucker(p: List<Offset>, eps: Float): List<Offset> {
+    if (p.size < 3) return p
+    val a = p.first()
+    val b = p.last()
+    var idx = 0
+    var dmax = 0f
+    val ab = b - a
+    val l = ab.getDistance()
+    for (i in 1 until p.size - 1) {
+        val d = if (l < 1e-3f) (p[i] - a).getDistance() else kotlin.math.abs(ab.x * (a.y - p[i].y) - ab.y * (a.x - p[i].x)) / l
+        if (d > dmax) { dmax = d; idx = i }
+    }
+    if (l < 1e-3f && idx == 0) return listOf(a, b)
+    return if (dmax > eps) douglasPeucker(p.subList(0, idx + 1), eps).dropLast(1) + douglasPeucker(p.subList(idx, p.size), eps) else listOf(a, b)
+}
+
+/** Колір малюнка під точкою (піпетка) — RGB, або [INK_RGB], якщо це колір чорнила теми; null — там порожньо. */
+private fun sampleColor(lines: List<InkLine>, part: Int, pageW: Float, pageH: Float, at: Offset, density: Float): Int? {
+    val cols = FILL_COLS * 2
+    val cell = pageW / cols
+    val rows = kotlin.math.ceil(pageH / cell).toInt().coerceAtLeast(1)
+    val img = androidx.compose.ui.graphics.ImageBitmap(cols, rows)
+    val canvas = androidx.compose.ui.graphics.Canvas(img)
+    androidx.compose.ui.graphics.drawscope.CanvasDrawScope().draw(
+        androidx.compose.ui.unit.Density(density / cell), androidx.compose.ui.unit.LayoutDirection.Ltr, canvas, Size(cols.toFloat(), rows.toFloat()),
+    ) {
+        drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
+        drawInk(lines, part, cols.toFloat(), { false }, emptySet())
+        drawContext.canvas.restore()
+    }
+    val x = (at.x / cell).toInt().coerceIn(1, cols - 2)
+    val y = (at.y / cell).toInt().coerceIn(1, rows - 2)
+    val px = IntArray(9)
+    img.readPixels(px, x - 1, y - 1, 3, 3)
+    val best = px.maxByOrNull { it ushr 24 } ?: return null
+    if ((best ushr 24) < 40) return null
+    val rgb = best and 0xFFFFFF
+    val ink = (if (AppStyle.glass) FreshInk else SheetInk).let { (it.red * 255).toInt() shl 16 or ((it.green * 255).toInt() shl 8) or (it.blue * 255).toInt() }
+    fun ch(v: Int, s: Int) = (v shr s) and 0xFF
+    val near = kotlin.math.abs(ch(rgb, 16) - ch(ink, 16)) + kotlin.math.abs(ch(rgb, 8) - ch(ink, 8)) + kotlin.math.abs(ch(rgb, 0) - ch(ink, 0)) < 40
+    return if (near) INK_RGB else rgb
+}
+
 /**
  * Усі штрихи сторінки по черзі (гумка стирає те, що під нею). Давні гумки, що стирали лише один штрих, — до свого
- * штриха (так їх і малюємо, щоб старі малюнки не змінились).
+ * штриха. [hidden] — штрихи, які зараз стирає гумка цілими штрихами (не малюємо).
  */
-private fun DrawScope.drawInk(lines: List<InkLine>, part: Int, w: Float, dry: (InkLine) -> Boolean) {
+private fun DrawScope.drawInk(lines: List<InkLine>, part: Int, w: Float, dry: (InkLine) -> Boolean, hidden: Set<Long>) {
     val targeted = HashMap<Long, MutableList<InkLine>>()
-    lines.forEach { if (it.page == part && it.kind >= InkKind.ERASER && it.target != 0L) targeted.getOrPut(it.target) { ArrayList() } += it }
+    lines.forEach { if (it.page == part && it.kind >= InkKind.ERASER && it.kind != InkKind.CANVAS && it.target != 0L) targeted.getOrPut(it.target) { ArrayList() } += it }
     lines.forEach { l ->
-        if (l.page != part) return@forEach
+        if (l.page != part || l.kind == InkKind.CANVAS || l.time in hidden) return@forEach
         if (l.kind >= InkKind.ERASER) {
             if (l.target == 0L) drawStroke(l.xs, l.ys, l.factors, l.width * w, w, false, l.kind, l.style)
             return@forEach
         }
         val ts = targeted[l.time]
         if (ts == null) {
-            drawLayered(l.xs, l.ys, l.factors, l.width * w, w, dry(l), l.kind, l.style)
+            drawLayered(l.xs, l.ys, l.factors, l.width * w, w, dry(l), l.kind, l.style, l.color)
         } else {
             drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-            drawStroke(l.xs, l.ys, l.factors, l.width * w, w, dry(l), l.kind, l.style)
+            drawStroke(l.xs, l.ys, l.factors, l.width * w, w, dry(l), l.kind, l.style, color = l.color)
             ts.forEach { e -> drawStroke(e.xs, e.ys, e.factors, e.width * w, w, false, e.kind, e.style) }
             drawContext.canvas.restore()
         }
@@ -491,19 +892,19 @@ private fun DrawScope.drawInk(lines: List<InkLine>, part: Int, w: Float, dry: (I
  * кількох смуг), а вже весь шар лягає з потрібною прозорістю — різні штрихи накладаються рівно, як у малювальних
  * програмах. Заливка лягає ПІД уже намальоване (під обвідку), а не поверх.
  */
-private fun DrawScope.drawLayered(xs: FloatArray, ys: FloatArray, factors: FloatArray, base: Float, w: Float, dry: Boolean, kind: Int, style: Int) {
-    val op = strokeOpacity(kind, style, AppStyle.glass)
-    if (kind != InkKind.FILL && op >= 0.999f) { drawStroke(xs, ys, factors, base, w, dry, kind, style); return }
+private fun DrawScope.drawLayered(xs: FloatArray, ys: FloatArray, factors: FloatArray, base: Float, w: Float, dry: Boolean, kind: Int, style: Int, color: Int) {
+    val op = if (color != 0) (color ushr 24) / 255f else strokeOpacity(kind, style, AppStyle.glass)
+    if (kind != InkKind.FILL && kind != InkKind.SPRAY && op >= 0.999f) { drawStroke(xs, ys, factors, base, w, dry, kind, style, color = color); return }
     val paint = Paint().apply {
         alpha = op
         if (kind == InkKind.FILL) blendMode = BlendMode.DstOver
     }
     drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), paint)
-    drawStroke(xs, ys, factors, base, w, dry, kind, style, layered = true)
+    drawStroke(xs, ys, factors, base, w, dry, kind, style, layered = true, color = color)
     drawContext.canvas.restore()
 }
 
-/** Прозорість штриха як цілого. */
+/** Прозорість давнього штриха (до палітри) — з його style. */
 private fun strokeOpacity(kind: Int, style: Int, glass: Boolean): Float = when (kind) {
     InkKind.PENCIL, InkKind.BRUSH, InkKind.SPRAY, InkKind.FILL -> InkAlphas[((style % 100) / 10).coerceIn(0, 2)]
     InkKind.UNDERLINE -> InkAlphas[(style / 100).coerceIn(0, 2)]
@@ -511,7 +912,7 @@ private fun strokeOpacity(kind: Int, style: Int, glass: Boolean): Float = when (
     else -> 1f
 }
 
-/** Відтінок (маркер, пензлик, балончик, заливка); Unspecified — колір чорнила. */
+/** Відтінок давнього штриха (до палітри); Unspecified — колір чорнила. */
 private fun tintOf(kind: Int, style: Int): Color = when (kind) {
     InkKind.MARKER -> if (style >= 100) MarkerTints.getOrNull((style - 100) / 10) ?: Color.Unspecified else Color.Unspecified
     InkKind.BRUSH, InkKind.SPRAY, InkKind.FILL -> MarkerTints.getOrNull((style / 100).coerceIn(0, 2)) ?: Color.Unspecified
@@ -527,7 +928,7 @@ private const val FILL_COLS = 220
  * обрис не замкнений, нічого не заливаємо. Зберігається рядками: [InkLine.xs] — початок, [InkLine.factors] — кінець
  * відрізка, [InkLine.ys] — середина рядка, [InkLine.width] — висота рядка (усе в частках ширини сторінки).
  */
-private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Float, at: Offset, density: Float, style: Int): InkLine? {
+private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Float, at: Offset, density: Float, style: Int, argb: Int): InkLine? {
     val cols = FILL_COLS
     val cell = pageW / cols
     val rows = kotlin.math.ceil(pageH / cell).toInt().coerceAtLeast(1)
@@ -540,7 +941,7 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
         Size(cols.toFloat(), rows.toFloat()),
     ) {
         drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        drawInk(lines, part, cols.toFloat()) { false }
+        drawInk(lines, part, cols.toFloat(), { false }, emptySet())
         drawContext.canvas.restore()
     }
     val px = IntArray(cols * rows)
@@ -599,6 +1000,7 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
         time = System.currentTimeMillis(),
         kind = InkKind.FILL,
         style = style,
+        color = argb,
     )
 }
 
@@ -643,12 +1045,14 @@ private fun snapLine(a: Offset, b: Offset): Offset {
  * Штрих за видом і вигляд лінії. «Аркуш» — графіт, «Скло» — світло; висохлий — трохи тьмяніший. [layered] — прозорість
  * уже дає шар ([drawLayered]), тож тут малюємо непрозоро.
  */
-private fun DrawScope.drawStroke(xs: FloatArray, ys: FloatArray, factors: FloatArray, base: Float, w: Float, dry: Boolean, kind: Int, style: Int, layered: Boolean = false) {
+private fun DrawScope.drawStroke(xs: FloatArray, ys: FloatArray, factors: FloatArray, base: Float, w: Float, dry: Boolean, kind: Int, style: Int, layered: Boolean = false, color: Int = 0) {
     val n = xs.size
     val glass = AppStyle.glass
-    val op = if (layered) 1f else strokeOpacity(kind, style, glass)
-    val tint = tintOf(kind, style)
     val ink0 = if (glass) (if (dry) DryInk else FreshInk) else (if (dry) SheetInk.copy(alpha = 0.8f) else SheetInk)
+    // Колір із палітри (новий штрих) чи давній відтінок із style.
+    val rgb = color and 0xFFFFFF
+    val op = if (layered) 1f else if (color != 0) (color ushr 24) / 255f else strokeOpacity(kind, style, glass)
+    val tint = if (color != 0) (if (rgb == INK_RGB) Color.Unspecified else Color(0xFF000000.toInt() or rgb)) else tintOf(kind, style)
     val paint0 = if (tint == Color.Unspecified) ink0 else tint.copy(alpha = if (dry) 0.75f else 1f)
     val c = paint0.copy(alpha = paint0.alpha * op)
     if (kind == InkKind.FILL) {
@@ -659,7 +1063,7 @@ private fun DrawScope.drawStroke(xs: FloatArray, ys: FloatArray, factors: FloatA
     if (n < 2) return
     var px = FloatArray(n) { xs[it] * w }
     var py = FloatArray(n) { ys[it] * w }
-    if (kind == InkKind.SPRAY) { sprayLine(px, py, base, c, xs[0] + ys[0]); return }
+    if (kind == InkKind.SPRAY) { sprayLine(px, py, base, c, xs[0] + ys[0], if (color != 0) style % 2 else 1); return }
     if (kind == InkKind.PENCIL || kind == InkKind.BRUSH || kind == InkKind.MARKER) {
         // Крапка (штрих без довжини) — кружечок на товщину інструмента.
         val ext = maxOf(px.max() - px.min(), py.max() - py.min())
@@ -861,28 +1265,58 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
 }
 
 /**
- * Балончик: дрібні цятки фарби навколо лінії — густіше посередині, рідше до краю (як розпилено). Цятки завжди ті самі
- * для того самого штриха (насіння — з його точок).
+ * Балончик. Фарба лягає там, де балончик «пшикав»: точки штриха йдуть і за рухом, і за часом (тримаєш на місці — фарби
+ * більшає), тож повільно — густо, швидко — легко. [mode] 0 — аерограф: м'яка хмарка, що поступово густішає;
+ * 1 — фарба з балончика: густий туман дрібних цяток різного розміру, щільніший посередині, з рідкими бризками по краях.
+ * Цятки для того самого штриха завжди ті самі (насіння — з його точок).
  */
-private fun DrawScope.sprayLine(px: FloatArray, py: FloatArray, base: Float, c: Color, seed: Float) {
-    val (rx0, ry0) = resample(px, py, maxOf(base * 0.16f, 1.5f))
-    // Майже нерухомий балончик — хмаринка, а не кілька цяток.
-    val rx = if (rx0.size < 14) FloatArray(14) { rx0[it % rx0.size] } else rx0
-    val ry = if (ry0.size < 14) FloatArray(14) { ry0[it % ry0.size] } else ry0
-    val rnd = java.util.Random((seed * 1_000_000).toLong())
+private fun DrawScope.sprayLine(px: FloatArray, py: FloatArray, base: Float, c: Color, seed: Float, mode: Int) {
     val rad = base / 2f
-    val small = ArrayList<Offset>(rx.size * 6)
-    val big = ArrayList<Offset>(rx.size * 4)
-    for (i in rx.indices) {
-        repeat(10) { k ->
+    // Точки «пшику»: між далекими — додати проміжні, однакові (тримав на місці) — лишити.
+    val step = maxOf(rad * 0.22f, 1.5f)
+    val sx = ArrayList<Float>(px.size * 2)
+    val sy = ArrayList<Float>(px.size * 2)
+    sx += px[0]; sy += py[0]
+    for (i in 1 until px.size) {
+        val dx = px[i] - px[i - 1]
+        val dy = py[i] - py[i - 1]
+        val d = hypot(dx, dy)
+        val k = (d / step).toInt()
+        for (j in 1..k) { sx += px[i - 1] + dx * j / (k + 1); sy += py[i - 1] + dy * j / (k + 1) }
+        sx += px[i]; sy += py[i]
+    }
+    val rnd = java.util.Random((seed * 1_000_000).toLong())
+    if (mode == 0) {
+        // Аерограф: кожен «пшик» — кілька м'яких кіл (зовні слабші), що накладаються й густішають.
+        for (i in sx.indices) {
+            val o = Offset(sx[i] + (rnd.nextFloat() - 0.5f) * rad * 0.1f, sy[i] + (rnd.nextFloat() - 0.5f) * rad * 0.1f)
+            drawCircle(c.copy(alpha = c.alpha * 0.035f), rad, o)
+            drawCircle(c.copy(alpha = c.alpha * 0.05f), rad * 0.66f, o)
+            drawCircle(c.copy(alpha = c.alpha * 0.07f), rad * 0.36f, o)
+        }
+        return
+    }
+    val fine = ArrayList<Offset>(sx.size * 10)
+    val mid = ArrayList<Offset>(sx.size * 4)
+    val big = ArrayList<Offset>(sx.size)
+    for (i in sx.indices) {
+        // Ледь видимий туман під цятками.
+        drawCircle(c.copy(alpha = c.alpha * 0.025f), rad * 0.8f, Offset(sx[i], sy[i]))
+        repeat(16) { k ->
             val ang = rnd.nextFloat() * 2f * PI.toFloat()
-            val d = (kotlin.math.abs(rnd.nextGaussian()).toFloat() * 0.45f).coerceAtMost(1f) * rad
-            val o = Offset(rx[i] + cos(ang) * d, ry[i] + sin(ang) * d)
-            if (k % 3 == 0) big += o else small += o
+            val g = kotlin.math.abs(rnd.nextGaussian()).toFloat()
+            val d = (g * 0.42f).coerceAtMost(1.05f) * rad
+            val o = Offset(sx[i] + cos(ang) * d, sy[i] + sin(ang) * d)
+            when {
+                k < 11 -> fine += o
+                k < 15 -> mid += o
+                else -> if (rnd.nextFloat() < 0.35f) big += Offset(sx[i] + cos(ang) * rad * (0.75f + rnd.nextFloat() * 0.5f), sy[i] + sin(ang) * rad * (0.75f + rnd.nextFloat() * 0.5f))
+            }
         }
     }
-    drawPoints(small, PointMode.Points, c.copy(alpha = c.alpha * 0.75f), strokeWidth = 1.1.dp.toPx(), cap = StrokeCap.Round)
-    drawPoints(big, PointMode.Points, c, strokeWidth = 1.7.dp.toPx(), cap = StrokeCap.Round)
+    drawPoints(fine, PointMode.Points, c.copy(alpha = c.alpha * 0.55f), strokeWidth = 0.8.dp.toPx(), cap = StrokeCap.Round)
+    drawPoints(mid, PointMode.Points, c.copy(alpha = c.alpha * 0.8f), strokeWidth = 1.4.dp.toPx(), cap = StrokeCap.Round)
+    drawPoints(big, PointMode.Points, c, strokeWidth = 2.3.dp.toPx(), cap = StrokeCap.Round)
 }
 
 /** Рисочки пунктиру вздовж ламаної: кожна — свій масив точок. */
@@ -1072,11 +1506,14 @@ private const val TILT = 38f
 
 private fun DrawScope.drawToolCursor(p: Offset, s: InkSession, width: Float, lead: Float) {
     val glass = AppStyle.glass
+    val tone = if (s.color == INK_RGB) Color.Unspecified else Color(0xFF000000.toInt() or s.color)
+    if (s.picking) { drawPickerCursor(p, lead, glass); return }
     when (s.tool) {
+        InkTool.Lasso -> drawLassoCursor(p, lead, glass)
         InkTool.Eraser -> drawEraserCursor(p, width, lead, glass)
-        InkTool.Marker -> drawMarkerCursor(p, width, lead, glass, MarkerTints[s.tint.coerceIn(0, 2)])
+        InkTool.Marker -> drawMarkerCursor(p, width, lead, glass, tone)
         InkTool.Brush -> drawBrushCursor(p, width, lead, glass)
-        InkTool.Spray -> drawSprayCursor(p, width, lead, glass, MarkerTints[s.sprayTint.coerceIn(0, 2)])
+        InkTool.Spray -> drawSprayCursor(p, width, lead, glass, tone)
         else -> drawMechPencil(p, width, lead, s.locked, glass, s.tool == InkTool.Underline)
     }
 }
@@ -1101,6 +1538,34 @@ private fun DrawScope.drawSprayCursor(p: Offset, width: Float, lead: Float, glas
         // Корпус із кольоровою смугою.
         drawRoundRect(cylinder(x - bw / 2, bw, Color(0xFF26282C), Color(0xFF4A4D54), Color(0xFF8E939C)), Offset(x - bw / 2, bodyTop), Size(bw, capTop - bodyTop), CornerRadius(3.dp.toPx()))
         drawRect(tone.copy(alpha = 0.75f), Offset(x - bw / 2, bodyTop + 12.dp.toPx()), Size(bw, 9.dp.toPx()))
+    }
+}
+
+/** Ласо: перехрестя з петлею — де почнеш обводити (опущене — петля яскравіша). */
+private fun DrawScope.drawLassoCursor(p: Offset, lead: Float, glass: Boolean) {
+    val ink = if (glass) Oled.TextPrimary else SheetInk
+    val a = 0.55f + 0.4f * lead
+    val r = 5.dp.toPx()
+    drawLine(ink.copy(alpha = a), p - Offset(r * 1.6f, 0f), p + Offset(r * 1.6f, 0f), 1.2.dp.toPx())
+    drawLine(ink.copy(alpha = a), p - Offset(0f, r * 1.6f), p + Offset(0f, r * 1.6f), 1.2.dp.toPx())
+    drawOval(ink.copy(alpha = a), Offset(p.x + r * 0.6f, p.y - r * 3.4f), Size(r * 3.4f, r * 2.2f), style = Stroke(1.3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))))
+}
+
+/** Піпетка: скляна трубочка з гумовою грушкою; кінчик — де береться колір. */
+private fun DrawScope.drawPickerCursor(p: Offset, lead: Float, glass: Boolean) {
+    val ink = if (glass) Oled.TextPrimary else SheetInk
+    val x = p.x
+    rotate(TILT, p) {
+        val tipTop = p.y - 10.dp.toPx()
+        val bulbTop = tipTop - 34.dp.toPx()
+        shadowRect(x - 5.dp.toPx(), bulbTop - 14.dp.toPx(), 10.dp.toPx(), p.y - bulbTop + 14.dp.toPx(), 5.dp.toPx())
+        val tube = Path().apply {
+            moveTo(x - 1.dp.toPx(), p.y); lineTo(x + 1.dp.toPx(), p.y); lineTo(x + 4.dp.toPx(), tipTop); lineTo(x - 4.dp.toPx(), tipTop); close()
+        }
+        drawPath(tube, ink.copy(alpha = 0.35f))
+        drawRect(ink.copy(alpha = 0.3f), Offset(x - 4.dp.toPx(), bulbTop), Size(8.dp.toPx(), tipTop - bulbTop))
+        drawRect(ink.copy(alpha = 0.7f), Offset(x - 4.dp.toPx(), bulbTop), Size(8.dp.toPx(), tipTop - bulbTop), style = Stroke(1.dp.toPx()))
+        drawRoundRect(cylinder(x - 6.dp.toPx(), 12.dp.toPx(), Color(0xFF2A1F1C), Color(0xFF5A3A33), Color(0xFF8E625A)), Offset(x - 6.dp.toPx(), bulbTop - 14.dp.toPx() * (1f - 0.3f * lead)), Size(12.dp.toPx(), 15.dp.toPx()), CornerRadius(6.dp.toPx()))
     }
 }
 
