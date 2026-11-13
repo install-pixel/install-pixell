@@ -860,13 +860,6 @@ private fun DrawScope.drawToolCursor(p: Offset, s: InkSession, width: Float, lea
     }
 }
 
-/** Приціл: де опиниться кінчик, поки інструмент піднятий. */
-private fun DrawScope.drawAim(p: Offset, width: Float, lead: Float, glass: Boolean) {
-    if (lead >= 0.99f) return
-    val ink = if (glass) Oled.TextPrimary else SheetInk
-    drawCircle(ink.copy(alpha = 0.55f * (1f - lead)), maxOf(width / 2f, 2.dp.toPx()) + 2.dp.toPx(), p, style = Stroke(1.dp.toPx()))
-}
-
 /** Тінь інструмента на сторінці — м'яка, трохи праворуч униз. */
 private fun DrawScope.shadowRect(x: Float, y: Float, w: Float, h: Float, r: Float) {
     val o = 3.dp.toPx()
@@ -883,7 +876,6 @@ private fun cylinder(x: Float, w: Float, dark: Color, mid: Color, light: Color) 
  * (тьмяніший за лінію, гострий), а кнопка згори натискається; ховається стрижень — кнопка вилазить назад.
  */
 private fun DrawScope.drawMechPencil(p: Offset, width: Float, lead: Float, locked: Boolean, glass: Boolean, underline: Boolean) {
-    drawAim(p, width, lead, glass)
     val maxLead = 6.dp.toPx()
     val sleeveL = 4.dp.toPx()
     val coneL = 11.dp.toPx()
@@ -954,7 +946,6 @@ private fun DrawScope.drawMechPencil(p: Offset, width: Float, lead: Float, locke
 
 /** Маркер: товстий корпус, скошений кінчик (ширина — за товщиною лінії), ковпачок кольору відтінку. */
 private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color) {
-    drawAim(p, width, lead, glass)
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val tone = if (tint == Color.Unspecified) ink else tint
     val tipW = width.coerceIn(4.dp.toPx(), 18.dp.toPx())
@@ -992,7 +983,6 @@ private fun Color.compositeOverDark(): Color = Color(
 
 /** Пензлик: пучок щетинок (ширина — за товщиною мазка), металева обойма, лакована ручка. */
 private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glass: Boolean) {
-    drawAim(p, width, lead, glass)
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val tw = width.coerceIn(5.dp.toPx(), 20.dp.toPx())
     val lift = 4.dp.toPx() * (1f - lead)
