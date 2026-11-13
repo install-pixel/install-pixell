@@ -335,6 +335,12 @@ fun InkLayer(
                             } else haptics.tick()
                             return@awaitEachGesture
                         }
+                        // Крапка: стрижень висунули (затримали палець) і підняли, не рухаючи. Звичайний дотик крапки не
+                        // ставить — тож випадкових крапок немає.
+                        if (!shapes && tool != InkTool.Eraser && drawing && !tap && movedDrawing < still && pts.size == 1) {
+                            pts += pts[0] + Offset(0.01f, 0f); fs += 1f
+                            haptics.tick()
+                        }
                         val enough = if (shapes) pts.size == 2 && (pts[1] - pts[0]).getDistance() > mm * 2f else pts.size >= 2
                         if (enough) {
                             if (!shapes) { val sm = shown(pts); pts.clear(); pts.addAll(sm) }
@@ -542,6 +548,27 @@ private fun DrawScope.drawStroke(xs: FloatArray, ys: FloatArray, factors: FloatA
     var py = FloatArray(n) { ys[it] * w }
     val glass = AppStyle.glass
     val ink0 = if (glass) (if (dry) DryInk else FreshInk) else (if (dry) SheetInk.copy(alpha = 0.8f) else SheetInk)
+    if (kind == InkKind.PENCIL || kind == InkKind.BRUSH || kind == InkKind.MARKER) {
+        // Крапка (штрих без довжини) — кружечок на товщину інструмента.
+        val ext = maxOf(px.max() - px.min(), py.max() - py.min())
+        if (ext < base * 0.3f) {
+            val c = Offset(px[0], py[0])
+            when (kind) {
+                InkKind.MARKER -> {
+                    val tint = MarkerTints.getOrNull(((style - 100) / 10).coerceAtLeast(0)) ?: Color.Unspecified
+                    val a = MarkerAlphas[((style - 100) % 10).coerceIn(0, 2)] * (if (glass) 0.85f else 1f)
+                    drawCircle((if (tint == Color.Unspecified) ink0 else tint).copy(alpha = a), base / 2f, c)
+                }
+                else -> {
+                    val a = InkAlphas[(style / 10).coerceIn(0, 2)]
+                    val r = base * (if (kind == InkKind.BRUSH) 0.55f else 0.62f)
+                    if (glass) drawCircle(Oled.TextPrimary.copy(alpha = 0.1f * a), r * 2f, c)
+                    drawCircle(ink0.copy(alpha = ink0.alpha * a * (if (glass) 0.92f else 0.7f)), r, c)
+                }
+            }
+            return
+        }
+    }
     if (kind >= InkKind.ERASER) {
         val path = polyline(px, py)
         if (kind == InkKind.ERASER_SOFT) {
