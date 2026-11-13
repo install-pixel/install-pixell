@@ -243,5 +243,6 @@
     <string name="ink_tint_red">Light red</string>
     <string name="ink_tint_blue">Light blue</string>
     <string name="ink_brush">Brush</string>
-    <string name="ink_brush_mode">Stroke: bristles or solid</string>
+    <string name="ink_brush_mode">Bristles or solid</string>
+    <string name="ink_brush_fill">Stroke or fill (lower inside a shape to fill it)</string>
 </resources>

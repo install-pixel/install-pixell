@@ -247,5 +247,6 @@
     <string name="ink_tint_red">Jasnoczerwony</string>
     <string name="ink_tint_blue">Jasnoniebieski</string>
     <string name="ink_brush">Pędzelek</string>
-    <string name="ink_brush_mode">Pociągnięcie: włosie lub pełne</string>
+    <string name="ink_brush_mode">Włosie lub pełne</string>
+    <string name="ink_brush_fill">Pociągnięcie lub wypełnienie (opuść w środku kształtu — wypełni)</string>
 </resources>
