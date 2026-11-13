@@ -258,5 +258,8 @@
     <string name="ink_tint_blue">Легкий синій</string>
     <string name="ink_brush">Пензлик</string>
     <string name="ink_brush_mode">Щетинки чи суцільно</string>
-    <string name="ink_brush_fill">Мазок чи зафарбовування (опусти всередині обрису — заллє)</string>
+    <string name="ink_brush_fill">Мазок чи заливка (опусти всередині обрису й підніми)</string>
+    <string name="ink_spray">Балончик</string>
+    <string name="ink_tint">Відтінок</string>
+    <string name="ink_clear">Очистити малюнок</string>
 </resources>

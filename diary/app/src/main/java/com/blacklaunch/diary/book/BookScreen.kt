@@ -1116,7 +1116,10 @@ fun BookScreen(
                         Tool(Glyph.Gallery, stringResource(R.string.photo_from_gallery)) { photo(1) },
                         Tool(Glyph.Close, stringResource(R.string.close)) { photoTools = false },
                     ) else listOf(
-                        Tool(Glyph.Pen, stringResource(R.string.ink_mode)) { focusManager.clearFocus(); ink = InkSession(day, part) },
+                        Tool(Glyph.Pen, stringResource(R.string.ink_mode)) {
+                            // Висохлий день — малюнок, як і текст, уже не змінити.
+                            if (dry) vm.show(R.string.page_dry) else { focusManager.clearFocus(); ink = InkSession(day, part) }
+                        },
                         Tool(Glyph.Photo, stringResource(R.string.tool_photo)) {
                             when {
                                 d.photo -> dialog = BookDialog.Photo(day)
@@ -1150,6 +1153,14 @@ fun BookScreen(
             val next = s.redo.removeLastOrNull() ?: return@InkToolbar
             s.undo += vm.day(s.day).ink
             vm.setInk(s.day, next)
+        }, onClear = {
+            val all = vm.day(s.day).ink
+            val rest = all.filter { it.page != s.part }
+            if (rest.size != all.size) {
+                s.undo += all
+                s.redo.clear()
+                vm.setInk(s.day, rest)
+            }
         }, onDone = { ink = null }) }
     }
 
@@ -1316,7 +1327,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
  * Відтінки маркера — видно всі одразу.
  */
 @Composable
-private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, onDone: () -> Unit) {
+private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, onClear: () -> Unit, onDone: () -> Unit) {
     val haptics = LocalHaptics.current
     val glass = AppStyle.glass
     val ink = if (glass) Oled.TextPrimary else SheetInk
@@ -1342,13 +1353,14 @@ private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, on
     Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f)) {
         // Усі кнопки однієї ширини: п'ять інструментів — на всю ширину ряду, налаштування — під ними, від лівого краю.
-        val w = (maxWidth - 6.dp * 4) / 5
+        val w = (maxWidth - 6.dp * 5) / 6
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 InkTool.entries.forEach { t ->
                     val label = stringResource(when (t) {
                         InkTool.Pencil -> R.string.ink_pencil
                         InkTool.Brush -> R.string.ink_brush
+                        InkTool.Spray -> R.string.ink_spray
                         InkTool.Underline -> R.string.ink_underline
                         InkTool.Marker -> R.string.ink_marker
                         InkTool.Eraser -> R.string.ink_eraser
@@ -1368,8 +1380,13 @@ private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, on
                     }
                     InkTool.Brush -> {
                         Wheel(w, 3, s.brushAlpha, stringResource(R.string.ink_opacity), 64, onChange = { s.brushAlpha = it }) { k, c -> drawOpacityGlyph(com.blacklaunch.diary.book.InkAlphas[k], c) }
+                        Wheel(w, 3, s.brushTint, stringResource(R.string.ink_tint), 72, onChange = { s.brushTint = it }) { k, c -> drawTintGlyph(k, c) }
                         Wheel(w, 2, s.brushFill, stringResource(R.string.ink_brush_fill), 65, onChange = { s.brushFill = it }) { k, c -> drawFillModeGlyph(k, c) }
                         Wheel(w, 2, s.brushMode, stringResource(R.string.ink_brush_mode), 66, onChange = { s.brushMode = it }) { k, c -> drawBrushModeGlyph(k, c) }
+                    }
+                    InkTool.Spray -> {
+                        Wheel(w, 3, s.sprayAlpha, stringResource(R.string.ink_opacity), 73, onChange = { s.sprayAlpha = it }) { k, c -> drawOpacityGlyph(com.blacklaunch.diary.book.InkAlphas[k], c) }
+                        Wheel(w, 3, s.sprayTint, stringResource(R.string.ink_tint), 74, onChange = { s.sprayTint = it }) { k, c -> drawTintGlyph(k, c) }
                     }
                     InkTool.Underline -> {
                         Wheel(w, 3, s.lineAlpha, stringResource(R.string.ink_opacity), 67, onChange = { s.lineAlpha = it }) { k, c -> drawOpacityGlyph(com.blacklaunch.diary.book.InkAlphas[k], c) }
@@ -1378,12 +1395,7 @@ private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, on
                     }
                     InkTool.Marker -> {
                         Wheel(w, 3, s.markerAlpha, stringResource(R.string.ink_opacity), 70, onChange = { s.markerAlpha = it }) { k, c -> drawOpacityGlyph(com.blacklaunch.diary.book.MarkerAlphas[k] * 2f, c) }
-                        for (t in 0..2) {
-                            Chip(w, s.tint == t, stringResource(listOf(R.string.ink_tint_none, R.string.ink_tint_red, R.string.ink_tint_blue)[t]), 97 + t, onClick = { s.tint = t }) { c ->
-                                val tc = com.blacklaunch.diary.book.MarkerTints[t].takeIf { it != Color.Unspecified } ?: c
-                                drawLine(tc.copy(alpha = 0.65f), Offset(size.width * 0.12f, size.height / 2), Offset(size.width * 0.88f, size.height / 2), size.height * 0.5f, cap = StrokeCap.Round)
-                            }
-                        }
+                        Wheel(w, 3, s.tint, stringResource(R.string.ink_tint), 75, onChange = { s.tint = it }) { k, c -> drawTintGlyph(k, c) }
                     }
                     InkTool.Eraser -> {
                         Wheel(w, 2, if (s.softEraser) 1 else 0, stringResource(if (s.softEraser) R.string.ink_eraser_soft else R.string.ink_eraser_hard), 71, onChange = { s.softEraser = it == 1 }) { k, c ->
@@ -1401,13 +1413,17 @@ private fun InkToolbar(s: InkSession, onUndo: () -> Unit, onRedo: () -> Unit, on
         }
         Spacer(Modifier.width(10.dp))
         // «Назад» / «вперед» над «Готово» — тієї самої ширини.
-        Column(Modifier.width(118.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.width(132.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth().height(54.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(52.dp).clip(CircleShape).clickable(enabled = s.undo.isNotEmpty()) { haptics.tap(); onUndo() }, contentAlignment = Alignment.Center) {
-                    GlyphIcon(Glyph.Undo, stringResource(R.string.undo), tint = Oled.TextPrimary.copy(alpha = if (s.undo.isNotEmpty()) 1f else 0.3f), size = 28.dp)
+                Box(Modifier.size(44.dp).clip(CircleShape).clickable(enabled = s.undo.isNotEmpty()) { haptics.tap(); onUndo() }, contentAlignment = Alignment.Center) {
+                    GlyphIcon(Glyph.Undo, stringResource(R.string.undo), tint = Oled.TextPrimary.copy(alpha = if (s.undo.isNotEmpty()) 1f else 0.3f), size = 26.dp)
                 }
-                Box(Modifier.size(52.dp).clip(CircleShape).clickable(enabled = s.redo.isNotEmpty()) { haptics.tap(); onRedo() }, contentAlignment = Alignment.Center) {
-                    GlyphIcon(Glyph.Redo, stringResource(R.string.redo), tint = Oled.TextPrimary.copy(alpha = if (s.redo.isNotEmpty()) 1f else 0.3f), size = 28.dp)
+                Box(Modifier.size(44.dp).clip(CircleShape).clickable(enabled = s.redo.isNotEmpty()) { haptics.tap(); onRedo() }, contentAlignment = Alignment.Center) {
+                    GlyphIcon(Glyph.Redo, stringResource(R.string.redo), tint = Oled.TextPrimary.copy(alpha = if (s.redo.isNotEmpty()) 1f else 0.3f), size = 26.dp)
+                }
+                // Очистити весь малюнок цієї сторінки («назад» — повертає).
+                Box(Modifier.size(44.dp).clip(CircleShape).clickable { haptics.longPress(); onClear() }, contentAlignment = Alignment.Center) {
+                    GlyphIcon(Glyph.Delete, stringResource(R.string.ink_clear), tint = Oled.TextPrimary, size = 24.dp)
                 }
             }
             SheetButton(stringResource(R.string.done), { s.remember(); onDone() }, tone = Tone.Confirm, modifier = Modifier.fillMaxWidth())
@@ -1473,6 +1489,8 @@ private fun InkWheel(
             val gh = 24.dp.toPx()
             val full = size
             for (k in -1..2) {
+                // Видно лише вибране й наступне (знизу); попереднє з'являється, тільки коли крутиш назад.
+                if (k == -1 && roll.value >= 0f) continue
                 val pos = k - roll.value
                 val d = kotlin.math.abs(pos).coerceAtMost(1.4f)
                 if (d >= 1.4f) continue
@@ -1544,6 +1562,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawToolGlyph(t: In
                 drawPath(tuft, c)
             }
         }
+        InkTool.Spray -> {
+            // Балончик: корпус, ковпачок, розпилювач і хмаринка цяток.
+            val bx = w * 0.62f
+            val bw = w * 0.26f
+            drawRoundRect(c, Offset(bx - bw / 2, h * 0.32f), androidx.compose.ui.geometry.Size(bw, h * 0.66f), androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()), style = stroke)
+            drawRoundRect(c, Offset(bx - bw * 0.38f, h * 0.14f), androidx.compose.ui.geometry.Size(bw * 0.76f, h * 0.2f), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+            drawRect(c, Offset(bx - bw * 0.62f, h * 0.17f), androidx.compose.ui.geometry.Size(bw * 0.3f, h * 0.08f))
+            val dots = listOf(0.12f to 0.12f, 0.2f to 0.25f, 0.08f to 0.32f, 0.26f to 0.1f, 0.16f to 0.42f, 0.3f to 0.34f, 0.04f to 0.2f)
+            dots.forEach { (dx, dy) -> drawCircle(c, 1.1.dp.toPx(), Offset(w * dx, h * dy)) }
+        }
         InkTool.Underline -> {
             for (k in 0..2) drawLine(c.copy(alpha = 0.55f), Offset(w * (0.08f + k * 0.3f), h * 0.36f), Offset(w * (0.3f + k * 0.3f), h * 0.36f), 2.5.dp.toPx(), cap = StrokeCap.Round)
             drawLine(c, Offset(w * 0.04f, h * 0.76f), Offset(w * 0.96f, h * 0.76f), st, cap = StrokeCap.Round)
@@ -1574,6 +1602,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSizeGlyph(t: In
         return
     }
     val r = size.height * floatArrayOf(0.12f, 0.24f, 0.4f)[k]
+    if (t == InkTool.Spray) {
+        // Балончик: хмаринка цяток потрібного розміру.
+        val rnd = java.util.Random(7)
+        repeat(26) {
+            val a = rnd.nextFloat() * 6.283f
+            val d = kotlin.math.sqrt(rnd.nextFloat()) * r * 1.15f
+            drawCircle(c, 0.9.dp.toPx(), Offset(center.x + kotlin.math.cos(a) * d, center.y + kotlin.math.sin(a) * d))
+        }
+        return
+    }
     drawCircle(c, r, center)
 }
 
@@ -1599,6 +1637,22 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFillModeGlyph(m
         }
         drawPath(path, c, style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx(), cap = StrokeCap.Round))
     }
+}
+
+/** Відтінок: крапля кольору — чорнила, легкого червоного чи легкого синього. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTintGlyph(k: Int, c: Color) {
+    val t = com.blacklaunch.diary.book.MarkerTints[k.coerceIn(0, 2)]
+    val col = if (t == Color.Unspecified) c else t.copy(alpha = c.alpha)
+    val cx = size.width / 2
+    val drop = androidx.compose.ui.graphics.Path().apply {
+        moveTo(cx, size.height * 0.04f)
+        cubicTo(cx + size.height * 0.1f, size.height * 0.3f, cx + size.height * 0.4f, size.height * 0.5f, cx + size.height * 0.4f, size.height * 0.66f)
+        cubicTo(cx + size.height * 0.4f, size.height * 0.88f, cx + size.height * 0.2f, size.height * 0.98f, cx, size.height * 0.98f)
+        cubicTo(cx - size.height * 0.2f, size.height * 0.98f, cx - size.height * 0.4f, size.height * 0.88f, cx - size.height * 0.4f, size.height * 0.66f)
+        cubicTo(cx - size.height * 0.4f, size.height * 0.5f, cx - size.height * 0.1f, size.height * 0.3f, cx, size.height * 0.04f)
+        close()
+    }
+    drawPath(drop, col.copy(alpha = col.alpha * 0.85f))
 }
 
 /** Значок вигляду лінії: суцільна, пунктир, хвиля. */

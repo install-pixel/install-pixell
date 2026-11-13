@@ -173,6 +173,16 @@ fun DayPage(
             .fillMaxSize()
             // Усе на сторінці — в її межах: фото, що відсуваєш свайпом, за край книжки не виходить, а зникає за ним.
             .clip(RoundedCornerShape(BookCorner))
+            // Малювання: сторінку можна наблизити двома пальцями (масштаб і зсув — у сеансі малювання).
+            .then(
+                ink?.takeIf { it.day == day.day && it.part == part }?.let { zs ->
+                    Modifier.graphicsLayer {
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                        scaleX = zs.zoom; scaleY = zs.zoom
+                        translationX = zs.tx; translationY = zs.ty
+                    }
+                } ?: Modifier,
+            )
             // «Аркуш»: усе написане й намальоване лежить на папері — темніє й світлішає разом із заломами, бере зерно.
             .paperRelief(glass, pageSeed(day.day, part))
             // Старіння: з віком сторінка тьмяніє, потирається, на ній з'являються плями — у кожної своє й назавжди те саме.
@@ -358,8 +368,8 @@ fun DayPage(
             part = part,
             pageWidth = pageWidthPx,
             session = ink?.takeIf { it.day == day.day && it.part == part },
-            // Олівець — єдине, що працює й на висохлій сторінці: малюється, стирається, кольору не змінює.
-            dry = { false },
+            // Висохлий день — малюнок, як і текст, уже не змінити (тьмяніший).
+            dry = { dry },
             onChange = { host.vm.setInk(day.day, it) },
             onDryErase = { host.dryHint() },
         )
