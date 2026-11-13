@@ -343,6 +343,15 @@ fun DayPage(
             indentFirst = if (!first || (!photoSlot && !audioSlot)) ribbonIndentPx(u, density) else 0f,
         )
 
+        // Номер сторінки (лише заповнені) — унизу посередині.
+        if (number != null) {
+            Text(
+                number.toString(),
+                style = style.copy(fontSize = (headerSize * 0.8f).sp, lineHeight = (headerSize * 0.9f).sp, color = Oled.TextSecondary, textAlign = TextAlign.Center),
+                modifier = Modifier.offset(dp(PageMetrics.WIDTH / 2 - 8f), dp(PageMetrics.HEIGHT - 6.6f)).width(dp(16f)),
+            )
+        }
+
         // Перо — поверх усієї сторінки.
         InkLayer(
             lines = day.ink,
@@ -354,15 +363,6 @@ fun DayPage(
             onChange = { host.vm.setInk(day.day, it) },
             onDryErase = { host.dryHint() },
         )
-
-        // Номер сторінки (лише заповнені) — унизу посередині.
-        if (number != null) {
-            Text(
-                number.toString(),
-                style = style.copy(fontSize = (headerSize * 0.8f).sp, lineHeight = (headerSize * 0.9f).sp, color = Oled.TextSecondary, textAlign = TextAlign.Center),
-                modifier = Modifier.offset(dp(PageMetrics.WIDTH / 2 - 8f), dp(PageMetrics.HEIGHT - 6.6f)).width(dp(16f)),
-            )
-        }
 
         // «Цей день рік тому»: загнутий ріжок унизу праворуч.
         if (first && yearsAgo != null) {

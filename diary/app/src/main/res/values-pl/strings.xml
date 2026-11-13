@@ -47,7 +47,6 @@
     <string name="mic_denied">Bez zgody na mikrofon nie da się nagrać głosu</string>
 
     <string name="ink_mode">Ołówek</string>
-    <string name="ink_hint">Prowadź — ołówek idzie za palcem. Przytrzymaj — pisze. Dotknij dwa razy — pisze od razu.</string>
     <string name="ink_eraser">Gumka</string>
     <string name="ink_dry">Suchego atramentu nie da się zetrzeć</string>
 
@@ -247,4 +246,6 @@
     <string name="ink_tint_none">Bez odcienia</string>
     <string name="ink_tint_red">Jasnoczerwony</string>
     <string name="ink_tint_blue">Jasnoniebieski</string>
+    <string name="ink_brush">Pędzelek</string>
+    <string name="ink_brush_mode">Pociągnięcie: włosie lub pełne</string>
 </resources>

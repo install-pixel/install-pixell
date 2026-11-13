@@ -45,7 +45,6 @@
     <string name="mic_denied">Voice can\'t be recorded without microphone permission</string>
 
     <string name="ink_mode">Pencil</string>
-    <string name="ink_hint">Move — the pencil follows. Hold — it writes. Double tap — keeps writing.</string>
     <string name="ink_eraser">Eraser</string>
     <string name="ink_dry">Dry ink can\'t be erased</string>
 
@@ -243,4 +242,6 @@
     <string name="ink_tint_none">No tint</string>
     <string name="ink_tint_red">Light red</string>
     <string name="ink_tint_blue">Light blue</string>
+    <string name="ink_brush">Brush</string>
+    <string name="ink_brush_mode">Stroke: bristles or solid</string>
 </resources>

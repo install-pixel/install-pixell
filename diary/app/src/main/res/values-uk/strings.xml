@@ -50,7 +50,6 @@
 
     <!-- Перо -->
     <string name="ink_mode">Олівець</string>
-    <string name="ink_hint">Веди — олівець іде за пальцем. Затримай — пише. Двічі торкнись — пише одразу.</string>
     <string name="ink_eraser">Гумка</string>
     <string name="ink_dry">Висохле чорнило не стирається</string>
 
@@ -257,4 +256,6 @@
     <string name="ink_tint_none">Без відтінку</string>
     <string name="ink_tint_red">Легкий червоний</string>
     <string name="ink_tint_blue">Легкий синій</string>
+    <string name="ink_brush">Пензлик</string>
+    <string name="ink_brush_mode">Мазок: щетинки чи суцільний</string>
 </resources>

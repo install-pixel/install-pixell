@@ -19,6 +19,8 @@ class InkLine(
     val kind: Int = 0,
     /** Лінія: 0 суцільна, 1 пунктир, 2 крапки, 3 хвиля. */
     val style: Int = 0,
+    /** Гумка: [time] штриха, який лише вона стирає (верхній шар); 0 — стирає все під собою. */
+    val target: Long = 0L,
 )
 
 /** Викреслене у висохлому тексті: [start] включно, [end] — ні (індекси символів [Day.sealed]). */
@@ -122,6 +124,7 @@ object DayCodec {
             if (l.factors.isNotEmpty()) o.put("f", JSONArray().also { a -> l.factors.forEach { a.put(r2(it)) } })
             if (l.kind != 0) o.put("k", l.kind)
             if (l.style != 0) o.put("s", l.style)
+            if (l.target != 0L) o.put("g", l.target)
             arr.put(o)
         }
         return arr.toString()
@@ -145,6 +148,7 @@ object DayCodec {
                     time = o.optLong("t"),
                     kind = o.optInt("k"),
                     style = o.optInt("s"),
+                    target = o.optLong("g"),
                 )
             }
         }.getOrDefault(emptyList())
