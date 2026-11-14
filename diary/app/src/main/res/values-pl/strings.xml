@@ -265,6 +265,8 @@
     <string name="ink_eraser_stroke">Gumka całych linii</string>
     <string name="ink_duplicate">Powiel zaznaczenie</string>
     <string name="ink_delete_sel">Usuń zaznaczenie</string>
-    <string name="ink_clip">W granicach kształtu (zacznij w środku)</string>
+    <string name="ink_clip">Farba nie wychodzi za kontur: zacznij w środku — tylko w środku, na zewnątrz — tylko dookoła</string>
     <string name="ink_eraser_blur">Jak miękka krawędź</string>
+    <string name="ink_stencil">Szablon: ołówek rysuje folię, a nie linię</string>
+    <string name="ink_stencil_remove">Zdejmij szablon</string>
 </resources>

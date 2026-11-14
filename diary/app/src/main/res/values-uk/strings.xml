@@ -275,6 +275,8 @@
     <string name="ink_eraser_stroke">Гумка цілими штрихами</string>
     <string name="ink_duplicate">Дублювати виділене</string>
     <string name="ink_delete_sel">Видалити виділене</string>
-    <string name="ink_clip">У межах обрису (почни всередині нього)</string>
+    <string name="ink_clip">Фарба не виходить за обрис: почав усередині — лише всередині, ззовні — лише довкола</string>
     <string name="ink_eraser_blur">Наскільки розмитий край</string>
+    <string name="ink_stencil">Трафарет: олівець малює плівку, а не лінію</string>
+    <string name="ink_stencil_remove">Зняти трафарет</string>
 </resources>

@@ -261,6 +261,8 @@
     <string name="ink_eraser_stroke">Whole-stroke eraser</string>
     <string name="ink_duplicate">Duplicate selection</string>
     <string name="ink_delete_sel">Delete selection</string>
-    <string name="ink_clip">Stay inside a shape (start inside it)</string>
+    <string name="ink_clip">Paint stays on its side of an outline: start inside — only inside, outside — only around it</string>
     <string name="ink_eraser_blur">How soft the edge is</string>
+    <string name="ink_stencil">Stencil: the pencil draws a film, not a line</string>
+    <string name="ink_stencil_remove">Remove stencil</string>
 </resources>

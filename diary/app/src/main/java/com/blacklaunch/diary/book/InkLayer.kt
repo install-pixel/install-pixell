@@ -86,6 +86,11 @@ object InkKind {
     const val ERASER_SOFT = 11
     /** Позначка «у дня є полотно» (без точок, не малюється). */
     const val CANVAS = 30
+    /**
+     * Трафарет — тимчасова «плівка», намальована олівцем: у малюнок не входить (видно лише в режимі малювання, пунктиром),
+     * але для «у межах» і заливки — стіна. Зняв трафарет — фарба лишається з рівним краєм.
+     */
+    const val STENCIL = 31
     /** Ласо — не штрих, лише інструмент. */
     const val LASSO = -1
 }
@@ -169,6 +174,8 @@ class InkSession(val day: Long, val part: Int) {
         set(v) { smooths[tool] = v; last.smooths[tool] = v }
     /** Олівець: затримав у кінці — коло, рамка, трикутник чи лінія вирівнюються. */
     var autoShapes by mutableStateOf(last.autoShapes)
+    /** Олівець малює трафарет (плівку), а не лінію. */
+    var stencil by mutableStateOf(last.stencil)
     var brushMode by mutableIntStateOf(last.brushMode)
     /** Пензлик: 0 — мазок, 1 — зафарбовування (багато штришків, як щіточкою), 2 — заливка обрису. */
     var brushFill by mutableIntStateOf(last.brushFill)
@@ -201,7 +208,11 @@ class InkSession(val day: Long, val part: Int) {
     var selBounds by mutableStateOf<Rect?>(null)
 
     val width: Float get() = tool.widthAt(size)
-    val kind: Int get() = if (tool == InkTool.Eraser) (if (eraserMode == 1) InkKind.ERASER_SOFT else InkKind.ERASER) else tool.kind
+    val kind: Int get() = when {
+        tool == InkTool.Eraser -> if (eraserMode == 1) InkKind.ERASER_SOFT else InkKind.ERASER
+        tool == InkTool.Pencil && stencil -> InkKind.STENCIL
+        else -> tool.kind
+    }
     val style: Int get() = when (tool) {
         InkTool.Pencil -> pencilStyle
         InkTool.Brush -> brushMode + 2 * brushFill
@@ -226,7 +237,7 @@ class InkSession(val day: Long, val part: Int) {
 
     /** Запам'ятати вибір (для наступного сеансу). */
     fun remember() {
-        last.tool = tool; last.pencilStyle = pencilStyle; last.autoShapes = autoShapes
+        last.tool = tool; last.pencilStyle = pencilStyle; last.autoShapes = autoShapes; last.stencil = stencil
         last.brushMode = brushMode; last.brushFill = brushFill; last.sprayMode = sprayMode; last.clip = clip
         last.lineStyle = lineStyle; last.shape = shape; last.eraserMode = eraserMode
         last.eraserSoft = eraserSoft
@@ -241,6 +252,7 @@ class InkSession(val day: Long, val part: Int) {
         var pencilStyle = InkStyle.SOLID
         val smooths = HashMap<InkTool, Int>()
         var autoShapes = true
+        var stencil = false
         var brushMode = 0
         var brushFill = 0
         var sprayMode = 1
@@ -391,7 +403,7 @@ fun InkLayer(
                         fun hideAt(p: Offset) {
                             val q = Offset(p.x / w, p.y / w)
                             val r = widthN / 2f
-                            val hit = current.filter { it.page == part && it.kind in DRAWN && it.time !in hidden && hits(it, q, r) }
+                            val hit = current.filter { it.page == part && (it.kind in DRAWN || it.kind == InkKind.STENCIL) && it.time !in hidden && hits(it, q, r) }
                             if (hit.isNotEmpty()) { hidden = hidden + hit.map { it.time }; haptics.tick() }
                         }
                         fun begin() {
@@ -698,7 +710,7 @@ fun InkLayer(
                         }
                         // Крапка: опустили, ще потримали нерухомо й підняли (олівець, пензлик, маркер).
                         if (!shapes && !spray && tool != InkTool.Eraser && pts.size == 1) {
-                            if (heldStill) {
+                            if (heldStill && kind != InkKind.STENCIL) {
                                 pts += pts[0] + Offset(0.01f, 0f); fs += 1f
                                 haptics.tick()
                             } else pts.clear()
@@ -720,7 +732,7 @@ fun InkLayer(
                                 color = if (kind >= InkKind.ERASER) 0 else argb,
                                 target = clipLine?.time ?: 0L,
                             )
-                            if (line.kind >= InkKind.ERASER) {
+                            if (isEraser(line)) {
                                 val hitDry = current.any { it.page == part && it.kind < InkKind.ERASER && dry(it) }
                                 if (hitDry) onDryErase()
                             }
@@ -738,7 +750,7 @@ fun InkLayer(
         // Увесь малюнок — в окремому шарі: гумка стирає лише намальоване, а не папір під ним.
         drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
         drawInk(shownLines, part, w, dry, hidden)
-        if (live.size >= 2 && session != null) {
+        if (live.size >= 2 && session != null && session.kind != InkKind.STENCIL) {
             val tl = session.tool
             val lc = liveClip
             if (lc != null) drawContext.canvas.save()
@@ -756,6 +768,9 @@ fun InkLayer(
         if (session != null) {
             val ink = if (AppStyle.glass) Oled.TextPrimary else SheetInk
             val z = session.zoom
+            // Трафарети (лише поки малюєш): плівка й пунктирний край.
+            shownLines.forEach { if (it.page == part && it.kind == InkKind.STENCIL && it.time !in hidden) drawStencil(it.xs, it.ys, w, ink, z) }
+            if (live.size >= 2 && session.kind == InkKind.STENCIL) drawStencil(FloatArray(live.size) { live[it].x / w }, FloatArray(live.size) { live[it].y / w }, w, ink, z)
             // Ласо, поки обводиш, і рамка виділеного з ріжком для розміру.
             if (lassoPath.size > 1) {
                 drawPath(polyline(FloatArray(lassoPath.size) { lassoPath[it].x }, FloatArray(lassoPath.size) { lassoPath[it].y }), ink.copy(alpha = 0.8f), style = Stroke(1.4.dp.toPx() / z, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx() / z, 4.dp.toPx() / z))))
@@ -1030,6 +1045,24 @@ private fun sampleColor(lines: List<InkLine>, part: Int, pageW: Float, pageH: Fl
     return if (near) INK_RGB else rgb
 }
 
+/** Трафарет: замкнений — напівпрозора плівка всередині; край — пунктир (темна підкладка, щоб видно на будь-чому). */
+private fun DrawScope.drawStencil(xs: FloatArray, ys: FloatArray, w: Float, ink: Color, z: Float) {
+    if (xs.size < 2) return
+    val px = FloatArray(xs.size) { xs[it] * w }
+    val py = FloatArray(ys.size) { ys[it] * w }
+    val path = polyline(px, py)
+    val diag = hypot(px.max() - px.min(), py.max() - py.min())
+    if (hypot(px[0] - px[px.size - 1], py[0] - py[py.size - 1]) < diag * 0.15f) {
+        val fill = Path().apply { addPath(path); close() }
+        drawPath(fill, ink.copy(alpha = 0.09f))
+    }
+    drawPath(path, Color.Black.copy(alpha = 0.45f), style = Stroke(2.6.dp.toPx() / z, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawPath(path, ink.copy(alpha = 0.8f), style = Stroke(1.3.dp.toPx() / z, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx() / z, 3.5.dp.toPx() / z))))
+}
+
+/** Обриси (лінії, а не фарба) — стіни для «у межах»: фарбу можна класти ще раз поверх своєї ж фарби. */
+private val OUTLINES = setOf(InkKind.PEN, InkKind.HARD, InkKind.SOFT, InkKind.MARKER, InkKind.PENCIL, InkKind.UNDERLINE)
+
 /**
  * Усі штрихи сторінки по черзі (гумка стирає те, що під нею). Давні гумки, що стирали лише один штрих, — до свого
  * штриха. [hidden] — штрихи, які зараз стирає гумка цілими штрихами (не малюємо).
@@ -1040,7 +1073,7 @@ private fun DrawScope.drawInk(lines: List<InkLine>, part: Int, w: Float, dry: (I
     val clips = HashMap<Long, InkLine>()
     lines.forEach { if (it.page == part && it.kind == InkKind.CLIP) clips[it.time] = it }
     lines.forEach { l ->
-        if (l.page != part || l.kind == InkKind.CANVAS || l.kind == InkKind.CLIP || l.time in hidden) return@forEach
+        if (l.page != part || l.kind == InkKind.CANVAS || l.kind == InkKind.CLIP || l.kind == InkKind.STENCIL || l.time in hidden) return@forEach
         if (l.kind >= InkKind.ERASER) {
             if (l.target == 0L) drawStroke(l.xs, l.ys, l.factors, l.width * w, w, false, l.kind, l.style)
             return@forEach
@@ -1124,8 +1157,15 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
         Size(cols.toFloat(), rows.toFloat()),
     ) {
         drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        drawInk(lines, part, cols.toFloat(), { false }, emptySet())
+        // «У межах»: стіни — лише обриси (і гумки, що їх стерли); заливка — усе намальоване.
+        val src = if (outKind == InkKind.CLIP) lines.filter { it.kind in OUTLINES || isEraser(it) } else lines
+        drawInk(src, part, cols.toFloat(), { false }, emptySet())
         drawContext.canvas.restore()
+        // Трафарети — теж стіни.
+        lines.forEach { l ->
+            if (l.page != part || l.kind != InkKind.STENCIL || l.xs.size < 2) return@forEach
+            drawPath(polyline(FloatArray(l.xs.size) { l.xs[it] * cols }, FloatArray(l.ys.size) { l.ys[it] * cols }), Color.Black, style = Stroke(maxOf(l.width * cols, 1.5f), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
     }
     val px = IntArray(cols * rows)
     img.readPixels(px)
@@ -1173,7 +1213,9 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
         if (y > 0) push(i - cols)
         if (y < rows - 1) push(i + cols)
     }
-    if (tail > px.size * 0.6f) return null
+    // Розтеклось майже на всю сторінку — обрис не замкнений. Для «у межах» дозволено й назовні (почав поза обрисом —
+    // фарба обходить його), але не тоді, коли стін узагалі немає.
+    if (tail > px.size * (if (outKind == InkKind.CLIP) 0.985f else 0.6f)) return null
     // Під обвідку: на дві клітинки в усі боки (стіни товстіші на одну — і ще одна, щоб не лишалось щілини).
     val grown = fill.copyOf()
     for (i in px.indices) if (fill[i]) {

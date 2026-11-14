@@ -1433,7 +1433,10 @@ private fun InkToolbar(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
                 if (s.drawer == 2) ColorDrawer(s, ink, ::pick)
-                else ToolDrawer(s, ink, onClear = onClear, onDuplicate = {
+                else ToolDrawer(s, ink, hasStencil = lines().any { it.page == s.part && it.kind == InkKind.STENCIL }, onRemoveStencil = {
+                    // Зняти трафарет: плівка зникає, фарба з рівним краєм лишається.
+                    commit(lines().filter { !(it.page == s.part && it.kind == InkKind.STENCIL) })
+                }, onClear = onClear, onDuplicate = {
                     // Разом із гумками, що стирали виділене (копія — така сама, як оригінал).
                     val base = bakeErasers(lines(), s.part, s.selection)
                     val sel = selectionGroup(base, s.part, s.selection)
@@ -1523,7 +1526,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUndoGlyph(c: Co
 
 /** Шухлядка інструмента: товщина й прозорість — повзунками, решта — коліщатками; праворуч — «очистити». */
 @Composable
-private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplicate: () -> Unit, onDeleteSel: () -> Unit) {
+private fun ToolDrawer(s: InkSession, ink: Color, hasStencil: Boolean, onRemoveStencil: () -> Unit, onClear: () -> Unit, onDuplicate: () -> Unit, onDeleteSel: () -> Unit) {
     val haptics = LocalHaptics.current
     val tool = s.tool
     val pageDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
@@ -1541,6 +1544,14 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                 DrawerButton(Glyph.Delete, stringResource(R.string.ink_delete_sel), enabled = has, onClick = onDeleteSel)
             }
             return@Column
+        }
+        // Є трафарет — кнопка «зняти» (олівець, пензлик, балончик).
+        if (hasStencil && (tool == InkTool.Pencil || tool == InkTool.Brush || tool == InkTool.Spray)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DrawerDrawButton(stringResource(R.string.ink_stencil_remove), 81, onClick = { haptics.longPress(); onRemoveStencil() }) { c -> drawStencilGlyph(2, c) }
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.ink_stencil_remove), color = ink.copy(alpha = 0.7f), fontSize = 13.sp)
+            }
         }
         // Товщина: повзунок і праворуч — зразок справжнього розміру.
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1595,6 +1606,7 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                     Wheel(3, InkStyle.LINES.indexOf(s.pencilStyle).coerceAtLeast(0), stringResource(R.string.ink_style), 62, onChange = { s.pencilStyle = InkStyle.LINES[it] }) { k, c -> drawStyleGlyph(InkStyle.LINES[k], c) }
                     Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 63, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                     Wheel(2, if (s.autoShapes) 1 else 0, stringResource(R.string.ink_auto_shapes), 64, onChange = { s.autoShapes = it == 1 }) { k, c -> drawAutoShapeGlyph(k, c) }
+                    Wheel(2, if (s.stencil) 1 else 0, stringResource(R.string.ink_stencil), 80, onChange = { s.stencil = it == 1 }) { k, c -> drawStencilGlyph(k, c) }
                 }
                 InkTool.Brush -> {
                     Wheel(3, s.brushFill, stringResource(R.string.ink_brush_fill), 65, onChange = { s.brushFill = it }) { k, c -> drawFillModeGlyph(k, c) }
@@ -1624,6 +1636,50 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
             }
             Spacer(Modifier.weight(1f))
             DrawerButton(Glyph.Delete, stringResource(R.string.ink_clear), enabled = true) { haptics.longPress(); onClear() }
+        }
+    }
+}
+
+/** Кнопка в шухлядці з власним малюнком. */
+@Composable
+private fun DrawerDrawButton(desc: String, seed: Int, onClick: () -> Unit, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit) {
+    val haptics = LocalHaptics.current
+    Box(
+        Modifier
+            .size(54.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+            .pencilFrame(14.dp, seed = seed, alpha = 0.55f, ink = SheetInk)
+            .semantics { contentDescription = desc }
+            .clickable { haptics.tap(); onClick() },
+        contentAlignment = Alignment.Center,
+    ) { Canvas(Modifier.size(28.dp)) { draw(Oled.TextPrimary) } }
+}
+
+/**
+ * Трафарет: 0 — олівець малює лінію (рамка суцільна), 1 — плівку (пунктирна рамка з напівпрозорою серединою),
+ * 2 — «зняти трафарет» (плівка з загнутим ріжком, що відклеюється).
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStencilGlyph(k: Int, c: Color) {
+    val r = androidx.compose.ui.geometry.Rect(size.width * 0.14f, size.height * 0.18f, size.width * 0.86f, size.height * 0.82f)
+    when (k) {
+        0 -> {
+            drawRoundRect(c.copy(alpha = c.alpha * 0.4f), r.topLeft, r.size, androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.7.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
+            drawLine(c, Offset(size.width * 0.08f, size.height * 0.9f), Offset(size.width * 0.92f, size.height * 0.1f), 1.8.dp.toPx(), cap = StrokeCap.Round)
+        }
+        1 -> {
+            drawRoundRect(c.copy(alpha = c.alpha * 0.22f), r.topLeft, r.size, androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+            drawRoundRect(c, r.topLeft, r.size, androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.7.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
+        }
+        else -> {
+            // Плівка, правий нижній ріжок загнувся — її знімають.
+            val f = size.width * 0.26f
+            val film = androidx.compose.ui.graphics.Path().apply {
+                moveTo(r.left, r.top); lineTo(r.right, r.top); lineTo(r.right, r.bottom - f); lineTo(r.right - f, r.bottom); lineTo(r.left, r.bottom); close()
+            }
+            drawPath(film, c.copy(alpha = c.alpha * 0.22f))
+            drawPath(film, c, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
+            val fold = androidx.compose.ui.graphics.Path().apply { moveTo(r.right, r.bottom - f); lineTo(r.right - f, r.bottom - f); lineTo(r.right - f, r.bottom); close() }
+            drawPath(fold, c)
         }
     }
 }
