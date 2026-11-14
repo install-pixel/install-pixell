@@ -6,7 +6,7 @@
 - Пакет: `com.installpixel.pelmen`, назва під іконкою — «Пельмень», мінімум Android 7.0.
 - Збирає GitHub Actions (`.github/workflows/pelmen-apk.yml`):
   - push з змінами гри/оболонки → тестовий APK у вкладці *Actions → Artifacts*;
-  - тег `pelmen-vX.Y` → реліз на сторінці *Releases*.
+  - коміт із позначкою `[release]` (версія — у `version.txt`) або тег `pelmen-vX.Y` → реліз на сторінці *Releases*.
 - Іконки згенеровано з того самого малюнка пельменя, що в грі (`iconLayer` у pelmen.html).
 
 ## Ключ підпису

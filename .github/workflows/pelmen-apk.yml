@@ -1,6 +1,7 @@
 # Збирає Android-застосунок гри «Пельмень: Втеча від виделки».
 # - push у гілку гри або в master (зміни в грі чи оболонці) → тестовий APK у «Artifacts»;
-# - тег pelmen-v* (наприклад pelmen-v1.0) → реліз на сторінці Releases з готовим APK.
+# - тег pelmen-v* або коміт із позначкою [release] → реліз на сторінці Releases з готовим APK
+#   (номер версії береться з pelmen-android/version.txt).
 # Складський застосунок (release.yml, теги v*) це не зачіпає.
 name: Пельмень — збірка APK
 
@@ -37,13 +38,19 @@ jobs:
 
       - name: Версія
         id: ver
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
+          RELEASE=false
           if [[ "$GITHUB_REF" == refs/tags/pelmen-v* ]]; then
-            NAME="${GITHUB_REF#refs/tags/pelmen-v}"
+            NAME="${GITHUB_REF#refs/tags/pelmen-v}"; RELEASE=true
+          elif [[ "$COMMIT_MSG" == *"[release]"* ]]; then
+            NAME="$(tr -d '[:space:]' < pelmen-android/version.txt)"; RELEASE=true
           else
-            NAME="1.0-test.${GITHUB_RUN_NUMBER}"
+            NAME="$(tr -d '[:space:]' < pelmen-android/version.txt)-test.${GITHUB_RUN_NUMBER}"
           fi
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
           echo "code=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_OUTPUT"
 
       - name: Підкласти гру в застосунок
@@ -64,9 +71,12 @@ jobs:
           path: Pelmen-${{ steps.ver.outputs.name }}.apk
 
       - name: Реліз
-        if: startsWith(github.ref, 'refs/tags/pelmen-v')
+        if: steps.ver.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: pelmen-v${{ steps.ver.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
           name: Пельмень ${{ steps.ver.outputs.name }}
           files: Pelmen-${{ steps.ver.outputs.name }}.apk
           body: |
