@@ -279,7 +279,7 @@
         <item>Wavy</item>
     </string-array>
     <string-array name="ink_w_smooth">
-        <item>Exact</item>
+        <item>As drawn</item>
         <item>Smooth</item>
         <item>Smoother</item>
     </string-array>
@@ -314,4 +314,6 @@
         <item>Medium</item>
         <item>Strong</item>
     </string-array>
+    <string name="ink_help_title">How to draw</string>
+    <string name="ink_help_body">Moving\n• The cursor works like a touchpad: slide anywhere, the tool follows. Slow — more precise, fast — further.\n• Hold your finger for a moment — the tool lowers and draws; lift — it rises.\n• Double‑tap — the tool stays down: lift and re‑grip as you like, the line continues. Tap again — it rises.\n• Lower and hold still — a dot.\n• Two fingers (tool raised) — zoom and move the page.\n• A stylus draws directly, with pressure; its eraser end erases.\n\nTools\n• Pencil — lines and shapes.\n• Brush — stroke; scrub (wide, back and forth); fill — lower and lift inside a closed outline.\n• Spray — airbrush or paint; hold in place — it builds up.\n• Marker — translucent, flat tip.\n• Eraser — exact, soft (blurred edge) or whole lines.\n\nDrawer (tap the selected tool again)\n• Sliders — size and opacity. Under each button — what is selected.\n• Shape: freehand; “straighten” — hold at the end and a wobbly circle, frame, triangle or line becomes neat; line, frame, oval — from where you lowered to the tip.\n• Smoothing: as drawn, smooth, smoother.\n• Inside: start inside an outline — paint stays inside; start outside — only around it.\n• Stencil (pencil): draw a film — a wall for paint. “Remove stencil” takes it away, the paint keeps a crisp edge.\n• Bin — clear the page.\n\nColour\n• Palette, recent colours, eyedropper (picks a colour from the drawing), custom colour.\n\nOther\n• Arrows — undo and redo. Tick — finish.\n• The next day the drawing dries — it can no longer change.\n• Canvas — a separate blank sheet for the day.</string>
 </resources>

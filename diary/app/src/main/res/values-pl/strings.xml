@@ -283,7 +283,7 @@
         <item>Fala</item>
     </string-array>
     <string-array name="ink_w_smooth">
-        <item>Dokładnie</item>
+        <item>Za ręką</item>
         <item>Płynnie</item>
         <item>Płynniej</item>
     </string-array>
@@ -318,4 +318,6 @@
         <item>Średnio</item>
         <item>Mocno</item>
     </string-array>
+    <string name="ink_help_title">Jak rysować</string>
+    <string name="ink_help_body">Ruch\n• Kursor działa jak touchpad: prowadź palcem gdziekolwiek, narzędzie podąża. Wolno — dokładniej, szybko — dalej.\n• Przytrzymaj palec chwilę — narzędzie opada i rysuje; puść — unosi się.\n• Stuknij dwa razy — narzędzie zostaje opuszczone: puszczaj palec i przekładaj, linia trwa. Stuknij ponownie — unosi się.\n• Opuść i przytrzymaj bez ruchu — kropka.\n• Dwoma palcami (gdy narzędzie uniesione) — przybliż i przesuń stronę.\n• Rysik rysuje od razu, z naciskiem; jego gumka ściera.\n\nNarzędzia\n• Ołówek — linie i kształty.\n• Pędzel — smuga; malowanie (szeroko, tam i z powrotem); wypełnienie — opuść i unieś wewnątrz zamkniętego konturu.\n• Spray — aerograf lub farba; trzymasz w miejscu — gęstnieje.\n• Marker — półprzezroczysty, płaska końcówka.\n• Gumka — dokładna, miękka (rozmyty brzeg) lub całymi liniami.\n\nSzuflada (stuknij wybrane narzędzie jeszcze raz)\n• Suwaki — grubość i przezroczystość. Pod każdym przyciskiem — co wybrano.\n• Kształt: odręcznie; „wyrównaj” — przytrzymaj na końcu, a krzywe koło, ramka, trójkąt czy prosta staną się równe; prosta, ramka, owal — od miejsca opuszczenia do końcówki.\n• Wygładzanie: za ręką, płynnie, płynniej.\n• W granicach: zacznij wewnątrz konturu — farba tylko w środku; na zewnątrz — tylko dookoła.\n• Szablon (ołówek): rysujesz folię — ścianę dla farby. „Zdejmij szablon” usuwa ją, brzeg farby zostaje równy.\n• Kosz — wyczyść stronę.\n\nKolor\n• Paleta, ostatnie kolory, pipeta (bierze kolor z rysunku), własny kolor.\n\nInne\n• Strzałki — cofnij i ponów. Ptaszek — zakończ.\n• Następnego dnia rysunek wysycha — nie można go już zmienić.\n• Płótno — osobna czysta kartka dnia.</string>
 </resources>

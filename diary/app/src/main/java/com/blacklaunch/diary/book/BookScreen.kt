@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -1434,6 +1436,7 @@ private fun InkToolbar(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
                 if (s.drawer == 2) ColorDrawer(s, ink, ::pick)
+                else if (s.drawer == 3) InkHelp(ink)
                 else ToolDrawer(s, ink, hasStencil = lines().any { it.page == s.part && it.kind == InkKind.STENCIL }, onRemoveStencil = {
                     // Зняти трафарет: плівка зникає, фарба з рівним краєм лишається.
                     commit(lines().filter { !(it.page == s.part && it.kind == InkKind.STENCIL) })
@@ -1463,7 +1466,8 @@ private fun InkToolbar(
         }
         Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             // «Лінії» — тепер фігура в олівця, пензлика й маркера, окремого інструмента немає.
-            InkTool.entries.filter { it != InkTool.Underline }.forEach { t ->
+            // Ласо прибране (заплутане); «лінії» — фігура в олівця, пензлика й маркера.
+            InkTool.entries.filter { it != InkTool.Underline && it != InkTool.Lasso }.forEach { t ->
                 val label = stringResource(when (t) {
                     InkTool.Pencil -> R.string.ink_pencil
                     InkTool.Brush -> R.string.ink_brush
@@ -1495,6 +1499,13 @@ private fun InkToolbar(
                 val col = if (s.color == INK_RGB) ink else Color(0xFF000000.toInt() or s.color)
                 drawCircle(col, size.height * 0.42f, center)
                 drawCircle(c.copy(alpha = 0.6f), size.height * 0.42f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx()))
+            }
+            // «і» — як тут малювати (довідка в шухлядці).
+            BarIcon(s.drawer == 3, stringResource(R.string.ink_help_title), onClick = { s.drawer = if (s.drawer == 3) 0 else 3 }) { c ->
+                val r = size.height * 0.4f
+                drawCircle(c, r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                drawCircle(c, 1.4.dp.toPx(), Offset(center.x, center.y - r * 0.48f))
+                drawLine(c, Offset(center.x, center.y - r * 0.12f), Offset(center.x, center.y + r * 0.55f), 1.8.dp.toPx(), cap = StrokeCap.Round)
             }
             BarIcon(false, stringResource(R.string.undo), onClick = { if (s.undo.isNotEmpty()) onUndo() }) { _ ->
                 drawUndoGlyph(ink.copy(alpha = if (s.undo.isNotEmpty()) 1f else 0.3f), false)
@@ -1667,6 +1678,21 @@ private fun ToolDrawer(s: InkSession, ink: Color, hasStencil: Boolean, onRemoveS
             Spacer(Modifier.weight(1f))
             DrawerButton(Glyph.Delete, stringResource(R.string.ink_clear), enabled = true) { haptics.longPress(); onClear() }
         }
+    }
+}
+
+/** Довідка малювання: як рухати інструмент, що робить кожен інструмент і кожна кнопка. Гортається. */
+@Composable
+private fun InkHelp(ink: Color) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(max = 380.dp)
+            .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+    ) {
+        Text(stringResource(R.string.ink_help_title), color = ink, fontSize = 17.sp)
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.ink_help_body), color = ink.copy(alpha = 0.82f), fontSize = 14.sp, lineHeight = 20.sp)
     }
 }
 
