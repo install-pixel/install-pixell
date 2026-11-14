@@ -269,4 +269,5 @@
     <string name="ink_eraser_blur">Jak miękka krawędź</string>
     <string name="ink_stencil">Szablon: ołówek rysuje folię, a nie linię</string>
     <string name="ink_stencil_remove">Zdejmij szablon</string>
+    <string name="ink_figure_free">Odręcznie</string>
 </resources>

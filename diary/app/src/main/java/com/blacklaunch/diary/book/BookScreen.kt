@@ -1461,7 +1461,8 @@ private fun InkToolbar(
         }
         }
         Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            InkTool.entries.forEach { t ->
+            // «Лінії» — тепер фігура в олівця, пензлика й маркера, окремого інструмента немає.
+            InkTool.entries.filter { it != InkTool.Underline }.forEach { t ->
                 val label = stringResource(when (t) {
                     InkTool.Pencil -> R.string.ink_pencil
                     InkTool.Brush -> R.string.ink_brush
@@ -1533,7 +1534,7 @@ private fun ToolDrawer(s: InkSession, ink: Color, hasStencil: Boolean, onRemoveS
     val col = if (s.color == INK_RGB) ink else Color(0xFF000000.toInt() or s.color)
     @Composable
     fun Wheel(count: Int, value: Int, desc: String, seed: Int, onChange: (Int) -> Unit, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Int, Color) -> Unit) {
-        InkWheel(58.dp, count, value, desc, seed, ink, onChange = { onChange(it); s.remember() }, draw = draw)
+        InkWheel(54.dp, count, value, desc, seed, ink, onChange = { onChange(it); s.remember() }, draw = draw)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (tool == InkTool.Lasso) {
@@ -1603,16 +1604,18 @@ private fun ToolDrawer(s: InkSession, ink: Color, hasStencil: Boolean, onRemoveS
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             when (tool) {
                 InkTool.Pencil -> {
-                    Wheel(3, InkStyle.LINES.indexOf(s.pencilStyle).coerceAtLeast(0), stringResource(R.string.ink_style), 62, onChange = { s.pencilStyle = InkStyle.LINES[it] }) { k, c -> drawStyleGlyph(InkStyle.LINES[k], c) }
-                    Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 63, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
-                    Wheel(2, if (s.autoShapes) 1 else 0, stringResource(R.string.ink_auto_shapes), 64, onChange = { s.autoShapes = it == 1 }) { k, c -> drawAutoShapeGlyph(k, c) }
+                    // Що не діє разом — не показуємо: у трафарету немає вигляду лінії, у рівної фігури — згладжування.
+                    Wheel(5, s.figure, stringResource(listOf(R.string.ink_figure_free, R.string.ink_auto_shapes, R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.figure.coerceIn(0, 4)]), 64, onChange = { s.figure = it }) { k, c -> drawFigureGlyph(k, c) }
+                    if (!s.stencil) Wheel(3, InkStyle.LINES.indexOf(s.pencilStyle).coerceAtLeast(0), stringResource(R.string.ink_style), 62, onChange = { s.pencilStyle = InkStyle.LINES[it] }) { k, c -> drawStyleGlyph(InkStyle.LINES[k], c) }
+                    if (s.figure < 2) Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 63, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                     Wheel(2, if (s.stencil) 1 else 0, stringResource(R.string.ink_stencil), 80, onChange = { s.stencil = it == 1 }) { k, c -> drawStencilGlyph(k, c) }
                 }
                 InkTool.Brush -> {
                     Wheel(3, s.brushFill, stringResource(R.string.ink_brush_fill), 65, onChange = { s.brushFill = it }) { k, c -> drawFillModeGlyph(k, c) }
                     Wheel(2, s.brushMode, stringResource(R.string.ink_brush_mode), 66, onChange = { s.brushMode = it }) { k, c -> drawBrushModeGlyph(k, c) }
                     if (s.brushFill != 2) Wheel(2, if (s.clip) 1 else 0, stringResource(R.string.ink_clip), 72, onChange = { s.clip = it == 1 }) { k, c -> drawClipGlyph(k, c) }
-                    if (s.brushFill != 2) Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 76, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
+                    if (s.brushFill == 0) Wheel(5, s.figure, stringResource(listOf(R.string.ink_figure_free, R.string.ink_auto_shapes, R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.figure.coerceIn(0, 4)]), 82, onChange = { s.figure = it }) { k, c -> drawFigureGlyph(k, c) }
+                    if (s.brushFill == 1 || (s.brushFill == 0 && s.figure < 2)) Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 76, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                 }
                 InkTool.Spray -> {
                     Wheel(2, s.sprayMode, stringResource(R.string.ink_spray_mode), 67, onChange = { s.sprayMode = it }) { k, c -> drawSprayModeGlyph(k, c) }
@@ -1620,8 +1623,8 @@ private fun ToolDrawer(s: InkSession, ink: Color, hasStencil: Boolean, onRemoveS
                     Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 77, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                 }
                 InkTool.Marker -> {
-                    Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 78, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
-                    Wheel(2, if (s.autoShapes) 1 else 0, stringResource(R.string.ink_auto_shapes), 79, onChange = { s.autoShapes = it == 1 }) { k, c -> drawAutoShapeGlyph(k, c) }
+                    Wheel(5, s.figure, stringResource(listOf(R.string.ink_figure_free, R.string.ink_auto_shapes, R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.figure.coerceIn(0, 4)]), 79, onChange = { s.figure = it }) { k, c -> drawFigureGlyph(k, c) }
+                    if (s.figure < 2) Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 78, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                 }
                 InkTool.Underline -> {
                     Wheel(3, s.shape, stringResource(listOf(R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.shape.coerceIn(0, 2)]), 68, onChange = { s.shape = it }) { k, c -> drawShapeGlyph(k, c) }
@@ -2155,7 +2158,43 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStyleGlyph(styl
     }
 }
 
-/** Значок фігури підкреслення: лінія, рамка, овал. */
+/**
+ * Фігура: 0 — від руки (хвилястий розчерк), 1 — від руки з вирівнюванням (криве коло, а поруч рівне), 2 — пряма,
+ * 3 — рамка, 4 — овал.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFigureGlyph(k: Int, c: Color) {
+    val st = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+    when (k) {
+        0 -> {
+            val p = androidx.compose.ui.graphics.Path().apply {
+                moveTo(size.width * 0.06f, size.height * 0.7f)
+                cubicTo(size.width * 0.3f, size.height * 0.05f, size.width * 0.45f, size.height * 1.0f, size.width * 0.66f, size.height * 0.4f)
+                quadraticTo(size.width * 0.8f, size.height * 0.1f, size.width * 0.94f, size.height * 0.35f)
+            }
+            drawPath(p, c, style = st)
+        }
+        1 -> {
+            // Криве коло → рівне.
+            val r = size.height * 0.3f
+            val wob = androidx.compose.ui.graphics.Path().apply {
+                val cx = size.width * 0.26f
+                for (i in 0..24) {
+                    val a = 2 * Math.PI * i / 24
+                    val rr = r * (1f + 0.16f * kotlin.math.sin(a * 3).toFloat())
+                    val x = cx + rr * kotlin.math.cos(a).toFloat()
+                    val y = center.y + rr * kotlin.math.sin(a).toFloat()
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+            }
+            drawPath(wob, c.copy(alpha = c.alpha * 0.5f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+            drawLine(c.copy(alpha = c.alpha * 0.6f), Offset(size.width * 0.47f, center.y), Offset(size.width * 0.55f, center.y), 1.4.dp.toPx(), cap = StrokeCap.Round)
+            drawCircle(c, r, Offset(size.width * 0.76f, center.y), style = st)
+        }
+        else -> drawShapeGlyph(k - 2, c)
+    }
+}
+
+/** Значок фігури: лінія, рамка, овал. */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawShapeGlyph(shape: Int, c: Color) {
     val st = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx())
     when (shape) {

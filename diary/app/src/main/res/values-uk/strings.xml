@@ -279,4 +279,5 @@
     <string name="ink_eraser_blur">Наскільки розмитий край</string>
     <string name="ink_stencil">Трафарет: олівець малює плівку, а не лінію</string>
     <string name="ink_stencil_remove">Зняти трафарет</string>
+    <string name="ink_figure_free">Від руки</string>
 </resources>

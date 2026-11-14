@@ -265,4 +265,5 @@
     <string name="ink_eraser_blur">How soft the edge is</string>
     <string name="ink_stencil">Stencil: the pencil draws a film, not a line</string>
     <string name="ink_stencil_remove">Remove stencil</string>
+    <string name="ink_figure_free">Freehand</string>
 </resources>
