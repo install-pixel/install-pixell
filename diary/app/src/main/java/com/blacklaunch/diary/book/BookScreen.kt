@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -1407,10 +1408,20 @@ private fun InkToolbar(
         }
     }
     Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+        // Шухлядка лежить ПОВЕРХ сторінки (над панеллю) і не займає місця: відкрив / закрив — сторінка не стрибає,
+        // курсор не переноситься.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .layout { m, c ->
+                    val pl = m.measure(c.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity))
+                    layout(pl.width, 0) { pl.place(0, -pl.height) }
+                },
+        ) {
         androidx.compose.animation.AnimatedVisibility(
             visible = s.drawer != 0,
-            enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Bottom) + androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Bottom) + androidx.compose.animation.fadeOut(),
+            enter = androidx.compose.animation.slideInVertically { it / 3 } + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutVertically { it / 3 } + androidx.compose.animation.fadeOut(),
         ) {
             Box(
                 Modifier
@@ -1442,6 +1453,7 @@ private fun InkToolbar(
                     if (s.selection.isNotEmpty()) { commit(lines().filter { it.time !in s.selection }); s.clearSelection() }
                 })
             }
+        }
         }
         Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             InkTool.entries.forEach { t ->
@@ -1590,7 +1602,11 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                     Wheel(3, s.shape, stringResource(listOf(R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.shape.coerceIn(0, 2)]), 68, onChange = { s.shape = it }) { k, c -> drawShapeGlyph(k, c) }
                     Wheel(3, InkStyle.LINES.indexOf(s.lineStyle).coerceAtLeast(0), stringResource(R.string.ink_style), 69, onChange = { s.lineStyle = InkStyle.LINES[it] }) { k, c -> drawStyleGlyph(InkStyle.LINES[k], c) }
                 }
-                InkTool.Eraser -> Wheel(3, s.eraserMode, stringResource(listOf(R.string.ink_eraser_hard, R.string.ink_eraser_soft, R.string.ink_eraser_stroke)[s.eraserMode.coerceIn(0, 2)]), 71, onChange = { s.eraserMode = it }) { k, c -> drawEraserModeGlyph(k, c) }
+                InkTool.Eraser -> {
+                    Wheel(3, s.eraserMode, stringResource(listOf(R.string.ink_eraser_hard, R.string.ink_eraser_soft, R.string.ink_eraser_stroke)[s.eraserMode.coerceIn(0, 2)]), 71, onChange = { s.eraserMode = it }) { k, c -> drawEraserModeGlyph(k, c) }
+                    if (s.eraserMode == 1) Wheel(3, s.eraserSoft, stringResource(R.string.ink_eraser_blur), 74, onChange = { s.eraserSoft = it }) { k, c -> drawBlurGlyph(k, c) }
+                    if (s.eraserMode != 2) Wheel(2, if (s.eraserSmooth) 1 else 0, stringResource(R.string.ink_smooth), 75, onChange = { s.eraserSmooth = it == 1 }) { k, c -> drawSmoothGlyph(if (k == 1) 2 else 0, c) }
+                }
                 else -> {}
             }
             Spacer(Modifier.weight(1f))
@@ -1747,23 +1763,20 @@ private fun ColorDrawer(s: InkSession, ink: Color, pick: (Int) -> Unit) {
     }
 }
 
-/** Розпізнавання фігур: вимкнено — тремтливе коло так і лишається; увімкнено — стає рівним. */
+/** Розпізнавання фігур: увімкнено — рівні коло й квадрат; вимкнено — ті самі, перекреслені. */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAutoShapeGlyph(k: Int, c: Color) {
-    val r = size.height * 0.4f
-    if (k == 1) {
-        drawCircle(c, r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx()))
-        drawCircle(c, 1.6.dp.toPx(), center)
-    } else {
-        val path = androidx.compose.ui.graphics.Path()
-        val n = 18
-        for (i in 0..n) {
-            val a = i / n.toFloat() * 6.6f
-            val rr = r * (1f + 0.12f * kotlin.math.sin(a * 3.7f))
-            val p = center + Offset(kotlin.math.cos(a) * rr, kotlin.math.sin(a) * rr)
-            if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
-        }
-        drawPath(path, c, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
-    }
+    val st = androidx.compose.ui.graphics.drawscope.Stroke(1.7.dp.toPx())
+    val r = size.height * 0.3f
+    drawCircle(c.copy(alpha = c.alpha * (if (k == 1) 1f else 0.4f)), r, Offset(size.width * 0.3f, center.y), style = st)
+    drawRect(c.copy(alpha = c.alpha * (if (k == 1) 1f else 0.4f)), Offset(size.width * 0.58f, center.y - r), androidx.compose.ui.geometry.Size(r * 2, r * 2), style = st)
+    if (k == 0) drawLine(c, Offset(size.width * 0.08f, size.height * 0.9f), Offset(size.width * 0.92f, size.height * 0.1f), 1.8.dp.toPx(), cap = StrokeCap.Round)
+}
+
+/** Розмиття м'якої гумки: кружок із дедалі ширшим розмитим краєм. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBlurGlyph(k: Int, c: Color) {
+    val r = size.minDimension * 0.42f
+    val inner = floatArrayOf(0.75f, 0.45f, 0.12f)[k.coerceIn(0, 2)]
+    drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(0f to c, inner to c, 1f to c.copy(alpha = 0f), center = center, radius = r), r, center)
 }
 
 /** Балончик: аерограф (м'яка хмарка) чи фарба (цятки). */
@@ -2060,11 +2073,11 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStyleGlyph(styl
         InkStyle.DASHED -> drawLine(c, Offset(0f, y), Offset(size.width, y), st, cap = StrokeCap.Round, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
         InkStyle.WAVY -> {
             val path = androidx.compose.ui.graphics.Path()
-            val amp = size.height * 0.22f
+            val amp = size.height * 0.26f
             var x = 0f
             path.moveTo(0f, y)
             while (x <= size.width) {
-                path.lineTo(x, y + amp * kotlin.math.sin(x / size.width * 4f * Math.PI.toFloat()))
+                path.lineTo(x, y + amp * kotlin.math.sin(x / size.width * 2f * Math.PI.toFloat()))
                 x += 1f
             }
             drawPath(path, c, style = androidx.compose.ui.graphics.drawscope.Stroke(st, cap = StrokeCap.Round))
@@ -2084,24 +2097,21 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawShapeGlyph(shap
 }
 
 /**
- * Згладжування — рука з олівцем «на нитці»: кінчик (кружок) і лінія, що тягнеться за ним. Без згладжування лінія
- * ламана від кожного посмикування, з ним — плавна дуга. (Не плутати з хвилею — тут немає повторюваного візерунка.)
+ * Згладжування: плавна дуга і поруч стовпчики сили (як рівень сигналу) — 0 стовпчиків (лише тонка риска) — вимкнено,
+ * 1–2 — помірно, 3 — сильно. Не плутається з виглядом лінії: тут сила, а не візерунок.
  */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSmoothGlyph(level: Int, c: Color) {
-    val path = androidx.compose.ui.graphics.Path()
-    val jitter = floatArrayOf(0.22f, 0.09f, 0f)[level.coerceIn(0, 2)]
-    val pts = 9
-    val rnd = floatArrayOf(0.8f, -1f, 0.4f, -0.6f, 1f, -0.9f, 0.5f, -0.3f, 0.7f)
-    for (i in 0 until pts) {
-        val t = i / (pts - 1f)
-        val x = size.width * (0.06f + 0.7f * t)
-        val y = size.height * (0.85f - 0.6f * kotlin.math.sin(t * Math.PI.toFloat() * 0.5f)) + rnd[i] * jitter * size.height
-        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    val arc = androidx.compose.ui.graphics.Path().apply {
+        moveTo(size.width * 0.04f, size.height * 0.85f)
+        quadraticTo(size.width * 0.2f, size.height * 0.05f, size.width * 0.5f, size.height * 0.45f)
     }
-    drawPath(path, c, style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-    // Кінчик олівця, за яким тягнеться лінія.
-    drawCircle(c, 2.6.dp.toPx(), Offset(size.width * 0.88f, size.height * 0.2f))
-    drawLine(c.copy(alpha = 0.5f), Offset(size.width * 0.76f, size.height * 0.25f), Offset(size.width * 0.86f, size.height * 0.21f), 1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 2.dp.toPx())))
+    drawPath(arc, c, style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
+    val lv = level.coerceIn(0, 2) + 1
+    for (k in 0 until 3) {
+        val h = size.height * (0.3f + k * 0.25f)
+        val x = size.width * (0.62f + k * 0.13f)
+        drawLine(c.copy(alpha = c.alpha * (if (k < lv && level > 0 || (level == 0 && k == 0)) 1f else 0.22f)), Offset(x, size.height * 0.92f), Offset(x, size.height * 0.92f - h), 3.dp.toPx(), cap = StrokeCap.Round)
+    }
 }
 
 /** Фактура пензлика: щетинки (пучок тонких рисок навскіс) чи суцільна (рівна пляма тієї ж форми). */

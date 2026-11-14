@@ -62,7 +62,7 @@ enum class InkTool(val kind: Int, val minW: Float, val maxW: Float, val defSize:
     Spray(InkKind.SPRAY, 0.02f, 0.24f, 0.42f, 0.85f),
     Underline(InkKind.UNDERLINE, 0.002f, 0.03f, 0.4f, 1f),
     Marker(InkKind.MARKER, 0.01f, 0.085f, 0.4f, 0.32f),
-    Eraser(InkKind.ERASER, 0.008f, 0.09f, 0.4f, 1f),
+    Eraser(InkKind.ERASER, 0.02f, 0.09f, 0.35f, 1f),
     Lasso(InkKind.LASSO, 0.004f, 0.004f, 0f, 1f);
 
     /** Товщина для положення повзунка [t] (0…1): логарифмічно — кожен крок однаково помітний. */
@@ -175,6 +175,10 @@ class InkSession(val day: Long, val part: Int) {
     var shape by mutableIntStateOf(last.shape)
     /** Гумка: 0 точна, 1 м'яка, 2 цілими штрихами. */
     var eraserMode by mutableIntStateOf(last.eraserMode)
+    /** М'яка гумка: наскільки розмитий край (0 ледь, 1 помірно, 2 дуже). */
+    var eraserSoft by mutableIntStateOf(last.eraserSoft)
+    /** Гумка теж плавно згладжує рух (як пензлик); можна вимкнути — тоді точно за пальцем. */
+    var eraserSmooth by mutableStateOf(last.eraserSmooth)
     /** Піпетка: наступне «опускання» бере колір з-під кінчика. */
     var picking by mutableStateOf(false)
     /** Шухлядка над панеллю: 0 — закрита, 1 — налаштування інструмента, 2 — кольори. */
@@ -202,6 +206,7 @@ class InkSession(val day: Long, val part: Int) {
         InkTool.Spray -> sprayMode
         InkTool.Underline -> lineStyle + 4 * shape
         InkTool.Marker -> 100
+        InkTool.Eraser -> if (eraserMode == 1) eraserSoft else 0
         else -> 0
     }
     val argb: Int get() = inkArgb(color, opacity)
@@ -222,6 +227,7 @@ class InkSession(val day: Long, val part: Int) {
         last.tool = tool; last.pencilStyle = pencilStyle; last.smooth = smooth; last.autoShapes = autoShapes
         last.brushMode = brushMode; last.brushFill = brushFill; last.sprayMode = sprayMode; last.clip = clip
         last.lineStyle = lineStyle; last.shape = shape; last.eraserMode = eraserMode
+        last.eraserSoft = eraserSoft; last.eraserSmooth = eraserSmooth
     }
 
     private object last {
@@ -240,6 +246,8 @@ class InkSession(val day: Long, val part: Int) {
         var lineStyle = InkStyle.SOLID
         var shape = 0
         var eraserMode = 0
+        var eraserSoft = 1
+        var eraserSmooth = true
     }
 }
 
@@ -331,7 +339,7 @@ fun InkLayer(
                             InkTool.Pencil -> floatArrayOf(0.15f, 1.1f, 2.2f)[s.smooth.coerceIn(0, 2)]
                             InkTool.Brush -> 1.2f
                             InkTool.Marker -> 1.4f
-                            InkTool.Eraser -> 0.5f
+                            InkTool.Eraser -> if (s.eraserSmooth) 1.2f else 0.3f
                             InkTool.Spray -> 0.6f
                             else -> 0f
                         }
@@ -339,6 +347,7 @@ fun InkLayer(
                         val avg = if (stylus) 1 else when (tool) {
                             InkTool.Pencil -> intArrayOf(0, 3, 6)[s.smooth.coerceIn(0, 2)]
                             InkTool.Brush, InkTool.Marker -> 3
+                            InkTool.Eraser -> if (s.eraserSmooth) 3 else 0
                             else -> 0
                         }
                         fun shown(pts: List<Offset>): List<Offset> = if (avg == 0 || pts.size < 3) pts.toList() else List(pts.size) { i ->
@@ -480,7 +489,9 @@ fun InkLayer(
                                 }
                                 continue
                             }
-                            if (ev.changes.count { it.pressed } >= 2 && !stylus) {
+                            // Другий палець, поки малюєш, — не скасовує штрих (просто не зважаємо на нього); наближення — лише
+                            // коли інструмент піднятий.
+                            if (ev.changes.count { it.pressed } >= 2 && !stylus && !drawing) {
                                 // Два пальці: розвів — наближення (до ×4, не менше за сторінку), повів — зсув. Малювання
                                 // при цьому скасовується.
                                 live = emptyList(); liveFactors = emptyList(); lassoPath = emptyList(); moving = null; hidden = emptySet()
@@ -1049,16 +1060,40 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
     }
     val px = IntArray(cols * rows)
     img.readPixels(px)
-    val wall = BooleanArray(px.size) { (px[it] ushr 24) > 50 }
+    // Стіни — усе намальоване (і напівпрозоре); крихітні щілини обрису (до клітинки) закриваються, щоб фарба не витікала.
+    val ink0 = BooleanArray(px.size) { (px[it] ushr 24) > 18 }
+    val wall = BooleanArray(px.size)
+    for (i in px.indices) if (ink0[i]) {
+        val x = i % cols
+        val y = i / cols
+        for (dy in -1..1) for (dx in -1..1) {
+            val nx = x + dx
+            val ny = y + dy
+            if (nx in 0 until cols && ny in 0 until rows) wall[ny * cols + nx] = true
+        }
+    }
     val sx = (at.x / cell).toInt().coerceIn(0, cols - 1)
     val sy = (at.y / cell).toInt().coerceIn(0, rows - 1)
-    if (wall[sy * cols + sx]) return null
+    // Опустили просто на лінію — шукаємо найближче порожнє місце поруч (до трьох клітинок).
+    var start = sy * cols + sx
+    if (wall[start]) {
+        var found = -1
+        loop@ for (rr in 1..3) for (dy in -rr..rr) for (dx in -rr..rr) {
+            val nx = sx + dx
+            val ny = sy + dy
+            if (nx in 0 until cols && ny in 0 until rows && !wall[ny * cols + nx]) { found = ny * cols + nx; break@loop }
+        }
+        if (found < 0) return null
+        start = found
+    }
+    val sx2 = start % cols
+    val sy2 = start / cols
     val fill = BooleanArray(px.size)
     val queue = IntArray(px.size)
     var head = 0
     var tail = 0
-    queue[tail++] = sy * cols + sx
-    fill[sy * cols + sx] = true
+    queue[tail++] = sy2 * cols + sx2
+    fill[sy2 * cols + sx2] = true
     while (head < tail) {
         val i = queue[head++]
         val x = i % cols
@@ -1070,12 +1105,12 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
         if (y < rows - 1) push(i + cols)
     }
     if (tail > px.size * 0.6f) return null
-    // Трохи під обвідку: на клітинку в усі боки.
+    // Під обвідку: на дві клітинки в усі боки (стіни товстіші на одну — і ще одна, щоб не лишалось щілини).
     val grown = fill.copyOf()
     for (i in px.indices) if (fill[i]) {
         val x = i % cols
         val y = i / cols
-        for (dy in -1..1) for (dx in -1..1) {
+        for (dy in -2..2) for (dx in -2..2) {
             val nx = x + dx
             val ny = y + dy
             if (nx in 0 until cols && ny in 0 until rows) grown[ny * cols + nx] = true
@@ -1185,7 +1220,13 @@ private fun DrawScope.drawStroke(xs: FloatArray, ys: FloatArray, factors: FloatA
         val path = polyline(px, py)
         if (kind == InkKind.ERASER_SOFT) {
             // М'яка гумка: посередині стирає начисто, край розмитий — кілька смуг, кожна ширша й слабша (не ширше бруска).
-            for ((k, a) in listOf(1f to 0.16f, 0.86f to 0.3f, 0.72f to 0.5f, 0.55f to 1f)) {
+            // Ступінь розмиття — зі style: що більший, то ширша м'яка смуга й менше начисто стертої середини.
+            val prof = when (style) {
+                0 -> listOf(1f to 0.35f, 0.85f to 1f)
+                2 -> listOf(1f to 0.08f, 0.88f to 0.14f, 0.76f to 0.22f, 0.62f to 0.32f, 0.48f to 0.5f, 0.32f to 1f)
+                else -> listOf(1f to 0.16f, 0.86f to 0.3f, 0.72f to 0.5f, 0.55f to 1f)
+            }
+            for ((k, a) in prof) {
                 drawPath(path, Color.Black.copy(alpha = a), style = Stroke(base * k, cap = StrokeCap.Round, join = StrokeJoin.Round), blendMode = BlendMode.DstOut)
             }
         } else {
@@ -1337,8 +1378,9 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
         drawPath(variablePath(px, py, widths), ink.copy(alpha = ink.alpha * (if (glass) 0.8f else 0.7f)))
         return
     }
-    drawPath(variablePath(px, py, FloatArray(n) { widths[it] * 0.95f }), ink.copy(alpha = ink.alpha * (if (scrub) 0.2f else 0.14f)))
-    val bristles = if (scrub) 13 else 8
+    drawPath(variablePath(px, py, FloatArray(n) { widths[it] * 0.9f }), ink.copy(alpha = ink.alpha * (if (scrub) 0.12f else 0.06f)))
+    // Щетинки — помітно окремі (з проміжками), щоб фактура відрізнялась від суцільної.
+    val bristles = if (scrub) 11 else 6
     val rnd = java.util.Random((seedX * 100000).toLong() + n)
     val nx = FloatArray(n)
     val ny = FloatArray(n)
@@ -1352,8 +1394,8 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
     }
     for (k in 0 until bristles) {
         val off = (k / (bristles - 1f) - 0.5f) * 0.88f
-        val bw = (if (scrub) 0.08f else 0.11f) + rnd.nextFloat() * 0.08f
-        val alpha = 0.45f + rnd.nextFloat() * 0.45f
+        val bw = (if (scrub) 0.07f else 0.09f) + rnd.nextFloat() * 0.06f
+        val alpha = 0.35f + rnd.nextFloat() * 0.6f
         val wob = (rnd.nextFloat() - 0.5f) * 0.06f
         drawPath(
             variablePath(
@@ -1622,33 +1664,41 @@ private fun DrawScope.drawToolCursor(p: Offset, s: InkSession, width: Float, lea
 }
 
 /**
- * Балончик фарби: великий металевий циліндр із блиском, кольорова етикетка, куполок і кнопка-розпилювач (сопло — там, де
- * фарбує). Поки натиснутий, кнопка втоплена, а навколо сопла — хмаринка фарби.
+ * Балончик фарби: металевий циліндр із блиском і кольоровою етикеткою, заокруглене плече, а на ньому — лише кнопка-
+ * розпилювач із соплом (там, де фарбує). Поки натиснутий, кнопка трохи втоплена.
  */
 private fun DrawScope.drawSprayCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val tone = if (tint == Color.Unspecified) ink else tint
-    if (lead > 0.01f) drawCircle(tone.copy(alpha = 0.12f * lead), width / 2f, p)
     val bw = 24.dp.toPx()
     val x = p.x
     rotate(TILT, p) {
-        val btnTop = p.y - 7.dp.toPx() + 2.dp.toPx() * lead
-        val neckTop = btnTop - 5.dp.toPx()
-        val domeTop = neckTop - 9.dp.toPx()
-        val bodyTop = domeTop - 58.dp.toPx()
-        shadowRect(x - bw / 2, bodyTop, bw, p.y - bodyTop, 6.dp.toPx())
-        // Кнопка з соплом.
-        drawRoundRect(cylinder(x - 5.dp.toPx(), 10.dp.toPx(), Color(0xFF1E1F22), Color(0xFF3C3E43), Color(0xFF6E7178)), Offset(x - 5.dp.toPx(), btnTop), Size(10.dp.toPx(), p.y - btnTop), CornerRadius(2.dp.toPx()))
+        val btnTop = p.y - 6.dp.toPx() + 1.5.dp.toPx() * lead
+        val shoulder = btnTop - 2.dp.toPx()
+        val bodyTop = shoulder - 72.dp.toPx()
+        shadowRect(x - bw / 2, bodyTop, bw, shoulder - bodyTop, 6.dp.toPx())
+        // Корпус із заокругленим плечем біля кнопки.
+        val body = Path().apply {
+            moveTo(x - bw / 2, bodyTop + 3.dp.toPx())
+            lineTo(x - bw / 2, shoulder - bw * 0.45f)
+            quadraticTo(x - bw / 2, shoulder, x - bw * 0.18f, shoulder)
+            lineTo(x + bw * 0.18f, shoulder)
+            quadraticTo(x + bw / 2, shoulder, x + bw / 2, shoulder - bw * 0.45f)
+            lineTo(x + bw / 2, bodyTop + 3.dp.toPx())
+            quadraticTo(x + bw / 2, bodyTop, x + bw / 2 - 3.dp.toPx(), bodyTop)
+            lineTo(x - bw / 2 + 3.dp.toPx(), bodyTop)
+            quadraticTo(x - bw / 2, bodyTop, x - bw / 2, bodyTop + 3.dp.toPx())
+            close()
+        }
+        drawPath(body, cylinder(x - bw / 2, bw, Color(0xFF5A5E66), Color(0xFFB9BDC4), Color(0xFFF2F4F7)))
+        // Етикетка кольору фарби, з відблиском.
+        val labelTop = bodyTop + 14.dp.toPx()
+        drawRect(tone.copy(alpha = 0.88f), Offset(x - bw / 2, labelTop), Size(bw, 36.dp.toPx()))
+        drawRect(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.3f), 0.25f to Color.White.copy(alpha = 0.28f), 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f), startX = x - bw / 2, endX = x + bw / 2), Offset(x - bw / 2, labelTop), Size(bw, 36.dp.toPx()))
+        drawLine(Color.Black.copy(alpha = 0.35f), Offset(x - bw / 2, bodyTop + 3.dp.toPx()), Offset(x + bw / 2, bodyTop + 3.dp.toPx()), 1.dp.toPx())
+        // Кнопка-розпилювач і сопло.
+        drawRoundRect(cylinder(x - 5.dp.toPx(), 10.dp.toPx(), Color(0xFF1E1F22), Color(0xFF3C3E43), Color(0xFF6E7178)), Offset(x - 5.dp.toPx(), btnTop), Size(10.dp.toPx(), p.y - btnTop), CornerRadius(2.5.dp.toPx()))
         drawCircle(Color.Black, 1.4.dp.toPx(), Offset(x, p.y - 1.6.dp.toPx()))
-        drawRect(cylinder(x - 3.dp.toPx(), 6.dp.toPx(), Color(0xFF3A3C40), Color(0xFF8A8D93), Color(0xFFD0D3D8)), Offset(x - 3.dp.toPx(), neckTop), Size(6.dp.toPx(), btnTop - neckTop))
-        // Куполок.
-        drawRoundRect(cylinder(x - bw * 0.44f, bw * 0.88f, Color(0xFF55595F), Color(0xFFAEB2B9), Color(0xFFF0F2F5)), Offset(x - bw * 0.44f, domeTop), Size(bw * 0.88f, neckTop - domeTop + 2.dp.toPx()), CornerRadius(bw * 0.44f, bw * 0.34f))
-        // Корпус: метал із блиском і кольорова етикетка; обідки згори й знизу.
-        drawRoundRect(cylinder(x - bw / 2, bw, Color(0xFF5A5E66), Color(0xFFB9BDC4), Color(0xFFF2F4F7)), Offset(x - bw / 2, bodyTop), Size(bw, domeTop - bodyTop + 2.dp.toPx()), CornerRadius(4.dp.toPx()))
-        drawRect(cylinder(x - bw / 2, bw, tone.copy(alpha = 1f).compositeOverDark(), tone.copy(alpha = 0.9f), Color.White.copy(alpha = 0.55f).compositeOverDark()), Offset(x - bw / 2, bodyTop + 12.dp.toPx()), Size(bw, 30.dp.toPx()))
-        drawRect(tone.copy(alpha = 0.85f), Offset(x - bw / 2, bodyTop + 12.dp.toPx()), Size(bw, 30.dp.toPx()))
-        drawLine(Color.White.copy(alpha = 0.35f), Offset(x - bw * 0.25f, bodyTop + 14.dp.toPx()), Offset(x - bw * 0.25f, bodyTop + 40.dp.toPx()), 2.dp.toPx())
-        for (yy in floatArrayOf(bodyTop + 2.dp.toPx(), domeTop - 1.dp.toPx())) drawLine(Color.Black.copy(alpha = 0.35f), Offset(x - bw / 2, yy), Offset(x + bw / 2, yy), 1.dp.toPx())
     }
 }
 
@@ -1713,7 +1763,8 @@ private fun DrawScope.drawMechPencil(p: Offset, width: Float, lead: Float, locke
         val bodyTop = gripTop - bodyL
         val capTop = bodyTop - capL
         // Тінь усього олівця.
-        shadowRect(x - bw / 2, capTop, bw, y0 - capTop, bw / 2)
+        // Тінь — лише під корпусом (не тягнеться під стрижень, щоб нічого не «прилипало» до кінчика).
+        shadowRect(x - bw / 2, capTop, bw, coneTop - capTop, bw / 2)
         // Стрижень: висувається з гільзи; тьмяно-сірий, загострений.
         val leadLen = maxLead * lead
         if (leadLen > 0.4f) {
@@ -1724,7 +1775,6 @@ private fun DrawScope.drawMechPencil(p: Offset, width: Float, lead: Float, locke
                 lineTo(x + lw / 2, y0 + leadLen * 0.45f); lineTo(x + lw / 2, y0); close()
             }
             drawPath(body, if (glass) Color(0xFF6E7178) else Color(0xFF5C5852))
-            drawLine(Color.White.copy(alpha = 0.25f), Offset(x - lw * 0.2f, y0), Offset(x - lw * 0.2f, y0 + leadLen * 0.5f), 0.6.dp.toPx())
         }
         val metalDark = Color(0xFF4A4E55)
         val metalMid = Color(0xFF8E939B)
@@ -1776,9 +1826,10 @@ private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, gla
     rotate(TILT, p) {
         val tipTop = p.y - 6.dp.toPx() - lift
         val collarTop = tipTop - 5.dp.toPx()
-        val bodyTop = collarTop - 46.dp.toPx()
-        val capTop = bodyTop - 10.dp.toPx()
-        shadowRect(x - bw / 2, capTop, bw, p.y - lift - capTop, 4.dp.toPx())
+        // Довжина — як в олівця й пензлика (інструменти однакові на вигляд за розміром).
+        val bodyTop = collarTop - 62.dp.toPx()
+        val capTop = bodyTop - 12.dp.toPx()
+        shadowRect(x - bw / 2, capTop, bw, collarTop - capTop, 4.dp.toPx())
         // Скошений кінчик: широкий біля корпусу, ріже лінію біля сторінки.
         val tip = Path().apply {
             moveTo(x - tipW / 2, tipTop); lineTo(x + tipW / 2, tipTop)
@@ -1838,25 +1889,33 @@ private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glas
 }
 
 /**
- * Гумка — брусок: стирає нижній край (на ширину бруска — він і є розміром гумки). Нижня частина — сама гумка;
- * опущена (стирає) — ледь світиться.
+ * Гумка — брусок рівно тієї ширини, яку стирає, з однаковими пропорціями на будь-якому розмірі. Її кінець заокруглений
+ * півколом, і стирає саме він (коло стирання збігається з кінчиком гумки — край видно точно). Опущена — кінчик ледь
+ * світиться.
  */
 private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, glass: Boolean) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
-    // Брусок рівно тієї ширини, яку стирає; пропорції однакові на будь-якому розмірі.
-    val bw = maxOf(width, 6.dp.toPx())
-    val bh = maxOf(18.dp.toPx(), bw * 1.3f)
-    val rubber = minOf(10.dp.toPx(), bh * 0.3f)
-    val r = CornerRadius(minOf(3.dp.toPx(), bw / 4))
+    val bw = maxOf(width, 4.dp.toPx())
+    val bh = bw * 1.9f
+    val rubber = bw * 0.75f
+    val hr = bw / 2f
     rotate(TILT * 0.6f, p) {
-        val left = p.x - bw / 2
-        val top = p.y - bh
-        shadowRect(left, top, bw, bh, r.x)
-        // Корпус (тримач) — темний, об'ємний.
-        drawRoundRect(cylinder(left, bw, Color(0xFF1E2024), Color(0xFF3A3D44), Color(0xFF6E737C)), Offset(left, top), Size(bw, bh - rubber + r.x), r)
-        // Гумка.
+        val left = p.x - hr
+        val bottom = p.y + hr
+        val top = bottom - bh
+        shadowRect(left, top, bw, bh - hr, minOf(3.dp.toPx(), bw / 4))
+        // Тримач.
+        drawRoundRect(cylinder(left, bw, Color(0xFF1E2024), Color(0xFF3A3D44), Color(0xFF6E737C)), Offset(left, top), Size(bw, bh - rubber + 2f), CornerRadius(minOf(3.dp.toPx(), bw / 4)))
+        // Гумка з півкруглим кінчиком (центр півкола — там, де стирає).
+        val rubberPath = Path().apply {
+            moveTo(left, bottom - rubber)
+            lineTo(left + bw, bottom - rubber)
+            lineTo(left + bw, p.y)
+            arcTo(Rect(p, hr), 0f, 180f, false)
+            close()
+        }
         val rubberBase = if (glass) Color(0xFF8C8F96) else Color(0xFF9C968C)
-        drawRoundRect(cylinder(left, bw, rubberBase.copy(red = rubberBase.red * 0.6f, green = rubberBase.green * 0.6f, blue = rubberBase.blue * 0.6f), rubberBase, Color(minOf(1f, rubberBase.red * 1.3f), minOf(1f, rubberBase.green * 1.3f), minOf(1f, rubberBase.blue * 1.3f))), Offset(left, p.y - rubber), Size(bw, rubber), r)
-        if (lead > 0.01f) drawRoundRect(ink.copy(alpha = 0.32f * lead), Offset(left, p.y - rubber), Size(bw, rubber), r)
+        drawPath(rubberPath, cylinder(left, bw, rubberBase.copy(red = rubberBase.red * 0.6f, green = rubberBase.green * 0.6f, blue = rubberBase.blue * 0.6f), rubberBase, Color(minOf(1f, rubberBase.red * 1.3f), minOf(1f, rubberBase.green * 1.3f), minOf(1f, rubberBase.blue * 1.3f))))
+        if (lead > 0.01f) drawPath(rubberPath, ink.copy(alpha = 0.28f * lead))
     }
 }
