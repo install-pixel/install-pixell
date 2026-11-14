@@ -467,10 +467,20 @@ function playStep(T, i, t, st) {
 function updateMusicState() {
   if (!actx) return;
   let want = null;
-  if (save.music && !save.muted && !document.hidden && state !== 'paused') want = boss && boss.phase !== 'dying' ? 'boss' : 'main';
+  if (save.music && !save.muted && !document.hidden && !appHidden && state !== 'paused') want = boss && boss.phase !== 'dying' ? 'boss' : 'main';
   if (want !== musicTrack) { stopMusic(); if (want) startMusic(want); }
 }
-function vib(ms) { if (save.vibro && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
+// Android-застосунок підкладає об'єкт PelmenAndroid (вібрація, версія). У браузері його немає.
+const NATIVE = window.PelmenAndroid || null;
+const APP_VERSION = (NATIVE && NATIVE.version) ? String(NATIVE.version()) : '1.0';
+let appHidden = false;
+function vib(ms) {
+  if (!save.vibro) return;
+  try {
+    if (NATIVE && NATIVE.vibrate) NATIVE.vibrate(Array.isArray(ms) ? ms.join(',') : String(ms));
+    else if (navigator.vibrate) navigator.vibrate(ms);
+  } catch (e) {}
+}
 
 /* =========================================================
    ЕКРАН / МАСШТАБ
@@ -654,6 +664,7 @@ function moveTo(lane) {
 let touch = null;
 wrap.addEventListener('pointerdown', e => {
   ensureAudio();
+  if (state === 'welcome' && !(e.target.closest && e.target.closest('button'))) { leaveWelcome(); return; }
   if (state !== 'play') return;
   if (e.target.closest && e.target.closest('button')) return;
   touch = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), done: false };
@@ -691,6 +702,8 @@ window.addEventListener('keydown', e => {
     else if (e.key === 'Escape' || e.key === 'p') pauseGame();
   } else if ((state === 'over') && (e.key === ' ' || e.key === 'Enter')) {
     startRun(level);
+  } else if (state === 'welcome' && (e.key === 'Enter' || e.key === ' ')) {
+    leaveWelcome();
   } else if (state === 'menu' && e.key === 'Enter') {
     startRun(menuSelected);
   } else if (state === 'paused' && (e.key === ' ' || e.key === 'Escape' || e.key === 'p')) {
@@ -836,7 +849,7 @@ function update(dt) {
   updateParticles(dt);
   updateAmb(dt);
 
-  if (state === 'menu') {
+  if (state === 'menu' || state === 'welcome') {
     // пельмень у меню просто стрибає між доріжками
     speed = 120; bgScroll += speed * dt * 0.3; lineScroll += speed * dt;
     const yy = LANES[1] + Math.sin(time * 1.7) * 12;
@@ -2182,7 +2195,7 @@ function render() {
 
   // пельмень
   if (decoy && state !== 'menu') drawDecoy(PX - 6, LANES[decoy.lane]);
-  if (state !== 'menu') drawPelmen(PX, player.y);
+  if (state !== 'menu' && state !== 'welcome') drawPelmen(PX, player.y);
 
   // частинки
   for (const p of particles) {
@@ -2200,7 +2213,7 @@ function render() {
   ctx.restore();
 
   // HUD
-  if (state !== 'menu') drawHUD(wd);
+  if (state !== 'menu' && state !== 'welcome') drawHUD(wd);
 
   // написи
   for (const t of popups) {
@@ -2210,7 +2223,8 @@ function render() {
   ctx.globalAlpha = 1;
 
   if (banner) drawBanner();
-  if (state !== 'menu') drawToast();
+  if (state !== 'menu' && state !== 'welcome') drawToast();
+  if (state === 'welcome') drawWelcome();
   if (tut && state === 'play') drawTut();
 
   if (countdown > 0 && state === 'play') {
@@ -3597,6 +3611,75 @@ $('btnAch').addEventListener('click', () => { SFX.click(); buildAch(); showOverl
 $('btnSkinsBack').addEventListener('click', () => { SFX.click(); buildMenu(); showOverlay(ovMenu); });
 $('btnAchBack').addEventListener('click', () => { SFX.click(); buildMenu(); showOverlay(ovMenu); });
 
+/* ---------- екран привітання ---------- */
+const WP = { squash: 0, vy: 0, dead: false, splat: 0, blink: 0, happy: 0, scared: 0, look: 1 };
+let welcomeT = 0;
+function showWelcome() {
+  state = 'welcome'; welcomeT = 0; level = 0;
+  applyTheme();
+  showOverlay(null);
+  btnPause.style.display = 'none';
+}
+function leaveWelcome() {
+  if (welcomeT < 0.4) return;
+  SFX.click();
+  openMenu();
+}
+function drawWelcome() {
+  welcomeT += 1 / 60;
+  const t = time;
+  ctx.fillStyle = 'rgba(10,22,20,.38)'; ctx.fillRect(0, 0, W, H);
+  // логотип
+  const intro = easeOutBack(clamp(welcomeT / 0.6, 0, 1));
+  ctx.save(); ctx.translate(W / 2, 205); ctx.scale(intro * (1 + Math.sin(t * 2) * 0.02), intro); ctx.rotate(Math.sin(t * 1.3) * 0.02);
+  outlinedText('ПЕЛЬМЕНЬ', 0, 0, 68, '#ffffff');
+  ctx.rotate(-0.04);
+  outlinedText('ВТЕЧА ВІД ВИДЕЛКИ', 0, 58, 27, '#ffd166');
+  ctx.restore();
+  // пельмень підстрибує, за ним женеться злий ніж
+  const ph = (t * 2.6) % (Math.PI);
+  const jump = Math.sin(ph);
+  const px = W / 2 + 40, py = 470 - jump * 70;
+  WP.squash = jump < 0.12 ? 0.22 * (1 - jump / 0.12) : 0;
+  WP.scared = 1;
+  WP.blink = (t % 3.2) < 0.12 ? 0.1 : 0;
+  const fx = W / 2 - 120 + Math.sin(t * 1.7) * 18;
+  ctx.save(); ctx.translate(fx - 60, 470 + Math.sin(t * 5) * 6); ctx.rotate(Math.PI / 2 + Math.sin(t * 7) * 0.05);
+  drawUtensil('knife', 120, 30, true);
+  ctx.restore();
+  drawMeanFace(fx + 6, 470 + Math.sin(t * 5) * 6, 0.9, true);
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (const k of [-10, 0, 10]) { ctx.beginPath(); ctx.moveTo(fx - 80, 470 + k); ctx.lineTo(fx - 110 - Math.random() * 20, 470 + k); ctx.stroke(); }
+  drawPelmen(px, py, WP, NOFX, save.skin);
+  // заклик
+  if (welcomeT > 0.5) {
+    ctx.save(); ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 4);
+    outlinedText('Тапни, щоб почати', W / 2, 640, 28, '#ffffff');
+    ctx.restore();
+  }
+  outlinedText('версія ' + APP_VERSION, W / 2, 770, 14, '#ffffff88', 'transparent');
+}
+
+/* ---------- кнопка «Назад» і згортання (Android) ---------- */
+window.pelmenBack = () => {
+  if (state === 'play') { pauseGame(); return 'ok'; }
+  if (state === 'paused') { resumeGame(); return 'ok'; }
+  if (state === 'dying') return 'ok';
+  if (state === 'over') { openMenu(); return 'ok'; }
+  if (state === 'menu' && (ovSkins.classList.contains('show') || ovAch.classList.contains('show'))) { buildMenu(); showOverlay(ovMenu); return 'ok'; }
+  return 'exit';
+};
+window.pelmenPause = () => {
+  appHidden = true;
+  pauseGame();
+  stopMusic();
+  try { if (actx) actx.suspend(); } catch (e) {}
+};
+window.pelmenResume = () => {
+  appHidden = false;
+  try { if (actx) actx.resume(); } catch (e) {}
+};
+
 function pauseGame() {
   if (state !== 'play') return;
   state = 'paused';
@@ -3666,13 +3749,34 @@ window.__pelmen = { get: () => ({ state, level, score, speed, obstacles, creams,
     ctx.fillStyle = '#cfeee3'; ctx.beginPath(); ctx.arc(75, 75, 60, 0, Math.PI * 2); ctx.fill();
     drawPelmen(75, 80, { squash: 0, vy: 0, dead: false, splat: 0, blink: 0, happy: 0.5, scared: 0, look: 0 }, NOFX, 'classic'); ctx = old; return cv.toDataURL('image/png'); },
   tutInfo: () => tut && { step: tut.step },
+  iconLayer: (size, layer) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = size;
+    const c = cv.getContext('2d'), old = ctx; ctx = c;
+    const face = { squash: 0, vy: 0, dead: false, splat: 0, blink: 0, happy: 0.5, scared: 0, look: 0 };
+    const bg = () => {
+      const g = c.createRadialGradient(size * 0.5, size * 0.4, size * 0.05, size * 0.5, size * 0.5, size * 0.75);
+      g.addColorStop(0, '#2f6f61'); g.addColorStop(1, '#132b27');
+      c.fillStyle = g; c.fillRect(0, 0, size, size);
+      c.fillStyle = '#cfeee3'; c.beginPath(); c.arc(size / 2, size / 2, size * 0.3, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = size * 0.012; c.stroke();
+    };
+    const fg = frac => { const sc = size * frac / 112; c.setTransform(sc, 0, 0, sc, size / 2, size / 2 + size * 0.02); drawPelmen(0, 0, face, NOFX, 'classic'); c.setTransform(1, 0, 0, 1, 0, 0); };
+    if (layer === 'bg') bg();
+    else if (layer === 'fg') fg(0.42);
+    else if (layer === 'mono') { fg(0.42); c.globalCompositeOperation = 'source-in'; c.fillStyle = '#ffffff'; c.fillRect(0, 0, size, size); }
+    else if (layer === 'splash') fg(0.5);
+    else if (layer === 'round') { c.save(); c.beginPath(); c.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); c.clip(); bg(); fg(0.5); c.restore(); }
+    else { c.save(); rr(0, 0, size, size, size * 0.2); c.clip(); bg(); fg(0.5); c.restore(); }
+    ctx = old;
+    return cv.toDataURL('image/png');
+  },
   ev: k => startEvent(k), bossNow: () => { bossPending = true; }, info: () => ({ boss: boss && { hp: boss.hp, phase: boss.phase, kind: boss.kind }, event: event && event.kind, ach: Object.keys(save.ach) }),
   move: moveTo, threat: threatensLane, start: startRun, LANES, PX };
 
-openMenu();
+showWelcome();
 requestAnimationFrame(frame);
 // встановлення як застосунок: працює, коли гру відкрито з сайту (https), а не як файл
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+if (!NATIVE && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }
 })();

@@ -1,0 +1,6 @@
+.gradle/
+build/
+app/build/
+local.properties
+# копіюється з ../pelmen-game/pelmen.html під час збірки
+app/src/main/assets/index.html

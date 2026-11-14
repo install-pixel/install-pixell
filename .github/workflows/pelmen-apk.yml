@@ -1,0 +1,79 @@
+# Збирає Android-застосунок гри «Пельмень: Втеча від виделки».
+# - push у гілку гри або в master (зміни в грі чи оболонці) → тестовий APK у «Artifacts»;
+# - тег pelmen-v* (наприклад pelmen-v1.0) → реліз на сторінці Releases з готовим APK.
+# Складський застосунок (release.yml, теги v*) це не зачіпає.
+name: Пельмень — збірка APK
+
+on:
+  push:
+    branches:
+      - master
+      - 'claude/single-file-offline-game-u59mmw'
+    tags:
+      - 'pelmen-v*'
+    paths:
+      - 'pelmen-android/**'
+      - 'pelmen-game/pelmen.html'
+      - '.github/workflows/pelmen-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Версія
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/pelmen-v* ]]; then
+            NAME="${GITHUB_REF#refs/tags/pelmen-v}"
+          else
+            NAME="1.0-test.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_OUTPUT"
+
+      - name: Підкласти гру в застосунок
+        run: |
+          mkdir -p pelmen-android/app/src/main/assets
+          cp pelmen-game/pelmen.html pelmen-android/app/src/main/assets/index.html
+
+      - name: Зібрати APK
+        working-directory: pelmen-android
+        run: gradle assembleRelease --no-daemon --stacktrace -PpelmenVersionName=${{ steps.ver.outputs.name }} -PpelmenVersionCode=${{ steps.ver.outputs.code }}
+
+      - name: Назвати файл
+        run: cp pelmen-android/app/build/outputs/apk/release/app-release.apk "Pelmen-${{ steps.ver.outputs.name }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pelmen-${{ steps.ver.outputs.name }}
+          path: Pelmen-${{ steps.ver.outputs.name }}.apk
+
+      - name: Реліз
+        if: startsWith(github.ref, 'refs/tags/pelmen-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Пельмень ${{ steps.ver.outputs.name }}
+          files: Pelmen-${{ steps.ver.outputs.name }}.apk
+          body: |
+            🥟 **Пельмень: Втеча від виделки** — версія ${{ steps.ver.outputs.name }}
+
+            **Як встановити:** скачай файл `Pelmen-${{ steps.ver.outputs.name }}.apk` на телефон і відкрий його.
+            Якщо Android попросить — дозволь встановлення з цього джерела.
+            Нові версії ставляться поверх старої, прогрес зберігається.
+
+            Гра працює без інтернету.
