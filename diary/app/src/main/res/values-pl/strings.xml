@@ -248,7 +248,7 @@
     <string name="ink_tint_blue">Jasnoniebieski</string>
     <string name="ink_brush">Pędzelek</string>
     <string name="ink_brush_mode">Włosie lub pełne</string>
-    <string name="ink_brush_fill">Pociągnięcie lub wypełnienie (opuść w kształcie i podnieś)</string>
+    <string name="ink_brush_fill">Pociągnięcie, malowanie lub wypełnienie</string>
     <string name="ink_spray">Spray</string>
     <string name="ink_tint">Odcień</string>
     <string name="ink_clear">Wyczyść rysunek</string>
@@ -265,4 +265,5 @@
     <string name="ink_eraser_stroke">Gumka całych linii</string>
     <string name="ink_duplicate">Powiel zaznaczenie</string>
     <string name="ink_delete_sel">Usuń zaznaczenie</string>
+    <string name="ink_clip">W granicach kształtu (zacznij w środku)</string>
 </resources>

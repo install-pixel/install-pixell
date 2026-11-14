@@ -244,7 +244,7 @@
     <string name="ink_tint_blue">Light blue</string>
     <string name="ink_brush">Brush</string>
     <string name="ink_brush_mode">Bristles or solid</string>
-    <string name="ink_brush_fill">Stroke or fill (lower inside a shape and lift)</string>
+    <string name="ink_brush_fill">Stroke, painting or fill</string>
     <string name="ink_spray">Spray can</string>
     <string name="ink_tint">Tint</string>
     <string name="ink_clear">Clear the drawing</string>
@@ -261,4 +261,5 @@
     <string name="ink_eraser_stroke">Whole-stroke eraser</string>
     <string name="ink_duplicate">Duplicate selection</string>
     <string name="ink_delete_sel">Delete selection</string>
+    <string name="ink_clip">Stay inside a shape (start inside it)</string>
 </resources>

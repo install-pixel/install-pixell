@@ -46,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -1145,6 +1146,9 @@ fun BookScreen(
                                 else -> {
                                     vm.setInk(day, d.ink + com.blacklaunch.diary.data.InkLine(CANVAS_PART, FloatArray(0), FloatArray(0), FloatArray(0), 0f, System.currentTimeMillis(), InkKind.CANVAS))
                                     pendingFlip = BookPage.DayPart(day, CANVAS_PART)
+                                    // Нове полотно — одразу малювати (олівцем).
+                                    focusManager.clearFocus()
+                                    ink = InkSession(day, CANVAS_PART).also { it.tool = InkTool.Pencil }
                                 }
                             }
                         },
@@ -1422,10 +1426,13 @@ private fun InkToolbar(
                     val sel = lines().filter { it.time in s.selection }
                     if (sel.isNotEmpty()) {
                         val now = System.currentTimeMillis()
-                        val copies = sel.mapIndexed { k, l ->
+                        // Нові time для копій; межі копій — копії меж.
+                        val ids = sel.mapIndexed { k, l -> l.time to now + k }.toMap()
+                        val copies = sel.map { l ->
                             val d = 0.03f
                             l.with(xs = FloatArray(l.xs.size) { l.xs[it] + d }, ys = FloatArray(l.ys.size) { l.ys[it] + d },
-                                factors = if (l.kind == InkKind.FILL) FloatArray(l.factors.size) { l.factors[it] + d } else l.factors, time = now + k)
+                                factors = if (l.kind == InkKind.FILL || l.kind == InkKind.CLIP) FloatArray(l.factors.size) { l.factors[it] + d } else l.factors,
+                                time = ids.getValue(l.time), target = if (l.kind < InkKind.ERASER) ids[l.target] ?: l.target else l.target)
                         }
                         commit(lines() + copies)
                         s.selection = copies.map { it.time }.toSet()
@@ -1449,11 +1456,13 @@ private fun InkToolbar(
                 })
                 BarIcon(s.tool == t, label, onClick = {
                     s.picking = false
+                    // Інший інструмент — вибрати й одразу показати його налаштування; той самий — сховати / показати.
+                    // (Шухлядка сама ховається, щойно почав малювати.)
                     if (s.tool == t) s.drawer = if (s.drawer == 1) 0 else 1
                     else {
                         s.tool = t
                         if (t != InkTool.Lasso) s.clearSelection()
-                        if (s.drawer == 2) s.drawer = 0
+                        s.drawer = 1
                         s.remember()
                     }
                 }) { c ->
@@ -1569,10 +1578,14 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                     Wheel(2, if (s.autoShapes) 1 else 0, stringResource(R.string.ink_auto_shapes), 64, onChange = { s.autoShapes = it == 1 }) { k, c -> drawAutoShapeGlyph(k, c) }
                 }
                 InkTool.Brush -> {
-                    Wheel(2, s.brushFill, stringResource(R.string.ink_brush_fill), 65, onChange = { s.brushFill = it }) { k, c -> drawFillModeGlyph(k, c) }
+                    Wheel(3, s.brushFill, stringResource(R.string.ink_brush_fill), 65, onChange = { s.brushFill = it }) { k, c -> drawFillModeGlyph(k, c) }
                     Wheel(2, s.brushMode, stringResource(R.string.ink_brush_mode), 66, onChange = { s.brushMode = it }) { k, c -> drawBrushModeGlyph(k, c) }
+                    if (s.brushFill != 2) Wheel(2, if (s.clip) 1 else 0, stringResource(R.string.ink_clip), 72, onChange = { s.clip = it == 1 }) { k, c -> drawClipGlyph(k, c) }
                 }
-                InkTool.Spray -> Wheel(2, s.sprayMode, stringResource(R.string.ink_spray_mode), 67, onChange = { s.sprayMode = it }) { k, c -> drawSprayModeGlyph(k, c) }
+                InkTool.Spray -> {
+                    Wheel(2, s.sprayMode, stringResource(R.string.ink_spray_mode), 67, onChange = { s.sprayMode = it }) { k, c -> drawSprayModeGlyph(k, c) }
+                    Wheel(2, if (s.clip) 1 else 0, stringResource(R.string.ink_clip), 73, onChange = { s.clip = it == 1 }) { k, c -> drawClipGlyph(k, c) }
+                }
                 InkTool.Underline -> {
                     Wheel(3, s.shape, stringResource(listOf(R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.shape.coerceIn(0, 2)]), 68, onChange = { s.shape = it }) { k, c -> drawShapeGlyph(k, c) }
                     Wheel(3, InkStyle.LINES.indexOf(s.lineStyle).coerceAtLeast(0), stringResource(R.string.ink_style), 69, onChange = { s.lineStyle = InkStyle.LINES[it] }) { k, c -> drawStyleGlyph(InkStyle.LINES[k], c) }
@@ -1987,19 +2000,40 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawOpacityGlyph(al
     drawRoundRect(c.copy(alpha = c.alpha * 0.5f), tl, androidx.compose.ui.geometry.Size(side, side), cr, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
 }
 
-/** Пензлик: мазок (крива лінія) чи зафарбовування (кружок, залитий усередині). */
+/** Пензлик: мазок (крива), зафарбовування (штришки щіточкою) чи заливка (залитий кружок). */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFillModeGlyph(mode: Int, c: Color) {
-    if (mode == 1) {
-        val r = size.height * 0.42f
-        drawCircle(c.copy(alpha = c.alpha * 0.55f), r, center)
-        drawCircle(c, r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()))
-    } else {
-        val path = androidx.compose.ui.graphics.Path().apply {
-            moveTo(size.width * 0.1f, size.height * 0.75f)
-            cubicTo(size.width * 0.35f, size.height * 0.05f, size.width * 0.6f, size.height * 0.95f, size.width * 0.9f, size.height * 0.25f)
+    when (mode) {
+        2 -> {
+            val r = size.height * 0.42f
+            drawCircle(c.copy(alpha = c.alpha * 0.55f), r, center)
+            drawCircle(c, r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()))
         }
-        drawPath(path, c, style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+        1 -> for (k in 0..5) {
+            val y = size.height * (0.18f + k * 0.13f)
+            drawLine(c.copy(alpha = c.alpha * (0.55f + 0.08f * (k % 3))), Offset(size.width * (0.1f + 0.05f * (k % 2)), y + size.height * 0.08f), Offset(size.width * (0.88f - 0.06f * (k % 3)), y - size.height * 0.08f), 2.dp.toPx(), cap = StrokeCap.Round)
+        }
+        else -> {
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(size.width * 0.1f, size.height * 0.75f)
+                cubicTo(size.width * 0.35f, size.height * 0.05f, size.width * 0.6f, size.height * 0.95f, size.width * 0.9f, size.height * 0.25f)
+            }
+            drawPath(path, c, style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+        }
     }
+}
+
+/** Межі: вимкнено — фарба виходить за кружок; увімкнено — лишається всередині. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawClipGlyph(k: Int, c: Color) {
+    val r = size.height * 0.4f
+    if (k == 1) {
+        val circle = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(center, r)) }
+        clipPath(circle) {
+            for (i in 0..4) drawLine(c.copy(alpha = c.alpha * 0.7f), Offset(0f, size.height * (0.15f + i * 0.2f)), Offset(size.width, size.height * (0.05f + i * 0.2f)), 2.5.dp.toPx())
+        }
+    } else {
+        for (i in 0..4) drawLine(c.copy(alpha = c.alpha * 0.45f), Offset(0f, size.height * (0.15f + i * 0.2f)), Offset(size.width, size.height * (0.05f + i * 0.2f)), 2.5.dp.toPx())
+    }
+    drawCircle(c, r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()))
 }
 
 /** Відтінок: крапля кольору — чорнила, легкого червоного чи легкого синього. */
