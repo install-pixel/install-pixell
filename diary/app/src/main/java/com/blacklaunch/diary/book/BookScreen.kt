@@ -1434,19 +1434,21 @@ private fun InkToolbar(
             ) {
                 if (s.drawer == 2) ColorDrawer(s, ink, ::pick)
                 else ToolDrawer(s, ink, onClear = onClear, onDuplicate = {
-                    val sel = lines().filter { it.time in s.selection }
+                    // Разом із гумками, що стирали виділене (копія — така сама, як оригінал).
+                    val base = bakeErasers(lines(), s.part, s.selection)
+                    val sel = selectionGroup(base, s.part, s.selection)
                     if (sel.isNotEmpty()) {
-                        val now = System.currentTimeMillis()
+                        val now = maxOf(System.currentTimeMillis(), (base.maxOfOrNull { it.time } ?: 0L) + 1)
                         // Нові time для копій; межі копій — копії меж.
                         val ids = sel.mapIndexed { k, l -> l.time to now + k }.toMap()
                         val copies = sel.map { l ->
                             val d = 0.03f
                             l.with(xs = FloatArray(l.xs.size) { l.xs[it] + d }, ys = FloatArray(l.ys.size) { l.ys[it] + d },
                                 factors = if (l.kind == InkKind.FILL || l.kind == InkKind.CLIP) FloatArray(l.factors.size) { l.factors[it] + d } else l.factors,
-                                time = ids.getValue(l.time), target = if (l.kind < InkKind.ERASER) ids[l.target] ?: l.target else l.target)
+                                time = ids.getValue(l.time), target = ids[l.target] ?: l.target)
                         }
-                        commit(lines() + copies)
-                        s.selection = copies.map { it.time }.toSet()
+                        commit(base + copies)
+                        s.selection = copies.filter { it.kind < InkKind.ERASER }.map { it.time }.toSet()
                         s.selBounds = s.selBounds?.translate(0.03f, 0.03f)
                     }
                 }, onDeleteSel = {
@@ -1554,7 +1556,12 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                 Canvas(Modifier.fillMaxSize()) {
                     val dpx = (s.width * pageDp).dp.toPx().coerceIn(1.5f, size.minDimension)
                     when (tool) {
-                        InkTool.Eraser -> drawRoundRect(ink, Offset(center.x - dpx / 2, center.y - size.height * 0.4f), androidx.compose.ui.geometry.Size(dpx, size.height * 0.8f), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx()))
+                        InkTool.Eraser -> {
+                            // Зразок гумки — у її пропорціях (довша, ніж широка), а ширина — справжня.
+                            val eh = (dpx * 2f).coerceIn(size.height * 0.5f, size.height * 0.95f)
+                            val ew = minOf(dpx, eh / 1.6f)
+                            drawRoundRect(ink, Offset(center.x - ew / 2, center.y - eh / 2), androidx.compose.ui.geometry.Size(ew, eh), androidx.compose.ui.geometry.CornerRadius(ew / 2), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx()))
+                        }
                         InkTool.Spray -> {
                             val rnd = java.util.Random(5)
                             repeat(70) {
@@ -1593,10 +1600,16 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                     Wheel(3, s.brushFill, stringResource(R.string.ink_brush_fill), 65, onChange = { s.brushFill = it }) { k, c -> drawFillModeGlyph(k, c) }
                     Wheel(2, s.brushMode, stringResource(R.string.ink_brush_mode), 66, onChange = { s.brushMode = it }) { k, c -> drawBrushModeGlyph(k, c) }
                     if (s.brushFill != 2) Wheel(2, if (s.clip) 1 else 0, stringResource(R.string.ink_clip), 72, onChange = { s.clip = it == 1 }) { k, c -> drawClipGlyph(k, c) }
+                    if (s.brushFill != 2) Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 76, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                 }
                 InkTool.Spray -> {
                     Wheel(2, s.sprayMode, stringResource(R.string.ink_spray_mode), 67, onChange = { s.sprayMode = it }) { k, c -> drawSprayModeGlyph(k, c) }
                     Wheel(2, if (s.clip) 1 else 0, stringResource(R.string.ink_clip), 73, onChange = { s.clip = it == 1 }) { k, c -> drawClipGlyph(k, c) }
+                    Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 77, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
+                }
+                InkTool.Marker -> {
+                    Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 78, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
+                    Wheel(2, if (s.autoShapes) 1 else 0, stringResource(R.string.ink_auto_shapes), 79, onChange = { s.autoShapes = it == 1 }) { k, c -> drawAutoShapeGlyph(k, c) }
                 }
                 InkTool.Underline -> {
                     Wheel(3, s.shape, stringResource(listOf(R.string.ink_shape_line, R.string.ink_shape_rect, R.string.ink_shape_oval)[s.shape.coerceIn(0, 2)]), 68, onChange = { s.shape = it }) { k, c -> drawShapeGlyph(k, c) }
@@ -1605,7 +1618,7 @@ private fun ToolDrawer(s: InkSession, ink: Color, onClear: () -> Unit, onDuplica
                 InkTool.Eraser -> {
                     Wheel(3, s.eraserMode, stringResource(listOf(R.string.ink_eraser_hard, R.string.ink_eraser_soft, R.string.ink_eraser_stroke)[s.eraserMode.coerceIn(0, 2)]), 71, onChange = { s.eraserMode = it }) { k, c -> drawEraserModeGlyph(k, c) }
                     if (s.eraserMode == 1) Wheel(3, s.eraserSoft, stringResource(R.string.ink_eraser_blur), 74, onChange = { s.eraserSoft = it }) { k, c -> drawBlurGlyph(k, c) }
-                    if (s.eraserMode != 2) Wheel(2, if (s.eraserSmooth) 1 else 0, stringResource(R.string.ink_smooth), 75, onChange = { s.eraserSmooth = it == 1 }) { k, c -> drawSmoothGlyph(if (k == 1) 2 else 0, c) }
+                    if (s.eraserMode != 2) Wheel(3, s.smooth, stringResource(R.string.ink_smooth), 75, onChange = { s.smooth = it }) { k, c -> drawSmoothGlyph(k, c) }
                 }
                 else -> {}
             }
