@@ -280,4 +280,52 @@
     <string name="ink_stencil">Трафарет: олівець малює плівку, а не лінію</string>
     <string name="ink_stencil_remove">Зняти трафарет</string>
     <string name="ink_figure_free">Від руки</string>
+    <string-array name="ink_w_figure">
+        <item>Від руки</item>
+        <item>Вирівнює</item>
+        <item>Пряма</item>
+        <item>Рамка</item>
+        <item>Овал</item>
+    </string-array>
+    <string-array name="ink_w_style">
+        <item>Суцільна</item>
+        <item>Пунктир</item>
+        <item>Хвиля</item>
+    </string-array>
+    <string-array name="ink_w_smooth">
+        <item>Точно</item>
+        <item>Плавно</item>
+        <item>Плавніше</item>
+    </string-array>
+    <string-array name="ink_w_stencil">
+        <item>Лінія</item>
+        <item>Трафарет</item>
+    </string-array>
+    <string-array name="ink_w_fill">
+        <item>Мазок</item>
+        <item>Тушування</item>
+        <item>Заливка</item>
+    </string-array>
+    <string-array name="ink_w_brush">
+        <item>Щетинки</item>
+        <item>Суцільний</item>
+    </string-array>
+    <string-array name="ink_w_clip">
+        <item>Скрізь</item>
+        <item>У межах</item>
+    </string-array>
+    <string-array name="ink_w_spray">
+        <item>Аерограф</item>
+        <item>Фарба</item>
+    </string-array>
+    <string-array name="ink_w_eraser">
+        <item>Точна</item>
+        <item>М\'яка</item>
+        <item>Штрихами</item>
+    </string-array>
+    <string-array name="ink_w_blur">
+        <item>Ледь</item>
+        <item>Помірно</item>
+        <item>Сильно</item>
+    </string-array>
 </resources>

@@ -2,6 +2,7 @@ package com.blacklaunch.diary.book
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -24,6 +25,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
@@ -282,7 +284,7 @@ private const val DOT_MS = 420L
 /** Затримав олівець у кінці лінії — фігура вирівнюється. */
 private const val SNAP_MS = 900L
 /** Скільки лінія чекає на паузі, поки перехопишся (відпустив біля краю екрана). */
-private const val CONTINUE_MS = 1800L
+private const val CONTINUE_MS = 2500L
 
 /** Лінія, ще не записана (на паузі чи щойно відпущена). [raw] — точки вже остаточні (без згладжування). */
 private class OpenStroke(
@@ -340,6 +342,8 @@ fun InkLayer(
     // Лінія «на паузі»: відпустив палець біля краю екрана (чи інструмент зафіксований) — лінія ще не закінчена. Поставив
     // палець знову — малюєш далі ту саму лінію (без загострення посередині). Не повернувся — закінчується сама.
     var open by remember { mutableStateOf<OpenStroke?>(null) }
+    // Скільки ще чекає лінія на паузі (1 → 0): кільце навколо кінчика.
+    var openLeft by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     val openJob = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val dryEraseCb by rememberUpdatedState(onDryErase)
@@ -376,6 +380,7 @@ fun InkLayer(
         val o = open ?: return
         open = null
         openJob[0]?.cancel(); openJob[0] = null
+        openLeft = 0f
         live = emptyList(); liveFactors = emptyList(); liveClip = null
         if (!o.session.locked) o.session.lead = false
         commitStroke(o)
@@ -383,6 +388,13 @@ fun InkLayer(
     // Змінив інструмент чи вийшов із малювання — лінія на паузі закінчується.
     androidx.compose.runtime.LaunchedEffect(session?.tool, session?.drawer) { finishOpen() }
     androidx.compose.runtime.DisposableEffect(session) { onDispose { finishOpen() } }
+    // Курсор, поки інструмент піднятий, рухається плавно (без смикання), опущений — точно на кінці лінії.
+    val penAnim = remember { androidx.compose.animation.core.Animatable(Offset.Zero, Offset.VectorConverter) }
+    androidx.compose.runtime.LaunchedEffect(session?.pen, session?.lead) {
+        val t = session?.pen ?: return@LaunchedEffect
+        if (session.lead || penAnim.value == Offset.Zero) penAnim.snapTo(t)
+        else penAnim.animateTo(t, spring(dampingRatio = 1f, stiffness = 1100f))
+    }
     val leadAnim by animateFloatAsState(if (session?.lead == true || session?.locked == true) 1f else 0f, spring(dampingRatio = 0.75f, stiffness = 700f), label = "lead")
     Canvas(
         modifier
@@ -572,6 +584,7 @@ fun InkLayer(
                             if (o.tool == tool && !stylus && o.session === s) {
                                 open = null
                                 openJob[0]?.cancel(); openJob[0] = null
+                                openLeft = 0f
                                 if (s.drawer != 0) s.drawer = 0
                                 drawing = true
                                 resumed = true
@@ -661,7 +674,11 @@ fun InkLayer(
                                 val dt = (c.uptimeMillis - lastMoveT).coerceAtLeast(1L)
                                 val v = dist / density / dt
                                 speedF += (v - speedF) * 0.45f
-                                val gain = (0.4f + (speedF - 0.03f) / 0.45f * 0.75f).coerceIn(0.4f, 1.15f)
+                                // Великі інструменти (гумка, маркер, балончик, пензлик) — спокійніше, щоб не смикались.
+                                val big = tool != InkTool.Pencil && tool != InkTool.Lasso
+                                val gMin = if (big) 0.34f else 0.4f
+                                val gMax = if (big) 0.95f else 1.15f
+                                val gain = (gMin + (speedF - 0.03f) / 0.5f * (gMax - gMin)).coerceIn(gMin, gMax)
                                 raw * gain
                             }
                             lastMoveT = c.uptimeMillis
@@ -851,8 +868,10 @@ fun InkLayer(
                             val z = s.zoom
                             val vl = -s.tx / z
                             val vt = -s.ty / z
-                            val edge = 40.dp.toPx() / z
-                            val nearEdge = finger.x < vl + edge || finger.x > vl + size.width / z - edge || finger.y < vt + edge || finger.y > vt + h / z - edge
+                            // Край — широка смуга (палець часто відривається ще до самого краю екрана).
+                            val ex = maxOf(56.dp.toPx(), size.width * 0.14f) / z
+                            val ey = maxOf(56.dp.toPx(), h * 0.1f) / z
+                            val nearEdge = finger.x < vl + ex || finger.x > vl + size.width / z - ex || finger.y < vt + ey || finger.y > vt + h / z - ey
                             val pausable = !tap && !shapes && !figureMode && !snapped && !strokeEraser && (s.locked || nearEdge)
                             if (pausable) {
                                 open = o
@@ -860,7 +879,10 @@ fun InkLayer(
                                 s.lead = true
                                 if (!s.locked) {
                                     haptics.tick()
-                                    openJob[0] = scope.launch { kotlinx.coroutines.delay(CONTINUE_MS); finishOpen() }
+                                    openJob[0] = scope.launch {
+                                        androidx.compose.animation.core.animate(1f, 0f, animationSpec = androidx.compose.animation.core.tween(CONTINUE_MS.toInt(), easing = androidx.compose.animation.core.LinearEasing)) { v, _ -> openLeft = v }
+                                        finishOpen()
+                                    }
                                 }
                                 return@awaitEachGesture
                             }
@@ -880,8 +902,7 @@ fun InkLayer(
         if (live.size >= 2 && session != null && session.kind != InkKind.STENCIL) {
             val tl = session.tool
             val lc = liveClip
-            if (lc != null) drawContext.canvas.save()
-            if (lc != null) drawContext.canvas.clipPath(regionPath(lc, w))
+            if (lc != null) drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
             drawLayered(
                 FloatArray(live.size) { live[it].x / w },
                 FloatArray(live.size) { live[it].y / w },
@@ -889,7 +910,7 @@ fun InkLayer(
                 session.width * w, w, false, session.kind, session.style,
                 if (tl == InkTool.Eraser) 0 else session.argb,
             )
-            if (lc != null) drawContext.canvas.restore()
+            if (lc != null) { clipToRegion(lc, w); drawContext.canvas.restore() }
         }
         drawContext.canvas.restore()
         if (session != null) {
@@ -909,9 +930,18 @@ fun InkLayer(
                 drawCircle(Color.Black.copy(alpha = 0.6f), 3.5.dp.toPx() / z, r.bottomRight)
             }
             // Інструмент-курсор: не виходить за сторінку і не росте, коли сторінку наближено.
-            val p = session.pen ?: Offset(size.width * 0.5f, size.height * 0.45f)
+            val p = if (session.pen == null) Offset(size.width * 0.5f, size.height * 0.45f) else if (session.lead) session.pen!! else penAnim.value
             clipRect {
-                scale(1f / z, 1f / z, p) { drawToolCursor(p, session, session.width * w * z, leadAnim) }
+                scale(1f / z, 1f / z, p) {
+                    drawToolCursor(p, session, session.width * w * z, leadAnim)
+                    // Лінія на паузі: кільце, що тане, — стільки ще можна перехопитись і вести далі.
+                    if (openLeft > 0f) {
+                        val r = 14.dp.toPx()
+                        val tl = Offset(p.x - r, p.y - r)
+                        drawArc(Color.Black.copy(alpha = 0.45f), -90f, 360f * openLeft, false, tl, Size(r * 2, r * 2), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+                        drawArc(ink.copy(alpha = 0.9f), -90f, 360f * openLeft, false, tl, Size(r * 2, r * 2), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+                    }
+                }
             }
         }
     }
@@ -1209,9 +1239,9 @@ private fun DrawScope.drawInk(lines: List<InkLine>, part: Int, w: Float, dry: (I
         val clip = if (l.target != 0L) clips[l.target] else null
         val ts = targeted[l.time]
         if (ts != null) drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint().apply { if (l.kind == InkKind.FILL) blendMode = BlendMode.DstOver })
-        if (clip != null) { drawContext.canvas.save(); drawContext.canvas.clipPath(regionPath(clip, w)) }
+        if (clip != null) drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
         drawLayered(l.xs, l.ys, l.factors, l.width * w, w, dry(l), l.kind, l.style, l.color)
-        if (clip != null) drawContext.canvas.restore()
+        if (clip != null) { clipToRegion(clip, w); drawContext.canvas.restore() }
         if (ts != null) {
             ts.forEach { e -> drawStroke(e.xs, e.ys, e.factors, e.width * w, w, false, e.kind, e.style) }
             drawContext.canvas.restore()
@@ -1263,7 +1293,7 @@ private fun regionPath(l: InkLine, w: Float): Path {
 }
 
 /** Клітинок заливки на ширину сторінки (дрібніше — заливка дістає вузькі місця). */
-private const val FILL_COLS = 420
+private const val FILL_COLS = 840
 
 /**
  * Заливка: малюнок сторінки — у дрібну сітку; від клітинки під кінчиком розтікається порожнім, доки не впреться в
@@ -1314,7 +1344,7 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
     var start = sy * cols + sx
     if (wall[start]) {
         var found = -1
-        loop@ for (rr in 1..3) for (dy in -rr..rr) for (dx in -rr..rr) {
+        loop@ for (rr in 1..6) for (dy in -rr..rr) for (dx in -rr..rr) {
             val nx = sx + dx
             val ny = sy + dy
             if (nx in 0 until cols && ny in 0 until rows && !wall[ny * cols + nx]) { found = ny * cols + nx; break@loop }
@@ -1343,12 +1373,13 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
     // Розтеклось майже на всю сторінку — обрис не замкнений. Для «у межах» дозволено й назовні (почав поза обрисом —
     // фарба обходить його), але не тоді, коли стін узагалі немає.
     if (tail > px.size * (if (outKind == InkKind.CLIP) 0.985f else 0.6f)) return null
-    // Під обвідку: на дві клітинки в усі боки (стіни товстіші на одну — і ще одна, щоб не лишалось щілини).
+    // Під обвідку: на три клітинки в усі боки (стіни товстіші на одну — і ще дві, щоб край ліг під лінію).
     val grown = fill.copyOf()
     for (i in px.indices) if (fill[i]) {
         val x = i % cols
         val y = i / cols
-        for (dy in -2..2) for (dx in -2..2) {
+        for (dy in -3..3) for (dx in -3..3) {
+            if (dx * dx + dy * dy > 10) continue
             val nx = x + dx
             val ny = y + dy
             if (nx in 0 until cols && ny in 0 until rows) grown[ny * cols + nx] = true
@@ -1380,22 +1411,76 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
     )
 }
 
-/** Залите місце: суцільно (м'яко) чи штрихами, як пензликом. */
-private fun DrawScope.drawFill(xs: FloatArray, ys: FloatArray, x1: FloatArray, rowH: Float, w: Float, ink: Color, bristles: Boolean, glass: Boolean) {
-    val path = Path()
-    val hh = rowH * w / 2f
+/**
+ * Маска області (заливка, межі «у межах»): рядки клітинок — у маленьку картинку, яку малюємо зі згладжуванням
+ * (білінійно) — край рівний і м'який, а не сходинками. Кешується за масивом точок штриха.
+ */
+private class RegionMask(val img: androidx.compose.ui.graphics.ImageBitmap, val left: Float, val top: Float, val cell: Float, val mw: Int, val mh: Int)
+
+private val maskCache = java.util.WeakHashMap<FloatArray, RegionMask>()
+
+private fun regionMask(xs: FloatArray, ys: FloatArray, x1: FloatArray, rowH: Float): RegionMask? {
+    maskCache[xs]?.let { return it }
+    if (xs.isEmpty() || rowH <= 0f) return null
+    val cell = rowH
+    var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE; var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
     for (i in xs.indices) {
-        val y = ys[i] * w
-        path.addRect(Rect(xs[i] * w, y - hh - 0.5f, (x1.getOrNull(i) ?: xs[i]) * w, y + hh + 0.5f))
+        minX = minOf(minX, xs[i]); maxX = maxOf(maxX, x1.getOrNull(i) ?: xs[i])
+        minY = minOf(minY, ys[i]); maxY = maxOf(maxY, ys[i])
     }
+    minY -= cell / 2f; maxY += cell / 2f
+    val mw = kotlin.math.ceil((maxX - minX) / cell).toInt() + 2
+    val mh = kotlin.math.ceil((maxY - minY) / cell).toInt() + 2
+    if (mw <= 0 || mh <= 0 || mw.toLong() * mh > 8_000_000L) return null
+    val px = IntArray(mw * mh)
+    for (i in xs.indices) {
+        val row = ((ys[i] - minY) / cell).toInt() + 1
+        if (row !in 0 until mh) continue
+        val a = kotlin.math.round((xs[i] - minX) / cell).toInt() + 1
+        val b = kotlin.math.round(((x1.getOrNull(i) ?: xs[i]) - minX) / cell).toInt() + 1
+        for (x in a.coerceAtLeast(0) until b.coerceAtMost(mw)) px[row * mw + x] = -1
+    }
+    val bmp = android.graphics.Bitmap.createBitmap(px, mw, mh, android.graphics.Bitmap.Config.ARGB_8888)
+    val m = RegionMask(bmp.asImageBitmap(), minX - cell, minY - cell, cell, mw, mh)
+    maskCache[xs] = m
+    return m
+}
+
+/** Маску — на сторінку (кольором [color] чи як [blend] для обрізання), з м'яким краєм. */
+private fun DrawScope.drawMask(m: RegionMask, w: Float, color: Color?, blend: BlendMode = BlendMode.SrcOver) {
+    val k = m.cell * w
+    drawContext.canvas.save()
+    drawContext.canvas.translate(m.left * w, m.top * w)
+    drawContext.canvas.scale(k, k)
+    drawImage(
+        m.img, srcOffset = androidx.compose.ui.unit.IntOffset.Zero, srcSize = androidx.compose.ui.unit.IntSize(m.mw, m.mh),
+        dstOffset = androidx.compose.ui.unit.IntOffset.Zero, dstSize = androidx.compose.ui.unit.IntSize(m.mw, m.mh),
+        alpha = color?.alpha ?: 1f,
+        colorFilter = color?.let { androidx.compose.ui.graphics.ColorFilter.tint(it.copy(alpha = 1f), BlendMode.SrcIn) },
+        blendMode = blend, filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
+    )
+    drawContext.canvas.restore()
+}
+
+/** Обрізати вже намальоване в шарі по області [l] (лишається лише всередині, з м'яким краєм). */
+private fun DrawScope.clipToRegion(l: InkLine, w: Float) {
+    val m = regionMask(l.xs, l.ys, l.factors, l.width)
+    if (m == null) { drawContext.canvas.save(); drawContext.canvas.clipPath(regionPath(l, w)); drawContext.canvas.restore(); return }
+    drawMask(m, w, null, BlendMode.DstIn)
+}
+
+/** Залите місце: суцільно чи штрихами, як пензликом; край — м'який (маска). */
+private fun DrawScope.drawFill(xs: FloatArray, ys: FloatArray, x1: FloatArray, rowH: Float, w: Float, ink: Color, bristles: Boolean, glass: Boolean) {
+    val m = regionMask(xs, ys, x1, rowH) ?: return
     if (!bristles) {
-        drawPath(path, ink)
+        drawMask(m, w, ink)
         return
     }
     // Штрихи пензлика навскіс, обрізані по залитому.
-    val b = path.getBounds()
-    clipPath(path) {
-        drawPath(path, ink.copy(alpha = ink.alpha * 0.45f))
+    val b = Rect(m.left * w, m.top * w, (m.left + m.mw * m.cell) * w, (m.top + m.mh * m.cell) * w)
+    drawContext.canvas.saveLayer(b, Paint())
+    run {
+        drawMask(m, w, ink.copy(alpha = ink.alpha * 0.45f))
         val gap = 3.2.dp.toPx()
         var t = b.left - b.height
         var k = 0
@@ -1406,6 +1491,8 @@ private fun DrawScope.drawFill(xs: FloatArray, ys: FloatArray, x1: FloatArray, r
             k++
         }
     }
+    drawMask(m, w, null, BlendMode.DstIn)
+    drawContext.canvas.restore()
 }
 
 /** Майже горизонтальна лінія стає рівно горизонтальною (підкреслення тексту). */
@@ -1915,11 +2002,11 @@ private fun DrawScope.drawToolCursor(p: Offset, s: InkSession, width: Float, lea
     }
     scale(k, k, p) {
         when (s.tool) {
-            InkTool.Lasso -> drawLassoCursor(p, lead, glass)
-            InkTool.Eraser -> drawEraserCursor(p, drawnW, lead, glass)
-            InkTool.Marker -> drawMarkerCursor(p, drawnW, lead, glass, tone)
-            InkTool.Brush -> drawBrushCursor(p, drawnW, lead, glass)
-            InkTool.Spray -> drawSprayCursor(p, width, lead, glass, tone)
+            InkTool.Lasso -> drawLassoCursor(p, lead, glass, s.locked)
+            InkTool.Eraser -> drawEraserCursor(p, drawnW, lead, glass, s.locked)
+            InkTool.Marker -> drawMarkerCursor(p, drawnW, lead, glass, tone, s.locked)
+            InkTool.Brush -> drawBrushCursor(p, drawnW, lead, glass, tone, s.locked)
+            InkTool.Spray -> drawSprayCursor(p, width, lead, glass, tone, s.locked)
             else -> drawMechPencil(p, width, lead, s.locked, glass, s.tool == InkTool.Underline)
         }
     }
@@ -1929,13 +2016,14 @@ private fun DrawScope.drawToolCursor(p: Offset, s: InkSession, width: Float, lea
  * Балончик фарби: металевий циліндр із блиском і кольоровою етикеткою, заокруглене плече, а на ньому — лише кнопка-
  * розпилювач із соплом (там, де фарбує). Поки натиснутий, кнопка трохи втоплена.
  */
-private fun DrawScope.drawSprayCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color) {
+private fun DrawScope.drawSprayCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color, locked: Boolean = false) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val tone = if (tint == Color.Unspecified) ink else tint
     val bw = 24.dp.toPx()
     val x = p.x
     rotate(TILT, p) {
-        val btnTop = p.y - 6.dp.toPx() + 1.5.dp.toPx() * lead
+        // Натиснута кнопка: опущений — трохи, зафіксований — до кінця (і кнопка кольору фарби).
+        val btnTop = p.y - 6.dp.toPx() + (if (locked) 4.dp.toPx() else 1.5.dp.toPx() * lead)
         val shoulder = btnTop - 2.dp.toPx()
         val bodyTop = shoulder - 72.dp.toPx()
         shadowRect(x - bw / 2, bodyTop, bw, shoulder - bodyTop, 6.dp.toPx())
@@ -1959,19 +2047,21 @@ private fun DrawScope.drawSprayCursor(p: Offset, width: Float, lead: Float, glas
         drawRect(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.3f), 0.25f to Color.White.copy(alpha = 0.28f), 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f), startX = x - bw / 2, endX = x + bw / 2), Offset(x - bw / 2, labelTop), Size(bw, 36.dp.toPx()))
         drawLine(Color.Black.copy(alpha = 0.35f), Offset(x - bw / 2, bodyTop + 3.dp.toPx()), Offset(x + bw / 2, bodyTop + 3.dp.toPx()), 1.dp.toPx())
         // Кнопка-розпилювач і сопло.
-        drawRoundRect(cylinder(x - 5.dp.toPx(), 10.dp.toPx(), Color(0xFF1E1F22), Color(0xFF3C3E43), Color(0xFF6E7178)), Offset(x - 5.dp.toPx(), btnTop), Size(10.dp.toPx(), p.y - btnTop), CornerRadius(2.5.dp.toPx()))
+        val btnTone = if (locked) tone.compositeOverDark() else Color(0xFF3C3E43)
+        drawRoundRect(cylinder(x - 5.dp.toPx(), 10.dp.toPx(), Color(0xFF1E1F22), btnTone, Color(0xFF6E7178)), Offset(x - 5.dp.toPx(), btnTop), Size(10.dp.toPx(), maxOf(p.y - btnTop, 2.dp.toPx())), CornerRadius(2.5.dp.toPx()))
         drawCircle(Color.Black, 1.4.dp.toPx(), Offset(x, p.y - 1.6.dp.toPx()))
     }
 }
 
 /** Ласо: перехрестя з петлею — де почнеш обводити (опущене — петля яскравіша). */
-private fun DrawScope.drawLassoCursor(p: Offset, lead: Float, glass: Boolean) {
+private fun DrawScope.drawLassoCursor(p: Offset, lead: Float, glass: Boolean, locked: Boolean = false) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val a = 0.55f + 0.4f * lead
     val r = 5.dp.toPx()
     drawLine(ink.copy(alpha = a), p - Offset(r * 1.6f, 0f), p + Offset(r * 1.6f, 0f), 1.2.dp.toPx())
     drawLine(ink.copy(alpha = a), p - Offset(0f, r * 1.6f), p + Offset(0f, r * 1.6f), 1.2.dp.toPx())
-    drawOval(ink.copy(alpha = a), Offset(p.x + r * 0.6f, p.y - r * 3.4f), Size(r * 3.4f, r * 2.2f), style = Stroke(1.3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))))
+    // Зафіксоване — петля суцільна.
+    drawOval(ink.copy(alpha = a), Offset(p.x + r * 0.6f, p.y - r * 3.4f), Size(r * 3.4f, r * 2.2f), style = Stroke(1.3.dp.toPx(), pathEffect = if (locked) null else PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))))
 }
 
 /** Піпетка: скляна трубочка з гумовою грушкою; кінчик — де береться колір. */
@@ -2078,7 +2168,7 @@ private fun DrawScope.drawMechPencil(p: Offset, width: Float, lead: Float, locke
 }
 
 /** Маркер: товстий корпус, скошений кінчик (ширина — за товщиною лінії), ковпачок кольору відтінку. */
-private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color) {
+private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color, locked: Boolean = false) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val tone = if (tint == Color.Unspecified) ink else tint
     val tipW = width.coerceIn(3.dp.toPx(), 44.dp.toPx())
@@ -2097,7 +2187,9 @@ private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, gla
             moveTo(x - tipW / 2, tipTop); lineTo(x + tipW / 2, tipTop)
             lineTo(x + tipW / 2, p.y - lift - 1.5.dp.toPx()); lineTo(x - tipW / 2, p.y - lift); close()
         }
-        drawPath(tip, tone.copy(alpha = 0.85f))
+        // Піднятий — кінчик блідий, опущений — насичений, зафіксований — повний колір і мокрий відблиск.
+        drawPath(tip, tone.copy(alpha = if (locked) 1f else 0.45f + 0.4f * lead))
+        if (locked) drawLine(Color.White.copy(alpha = 0.45f), Offset(x - tipW * 0.3f, tipTop + 1.dp.toPx()), Offset(x - tipW * 0.3f, p.y - lift - 2.dp.toPx()), 1.dp.toPx())
         drawRect(cylinder(x - tipW / 2 - 2.dp.toPx(), tipW + 4.dp.toPx(), Color(0xFF3A3C40), Color(0xFF6A6D73), Color(0xFFA9ADB3)), Offset(x - tipW / 2 - 2.dp.toPx(), collarTop), Size(tipW + 4.dp.toPx(), 5.dp.toPx()))
         val dark = if (glass) Color(0xFF2E3034) else Color(0xFF34312C)
         val mid = if (glass) Color(0xFF5C6068) else Color(0xFF66615A)
@@ -2116,7 +2208,7 @@ private fun Color.compositeOverDark(): Color = Color(
 )
 
 /** Пензлик: пучок щетинок (ширина — за товщиною мазка), металева обойма, лакована ручка. */
-private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glass: Boolean) {
+private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glass: Boolean, tint: Color = Color.Unspecified, locked: Boolean = false) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
     // Пучок росте разом із товщиною мазка (і довшає), щоб було видно, яким буде мазок.
     val tw = width.coerceIn(3.dp.toPx(), 46.dp.toPx())
@@ -2137,7 +2229,10 @@ private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glas
             cubicTo(x + tw * 0.5f, tip - tw * 0.35f, x + tw * 0.56f, tuftTop + 7.dp.toPx(), x + tw / 2, tuftTop)
             close()
         }
-        drawPath(tuft, Brush.verticalGradient(0f to Color(0xFF8A7A62), 0.5f to Color(0xFF4A4034), 1f to ink.copy(alpha = 0.9f), startY = tuftTop, endY = tip))
+        // Кінчик у фарбі: опущений — фарба на кінчику, зафіксований — набрав фарби більше (колір вищий).
+        val paint = if (tint == Color.Unspecified) ink else tint
+        val wet = if (locked) 0.5f else 0.75f + 0.1f * (1f - lead)
+        drawPath(tuft, Brush.verticalGradient(0f to Color(0xFF8A7A62), (wet - 0.2f).coerceAtLeast(0.05f) to Color(0xFF4A4034), wet to paint.copy(alpha = if (locked) 1f else 0.6f + 0.35f * lead), 1f to paint, startY = tuftTop, endY = tip))
         for (k in -2..2) drawLine(Color.Black.copy(alpha = 0.25f), Offset(x + k * tw * 0.12f, tuftTop), Offset(x + k * tw * 0.05f, tip - 4.dp.toPx()), 0.6.dp.toPx())
         drawRect(cylinder(x - fw / 2, fw, Color(0xFF4A4E55), Color(0xFF8E939B), Color(0xFFD9DDE3)), Offset(x - fw / 2, ferTop), Size(fw, tuftTop - ferTop))
         // Ручка звужується догори.
@@ -2155,7 +2250,7 @@ private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glas
  * півколом, і стирає саме він (коло стирання збігається з кінчиком гумки — край видно точно). Опущена — кінчик ледь
  * світиться.
  */
-private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, glass: Boolean) {
+private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, glass: Boolean, locked: Boolean = false) {
     val ink = if (glass) Oled.TextPrimary else SheetInk
     val bw = maxOf(width, 4.dp.toPx())
     val bh = bw * 3.2f
@@ -2178,6 +2273,8 @@ private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, gla
         }
         val rubberBase = if (glass) Color(0xFF8C8F96) else Color(0xFF9C968C)
         drawPath(rubberPath, cylinder(left, bw, rubberBase.copy(red = rubberBase.red * 0.6f, green = rubberBase.green * 0.6f, blue = rubberBase.blue * 0.6f), rubberBase, Color(minOf(1f, rubberBase.red * 1.3f), minOf(1f, rubberBase.green * 1.3f), minOf(1f, rubberBase.blue * 1.3f))))
-        if (lead > 0.01f) drawPath(rubberPath, ink.copy(alpha = 0.28f * lead))
+        if (lead > 0.01f) drawPath(rubberPath, ink.copy(alpha = (if (locked) 0.42f else 0.28f) * lead))
+        // Зафіксована — край гумки світлий (видно, що не піднімається сама).
+        if (locked) drawPath(rubberPath, ink.copy(alpha = 0.85f), style = Stroke(1.4.dp.toPx()))
     }
 }

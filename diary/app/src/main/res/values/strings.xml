@@ -266,4 +266,52 @@
     <string name="ink_stencil">Stencil: the pencil draws a film, not a line</string>
     <string name="ink_stencil_remove">Remove stencil</string>
     <string name="ink_figure_free">Freehand</string>
+    <string-array name="ink_w_figure">
+        <item>Freehand</item>
+        <item>Straighten</item>
+        <item>Line</item>
+        <item>Frame</item>
+        <item>Oval</item>
+    </string-array>
+    <string-array name="ink_w_style">
+        <item>Solid</item>
+        <item>Dashed</item>
+        <item>Wavy</item>
+    </string-array>
+    <string-array name="ink_w_smooth">
+        <item>Exact</item>
+        <item>Smooth</item>
+        <item>Smoother</item>
+    </string-array>
+    <string-array name="ink_w_stencil">
+        <item>Line</item>
+        <item>Stencil</item>
+    </string-array>
+    <string-array name="ink_w_fill">
+        <item>Stroke</item>
+        <item>Scrub</item>
+        <item>Fill</item>
+    </string-array>
+    <string-array name="ink_w_brush">
+        <item>Bristles</item>
+        <item>Solid</item>
+    </string-array>
+    <string-array name="ink_w_clip">
+        <item>Anywhere</item>
+        <item>Inside</item>
+    </string-array>
+    <string-array name="ink_w_spray">
+        <item>Airbrush</item>
+        <item>Paint</item>
+    </string-array>
+    <string-array name="ink_w_eraser">
+        <item>Exact</item>
+        <item>Soft</item>
+        <item>Whole lines</item>
+    </string-array>
+    <string-array name="ink_w_blur">
+        <item>Slight</item>
+        <item>Medium</item>
+        <item>Strong</item>
+    </string-array>
 </resources>

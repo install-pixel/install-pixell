@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -1534,7 +1535,33 @@ private fun ToolDrawer(s: InkSession, ink: Color, hasStencil: Boolean, onRemoveS
     val col = if (s.color == INK_RGB) ink else Color(0xFF000000.toInt() or s.color)
     @Composable
     fun Wheel(count: Int, value: Int, desc: String, seed: Int, onChange: (Int) -> Unit, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Int, Color) -> Unit) {
-        InkWheel(54.dp, count, value, desc, seed, ink, onChange = { onChange(it); s.remember() }, draw = draw)
+        // Під коліщатком — назва вибраного (щоб було зрозуміло без проб).
+        val names = when (seed) {
+            64, 82, 79 -> R.array.ink_w_figure
+            62 -> R.array.ink_w_style
+            63, 76, 77, 78, 75 -> R.array.ink_w_smooth
+            80 -> R.array.ink_w_stencil
+            65 -> R.array.ink_w_fill
+            66 -> R.array.ink_w_brush
+            72, 73 -> R.array.ink_w_clip
+            67 -> R.array.ink_w_spray
+            71 -> R.array.ink_w_eraser
+            74 -> R.array.ink_w_blur
+            else -> 0
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            InkWheel(54.dp, count, value, desc, seed, ink, onChange = { onChange(it); s.remember() }, draw = draw)
+            if (names != 0) {
+                val arr = androidx.compose.ui.res.stringArrayResource(names)
+                Text(
+                    arr[value.coerceIn(0, arr.size - 1)],
+                    color = ink.copy(alpha = 0.7f), fontSize = 10.sp, maxLines = 1, softWrap = false,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(top = 3.dp).requiredWidth(62.dp),
+                )
+            }
+        }
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (tool == InkTool.Lasso) {
@@ -2187,7 +2214,10 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFigureGlyph(k: 
                 }
             }
             drawPath(wob, c.copy(alpha = c.alpha * 0.5f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
-            drawLine(c.copy(alpha = c.alpha * 0.6f), Offset(size.width * 0.47f, center.y), Offset(size.width * 0.55f, center.y), 1.4.dp.toPx(), cap = StrokeCap.Round)
+            val ax = size.width * 0.57f
+            drawLine(c.copy(alpha = c.alpha * 0.7f), Offset(size.width * 0.46f, center.y), Offset(ax, center.y), 1.4.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(c.copy(alpha = c.alpha * 0.7f), Offset(ax, center.y), Offset(ax - 3.dp.toPx(), center.y - 2.5.dp.toPx()), 1.4.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(c.copy(alpha = c.alpha * 0.7f), Offset(ax, center.y), Offset(ax - 3.dp.toPx(), center.y + 2.5.dp.toPx()), 1.4.dp.toPx(), cap = StrokeCap.Round)
             drawCircle(c, r, Offset(size.width * 0.76f, center.y), style = st)
         }
         else -> drawShapeGlyph(k - 2, c)

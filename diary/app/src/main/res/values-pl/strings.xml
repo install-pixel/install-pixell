@@ -270,4 +270,52 @@
     <string name="ink_stencil">Szablon: ołówek rysuje folię, a nie linię</string>
     <string name="ink_stencil_remove">Zdejmij szablon</string>
     <string name="ink_figure_free">Odręcznie</string>
+    <string-array name="ink_w_figure">
+        <item>Odręcznie</item>
+        <item>Wyrównaj</item>
+        <item>Prosta</item>
+        <item>Ramka</item>
+        <item>Owal</item>
+    </string-array>
+    <string-array name="ink_w_style">
+        <item>Ciągła</item>
+        <item>Przerywana</item>
+        <item>Fala</item>
+    </string-array>
+    <string-array name="ink_w_smooth">
+        <item>Dokładnie</item>
+        <item>Płynnie</item>
+        <item>Płynniej</item>
+    </string-array>
+    <string-array name="ink_w_stencil">
+        <item>Linia</item>
+        <item>Szablon</item>
+    </string-array>
+    <string-array name="ink_w_fill">
+        <item>Smuga</item>
+        <item>Malowanie</item>
+        <item>Wypełnij</item>
+    </string-array>
+    <string-array name="ink_w_brush">
+        <item>Włosie</item>
+        <item>Gładki</item>
+    </string-array>
+    <string-array name="ink_w_clip">
+        <item>Wszędzie</item>
+        <item>W granicach</item>
+    </string-array>
+    <string-array name="ink_w_spray">
+        <item>Aerograf</item>
+        <item>Farba</item>
+    </string-array>
+    <string-array name="ink_w_eraser">
+        <item>Dokładna</item>
+        <item>Miękka</item>
+        <item>Całe linie</item>
+    </string-array>
+    <string-array name="ink_w_blur">
+        <item>Lekko</item>
+        <item>Średnio</item>
+        <item>Mocno</item>
+    </string-array>
 </resources>
