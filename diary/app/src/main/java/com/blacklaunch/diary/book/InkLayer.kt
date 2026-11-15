@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -392,6 +393,8 @@ fun InkLayer(
     Canvas(
         modifier
             .fillMaxSize()
+            // Готовий малюнок (не малюєш зараз) — окремою текстурою: гортання й усе довкола його не перемальовує.
+            .then(if (active) Modifier else Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen })
             .then(
                 if (!active) Modifier else Modifier.pointerInput(session, pageWidth) {
                     val s = session!!

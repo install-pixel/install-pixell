@@ -3,6 +3,7 @@ package com.blacklaunch.diary.book
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -350,112 +351,97 @@ fun FlipBook(
     ) {
         val top = state.top
         val under = state.under
-        if (top == null || under == null) {
-            // «Скло»: аркуші ледь прозорі ([GLASS_PAGE_ALPHA], обкладинка — [GLASS_COVER_ALPHA]) — під поточною сторінкою
-            // лежить справжня наступна, і її силует трохи просвічує. Під час гортання вона та сама, тож прозорість
-            // природно росте разом із тим, наскільки сторінку піднято. Дотики до неї не доходять.
-            val tearing = state.tear > 0f || state.tearFall > 0f
-            val peek = when {
-                // Виривають сторінку — під нею чітко видно ту, що лишиться: наступну (або попередню, якщо це остання).
-                tearing -> if (state.index < currentCount - 1) state.index + 1 else null
-                AppStyle.glass && (state.index < currentCount - 1 || next(state.index) in 0 until state.index) && mayForward(state.index) -> (peekOf?.invoke(state.index) ?: next(state.index)).coerceIn(0, currentCount - 1)
-                else -> null
-            }
-            if (tearing) {
-                // Під вирваною — наступна сторінка, а якщо її немає — порожня (та, що з'явиться після виривання).
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(BookCorner))
-                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
-                ) {
-                    CompositionLocalProvider(LocalPagePreview provides true, LocalUnderTear provides true) {
-                        if (peek != null) key(peek) { page(peek) } else blankUnder?.invoke()
+        val flipping = top != null && under != null
+        val tearing = !flipping && (state.tear > 0f || state.tearFall > 0f)
+        // Що просвічує крізь скляну сторінку (і що лишиться під вирваною).
+        fun seeThrough(i: Int): Int? = when {
+            tearing -> if (i < currentCount - 1) i + 1 else null
+            AppStyle.glass && (i < currentCount - 1 || next(i) in 0 until i) && mayForward(i) -> (peekOf?.invoke(i) ?: next(i)).coerceIn(0, currentCount - 1)
+            else -> null
+        }?.takeIf { it != i }
+        // Усі сторінки — в одному списку з ключем-номером: сторінка, що просто змінила роль (лежала — почали гортати,
+        // просвічувала — відкрилась), лишається тією самою, а не будується наново. Тож на початку гортання нічого не
+        // перемальовується й не «підвисає» (малюнки, фото — усе вже готове).
+        val slots = ArrayList<Slot>(5)
+        var backIdx: Int? = null
+        var frontIdx: Int? = null
+        if (!flipping) {
+            val peek = seeThrough(state.index)
+            if (peek != null) slots += Slot(peek, if (tearing) Role.TearUnder else Role.Peek, preview = true)
+            slots += Slot(state.index, Role.Current, preview = false)
+        } else {
+            // Гортаєш назад: сторінка, що лежить, — та сама, що й була, разом із силуетом під нею, доки її не накриє.
+            if (!state.forward) seeThrough(under!!)?.takeIf { it != top }?.let { slots += Slot(it, Role.Peek, preview = true) }
+            slots += Slot(under!!, Role.Under, preview = state.forward)
+            backIdx = if (state.forward) backOf?.invoke(top!!, under)?.takeIf { it in 0 until currentCount && it != top && it != under } else null
+            frontIdx = if (backIdx != null) (top!! + 1).takeIf { it < under && it != backIdx } else null
+            frontIdx?.let { slots += Slot(it, Role.Stack, preview = true) }
+            backIdx?.let { slots += Slot(it, Role.Back, preview = true) }
+            slots += Slot(top!!, Role.Top, preview = false)
+        }
+        if (tearing && slots.none { it.role == Role.TearUnder }) {
+            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches()) { blankUnder?.invoke() }
+        }
+        slots.forEach { s ->
+            key(s.index) {
+                val m = when (s.role) {
+                    Role.Peek -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches().blur(GlassBlur, BlurredEdgeTreatment.Unbounded)
+                    Role.TearUnder -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches()
+                    Role.Current -> Modifier.fillMaxSize().drawWithContent {
+                        val f = state.tearFinger
+                        if (!tearing || f == null) { drawContent(); return@drawWithContent }
+                        // Виривають: нижній лівий кут загинається за пальцем (видно зворот), корінець рветься знизу
+                        // до лінії загину, верх сторінки лежить на місці. Вирвана — тане.
+                        tearLayer.record { this@drawWithContent.drawContent() }
+                        drawPeel(TearGeometry(size.width, size.height, f), tearLayer, seedOf(state.index), state.tearSeed, alpha = 1f - state.tearFall, state)
+                    }
+                    // Сторінка під низом — у тій самій формі книжки ([BookCorner]): нічого не визирає з-під верхньої.
+                    Role.Under -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).drawWithContent {
+                        drawContent()
+                        if (AppStyle.glass) {
+                            underBlur.record { this@drawWithContent.drawContent() }
+                            underBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                        }
+                    }
+                    // Перегортається стос: крізь його ще не перегорнуту частину видно першу сторінку стосу.
+                    Role.Stack -> Modifier.fillMaxSize().drawWithContent {
+                        stackLayer.record { this@drawWithContent.drawContent() }
+                        stackLayer.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                    }
+                    // Зворот стосу — остання сторінка в ньому: малюється невидимо, лише в окремий шар.
+                    Role.Back -> Modifier.fillMaxSize().drawWithContent {
+                        backLayer.record { this@drawWithContent.drawContent() }
+                        backLayer.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                    }
+                    // Сторінка, що гортається, записується в шар лише тоді, коли змінилась сама (а не щокадру): кадр
+                    // гортання тільки повторює готовий запис — і з малюнком, і без нього гортається однаково плавно.
+                    Role.Top -> Modifier.fillMaxSize().drawWithContent {
+                        state.width = size.width
+                        // Готовий запис зберігається текстурою: смужки циліндра щокадру лише копіюють її.
+                        layer.compositingStrategy = androidx.compose.ui.graphics.layer.CompositingStrategy.Offscreen
+                        layer.record { this@drawWithContent.drawContent() }
+                        if (AppStyle.glass) {
+                            topBlur.record { this@drawWithContent.drawContent() }
+                            topBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
+                        }
                     }
                 }
-            } else if (peek != null && peek != state.index) key(peek) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(BookCorner))
-                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } }
-                        .blur(GlassBlur, BlurredEdgeTreatment.Unbounded),
-                ) { CompositionLocalProvider(LocalPagePreview provides true) { page(peek) } }
+                Box(m) {
+                    CompositionLocalProvider(LocalPagePreview provides s.preview, LocalUnderTear provides (s.role == Role.TearUnder)) { pageWithPaper(s.index) }
+                }
             }
-            key(state.index) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .drawWithContent {
-                            val f = state.tearFinger
-                            if (!tearing || f == null) { drawContent(); return@drawWithContent }
-                            // Виривають: нижній лівий кут загинається за пальцем (видно зворот), корінець рветься знизу
-                            // до лінії загину, верх сторінки лежить на місці. Вирвана — тане.
-                            tearLayer.record { this@drawWithContent.drawContent() }
-                            drawPeel(TearGeometry(size.width, size.height, f), tearLayer, seedOf(state.index), state.tearSeed, alpha = 1f - state.tearFall, state)
-                        },
-                ) { pageWithPaper(state.index) }
-            }
-        } else {
-            // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр.
-            // Сторінка під низом — у тій самій формі книжки ([BookCorner]): нічого не визирає з-під верхньої.
-            key(under) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(BookCorner))
-                        .drawWithContent {
-                            drawContent()
-                            if (AppStyle.glass) {
-                                underBlur.record { this@drawWithContent.drawContent() }
-                                underBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
-                            }
-                        },
-                ) { pageWithPaper(under) }
-            }
-            // Зворот стосу — остання сторінка в ньому: малюється невидимо, лише в окремий шар.
-            val backIdx = if (state.forward) backOf?.invoke(top, under)?.takeIf { it in 0 until currentCount && it != top } else null
-            // Перегортається стос: крізь його ще не перегорнуту частину далі видно першу сторінку стосу (вона ж
-            // гортається разом з обкладинкою), а не ту, що відкривається під ним.
-            val frontIdx = if (backIdx != null) (top + 1).takeIf { it < under } else null
-            if (frontIdx != null) key("front$frontIdx") {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .drawWithContent {
-                            stackLayer.record { this@drawWithContent.drawContent() }
-                            stackLayer.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
-                        },
-                ) { CompositionLocalProvider(LocalPagePreview provides true) { pageWithPaper(frontIdx) } }
-            }
-            if (backIdx != null) key("back$backIdx") {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .drawWithContent {
-                            backLayer.record { this@drawWithContent.drawContent() }
-                            backLayer.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
-                        },
-                ) { CompositionLocalProvider(LocalPagePreview provides true) { pageWithPaper(backIdx) } }
-            }
-            key(top) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .drawWithContent {
-                            state.width = size.width
-                            layer.record { this@drawWithContent.drawContent() }
-                            val glassNow = AppStyle.glass
-                            if (glassNow) {
-                                topBlur.record { this@drawWithContent.drawContent() }
-                                topBlur.renderEffect = androidx.compose.ui.graphics.BlurEffect(GlassBlur.toPx(), GlassBlur.toPx())
-                            }
-                            val hv = isHeavy(top)
-                            val back = backIdx?.let { b -> CurlBack(heavy = false, blur = if (glassNow) Blurred(underBlur, backLayer) else null, seed = seedOf(b), age = ageOf(b)) }
-                            val frontBlur = if (!glassNow) null else if (frontIdx != null) Blurred(stackLayer, topBlur) else Blurred(underBlur, topBlur)
-                            drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, frontBlur, seedOf(top), ageOf(top), back)
-                        },
-                ) { pageWithPaper(top) }
+        }
+        if (flipping) {
+            // Знизу — сторінка, що відкривається; зверху — та, що перегортається: намотується на циліндр (з готового запису).
+            val t = top!!
+            val b = backIdx
+            val f = frontIdx
+            Canvas(Modifier.fillMaxSize()) {
+                val glassNow = AppStyle.glass
+                val hv = isHeavy(t)
+                val back = b?.let { CurlBack(heavy = false, blur = if (glassNow) Blurred(underBlur, backLayer) else null, seed = seedOf(it), age = ageOf(it)) }
+                val frontBlur = if (!glassNow) null else if (f != null) Blurred(stackLayer, topBlur) else Blurred(underBlur, topBlur)
+                drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, frontBlur, seedOf(t), ageOf(t), back)
             }
         }
         // Розмір книги потрібен і без руху (для переходу «до сторінки»).
@@ -468,6 +454,14 @@ fun FlipBook(
  * валику й пласкою частиною, що лягла назад. Сторінку смужками перерозміщено по горизонталі — без нахилу, тож згин
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
+/** Що робить сторінка в книжці зараз (див. список сторінок у [FlipBook]). */
+private enum class Role { Peek, TearUnder, Current, Under, Stack, Back, Top }
+
+private class Slot(val index: Int, val role: Role, val preview: Boolean)
+
+/** Дотики сюди не доходять (силует під склом, сторінка під вирваною). */
+private fun Modifier.consumeTouches() = pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } }
+
 /** Інший зворот сторінки, що перегортається (стос: зворот — остання сторінка стосу). */
 private class CurlBack(val heavy: Boolean, val blur: Blurred?, val seed: Int, val age: Long)
 
@@ -491,9 +485,16 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
     val a = g.axis
     val r = g.radius
 
+    // «Скло»: під прозорим лицем — розмита сторінка під низом. Один раз на всю ширину лиця (плаский шматок і валик до
+    // вершини), а не під кожною смужкою окремо: розмиття — найдорожче в кадрі.
+    if (blur != null) {
+        val faceRight = g.rightmost.coerceIn(0f, w)
+        if (faceRight > 0f) clipRect(0f, 0f, faceRight, h) { blur.under(this) }
+    }
+
     // 1) Плаский шматок лицем — як лежав.
     val flatEnd = a.coerceIn(0f, w)
-    if (flatEnd > 0f) clipRect(0f, 0f, flatEnd, h) { blur?.under(this); drawLayer(layer) }
+    if (flatEnd > 0f) clipRect(0f, 0f, flatEnd, h) { drawLayer(layer) }
 
     // 2) Тінь від валика на сторінці під ним (праворуч від валика).
     val rollRight = g.rightmost.coerceAtMost(w)
@@ -517,7 +518,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
         val x0 = a + r * t0
         val x1 = a + r * t1
         if (x1 <= frontFrom || x0 >= w) continue
-        strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0.6f * (1f - cos((t0 + t1) / 2f)), back = false, heavy = heavy, glass = glass, blur = blur)
+        strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0.6f * (1f - cos((t0 + t1) / 2f)), back = false, heavy = heavy, glass = glass)
     }
 
     // 4) Зворот на валику (θ π/2…π) і плаский зворот, що ліг назад, — він вище за все інше. Обрізаний тією самою формою,
@@ -545,7 +546,40 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
             )
         }
         clipPath(backShape) {
-            for (i in 0 until steps) {
+            if (glass && bBlur != null) {
+                // «Скло»: зворот — темна товста плівка, крізь яку розмито видно, що під нею, і ледь — саму сторінку з
+                // того боку. Розмите під низом, плівка й прозорий шар — по одному на весь зворот, смужками — лише
+                // перенесена сторінка й світло на вигині.
+                bBlur.under(this)
+                drawRect(if (bHeavy) Color(0xFF15161A).copy(alpha = 0.82f) else Color(0xFF111215).copy(alpha = 0.72f))
+                val canvas = drawContext.canvas
+                canvas.saveLayer(Rect(freeEdge.coerceAtLeast(0f), 0f, w, h), Paint().apply { alpha = if (bHeavy) 0.3f else 0.22f })
+                for (i in 0 until steps) {
+                    val t0 = Math.PI.toFloat() / 2f * (1f + i.toFloat() / steps)
+                    val t1 = Math.PI.toFloat() / 2f * (1f + (i + 1).toFloat() / steps)
+                    val x0 = a + r * t0
+                    val x1 = a + r * t1
+                    if (x1 <= 0f || x0 >= w) continue
+                    mapped(bBlur.top, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h)
+                }
+                if (backFrom < w) mapped(bBlur.top, backFrom.coerceAtLeast(0f), w, g, h)
+                canvas.restore()
+                for (i in 0 until steps) {
+                    val t0 = Math.PI.toFloat() / 2f * (1f + i.toFloat() / steps)
+                    val t1 = Math.PI.toFloat() / 2f * (1f + (i + 1).toFloat() / steps)
+                    val x0 = (a + r * t0).coerceAtLeast(0f)
+                    val x1 = (a + r * t1).coerceAtMost(w)
+                    if (x1 - x0 < 0.01f) continue
+                    val light = sin(2f * ((t0 + t1) / 2f - Math.PI.toFloat() / 2f))
+                    if (light <= 0.005f) continue
+                    val d0 = g.map(x0)
+                    val d1 = g.map(x1)
+                    val l = minOf(d0, d1)
+                    val rr = maxOf(d0, d1)
+                    if (rr - l < 0.05f) continue
+                    drawRect(Color.White.copy(alpha = 0.16f * light), topLeft = Offset(l - 0.5f, 0f), size = androidx.compose.ui.geometry.Size(rr - l + 1f, h))
+                }
+            } else for (i in 0 until steps) {
                 val t0 = Math.PI.toFloat() / 2f * (1f + i.toFloat() / steps)
                 val t1 = Math.PI.toFloat() / 2f * (1f + (i + 1).toFloat() / steps)
                 val x0 = a + r * t0
@@ -555,7 +589,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
                 val mid = (t0 + t1) / 2f
                 strip(layer, x0.coerceAtLeast(0f), x1.coerceAtMost(w), g, h, darkness = 0f, back = true, heavy = bHeavy, glass = glass, light = sin(2f * (mid - Math.PI.toFloat() / 2f)), blur = bBlur, seed = bSeed, age = bAge)
             }
-            if (backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = bHeavy, glass = glass, blur = bBlur, seed = bSeed, age = bAge)
+            if (!(glass && bBlur != null) && backFrom < w) strip(layer, backFrom.coerceAtLeast(0f), w, g, h, darkness = 0f, back = true, heavy = bHeavy, glass = glass, blur = bBlur, seed = bSeed, age = bAge)
         }
     }
 
@@ -578,6 +612,23 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
         }
         val ink = if (glass) Color.White.copy(alpha = 0.16f * fade) else SheetInk.copy(alpha = 0.4f * fade)
         drawPath(outline, ink, style = Stroke(if (heavy) 1.4.dp.toPx() else 1.dp.toPx()))
+    }
+}
+
+/** Смужка [x0, x1] шару [layer], перенесена туди, де вона на екрані (без світла й тіні). */
+private fun DrawScope.mapped(layer: GraphicsLayer, x0: Float, x1: Float, g: CurlGeometry, h: Float) {
+    if (x1 - x0 < 0.01f) return
+    val d0 = g.map(x0)
+    val d1 = g.map(x1)
+    val left = minOf(d0, d1)
+    val right = maxOf(d0, d1)
+    if (right - left < 0.05f) return
+    val k = (d1 - d0) / (x1 - x0)
+    clipRect(left - 0.5f, 0f, right + 0.5f, h) {
+        withTransform({
+            translate(left = d0 - x0 * k)
+            scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
+        }) { drawLayer(layer) }
     }
 }
 
