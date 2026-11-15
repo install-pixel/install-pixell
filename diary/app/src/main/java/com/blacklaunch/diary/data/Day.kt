@@ -50,7 +50,7 @@ data class Day(
     /** Місце під фото / голос на цей день прибрали (свайпом) — його займає текст. */
     val noPhoto: Boolean = false,
     val noAudio: Boolean = false,
-    /** Вирвані сторінки дня (біт 1 — перша, біт 2 — друга): назавжди, номер лишається пропущеним. */
+    /** Вирвані сторінки дня (біт 1 shl n — сторінка n): назавжди, номер лишається пропущеним. */
     val torn: Int = 0,
     /** Надірвано, але передумали: до якої висоти (0…1) — лишається видно, заклеєне скотчем. Окремо для 1-ї й 2-ї сторінки. */
     val tearTry0: Float = 0f,
@@ -84,7 +84,8 @@ data class Day(
     val isEmpty: Boolean
         get() = isBlank && !noPhoto && !noAudio && torn == 0 && tearTry0 == 0f && tearTry1 == 0f
 
-    fun tearTry(part: Int): Float = if (part == 0) tearTry0 else tearTry1
+    /** Надірвано й заклеєно (лише перша й друга сторінки пам'ятають це). */
+    fun tearTry(part: Int): Float = when (part) { 0 -> tearTry0; 1 -> tearTry1; else -> 0f }
 
     /** На якому положенні шумодава записано відрізок стрічки, де зараз [t] (мс), на стороні [side]. */
     fun modeAt(side: Int, t: Long): Int {
@@ -111,6 +112,9 @@ data class Day(
     }
 }
 
+/** Полотно дня в [InkLine.page] (те саме, що `book.CANVAS_PART`). */
+const val CANVAS_PAGE = -1
+
 /** Кодування штрихів і викреслень у короткий JSON для бази. */
 object DayCodec {
     fun inkToJson(lines: List<InkLine>): String {
@@ -118,7 +122,8 @@ object DayCodec {
         val arr = JSONArray()
         lines.forEach { l ->
             val o = JSONObject()
-            o.put("p", l.page)
+            // Сторінки тексту від третьої — під іншим ключем: давнє «p = 2» означало полотно (див. [inkFromJson]).
+            if (l.page >= 2) o.put("q", l.page) else o.put("p", l.page)
             o.put("w", r(l.width))
             o.put("t", l.time)
             o.put("x", JSONArray().also { a -> l.xs.forEach { a.put(r(it)) } })
@@ -143,7 +148,7 @@ object DayCodec {
                 val y = o.getJSONArray("y")
                 val f = o.optJSONArray("f")
                 InkLine(
-                    page = o.optInt("p"),
+                    page = if (o.has("q")) o.optInt("q") else o.optInt("p").let { if (it == 2) CANVAS_PAGE else it },
                     xs = FloatArray(x.length()) { x.getDouble(it).toFloat() },
                     ys = FloatArray(y.length()) { y.getDouble(it).toFloat() },
                     factors = if (f == null) FloatArray(0) else FloatArray(f.length()) { f.getDouble(it).toFloat() },

@@ -84,7 +84,7 @@ fun PaperPage(
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = BookCorner, bottomEnd = BookCorner)),
             ) { edge() }
         }
-        if (turnHint) TurnHint(Modifier.align(androidx.compose.ui.Alignment.BottomEnd))
+        if (turnHint) TurnHint(Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
         if (footer != null) {
             Text(
                 footer,
@@ -96,44 +96,47 @@ fun PaperPage(
 }
 
 /**
- * Підказка «гортай» без слів: тонка напівпрозора стрілочка-дуга справа внизу — куди веде палець, коли гортаєш уперед
- * (справа наліво). З'являється не одразу ([delayMs]) і плавно, щоб не кидатися в очі; зникає разом зі сторінкою.
+ * Підказка «гортай» без слів: коротка пряма стрілочка внизу посередині сторінки (там, де колись був напис «гортай»),
+ * вістрям туди, куди веде палець, коли гортаєш уперед (наліво). Унизу посередині ніщо не малюється, тож вона нічого
+ * не перетинає. «Аркуш» — штрих олівцем; «Скло» — тонка світла риска, що тане до хвоста. З'являється не одразу
+ * ([delayMs]) і плавно, щоб не кидатися в очі; зникає разом зі сторінкою.
  */
 @Composable
 fun TurnHint(modifier: Modifier = Modifier, delayMs: Long = TURN_HINT_DELAY) {
     var shown by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(delayMs); shown = true }
     val a by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, androidx.compose.animation.core.tween(900), label = "turnHint")
-    val color = if (AppStyle.glass) Oled.TextPrimary else com.blacklaunch.diary.ui.SheetInk
-    Canvas(modifier.padding(end = 20.dp, bottom = 16.dp).size(width = 44.dp, height = 22.dp)) {
+    val glass = AppStyle.glass
+    Canvas(modifier.padding(bottom = 12.dp).size(width = 52.dp, height = 14.dp)) {
         if (a <= 0f) return@Canvas
         val w = size.width
-        val h = size.height
-        val sw = 1.6.dp.toPx()
-        val end = androidx.compose.ui.geometry.Offset(w * 0.1f, h * 0.7f)
-        val ctrl = androidx.compose.ui.geometry.Offset(w * 0.55f, -h * 0.25f)
-        val arc = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.95f, h * 0.8f)
-            quadraticTo(ctrl.x, ctrl.y, end.x, end.y)
+        val y = size.height / 2
+        val tip = androidx.compose.ui.geometry.Offset(w * 0.04f, y)
+        val head = 6.dp.toPx()
+        val c = kotlin.math.cos(0.62f) * head
+        val n = kotlin.math.sin(0.62f) * head
+        if (glass) {
+            val sw = 1.2.dp.toPx()
+            val cap = androidx.compose.ui.graphics.StrokeCap.Round
+            drawLine(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    0f to Oled.TextPrimary.copy(alpha = 0.34f * a), 1f to Oled.TextPrimary.copy(alpha = 0f),
+                    startX = tip.x, endX = w,
+                ),
+                tip, androidx.compose.ui.geometry.Offset(w, y), sw, cap,
+            )
+            val ink = Oled.TextPrimary.copy(alpha = 0.34f * a)
+            drawLine(ink, tip, androidx.compose.ui.geometry.Offset(tip.x + c, y - n), sw, cap)
+            drawLine(ink, tip, androidx.compose.ui.geometry.Offset(tip.x + c, y + n), sw, cap)
+        } else {
+            // Олівець: рівний штрих із ледь помітним тремтінням і загостреними кінцями.
+            val ink = com.blacklaunch.diary.ui.SheetInk.copy(alpha = 0.42f * a)
+            val sw = 1.5.dp.toPx()
+            val shaft = List(17) { i -> androidx.compose.ui.geometry.Offset(w * 0.96f - (w * 0.92f) * i / 16f, y + kotlin.math.sin(i * 1.3f) * 0.25.dp.toPx()) }
+            drawPath(com.blacklaunch.diary.ui.taperedPath(shaft, sw), ink)
+            drawPath(com.blacklaunch.diary.ui.taperedPath(com.blacklaunch.diary.ui.quadPoints(androidx.compose.ui.geometry.Offset(tip.x + c, y - n), androidx.compose.ui.geometry.Offset(tip.x + c / 2, y - n / 2), tip, 8), sw), ink)
+            drawPath(com.blacklaunch.diary.ui.taperedPath(com.blacklaunch.diary.ui.quadPoints(androidx.compose.ui.geometry.Offset(tip.x + c, y + n), androidx.compose.ui.geometry.Offset(tip.x + c / 2, y + n / 2), tip, 8), sw), ink)
         }
-        val ink = androidx.compose.ui.graphics.drawscope.Stroke(sw, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
-        drawPath(arc, color, alpha = 0.38f * a, style = ink)
-        // Вістря — уздовж дотичної в кінці дуги.
-        val dx = end.x - ctrl.x
-        val dy = end.y - ctrl.y
-        val len = kotlin.math.hypot(dx, dy)
-        val ux = dx / len
-        val uy = dy / len
-        val head = 7.dp.toPx()
-        val head1 = androidx.compose.ui.graphics.Path().apply {
-            for (s in listOf(1f, -1f)) {
-                val c = kotlin.math.cos(0.6f)
-                val n = kotlin.math.sin(0.6f) * s
-                moveTo(end.x, end.y)
-                lineTo(end.x - head * (ux * c - uy * n), end.y - head * (uy * c + ux * n))
-            }
-        }
-        drawPath(head1, color, alpha = 0.38f * a, style = ink)
     }
 }
 

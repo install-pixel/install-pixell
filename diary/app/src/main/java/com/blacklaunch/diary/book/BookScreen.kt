@@ -49,6 +49,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -223,17 +225,17 @@ fun BookScreen(
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val style = pageTextStyle(u.coerceAtLeast(0.01f), density, glass)
     val splitCache = remember(glass, pageW) { HashMap<String, PageSplit>() }
-    fun splitFor(text: String, photo: Boolean, audio: Boolean, torn: Int = 0): PageSplit {
-        // Вирвана сторінка місця не дає: вирвали першу — увесь текст на другій; другу — лише на першій.
-        val first = if (torn and 1 != 0) 0 else PageMetrics.firstLines(photo, audio)
-        val second = if (torn and 2 != 0) 0 else PageMetrics.secondLines
-        if (pageW <= 0f) return PageSplit(text.length, true, 0)
+    fun splitFor(text: String, photo: Boolean, audio: Boolean, torn: Int = 0, drawing: Int = 0): PageSplit {
+        // Вирвана сторінка місця не дає: текст переходить одразу на наступну.
+        fun capacity(part: Int): Int = if (torn and (1 shl part) != 0) 0 else if (part == 0) PageMetrics.firstLines(photo, audio, drawing) else PageMetrics.secondLines
+        val first = capacity(0)
+        if (pageW <= 0f) return PageSplit(listOf(0), text.length, 0)
         // Короткий текст без багатьох рядків точно вміщається на першій — без вимірювань.
-        if (first > 0 && text.length < first * 12 && text.count { it == '\n' } < first - 1) return PageSplit(text.length, true, 1)
-        val key = "$photo$audio$torn" + text
+        if (first > 0 && text.length < first * 12 && text.count { it == '\n' } < first - 1) return PageSplit(listOf(0), text.length, 1)
+        val key = "$photo$audio$torn$drawing" + text
         splitCache[key]?.let { return it }
-        // Текст, що починається вгорі сторінки (перша без фото й голосу, друга завжди), — перший рядок із відступом за
-        // закладкою-пошуком; тож першу сторінку й продовження міряємо окремо, кожну зі своїм відступом.
+        // Текст, що починається вгорі сторінки (перша без фото й голосу, решта завжди), — перший рядок із відступом за
+        // закладкою-пошуком; тож кожну сторінку міряємо окремо, зі своїм відступом.
         val indent = ribbonIndentPx(u, density)
         val cons = Constraints(maxWidth = (PageMetrics.textWidth * u).toInt().coerceAtLeast(1))
         fun usedLines(l: androidx.compose.ui.text.TextLayoutResult, t: String): Int {
@@ -241,14 +243,11 @@ fun BookScreen(
             val trimmed = t.trimEnd().length
             return if (trimmed == 0) 0 else l.getLineForOffset(trimmed - 1) + 1
         }
-        val l = measurer.measure(indentFirstParagraph(text, if (!photo && !audio) indent else 0f, density), style, constraints = cons)
-        val starts = List(l.lineCount) { l.getLineStart(it) }
-        val base = splitPages(text.length, starts, first, second)
-        val used = if (base.split >= text.length) usedLines(l, text) else {
-            val rest = text.substring(base.split)
-            first + usedLines(measurer.measure(indentFirstParagraph(rest, indent, density), style, constraints = cons), rest)
+        val r = splitPages(text.length, ::capacity) { part, from ->
+            val rest = text.substring(from)
+            val l = measurer.measure(indentFirstParagraph(rest, if (part == 0 && (photo || audio)) 0f else indent, density), style, constraints = cons)
+            List(l.lineCount) { from + l.getLineStart(it) } to usedLines(l, rest)
         }
-        val r = base.copy(fits = used <= first + second, lines = used)
         if (splitCache.size > 200) splitCache.clear()
         splitCache[key] = r
         return r
@@ -260,8 +259,8 @@ fun BookScreen(
      * Які місця є на першій сторінці дня: фото / голос, якщо вони вже є, або порожнє місце-запрошення, якщо в щоденнику
      * це увімкнено, на цей день його не прибрали й воно вміщається разом із текстом (інакше місце віддається тексту).
      */
-    fun slotsFor(d: com.blacklaunch.diary.data.Day, text: String = d.text): Pair<Boolean, Boolean> {
-        if (d.torn and 1 != 0) return false to false
+    fun slotsFor(d: com.blacklaunch.diary.data.Day, text: String = d.text): Slots {
+        if (d.torn and 1 != 0) return Slots(false, false, 0)
         val hasP = d.photo
         val hasA = d.audio || d.audioB || recording?.day == d.day
         // Висохлий день — без місць-запрошень: додати вже нічого не можна.
@@ -270,18 +269,20 @@ fun BookScreen(
         val wantA = open && !hasA && info.voice && !d.noAudio
         var p = hasP || wantP
         var a = hasA || wantA
-        if (wantA && !splitFor(text, p, a, d.torn).fits) a = hasA
-        if (wantP && !splitFor(text, p, a, d.torn).fits) p = hasP
-        return p to a
+        // Малюнок дня: є полотно — мініатюра (і на висохлих сторінках: малюнок не висихає); немає — запрошення пунктиром,
+        // поки сторінка свіжа (на висохлій розкладка тексту вже не змінюється).
+        val drawing = when {
+            d.ink.any { it.page == CANVAS_PART } -> 2
+            open && info.drawings -> 1
+            else -> 0
+        }
+        return Slots(p, a, drawing)
     }
     /** Поділ тексту дня з його місцями й вирваними сторінками. */
     fun splitDay(d: com.blacklaunch.diary.data.Day, text: String = d.text): PageSplit =
-        slotsFor(d, text).let { splitFor(text, it.first, it.second, d.torn) }
-    fun roomFor(day: Long, photo: Boolean): Boolean {
-        val d = vm.day(day)
-        val (p, a) = slotsFor(d)
-        return if (photo) p || splitFor(d.text, true, a, d.torn).fits else a || splitFor(d.text, p, true, d.torn).fits
-    }
+        slotsFor(d, text).let { splitFor(text, it.photo, it.audio, d.torn, it.drawing) }
+    // Сторінок на день скільки завгодно — місце для фото й голосу є завжди.
+    @Suppress("UNUSED_PARAMETER") fun roomFor(day: Long, photo: Boolean): Boolean = true
 
     var menuOpen by remember(info.id) { mutableStateOf(false) }
     var coverEdit by remember(info.id) { mutableStateOf(false) }
@@ -302,10 +303,15 @@ fun BookScreen(
             val t = day.torn
             val shown = d in dayList
             val split = splitDay(day)
-            if (t and 1 != 0) add(BookPage.DayPart(d, 0) to true) else if (shown) add(BookPage.DayPart(d, 0) to false)
-            val second = if (t and 1 != 0) day.text.isNotBlank() || day.ink.any { it.page == 1 } || d == today || d in extraDays
-            else shown && (split.split < day.text.length || day.ink.any { it.page == 1 })
-            if (t and 2 != 0) add(BookPage.DayPart(d, 1) to true) else if (second) add(BookPage.DayPart(d, 1) to false)
+            // Сторінок у дня стільки, скільки займає текст (і малюнки на них); вирвані лишаються на своїх місцях.
+            val inkMax = day.ink.filter { it.page >= 0 }.maxOfOrNull { it.page } ?: 0
+            val tornMax = 31 - Integer.numberOfLeadingZeros(t)
+            var count = maxOf(if (shown) split.pages else 0, if (shown) inkMax + 1 else 0, tornMax + 1)
+            // Усі сторінки дня вирвані — ще одна чиста, щоб було де писати (якщо є що показати).
+            if (count > 0 && (0 until count).all { t and (1 shl it) != 0 } && (day.text.isNotBlank() || d == today || d in extraDays)) count++
+            for (k in 0 until count.coerceAtMost(MAX_DAY_PAGES)) {
+                if (t and (1 shl k) != 0) add(BookPage.DayPart(d, k) to true) else if (shown) add(BookPage.DayPart(d, k) to false)
+            }
             // Полотно дня — окремий чистий аркуш після сторінок дня (якщо його створили).
             if (shown && day.ink.any { it.page == CANVAS_PART }) add(BookPage.DayPart(d, CANVAS_PART) to false)
         }
@@ -466,7 +472,7 @@ fun BookScreen(
         val partTarget = if (mark != null) {
             val d = vm.day(day)
             val split = splitDay(d)
-            if ((d.torn and 1 != 0) || (mark.first >= split.split && split.split < d.text.length)) BookPage.DayPart(day, 1) else target
+            BookPage.DayPart(day, split.partOf(mark.first))
         } else target
         highlight = mark?.let { day to it }
         pendingFlip = partTarget
@@ -601,19 +607,17 @@ fun BookScreen(
             // впирається в кінець дня.
             val full = absorbBlankLines(input, cursor) { t -> splitDay(d, t).fits }
             val split = splitDay(d, full)
-            if (!split.fits) {
-                // Стирати можна завжди — навіть коли день уже переповнений; не можна лише додавати понад місце.
-                val old = splitDay(d)
-                if (split.lines > old.lines) { vm.show(R.string.day_full); return@TextSink false }
-            }
+            // Курсор уже переходить на іншу сторінку: літери, що ще прилетіли на цю, не приймаємо (інакше вони стали б
+            // не на своє місце).
+            val pending = focusReq
+            if (pending != null && pending.first == day && pending.second != part && split.partOf(cursor) != part) return@TextSink false
             vm.editText(day, full)
-            if (part == 0 && d.torn and 2 == 0 && split.split < full.length && cursor >= split.split) {
-                // Сторінка закінчилась — переходимо на продовження дня, курсор там само.
-                focusReq = Triple(day, 1, cursor)
-                pendingFlip = BookPage.DayPart(day, 1)
-            } else if (part == 1 && d.torn and 1 == 0 && (cursor < split.split || split.split >= full.length)) {
-                focusReq = Triple(day, 0, cursor)
-                pendingFlip = BookPage.DayPart(day, 0)
+            // Курсор пішов за межі сторінки (сторінка закінчилась — далі наступна; стер до початку — попередня):
+            // гортаємо туди, курсор там само.
+            val target = split.partOf(cursor)
+            if (target != part) {
+                focusReq = Triple(day, target, cursor)
+                pendingFlip = BookPage.DayPart(day, target)
             }
             true
         }
@@ -640,11 +644,21 @@ fun BookScreen(
         }
         override fun recordVoice(day: Long) = openRecorder(day)
         override fun dismissSlot(day: Long, photo: Boolean) = vm.dismissSlot(day, photo)
-        override fun joinBack(day: Long, at: Int) {
-            // Backspace на початку другої сторінки — стерти останній символ першої (якщо він не висох).
+        override fun openCanvas(day: Long) {
+            val d = vm.day(day)
+            if (d.ink.any { it.page == CANVAS_PART }) { pendingFlip = BookPage.DayPart(day, CANVAS_PART); return }
+            vm.setInk(day, d.ink + com.blacklaunch.diary.data.InkLine(CANVAS_PART, FloatArray(0), FloatArray(0), FloatArray(0), 0f, System.currentTimeMillis(), InkKind.CANVAS))
+            pendingFlip = BookPage.DayPart(day, CANVAS_PART)
+            // Нове полотно — одразу малювати (олівцем).
+            focusManager.clearFocus()
+            ink = InkSession(day, CANVAS_PART).also { it.tool = InkTool.Pencil }
+        }
+        override fun deleteCanvas(day: Long) { dialog = BookDialog.CanvasDelete(day) }
+        override fun joinBack(day: Long, part: Int, at: Int) {
+            // Backspace на початку сторінки — стерти останній символ попередньої (якщо він не висох).
             val d = vm.dayNow(day)
             if (at <= d.sealed.length || at > d.text.length) return
-            textSink(day, 1).change(d.text.removeRange(at - 1, at), at - 1)
+            textSink(day, part).change(d.text.removeRange(at - 1, at), at - 1)
         }
     }
 
@@ -680,6 +694,7 @@ fun BookScreen(
         Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SwitchRow(stringResource(R.string.settings_photos), info.photos, subtitle = stringResource(R.string.settings_photos_desc)) { vm.setPhotosOn(info.id, it) }
             SwitchRow(stringResource(R.string.settings_voice), info.voice, subtitle = stringResource(R.string.settings_voice_desc)) { vm.setVoiceOn(info.id, it) }
+            SwitchRow(stringResource(R.string.settings_drawings), info.drawings, subtitle = stringResource(R.string.settings_drawings_desc)) { vm.setDrawingsOn(info.id, it) }
             SwitchRow(stringResource(R.string.settings_carry_place), info.carryPlace, subtitle = stringResource(R.string.settings_carry_place_desc)) { vm.setCarryPlace(info.id, it) }
             SwitchRow(stringResource(R.string.settings_open_today), !info.openFirst, subtitle = stringResource(R.string.settings_open_today_desc)) { vm.setOpenFirst(info.id, !it) }
         }
@@ -803,7 +818,7 @@ fun BookScreen(
                         blankUnder = {
                             val day = currentDay ?: today
                             DayPage(
-                                host = host, day = com.blacklaunch.diary.data.Day(day), part = 1, split = 0,
+                                host = host, day = com.blacklaunch.diary.data.Day(day), part = 1, segStart = 0, segEnd = 0,
                                 photoSlot = false, audioSlot = false, pageWidthPx = size.width, hours = hours,
                                 highlight = null, ink = null, yearsAgo = null, editable = false,
                             )
@@ -856,7 +871,7 @@ fun BookScreen(
                                 )
                                 // Відкритий щоденник на обкладинці — за мить стрілочка: гортай.
                                 if (open != null && flip.index == 0 && !menuOpen) {
-                                    Box(Modifier.fillMaxSize()) { TurnHint(Modifier.align(Alignment.BottomEnd)) }
+                                    Box(Modifier.fillMaxSize()) { TurnHint(Modifier.align(Alignment.BottomCenter)) }
                                 }
                             }
                             BookPage.CoverEdit -> {
@@ -934,7 +949,7 @@ fun BookScreen(
                             ) { if (p.n == 0) DiaryMenu() else DiarySettings() }
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
-                                val (sp, sa) = slotsFor(d)
+                                val (sp, sa, sd) = slotsFor(d)
                                 val split = splitDay(d)
                                 val years = if (p.day == today) {
                                     val t = LocalDate.ofEpochDay(today)
@@ -944,9 +959,11 @@ fun BookScreen(
                                     host = host,
                                     day = d,
                                     part = p.part,
-                                    split = split.split,
+                                    segStart = split.start(p.part),
+                                    segEnd = split.end(p.part),
                                     photoSlot = sp,
                                     audioSlot = sa,
+                                    drawingSlot = sd,
                                     pageWidthPx = size.width,
                                     hours = hours,
                                     highlight = highlight?.takeIf { it.first == p.day }?.second,
@@ -1064,7 +1081,7 @@ fun BookScreen(
                                                     flip.tearFall = ((v - 0.55f) / 0.45f).coerceIn(0f, 1f)
                                                 }
                                                 val d = vm.day(tearPage.day)
-                                                vm.tearPage(tearPage.day, tearPage.part, splitDay(d).split)
+                                                vm.tearPage(tearPage.day, tearPage.part, splitDay(d).start(tearPage.part), splitDay(d).end(tearPage.part))
                                                 delay(30)
                                             } else {
                                                 // Передумали: кут лягає назад, розрив лишається (заклеєний скотчем).
@@ -1091,7 +1108,8 @@ fun BookScreen(
                 }
                 // Закладка-пошук — коротка стрічка згори біля корінця, поверх усього (і клаптиків вирваних): потягнув униз —
                 // пошук.
-                if (open != null && currentPage is BookPage.DayPart) {
+                // На полотні її немає: там лише малюнок.
+                if (open != null && currentPage is BookPage.DayPart && (currentPage as BookPage.DayPart).part != CANVAS_PART) {
                     SearchRibbon(
                         gear = gear,
                         pageW = pw,
@@ -1137,30 +1155,17 @@ fun BookScreen(
                         Tool(Glyph.Close, stringResource(R.string.close)) { photoTools = false },
                     ) else listOf(
                         Tool(Glyph.Pen, stringResource(R.string.ink_mode)) {
-                            // Висохлий день — малюнок, як і текст, уже не змінити.
-                            if (dry) vm.show(R.string.page_dry) else { focusManager.clearFocus(); ink = InkSession(day, part) }
+                            // Малюнок не висихає: малювати можна будь-коли, і на старих сторінках теж.
+                            focusManager.clearFocus(); ink = InkSession(day, part)
                         },
                     ) + if (part == CANVAS_PART) listOf(
                         // На полотні: прибрати полотно (з підтвердженням).
                         Tool(Glyph.Delete, stringResource(R.string.canvas_delete)) {
-                            if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.CanvasDelete(day)
+                            dialog = BookDialog.CanvasDelete(day)
                         },
                         Tool(Glyph.Shelf, stringResource(R.string.shelf)) { onShelf() },
                     ) else listOf(
-                        // Полотно: чистий аркуш для малювання після сторінок дня (є — перейти до нього).
-                        Tool(Glyph.Frame, stringResource(R.string.canvas)) {
-                            when {
-                                d.ink.any { it.page == CANVAS_PART } -> pendingFlip = BookPage.DayPart(day, CANVAS_PART)
-                                dry -> vm.show(R.string.page_dry)
-                                else -> {
-                                    vm.setInk(day, d.ink + com.blacklaunch.diary.data.InkLine(CANVAS_PART, FloatArray(0), FloatArray(0), FloatArray(0), 0f, System.currentTimeMillis(), InkKind.CANVAS))
-                                    pendingFlip = BookPage.DayPart(day, CANVAS_PART)
-                                    // Нове полотно — одразу малювати (олівцем).
-                                    focusManager.clearFocus()
-                                    ink = InkSession(day, CANVAS_PART).also { it.tool = InkTool.Pencil }
-                                }
-                            }
-                        },
+                        // Полотно (малюнок дня) — тепер на самій сторінці, місцем «Малюнок дня» під фото й голосом.
                         Tool(Glyph.Photo, stringResource(R.string.tool_photo)) {
                             when {
                                 d.photo -> dialog = BookDialog.Photo(day)
@@ -1378,6 +1383,7 @@ private fun PhotoViewer(vm: DiaryViewModel, day: Long, onDismiss: () -> Unit, on
  * торкнувся кружечка кольору — палітра. Ще раз — ховається. Малюєш на весь екран, налаштовуєш — коли треба.
  */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun InkToolbar(
     s: InkSession,
     lines: () -> List<com.blacklaunch.diary.data.InkLine>,
@@ -1390,7 +1396,11 @@ private fun InkToolbar(
     val haptics = LocalHaptics.current
     val glass = AppStyle.glass
     val ink = if (glass) Oled.TextPrimary else SheetInk
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(Unit) { InkFavourites.init(ctx) }
     fun commit(list: List<com.blacklaunch.diary.data.InkLine>) { s.undo += lines(); s.redo.clear(); setLines(list) }
+    // Покласти на палітру улюбленого — і показати її (видно, куди лягло).
+    fun toPalette(f: InkFav) { haptics.longPress(); InkFavourites.add(f); s.drawer = 4 }
     fun pick(rgb: Int) {
         haptics.tap()
         if (s.selection.isNotEmpty()) {
@@ -1402,7 +1412,7 @@ private fun InkToolbar(
         s.useColor(rgb)
     }
     @Composable
-    fun RowScope.BarIcon(selected: Boolean, desc: String, onClick: () -> Unit, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit) {
+    fun RowScope.BarIcon(selected: Boolean, desc: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit) {
         Box(
             Modifier
                 .weight(1f)
@@ -1410,7 +1420,7 @@ private fun InkToolbar(
                 .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                 .background(if (selected) ink.copy(alpha = 0.12f) else Color.Transparent)
                 .semantics { contentDescription = desc }
-                .clickable { haptics.tap(); onClick() },
+                .combinedClickable(onClick = { haptics.tap(); onClick() }, onLongClick = onLongClick),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.size(28.dp, 22.dp)) { draw(if (selected) ink else Oled.TextSecondary) }
@@ -1432,7 +1442,9 @@ private fun InkToolbar(
             enter = androidx.compose.animation.slideInVertically { it / 3 } + androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.slideOutVertically { it / 3 } + androidx.compose.animation.fadeOut(),
         ) {
-            Box(
+            // Палітра улюбленого — сама по собі, як справжня дощечка для фарб (без рамки шухлядки).
+            if (s.drawer == 4) FavPalette(s, ink, glass, onPick = { haptics.tap(); s.applyFav(it) }, onRemove = { haptics.longPress(); InkFavourites.remove(it) })
+            else Box(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
@@ -1441,7 +1453,7 @@ private fun InkToolbar(
                     .pencilFrame(18.dp, seed = 77, alpha = 0.35f, ink = SheetInk)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
-                if (s.drawer == 2) ColorDrawer(s, ink, ::pick)
+                if (s.drawer == 2) ColorDrawer(s, ink, ::pick, onFav = { toPalette(InkFav(null, it)) })
                 else if (s.drawer == 3) InkHelp(ink)
                 else ToolDrawer(s, ink, hasStencil = lines().any { it.page == s.part && it.kind == InkKind.STENCIL }, onRemoveStencil = {
                     // Зняти трафарет: плівка зникає, фарба з рівним краєм лишається.
@@ -1483,7 +1495,11 @@ private fun InkToolbar(
                     InkTool.Eraser -> R.string.ink_eraser
                     InkTool.Lasso -> R.string.ink_lasso
                 })
-                BarIcon(s.tool == t, label, onClick = {
+                BarIcon(s.tool == t, label, onLongClick = {
+                    // Затримати інструмент — покласти його (з усіма налаштуваннями й кольором) на палітру улюбленого.
+                    if (s.tool != t) { s.tool = t; s.clearSelection(); s.remember() }
+                    toPalette(s.captureFav())
+                }, onClick = {
                     s.picking = false
                     // Інший інструмент — вибрати й одразу показати його налаштування; той самий — сховати / показати.
                     // (Шухлядка сама ховається, щойно почав малювати.)
@@ -1505,6 +1521,10 @@ private fun InkToolbar(
                 val col = if (s.color == INK_RGB) ink else Color(0xFF000000.toInt() or s.color)
                 drawCircle(col, size.height * 0.42f, center)
                 drawCircle(c.copy(alpha = 0.6f), size.height * 0.42f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx()))
+            }
+            // Палітра улюбленого: кольори й готові інструменти (затримай колір чи інструмент — ляже сюди).
+            BarIcon(s.drawer == 4, stringResource(R.string.ink_palette), onClick = { s.drawer = if (s.drawer == 4) 0 else 4 }) { c ->
+                drawPaletteGlyph(c)
             }
             // «і» — як тут малювати (довідка в шухлядці).
             BarIcon(s.drawer == 3, stringResource(R.string.ink_help_title), onClick = { s.drawer = if (s.drawer == 3) 0 else 3 }) { c ->
@@ -1817,11 +1837,14 @@ private fun InkSlider(value: Float, desc: String, modifier: Modifier, onChange: 
  * малюнка) і свій колір (відтінок і тон — повзунками).
  */
 @Composable
-private fun ColorDrawer(s: InkSession, ink: Color, pick: (Int) -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun ColorDrawer(s: InkSession, ink: Color, pick: (Int) -> Unit, onFav: (Int) -> Unit = {}) {
     var custom by remember { mutableStateOf(false) }
     var hue by remember { mutableFloatStateOf(0.55f) }
-    var tone by remember { mutableFloatStateOf(0.7f) }
+    var tone by remember { mutableFloatStateOf(0.5f) }
     fun hsv(h: Float, v: Float, sat: Float = 0.42f): Int = android.graphics.Color.HSVToColor(floatArrayOf(h * 360f, sat, v)) and 0xFFFFFF
+    // Тон свого кольору: від чорного (0) через сам колір (0,5) до білого (1).
+    fun toned(h: Float, t: Float): Int = if (t <= 0.5f) hsv(h, t * 2f, 0.75f) else hsv(h, 1f, 0.75f * (2f - t * 2f))
     @Composable
     fun Swatch(rgb: Int, desc: String? = null) {
         val col = if (rgb == INK_RGB) ink else Color(0xFF000000.toInt() or rgb)
@@ -1831,7 +1854,8 @@ private fun ColorDrawer(s: InkSession, ink: Color, pick: (Int) -> Unit) {
                 .size(36.dp)
                 .clip(CircleShape)
                 .semantics { contentDescription = desc ?: "#%06X".format(rgb) }
-                .clickable { pick(rgb) },
+                // Затримати — покласти колір на палітру улюбленого.
+                .combinedClickable(onClick = { pick(rgb) }, onLongClick = { onFav(rgb) }),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.fillMaxSize()) {
@@ -1842,7 +1866,7 @@ private fun ColorDrawer(s: InkSession, ink: Color, pick: (Int) -> Unit) {
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (row in 0..1) {
+        for (row in 0 until Palette.size / 8) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 for (k in 0..7) {
                     val rgb = Palette[row * 8 + k]
@@ -1882,12 +1906,12 @@ private fun ColorDrawer(s: InkSession, ink: Color, pick: (Int) -> Unit) {
             }
         }
         if (custom) {
-            val preview = hsv(hue, 0.35f + 0.6f * tone)
-            InkSlider(hue, stringResource(R.string.ink_color), Modifier.fillMaxWidth(), onChange = { hue = it; pick(hsv(hue, 0.35f + 0.6f * tone)) }) { _ ->
+            val preview = toned(hue, tone)
+            InkSlider(hue, stringResource(R.string.ink_color), Modifier.fillMaxWidth(), onChange = { hue = it; pick(toned(hue, tone)) }) { _ ->
                 drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient((0..12).map { Color(0xFF000000.toInt() or hsv(it / 12f, 0.8f)) }), size = size)
             }
-            InkSlider(tone, stringResource(R.string.ink_color), Modifier.fillMaxWidth(), onChange = { tone = it; pick(hsv(hue, 0.35f + 0.6f * tone)) }) { _ ->
-                drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xFF000000.toInt() or hsv(hue, 0.35f)), Color(0xFF000000.toInt() or hsv(hue, 0.95f)))), size = size)
+            InkSlider(tone, stringResource(R.string.ink_color), Modifier.fillMaxWidth(), onChange = { tone = it; pick(toned(hue, tone)) }) { _ ->
+                drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Black, Color(0xFF000000.toInt() or toned(hue, 0.5f)), Color.White)), size = size)
             }
             if (preview == 0) Unit
         }
@@ -2063,17 +2087,29 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawToolGlyph(t: In
             }
         }
         InkTool.Brush -> {
+            // Пензлик — як той, що ходить сторінкою: лакована ручка звужується догори, металева обойма, круглий пучок
+            // із кінчиком у фарбі.
             rotate(40f, Offset(w * 0.5f, h * 0.5f)) {
                 val bx = w * 0.5f
-                drawLine(c, Offset(bx, h * -0.25f), Offset(bx, h * 0.38f), 2.4.dp.toPx(), cap = StrokeCap.Round)
-                drawRect(c, Offset(bx - w * 0.07f, h * 0.36f), androidx.compose.ui.geometry.Size(w * 0.14f, h * 0.16f), style = stroke)
+                val handle = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(bx - w * 0.035f, h * -0.16f); lineTo(bx + w * 0.035f, h * -0.16f)
+                    lineTo(bx + w * 0.075f, h * 0.4f); lineTo(bx - w * 0.075f, h * 0.4f); close()
+                }
+                drawPath(handle, c, style = stroke)
+                val fw = w * 0.17f
+                drawRect(c.copy(alpha = 0.45f), Offset(bx - fw / 2, h * 0.4f), androidx.compose.ui.geometry.Size(fw, h * 0.16f))
+                drawRect(c, Offset(bx - fw / 2, h * 0.4f), androidx.compose.ui.geometry.Size(fw, h * 0.16f), style = stroke)
                 val tuft = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(bx - w * 0.08f, h * 0.52f)
-                    cubicTo(bx - w * 0.13f, h * 0.7f, bx - w * 0.1f, h * 0.92f, bx, h * 0.94f)
-                    cubicTo(bx + w * 0.1f, h * 0.92f, bx + w * 0.13f, h * 0.7f, bx + w * 0.08f, h * 0.52f)
+                    moveTo(bx - fw * 0.5f, h * 0.56f)
+                    cubicTo(bx - fw * 0.62f, h * 0.68f, bx - fw * 0.55f, h * 0.86f, bx - fw * 0.28f, h * 0.95f)
+                    quadraticTo(bx, h * 1.01f, bx + fw * 0.28f, h * 0.95f)
+                    cubicTo(bx + fw * 0.55f, h * 0.86f, bx + fw * 0.62f, h * 0.68f, bx + fw * 0.5f, h * 0.56f)
                     close()
                 }
-                drawPath(tuft, c)
+                drawPath(tuft, c.copy(alpha = 0.55f))
+                drawPath(tuft, c, style = stroke)
+                // Кінчик у фарбі — суцільний.
+                clipPath(tuft) { drawRect(c, Offset(bx - fw, h * 0.8f), androidx.compose.ui.geometry.Size(fw * 2, h * 0.25f)) }
             }
         }
         InkTool.Lasso -> {
@@ -2097,17 +2133,27 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawToolGlyph(t: In
             drawLine(c, Offset(w * 0.04f, h * 0.76f), Offset(w * 0.96f, h * 0.76f), st, cap = StrokeCap.Round)
         }
         InkTool.Pencil -> {
-            // Механічний олівець: корпус, тримач, конус і стрижень.
+            // Механічний олівець — як той, що ходить сторінкою: кнопка, ковпачок із кліпсою, корпус, рифлений тримач,
+            // конус, гільза й гострий стрижень.
             rotate(40f, Offset(w * 0.5f, h * 0.5f)) {
                 val bx = w * 0.5f
-                val bw = w * 0.17f
-                drawRect(c, Offset(bx - bw / 2, h * -0.25f), androidx.compose.ui.geometry.Size(bw, h * 0.62f), style = stroke)
-                drawRect(c.copy(alpha = 0.45f), Offset(bx - bw / 2, h * 0.2f), androidx.compose.ui.geometry.Size(bw, h * 0.17f))
+                val bw = w * 0.19f
+                val r = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+                drawRoundRect(c, Offset(bx - bw * 0.28f, h * -0.17f), androidx.compose.ui.geometry.Size(bw * 0.56f, h * 0.07f), r)
+                drawRect(c, Offset(bx - bw / 2, h * -0.1f), androidx.compose.ui.geometry.Size(bw, h * 0.1f))
+                drawLine(c, Offset(bx + bw * 0.62f, h * -0.07f), Offset(bx + bw * 0.62f, h * 0.2f), 1.3.dp.toPx(), cap = StrokeCap.Round)
+                drawRect(c, Offset(bx - bw / 2, h * 0f), androidx.compose.ui.geometry.Size(bw, h * 0.38f), style = stroke)
+                drawRect(c.copy(alpha = 0.5f), Offset(bx - bw / 2, h * 0.38f), androidx.compose.ui.geometry.Size(bw, h * 0.2f))
+                for (k in 1..3) drawLine(c, Offset(bx - bw / 2, h * (0.38f + k * 0.05f)), Offset(bx + bw / 2, h * (0.38f + k * 0.05f)), 0.9.dp.toPx())
                 val cone = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(bx - bw / 2, h * 0.37f); lineTo(bx + bw / 2, h * 0.37f); lineTo(bx + bw * 0.12f, h * 0.62f); lineTo(bx - bw * 0.12f, h * 0.62f); close()
+                    moveTo(bx - bw / 2, h * 0.58f); lineTo(bx + bw / 2, h * 0.58f); lineTo(bx + bw * 0.14f, h * 0.76f); lineTo(bx - bw * 0.14f, h * 0.76f); close()
                 }
                 drawPath(cone, c, style = stroke)
-                drawLine(c, Offset(bx, h * 0.62f), Offset(bx, h * 0.8f), 1.4.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(c, Offset(bx, h * 0.76f), Offset(bx, h * 0.85f), 2.dp.toPx())
+                val lead = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(bx - 0.9.dp.toPx(), h * 0.85f); lineTo(bx + 0.9.dp.toPx(), h * 0.85f); lineTo(bx, h * 0.98f); close()
+                }
+                drawPath(lead, c)
             }
         }
     }
@@ -2303,3 +2349,130 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBrushModeGlyph(
 /** Щоденник завжди відкривається на сьогоднішньому дні (закладки-позначки більше немає — вона стала пошуком). */
 @Suppress("UNUSED_PARAMETER")
 private fun openTargetDay(days: List<Long>, today: Long, bookmark: Long?, atBookmark: Boolean): Long = today
+
+/** Місця на першій сторінці дня: фото, голос і малюнок (0 — немає, 1 — запрошення, 2 — мініатюра). */
+data class Slots(val photo: Boolean, val audio: Boolean, val drawing: Int)
+
+/** Значок палітри: дощечка з отвором для пальця і трьома цятками фарби. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPaletteGlyph(c: Color) {
+    val w = size.width
+    val h = size.height
+    val board = paletteBoard(w, h)
+    drawPath(board, c, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
+    listOf(0.24f to 0.38f, 0.42f to 0.24f, 0.62f to 0.24f).forEach { (x, y) -> drawCircle(c, size.minDimension * 0.1f, Offset(w * x, h * y)) }
+    drawCircle(c, size.minDimension * 0.1f, Offset(w * 0.3f, h * 0.68f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx()))
+}
+
+/** Обрис дощечки для фарб (зі вм'ятиною для пальця й отвором) у прямокутнику [w]×[h]. */
+private fun paletteBoard(w: Float, h: Float): androidx.compose.ui.graphics.Path {
+    val outline = androidx.compose.ui.graphics.Path().apply {
+        moveTo(w * 0.05f, h * 0.55f)
+        cubicTo(w * -0.01f, h * 0.15f, w * 0.25f, h * 0.02f, w * 0.5f, h * 0.04f)
+        cubicTo(w * 0.8f, h * 0.0f, w * 1.0f, h * 0.15f, w * 0.985f, h * 0.45f)
+        cubicTo(w * 0.975f, h * 0.7f, w * 0.88f, h * 0.76f, w * 0.82f, h * 0.68f)
+        cubicTo(w * 0.76f, h * 0.6f, w * 0.68f, h * 0.64f, w * 0.7f, h * 0.8f)
+        cubicTo(w * 0.72f, h * 0.99f, w * 0.5f, h * 1.0f, w * 0.3f, h * 0.97f)
+        cubicTo(w * 0.12f, h * 0.94f, w * 0.09f, h * 0.8f, w * 0.05f, h * 0.55f)
+        close()
+    }
+    val hole = androidx.compose.ui.graphics.Path().apply {
+        addOval(androidx.compose.ui.geometry.Rect(Offset(w * 0.87f, h * 0.38f), androidx.compose.ui.geometry.Size(w * 0.035f, h * 0.12f).let { androidx.compose.ui.geometry.Size(it.width * 2, it.height * 2) }.let { sz -> sz }).translate(-w * 0.035f, -h * 0.12f))
+    }
+    return androidx.compose.ui.graphics.Path.combine(androidx.compose.ui.graphics.PathOperation.Difference, outline, hole)
+}
+
+/**
+ * Палітра улюбленого — над панеллю інструментів, як справжня дощечка для фарб у стилі теми: угорі цятки улюблених
+ * кольорів, унизу — готові інструменти (з тим самим кольором, товщиною, усім). Дотик — узяти; затримати — прибрати з
+ * палітри. Порожні місця — ледь помітні лунки (покласти сюди: затримати колір чи інструмент).
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FavPalette(s: InkSession, ink: Color, glass: Boolean, onPick: (InkFav) -> Unit, onRemove: (InkFav) -> Unit) {
+    val colors = InkFavourites.colors
+    val tools = InkFavourites.tools
+    val current = s.captureFav()
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(136.dp)) {
+        val bw = constraints.maxWidth.toFloat()
+        val bh = constraints.maxHeight.toFloat()
+        Canvas(Modifier.fillMaxSize()) {
+            val board = paletteBoard(size.width, size.height)
+            if (glass) {
+                drawPath(board, Brush.verticalGradient(listOf(Color(0xF0202227), Color(0xF0111215))))
+                drawPath(board, Brush.verticalGradient(listOf(Color(0x40FFFFFF), Color(0x14FFFFFF))), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            } else {
+                drawPath(board, Color(0xF21B1814))
+                // Сліди фарби довкола лунок — палітрою вже користувались.
+                colors.forEachIndexed { i, f ->
+                    val t = i / (InkFavourites.MAX_COLORS - 1f)
+                    val col = if (f.rgb == INK_RGB) ink else Color(0xFF000000.toInt() or f.rgb)
+                    drawCircle(col.copy(alpha = 0.1f), 20.dp.toPx(), Offset(size.width * (0.17f + 0.58f * t) + 5.dp.toPx(), size.height * (0.3f - 0.06f * kotlin.math.sin(t * Math.PI.toFloat())) + 4.dp.toPx()))
+                }
+                drawPath(board, SheetInk.copy(alpha = 0.5f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
+            }
+        }
+        val dens = androidx.compose.ui.platform.LocalDensity.current
+        @Composable
+        fun Well(cx: Float, cy: Float, fav: InkFav?, colorWell: Boolean) {
+            val d = 34.dp
+            val dpx = with(dens) { d.toPx() }
+            val selected = fav != null && current.let { c -> if (fav.tool == null) c.rgb == fav.rgb else c.same(fav) }
+            Box(
+                Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset((cx - dpx / 2).toInt(), (cy - dpx / 2).toInt()) }
+                    .size(d)
+                    .clip(CircleShape)
+                    .then(if (fav == null) Modifier else Modifier.combinedClickable(onClick = { onPick(fav) }, onLongClick = { onRemove(fav) })),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val r = size.minDimension / 2f
+                    if (fav == null) {
+                        drawCircle(ink.copy(alpha = 0.18f), r * 0.62f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))))
+                        return@Canvas
+                    }
+                    val col = if (fav.rgb == INK_RGB) ink else Color(0xFF000000.toInt() or fav.rgb)
+                    if (colorWell) {
+                        // Цятка фарби: трохи нерівна, з вологим відблиском.
+                        val seed = fav.rgb
+                        val blob = androidx.compose.ui.graphics.Path().apply {
+                            val n = 12
+                            for (k in 0..n) {
+                                val a = k * 2f * Math.PI.toFloat() / n
+                                val rr = r * (0.66f + 0.08f * kotlin.math.sin(a * 3f + seed % 7))
+                                val x = center.x + kotlin.math.cos(a) * rr
+                                val y = center.y + kotlin.math.sin(a) * rr
+                                if (k == 0) moveTo(x, y) else lineTo(x, y)
+                            }
+                            close()
+                        }
+                        drawPath(blob, col)
+                        drawPath(blob, Color.Black.copy(alpha = 0.35f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+                        drawOval(Color.White.copy(alpha = 0.28f), Offset(center.x - r * 0.38f, center.y - r * 0.42f), androidx.compose.ui.geometry.Size(r * 0.34f, r * 0.2f))
+                    } else {
+                        drawCircle(if (glass) Color(0xFF26282D) else Color(0xFF2A2620), r * 0.9f, center)
+                        val gw = r * 1.15f
+                        val gh = gw * 22f / 28f
+                        translate(center.x - gw / 2f, center.y - gh / 2f) {
+                            val sz = androidx.compose.ui.geometry.Size(gw, gh)
+                            drawContext.size.let { old ->
+                                drawContext.size = sz
+                                drawToolGlyph(fav.tool!!, col)
+                                drawContext.size = old
+                            }
+                        }
+                    }
+                    if (selected) drawCircle(ink.copy(alpha = 0.9f), r * 0.95f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()))
+                }
+            }
+        }
+        for (i in 0 until InkFavourites.MAX_COLORS) {
+            val t = i / (InkFavourites.MAX_COLORS - 1f)
+            Well(bw * (0.17f + 0.58f * t), bh * (0.3f - 0.06f * kotlin.math.sin(t * Math.PI.toFloat())), colors.getOrNull(i), true)
+        }
+        for (i in 0 until InkFavourites.MAX_TOOLS) {
+            val t = i / (InkFavourites.MAX_TOOLS - 1f)
+            Well(bw * (0.19f + 0.45f * t), bh * (0.68f + 0.04f * kotlin.math.sin(t * Math.PI.toFloat())), tools.getOrNull(i), false)
+        }
+    }
+}

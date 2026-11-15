@@ -135,6 +135,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setPhotosOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(photos = on) else it })
     fun setVoiceOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(voice = on) else it })
+    fun setDrawingsOn(id: String, on: Boolean) = saveShelf(shelf.map { if (it.id == id) it.copy(drawings = on) else it })
 
     /** Прибрати порожнє місце під фото / голос на цей день (з «Повернути»): його займе текст. */
     fun dismissSlot(epochDay: Long, photo: Boolean) {
@@ -350,51 +351,45 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Новий текст дня. Висохла частина лишається як була (це перевіряє сторінка), решта — свіже чорнило. */
     /**
-     * Вирвати сторінку дня — назавжди, без «Повернути». [split] — де текст переходить на другу сторінку. Перша: зникають
-     * фото, голос, місце, підпис, текст до [split] і малюнок першої сторінки; друга: текст від [split] і її малюнок.
+     * Вирвати сторінку дня — назавжди, без «Повернути». [start]…[end] — текст цієї сторінки: він зникає разом із її
+     * малюнком; перша сторінка забирає ще й фото, голос, місце й підпис.
      */
-    fun tearPage(epochDay: Long, part: Int, split: Int) {
+    fun tearPage(epochDay: Long, part: Int, start: Int, end: Int) {
         val o = open ?: return
         val d = dayNow(epochDay)
-        val text = d.text
-        val cut = split.coerceIn(0, text.length)
+        // Полотно вирвали — його просто немає (з малюнком), клаптика не лишається.
+        if (part == com.blacklaunch.diary.data.CANVAS_PAGE) { update(d.copy(ink = d.ink.filter { it.page != part })); return }
         // Свіжа (ще не висохла) сторінка вирвалась — на її місці нова чиста: місце дня не зменшується, клаптика немає.
         // Висохла — назавжди: лишається клаптик, сторінку дня втрачено.
         val renew = !isDry(epochDay)
-        // Полотно вирвали — його просто немає (з малюнком), клаптика не лишається.
-        if (part == 2) { update(d.copy(ink = d.ink.filter { it.page != 2 })); return }
-        val torn = if (part == 0) {
+        val text = d.text
+        val s = start.coerceIn(0, text.length)
+        val e = end.coerceIn(s, text.length)
+        val rest = text.removeRange(s, e)
+        val sl = d.sealed.length
+        val sealedLen = sl - (minOf(e, sl) - minOf(s, sl))
+        var n = d.copy(
+            sealed = rest.take(sealedLen),
+            fresh = rest.drop(sealedLen),
+            strikes = d.strikes.filter { it.end <= s || it.start >= e }.map { if (it.start >= e) Strike(it.start - (e - s), it.end - (e - s)) else it },
+            ink = d.ink.filter { it.page != part },
+            torn = if (renew || part !in 0 until com.blacklaunch.diary.book.MAX_DAY_PAGES) d.torn else d.torn or (1 shl part),
+            tearTry0 = if (renew && part == 0) 0f else d.tearTry0,
+            tearTry1 = if (renew && part == 1) 0f else d.tearTry1,
+        )
+        if (part == 0) {
             o.db.photoFile(epochDay).delete()
             o.db.audioFile(epochDay).delete()
             Photos.cache.remove("photo_${epochDay}_true")
             Photos.cache.remove("photo_${epochDay}_false")
-            val keep = text.substring(cut)
-            val sealed = if (cut < d.sealed.length) d.sealed.substring(cut) else ""
-            d.copy(
-                place = "", caption = "", photo = false, audio = false, audioMs = 0, wave = emptyList(),
-                sealed = sealed, fresh = keep.substring(sealed.length),
-                strikes = d.strikes.filter { it.start >= cut }.map { Strike(it.start - cut, it.end - cut) },
-                ink = d.ink.filter { it.page != 0 },
-                torn = if (renew) d.torn else d.torn or 1,
-                tearTry0 = if (renew) 0f else d.tearTry0,
-            )
-        } else {
-            val keep = text.substring(0, cut)
-            val sealed = d.sealed.take(cut)
-            d.copy(
-                sealed = sealed, fresh = keep.substring(sealed.length),
-                strikes = d.strikes.filter { it.end <= cut },
-                ink = d.ink.filter { it.page != 1 },
-                torn = if (renew) d.torn else d.torn or 2,
-                tearTry1 = if (renew) 0f else d.tearTry1,
-            )
+            n = n.copy(place = "", caption = "", photo = false, audio = false, audioMs = 0, wave = emptyList())
         }
-        update(torn)
+        update(n)
     }
 
     /** Передумали вирвати: запам'ятати, до якої висоти надірвано (лише найвищу межу). */
     fun setTearTry(epochDay: Long, part: Int, k: Float) {
-        if (part > 1) return
+        if (part !in 0..1) return
         val d = day(epochDay)
         update(if (part == 0) d.copy(tearTry0 = maxOf(d.tearTry0, k)) else d.copy(tearTry1 = maxOf(d.tearTry1, k)))
     }

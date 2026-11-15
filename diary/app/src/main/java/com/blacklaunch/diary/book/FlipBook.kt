@@ -372,7 +372,9 @@ fun FlipBook(
         } else {
             // Гортаєш назад: сторінка, що лежить, — та сама, що й була, разом із силуетом під нею, доки її не накриє.
             if (!state.forward) seeThrough(under!!)?.takeIf { it != top }?.let { slots += Slot(it, Role.Peek, preview = true) }
-            slots += Slot(under!!, Role.Under, preview = state.forward)
+            // Та, що відкривається, — уже жива (не прев'ю): курсор, перенесений на неї, стає там одразу, на початку
+            // гортання, — і літери, набрані під час руху, не потрапляють на попередню сторінку.
+            slots += Slot(under!!, Role.Under, preview = false)
             backIdx = if (state.forward) backOf?.invoke(top!!, under)?.takeIf { it in 0 until currentCount && it != top && it != under } else null
             frontIdx = if (backIdx != null) (top!! + 1).takeIf { it < under && it != backIdx } else null
             frontIdx?.let { slots += Slot(it, Role.Stack, preview = true) }

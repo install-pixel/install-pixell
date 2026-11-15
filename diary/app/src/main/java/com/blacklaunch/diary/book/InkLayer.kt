@@ -120,21 +120,27 @@ object InkStyle {
 /** Позначка в [InkLine.style]: замкнена фігура (рамка, овал) — рівна товщина без звуження на кінцях. */
 const val FIG_CLOSED = 1000
 
-/** Номер «сторінки» полотна дня ([InkLine.page]): окремий чистий аркуш після сторінок дня. */
-const val CANVAS_PART = 2
+/**
+ * Номер «сторінки» полотна дня ([InkLine.page]): окремий чистий аркуш після сторінок дня. Сторінок тексту тепер скільки
+ * завгодно (0, 1, 2…), тож полотно — окремо, від'ємним номером (давні записи з 2 перекладає [DayCodec]).
+ */
+const val CANVAS_PART = -1
 
 /** «Колір чорнила теми» (у [InkLine.color] — замість справжнього RGB): у «Склі» світле, на «Аркуші» — білий олівець. */
 const val INK_RGB = 0x010101
 
 /**
  * Палітра — приглушені кольори, що не кричать на темному склі й папері: чорнило теми, графіт, крейда, теплі (червоні,
- * теракота, охра, пісок), зелені, бірюза, сині, фіалка, рожевий, горіх.
+ * теракота, охра, пісок), зелені, бірюза, сині, фіалка, рожевий, горіх; і ряд повних — чорний, білий, яскраві.
  */
 internal val Palette = intArrayOf(
     INK_RGB, 0x8C8F96, 0xE6E2DA, 0xD27A70,
     0xA8564F, 0xD39B66, 0xD6C277, 0xA9C27C,
     0x6FAF8A, 0x5FA9A6, 0x72A3CF, 0x7486C9,
     0x9884C9, 0xC985AE, 0xA4825F, 0xC7B498,
+    // Повні й чисті: чорний, темний графіт, білий і яскраві — для світлих тем і коли треба саме такий колір.
+    0x000000, 0x3A3C40, 0xFFFFFF, 0xE53935,
+    0xF57C00, 0xFDD835, 0x43A047, 0x1E88E5,
 )
 
 /** ARGB штриха з кольору палітри й прозорості (0…1). */
@@ -219,6 +225,9 @@ class InkSession(val day: Long, val part: Int) {
     /** Виділене ласо: time штрихів і їхня рамка (частки ширини сторінки). */
     var selection by mutableStateOf<Set<Long>>(emptySet())
     var selBounds by mutableStateOf<Rect?>(null)
+    /** Як намалювати інструмент-курсор (малює сторінка, поверх паперу); і на скільки він повернутий біля краю. */
+    var cursorPaint by mutableStateOf<(DrawScope.() -> Unit)?>(null)
+    internal val cursorTurn = androidx.compose.animation.core.Animatable(0f)
 
     val width: Float get() = tool.widthAt(size)
     val kind: Int get() = when {
@@ -389,6 +398,7 @@ fun InkLayer(
     // Змінив інструмент чи вийшов із малювання — лінія на паузі закінчується.
     androidx.compose.runtime.LaunchedEffect(session?.tool, session?.drawer) { finishOpen() }
     androidx.compose.runtime.DisposableEffect(session) { onDispose { finishOpen() } }
+    val pageSize = remember { FloatArray(2) }
     val leadAnim by animateFloatAsState(if (session?.lead == true || session?.locked == true) 1f else 0f, spring(dampingRatio = 0.75f, stiffness = 700f), label = "lead")
     Canvas(
         modifier
@@ -918,11 +928,22 @@ fun InkLayer(
                 drawCircle(ink.copy(alpha = 0.9f), 6.dp.toPx() / z, r.bottomRight)
                 drawCircle(Color.Black.copy(alpha = 0.6f), 3.5.dp.toPx() / z, r.bottomRight)
             }
-            // Інструмент-курсор: не виходить за сторінку і не росте, коли сторінку наближено.
+            pageSize[0] = size.width
+            pageSize[1] = size.height
+        }
+    }
+    // Інструмент-курсор малює сама сторінка — поверх паперу (заломи, зерно, старіння не лягають на інструмент: він
+    // не з паперу і не прозорий). Не виходить за сторінку і не росте, коли сторінку наближено; біля краю плавно
+    // повертається так, щоб його було видно цілим.
+    if (session != null) {
+        val paint: DrawScope.() -> Unit = paint@{
+            val z = session.zoom
+            val w = size.width
+            val ink = if (AppStyle.glass) Oled.TextPrimary else SheetInk
             val p = session.pen ?: Offset(size.width * 0.5f, size.height * 0.45f)
             clipRect {
                 scale(1f / z, 1f / z, p) {
-                    drawToolCursor(p, session, session.width * w * z, leadAnim)
+                    rotate(session.cursorTurn.value, p) { drawToolCursor(p, session, session.width * w * z, leadAnim) }
                     // Лінія на паузі: кільце, що тане, — стільки ще можна перехопитись і вести далі.
                     if (openLeft > 0f) {
                         val r = 14.dp.toPx()
@@ -933,7 +954,66 @@ fun InkLayer(
                 }
             }
         }
+        androidx.compose.runtime.SideEffect { session.cursorPaint = paint }
+        androidx.compose.runtime.DisposableEffect(session) { onDispose { if (session.cursorPaint === paint) session.cursorPaint = null } }
+        // Поворот біля краю: куди інструмент іде від кінчика — туди, де вистачає місця. Рішення з запасом (не смикається
+        // туди-сюди на межі), сам поворот — плавною пружиною.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        androidx.compose.runtime.LaunchedEffect(session) {
+            var choice = 0 // 0 — звично (нахил праворуч), 1 — нахил ліворуч, 2 — лежить праворуч, 3 — лежить ліворуч
+            androidx.compose.runtime.snapshotFlow {
+                val pen = session.pen
+                val z = session.zoom
+                val pw = pageSize[0]
+                val ph = pageSize[1]
+                if (pen == null || pw <= 0f) 0 else with(density) {
+                    val reach = cursorReach(session, pw) / z
+                    val margin = 14.dp.toPx() / z
+                    val l = -session.tx / z
+                    val t = -session.ty / z
+                    val room = { d: Float, need: Float, wasOut: Boolean -> if (wasOut) d < need + margin else d < need }
+                    val dRight = l + pw / z - pen.x
+                    val dLeft = pen.x - l
+                    val dTop = pen.y - t
+                    val sinT = kotlin.math.sin(Math.toRadians(TILT.toDouble())).toFloat()
+                    val cosT = kotlin.math.cos(Math.toRadians(TILT.toDouble())).toFloat()
+                    val topOut = room(dTop, reach * cosT, choice >= 2)
+                    choice = when {
+                        topOut -> if (choice == 3 || (choice != 2 && dLeft > dRight)) 3 else if (dRight >= reach * 0.9f || dRight >= dLeft) 2 else 3
+                        room(dRight, reach * sinT, choice == 1) -> 1
+                        else -> 0
+                    }
+                    choice
+                }
+            }.collect { c ->
+                val target = when (c) {
+                    1 -> -2f * TILT
+                    2 -> 125f - TILT
+                    3 -> -125f - TILT
+                    else -> 0f
+                }
+                launch { session.cursorTurn.animateTo(target, spring(dampingRatio = 0.85f, stiffness = 260f)) }
+            }
+        }
     }
+}
+
+/** Наскільки інструмент-курсор сягає від кінчика (пікселі, без наближення). */
+private fun androidx.compose.ui.unit.Density.cursorReach(s: InkSession, pageW: Float): Float {
+    val width = s.width * pageW
+    val fit = when (s.tool) {
+        InkTool.Eraser -> 16.dp.toPx()
+        InkTool.Marker -> 12.dp.toPx()
+        InkTool.Brush -> 14.dp.toPx()
+        else -> Float.MAX_VALUE
+    }
+    val k = if (fit == Float.MAX_VALUE) 1f else (width / fit).coerceIn(if (s.tool == InkTool.Eraser) 0.6f else 1f, 2.6f)
+    val len = when (s.tool) {
+        InkTool.Eraser -> 16.dp.toPx() * 3.2f
+        InkTool.Brush -> 70.dp.toPx() + minOf(width / k, 46.dp.toPx()) * 0.7f
+        else -> 86.dp.toPx()
+    }
+    return len * k
 }
 
 /** Що малюється (і що можна виділити ласо чи стерти цілим штрихом). */
@@ -1249,6 +1329,11 @@ private fun DrawScope.drawLayered(xs: FloatArray, ys: FloatArray, factors: Float
     val paint = Paint().apply {
         alpha = op
         if (kind == InkKind.FILL) blendMode = BlendMode.DstOver
+        // Балончик: де напшикано густо — фарба зливається в один суцільний тон (і вкриває все під собою), рідкі
+        // цятки й туман по краях лишаються м'якими.
+        if (kind == InkKind.SPRAY) colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+            androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 3.2f, 0f)),
+        )
     }
     drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), paint)
     drawStroke(xs, ys, factors, base, w, dry, kind, style, layered = true, color = color)
@@ -1709,8 +1794,11 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
         drawPath(variablePath(px, py, widths), ink)
         return
     }
+    // Непрозора фарба (прозорість — на всьому штриху, шаром): мазок вкриває все під собою одним тоном, а щетинки —
+    // лише відтінком (трохи темніші й світліші смужки), не прозорістю.
+    val solid = ink.alpha >= 0.999f
     // Щетинки: під ними — фарба, що вже трохи вкриває; зафарбовування — щільніше.
-    drawPath(variablePath(px, py, FloatArray(n) { widths[it] * 0.9f }), ink.copy(alpha = ink.alpha * (if (scrub) 0.5f else 0.22f)))
+    drawPath(variablePath(px, py, FloatArray(n) { widths[it] * 0.9f }), if (solid) ink else ink.copy(alpha = ink.alpha * (if (scrub) 0.5f else 0.22f)))
     // Щетинки — помітно окремі (з проміжками), щоб фактура відрізнялась від суцільної.
     val bristles = if (scrub) 11 else 6
     val rnd = java.util.Random((seedX * 100000).toLong() + n)
@@ -1735,7 +1823,7 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
                 FloatArray(n) { py[it] + ny[it] * widths[it] * (off + wob) },
                 FloatArray(n) { widths[it] * bw },
             ),
-            ink.copy(alpha = ink.alpha * alpha),
+            if (solid) androidx.compose.ui.graphics.lerp(ink, if (k % 2 == 0) Color.Black else Color.White, (1f - alpha) * 0.28f) else ink.copy(alpha = ink.alpha * alpha),
         )
     }
 }
@@ -2047,7 +2135,7 @@ private fun DrawScope.drawSprayCursor(p: Offset, width: Float, lead: Float, glas
         drawPath(body, cylinder(x - bw / 2, bw, Color(0xFF5A5E66), Color(0xFFB9BDC4), Color(0xFFF2F4F7)))
         // Етикетка кольору фарби, з відблиском.
         val labelTop = bodyTop + 14.dp.toPx()
-        drawRect(tone.copy(alpha = 0.88f), Offset(x - bw / 2, labelTop), Size(bw, 36.dp.toPx()))
+        drawRect(tone.copy(alpha = 1f), Offset(x - bw / 2, labelTop), Size(bw, 36.dp.toPx()))
         drawRect(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.3f), 0.25f to Color.White.copy(alpha = 0.28f), 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f), startX = x - bw / 2, endX = x + bw / 2), Offset(x - bw / 2, labelTop), Size(bw, 36.dp.toPx()))
         drawLine(Color.Black.copy(alpha = 0.35f), Offset(x - bw / 2, bodyTop + 3.dp.toPx()), Offset(x + bw / 2, bodyTop + 3.dp.toPx()), 1.dp.toPx())
         // Кнопка-розпилювач і сопло.
@@ -2192,7 +2280,7 @@ private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, gla
             lineTo(x + tipW / 2, p.y - lift - 1.5.dp.toPx()); lineTo(x - tipW / 2, p.y - lift); close()
         }
         // Піднятий — кінчик блідий, опущений — насичений, зафіксований — повний колір і мокрий відблиск.
-        drawPath(tip, tone.copy(alpha = if (locked) 1f else 0.45f + 0.4f * lead))
+        drawPath(tip, androidx.compose.ui.graphics.lerp(Color(0xFF2A2B2E), tone.copy(alpha = 1f), if (locked) 1f else 0.45f + 0.4f * lead))
         if (locked) drawLine(Color.White.copy(alpha = 0.45f), Offset(x - tipW * 0.3f, tipTop + 1.dp.toPx()), Offset(x - tipW * 0.3f, p.y - lift - 2.dp.toPx()), 1.dp.toPx())
         drawRect(cylinder(x - tipW / 2 - 2.dp.toPx(), tipW + 4.dp.toPx(), Color(0xFF3A3C40), Color(0xFF6A6D73), Color(0xFFA9ADB3)), Offset(x - tipW / 2 - 2.dp.toPx(), collarTop), Size(tipW + 4.dp.toPx(), 5.dp.toPx()))
         val dark = if (glass) Color(0xFF2E3034) else Color(0xFF34312C)
@@ -2200,7 +2288,7 @@ private fun DrawScope.drawMarkerCursor(p: Offset, width: Float, lead: Float, gla
         val light = if (glass) Color(0xFFAEB3BB) else Color(0xFFB4ADA2)
         drawRoundRect(cylinder(x - bw / 2, bw, dark, mid, light), Offset(x - bw / 2, bodyTop), Size(bw, collarTop - bodyTop), CornerRadius(3.dp.toPx()))
         // Смужка відтінку на корпусі й ковпачок.
-        drawRect(tone.copy(alpha = 0.7f), Offset(x - bw / 2, bodyTop + 10.dp.toPx()), Size(bw, 4.dp.toPx()))
+        drawRect(tone.copy(alpha = 1f), Offset(x - bw / 2, bodyTop + 10.dp.toPx()), Size(bw, 4.dp.toPx()))
         drawRoundRect(cylinder(x - bw / 2, bw, dark, tone.copy(alpha = 0.9f).compositeOverDark(), light), Offset(x - bw / 2, capTop), Size(bw, 11.dp.toPx()), CornerRadius(5.dp.toPx()))
     }
 }
@@ -2236,7 +2324,7 @@ private fun DrawScope.drawBrushCursor(p: Offset, width: Float, lead: Float, glas
         // Кінчик у фарбі: опущений — фарба на кінчику, зафіксований — набрав фарби більше (колір вищий).
         val paint = if (tint == Color.Unspecified) ink else tint
         val wet = if (locked) 0.5f else 0.75f + 0.1f * (1f - lead)
-        drawPath(tuft, Brush.verticalGradient(0f to Color(0xFF8A7A62), (wet - 0.2f).coerceAtLeast(0.05f) to Color(0xFF4A4034), wet to paint.copy(alpha = if (locked) 1f else 0.6f + 0.35f * lead), 1f to paint, startY = tuftTop, endY = tip))
+        drawPath(tuft, Brush.verticalGradient(0f to Color(0xFF8A7A62), (wet - 0.2f).coerceAtLeast(0.05f) to Color(0xFF4A4034), wet to androidx.compose.ui.graphics.lerp(Color(0xFF4A4034), paint.copy(alpha = 1f), if (locked) 1f else 0.6f + 0.35f * lead), 1f to paint.copy(alpha = 1f), startY = tuftTop, endY = tip))
         for (k in -2..2) drawLine(Color.Black.copy(alpha = 0.25f), Offset(x + k * tw * 0.12f, tuftTop), Offset(x + k * tw * 0.05f, tip - 4.dp.toPx()), 0.6.dp.toPx())
         drawRect(cylinder(x - fw / 2, fw, Color(0xFF4A4E55), Color(0xFF8E939B), Color(0xFFD9DDE3)), Offset(x - fw / 2, ferTop), Size(fw, tuftTop - ferTop))
         // Ручка звужується догори.
@@ -2280,4 +2368,135 @@ private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, gla
         // Опущена (затиснув чи двічі торкнувся) — кінчик світиться.
         if (lead > 0.01f) drawPath(rubberPath, ink.copy(alpha = 0.32f * lead))
     }
+}
+
+/**
+ * Мініатюра малюнка дня (полотна): усе намальоване, вписане в рамку й по центру — видно, що там є. Порожнє полотно —
+ * нічого. Малюється один раз і зберігається текстурою.
+ */
+@Composable
+internal fun InkThumb(lines: List<InkLine>, modifier: Modifier) {
+    val canvas = remember(lines) { lines.filter { it.page == CANVAS_PART && it.kind != InkKind.CANVAS && it.kind != InkKind.STENCIL } }
+    val bounds = remember(canvas) { boundsOf(canvas.filter { it.kind in DRAWN }) }
+    Canvas(modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) {
+        val b = bounds ?: return@Canvas
+        if (b.width <= 0f || b.height <= 0f) return@Canvas
+        val w = size.width
+        val sc = minOf(size.width / b.width, size.height / b.height)
+        val ox = (size.width - b.width * sc) / 2f
+        val oy = (size.height - b.height * sc) / 2f
+        val pivot = Offset(b.left, b.top)
+        val off = Offset(ox / w - b.left, oy / w - b.top)
+        val shown = canvas.map { transform(it, pivot, sc / w, off) }
+        drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
+        drawInk(shown, CANVAS_PART, w, { false }, emptySet())
+        drawContext.canvas.restore()
+    }
+}
+
+/**
+ * Улюблене на палітрі: колір ([tool] = null) чи готовий інструмент — інструмент із товщиною, прозорістю, кольором,
+ * згладжуванням, фігурою й режимом ([mode]: стиль олівця, трафарет, мазок, зафарбовування, балончик, у межах, гумка,
+ * м'якість гумки).
+ */
+class InkFav(
+    val tool: InkTool?,
+    val rgb: Int,
+    val size: Float = 0f,
+    val opacity: Float = 1f,
+    val smooth: Int = 1,
+    val figure: Int = 0,
+    val mode: IntArray = IntArray(0),
+) {
+    fun same(o: InkFav): Boolean = tool == o.tool && rgb == o.rgb && (tool == null || (size == o.size && opacity == o.opacity && smooth == o.smooth && figure == o.figure && mode.contentEquals(o.mode)))
+}
+
+/** Палітра улюбленого — спільна для всіх щоденників, зберігається між запусками (кольори й інструменти — не секрет). */
+object InkFavourites {
+    const val MAX_COLORS = 8
+    const val MAX_TOOLS = 6
+    val items = androidx.compose.runtime.mutableStateListOf<InkFav>()
+    private var prefs: android.content.SharedPreferences? = null
+
+    fun init(context: android.content.Context) {
+        if (prefs != null) return
+        val p = context.applicationContext.getSharedPreferences("ink_palette", android.content.Context.MODE_PRIVATE)
+        prefs = p
+        runCatching {
+            val arr = org.json.JSONArray(p.getString("items", "[]"))
+            items.clear()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val m = o.optJSONArray("m")
+                items += InkFav(
+                    tool = InkTool.entries.firstOrNull { it.name == o.optString("t") },
+                    rgb = o.optInt("c"),
+                    size = o.optDouble("s", 0.0).toFloat(),
+                    opacity = o.optDouble("a", 1.0).toFloat(),
+                    smooth = o.optInt("sm", 1),
+                    figure = o.optInt("f", 0),
+                    mode = if (m == null) IntArray(0) else IntArray(m.length()) { m.getInt(it) },
+                )
+            }
+        }
+    }
+
+    private fun save() {
+        val arr = org.json.JSONArray()
+        items.forEach { f ->
+            arr.put(org.json.JSONObject().apply {
+                f.tool?.let { put("t", it.name) }
+                put("c", f.rgb)
+                if (f.tool != null) {
+                    put("s", f.size.toDouble()); put("a", f.opacity.toDouble()); put("sm", f.smooth); put("f", f.figure)
+                    put("m", org.json.JSONArray().also { a -> f.mode.forEach { a.put(it) } })
+                }
+            })
+        }
+        prefs?.edit()?.putString("items", arr.toString())?.apply()
+    }
+
+    val colors: List<InkFav> get() = items.filter { it.tool == null }
+    val tools: List<InkFav> get() = items.filter { it.tool != null }
+
+    /** Додати (таке саме вже є — лише переходить на перше місце; повна палітра — найстаріше зникає). */
+    fun add(f: InkFav) {
+        items.removeAll { it.same(f) }
+        val group = items.filter { (it.tool == null) == (f.tool == null) }
+        val max = if (f.tool == null) MAX_COLORS else MAX_TOOLS
+        if (group.size >= max) items.remove(group.last())
+        items.add(0, f)
+        save()
+    }
+
+    fun remove(f: InkFav) { items.remove(f); save() }
+}
+
+/** Поточний інструмент з усіма налаштуваннями — для палітри улюбленого. */
+fun InkSession.captureFav(): InkFav = InkFav(
+    tool = tool, rgb = color, size = size, opacity = opacity, smooth = smooth, figure = figure,
+    mode = intArrayOf(pencilStyle, if (stencil) 1 else 0, brushMode, brushFill, sprayMode, if (clip) 1 else 0, eraserMode, eraserSoft),
+)
+
+/** Узяти з палітри: колір — лише колір; інструмент — усе, як було, коли його поклали. */
+fun InkSession.applyFav(f: InkFav) {
+    picking = false
+    val t = f.tool
+    if (t == null) { useColor(f.rgb); return }
+    tool = t
+    clearSelection()
+    size = f.size
+    opacity = f.opacity
+    smooth = f.smooth
+    figure = f.figure
+    f.mode.getOrNull(0)?.let { pencilStyle = it }
+    f.mode.getOrNull(1)?.let { stencil = it == 1 }
+    f.mode.getOrNull(2)?.let { brushMode = it }
+    f.mode.getOrNull(3)?.let { brushFill = it }
+    f.mode.getOrNull(4)?.let { sprayMode = it }
+    f.mode.getOrNull(5)?.let { clip = it == 1 }
+    f.mode.getOrNull(6)?.let { eraserMode = it }
+    f.mode.getOrNull(7)?.let { eraserSoft = it }
+    useColor(f.rgb)
+    remember()
 }

@@ -104,17 +104,37 @@ class LogicTest {
         assertFalse(Day(5, photo = true).isEmpty)
     }
 
-    // ——— Дві сторінки на день ———
+    // ——— Сторінки дня: скільки завгодно ———
+
+    /** Текст із рядків по 5 символів: розкладка від [from] — рядки до кінця тексту. */
+    private fun lines5(len: Int) = { _: Int, from: Int ->
+        val ls = (from until len step 5).toList()
+        ls to ls.size
+    }
 
     @Test
     fun splitBetweenPages() {
-        // 10 рядків по 5 символів; на першій сторінці 4 рядки, на другій 6.
-        val starts = List(10) { it * 5 }
-        val s = splitPages(50, starts, 4, 6)
+        // 10 рядків; на першій сторінці 4, на інших по 6.
+        val cap = { part: Int -> if (part == 0) 4 else 6 }
+        val s = splitPages(50, cap, lines5(50))
+        assertEquals(listOf(0, 20), s.starts)
         assertEquals(20, s.split)
-        assertTrue(s.fits)
-        assertFalse(splitPages(55, List(11) { it * 5 }, 4, 6).fits)
-        assertEquals(12, splitPages(12, listOf(0, 5, 10), 4, 6).split)
+        // Не вмістилось на дві — переходить на третю.
+        val big = splitPages(105, cap, lines5(105))
+        assertEquals(listOf(0, 20, 50, 80), big.starts)
+        assertEquals(2, big.partOf(55))
+        assertEquals(50, big.end(1))
+        assertEquals(1, splitPages(12, cap, lines5(12)).pages)
+    }
+
+    @Test
+    fun tornPageGivesNoRoom() {
+        // Друга сторінка вирвана: текст іде з першої одразу на третю.
+        val cap = { part: Int -> if (part == 0) 4 else if (part == 1) 0 else 6 }
+        val s = splitPages(50, cap, lines5(50))
+        assertEquals(listOf(0, 20, 20), s.starts)
+        assertEquals(2, s.partOf(20))
+        assertEquals(0, s.partOf(19))
     }
 
     @Test

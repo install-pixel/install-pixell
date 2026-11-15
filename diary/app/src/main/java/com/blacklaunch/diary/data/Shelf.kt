@@ -37,6 +37,8 @@ data class DiaryInfo(
     /** Чи є на сторінках місце під фото й голос (вимкнено — уся сторінка під текст). */
     val photos: Boolean = true,
     val voice: Boolean = true,
+    /** Місце під малюнок дня на першій сторінці (вимкнено — лише малювання поверх сторінки). */
+    val drawings: Boolean = true,
     /** Нова сторінка бере місце з попередньої (для щоденника подорожей можна вимкнути). */
     val carryPlace: Boolean = true,
     /** Крутілка магнітофона: 0 — як є, 1 — голос, 2 — шумодав. */
@@ -122,6 +124,7 @@ class ShelfStore(context: Context) {
         titleY = if (has("titleY")) optDouble("titleY").toFloat() else null,
         photos = optBoolean("photos", true),
         voice = optBoolean("voice", true),
+        drawings = optBoolean("drawings", true),
         carryPlace = optBoolean("carryPlace", true),
         voiceMode = optInt("voiceMode", 0),
         openFirst = optBoolean("openFirst", false),
@@ -142,6 +145,7 @@ class ShelfStore(context: Context) {
         .put("titleY", titleY?.toDouble())
         .put("photos", photos)
         .put("voice", voice)
+        .put("drawings", drawings)
         .put("carryPlace", carryPlace)
         .put("voiceMode", voiceMode)
         .put("openFirst", openFirst)

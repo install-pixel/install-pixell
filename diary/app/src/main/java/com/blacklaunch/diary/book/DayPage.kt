@@ -110,8 +110,11 @@ interface PageHost {
     fun addPhoto(day: Long, source: Int)
     fun recordVoice(day: Long)
     fun dismissSlot(day: Long, photo: Boolean)
+    /** Малюнок дня: відкрити полотно (немає — створити й одразу малювати) чи прибрати його (з підтвердженням). */
+    fun openCanvas(day: Long)
+    fun deleteCanvas(day: Long)
     /** Backspace на самому початку другої сторінки: стерти символ перед [at] (кінець першої). */
-    fun joinBack(day: Long, at: Int)
+    fun joinBack(day: Long, part: Int, at: Int)
 }
 
 /** Іде запис голосу (для смужки — живі обриси й час). */
@@ -125,17 +128,20 @@ class RecordingState(val day: Long, val side: Int = 0, val base: Long = 0L, val 
 }
 
 /**
- * Сторінка дня. [part] 0 — перша (шапка, фото, аудіо, початок тексту), 1 — продовження. [split] — де текст переходить
- * на другу сторінку. Усе розміщено в одиницях сторінки ([PageMetrics]), тож виглядає однаково на будь-якому екрані.
+ * Сторінка дня. [part] 0 — перша (шапка, фото, аудіо, початок тексту), далі — продовження (скільки треба).
+ * [segStart]…[segEnd] — яка частина тексту дня на цій сторінці. Усе розміщено в одиницях сторінки ([PageMetrics]), тож виглядає однаково на будь-якому екрані.
  */
 @Composable
 fun DayPage(
     host: PageHost,
     day: Day,
     part: Int,
-    split: Int,
+    segStart: Int,
+    segEnd: Int,
     photoSlot: Boolean,
     audioSlot: Boolean,
+    /** Місце під малюнок дня: 0 — немає, 1 — порожнє запрошення, 2 — мініатюра полотна. */
+    drawingSlot: Int = 0,
     pageWidthPx: Float,
     hours: Long,
     highlight: IntRange?,
@@ -161,8 +167,8 @@ fun DayPage(
     fun dp(v: Float): Dp = with(density) { (v * u).toDp() }
     val now = remember(day.updated) { System.currentTimeMillis() }
     val first = part == 0
-    val textTop = if (first) PageMetrics.firstTextTop(photoSlot, audioSlot) else PageMetrics.TEXT_TOP_SECOND
-    val lineCount = if (part == CANVAS_PART) 0 else if (first) PageMetrics.firstLines(photoSlot, audioSlot) else PageMetrics.secondLines
+    val textTop = if (first) PageMetrics.firstTextTop(photoSlot, audioSlot, drawingSlot) else PageMetrics.TEXT_TOP_SECOND
+    val lineCount = if (part == CANVAS_PART) 0 else if (first) PageMetrics.firstLines(photoSlot, audioSlot, drawingSlot) else PageMetrics.secondLines
     val lines = remember(textTop, lineCount, u) { List(lineCount) { i -> (textTop + (i + 1) * PageMetrics.LINE - PageMetrics.LINE * 0.14f) * u } }
     val style = pageTextStyle(u, density, glass)
     val locale = Locale.getDefault()
@@ -183,6 +189,11 @@ fun DayPage(
                     }
                 } ?: Modifier,
             )
+            // Інструмент-курсор — поверх паперу й старіння (він не з паперу): малюється після них.
+            .drawWithContent {
+                drawContent()
+                ink?.takeIf { it.day == day.day && it.part == part }?.cursorPaint?.invoke(this)
+            }
             // «Аркуш»: усе написане й намальоване лежить на папері — темніє й світлішає разом із заломами, бере зерно.
             .paperRelief(glass, pageSeed(day.day, part))
             // Старіння: з віком сторінка тьмяніє, потирається, на ній з'являються плями — у кожної своє й назавжди те саме.
@@ -190,7 +201,7 @@ fun DayPage(
                 drawContent()
                 drawAging(DiaryViewModel.today() - day.day, (day.day * 31 + part).toInt(), glass)
                 // Колись надірвали й передумали — розрив заклеєно скотчем.
-                val tapeK = if (part >= CANVAS_PART) 0f else day.tearTry(part)
+                val tapeK = if (part == CANVAS_PART) 0f else day.tearTry(part)
                 val tapeSeed = tearSeedOf(day.day, part)
                 val tapeMargin = PageMetrics.MARGIN_LEFT * size.width / PageMetrics.WIDTH
                 val f = tearFinger?.invoke()
@@ -208,7 +219,7 @@ fun DayPage(
                 if (stub && !underTear) drawTornStub((day.day * 7 + part).toInt(), glass)
                 // Закладка-пошук — на кожній сторінці, поверх усього на ній (і клаптиків). Сторінки, що лише просвічують
                 // крізь скло чи лежать під тією, яку виривають, її не малюють — інакше видно другу, розмиту.
-                if (!preview) drawSearchRibbon(glass)
+                if (!preview && part != CANVAS_PART) drawSearchRibbon(glass)
             },
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -237,7 +248,7 @@ fun DayPage(
                 part = part,
                 pageWidth = pageWidthPx,
                 session = ink?.takeIf { it.day == day.day && it.part == part },
-                dry = { dry },
+                dry = { false },
                 onChange = { host.vm.setInk(day.day, it) },
                 onDryErase = { host.dryHint() },
             )
@@ -285,7 +296,7 @@ fun DayPage(
             }
         }
 
-        var y = PageMetrics.TEXT_TOP_FIRST - 1.6f
+        var y = PageMetrics.SLOTS_TOP
         if (first && day.photo) {
             PhotoBlock(
                 host = host,
@@ -335,6 +346,7 @@ fun DayPage(
                 height = dp(PageMetrics.AUDIO_HEIGHT),
                 editable = editable,
             )
+            y += PageMetrics.AUDIO_HEIGHT + PageMetrics.BLOCK_GAP
         } else if (first && audioSlot) {
             SlotBlock(
                 host = host,
@@ -347,14 +359,43 @@ fun DayPage(
                 actions = listOf(Glyph.Mic to { host.recordVoice(day.day) }),
                 onDismiss = { host.dismissSlot(day.day, photo = false) },
             )
+            y += PageMetrics.AUDIO_HEIGHT + PageMetrics.BLOCK_GAP
         } else {
             LaunchedEffect(day.audio, day.audioB) { host.block("audio_${day.day}", null) }
         }
 
+        // Малюнок дня — окремий аркуш-полотно. Тут лише запрошення (пунктиром) чи мініатюра намальованого: дотик —
+        // гортнути на полотно, змахнути вліво — прибрати. Малюнок не висихає — працює й на старих сторінках.
+        if (first && drawingSlot == 2 && !preview) {
+            DrawingThumb(
+                host = host,
+                day = day,
+                modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)),
+                width = dp(PageMetrics.textWidth),
+                height = dp(PageMetrics.DRAW_HEIGHT),
+            )
+        } else if (first && drawingSlot == 2) {
+            InkThumb(day.ink, Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)).size(dp(PageMetrics.textWidth), dp(PageMetrics.DRAW_HEIGHT)))
+        } else if (first && drawingSlot == 1) {
+            SlotBlock(
+                host = host,
+                key = "drawing_${day.day}",
+                label = stringResource(R.string.drawing_slot),
+                modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)),
+                width = dp(PageMetrics.textWidth),
+                height = dp(PageMetrics.DRAW_EMPTY),
+                editable = !preview,
+                actions = listOf(Glyph.Pen to { host.openCanvas(day.day) }),
+                onDismiss = null,
+            )
+        } else {
+            LaunchedEffect(drawingSlot) { host.block("drawing_${day.day}", null) }
+        }
+
         // Текст.
         val full = day.text
-        val segStart = if (first) 0 else split.coerceAtMost(full.length)
-        val segEnd = if (first) split.coerceAtMost(full.length) else full.length
+        @Suppress("NAME_SHADOWING") val segStart = segStart.coerceIn(0, full.length)
+        @Suppress("NAME_SHADOWING") val segEnd = segEnd.coerceIn(segStart, full.length)
         PageText(
             full = full,
             // Висохлий день — увесь текст висохлим чорнилом (тьмяніше): видно, що змінити вже не можна.
@@ -371,7 +412,7 @@ fun DayPage(
             onFocusConsumed = { host.consumeFocus() },
             sink = host.textSink(day.day, part),
             onFocus = { host.onFocus(day.day, part, it) },
-            onBackAtStart = if (part == 1) ({ host.joinBack(day.day, segStart) }) else null,
+            onBackAtStart = if (part >= 1) ({ host.joinBack(day.day, part, segStart) }) else null,
             strikeMode = strikeMode,
             onCursor = { host.onCursor(it) },
             onStrike = { s, e -> host.vm.addStrike(day.day, s, e) },
@@ -379,7 +420,7 @@ fun DayPage(
             hint = if (!editable) "" else stringResource(if (day.sealed.isEmpty()) R.string.write_hint else R.string.write_more_hint),
             modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(textTop)),
             // Текст угорі сторінки — перший рядок за закладкою-пошуком.
-            indentFirst = if (!first || (!photoSlot && !audioSlot)) ribbonIndentPx(u, density) else 0f,
+            indentFirst = if (!first || (!photoSlot && !audioSlot && drawingSlot == 0)) ribbonIndentPx(u, density) else 0f,
         )
 
         // Номер сторінки (лише заповнені) — унизу посередині.
@@ -397,8 +438,8 @@ fun DayPage(
             part = part,
             pageWidth = pageWidthPx,
             session = ink?.takeIf { it.day == day.day && it.part == part },
-            // Висохлий день — малюнок, як і текст, уже не змінити (тьмяніший).
-            dry = { dry },
+            // Малюнок не висихає ніколи — малювати можна будь-коли.
+            dry = { false },
             onChange = { host.vm.setInk(day.day, it) },
             onDryErase = { host.dryHint() },
         )
@@ -528,12 +569,13 @@ private fun SlotBlock(
     height: Dp,
     editable: Boolean,
     actions: List<Pair<Glyph, () -> Unit>>,
-    onDismiss: () -> Unit,
+    /** null — місце не прибирається свайпом. */
+    onDismiss: (() -> Unit)?,
 ) {
     val glass = AppStyle.glass
     val haptics = LocalHaptics.current
     val ink = if (glass) Color(0x33FFFFFF) else SheetInk.copy(alpha = 0.3f)
-    Box(modifier.size(width, height).swipeAway(host, key, editable, onDismiss)) {
+    Box(modifier.size(width, height).then(if (onDismiss != null) Modifier.swipeAway(host, key, editable, onDismiss) else Modifier.slotBlocker(host, key))) {
         Canvas(Modifier.fillMaxSize()) {
             val r = minOf(10.dp.toPx(), size.height / 2)
             drawRoundRect(
@@ -566,6 +608,40 @@ private fun SlotBlock(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
             )
         }
+    }
+}
+
+/** Місце, що не відсувається свайпом, — однаково не дає почати гортання на собі (дотик — його дія). */
+@Composable
+private fun Modifier.slotBlocker(host: PageHost, key: String): Modifier {
+    val preview = LocalPagePreview.current
+    DisposableEffect(key) { onDispose { host.block(key, null) } }
+    return this.onGloballyPositioned { c ->
+        if (preview) return@onGloballyPositioned
+        val book = host.bookCoords ?: return@onGloballyPositioned
+        val o = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return@onGloballyPositioned
+        host.block(key, Rect(o, Size(c.size.width.toFloat(), c.size.height.toFloat())))
+    }
+}
+
+/** Мініатюра малюнка дня: дотик — гортнути на полотно; змахнути вліво — прибрати полотно (з підтвердженням). */
+@Composable
+private fun DrawingThumb(host: PageHost, day: Day, modifier: Modifier, width: Dp, height: Dp) {
+    val glass = AppStyle.glass
+    val haptics = LocalHaptics.current
+    val shape = RoundedCornerShape(10.dp)
+    Box(
+        modifier
+            .size(width, height)
+            .swipeAway(host, "drawing_${day.day}", true) { host.deleteCanvas(day.day) }
+            .clip(shape)
+            .clickable { haptics.tap(); host.openCanvas(day.day) },
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val ink = if (glass) Color(0x26FFFFFF) else SheetInk.copy(alpha = 0.22f)
+            drawRoundRect(ink, cornerRadius = CornerRadius(10.dp.toPx()), style = Stroke(1.dp.toPx()))
+        }
+        InkThumb(day.ink, Modifier.fillMaxSize().padding(6.dp))
     }
 }
 
