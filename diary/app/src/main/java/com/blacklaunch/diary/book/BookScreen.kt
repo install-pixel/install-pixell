@@ -453,8 +453,10 @@ fun BookScreen(
         if (!menuOpen) return
         if (menuFromShelf) onShelf() else pendingFlip = menuReturn
     }
-    LaunchedEffect(info.id) {
-        if (vm.settingsFor == info.id) {
+    // Налаштування з полиці: щоденник без замка спершу відкривається (сторінки стають на місце), тоді — меню; із замком —
+    // одразу (до коду там лише «забув код»).
+    LaunchedEffect(info.id, open != null) {
+        if (vm.settingsFor == info.id && (open != null || info.locked)) {
             vm.settingsFor = null
             menuFromShelf = true
             openMenu()
@@ -643,35 +645,31 @@ fun BookScreen(
         }
     }
 
-    /** Перша сторінка меню: щоденник — підпис до фото дня, обкладинка, назва, замок, копія (щоденні дії — на панелі внизу). */
+    /**
+     * Налаштування щоденника (відкриваються з полиці: довге натискання на корінець чи «Щоденники» в загальних). Перша
+     * сторінка — обкладинка, назва, замок, видалити; друга (гортанням) — що є на сторінках. Без підказок.
+     */
     @Composable
     fun androidx.compose.foundation.layout.ColumnScope.DiaryMenu() {
-        val back = menuReturn
         MenuEntries(buildList {
-            val day = (back as? BookPage.DayPart)?.day
             if (open != null) {
-                if (day != null && vm.day(day).photo && !DiaryViewModel.isDry(day)) {
-                    add(MenuEntry(null, stringResource(R.string.menu_page)))
-                    add(MenuEntry(Glyph.Edit, stringResource(R.string.photo_caption)) { dialog = BookDialog.Caption(day) })
-                }
+                add(MenuEntry(null, stringResource(R.string.cover_section)))
+                add(MenuEntry(Glyph.Gallery, stringResource(R.string.cover_from_gallery)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                add(MenuEntry(Glyph.Shutter, stringResource(R.string.cover_camera)) { shoot(COVER_TARGET) })
+                if (info.cover) add(MenuEntry(Glyph.Restore, stringResource(R.string.cover_default)) { vm.removeCover(info.id) })
                 add(MenuEntry(null, stringResource(R.string.menu_diary)))
-                add(MenuEntry(Glyph.Photo, stringResource(if (info.cover) R.string.cover_photo_change else R.string.cover_photo)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
-                add(MenuEntry(Glyph.Shutter, stringResource(R.string.cover_from_camera)) { shoot(COVER_TARGET) })
-                if (info.cover) add(MenuEntry(Glyph.Close, stringResource(R.string.cover_photo_remove)) { vm.removeCover(info.id) })
                 add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
                 add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
                 if (info.locked) add(MenuEntry(Glyph.Unlock, stringResource(R.string.lock_remove)) { dialog = BookDialog.LockRemove })
-                add(MenuEntry(Glyph.Backup, stringResource(R.string.backup)) { dialog = BookDialog.Backup })
+                add(MenuEntry(Glyph.Delete, stringResource(R.string.erase_diary), Tone.Danger) { dialog = BookDialog.Erase })
             } else {
-                // Закритий на код: лише полиця й «забув код» (решта налаштувань — після коду: їх бачить лише власник).
-                add(MenuEntry(null, stringResource(R.string.locked_settings_hint)))
-                add(MenuEntry(Glyph.Grid, stringResource(R.string.shelf_and_settings)) { onShelf() })
+                // Закритий на код: решта — лише після коду (налаштування бачить тільки власник).
                 if (info.locked) add(MenuEntry(Glyph.Delete, stringResource(R.string.forgot_code), Tone.Danger) { dialog = BookDialog.Forgot })
             }
         }.map { e -> MenuEntry(e.glyph, e.text, e.tone) { closeMenu(); e.onClick() } })
     }
 
-    /** Друга сторінка меню: налаштування цього щоденника, полиця, стерти (найнебезпечніше — найнижче). */
+    /** Друга сторінка: що є на сторінках цього щоденника. */
     @Composable
     fun androidx.compose.foundation.layout.ColumnScope.DiarySettings() {
         Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -680,13 +678,6 @@ fun BookScreen(
             SwitchRow(stringResource(R.string.settings_carry_place), info.carryPlace, subtitle = stringResource(R.string.settings_carry_place_desc)) { vm.setCarryPlace(info.id, it) }
             SwitchRow(stringResource(R.string.settings_open_today), !info.openFirst, subtitle = stringResource(R.string.settings_open_today_desc)) { vm.setOpenFirst(info.id, !it) }
         }
-        Text(stringResource(R.string.drying_title), color = Oled.TextPrimary, fontSize = 16.sp, modifier = Modifier.padding(start = 8.dp, top = 12.dp))
-        FieldHint(stringResource(R.string.drying_fixed), Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-        MenuEntries(listOf(
-            MenuEntry(null, stringResource(R.string.menu_more)),
-            MenuEntry(Glyph.Grid, stringResource(R.string.shelf_and_settings)) { closeMenu(); onShelf() },
-            MenuEntry(Glyph.Delete, stringResource(R.string.erase), Tone.Danger) { closeMenu(); dialog = BookDialog.Erase },
-        ))
     }
 
     // Лок-екран: барабани на обкладинці.
@@ -922,10 +913,9 @@ fun BookScreen(
                                 }
                             }
                             is BookPage.Menu -> PaperPage(
-                                title = if (p.n == 0) info.name else stringResource(R.string.settings_this_diary),
-                                subtitle = if (p.n == 0) stringResource(R.string.menu_diary_desc) else info.name,
+                                title = if (p.n == 0) info.name else stringResource(R.string.settings_pages),
+                                subtitle = null,
                                 seed = info.tint * 7 + 3 + p.n * 17,
-                                footer = if (p.n == 0 && open != null) stringResource(R.string.menu_next) else null,
                             ) { if (p.n == 0) DiaryMenu() else DiarySettings() }
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
@@ -1140,7 +1130,7 @@ fun BookScreen(
                         Tool(Glyph.Delete, stringResource(R.string.canvas_delete)) {
                             if (dry) vm.show(R.string.page_dry) else dialog = BookDialog.CanvasDelete(day)
                         },
-                        Tool(Glyph.Settings, stringResource(R.string.shelf)) { onShelf() },
+                        Tool(Glyph.Shelf, stringResource(R.string.shelf)) { onShelf() },
                     ) else listOf(
                         // Полотно: чистий аркуш для малювання після сторінок дня (є — перейти до нього).
                         Tool(Glyph.Frame, stringResource(R.string.canvas)) {
@@ -1170,12 +1160,13 @@ fun BookScreen(
                                 else -> vm.show(R.string.no_room_voice)
                             }
                         },
-                        // Шестерня — на полицю: там усі щоденники, налаштування кожного й загальні.
-                        Tool(Glyph.Settings, stringResource(R.string.shelf)) { onShelf() },
+                        // Полиця: там усі щоденники, налаштування кожного (довге натискання на корінець) і загальні.
+                        Tool(Glyph.Shelf, stringResource(R.string.shelf)) { onShelf() },
                     )
                     ToolPanel(gear, tools, pinned = photoTools)
                 } else {
-                    GearSpot(gear) { if (menuOpen) closeMenu() else onShelf() }
+                    if (menuOpen) GearSpot(gear, glyph = Glyph.Close, label = stringResource(R.string.close)) { closeMenu() }
+                    else GearSpot(gear, glyph = Glyph.Shelf, label = stringResource(R.string.shelf)) { onShelf() }
                 }
             }
         }

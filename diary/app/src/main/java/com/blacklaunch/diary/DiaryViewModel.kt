@@ -636,41 +636,99 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Відновити з копії — новим щоденником на полиці (без замка; поставити можна згодом). */
+    /**
+     * Загальна копія — усі щоденники одним файлом. Щоденник із замком входить, лише якщо дали його код ([codes]); код не
+     * підійшов — це невдала спроба (як на обкладинці), щоденник пропускається.
+     */
+    fun backupAll(uri: Uri, password: String, codes: Map<String, String>) {
+        closeDiary()
+        busy = true
+        val list = shelf.toList()
+        viewModelScope.launch {
+            var skipped = 0
+            val written = withContext(io) {
+                runCatching {
+                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { out ->
+                        Backup.writeAll(out, password, list.map { info ->
+                            {
+                                val pin = if (info.locked) codes[info.id] else ""
+                                val db = if (pin == null || (info.locked && info.retryAt > System.currentTimeMillis())) null
+                                    else runCatching { DiaryDb.open(store.dir(info.id), DiaryKeys.passphrase(info.id, pin, saltOf(info))) }.getOrNull()
+                                if (db == null) {
+                                    skipped++
+                                    if (info.locked && pin != null) {
+                                        val fails = info.fails + 1
+                                        val wait = if (fails >= 5) (30_000L shl (fails - 5).coerceAtMost(7)).coerceAtMost(3_600_000L) else 0L
+                                        val upd = info.copy(fails = fails, retryAt = System.currentTimeMillis() + wait)
+                                        viewModelScope.launch { saveShelf(shelf.map { if (it.id == info.id) upd else it }) }
+                                    }
+                                    null
+                                } else Backup.Dump(
+                                    info, db.days().sortedBy { it.day },
+                                    photo = { db.readMedia(db.photoFile(it)) },
+                                    audio = { db.readMedia(db.audioFile(it)) },
+                                    audioB = { db.readMedia(db.audioFileB(it)) },
+                                    coverGlass = store.coverFile(info.id, true).takeIf { it.exists() }?.readBytes(),
+                                    coverSheet = store.coverFile(info.id, false).takeIf { it.exists() }?.readBytes(),
+                                    close = { runCatching { db.close() } },
+                                )
+                            }
+                        })
+                    } ?: error("no stream")
+                }.getOrNull()
+            }
+            busy = false
+            when {
+                written == null -> show(R.string.backup_failed)
+                skipped > 0 -> show(R.string.backup_done_skipped)
+                else -> show(R.string.backup_done)
+            }
+        }
+    }
+
+    /** Відновити з копії — кожен щоденник із неї новим на полиці (без замка; поставити можна згодом). */
     fun restore(uri: Uri, password: String, onWrong: () -> Unit) {
         busy = true
         viewModelScope.launch {
             val result = withContext(io) {
                 runCatching {
-                    val contents = getApplication<Application>().contentResolver.openInputStream(uri)?.use { Backup.read(it, password) } ?: error("no stream")
-                    val info = store.newDiary(contents.name.ifBlank { getApplication<Application>().getString(R.string.default_diary_name) }, contents.tint)
-                        .copy(created = contents.created.takeIf { it > 0 } ?: System.currentTimeMillis())
-                    val db = DiaryDb.open(store.dir(info.id), DiaryKeys.passphrase(info.id, "", saltOf(info)))
-                    db.use {
-                        contents.days.forEach { d -> db.save(d) }
-                        contents.photos.forEach { (day, bytes) -> db.writeMedia(db.photoFile(day), bytes) }
-                        contents.audios.forEach { (day, bytes) -> db.writeMedia(db.audioFile(day), bytes) }
-                        contents.audiosB.forEach { (day, bytes) -> db.writeMedia(db.audioFileB(day), bytes) }
-                    }
-                    var cover = false
-                    if (contents.coverGlass != null && contents.coverSheet != null) {
-                        java.io.File(getApplication<Application>().filesDir, "covers").mkdirs()
-                        store.coverFile(info.id, true).writeBytes(contents.coverGlass)
-                        store.coverFile(info.id, false).writeBytes(contents.coverSheet)
-                        cover = true
-                    }
-                    info.copy(cover = cover)
+                    val restored = ArrayList<DiaryInfo>()
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                        Backup.readAll(input, password) { contents -> restored += restoreOne(contents) }
+                    } ?: error("no stream")
+                    restored.toList()
                 }
             }
             busy = false
-            result.onSuccess { info ->
-                saveShelf(shelf + info)
-                current = info.id
+            result.onSuccess { infos ->
+                if (infos.isEmpty()) { show(R.string.restore_failed); return@onSuccess }
+                saveShelf(shelf + infos)
+                if (infos.size == 1) current = infos[0].id
                 show(R.string.restore_done)
             }.onFailure {
                 if (it is Backup.WrongPassword) onWrong() else show(R.string.restore_failed)
             }
         }
+    }
+
+    private fun restoreOne(contents: Backup.Contents): DiaryInfo {
+        val info = store.newDiary(contents.name.ifBlank { getApplication<Application>().getString(R.string.default_diary_name) }, contents.tint)
+            .copy(created = contents.created.takeIf { it > 0 } ?: System.currentTimeMillis())
+        val db = DiaryDb.open(store.dir(info.id), DiaryKeys.passphrase(info.id, "", saltOf(info)))
+        db.use {
+            contents.days.forEach { d -> db.save(d) }
+            contents.photos.forEach { (day, bytes) -> db.writeMedia(db.photoFile(day), bytes) }
+            contents.audios.forEach { (day, bytes) -> db.writeMedia(db.audioFile(day), bytes) }
+            contents.audiosB.forEach { (day, bytes) -> db.writeMedia(db.audioFileB(day), bytes) }
+        }
+        var cover = false
+        if (contents.coverGlass != null && contents.coverSheet != null) {
+            java.io.File(getApplication<Application>().filesDir, "covers").mkdirs()
+            store.coverFile(info.id, true).writeBytes(contents.coverGlass)
+            store.coverFile(info.id, false).writeBytes(contents.coverSheet)
+            cover = true
+        }
+        return info.copy(cover = cover)
     }
 
     override fun onCleared() {

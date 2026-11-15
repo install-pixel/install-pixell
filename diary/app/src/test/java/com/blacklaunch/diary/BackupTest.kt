@@ -41,6 +41,39 @@ class BackupTest {
     }
 
     @Test
+    fun allDiariesRoundTrip() {
+        // Загальна копія: два щоденники (один пропущено — null), читаються по одному, зі своїми днями й медіа.
+        val photo = Random(2).nextBytes(400_000)
+        val other = info.copy(id = "def", name = "Подорожі", tint = 1)
+        var closed = 0
+        val out = ByteArrayOutputStream()
+        val n = Backup.writeAll(out, "пароль", listOf(
+            { Backup.Dump(info, listOf(Day(20000, sealed = "Перший", photo = true)), { photo }, { null }, { null }, byteArrayOf(9), byteArrayOf(8)) { closed++ } },
+            { null },
+            { Backup.Dump(other, listOf(Day(20005, sealed = "Другий"), Day(20006, sealed = "Третій")), { null }, { null }, { null }, null, null) { closed++ } },
+        ))
+        assertEquals(2, n)
+        assertEquals(2, closed)
+        val got = ArrayList<Backup.Contents>()
+        Backup.readAll(ByteArrayInputStream(out.toByteArray()), "пароль") { got += it }
+        assertEquals(listOf("Мій щоденник", "Подорожі"), got.map { it.name })
+        assertArrayEquals(photo, got[0].photos[20000L])
+        assertArrayEquals(byteArrayOf(9), got[0].coverGlass)
+        assertEquals(2, got[1].days.size)
+        assertEquals(null, got[1].coverGlass)
+    }
+
+    @Test
+    fun oldSingleBackupReadsAsOne() {
+        val (file, photo) = make(1000)
+        val got = ArrayList<Backup.Contents>()
+        Backup.readAll(ByteArrayInputStream(file), "пароль-123") { got += it }
+        assertEquals(1, got.size)
+        assertEquals("Мій щоденник", got[0].name)
+        assertArrayEquals(photo, got[0].photos[20000L])
+    }
+
+    @Test
     fun wrongPassword() {
         val (file, _) = make(10)
         try {

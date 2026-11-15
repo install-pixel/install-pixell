@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -105,10 +106,23 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
     val haptics = LocalHaptics.current
     var page by remember { mutableStateOf(false) }
     val gear = rememberGearReveal()
-    var spineMenu by remember { mutableStateOf<DiaryInfo?>(null) }
-    var rename by remember { mutableStateOf<DiaryInfo?>(null) }
-    var erase by remember { mutableStateOf<DiaryInfo?>(null) }
     var newDiary by remember { mutableStateOf(false) }
+    // Загальна копія: коди щоденників із замком (питаємо по черзі; не дав — щоденник не ввійде), потім пароль копії.
+    var askCode by remember { mutableStateOf<List<DiaryInfo>?>(null) }
+    val codes = remember { HashMap<String, String>() }
+    var askBackupPw by remember { mutableStateOf(false) }
+    var backupPw by remember { mutableStateOf<String?>(null) }
+    val createBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val pw = backupPw
+        backupPw = null
+        if (uri != null && pw != null) vm.backupAll(uri, pw, HashMap(codes))
+        codes.clear()
+    }
+    fun startBackup() {
+        codes.clear()
+        val locked = vm.shelf.filter { it.locked }
+        if (locked.isEmpty()) askBackupPw = true else askCode = locked
+    }
     var restore by remember { mutableStateOf<Pair<android.net.Uri, Boolean>?>(null) }
     val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) restore = uri to false }
 
@@ -156,11 +170,10 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
                                 .padding(top = (((b.id.hashCode() and 0x7fffffff) % 5) * 6).dp)
                                 .combinedClickable(
                                     onClick = { haptics.tap(); vm.current = b.id },
-                                    onLongClick = { haptics.longPress(); spineMenu = b },
+                                    // Довге натискання — налаштування цього щоденника (та сама сторінка, що й із загальних).
+                                    onLongClick = { haptics.longPress(); diarySettings(b.id) },
                                 ),
                             seed = i,
-                            gear = gear,
-                            onGear = { diarySettings(b.id) },
                         )
                         Spacer(Modifier.height(14.dp))
                     }
@@ -179,6 +192,7 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
                     onLanguageChanged = onLanguageChanged,
                     onNewDiary = { newDiary = true },
                     onRestore = { openBackup.launch(arrayOf("*/*")) },
+                    onBackup = { startBackup() },
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(com.blacklaunch.diary.book.BookCorner)).background(Color.Black),
                     diaries = vm.shelf.map { it.id to it.name },
                     onDiarySettings = { diarySettings(it) },
@@ -192,16 +206,22 @@ fun ShelfScreen(vm: DiaryViewModel, onLanguageChanged: () -> Unit, onExit: () ->
         }
     }
 
-    spineMenu?.let { b ->
-        MenuDialog(b.name, listOf(
-            MenuEntry(Glyph.Book, stringResource(R.string.open)) { vm.current = b.id },
-            MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { rename = b },
-            MenuEntry(Glyph.Delete, stringResource(R.string.erase), Tone.Danger) { erase = b },
-        ), onDismiss = { spineMenu = null })
+    askCode?.firstOrNull()?.let { b ->
+        fun next() { askCode = askCode?.drop(1)?.takeIf { it.isNotEmpty() }; if (askCode == null) askBackupPw = true }
+        // Скасувати — цей щоденник не ввійде в копію.
+        TextDialog(stringResource(R.string.backup_code_title, b.name), "", "0000", 4, onDismiss = { next() }, hint = stringResource(R.string.backup_code_hint)) { code ->
+            codes[b.id] = code.filter { it.isDigit() }
+            next()
+        }
     }
-    rename?.let { b -> TextDialog(stringResource(R.string.rename), b.name, stringResource(R.string.diary_name_hint), Limits.DIARY_NAME, onDismiss = { rename = null }) { vm.rename(b.id, it) } }
-    erase?.let { b ->
-        ConfirmDialog(stringResource(R.string.erase_title, b.name), stringResource(R.string.erase_text), stringResource(R.string.erase_go), Tone.Danger, onDismiss = { erase = null }) { vm.erase(b.id) }
+    if (askBackupPw) {
+        PasswordDialog(restore = false, wrong = false, onDismiss = { askBackupPw = false; codes.clear() }) { pw ->
+            askBackupPw = false
+            backupPw = pw
+            val stamp = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd").format(java.time.LocalDate.now())
+            vm.keepOpenOnce = true
+            createBackup.launch("diaries-$stamp.diary")
+        }
     }
     if (newDiary) {
         TextDialog(stringResource(R.string.new_diary), "", stringResource(R.string.diary_name_hint), Limits.DIARY_NAME, onDismiss = { newDiary = false }, hint = stringResource(R.string.new_diary_hint), allowEmpty = true) {
@@ -220,8 +240,6 @@ private fun Spine(
     height: androidx.compose.ui.unit.Dp,
     modifier: Modifier,
     seed: Int,
-    gear: com.blacklaunch.diary.book.GearReveal? = null,
-    onGear: (() -> Unit)? = null,
 ) {
     val glass = AppStyle.glass
     Box(modifier.then(if (height != androidx.compose.ui.unit.Dp.Unspecified) Modifier.height(height) else Modifier).clip(RoundedCornerShape(8.dp))) {
@@ -233,7 +251,13 @@ private fun Spine(
                 drawLine(Color(0x22FFFFFF), Offset(size.width * 0.3f, 6.dp.toPx()), Offset(size.width * 0.3f, size.height - 6.dp.toPx()), 1.dp.toPx())
                 for (y in listOf(18.dp.toPx(), size.height - 18.dp.toPx())) drawLine(Color(0x33FFFFFF), Offset(4.dp.toPx(), y), Offset(size.width - 4.dp.toPx(), y), 1.dp.toPx())
             } else {
-                drawRoundRect(Color(0xFF050505), cornerRadius = CornerRadius(r))
+                // «Аркуш»: палітурка з того самого паперу, що й сторінки (тон і волокна), але своя — без заломів і
+                // вм'ятин: рівні поздовжні волокна, ледь опуклий корінець (темніше до країв), потерті кути.
+                drawRoundRect(com.blacklaunch.diary.book.PaperTexture.PAGE_BASE, cornerRadius = CornerRadius(r))
+                SpineTexture.get()?.let { tex ->
+                    drawImage(tex, dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt() + 1, size.height.toInt() + 1), filterQuality = androidx.compose.ui.graphics.FilterQuality.Low)
+                }
+                drawRoundRect(Brush.horizontalGradient(0f to Color(0x66000000), 0.18f to Color(0x14000000), 0.42f to Color(0x0AFFFFFF), 0.7f to Color(0x10000000), 1f to Color(0x70000000)), cornerRadius = CornerRadius(r))
                 drawPath(taperedPath(pencilLoop(size, r, seed * 17 + 3, 1.2.dp.toPx()), 2.dp.toPx()), SheetInk.copy(alpha = 0.85f))
                 for ((k, y) in listOf(16.dp.toPx(), 22.dp.toPx(), size.height - 22.dp.toPx(), size.height - 16.dp.toPx()).withIndex()) {
                     pencilTick(Offset(4.dp.toPx(), y + sin(seed + k * 1f)), Offset(size.width - 4.dp.toPx(), y), 1.3.dp.toPx(), SheetInk.copy(alpha = 0.5f), seed + k)
@@ -260,12 +284,56 @@ private fun Spine(
                 .padding(horizontal = 30.dp),
         )
         if (info.locked) {
-            GlyphIcon(Glyph.Lock, stringResource(R.string.locked), tint = Oled.TextSecondary, size = 16.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (onGear != null) 74.dp else 26.dp))
+            GlyphIcon(Glyph.Lock, stringResource(R.string.locked), tint = Oled.TextSecondary, size = 16.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 30.dp))
         }
-        // Шестерня — на самому корінці внизу, як тиснення на палітурці: налаштування цього щоденника.
-        if (gear != null && onGear != null) {
-            GearSpot(gear, Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp), size = 44.dp, onClick = onGear)
+    }
+}
+
+/**
+ * Фактура корінця для «Аркуша»: тон паперу сторінок, дрібне зерно й рівні поздовжні волокна (як у палітурного паперу),
+ * подекуди світліші потертості. Малюється один раз (сталий візерунок) і розтягується на корінець.
+ */
+private object SpineTexture {
+    private var tex: androidx.compose.ui.graphics.ImageBitmap? = null
+    fun get(): androidx.compose.ui.graphics.ImageBitmap? {
+        tex?.let { return it }
+        val w = 96
+        val h = 480
+        val base = com.blacklaunch.diary.book.PaperTexture.PAGE_BASE
+        val br = (base.red * 255).toInt(); val bg = (base.green * 255).toInt(); val bb = (base.blue * 255).toInt()
+        val rnd = java.util.Random(4242)
+        // Поздовжні волокна: для кожного стовпчика — своя ледь інша яскравість, що повільно «пливе» вздовж.
+        val col = FloatArray(w) { (rnd.nextFloat() - 0.5f) * 7f }
+        val px = IntArray(w * h)
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                val drift = kotlin.math.sin((y * 0.021f) + x * 0.37f) * 1.6f
+                val v = col[x] + drift + (rnd.nextFloat() - 0.5f) * 6f
+                val r = (br + v).toInt().coerceIn(0, 255)
+                val g = (bg + v).toInt().coerceIn(0, 255)
+                val b = (bb + v * 0.9f).toInt().coerceIn(0, 255)
+                px[y * w + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            }
         }
+        // Довгі тонкі волокна, світліші й темніші.
+        repeat(70) {
+            val x0 = rnd.nextInt(w)
+            val y0 = rnd.nextInt(h)
+            val len = 30 + rnd.nextInt(140)
+            val d = if (rnd.nextBoolean()) 9 else -7
+            var x = x0.toFloat()
+            for (k in 0 until len) {
+                val y = y0 + k
+                if (y >= h) break
+                x += (rnd.nextFloat() - 0.5f) * 0.35f
+                val xi = x.toInt().coerceIn(0, w - 1)
+                val c = px[y * w + xi]
+                fun ch(sh: Int) = (((c shr sh) and 0xFF) + d).coerceIn(0, 255)
+                px[y * w + xi] = (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+            }
+        }
+        val bmp = android.graphics.Bitmap.createBitmap(px, w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        return bmp.asImageBitmap().also { tex = it }
     }
 }
 

@@ -56,7 +56,7 @@ fun Modifier.revealsGear(gear: GearReveal): Modifier = pointerInput(gear) {
 
 /** Шестерня — замість стандартного «⋯»: відкриває сторінку меню. Видно її спершу й після дотику, потім тане. */
 @Composable
-fun GearSpot(gear: GearReveal, modifier: Modifier = Modifier, size: Dp = 48.dp, onClick: () -> Unit) {
+fun GearSpot(gear: GearReveal, modifier: Modifier = Modifier, size: Dp = 48.dp, glyph: Glyph = Glyph.Settings, label: String? = null, onClick: () -> Unit) {
     val haptics = LocalHaptics.current
     var visible by remember { mutableStateOf(true) }
     LaunchedEffect(gear.pokes) {
@@ -73,7 +73,7 @@ fun GearSpot(gear: GearReveal, modifier: Modifier = Modifier, size: Dp = 48.dp, 
             .clickable(enabled = visible) { haptics.tap(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        GlyphIcon(Glyph.Settings, stringResource(R.string.menu), tint = Oled.TextSecondary, size = size * 0.55f)
+        GlyphIcon(glyph, label ?: stringResource(R.string.menu), tint = Oled.TextSecondary, size = size * 0.55f)
     }
 }
 

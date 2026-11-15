@@ -152,11 +152,19 @@
     <string name="help_search_t">Search and calendar</string>
     <string name="help_search">Search — the ribbon at the top of the page: pull it down. Words, numbers, dates, months, years, place, and “week”, “month”, “year”. Tap a result — the diary turns to that day and highlights the word. Photos and Audio — only photos (with a slideshow) or only recordings.\n\nThe calendar icon next to the search field: month pages, days with entries are circled.\n\nIf something was written on this day a year (or more) ago, today\'s page has a folded corner at the bottom.</string>
     <string name="help_lock_t">Lock</string>
-    <string name="help_lock">The gear → “Set a lock”: turn the four wheels and lock in. From then on the diary opens only with that code.\n\nThe code can\'t be reset or recovered. If it\'s forgotten, the diary can only be erased.\n\nEverything written is always encrypted on the phone (even without a lock). While a locked diary is open, screenshots are disabled; as soon as the app goes to the background, it closes.</string>
+    <string name="help_lock">Long-press a diary spine on the shelf → “Set a lock”: turn the four dials and confirm. From then on the diary opens only with this code.
+
+The code can’t be reset or recovered. If it’s forgotten, the diary can only be erased.
+
+Everything is always encrypted on the phone (even without a lock). While a locked diary is open, screenshots are off; as soon as the app goes to the background it closes.</string>
     <string name="help_shelf_t">Several diaries</string>
-    <string name="help_shelf">The gear → “New diary”. With more than one, a shelf with spines appears. Tap to take a diary out; long-press to rename or erase.\n\nEach diary has its own cover, lock and bookmark.\n\nThe gear on the shelf — new diary, backup and general settings (for all diaries). The gear inside a diary — only its own.</string>
+    <string name="help_shelf">The shelf icon at the bottom of a diary leads to the shelf with spines. Tap a spine to take the diary out; long-press it for its settings: cover, name, lock, delete, and, on the next page, what the pages hold.
+
+The gear at the bottom of the shelf opens general settings: new diary, backup, style, language; under “Diaries” there are each diary’s settings too.</string>
     <string name="help_backup_t">Backup</string>
-    <string name="help_backup">The gear → “Backup”: the whole diary (days, photos, voice, cover) in one file, encrypted with a password you choose.\n\nOn a new phone: The gear → “Restore from backup”, pick the file and enter the password.</string>
+    <string name="help_backup">Gear on the shelf → “Back up all diaries”: every diary (days, photos, voice, covers) goes into one file encrypted with a password you choose. A locked diary is included only if you enter its code.
+
+On a new phone: gear on the shelf → “Restore from backup”, pick the file and enter the password.</string>
     <string name="menu_diary_desc">Menu page: this diary only</string>
     <string name="settings_this_diary">This diary\'s settings</string>
     <string name="shelf_and_settings">Shelf and general settings</string>
@@ -316,4 +324,14 @@
     </string-array>
     <string name="ink_help_title">How to draw</string>
     <string name="ink_help_body">Moving\n• The cursor works like a touchpad: slide anywhere, the tool follows. Slow — more precise, fast — further.\n• Hold your finger for a moment — the tool lowers and draws; lift — it rises.\n• Double‑tap — the tool stays down: lift and re‑grip as you like, the line continues. Tap again — it rises.\n• Lower and hold still — a dot.\n• Two fingers (tool raised) — zoom and move the page.\n• A stylus draws directly, with pressure; its eraser end erases.\n\nTools\n• Pencil — lines and shapes.\n• Brush — stroke; scrub (wide, back and forth); fill — lower and lift inside a closed outline.\n• Spray — airbrush or paint; hold in place — it builds up.\n• Marker — translucent, flat tip.\n• Eraser — exact, soft (blurred edge) or whole lines.\n\nDrawer (tap the selected tool again)\n• Sliders — size and opacity. Under each button — what is selected.\n• Shape: freehand; “straighten” — hold at the end and a wobbly circle, frame, triangle or line becomes neat; line, frame, oval — from where you lowered to the tip.\n• Smoothing: as drawn, smooth, smoother.\n• Inside: start inside an outline — paint stays inside; start outside — only around it.\n• Stencil (pencil): draw a film — a wall for paint. “Remove stencil” takes it away, the paint keeps a crisp edge.\n• Bin — clear the page.\n\nColour\n• Palette, recent colours, eyedropper (picks a colour from the drawing), custom colour.\n\nOther\n• Arrows — undo and redo. Tick — finish.\n• The next day the drawing dries — it can no longer change.\n• Canvas — a separate blank sheet for the day.</string>
+    <string name="cover_section">Cover</string>
+    <string name="cover_from_gallery">From gallery</string>
+    <string name="cover_default">Default (from the theme)</string>
+    <string name="settings_pages">Pages</string>
+    <string name="backup_all">Back up all diaries</string>
+    <string name="backup_code_title">Code of “%1$s”</string>
+    <string name="backup_code_hint">A locked diary goes into the backup only with its code. “Cancel” — without it.</string>
+    <string name="backup_done_skipped">Backup saved, but without some locked diaries</string>
+    <string name="cover_camera">From camera</string>
+    <string name="erase_diary">Delete diary</string>
 </resources>

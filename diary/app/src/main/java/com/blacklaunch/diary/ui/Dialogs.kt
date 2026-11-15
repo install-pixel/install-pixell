@@ -168,6 +168,7 @@ fun SettingsBook(
     onNewDiary: () -> Unit,
     onRestore: () -> Unit,
     modifier: Modifier = Modifier,
+    onBackup: () -> Unit = {},
     diaries: List<Pair<String, String>> = emptyList(),
     onDiarySettings: (String) -> Unit = {},
 ) {
@@ -208,6 +209,7 @@ fun SettingsBook(
             when {
                 i == 0 -> {
                     MenuRow(Glyph.Plus, stringResource(R.string.new_diary), onNewDiary)
+                    MenuRow(Glyph.Backup, stringResource(R.string.backup_all), onBackup)
                     MenuRow(Glyph.Restore, stringResource(R.string.restore), onRestore)
                     Header(stringResource(R.string.settings_style))
                     ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), AppStyle.glass) {
@@ -221,7 +223,6 @@ fun SettingsBook(
                     WindowHint(stringResource(R.string.settings_hint))
                 }
                 i == diariesPage -> {
-                    FieldHint(stringResource(R.string.diaries_hint), Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     diaries.forEach { (id, name) -> MenuRow(Glyph.Book, name, { onDiarySettings(id) }) }
                 }
                 i == langPage -> {

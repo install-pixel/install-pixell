@@ -81,6 +81,121 @@ object Backup {
         }
     }
 
+    /** Один щоденник для загальної копії: опис, дні й доступ до медіа (поки його база відкрита); [close] — закрити її. */
+    class Dump(
+        val info: DiaryInfo,
+        val days: List<Day>,
+        val photo: (Long) -> ByteArray?,
+        val audio: (Long) -> ByteArray?,
+        val audioB: (Long) -> ByteArray?,
+        val coverGlass: ByteArray?,
+        val coverSheet: ByteArray?,
+        val close: () -> Unit,
+    )
+
+    /**
+     * Загальна копія — усі щоденники в одному файлі (той самий формат, кожен щоденник у своїй теці `dN/`). Щоденники
+     * відкриваються по черзі ([items]: null — пропустити), тож у пам'яті щоразу лише один.
+     */
+    fun writeAll(out: OutputStream, password: String, items: List<() -> Dump?>): Int {
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        val key = SecretKeySpec(DiaryKeys.pbkdf2(password, salt, ITERATIONS), "AES")
+        val data = DataOutputStream(out)
+        data.write(MAGIC)
+        data.write(salt)
+        data.writeInt(ITERATIONS)
+        var n = 0
+        ZipOutputStream(ChunkedOut(data, key)).use { zip ->
+            fun put(name: String, bytes: ByteArray) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+            put("index.json", JSONObject().put("version", 2).put("count", items.size).toString().toByteArray())
+            items.forEach { item ->
+                val d = item() ?: return@forEach
+                try {
+                    val pre = "d$n/"
+                    put(pre + "info.json", JSONObject().put("name", d.info.name).put("created", d.info.created).put("tint", d.info.tint).put("version", 1).toString().toByteArray())
+                    val arr = JSONArray()
+                    d.days.forEach { arr.put(dayToJson(it)) }
+                    put(pre + "days.json", arr.toString().toByteArray())
+                    d.days.forEach { day ->
+                        if (day.photo) d.photo(day.day)?.let { put(pre + "media/photo_${day.day}.jpg", it) }
+                        if (day.audio) d.audio(day.day)?.let { put(pre + "media/audio_${day.day}.m4a", it) }
+                        if (day.audioB) d.audioB(day.day)?.let { put(pre + "media/audioB_${day.day}.m4a", it) }
+                    }
+                    d.coverGlass?.let { put(pre + "cover_glass.jpg", it) }
+                    d.coverSheet?.let { put(pre + "cover_sheet.jpg", it) }
+                    n++
+                } finally {
+                    d.close()
+                }
+            }
+        }
+        return n
+    }
+
+    /**
+     * Прочитати копію — і загальну (кілька щоденників), і давню копію одного щоденника. Щоденники віддаються по одному
+     * ([onDiary]), щойно прочитано, — увесь файл у пам'ять не вантажиться.
+     */
+    fun readAll(input: InputStream, password: String, onDiary: (Contents) -> Unit) {
+        val data = DataInputStream(input)
+        val magic = ByteArray(MAGIC.size)
+        runCatching { data.readFully(magic) }.onFailure { throw BadFile() }
+        if (!magic.contentEquals(MAGIC)) throw BadFile()
+        val salt = ByteArray(16).also { data.readFully(it) }
+        val iterations = data.readInt()
+        if (iterations !in 10_000..5_000_000) throw BadFile()
+        val key = SecretKeySpec(DiaryKeys.pbkdf2(password, salt, iterations), "AES")
+        var cur: String? = null
+        var name = ""
+        var created = 0L
+        var tint = 0
+        var days = emptyList<Day>()
+        var photos = HashMap<Long, ByteArray>()
+        var audios = HashMap<Long, ByteArray>()
+        var audiosB = HashMap<Long, ByteArray>()
+        var coverGlass: ByteArray? = null
+        var coverSheet: ByteArray? = null
+        var any = false
+        fun flush() {
+            if (!any) return
+            onDiary(Contents(name, created, tint, days, photos, audios, coverGlass, coverSheet, audiosB))
+            name = ""; created = 0L; tint = 0; days = emptyList()
+            photos = HashMap(); audios = HashMap(); audiosB = HashMap(); coverGlass = null; coverSheet = null
+            any = false
+        }
+        ZipInputStream(ChunkedIn(data, key)).use { zip ->
+            while (true) {
+                val e = zip.nextEntry ?: break
+                val bytes = zip.readBytes()
+                if (e.name == "index.json") continue
+                // Тека щоденника (`d0/`…) чи давня копія без тек.
+                val slash = e.name.indexOf('/')
+                val dir = if (e.name.startsWith("d") && slash > 1 && e.name.substring(1, slash).all { it.isDigit() }) e.name.substring(0, slash) else ""
+                val nm = if (dir.isEmpty()) e.name else e.name.substring(slash + 1)
+                if (dir != cur) { flush(); cur = dir }
+                any = true
+                when {
+                    nm == "info.json" -> JSONObject(String(bytes)).let {
+                        name = it.optString("name")
+                        created = it.optLong("created")
+                        tint = it.optInt("tint")
+                    }
+                    nm == "days.json" -> JSONArray(String(bytes)).let { a -> days = List(a.length()) { dayFromJson(a.getJSONObject(it)) } }
+                    nm.startsWith("media/photo_") -> nm.removePrefix("media/photo_").removeSuffix(".jpg").toLongOrNull()?.let { photos[it] = bytes }
+                    nm.startsWith("media/audioB_") -> nm.removePrefix("media/audioB_").removeSuffix(".m4a").toLongOrNull()?.let { audiosB[it] = bytes }
+                    nm.startsWith("media/audio_") -> nm.removePrefix("media/audio_").removeSuffix(".m4a").toLongOrNull()?.let { audios[it] = bytes }
+                    nm == "cover_glass.jpg" -> coverGlass = bytes
+                    nm == "cover_sheet.jpg" -> coverSheet = bytes
+                }
+            }
+        }
+        flush()
+    }
+
     fun read(input: InputStream, password: String): Contents {
         val data = DataInputStream(input)
         val magic = ByteArray(MAGIC.size)
