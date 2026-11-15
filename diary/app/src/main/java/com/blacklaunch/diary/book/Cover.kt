@@ -93,25 +93,14 @@ fun CoverFace(
     Box(modifier.fillMaxSize()) {
         Canvas(Modifier.fillMaxSize()) {
             drawCover(photo, pattern, glass, locked)
-            // «Аркуш»: обкладинка теж пожмакана — той самий природний рельєф (свій варіант), що й на сторінках.
-            if (!glass) {
-                val v = PaperTexture.Variant.of(COVER_SEED + pattern)
-                val dst = IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
-                clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, CornerRadius(BookCorner.toPx()))) }) {
-                    withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = center) }) {
-                        PaperTexture.shadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
-                        PaperTexture.lightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
-                    }
-                }
-            }
         }
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             val heightPx = constraints.maxHeight.toFloat()
             // Одна й та сама змінна положення на весь час (жест і малювання бачать одне значення); збережене місце
             // підхоплюємо, лише коли не тягнемо.
-            var y by remember { mutableFloatStateOf(titleY ?: DEFAULT_TITLE_Y) }
+            var y by remember { mutableFloatStateOf((titleY ?: DEFAULT_TITLE_Y).coerceIn(TITLE_Y_MIN, TITLE_Y_MAX)) }
             var dragging by remember { mutableStateOf(false) }
-            LaunchedEffect(titleY) { if (!dragging) y = titleY ?: DEFAULT_TITLE_Y }
+            LaunchedEffect(titleY) { if (!dragging) y = (titleY ?: DEFAULT_TITLE_Y).coerceIn(TITLE_Y_MIN, TITLE_Y_MAX) }
             val moved by rememberUpdatedState(onTitleMoved)
             val tapped by rememberUpdatedState(onTitleTap)
             var titleH by remember { mutableFloatStateOf(0f) }
@@ -183,7 +172,7 @@ fun CoverFace(
                                     onDragStart = { dragging = true; haptics.longPress() },
                                     onDrag = { change, d ->
                                         change.consume()
-                                        y = (y + d.y / heightPx).coerceIn(0.08f, 0.92f)
+                                        y = (y + d.y / heightPx).coerceIn(TITLE_Y_MIN, TITLE_Y_MAX)
                                     },
                                     onDragEnd = { dragging = false; haptics.tick(); moved?.invoke(y) },
                                     onDragCancel = { dragging = false },
@@ -211,11 +200,46 @@ fun CoverFace(
                 }
             }
         }
+        // «Аркуш»: обкладинка пожмакана — той самий природний рельєф (свій варіант), що й на сторінках; лягає поверх
+        // усього, тож і назва йде заломами разом із картоном.
+        if (!glass) Canvas(Modifier.fillMaxSize()) {
+            val v = PaperTexture.Variant.of(COVER_SEED + pattern)
+            val dst = IntSize(size.width.toInt() + 1, size.height.toInt() + 1)
+            clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, CornerRadius(BookCorner.toPx()))) }) {
+                withTransform({ scale(if (v.flipX) -1f else 1f, if (v.flipY) -1f else 1f, pivot = center) }) {
+                    PaperTexture.shadeOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+                    PaperTexture.lightOf(v)?.let { drawImage(it, dstSize = dst, blendMode = androidx.compose.ui.graphics.BlendMode.Screen) }
+                }
+                // Потертий край картону світліший — переводимо його в тон обкладинки плавно (м'яке притемнення від краю
+                // всередину), щоб світлий обідок не кидався в очі.
+                // (Світлий обідок — приблизно втричі яскравіший за середину й шириною ~10 dp: притемнюємо саме його, далі
+                // плавно сходить нанівець.)
+                val band = 15.dp.toPx()
+                val steps = 16
+                for (k in 0 until steps) {
+                    val o = band * k / steps
+                    val sw = band / steps + 1f
+                    val t = ((k / steps.toFloat()) - 0.5f) / 0.5f
+                    val fade = if (t <= 0f) 1f else (1f - t.coerceIn(0f, 1f)).let { it * it * (3f - 2f * it) }
+                    val a = 0.62f * fade
+                    drawRoundRect(
+                        Color.Black.copy(alpha = a),
+                        topLeft = Offset(o + sw / 2, o + sw / 2),
+                        size = Size(size.width - 2 * o - sw, size.height - 2 * o - sw),
+                        cornerRadius = CornerRadius((BookCorner.toPx() - o).coerceAtLeast(0f)),
+                        style = Stroke(sw),
+                    )
+                }
+            }
+        }
     }
 }
 
 /** Звичне місце назви на обкладинці (частка висоти). */
 private const val DEFAULT_TITLE_Y = 0.24f
+/** Назва — лише у верхній половині: правиш її — вона над клавіатурою, а не під нею. */
+const val TITLE_Y_MIN = 0.08f
+const val TITLE_Y_MAX = 0.5f
 
 /**
  * Скляна плашечка — як скрізь у «Склі»: ледь прозора темна пластинка з товщею (світліший верхній край, темніший нижній)
@@ -287,16 +311,14 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
     if (glass) {
         // Товщина скла: два канти — зовнішній яскравий, внутрішній тьмяний; відблиск і косий відсвіт.
         drawRoundRect(Brush.verticalGradient(0f to Color(0x1AFFFFFF), 1f to Color.Transparent, startY = 0f, endY = size.height * 0.4f), cornerRadius = cr)
-        clipPath(Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, cr)) }) {
-            val a = Offset(size.width * 0.15f, 0f)
-            drawPath(
-                Path().apply {
-                    moveTo(a.x, 0f); lineTo(a.x + size.width * 0.22f, 0f)
-                    lineTo(a.x - size.width * 0.18f, size.height); lineTo(a.x - size.width * 0.32f, size.height); close()
-                },
-                Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color(0x0FFFFFFF), 1f to Color.Transparent),
-            )
-        }
+        // Косий відсвіт — широкий і розмитий, без чітких країв (смуга світла, а не лінія).
+        drawRoundRect(
+            Brush.linearGradient(
+                0f to Color.Transparent, 0.18f to Color.Transparent, 0.3f to Color(0x09FFFFFF), 0.42f to Color.Transparent, 1f to Color.Transparent,
+                start = Offset(0f, 0f), end = Offset(size.width, size.height * 0.45f),
+            ),
+            cornerRadius = cr,
+        )
         drawPath(innerPath, Brush.verticalGradient(0f to Color(0x40FFFFFF), 0.3f to Color(0x10FFFFFF), 1f to Color(0x20FFFFFF)), style = Stroke(1.dp.toPx()))
         // Корінець зліва — темна смуга з гранню.
         drawRect(Brush.horizontalGradient(0f to Color(0x99000000), 1f to Color.Transparent, startX = 0f, endX = 18.dp.toPx()))
@@ -305,8 +327,8 @@ private fun DrawScope.drawCover(photo: ImageBitmap?, pattern: Int, glass: Boolea
         drawPath(taperedPath(loop, 1.6.dp.toPx()), SheetInk.copy(alpha = 0.55f))
         drawCorners(inset)
     }
-    // Зовнішній контур — та сама рамка, що й у сторінок (одна на всю книжку).
-    drawBookFrame(glass)
+    // Зовнішній контур — та сама рамка, що й у сторінок (одна на всю книжку); на темному картоні «Аркуша» — м'якша.
+    drawBookFrame(glass, soft = !glass)
 }
 
 

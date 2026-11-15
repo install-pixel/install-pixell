@@ -28,13 +28,21 @@ private val SheetFrame = SheetInk.copy(alpha = 0.42f)
  * Рамка книжки — однакова в обкладинки й сторінок. Лінія лежить усередині форми (а не по центру краю), тож обрізання
  * по краю не робить її тоншою, а за край вона не виходить.
  */
-fun DrawScope.drawBookFrame(glass: Boolean) {
+fun DrawScope.drawBookFrame(glass: Boolean, soft: Boolean = false) {
     val w = FrameWidth.toPx()
     val topLeft = Offset(w / 2, w / 2)
     val frame = Size(size.width - w, size.height - w)
     val corner = CornerRadius(BookCorner.toPx() - w / 2)
     // «Скло» — скляна грань (як у правилах тем: світліша вгорі), «Аркуш» — рівна лінія олівця. Обидві сталі.
     if (glass) drawRoundRect(Oled.Glint, topLeft = topLeft, size = frame, cornerRadius = corner, style = Stroke(w))
+    else if (soft) {
+        // Обкладинка «Аркуша»: та сама лінія, але тьмяніша й з м'яким переходом усередину — не вибивається з тону картону.
+        drawRoundRect(SheetFrame.copy(alpha = SheetFrame.alpha * 0.45f), topLeft = topLeft, size = frame, cornerRadius = corner, style = Stroke(w))
+        for (k in 1..3) {
+            val o = w * (0.5f + k)
+            drawRoundRect(SheetFrame.copy(alpha = SheetFrame.alpha * 0.1f / k), topLeft = Offset(o, o), size = Size(size.width - 2 * o, size.height - 2 * o), cornerRadius = CornerRadius((BookCorner.toPx() - o).coerceAtLeast(0f)), style = Stroke(w))
+        }
+    }
     else drawRoundRect(SheetFrame, topLeft = topLeft, size = frame, cornerRadius = corner, style = Stroke(w))
 }
 

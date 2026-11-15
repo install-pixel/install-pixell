@@ -416,7 +416,7 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
     fun setCaption(epochDay: Long, caption: String) = update(day(epochDay).copy(caption = caption.trim().take(Limits.CAPTION)))
 
     /** Куди на обкладинці пересунули назву (частка висоти). */
-    fun setTitleY(id: String, y: Float) = saveShelf(shelf.map { if (it.id == id) it.copy(titleY = y.coerceIn(0.08f, 0.92f)) else it })
+    fun setTitleY(id: String, y: Float) = saveShelf(shelf.map { if (it.id == id) it.copy(titleY = y.coerceIn(com.blacklaunch.diary.book.TITLE_Y_MIN, com.blacklaunch.diary.book.TITLE_Y_MAX)) else it })
 
     /** Викреслити (лише висохле). Перетини зливаються в одне викреслення. */
     fun addStrike(epochDay: Long, start: Int, end: Int) {
