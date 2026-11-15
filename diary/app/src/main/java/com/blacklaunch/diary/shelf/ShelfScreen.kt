@@ -259,8 +259,23 @@ private fun Spine(
                 }
                 drawRoundRect(Brush.horizontalGradient(0f to Color(0x66000000), 0.18f to Color(0x14000000), 0.42f to Color(0x0AFFFFFF), 0.7f to Color(0x10000000), 1f to Color(0x70000000)), cornerRadius = CornerRadius(r))
                 drawPath(taperedPath(pencilLoop(size, r, seed * 17 + 3, 1.2.dp.toPx()), 2.dp.toPx()), SheetInk.copy(alpha = 0.85f))
+                // Смужки-палітурки згори й знизу — потерті: шматками різної сили, подекуди стерті зовсім (там корінець
+                // найбільше тримають пальцями).
                 for ((k, y) in listOf(16.dp.toPx(), 22.dp.toPx(), size.height - 22.dp.toPx(), size.height - 16.dp.toPx()).withIndex()) {
-                    pencilTick(Offset(4.dp.toPx(), y + sin(seed + k * 1f)), Offset(size.width - 4.dp.toPx(), y), 1.3.dp.toPx(), SheetInk.copy(alpha = 0.5f), seed + k)
+                    val rnd = java.util.Random((seed * 31 + k * 7).toLong())
+                    val x0 = 4.dp.toPx()
+                    val x1 = size.width - 4.dp.toPx()
+                    var x = x0
+                    while (x < x1) {
+                        val len = (x1 - x0) * (0.08f + rnd.nextFloat() * 0.22f)
+                        val e = minOf(x + len, x1)
+                        val worn = rnd.nextFloat()
+                        // Чверть — стерто майже до нуля, решта — від ледь видного до чіткого.
+                        val a = if (worn < 0.25f) 0.06f else 0.18f + 0.34f * rnd.nextFloat()
+                        val yy = y + sin(seed + k * 1f) * (1f - (x - x0) / (x1 - x0))
+                        pencilTick(Offset(x, yy), Offset(e, y), (0.8f + rnd.nextFloat() * 0.6f).dp.toPx(), SheetInk.copy(alpha = a), seed + k + x.toInt())
+                        x = e + rnd.nextFloat() * 2.dp.toPx()
+                    }
                 }
             }
         }

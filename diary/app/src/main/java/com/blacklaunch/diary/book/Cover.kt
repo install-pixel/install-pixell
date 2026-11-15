@@ -19,6 +19,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.mutableFloatStateOf
@@ -66,7 +68,9 @@ import kotlin.math.sin
  *  - «Скло»: товста пластина чорного димчастого скла — подвійний кант (товщина), відблиск угорі й косий відсвіт;
  *    своє фото (чорно-біле) лежить під склом.
  *  - «Аркуш»: обкладинка, обведена олівцем, з орнаментом у кутах і резинкою-застібкою; своє фото — олівцевим ескізом.
- * Назва: «Скло» — на легкій скляній плашечці, «Аркуш» — просто напис почерком; пересувається (утримати й тягнути).
+ * Назва: «Скло» — на легкій скляній плашечці, «Аркуш» — просто напис почерком. Змінюється лише в налаштуваннях
+ * ([editing]: дотик — курсор просто в назві, Enter — збережено; утримати й тягнути — пересунути); справжня обкладинка
+ * нічого такого не вміє.
  * [lock] — замок (барабани) на застібці, якщо щоденник закритий на код.
  */
 @Composable
@@ -80,6 +84,9 @@ fun CoverFace(
     onTitleMoved: ((Float) -> Unit)? = null,
     onTitleTap: (() -> Unit)? = null,
     lock: (@Composable () -> Unit)? = null,
+    /** Обкладинка в налаштуваннях: назву можна правити просто тут ([onRename] — Enter) і пересувати. */
+    editing: Boolean = false,
+    onRename: ((String) -> Unit)? = null,
 ) {
     val glass = AppStyle.glass
     val haptics = com.blacklaunch.diary.ui.LocalHaptics.current
@@ -108,6 +115,43 @@ fun CoverFace(
             val moved by rememberUpdatedState(onTitleMoved)
             val tapped by rememberUpdatedState(onTitleTap)
             var titleH by remember { mutableFloatStateOf(0f) }
+            // Правимо назву: одразу з курсором (прийшли саме перейменувати); Enter — зберегти, дотик до назви — знову.
+            var typing by remember { mutableStateOf(editing) }
+            var text by remember(name) { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(name, androidx.compose.ui.text.TextRange(name.length))) }
+            val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+            // Курсор — коли сторінка вже лягла (гортання саме знімає фокус), і зберігати лише після справжнього фокуса.
+            var hadFocus by remember { mutableStateOf(false) }
+            LaunchedEffect(typing) {
+                if (!typing) return@LaunchedEffect
+                hadFocus = false
+                kotlinx.coroutines.delay(650)
+                runCatching { focus.requestFocus() }
+            }
+            fun save() {
+                val t = text.text.trim().take(com.blacklaunch.diary.ui.Limits.DIARY_NAME)
+                if (t.isNotEmpty() && t != name) onRename?.invoke(t)
+                typing = false
+                hadFocus = false
+                focusManager.clearFocus()
+            }
+            @Composable
+            fun Title(style: TextStyle, pad: Modifier) {
+                if (typing) {
+                    androidx.compose.foundation.text.BasicTextField(
+                        value = text,
+                        onValueChange = { if (it.text.length <= com.blacklaunch.diary.ui.Limits.DIARY_NAME) text = it },
+                        textStyle = style,
+                        singleLine = true,
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(style.color),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { save() }),
+                        modifier = pad.fillMaxWidth().focusRequester(focus).onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus && typing) save() },
+                    )
+                } else {
+                    Text(name, style = style, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = pad)
+                }
+            }
             if (lock != null) {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.weight(0.6f))
@@ -132,7 +176,7 @@ fun CoverFace(
                     .fillMaxWidth()
                     .onSizeChanged { titleH = it.height.toFloat() }
                     .then(
-                        if (onTitleMoved == null) Modifier
+                        if (onTitleMoved == null || typing) Modifier
                         else Modifier
                             .pointerInput(heightPx) {
                                 detectDragGesturesAfterLongPress(
@@ -145,37 +189,25 @@ fun CoverFace(
                                     onDragCancel = { dragging = false },
                                 )
                             }
-                            // Дотик — перейменувати просто тут.
-                            .pointerInput(Unit) { detectTapGestures(onTap = { tapped?.invoke() }) },
+                            // Дотик — курсор у назві (правити просто тут).
+                            .pointerInput(Unit) { detectTapGestures(onTap = { if (editing) typing = true else tapped?.invoke() }) },
                     ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (glass) {
                     // «Скло»: легка скляна плашечка — ледь прозора, з товщею й опуклістю.
                     GlassPlate(Modifier.fillMaxWidth()) {
-                        Text(
-                            name,
-                            style = TextStyle(
+                        Title(TextStyle(
                                 fontFamily = GlassFont, fontWeight = FontWeight.Light, fontSize = 30.sp, letterSpacing = 2.sp,
                                 color = Oled.TextPrimary, shadow = Shadow(Color(0x59FFFFFF), blurRadius = 18f), textAlign = TextAlign.Center,
-                            ),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                        )
+                            ), Modifier.padding(horizontal = 18.dp, vertical = 14.dp))
                     }
                 } else {
                     // «Аркуш»: просто напис почерком, без таблички; тінь — щоб читався на будь-якому фото.
-                    Text(
-                        name,
-                        style = TextStyle(
-                            fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = 40.sp,
-                            color = SheetInk.copy(alpha = 0.78f), shadow = Shadow(Color.Black, blurRadius = 14f), textAlign = TextAlign.Center,
-                        ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                    )
+                    Title(TextStyle(
+                        fontFamily = HandFont, fontWeight = FontWeight.Medium, fontSize = 40.sp,
+                        color = SheetInk.copy(alpha = 0.78f), shadow = Shadow(Color.Black, blurRadius = 14f), textAlign = TextAlign.Center,
+                    ), Modifier.padding(vertical = 8.dp))
                 }
             }
         }

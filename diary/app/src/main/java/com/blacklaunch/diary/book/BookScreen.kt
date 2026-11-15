@@ -138,6 +138,8 @@ sealed interface BookPage {
      * розміру, без прокрутки; між ними — таке саме гортання. Повертаються туди, звідки прийшли.
      */
     data class Menu(val n: Int) : BookPage
+    /** Обкладинка в налаштуваннях: назву правиш просто на ній і пересуваєш (справжня обкладинка цього не вміє). */
+    data object CoverEdit : BookPage
     /** Пошук — сторінка, на яку перегортає закладка-пошук; назад — туди, звідки прийшли. */
     data object Search : BookPage
     /** Наступні сторінки знахідок пошуку (у щоденнику нічого не прокручується). */
@@ -282,6 +284,7 @@ fun BookScreen(
     }
 
     var menuOpen by remember(info.id) { mutableStateOf(false) }
+    var coverEdit by remember(info.id) { mutableStateOf(false) }
     var searchOpen by remember(info.id) { mutableStateOf(false) }
     var calendarOpen by remember(info.id) { mutableStateOf(false) }
     var recorderFor by remember(info.id) { mutableStateOf<Long?>(null) }
@@ -343,6 +346,7 @@ fun BookScreen(
         if (menuOpen) {
             add(BookPage.Menu(0))
             if (open != null) add(BookPage.Menu(1))
+            if (open != null && coverEdit) add(BookPage.CoverEdit)
         }
         if (searchOpen && open != null) {
             add(BookPage.Search)
@@ -664,7 +668,7 @@ fun BookScreen(
                 add(MenuEntry(Glyph.Shutter, stringResource(R.string.cover_camera)) { shoot(COVER_TARGET) })
                 if (info.cover) add(MenuEntry(Glyph.Restore, stringResource(R.string.cover_default)) { vm.removeCover(info.id); showCover() })
                 add(MenuEntry(null, stringResource(R.string.menu_diary)))
-                add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
+                add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { coverEdit = true; pendingFlip = BookPage.CoverEdit })
                 add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
                 if (info.locked) add(MenuEntry(Glyph.Unlock, stringResource(R.string.lock_remove)) { dialog = BookDialog.LockRemove })
                 add(MenuEntry(Glyph.Delete, stringResource(R.string.erase_diary), Tone.Danger) { dialog = BookDialog.Erase })
@@ -703,6 +707,7 @@ fun BookScreen(
             recording != null -> stopRecording()
             photoTools -> photoTools = false
             ink != null -> ink = null
+            currentKey == BookPage.CoverEdit -> pendingFlip = BookPage.Menu(0)
             menuOpen -> closeMenu()
             searchOpen -> closeSearch()
             editing != null -> focusManager.clearFocus()
@@ -758,11 +763,11 @@ fun BookScreen(
                         count = pages.size,
                         // Гортати можна й під час письма: щойно сторінка рушила — клавіатура ховається.
                         enabled = ink == null && recording == null,
-                        heavy = { pages.getOrNull(it) == BookPage.Cover },
+                        heavy = { pages.getOrNull(it) == BookPage.Cover || pages.getOrNull(it) == BookPage.CoverEdit },
                         paperSeed = { i ->
                             when (val pg = pages.getOrNull(i)) {
                                 is BookPage.DayPart -> pageSeed(pg.day, pg.part)
-                                BookPage.Cover -> COVER_SEED + info.tint
+                                BookPage.Cover, BookPage.CoverEdit -> COVER_SEED + info.tint
                                 else -> 0
                             }
                         },
@@ -793,6 +798,7 @@ fun BookScreen(
                         prevOf = { i ->
                             when (pages.getOrNull(i)) {
                                 BookPage.Menu(0) -> pages.indexOf(menuReturn).coerceAtLeast(0)
+                                BookPage.CoverEdit -> pages.indexOf(BookPage.Menu(0)).coerceAtLeast(0)
                                 BookPage.Search -> pages.indexOf(searchReturn).coerceAtLeast(0)
                                 is BookPage.Recorder -> pages.indexOf(recorderReturn).coerceAtLeast(0)
                                 // Найдавніший місяць — назад на пошук.
@@ -812,7 +818,8 @@ fun BookScreen(
                         blocked = { blockers.values.toList() },
                         onFlipped = { i ->
                             currentKey = pages.getOrNull(i) ?: BookPage.Cover
-                            if (currentKey !is BookPage.Menu) menuOpen = false
+                            if (currentKey !is BookPage.Menu && currentKey != BookPage.CoverEdit) menuOpen = false
+                            if (currentKey != BookPage.CoverEdit) coverEdit = false
                             if (currentKey !is BookPage.Recorder) recorderFor = null
                             // Магнітофон, відкритий із пошуку, — частина пошуку: назад повертаєшся до знахідок.
                             val inSearchRecorder = currentKey is BookPage.Recorder && recorderReturn.isSearch()
@@ -829,8 +836,6 @@ fun BookScreen(
                                     pattern = info.tint,
                                     locked = info.locked,
                                     titleY = info.titleY,
-                                    onTitleMoved = { vm.setTitleY(info.id, it) },
-                                    onTitleTap = if (open != null) ({ dialog = BookDialog.Rename }) else null,
                                     lock = when {
                                         info.locked && open == null -> {
                                             {
@@ -856,16 +861,20 @@ fun BookScreen(
                                         else -> null
                                     },
                                 )
-                                Column(Modifier.fillMaxSize().padding(bottom = 22.dp), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
-                                    // Підказка не висить постійно — з'являється, якщо обкладинку довго не гортають.
-                                    if (open != null) {
-                                        Row(Modifier.graphicsLayer { alpha = hintAlpha }.padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            if (info.locked) GlyphIcon(Glyph.Unlock, null, tint = Oled.TextSecondary, size = 18.dp)
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(stringResource(R.string.cover_turn_hint), color = Oled.TextSecondary, fontSize = 13.sp)
-                                        }
-                                    }
-                                }
+                            }
+                            BookPage.CoverEdit -> {
+                                // Та сама обкладинка, але з налаштувань: назва з курсором (Enter — збережено), утримати й
+                                // тягнути — пересунути. Назад — гортанням чи «назад» до налаштувань.
+                                CoverFace(
+                                    name = info.name,
+                                    photo = if (info.cover) vm.coverBitmap(info.id, glass) else null,
+                                    pattern = info.tint,
+                                    locked = info.locked,
+                                    titleY = info.titleY,
+                                    onTitleMoved = { vm.setTitleY(info.id, it) },
+                                    editing = true,
+                                    onRename = { vm.rename(info.id, it) },
+                                )
                             }
                             BookPage.Search, is BookPage.SearchMore -> {
                                 val n = (p as? BookPage.SearchMore)?.n ?: 0
