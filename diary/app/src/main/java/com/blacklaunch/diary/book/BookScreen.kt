@@ -550,8 +550,14 @@ fun BookScreen(
         photoFor = null
         if (uri != null && d != null) vm.setPhoto(d, uri)
     }
+    // Нова обкладинка — одразу показати її (з налаштувань гортаємо на обкладинку; звідти значок полиці — назад).
+    fun showCover() {
+        if (!menuOpen) return
+        menuFromShelf = false
+        pendingFlip = BookPage.Cover
+    }
     val pickCover = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.setCover(info.id, uri)
+        if (uri != null) { vm.setCover(info.id, uri); showCover() }
     }
     // Камера — своя ([DiaryCamera]), не системна: знімок пишеться в приватну теку програми (не в галерею й не у спільні
     // файли), одразу шифрується в щоденник, а тимчасовий файл стирається.
@@ -576,7 +582,7 @@ fun BookScreen(
             bitmap.recycle()
             when {
                 !ok -> { shotFile.delete(); vm.show(R.string.camera_failed) }
-                target == COVER_TARGET -> vm.setCover(info.id, shotUri, shotFile)
+                target == COVER_TARGET -> { vm.setCover(info.id, shotUri, shotFile); showCover() }
                 else -> vm.setPhoto(target, shotUri, shotFile)
             }
         }
@@ -656,7 +662,7 @@ fun BookScreen(
                 add(MenuEntry(null, stringResource(R.string.cover_section)))
                 add(MenuEntry(Glyph.Gallery, stringResource(R.string.cover_from_gallery)) { vm.keepOpenOnce = true; pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
                 add(MenuEntry(Glyph.Shutter, stringResource(R.string.cover_camera)) { shoot(COVER_TARGET) })
-                if (info.cover) add(MenuEntry(Glyph.Restore, stringResource(R.string.cover_default)) { vm.removeCover(info.id) })
+                if (info.cover) add(MenuEntry(Glyph.Restore, stringResource(R.string.cover_default)) { vm.removeCover(info.id); showCover() })
                 add(MenuEntry(null, stringResource(R.string.menu_diary)))
                 add(MenuEntry(Glyph.Edit, stringResource(R.string.rename)) { dialog = BookDialog.Rename })
                 add(MenuEntry(Glyph.Lock, stringResource(if (info.locked) R.string.lock_change else R.string.lock_set)) { dialog = BookDialog.LockSet })
@@ -666,7 +672,9 @@ fun BookScreen(
                 // Закритий на код: решта — лише після коду (налаштування бачить тільки власник).
                 if (info.locked) add(MenuEntry(Glyph.Delete, stringResource(R.string.forgot_code), Tone.Danger) { dialog = BookDialog.Forgot })
             }
-        }.map { e -> MenuEntry(e.glyph, e.text, e.tone) { closeMenu(); e.onClick() } })
+        })
+        // Меню не закриваємо перед дією: воно відкрите з полиці, і закриття повернуло б на полицю — разом зі щоденником
+        // зникли б і вибір фото, і камера, і вікна (нічого б не спрацювало). Вікна лягають поверх налаштувань.
     }
 
     /** Друга сторінка: що є на сторінках цього щоденника. */
