@@ -30,7 +30,6 @@
         <item quantity="many">%d lat temu</item>
         <item quantity="other">%d roku temu</item>
     </plurals>
-    <string name="cover_turn_hint">Przewróć okładkę palcem</string>
 
     <string name="photo_add">Dodaj zdjęcie</string>
     <string name="photo_replace">Zamień z galerii</string>
@@ -136,41 +135,29 @@
     <string name="status_hide_desc">Zegar i bateria — tylko po przesunięciu z góry</string>
     <string name="haptics_title">Wibracja</string>
     <string name="haptics_desc">Przewracanie stron, bębenki zamka, przyciski</string>
-    <string name="settings_hint">Wszystko jest przechowywane tylko w tym telefonie, zaszyfrowane. Pamiętnik nie ma dostępu do internetu.</string>
 
-    <string name="help">Jak korzystać</string>
-    <string name="help_turn_t">Przewracanie stron</string>
-    <string name="help_turn">Stronę chwyta się palcem w zewnętrznej jednej trzeciej (nie przy samej krawędzi — tam jest gest „wstecz” telefonu) i ciągnie: z prawej — do przodu, z lewej — wstecz. Puszczona w połowie strona opada albo wraca, jak prawdziwa.\n\nOkładka przewraca się tak samo, tylko jest cięższa. Pamiętnik otwiera się od razu na zakładce (albo na dzisiejszym dniu — jak w Ustawieniach).\n\nGest „wstecz” telefonu zamyka pamiętnik (do okładki), jeszcze raz — do półki. Zębatka na dole pojawia się po dotknięciu.</string>
+    <string name="help">Instrukcja</string>
+    <string name="help_turn_t">Kartkowanie</string>
+    <string name="help_turn">Chwyć stronę palcem w zewnętrznej jednej trzeciej (nie przy samej krawędzi — tam jest systemowy gest „wstecz”) i ciągnij: od prawej do lewej — naprzód, od lewej do prawej — wstecz. Puścisz w połowie — strona opadnie albo wróci, jak prawdziwa. Okładka kartkuje się tak samo, tylko jest cięższa.\n\nPółprzezroczysta strzałka w dolnym rogu, która pojawia się po chwili, to podpowiedź: tu można kartkować dalej.\n\nPamiętnik otwiera się na dzisiejszym dniu (albo od pierwszej strony — jak wybrano w jego ustawieniach).\n\nSystemowy gest „wstecz” zamyka pamiętnik do okładki, jeszcze raz — na półkę. Dolny pasek (pióro, płótno, zdjęcie, głos, półka) pojawia się po dotknięciu.</string>
     <string name="help_write_t">Pisanie</string>
-    <string name="help_write">Dotknij linii — pojawi się klawiatura, a cała strona przesunie się nad nią (tekst nie odrywa się od papieru).\n\nNa dzień są dwie strony. Gdy pierwsza się zapełni, pamiętnik sam przewróci na drugą. Więcej miejsca na dzień nie ma — żeby nie rozpisywać się w poemat.\n\nMiejsce (w prawym górnym rogu) — dotknij, aby wpisać. Pamiętnik nie ma internetu, więc nie wie, gdzie jesteś.</string>
-    <string name="help_ink_t">Pióro</string>
-    <string name="help_ink">Zębatka → „Pisz piórem”: pisz i rysuj palcem na stronie — podkreśl, zakreśl, dorysuj. Wolno — grubsza linia, szybko — cieńsza.\n\nTrzy grubości, gumka, cofnij i ponów. Nie ma rozpoznawania pisma: wiesz, co tam jest napisane.</string>
+    <string name="help_write">Dotknij linii — pojawi się klawiatura, a cała książka przesunie się nad nią: tekst nie odrywa się od papieru.\n\nNa dzień są dwie strony. Gdy pierwsza się zapełni, pamiętnik sam przewróci na drugą. Więcej miejsca na dzień nie ma — żeby to był pamiętnik, a nie powieść. Zdjęcie i kaseta też zajmują miejsce na stronie.\n\nMiejsce (u góry po prawej) — dotknij i wpisz. Nowy dzień bierze miejsce z poprzedniego (w ustawieniach pamiętnika można to wyłączyć).</string>
+    <string name="help_ink_t">Pióro i rysowanie</string>
+    <string name="help_ink">Ikona pióra na dolnym pasku — rysujesz na stronie: podkreślić, obwieść, dorysować.\n\nNarzędzie chodzi za palcem jak kursor na touchpadzie: prowadź gdziekolwiek, a żeby rysować — przytrzymaj palec na chwilę. Dotknij dwa razy — narzędzie zostaje opuszczone i można przekładać palec.\n\nOłówek, pędzel, spray, marker, gumka. Dla każdego — grubość, przezroczystość, figury (krzywe koło czy ramka same się wyrównują), wygładzanie, farba w obrębie konturu, szablon. Kolor — paleta, pipeta albo własny.\n\nPłótno (ikona ramki) — osobna czysta kartka dnia tylko na rysunek.\n\nWszystko dokładnie — przycisk „i” na pasku pióra.</string>
     <string name="help_dry_t">Atrament wysycha</string>
-    <string name="help_dry">Świeży atrament jest jasny i tekst można poprawiać. Po dniu (lub tygodniu — w Ustawieniach) wysycha: robi się trochę bledszy i nie da się go już zmienić.\n\nSuchy tekst można tylko skreślić: przytrzymaj palec na słowie i przesuń wzdłuż linii. W „Kartce” słowa przekreśla ołówek, w „Szkle” przykrywa je matowa szklana kropla.\n\nDopisać dzień można zawsze — nowy tekst idzie po suchym.</string>
+    <string name="help_dry">Świeży atrament jest jasny i tekst można poprawiać. Następnego dnia wysycha: staje się nieco bledszy i strony nie da się już zmienić — ani tekstu, ani rysunku, ani zdjęcia, ani głosu.\n\nSuchy tekst można tylko skreślić: przytrzymaj palec na słowie i prowadź wzdłuż linii. W „Kartce” słowa są przekreślane ołówkiem, w „Szkle” kładzie się na nie matowa szklana kropla.\n\nWyrwać stronę: przytrzymaj lewy dolny róg i prowadź w górę. To na zawsze, bez cofania — przy grzbiecie zostaje tylko skrawek.</string>
     <string name="help_media_t">Zdjęcie i głos</string>
-    <string name="help_media">Zdjęcie dnia: ikony aparatu lub galerii na stronie (albo aparat na dole). Jedno zdjęcie dziennie; staje się częścią strony — w „Szkle” czarno-białe pod szkłem, w „Arkuszu” szkicem ołówkiem. Dotknij, aby zobaczyć większe.\n\nNagranie dnia: plakietka na stronie (albo mikrofon na dole) otwiera magnetofon. Jedna kaseta dziennie, strony A i B po 45 minut; nowe nagranie dopisuje się na końcu. Dotknij kasety, aby ją odwrócić.\n\nUsunąć zdjęcie lub kasetę — przesuń w lewo (z „Cofnij”).</string>
-    <string name="help_bookmark_t">Zakładka</string>
-    <string name="help_bookmark">Wstążka jest przyszyta do grzbietu, jej koniec zwisa spod książki po lewej. Pociągnij koniec w dół — wstążka położy się na tej stronie. Pociągnij jeszcze raz — zniknie.\n\nGdy zakładka jest na innej stronie, dotknij końca — pamiętnik przewróci się tam.</string>
+    <string name="help_media">Zdjęcie dnia — ikona zdjęcia na dolnym pasku: aparat lub galeria. Jedno zdjęcie na dzień; staje się częścią strony — w „Szkle” czarno-białe pod szkłem, w „Kartce” szkicem ołówkiem. Dotknij zdjęcia — zobaczysz je większe; tam też podpis, nowe zdjęcie lub usunięcie.\n\nNagranie dnia — mikrofon na dolnym pasku lub plakietka na stronie: otwiera się magnetofon. Jedna kaseta na dzień, strony A i B po 45 minut; nowe nagranie dopisuje się na końcu. Dotknij kasety, aby ją odwrócić.\n\nUsunąć zdjęcie lub kasetę prosto ze strony — przesuń w lewo (od razu można cofnąć).</string>
     <string name="help_search_t">Szukanie i kalendarz</string>
     <string name="help_search">Szukanie — zakładka u góry strony: pociągnij ją w dół. Słowa, liczby, daty, miesiące, lata, miejsce, a także „tydzień”, „miesiąc”, „rok”. Dotknij wyniku — pamiętnik przewróci na ten dzień i podświetli słowo. „Zdjęcia” i „Audio” — tylko zdjęcia (z pokazem) lub tylko nagrania.\n\nKalendarzyk obok pola szukania: miesiące jako strony, dni z wpisami są zakreślone.\n\nJeśli tego dnia rok (lub kilka lat) temu coś zapisano — na dzisiejszej stronie na dole jest zagięty róg.</string>
     <string name="help_lock_t">Zamek</string>
-    <string name="help_lock">Długie przytrzymanie grzbietu pamiętnika na półce → „Załóż zamek”: przekręć cztery bębenki i zatwierdź. Odtąd pamiętnik otwiera się tylko tym kodem.
-
-Kodu nie da się zresetować ani przypomnieć. Jeśli zapomnisz — pamiętnik można tylko usunąć.
-
-Wszystko jest zawsze zaszyfrowane w telefonie (także bez zamka). Gdy pamiętnik z zamkiem jest otwarty, zrzuty ekranu są wyłączone; gdy aplikacja przejdzie w tło — zamyka się.</string>
-    <string name="help_shelf_t">Kilka pamiętników</string>
-    <string name="help_shelf">Ikona półki na dole pamiętnika prowadzi na półkę z grzbietami. Stuknij grzbiet — wyjmiesz pamiętnik; długie przytrzymanie — jego ustawienia: okładka, nazwa, zamek, usuń, a po przewróceniu strony — co jest na stronach.
-
-Zębatka na dole półki — ustawienia ogólne: nowy pamiętnik, kopia zapasowa, styl, język; tam też w „Pamiętnikach” — ustawienia każdego.</string>
+    <string name="help_lock">Ustawienia pamiętnika (długie przytrzymanie grzbietu) → „Załóż zamek”: przekręć cztery bębenki i zatwierdź. Od tej pory pamiętnik otwiera się tylko tym kodem — bębenki są prosto na okładce. Po kilku błędach z rzędu trzeba chwilę poczekać.\n\nKodu nie da się zresetować ani przypomnieć. Jeśli go zapomnisz, pamiętnik można tylko skasować.\n\nWszystko, co napisane, jest zawsze zaszyfrowane (także bez zamka). Gdy pamiętnik z zamkiem jest otwarty, zrzuty ekranu są wyłączone; gdy aplikacja przechodzi w tło — zamyka się.</string>
+    <string name="help_shelf_t">Półka</string>
+    <string name="help_shelf">Ikona półki na dole pamiętnika prowadzi na półkę z grzbietami. Dotknij grzbietu — wyjmiesz pamiętnik; długie przytrzymanie — jego ustawienia: okładka, nazwa, zamek, usuwanie, a po przewróceniu — co jest na stronach.\n\nZębatka na dole półki — ustawienia ogólne: instrukcja, nowy pamiętnik, kopia zapasowa, styl, język, ekran; po przewróceniu — wszystkie pamiętniki na liście.</string>
     <string name="help_backup_t">Kopia zapasowa</string>
-    <string name="help_backup">Zębatka na półce → „Kopia zapasowa wszystkich pamiętników”: wszystkie pamiętniki (dni, zdjęcia, głos, okładki) — w jeden plik zaszyfrowany hasłem, które wymyślisz. Pamiętnik z zamkiem trafia do kopii tylko po podaniu kodu.
-
-Na nowym telefonie: zębatka na półce → „Przywróć z kopii”, wybierz plik i wpisz hasło.</string>
+    <string name="help_backup">Zębatka na półce → „Kopia zapasowa wszystkich pamiętników”: wszystkie pamiętniki (dni, rysunki, zdjęcia, głos, okładki) — w jednym pliku zaszyfrowanym hasłem, które wymyślisz. Pamiętnik z zamkiem trafia do kopii tylko po wpisaniu jego kodu.\n\nHasła nie da się odzyskać — bez niego nikt nie otworzy pliku, ty też nie.\n\nNa nowym telefonie: zębatka na półce → „Przywróć z kopii”, wybierz plik i wpisz hasło. Pamiętniki staną na półce bez zamków — założysz je znowu, jeśli trzeba.</string>
     <string name="menu_diary_desc">Strona menu: tylko ten pamiętnik</string>
     <string name="settings_this_diary">Ustawienia tego pamiętnika</string>
     <string name="shelf_and_settings">Półka i ustawienia ogólne</string>
-    <string name="settings_global_desc">Wspólne dla wszystkich pamiętników</string>
     <string name="photo_from_camera">Zrób zdjęcie</string>
     <string name="photo_from_gallery">Zdjęcie z galerii</string>
     <string name="photo_from_file">Zdjęcie z pliku</string>
@@ -193,8 +180,6 @@ Na nowym telefonie: zębatka na półce → „Przywróć z kopii”, wybierz pl
     <string name="strike_hint">Przeciągnij palcem po suchych słowach, by je skreślić. Dotknij ikony ponownie, by wyjść</string>
     <string name="tool_photo">Zdjęcie</string>
     <string name="audio_exists">Nagranie tego dnia już jest — przesuń je w lewo, by nagrać nowe</string>
-    <string name="menu_next">Przewróć — ustawienia →</string>
-    <string name="page_next">Przewróć →</string>
     <string name="tear_hint">Wyrwać stronę — na zawsze, bez powrotu</string>
     <string name="page_dry">Strona wyschła — teraz tylko ołówek</string>
     <string name="drying_fixed">Atrament schnie po dniu: potem strony nie da się zmienić — ani tekstu, ani zdjęcia, ani głosu. Zostaje ołówek albo stronę można wyrwać (przytrzymaj lewy dolny róg i ciągnij w górę).</string>
@@ -338,4 +323,10 @@ Na nowym telefonie: zębatka na półce → „Przywróć z kopii”, wybierz pl
     <string name="backup_done_skipped">Kopia zapisana, ale bez niektórych pamiętników z zamkiem</string>
     <string name="cover_camera">Z aparatu</string>
     <string name="erase_diary">Usuń pamiętnik</string>
+    <string name="help_start_t">Na początek</string>
+    <string name="help_start">To papierowy pamiętnik w telefonie: dzień to strona (i jeszcze jedna, jeśli się nie zmieści), a kartkujesz go palcem jak prawdziwy.\n\nPamiętników może być kilka — stoją na półce grzbietami. Dotknij grzbietu, aby wyjąć pamiętnik.\n\nWszystko jest przechowywane tylko na tym telefonie i zawsze zaszyfrowane. Pamiętnik nie ma dostępu do internetu: niczego nigdzie nie wysyła i nie wie, gdzie jesteś. Kopię robisz tylko ty — plikiem z hasłem (zob. „Kopia zapasowa”).\n\nDwa style — „Szkło” (czarne szkło, równe linie, poświata) i „Kartka” (biały ołówek na starym czarnym papierze) — wybierasz w ustawieniach, działają na wszystkie pamiętniki.</string>
+    <string name="help_cover_t">Okładka i nazwa</string>
+    <string name="help_cover">Ustawienia pamiętnika — długie przytrzymanie jego grzbietu na półce.\n\nOkładka — zdjęcie z galerii lub aparatu (nabiera wyglądu motywu) albo zwykła, jak była.\n\n„Zmień nazwę” przewraca na okładkę, a kursor jest już w nazwie: pisz i naciśnij Enter. Przytrzymaj nazwę i ciągnij — przesuniesz ją (w górnej połowie, żeby klawiatura jej nie zasłaniała).\n\nPrawdziwa okładka tego nie potrafi — żeby niczego nie ruszyć przypadkiem.</string>
+    <string name="help_settings_t">Ustawienia</string>
+    <string name="help_settings">Pamiętnika (długie przytrzymanie grzbietu, druga strona):\n• Zdjęcia na stronach, nagrania głosowe — wyłączone oddają swoje miejsce tekstowi.\n• Przenoś miejsce na następny dzień — w pamiętniku podróży lepiej wyłączyć.\n• Otwieraj na dzisiejszym dniu — inaczej od pierwszej strony.\n\nOgólne (zębatka na półce):\n• Styl — „Szkło” lub „Kartka”, dla wszystkich pamiętników.\n• Język — ukraiński, polski, angielski lub jak w telefonie.\n• Ukryj pasek stanu — zegar i bateria tylko po przesunięciu z góry.\n• Wibracje — kartkowanie, bębenki zamka, przyciski.</string>
 </resources>

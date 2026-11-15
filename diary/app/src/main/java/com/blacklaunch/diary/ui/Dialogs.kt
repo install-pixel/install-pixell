@@ -159,8 +159,9 @@ private fun PasswordField(value: String, onChange: (String) -> Unit, placeholder
 }
 
 /**
- * Загальні налаштування — для всіх щоденників — як книжечка зі сторінок сталого розміру (нічого не «пливе»), між ними —
- * те саме гортання, що й у щоденнику: 0 — щоденники й стиль, 1 — мова й екран, 2 — довідка, далі — теми довідки.
+ * Загальні налаштування — для всіх щоденників — як книжечка зі сторінок сталого розміру, між ними — те саме гортання, що й
+ * у щоденнику. 0 — інструкція (першим рядком), щоденники загалом, вигляд (стиль, мова, екран); 1 — кожен щоденник (до його
+ * налаштувань є й коротший шлях — довге натискання на корінець). Інструкція — окремі сторінки за рядком «Інструкція».
  */
 @Composable
 fun SettingsBook(
@@ -179,65 +180,64 @@ fun SettingsBook(
     val state = remember { com.blacklaunch.diary.book.FlipState(0) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val topics = HelpTopic.entries
-    // 0 — загальне й стиль, 1 — щоденники (у кожного — свої налаштування), 2 — мова й екран, 3 — довідка, далі — теми.
     val diariesPage = 1
-    val langPage = 2
-    val helpPage = 3
+    val helpPage = 2
     fun go(i: Int) { scope.launch { state.flipTo(i) } }
-    BackHandler(enabled = state.index > 0) { go(if (state.index > helpPage) helpPage else state.index - 1) }
+    BackHandler(enabled = state.index > 0) { go(if (state.index > helpPage) helpPage else 0) }
     com.blacklaunch.diary.book.FlipBook(
         state = state,
         count = helpPage + 1 + topics.size,
         enabled = true,
         modifier = modifier,
-        canFlipForward = { it < helpPage },
-        prevOf = { if (it > helpPage) helpPage else it - 1 },
+        canFlipForward = { it < diariesPage },
+        prevOf = { if (it > helpPage) helpPage else if (it == helpPage) 0 else it - 1 },
     ) { i ->
         val title = when {
             i == 0 -> stringResource(R.string.settings)
             i == diariesPage -> stringResource(R.string.diaries)
-            i == langPage -> stringResource(R.string.settings_language)
             i == helpPage -> stringResource(R.string.help)
             else -> stringResource(topics[i - helpPage - 1].title)
         }
         com.blacklaunch.diary.book.PaperPage(
             title = title,
-            subtitle = if (i == 0) stringResource(R.string.settings_global_desc) else null,
+            subtitle = null,
             seed = 57 + i * 13,
-            footer = if (i < helpPage) stringResource(R.string.page_next) else null,
+            turnHint = i == 0 && state.index == 0 && diaries.isNotEmpty(),
         ) {
             when {
                 i == 0 -> {
+                    MenuRow(Glyph.Help, stringResource(R.string.help), { go(helpPage) })
                     MenuRow(Glyph.Plus, stringResource(R.string.new_diary), onNewDiary)
                     MenuRow(Glyph.Backup, stringResource(R.string.backup_all), onBackup)
                     MenuRow(Glyph.Restore, stringResource(R.string.restore), onRestore)
                     Header(stringResource(R.string.settings_style))
-                    ChoiceRow(stringResource(R.string.style_glass), stringResource(R.string.style_glass_desc), AppStyle.glass) {
-                        AppStyle.glass = true
-                        settings.glass = true
-                    }
-                    ChoiceRow(stringResource(R.string.style_sheet), stringResource(R.string.style_sheet_desc), !AppStyle.glass) {
-                        AppStyle.glass = false
-                        settings.glass = false
-                    }
-                    WindowHint(stringResource(R.string.settings_hint))
-                }
-                i == diariesPage -> {
-                    diaries.forEach { (id, name) -> MenuRow(Glyph.Book, name, { onDiarySettings(id) }) }
-                }
-                i == langPage -> {
-                    AppLanguage.entries.forEach { lang ->
-                        val name = when (lang) {
-                            AppLanguage.System -> stringResource(R.string.lang_system)
-                            AppLanguage.Ukrainian -> "Українська"
-                            AppLanguage.Polish -> "Polski"
-                            AppLanguage.English -> "English"
+                    Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip(stringResource(R.string.style_glass), AppStyle.glass, Modifier.weight(1f)) {
+                            AppStyle.glass = true
+                            settings.glass = true
                         }
-                        ChoiceRow(name, null, language == lang) {
-                            if (language != lang) {
-                                language = lang
-                                settings.language = lang
-                                onLanguageChanged()
+                        ChoiceChip(stringResource(R.string.style_sheet), !AppStyle.glass, Modifier.weight(1f)) {
+                            AppStyle.glass = false
+                            settings.glass = false
+                        }
+                    }
+                    Header(stringResource(R.string.settings_language))
+                    AppLanguage.entries.chunked(2).forEach { pair ->
+                        Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            pair.forEach { lang ->
+                                val name = when (lang) {
+                                    AppLanguage.System -> stringResource(R.string.lang_system)
+                                    AppLanguage.Ukrainian -> "Українська"
+                                    AppLanguage.Polish -> "Polski"
+                                    AppLanguage.English -> "English"
+                                }
+                                ChoiceChip(name, language == lang, Modifier.weight(1f)) {
+                                    if (language != lang) {
+                                        language = lang
+                                        settings.language = lang
+                                        onLanguageChanged()
+                                    }
+                                }
                             }
                         }
                     }
@@ -254,7 +254,13 @@ fun SettingsBook(
                         }
                     }
                 }
-                i == helpPage -> topics.forEachIndexed { k, t -> MenuRow(t.glyph, stringResource(t.title), { go(helpPage + 1 + k) }) }
+                i == diariesPage -> {
+                    diaries.forEach { (id, name) -> MenuRow(Glyph.Book, name, { onDiarySettings(id) }) }
+                }
+                i == helpPage -> {
+                    MenuRow(Glyph.Back, stringResource(R.string.settings), { go(0) })
+                    topics.forEachIndexed { k, t -> MenuRow(t.glyph, stringResource(t.title), { go(helpPage + 1 + k) }) }
+                }
                 else -> {
                     MenuRow(Glyph.Back, stringResource(R.string.help), { go(helpPage) })
                     Text(
@@ -272,20 +278,22 @@ fun SettingsBook(
 
 @Composable
 private fun Header(text: String) {
-    Text(text, color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+    Text(text, color = Oled.TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(top = 14.dp, bottom = 6.dp))
 }
 
-/** Довідка: усі приховані жести — за темами. */
+/** Інструкція: що де і як — за темами, від першого знайомства до резервної копії. */
 private enum class HelpTopic(val title: Int, val body: Int, val glyph: Glyph) {
+    Start(R.string.help_start_t, R.string.help_start, Glyph.Help),
     Turning(R.string.help_turn_t, R.string.help_turn, Glyph.Book),
     Writing(R.string.help_write_t, R.string.help_write, Glyph.Edit),
-    Ink(R.string.help_ink_t, R.string.help_ink, Glyph.Pen),
     Drying(R.string.help_dry_t, R.string.help_dry, Glyph.TextT),
+    Ink(R.string.help_ink_t, R.string.help_ink, Glyph.Pen),
     Media(R.string.help_media_t, R.string.help_media, Glyph.Photo),
-    Bookmark(R.string.help_bookmark_t, R.string.help_bookmark, Glyph.Bookmark),
     Search(R.string.help_search_t, R.string.help_search, Glyph.Search),
+    Cover(R.string.help_cover_t, R.string.help_cover, Glyph.Gallery),
     Lock(R.string.help_lock_t, R.string.help_lock, Glyph.Lock),
-    Shelf(R.string.help_shelf_t, R.string.help_shelf, Glyph.Grid),
+    Shelf(R.string.help_shelf_t, R.string.help_shelf, Glyph.Shelf),
+    Settings(R.string.help_settings_t, R.string.help_settings, Glyph.Settings),
     Backup(R.string.help_backup_t, R.string.help_backup, Glyph.Backup),
 }
 

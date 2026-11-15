@@ -372,13 +372,6 @@ fun BookScreen(
         tween(if (flip.tearFinger != null) 300 else 380, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "stubFold",
     )
-    // Підказка «Гортай обкладинку» — через 5 с на обкладинці, плавно.
-    var hintShown by remember(info.id) { mutableStateOf(false) }
-    LaunchedEffect(open != null, flip.index == 0) {
-        hintShown = false
-        if (open != null && flip.index == 0) { delay(5_000); hintShown = true }
-    }
-    val hintAlpha by animateFloatAsState(if (hintShown) 1f else 0f, tween(900), label = "hint")
     val currentDay = (currentPage as? BookPage.DayPart)?.day
 
     // Куди відкривається обкладинка: на закладку (якщо так у Налаштуваннях) чи на сьогодні.
@@ -861,6 +854,10 @@ fun BookScreen(
                                         else -> null
                                     },
                                 )
+                                // Відкритий щоденник на обкладинці — за мить стрілочка: гортай.
+                                if (open != null && flip.index == 0 && !menuOpen) {
+                                    Box(Modifier.fillMaxSize()) { TurnHint(Modifier.align(Alignment.BottomEnd)) }
+                                }
                             }
                             BookPage.CoverEdit -> {
                                 // Та сама обкладинка, але з налаштувань: назва з курсором (Enter — збережено), утримати й
@@ -933,6 +930,7 @@ fun BookScreen(
                                 title = if (p.n == 0) info.name else stringResource(R.string.settings_pages),
                                 subtitle = null,
                                 seed = info.tint * 7 + 3 + p.n * 17,
+                                turnHint = p.n == 0 && open != null && flip.index == i,
                             ) { if (p.n == 0) DiaryMenu() else DiarySettings() }
                             is BookPage.DayPart -> {
                                 val d = vm.day(p.day).dried(System.currentTimeMillis(), hours)
