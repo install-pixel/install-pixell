@@ -2137,23 +2137,25 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawToolGlyph(t: In
             // конус, гільза й гострий стрижень.
             rotate(40f, Offset(w * 0.5f, h * 0.5f)) {
                 val bx = w * 0.5f
-                val bw = w * 0.19f
-                val r = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
-                drawRoundRect(c, Offset(bx - bw * 0.28f, h * -0.17f), androidx.compose.ui.geometry.Size(bw * 0.56f, h * 0.07f), r)
-                drawRect(c, Offset(bx - bw / 2, h * -0.1f), androidx.compose.ui.geometry.Size(bw, h * 0.1f))
-                drawLine(c, Offset(bx + bw * 0.62f, h * -0.07f), Offset(bx + bw * 0.62f, h * 0.2f), 1.3.dp.toPx(), cap = StrokeCap.Round)
-                drawRect(c, Offset(bx - bw / 2, h * 0f), androidx.compose.ui.geometry.Size(bw, h * 0.38f), style = stroke)
-                drawRect(c.copy(alpha = 0.5f), Offset(bx - bw / 2, h * 0.38f), androidx.compose.ui.geometry.Size(bw, h * 0.2f))
-                for (k in 1..3) drawLine(c, Offset(bx - bw / 2, h * (0.38f + k * 0.05f)), Offset(bx + bw / 2, h * (0.38f + k * 0.05f)), 0.9.dp.toPx())
+                val bw = w * 0.2f
+                // Кнопка й ковпачок із кліпсою.
+                drawRoundRect(c, Offset(bx - bw * 0.3f, h * -0.2f), androidx.compose.ui.geometry.Size(bw * 0.6f, h * 0.07f), androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()))
+                drawRect(c, Offset(bx - bw / 2, h * -0.13f), androidx.compose.ui.geometry.Size(bw, h * 0.11f))
+                drawLine(c, Offset(bx + bw * 0.64f, h * -0.1f), Offset(bx + bw * 0.64f, h * 0.2f), 1.3.dp.toPx(), cap = StrokeCap.Round)
+                // Корпус.
+                drawRect(c, Offset(bx - bw / 2, h * -0.02f), androidx.compose.ui.geometry.Size(bw, h * 0.44f), style = stroke)
+                // Рифлений тримач.
+                drawRect(c.copy(alpha = 0.5f), Offset(bx - bw / 2, h * 0.42f), androidx.compose.ui.geometry.Size(bw, h * 0.24f))
+                for (k in 1..3) drawLine(c, Offset(bx - bw / 2, h * (0.42f + k * 0.06f)), Offset(bx + bw / 2, h * (0.42f + k * 0.06f)), 0.9.dp.toPx())
+                // Конус — звужується до гільзи; з неї ледь видно короткий гострий стрижень.
                 val cone = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(bx - bw / 2, h * 0.58f); lineTo(bx + bw / 2, h * 0.58f); lineTo(bx + bw * 0.14f, h * 0.76f); lineTo(bx - bw * 0.14f, h * 0.76f); close()
+                    moveTo(bx - bw / 2, h * 0.66f); lineTo(bx + bw / 2, h * 0.66f); lineTo(bx + bw * 0.13f, h * 0.84f); lineTo(bx - bw * 0.13f, h * 0.84f); close()
                 }
-                drawPath(cone, c, style = stroke)
-                drawLine(c, Offset(bx, h * 0.76f), Offset(bx, h * 0.85f), 2.dp.toPx())
+                drawPath(cone, c)
                 val lead = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(bx - 0.9.dp.toPx(), h * 0.85f); lineTo(bx + 0.9.dp.toPx(), h * 0.85f); lineTo(bx, h * 0.98f); close()
+                    moveTo(bx - bw * 0.13f, h * 0.84f); lineTo(bx + bw * 0.13f, h * 0.84f); lineTo(bx, h * 0.95f); close()
                 }
-                drawPath(lead, c)
+                drawPath(lead, c.copy(alpha = 0.75f))
             }
         }
     }

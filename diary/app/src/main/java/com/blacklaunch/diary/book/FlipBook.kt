@@ -371,12 +371,14 @@ fun FlipBook(
             slots += Slot(state.index, Role.Current, preview = false)
         } else {
             // Гортаєш назад: сторінка, що лежить, — та сама, що й була, разом із силуетом під нею, доки її не накриє.
-            if (!state.forward) seeThrough(under!!)?.takeIf { it != top }?.let { slots += Slot(it, Role.Peek, preview = true) }
+            backIdx = if (state.forward) backOf?.invoke(top!!, under!!)?.takeIf { it in 0 until currentCount && it != top && it != under } else null
+            frontIdx = if (backIdx != null) (top!! + 1).takeIf { it < under!! && it != backIdx } else null
+            // Під сторінкою, що лежить (гортаєш назад) чи відкривається (уперед), — та сама, що просвічуватиме крізь неї,
+            // коли все ляже: силует уже на місці й нічого не «домальовується» в кінці.
+            seeThrough(under!!)?.takeIf { it != top && it != backIdx && it != frontIdx }?.let { slots += Slot(it, Role.Peek, preview = true) }
             // Та, що відкривається, — уже жива (не прев'ю): курсор, перенесений на неї, стає там одразу, на початку
             // гортання, — і літери, набрані під час руху, не потрапляють на попередню сторінку.
-            slots += Slot(under!!, Role.Under, preview = false)
-            backIdx = if (state.forward) backOf?.invoke(top!!, under)?.takeIf { it in 0 until currentCount && it != top && it != under } else null
-            frontIdx = if (backIdx != null) (top!! + 1).takeIf { it < under && it != backIdx } else null
+            slots += Slot(under, Role.Under, preview = false)
             frontIdx?.let { slots += Slot(it, Role.Stack, preview = true) }
             backIdx?.let { slots += Slot(it, Role.Back, preview = true) }
             slots += Slot(top!!, Role.Top, preview = false)
@@ -552,7 +554,10 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
                 // «Скло»: зворот — темна товста плівка, крізь яку розмито видно, що під нею, і ледь — саму сторінку з
                 // того боку. Розмите під низом, плівка й прозорий шар — по одному на весь зворот, смужками — лише
                 // перенесена сторінка й світло на вигині.
-                bBlur.under(this)
+                // Загнутий аркуш лежить на самому собі (на своєму пласкому шматку й валику) — крізь нього розмито видно
+                // саме цю сторінку, а не ту, що під нею.
+                drawRect(Color.Black)
+                blur?.top?.let { drawLayer(it) }
                 drawRect(if (bHeavy) Color(0xFF15161A).copy(alpha = 0.82f) else Color(0xFF111215).copy(alpha = 0.72f))
                 val canvas = drawContext.canvas
                 canvas.saveLayer(Rect(freeEdge.coerceAtLeast(0f), 0f, w, h), Paint().apply { alpha = if (bHeavy) 0.3f else 0.22f })

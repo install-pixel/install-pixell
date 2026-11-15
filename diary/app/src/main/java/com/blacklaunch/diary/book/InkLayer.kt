@@ -457,13 +457,16 @@ fun InkLayer(
                         val sm = s.smooth.coerceIn(0, 2)
                         val string = if (stylus) mm * 0.12f else mm * when (tool) {
                             InkTool.Pencil, InkTool.Eraser -> floatArrayOf(0.15f, 1.1f, 2.2f)[sm]
-                            InkTool.Brush, InkTool.Marker -> floatArrayOf(0.15f, 1.2f, 2.4f)[sm]
+                            InkTool.Marker -> floatArrayOf(0.15f, 1.2f, 2.4f)[sm]
+                            // Пензлик — трохи плавніше: часте туди-сюди не дає рваного мазка.
+                            InkTool.Brush -> floatArrayOf(0.3f, 1.6f, 3.0f)[sm]
                             InkTool.Spray -> floatArrayOf(0.1f, 0.6f, 1.4f)[sm]
                             else -> 0f
                         }
                         // Ще й усереднення сусідніх точок (півширина вікна в точках, крок 0,4 мм): дрібний зигзаг зникає.
                         val avg = if (stylus) 1 else when (tool) {
-                            InkTool.Pencil, InkTool.Brush, InkTool.Marker, InkTool.Eraser -> intArrayOf(0, 3, 6)[sm]
+                            InkTool.Pencil, InkTool.Marker, InkTool.Eraser -> intArrayOf(0, 3, 6)[sm]
+                            InkTool.Brush -> intArrayOf(1, 5, 9)[sm]
                             else -> 0
                         }
                         fun shown(pts: List<Offset>): List<Offset> = smoothPts(pts, avg)
@@ -960,7 +963,12 @@ fun InkLayer(
         // туди-сюди на межі), сам поворот — плавною пружиною.
         val density = androidx.compose.ui.platform.LocalDensity.current
         androidx.compose.runtime.LaunchedEffect(session) {
-            var choice = 0 // 0 — звично (нахил праворуч), 1 — нахил ліворуч, 2 — лежить праворуч, 3 — лежить ліворуч
+            // Чотири положення (кут корпусу від вертикалі, за годинниковою): звично — нахил праворуч, нахил ліворуч,
+            // лежить праворуч донизу, лежить ліворуч донизу. Для кожного рахуємо, скільки інструмента вийшло б за
+            // видиму частину сторінки (корпус — смуга від кінчика), і беремо те, де виходить найменше; поточне
+            // лишаємо, поки інше не краще помітно (без смикання на межі).
+            val angles = floatArrayOf(TILT, -TILT, 125f, -125f)
+            var choice = 0
             androidx.compose.runtime.snapshotFlow {
                 val pen = session.pen
                 val z = session.zoom
@@ -968,30 +976,35 @@ fun InkLayer(
                 val ph = pageSize[1]
                 if (pen == null || pw <= 0f) 0 else with(density) {
                     val reach = cursorReach(session, pw) / z
-                    val margin = 14.dp.toPx() / z
+                    val half = 14.dp.toPx() / z
+                    val margin = 8.dp.toPx() / z
                     val l = -session.tx / z
                     val t = -session.ty / z
-                    val room = { d: Float, need: Float, wasOut: Boolean -> if (wasOut) d < need + margin else d < need }
-                    val dRight = l + pw / z - pen.x
-                    val dLeft = pen.x - l
-                    val dTop = pen.y - t
-                    val sinT = kotlin.math.sin(Math.toRadians(TILT.toDouble())).toFloat()
-                    val cosT = kotlin.math.cos(Math.toRadians(TILT.toDouble())).toFloat()
-                    val topOut = room(dTop, reach * cosT, choice >= 2)
-                    choice = when {
-                        topOut -> if (choice == 3 || (choice != 2 && dLeft > dRight)) 3 else if (dRight >= reach * 0.9f || dRight >= dLeft) 2 else 3
-                        room(dRight, reach * sinT, choice == 1) -> 1
-                        else -> 0
+                    val r = l + pw / z
+                    val b = t + ph / z
+                    fun out(x: Float, y: Float) = maxOf(0f, l - x) + maxOf(0f, x - r) + maxOf(0f, t - y) + maxOf(0f, y - b)
+                    fun overflow(a: Float): Float {
+                        val rad = Math.toRadians(a.toDouble())
+                        val dx = kotlin.math.sin(rad).toFloat()
+                        val dy = -kotlin.math.cos(rad).toFloat()
+                        val nx = -dy * half
+                        val ny = dx * half
+                        val ex = pen.x + dx * reach
+                        val ey = pen.y + dy * reach
+                        val mx = pen.x + dx * reach * 0.5f
+                        val my = pen.y + dy * reach * 0.5f
+                        return out(pen.x + nx, pen.y + ny) + out(pen.x - nx, pen.y - ny) +
+                            out(mx + nx, my + ny) + out(mx - nx, my - ny) +
+                            out(ex + nx, ey + ny) + out(ex - nx, ey - ny)
                     }
+                    val costs = FloatArray(4) { overflow(angles[it]) }
+                    var best = 0
+                    for (i in 1..3) if (costs[i] < costs[best] - 0.5f) best = i
+                    if (costs[best] < costs[choice] - margin || costs[choice] > 0f && costs[best] == 0f) choice = best
                     choice
                 }
             }.collect { c ->
-                val target = when (c) {
-                    1 -> -2f * TILT
-                    2 -> 125f - TILT
-                    3 -> -125f - TILT
-                    else -> 0f
-                }
+                val target = angles[c] - TILT
                 launch { session.cursorTurn.animateTo(target, spring(dampingRatio = 0.85f, stiffness = 260f)) }
             }
         }
@@ -1801,12 +1814,15 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
     drawPath(variablePath(px, py, FloatArray(n) { widths[it] * 0.9f }), if (solid) ink else ink.copy(alpha = ink.alpha * (if (scrub) 0.5f else 0.22f)))
     // Щетинки — помітно окремі (з проміжками), щоб фактура відрізнялась від суцільної.
     val bristles = if (scrub) 11 else 6
-    val rnd = java.util.Random((seedX * 100000).toLong() + n)
+    // Щетинки штриха — завжди ті самі (насіння лише з першої точки): поки ведеш, нова точка не перемальовує весь штрих
+    // по-іншому (раніше від кількості точок залежало — і мазок блимав).
+    val rnd = java.util.Random((seedX * 100000).toLong())
     val nx = FloatArray(n)
     val ny = FloatArray(n)
+    // Напрям щетинок — за ширшим відрізком (±4 точки): на різких поворотах туди-сюди вони не розлітаються голками.
     for (i in 0 until n) {
-        val a = maxOf(0, i - 1)
-        val b = minOf(n - 1, i + 1)
+        val a = maxOf(0, i - 4)
+        val b = minOf(n - 1, i + 4)
         val dx = px[b] - px[a]
         val dy = py[b] - py[a]
         val len = hypot(dx, dy).coerceAtLeast(0.001f)
