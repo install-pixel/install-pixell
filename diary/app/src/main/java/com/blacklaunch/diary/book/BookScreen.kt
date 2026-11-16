@@ -1446,27 +1446,20 @@ private fun InkToolbar(
                     layout(pl.width, 0) { pl.place(0, -pl.height) }
                 },
         ) {
-            Row(Modifier.align(Alignment.BottomEnd).padding(bottom = 250.dp), verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = s.palette,
-                    enter = androidx.compose.animation.slideInHorizontally { it } + androidx.compose.animation.fadeIn(),
-                    exit = androidx.compose.animation.slideOutHorizontally { it } + androidx.compose.animation.fadeOut(),
-                ) {
-                    SidePalette(s, ink, glass, canUndo = s.undo.isNotEmpty(), canRedo = s.redo.isNotEmpty(), onUndo = onUndo, onRedo = onRedo,
-                        onPick = { haptics.tap(); s.applyFav(it) }, onRemove = { haptics.longPress(); InkFavourites.remove(it) })
-                }
-                // Язичок.
-                Box(
-                    Modifier
-                        .size(22.dp, 72.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-                        .background(if (glass) Color(0xE6202227) else Color(0xE61C1915))
-                        .semantics { contentDescription = "" }
-                        .clickable { haptics.tap(); s.palette = !s.palette },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Canvas(Modifier.size(16.dp, 13.dp)) { drawPaletteGlyph(if (s.palette) ink else Oled.TextSecondary) }
-                }
+            // Язичок палітри — помітний (ширший і вищий), щоб дотик до нього не плутався зі свайпом «назад» від краю.
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 250.dp)
+                    .size(30.dp, 96.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 15.dp, bottomStart = 15.dp))
+                    .background(if (glass) Color(0xE6202227) else Color(0xE61C1915))
+                    .then(if (glass) Modifier else Modifier.pencilFrame(15.dp, seed = 41, alpha = 0.35f, ink = SheetInk))
+                    .semantics { contentDescription = "" }
+                    .clickable { haptics.tap(); s.palette = !s.palette },
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.size(20.dp, 16.dp)) { drawPaletteGlyph(if (s.palette) ink else Oled.TextSecondary) }
             }
         }
         // Шухлядка лежить ПОВЕРХ сторінки (над панеллю) і не займає місця: відкрив / закрив — сторінка не стрибає,
@@ -1479,6 +1472,15 @@ private fun InkToolbar(
                     layout(pl.width, 0) { pl.place(0, -pl.height) }
                 },
         ) {
+        // Палітра улюбленого — на тому самому місці, що й шухлядки: виїжджає збоку (від язичка) і лягає над панеллю.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = s.palette,
+            enter = androidx.compose.animation.slideInHorizontally { it } + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutHorizontally { it } + androidx.compose.animation.fadeOut(),
+        ) {
+            FavPalette(s, ink, glass, canUndo = s.undo.isNotEmpty(), canRedo = s.redo.isNotEmpty(), onUndo = onUndo, onRedo = onRedo,
+                onPick = { haptics.tap(); s.applyFav(it) }, onRemove = { haptics.longPress(); InkFavourites.remove(it) })
+        }
         androidx.compose.animation.AnimatedVisibility(
             visible = s.drawer != 0,
             enter = androidx.compose.animation.slideInVertically { it / 3 } + androidx.compose.animation.fadeIn(),
@@ -2471,56 +2473,33 @@ private fun paletteBoard(w: Float, h: Float): androidx.compose.ui.graphics.Path 
         close()
     }
     val hole = androidx.compose.ui.graphics.Path().apply {
-        addOval(androidx.compose.ui.geometry.Rect(Offset(w * 0.87f, h * 0.38f), androidx.compose.ui.geometry.Size(w * 0.035f, h * 0.12f).let { androidx.compose.ui.geometry.Size(it.width * 2, it.height * 2) }.let { sz -> sz }).translate(-w * 0.035f, -h * 0.12f))
-    }
-    return androidx.compose.ui.graphics.Path.combine(androidx.compose.ui.graphics.PathOperation.Difference, outline, hole)
-}
-
-/** Обрис стоячої дощечки для фарб (вм'ятина для пальця зліва, отвір) у прямокутнику [w]×[h]. */
-private fun sideBoard(w: Float, h: Float): androidx.compose.ui.graphics.Path {
-    val outline = androidx.compose.ui.graphics.Path().apply {
-        moveTo(w * 0.45f, h * 0.02f)
-        cubicTo(w * 0.85f, h * 0.0f, w * 1.0f, h * 0.2f, w * 0.97f, h * 0.5f)
-        cubicTo(w * 0.95f, h * 0.8f, w * 0.9f, h * 0.99f, w * 0.55f, h * 0.985f)
-        cubicTo(w * 0.2f, h * 0.98f, w * 0.02f, h * 0.86f, w * 0.04f, h * 0.62f)
-        cubicTo(w * 0.05f, h * 0.47f, w * 0.18f, h * 0.44f, w * 0.15f, h * 0.35f)
-        cubicTo(w * 0.12f, h * 0.27f, w * 0.0f, h * 0.24f, w * 0.05f, h * 0.13f)
-        cubicTo(w * 0.1f, h * 0.04f, w * 0.25f, h * 0.03f, w * 0.45f, h * 0.02f)
-        close()
-    }
-    val hole = androidx.compose.ui.graphics.Path().apply {
-        addOval(androidx.compose.ui.geometry.Rect(w * 0.13f, h * 0.17f, w * 0.29f, h * 0.24f))
+        addOval(androidx.compose.ui.geometry.Rect(w * 0.875f, h * 0.5f, w * 0.935f, h * 0.7f))
     }
     return androidx.compose.ui.graphics.Path.combine(androidx.compose.ui.graphics.PathOperation.Difference, outline, hole)
 }
 
 /**
- * Палітра улюбленого — висувна дощечка для фарб збоку, у стилі теми: угорі цятки улюблених кольорів, нижче — готові
- * інструменти (з тим самим кольором, товщиною, усім), унизу — назад / вперед. Дотик — узяти; затримати — прибрати з
- * палітри. Порожні місця — ледь помітні лунки (покласти сюди: затримати колір чи інструмент).
+ * Палітра улюбленого — дощечка для фарб у стилі теми, на місці шухлядки над панеллю: ліворуч цятки улюблених кольорів,
+ * посередині — готові інструменти (з тим самим кольором, товщиною, усім), праворуч угорі — назад / вперед. Дотик —
+ * узяти; затримати — прибрати з палітри. Порожні місця — ледь помітні лунки (покласти сюди: затримати колір чи інструмент).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SidePalette(s: InkSession, ink: Color, glass: Boolean, canUndo: Boolean, canRedo: Boolean, onUndo: () -> Unit, onRedo: () -> Unit, onPick: (InkFav) -> Unit, onRemove: (InkFav) -> Unit) {
+private fun FavPalette(s: InkSession, ink: Color, glass: Boolean, canUndo: Boolean, canRedo: Boolean, onUndo: () -> Unit, onRedo: () -> Unit, onPick: (InkFav) -> Unit, onRemove: (InkFav) -> Unit) {
     val colors = InkFavourites.colors
     val tools = InkFavourites.tools
     val current = s.captureFav()
     val haptics = LocalHaptics.current
-    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.size(150.dp, 340.dp)) {
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(150.dp)) {
         val bw = constraints.maxWidth.toFloat()
         val bh = constraints.maxHeight.toFloat()
         Canvas(Modifier.fillMaxSize()) {
-            val board = sideBoard(size.width, size.height)
+            val board = paletteBoard(size.width, size.height)
             if (glass) {
-                drawPath(board, Brush.verticalGradient(listOf(Color(0xF0202227), Color(0xF0111215))))
+                drawPath(board, Brush.verticalGradient(listOf(Color(0xF2202227), Color(0xF2111215))))
                 drawPath(board, Brush.verticalGradient(listOf(Color(0x40FFFFFF), Color(0x14FFFFFF))), style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
             } else {
-                drawPath(board, Color(0xF21B1814))
-                // Сліди фарби довкола лунок — палітрою вже користувались.
-                colors.forEachIndexed { i, f ->
-                    val col = if (f.rgb == INK_RGB) ink else Color(0xFF000000.toInt() or f.rgb)
-                    drawCircle(col.copy(alpha = 0.1f), 19.dp.toPx(), Offset(size.width * (if (i % 2 == 0) 0.47f else 0.76f) + 4.dp.toPx(), size.height * (0.1f + 0.085f * (i / 2)) + 4.dp.toPx()))
-                }
+                drawPath(board, Color(0xF51B1814))
                 drawPath(board, SheetInk.copy(alpha = 0.5f), style = androidx.compose.ui.graphics.drawscope.Stroke(1.2.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
             }
         }
@@ -2541,11 +2520,11 @@ private fun SidePalette(s: InkSession, ink: Color, glass: Boolean, canUndo: Bool
         fun androidx.compose.ui.graphics.drawscope.DrawScope.empty() {
             drawCircle(ink.copy(alpha = 0.18f), size.minDimension * 0.31f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))))
         }
-        // Кольори: 2 стовпчики × 4.
+        // Кольори: 2 ряди × 4.
         for (i in 0 until InkFavourites.MAX_COLORS) {
             val fav = colors.getOrNull(i)
-            val cx = bw * (if (i % 2 == 0) 0.47f else 0.76f)
-            val cy = bh * (0.1f + 0.085f * (i / 2))
+            val cx = bw * (0.11f + 0.095f * (i % 4))
+            val cy = bh * (if (i < 4) 0.33f else 0.68f)
             WellBox(cx, cy, fav?.let { { onPick(it) } }, fav?.let { { onRemove(it) } }) {
                 if (fav == null) { empty(); return@WellBox }
                 val r = size.minDimension / 2f
@@ -2567,11 +2546,11 @@ private fun SidePalette(s: InkSession, ink: Color, glass: Boolean, canUndo: Bool
                 if (current.rgb == fav.rgb && current.tool != InkTool.Eraser) drawCircle(ink.copy(alpha = 0.9f), r * 0.95f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()))
             }
         }
-        // Готові інструменти: 2 × 3.
+        // Готові інструменти: 2 ряди × 3.
         for (i in 0 until InkFavourites.MAX_TOOLS) {
             val fav = tools.getOrNull(i)
-            val cx = bw * (if (i % 2 == 0) 0.4f else 0.7f)
-            val cy = bh * (0.49f + 0.105f * (i / 2))
+            val cx = bw * (0.5f + 0.095f * (i % 3))
+            val cy = bh * (if (i < 3) 0.33f else 0.68f)
             WellBox(cx, cy, fav?.let { { onPick(it) } }, fav?.let { { onRemove(it) } }) {
                 if (fav == null) { empty(); return@WellBox }
                 val r = size.minDimension / 2f
@@ -2588,9 +2567,8 @@ private fun SidePalette(s: InkSession, ink: Color, glass: Boolean, canUndo: Bool
                 if (current.same(fav)) drawCircle(ink.copy(alpha = 0.9f), r * 0.95f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()))
             }
         }
-        // Назад / вперед.
-        WellBox(bw * 0.4f, bh * 0.87f, { if (canUndo) { haptics.tap(); onUndo() } }, null) { drawUndoGlyph(ink.copy(alpha = if (canUndo) 1f else 0.3f), false) }
-        WellBox(bw * 0.7f, bh * 0.87f, { if (canRedo) { haptics.tap(); onRedo() } }, null) { drawUndoGlyph(ink.copy(alpha = if (canRedo) 1f else 0.3f), true) }
+        // Назад / вперед — праворуч угорі.
+        WellBox(bw * 0.79f, bh * 0.3f, { if (canUndo) { haptics.tap(); onUndo() } }, null) { drawUndoGlyph(ink.copy(alpha = if (canUndo) 1f else 0.3f), false) }
+        WellBox(bw * 0.9f, bh * 0.3f, { if (canRedo) { haptics.tap(); onRedo() } }, null) { drawUndoGlyph(ink.copy(alpha = if (canRedo) 1f else 0.3f), true) }
     }
 }
-

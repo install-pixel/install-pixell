@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -422,51 +423,35 @@ fun InkLayer(
     val leadAnim by animateFloatAsState(if (session?.lead == true || session?.locked == true) 1f else 0f, spring(dampingRatio = 0.75f, stiffness = 700f), label = "lead")
     val hasInk = lines.any { it.page == part }
     // Картинка готового малюнка (лише поки малюєш; потім не тримаємо — пам'ять).
-    val inkCache = remember { arrayOfNulls<InkCache>(1) }
     Box(modifier.fillMaxSize()) {
     // Готовий малюнок — окремим шаром: малюється лише коли змінився (новий штрих, гумка), а не щокадру, поки ведеш
-    // інструментом чи гортаєш. Текстурою — лише коли на сторінці справді є малюнок (порожня — зайва на весь екран).
-    Canvas(
+    // інструментом чи гортаєш. Над ним — слід гумки, що стирає просто з цього шару (обидва — в одному буфері відеокарти,
+    // DstOut), тож гумка теж не перемальовує щокадру всі штрихи. Буфер — лише коли на сторінці справді є малюнок.
+    Box(
         Modifier
             .fillMaxSize()
             .graphicsLayer { compositingStrategy = if (hasInk) androidx.compose.ui.graphics.CompositingStrategy.Offscreen else androidx.compose.ui.graphics.CompositingStrategy.Auto },
     ) {
-        val w = size.width
-        // Те, що посуваєш, — уже нагорі (там і ляже).
-        val shownLines = moving?.let { mv -> val ids = mv.map { it.time }.toSet(); (moveBase ?: lines).filter { it.time !in ids } + mv } ?: lines
-        // Увесь малюнок — в окремому шарі: гумка стирає лише намальоване, а не папір під ним.
-        drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        if (session == null) { inkCache[0] = null; drawInk(shownLines, part, w, dry, hidden) }
-        else {
-            // Поки малюєш — готовий малюнок картинкою: гумка, що веде слід по ньому, не перемальовує щокадру всі
-            // штрихи сторінки (від цього вона й смикалась). Картинка оновлюється, лише коли малюнок змінився.
-            val c = inkCache[0]
-            val glassNow = AppStyle.glass
-            val img = if (c != null && c.lines === shownLines && c.hidden === hidden && c.w == size.width.toInt() && c.h == size.height.toInt() && c.glass == glassNow) c.img
-            else {
-                val bmp = androidx.compose.ui.graphics.ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
-                androidx.compose.ui.graphics.drawscope.CanvasDrawScope().draw(
-                    androidx.compose.ui.unit.Density(density, fontScale), layoutDirection, androidx.compose.ui.graphics.Canvas(bmp), size,
-                ) {
-                    drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-                    drawInk(shownLines, part, w, dry, hidden)
-                    drawContext.canvas.restore()
-                }
-                inkCache[0] = InkCache(shownLines, hidden, bmp.width, bmp.height, glassNow, bmp)
-                bmp
+        Canvas(Modifier.fillMaxSize().graphicsLayer { }) {
+            val w = size.width
+            // Те, що посуваєш, — уже нагорі (там і ляже).
+            val shownLines = moving?.let { mv -> val ids = mv.map { it.time }.toSet(); (moveBase ?: lines).filter { it.time !in ids } + mv } ?: lines
+            // Увесь малюнок — в окремому шарі: гумка стирає лише намальоване, а не папір під ним.
+            drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
+            drawInk(shownLines, part, w, dry, hidden)
+            drawContext.canvas.restore()
+        }
+        Canvas(Modifier.fillMaxSize()) {
+            if (session != null && session.tool == InkTool.Eraser && live.size >= 2) {
+                val w = size.width
+                drawLayered(
+                    FloatArray(live.size) { live[it].x / w },
+                    FloatArray(live.size) { live[it].y / w },
+                    FloatArray(liveFactors.size) { liveFactors[it] },
+                    session.width * w, w, false, session.kind, session.style, 0,
+                )
             }
-            drawImage(img)
         }
-        // Гумка стирає вже намальоване — її живий слід мусить бути в цьому ж шарі.
-        if (session != null && session.tool == InkTool.Eraser && live.size >= 2) {
-            drawLayered(
-                FloatArray(live.size) { live[it].x / w },
-                FloatArray(live.size) { live[it].y / w },
-                FloatArray(liveFactors.size) { liveFactors[it] },
-                session.width * w, w, false, session.kind, session.style, 0,
-            )
-        }
-        drawContext.canvas.restore()
     }
     // Живий штрих, трафарети, ласо — окремо, поверх: лише цей шар перемальовується, поки ведеш.
     Canvas(
@@ -746,10 +731,11 @@ fun InkLayer(
                                     e.changes.forEach { it.consume() }
                                     e = awaitPointerEvent()
                                 }
-                                if (lastT - tapStart < 320L && travel < 14.dp.toPx() && maxFingers in 2..3) {
+                                // Лише двома: три пальці на багатьох телефонах — системний знімок екрана.
+                                if (lastT - tapStart < 320L && travel < 14.dp.toPx() && maxFingers == 2) {
                                     // Це був дотик, а не наближення: сторінка лишається, як була.
                                     s.zoom = z0; s.tx = tx0; s.ty = ty0
-                                    if (maxFingers == 2) s.onUndoTap?.invoke() else s.onRedoTap?.invoke()
+                                    s.onUndoTap?.invoke()
                                     s.pen = clampPen(s.pen ?: target)
                                     return@awaitEachGesture
                                 }
@@ -2613,11 +2599,16 @@ private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, gla
             drawRect(cylinder(left, bw, front.copy(red = front.red * 0.7f, green = front.green * 0.7f, blue = front.blue * 0.7f), front, Color.White), Offset(left, mid), Size(bw, bh / 2f))
             // Межа між половинами.
             drawLine(Color.Black.copy(alpha = 0.35f), Offset(left, mid), Offset(left + bw, mid), 1.dp.toPx())
-            // Опущена (затиснув чи двічі торкнувся) — кінчик ледь світиться.
-            if (lead > 0.01f) drawRect(ink.copy(alpha = 0.3f * lead), Offset(left, mid), Size(bw, bh / 2f))
+            // Опущена (затиснув чи двічі торкнувся) — робоча половина світиться.
+            if (lead > 0.01f) drawRect(ink.copy(alpha = 0.5f * lead), Offset(left, mid), Size(bw, bh / 2f))
         }
         drawPath(shape, Color.Black.copy(alpha = 0.4f), style = Stroke(0.8.dp.toPx()))
-        if (locked) drawLine(ink.copy(alpha = 0.7f), Offset(left + bw * 0.25f, bottom - hr * 0.4f), Offset(left + bw * 0.75f, bottom - hr * 0.4f), 1.2.dp.toPx(), cap = StrokeCap.Round)
+        // Опущена — видно й коло, яке стирає (рівно по кінчику); зафіксована (двічі торкнувся) — коло суцільне й яскраве.
+        if (lead > 0.01f) {
+            drawCircle(Color.Black.copy(alpha = 0.45f * lead), hr + 1.5.dp.toPx(), p, style = Stroke(3.dp.toPx()))
+            drawCircle(ink.copy(alpha = (if (locked) 0.95f else 0.65f) * lead), hr + 1.5.dp.toPx(), p,
+                style = Stroke(if (locked) 2.dp.toPx() else 1.3.dp.toPx(), pathEffect = if (locked) null else androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
+        }
     }
 }
 
@@ -2729,5 +2720,3 @@ fun InkSession.applyFav(f: InkFav) {
     remember()
 }
 
-/** Готовий малюнок сторінки картинкою, поки малюєш (для чого саме — щоб знати, коли оновити). */
-private class InkCache(val lines: List<InkLine>, val hidden: Set<Long>, val w: Int, val h: Int, val glass: Boolean, val img: androidx.compose.ui.graphics.ImageBitmap)
