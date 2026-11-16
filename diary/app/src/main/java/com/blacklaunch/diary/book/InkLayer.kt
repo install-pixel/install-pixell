@@ -404,7 +404,8 @@ fun InkLayer(
         modifier
             .fillMaxSize()
             // Готовий малюнок (не малюєш зараз) — окремою текстурою: гортання й усе довкола його не перемальовує.
-            .then(if (active) Modifier else Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen })
+            // Лише коли на сторінці справді є малюнок: порожній шар на кожній сторінці — зайва текстура на весь екран.
+            .then(if (active || lines.none { it.page == part }) Modifier else Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen })
             .then(
                 if (!active) Modifier else Modifier.pointerInput(session, pageWidth) {
                     val s = session!!
@@ -1794,9 +1795,12 @@ private fun DrawScope.pencilBody(px: FloatArray, py: FloatArray, widths: FloatAr
  */
 private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatArray?, base: Float, ink: Color, glass: Boolean, mode: Int, scrub: Boolean, seedX: Float, closed: Boolean = false) {
     val n = px.size
-    val widths = if (scrub) FloatArray(n) { base * 1.6f } else if (closed) FloatArray(n) { base } else {
-        // Мазок починається вузеньким кінчиком і розходиться; кінець — заокруглений.
-        val t = taper(px, py, factors, base, 0.12f)
+    val d = arcLengths(px, py)
+    val total = d[n - 1]
+    // Мазок починається вузеньким кінчиком і розходиться; зафарбовування (туди-сюди) — ширше, але теж м'яко
+    // починається й закінчується, а не круглою печаткою.
+    val widths = if (closed) FloatArray(n) { base } else {
+        val t = taper(px, py, factors, if (scrub) base * 1.6f else base, if (scrub) 0.45f else 0.12f)
         FloatArray(n) { t[it] }
     }
     if (mode == 1) {
@@ -1807,40 +1811,65 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
         drawPath(variablePath(px, py, widths), ink)
         return
     }
-    // Непрозора фарба (прозорість — на всьому штриху, шаром): мазок вкриває все під собою одним тоном, а щетинки —
-    // лише відтінком (трохи темніші й світліші смужки), не прозорістю.
-    val solid = ink.alpha >= 0.999f
-    // Щетинки: під ними — фарба, що вже трохи вкриває; зафарбовування — щільніше.
-    drawPath(variablePath(px, py, FloatArray(n) { widths[it] * 0.9f }), if (solid) ink else ink.copy(alpha = ink.alpha * (if (scrub) 0.5f else 0.22f)))
-    // Щетинки — помітно окремі (з проміжками), щоб фактура відрізнялась від суцільної.
-    val bristles = if (scrub) 11 else 6
-    // Щетинки штриха — завжди ті самі (насіння лише з першої точки): поки ведеш, нова точка не перемальовує весь штрих
-    // по-іншому (раніше від кількості точок залежало — і мазок блимав).
     val rnd = java.util.Random((seedX * 100000).toLong())
+    // Край мазка — трохи нерівний (щетина лягає нерівно), але плавно: шум уздовж довжини, не зубці.
+    val ph1 = rnd.nextFloat() * 6.28f
+    val ph2 = rnd.nextFloat() * 6.28f
+    val bodyW = FloatArray(n) { i ->
+        val s = d[i] / base.coerceAtLeast(1f)
+        widths[i] * (1f + 0.06f * sin(s * 0.9f + ph1) + 0.04f * sin(s * 2.3f + ph2))
+    }
+    val body = variablePath(px, py, bodyW)
+    // Шар фарби: суцільне тіло кольору (вкриває все під собою; прозорість — на всьому штриху, шаром).
+    drawPath(body, ink)
+    // Фактура — як справжній шар фарби: смуги трохи густішої й рідшої фарби вздовж руху. Вони йдуть уздовж згладженої
+    // середини (на різких поворотах туди-сюди не закручуються вузлами), м'які й напівпрозорі (накладаються тінню, а не
+    // сірими лініями) і не виходять за мазок. Кожна смуга починається й закінчується трохи в різних місцях — як щетинки,
+    // що торкаються паперу не всі разом.
+    val win = if (scrub) 7 else 4
+    val sx = FloatArray(n)
+    val sy = FloatArray(n)
+    for (i in 0 until n) {
+        var ax = 0f; var ay = 0f; var c = 0
+        for (j in maxOf(0, i - win)..minOf(n - 1, i + win)) { ax += px[j]; ay += py[j]; c++ }
+        sx[i] = ax / c; sy[i] = ay / c
+    }
     val nx = FloatArray(n)
     val ny = FloatArray(n)
-    // Напрям щетинок — за ширшим відрізком (±4 точки): на різких поворотах туди-сюди вони не розлітаються голками.
     for (i in 0 until n) {
-        val a = maxOf(0, i - 4)
-        val b = minOf(n - 1, i + 4)
-        val dx = px[b] - px[a]
-        val dy = py[b] - py[a]
+        val a = maxOf(0, i - win)
+        val b = minOf(n - 1, i + win)
+        val dx = sx[b] - sx[a]
+        val dy = sy[b] - sy[a]
         val len = hypot(dx, dy).coerceAtLeast(0.001f)
         nx[i] = -dy / len; ny[i] = dx / len
     }
-    for (k in 0 until bristles) {
-        val off = (k / (bristles - 1f) - 0.5f) * 0.88f
-        val bw = (if (scrub) 0.07f else 0.09f) + rnd.nextFloat() * 0.06f
-        val alpha = 0.35f + rnd.nextFloat() * 0.6f
-        val wob = (rnd.nextFloat() - 0.5f) * 0.06f
-        drawPath(
-            variablePath(
-                FloatArray(n) { px[it] + nx[it] * widths[it] * (off + wob) },
-                FloatArray(n) { py[it] + ny[it] * widths[it] * (off + wob) },
-                FloatArray(n) { widths[it] * bw },
-            ),
-            if (solid) androidx.compose.ui.graphics.lerp(ink, if (k % 2 == 0) Color.Black else Color.White, (1f - alpha) * 0.28f) else ink.copy(alpha = ink.alpha * alpha),
-        )
+    val bristles = if (scrub) 14 else 10
+    // На світлій фарбі (біле чорнило «Скла» тощо) тінь ледь помітна, на темній — ледь світліші смуги.
+    val lum = 0.299f * ink.red + 0.587f * ink.green + 0.114f * ink.blue
+    clipPath(body) {
+        for (k in 0 until bristles) {
+            val off = ((k + 0.5f) / bristles - 0.5f) * 0.92f + (rnd.nextFloat() - 0.5f) * 0.06f
+            val bw = 0.10f + rnd.nextFloat() * 0.12f
+            val dark = if (lum > 0.6f) true else if (lum < 0.25f) false else rnd.nextBoolean()
+            val tone = if (dark) Color.Black else Color.White
+            val a = (if (dark) 0.10f else 0.08f) + rnd.nextFloat() * (if (dark) 0.16f else 0.10f)
+            val from = total * rnd.nextFloat() * 0.16f
+            val to = total * (1f - rnd.nextFloat() * 0.12f)
+            val idx = (0 until n).filter { d[it] in from..to }
+            if (idx.size < 2) continue
+            val m = idx.size
+            val path = variablePath(
+                FloatArray(m) { sx[idx[it]] + nx[idx[it]] * bodyW[idx[it]] * off },
+                FloatArray(m) { sy[idx[it]] + ny[idx[it]] * bodyW[idx[it]] * off },
+                FloatArray(m) { j ->
+                    // Смуга тоншає до своїх кінців — не обрубана.
+                    val t = j / (m - 1f)
+                    bodyW[idx[j]] * bw * (0.35f + 0.65f * kotlin.math.sin(t * PI.toFloat()))
+                },
+            )
+            drawPath(path, tone.copy(alpha = a))
+        }
     }
 }
 
@@ -2383,30 +2412,6 @@ private fun DrawScope.drawEraserCursor(p: Offset, width: Float, lead: Float, gla
         drawPath(rubberPath, cylinder(left, bw, rubberBase.copy(red = rubberBase.red * 0.6f, green = rubberBase.green * 0.6f, blue = rubberBase.blue * 0.6f), rubberBase, Color(minOf(1f, rubberBase.red * 1.3f), minOf(1f, rubberBase.green * 1.3f), minOf(1f, rubberBase.blue * 1.3f))))
         // Опущена (затиснув чи двічі торкнувся) — кінчик світиться.
         if (lead > 0.01f) drawPath(rubberPath, ink.copy(alpha = 0.32f * lead))
-    }
-}
-
-/**
- * Мініатюра малюнка дня (полотна): усе намальоване, вписане в рамку й по центру — видно, що там є. Порожнє полотно —
- * нічого. Малюється один раз і зберігається текстурою.
- */
-@Composable
-internal fun InkThumb(lines: List<InkLine>, modifier: Modifier) {
-    val canvas = remember(lines) { lines.filter { it.page == CANVAS_PART && it.kind != InkKind.CANVAS && it.kind != InkKind.STENCIL } }
-    val bounds = remember(canvas) { boundsOf(canvas.filter { it.kind in DRAWN }) }
-    Canvas(modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) {
-        val b = bounds ?: return@Canvas
-        if (b.width <= 0f || b.height <= 0f) return@Canvas
-        val w = size.width
-        val sc = minOf(size.width / b.width, size.height / b.height)
-        val ox = (size.width - b.width * sc) / 2f
-        val oy = (size.height - b.height * sc) / 2f
-        val pivot = Offset(b.left, b.top)
-        val off = Offset(ox / w - b.left, oy / w - b.top)
-        val shown = canvas.map { transform(it, pivot, sc / w, off) }
-        drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        drawInk(shown, CANVAS_PART, w, { false }, emptySet())
-        drawContext.canvas.restore()
     }
 }
 

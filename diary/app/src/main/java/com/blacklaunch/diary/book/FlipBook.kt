@@ -189,6 +189,11 @@ fun FlipBook(
     /** Що лежить під сторінкою, яку виривають, коли за нею нічого немає: порожня сторінка (а не обкладинка). */
     blankUnder: (@Composable () -> Unit)? = null,
     onFlipped: (Int) -> Unit = {},
+    /**
+     * Сторінка, що відкривається, має бути живою вже під час гортання (на неї переходить курсор — літери, набрані в
+     * русі, мають лягти туди). Інакше вона лишається прев'ю до кінця руху й не перебудовується на його початку.
+     */
+    liveUnder: (Int) -> Boolean = { false },
     page: @Composable (Int) -> Unit,
 ) {
     val haptics = LocalHaptics.current
@@ -367,6 +372,15 @@ fun FlipBook(
         var frontIdx: Int? = null
         if (!flipping) {
             val peek = seeThrough(state.index)
+            // Наперед, невидимо: сторінки, що знадобляться, щойно почнеш гортати (попередня — гортаєш назад; наступна й та,
+            // що просвічуватиме під нею, — уперед). Вони вже зібрані й з фото, тож на початку руху нічого не будується
+            // наново і гортання не «підвисає».
+            if (!tearing && state.index > 0) prev(state.index).coerceIn(0, currentCount - 1).takeIf { it != state.index && it != peek }?.let { slots += Slot(it, Role.Warm, preview = true) }
+            if (!tearing && mayForward(state.index) && (state.index < currentCount - 1 || next(state.index) in 0 until state.index)) {
+                val nx = next(state.index).coerceIn(0, currentCount - 1)
+                if (nx != state.index && nx != peek) slots += Slot(nx, Role.Warm, preview = true)
+                seeThrough(nx)?.takeIf { it != state.index && it != peek && slots.none { s -> s.index == it } }?.let { slots += Slot(it, Role.Warm, preview = true) }
+            }
             if (peek != null) slots += Slot(peek, if (tearing) Role.TearUnder else Role.Peek, preview = true)
             slots += Slot(state.index, Role.Current, preview = false)
         } else {
@@ -376,9 +390,10 @@ fun FlipBook(
             // Під сторінкою, що лежить (гортаєш назад) чи відкривається (уперед), — та сама, що просвічуватиме крізь неї,
             // коли все ляже: силует уже на місці й нічого не «домальовується» в кінці.
             seeThrough(under!!)?.takeIf { it != top && it != backIdx && it != frontIdx }?.let { slots += Slot(it, Role.Peek, preview = true) }
-            // Та, що відкривається, — уже жива (не прев'ю): курсор, перенесений на неї, стає там одразу, на початку
-            // гортання, — і літери, набрані під час руху, не потрапляють на попередню сторінку.
-            slots += Slot(under, Role.Under, preview = false)
+            // Та, що відкривається, лишається прев'ю (як була — не перебудовується на початку руху); жива — лише коли на неї
+            // переходить курсор ([liveUnder]): тоді він стає там одразу, і літери, набрані в русі, лягають куди треба.
+            // Гортаєш назад — під низом поточна, вона й так жива.
+            slots += Slot(under, Role.Under, preview = state.forward && !liveUnder(under))
             frontIdx?.let { slots += Slot(it, Role.Stack, preview = true) }
             backIdx?.let { slots += Slot(it, Role.Back, preview = true) }
             slots += Slot(top!!, Role.Top, preview = false)
@@ -390,6 +405,8 @@ fun FlipBook(
             key(s.index) {
                 val m = when (s.role) {
                     Role.Peek -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches().blur(GlassBlur, BlurredEdgeTreatment.Unbounded)
+                    // Зібрана наперед — не малюється й дотиків не бере.
+                    Role.Warm -> Modifier.fillMaxSize().consumeTouches().drawWithContent { }
                     Role.TearUnder -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches()
                     Role.Current -> Modifier.fillMaxSize().drawWithContent {
                         val f = state.tearFinger
@@ -459,7 +476,7 @@ fun FlipBook(
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
 /** Що робить сторінка в книжці зараз (див. список сторінок у [FlipBook]). */
-private enum class Role { Peek, TearUnder, Current, Under, Stack, Back, Top }
+private enum class Role { Warm, Peek, TearUnder, Current, Under, Stack, Back, Top }
 
 private class Slot(val index: Int, val role: Role, val preview: Boolean)
 

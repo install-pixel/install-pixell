@@ -815,6 +815,8 @@ fun BookScreen(
                             }
                         },
                         onStart = { focusManager.clearFocus() },
+                        // Курсор переходить на сторінку, що відкривається, — вона жива вже під час гортання.
+                        liveUnder = { i -> focusReq?.let { f -> pages.getOrNull(i) == BookPage.DayPart(f.first, f.second) } == true },
                         blankUnder = {
                             val day = currentDay ?: today
                             DayPage(

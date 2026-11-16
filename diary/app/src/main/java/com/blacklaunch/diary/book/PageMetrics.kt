@@ -37,9 +37,8 @@ object PageMetrics {
 
     val textWidth: Float get() = WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
-    /** Малюнок дня: порожнє місце-запрошення (як смужка голосу) і мініатюра намальованого. */
+    /** Малюнок дня: плашка, як смужка голосу (пунктиром — порожнє запрошення, суцільно — малюнок уже є). */
     const val DRAW_EMPTY = AUDIO_HEIGHT
-    const val DRAW_HEIGHT = 34f
 
     /**
      * Звідки починаються місця (фото, голос, малюнок): нижче закладки-пошуку, що звисає згори біля корінця, — вона на
@@ -47,8 +46,8 @@ object PageMetrics {
      */
     const val SLOTS_TOP = 20.5f
 
-    /** Висота місця під малюнок: 0 — немає, 1 — порожнє запрошення, 2 — мініатюра. */
-    fun drawHeight(drawing: Int): Float = when (drawing) { 1 -> DRAW_EMPTY; 2 -> DRAW_HEIGHT; else -> 0f }
+    /** Висота місця під малюнок: 0 — немає, 1 — порожнє запрошення, 2 — малюнок є. */
+    fun drawHeight(drawing: Int): Float = if (drawing > 0) DRAW_EMPTY else 0f
 
     /** Звідки починаються рядки на першій сторінці (після фото, аудіо й малюнка). */
     fun firstTextTop(photo: Boolean, audio: Boolean, drawing: Int = 0): Float {

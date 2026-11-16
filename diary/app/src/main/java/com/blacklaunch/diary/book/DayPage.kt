@@ -366,16 +366,21 @@ fun DayPage(
 
         // Малюнок дня — окремий аркуш-полотно. Тут лише запрошення (пунктиром) чи мініатюра намальованого: дотик —
         // гортнути на полотно, змахнути вліво — прибрати. Малюнок не висихає — працює й на старих сторінках.
-        if (first && drawingSlot == 2 && !preview) {
-            DrawingThumb(
+        if (first && drawingSlot == 2) {
+            // Малюнок є — без мініатюри (крізь скло її видно й на сусідніх сторінках): лише плашка «Малюнок дня» суцільним
+            // обрисом. Дотик — гортнути на полотно, змахнути вліво — прибрати полотно (з підтвердженням).
+            SlotBlock(
                 host = host,
-                day = day,
+                key = "drawing_${day.day}",
+                label = stringResource(R.string.drawing_slot),
                 modifier = Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)),
                 width = dp(PageMetrics.textWidth),
-                height = dp(PageMetrics.DRAW_HEIGHT),
+                height = dp(PageMetrics.DRAW_EMPTY),
+                editable = !preview,
+                actions = listOf(Glyph.Frame to { host.openCanvas(day.day) }),
+                onDismiss = { host.deleteCanvas(day.day) },
+                solid = true,
             )
-        } else if (first && drawingSlot == 2) {
-            InkThumb(day.ink, Modifier.offset(dp(PageMetrics.MARGIN_LEFT), dp(y)).size(dp(PageMetrics.textWidth), dp(PageMetrics.DRAW_HEIGHT)))
         } else if (first && drawingSlot == 1) {
             SlotBlock(
                 host = host,
@@ -571,6 +576,8 @@ private fun SlotBlock(
     actions: List<Pair<Glyph, () -> Unit>>,
     /** null — місце не прибирається свайпом. */
     onDismiss: (() -> Unit)?,
+    /** Суцільний обрис — місце вже зайняте (малюнок є), пунктир — порожнє запрошення. */
+    solid: Boolean = false,
 ) {
     val glass = AppStyle.glass
     val haptics = LocalHaptics.current
@@ -581,7 +588,7 @@ private fun SlotBlock(
             drawRoundRect(
                 ink,
                 cornerRadius = CornerRadius(r),
-                style = Stroke(1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))),
+                style = Stroke(1.dp.toPx(), pathEffect = if (solid) null else androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()))),
             )
         }
         Row(
@@ -621,27 +628,6 @@ private fun Modifier.slotBlocker(host: PageHost, key: String): Modifier {
         val book = host.bookCoords ?: return@onGloballyPositioned
         val o = runCatching { book.localPositionOf(c, Offset.Zero) }.getOrNull() ?: return@onGloballyPositioned
         host.block(key, Rect(o, Size(c.size.width.toFloat(), c.size.height.toFloat())))
-    }
-}
-
-/** Мініатюра малюнка дня: дотик — гортнути на полотно; змахнути вліво — прибрати полотно (з підтвердженням). */
-@Composable
-private fun DrawingThumb(host: PageHost, day: Day, modifier: Modifier, width: Dp, height: Dp) {
-    val glass = AppStyle.glass
-    val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(10.dp)
-    Box(
-        modifier
-            .size(width, height)
-            .swipeAway(host, "drawing_${day.day}", true) { host.deleteCanvas(day.day) }
-            .clip(shape)
-            .clickable { haptics.tap(); host.openCanvas(day.day) },
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val ink = if (glass) Color(0x26FFFFFF) else SheetInk.copy(alpha = 0.22f)
-            drawRoundRect(ink, cornerRadius = CornerRadius(10.dp.toPx()), style = Stroke(1.dp.toPx()))
-        }
-        InkThumb(day.ink, Modifier.fillMaxSize().padding(6.dp))
     }
 }
 
