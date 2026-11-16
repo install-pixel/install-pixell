@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.fillMaxSize
@@ -400,12 +401,36 @@ fun InkLayer(
     androidx.compose.runtime.DisposableEffect(session) { onDispose { finishOpen() } }
     val pageSize = remember { FloatArray(2) }
     val leadAnim by animateFloatAsState(if (session?.lead == true || session?.locked == true) 1f else 0f, spring(dampingRatio = 0.75f, stiffness = 700f), label = "lead")
+    val hasInk = lines.any { it.page == part }
+    Box(modifier.fillMaxSize()) {
+    // Готовий малюнок — окремим шаром: малюється лише коли змінився (новий штрих, гумка), а не щокадру, поки ведеш
+    // інструментом чи гортаєш. Текстурою — лише коли на сторінці справді є малюнок (порожня — зайва на весь екран).
     Canvas(
-        modifier
+        Modifier
             .fillMaxSize()
-            // Готовий малюнок (не малюєш зараз) — окремою текстурою: гортання й усе довкола його не перемальовує.
-            // Лише коли на сторінці справді є малюнок: порожній шар на кожній сторінці — зайва текстура на весь екран.
-            .then(if (active || lines.none { it.page == part }) Modifier else Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen })
+            .graphicsLayer { compositingStrategy = if (hasInk) androidx.compose.ui.graphics.CompositingStrategy.Offscreen else androidx.compose.ui.graphics.CompositingStrategy.Auto },
+    ) {
+        val w = size.width
+        // Те, що посуваєш, — уже нагорі (там і ляже).
+        val shownLines = moving?.let { mv -> val ids = mv.map { it.time }.toSet(); (moveBase ?: lines).filter { it.time !in ids } + mv } ?: lines
+        // Увесь малюнок — в окремому шарі: гумка стирає лише намальоване, а не папір під ним.
+        drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
+        drawInk(shownLines, part, w, dry, hidden)
+        // Гумка стирає вже намальоване — її живий слід мусить бути в цьому ж шарі.
+        if (session != null && session.tool == InkTool.Eraser && live.size >= 2) {
+            drawLayered(
+                FloatArray(live.size) { live[it].x / w },
+                FloatArray(live.size) { live[it].y / w },
+                FloatArray(liveFactors.size) { liveFactors[it] },
+                session.width * w, w, false, session.kind, session.style, 0,
+            )
+        }
+        drawContext.canvas.restore()
+    }
+    // Живий штрих, трафарети, ласо — окремо, поверх: лише цей шар перемальовується, поки ведеш.
+    Canvas(
+        Modifier
+            .fillMaxSize()
             .then(
                 if (!active) Modifier else Modifier.pointerInput(session, pageWidth) {
                     val s = session!!
@@ -897,25 +922,20 @@ fun InkLayer(
             ),
     ) {
         val w = size.width
-        // Те, що посуваєш, — уже нагорі (там і ляже).
-        val shownLines = moving?.let { mv -> val ids = mv.map { it.time }.toSet(); (moveBase ?: lines).filter { it.time !in ids } + mv } ?: lines
-        // Увесь малюнок — в окремому шарі: гумка стирає лише намальоване, а не папір під ним.
-        drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        drawInk(shownLines, part, w, dry, hidden)
-        if (live.size >= 2 && session != null && session.kind != InkKind.STENCIL) {
-            val tl = session.tool
+        val shownLines = if (session == null) lines else moving?.let { mv -> val ids = mv.map { it.time }.toSet(); (moveBase ?: lines).filter { it.time !in ids } + mv } ?: lines
+        if (session != null && session.tool != InkTool.Eraser && live.size >= 2 && session.kind != InkKind.STENCIL) {
             val lc = liveClip
+            drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
             if (lc != null) drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
             drawLayered(
                 FloatArray(live.size) { live[it].x / w },
                 FloatArray(live.size) { live[it].y / w },
                 FloatArray(liveFactors.size) { liveFactors[it] },
-                session.width * w, w, false, session.kind, session.style,
-                if (tl == InkTool.Eraser) 0 else session.argb,
+                session.width * w, w, false, session.kind, session.style, session.argb,
             )
             if (lc != null) { clipToRegion(lc, w); drawContext.canvas.restore() }
+            drawContext.canvas.restore()
         }
-        drawContext.canvas.restore()
         if (session != null) {
             val ink = if (AppStyle.glass) Oled.TextPrimary else SheetInk
             val z = session.zoom
@@ -935,6 +955,7 @@ fun InkLayer(
             pageSize[0] = size.width
             pageSize[1] = size.height
         }
+    }
     }
     // Інструмент-курсор малює сама сторінка — поверх паперу (заломи, зерно, старіння не лягають на інструмент: він
     // не з паперу і не прозорий). Не виходить за сторінку і не росте, коли сторінку наближено; біля краю плавно
@@ -1820,12 +1841,64 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
         widths[i] * (1f + 0.06f * sin(s * 0.9f + ph1) + 0.04f * sin(s * 2.3f + ph2))
     }
     val body = variablePath(px, py, bodyW)
+    // Мазок — окремим шаром у своїх межах: фактура лягає лише на нього (SrcAtop), не на те, що під ним.
+    var l = Float.MAX_VALUE; var t = Float.MAX_VALUE; var r = -Float.MAX_VALUE; var bt = -Float.MAX_VALUE
+    val wMax = (bodyW.maxOrNull() ?: base) / 2f + 2f
+    for (i in 0 until n) { l = minOf(l, px[i]); r = maxOf(r, px[i]); t = minOf(t, py[i]); bt = maxOf(bt, py[i]) }
+    val bounds = Rect(l - wMax, t - wMax, r + wMax, bt + wMax)
+    val canvas = drawContext.canvas
+    canvas.saveLayer(bounds, Paint())
+    // Мазок туди-сюди (чи зафарбовування): шлях набагато довший за свій розмах. Тоді смуги вздовж руху сходилися б
+    // посередині в сіру пляму, а край на розворотах ставав би зубчастим. Тож тіло — суцільна смуга із заокругленими
+    // розворотами, а фактура — уривчасті смуги в головному напрямку руху, рівно по всьому мазку (як сліди щетини, коли
+    // справжнім пензлем водиш туди-сюди).
+    val span = maxOf(r - l, bt - t, base)
+    val scribble = scrub || total > span * 2.4f
+    val lum = 0.299f * ink.red + 0.587f * ink.green + 0.114f * ink.blue
+    val darkA = when { lum > 0.6f -> 0.065f; lum > 0.25f -> 0.11f; else -> 0f }
+    val lightA = when { lum < 0.25f -> 0.12f; lum < 0.6f -> 0.08f; else -> 0f }
+    if (scribble) {
+        val wAvg = bodyW.average().toFloat().coerceAtLeast(1f)
+        drawPath(polyline(px, py), ink, style = Stroke(wAvg, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        // Головний напрям руху (без знаку: туди й назад — один напрям).
+        var c2 = 0f; var s2 = 0f
+        for (i in 1 until n) {
+            val dx = px[i] - px[i - 1]; val dy = py[i] - py[i - 1]
+            val len = hypot(dx, dy)
+            if (len < 0.01f) continue
+            val ang = kotlin.math.atan2(dy, dx) * 2f
+            c2 += kotlin.math.cos(ang) * len; s2 += kotlin.math.sin(ang) * len
+        }
+        val theta = kotlin.math.atan2(s2, c2) / 2f
+        val cx = (l + r) / 2f; val cy = (t + bt) / 2f
+        val rad = hypot(r - l, bt - t) / 2f + wAvg
+        for (dark in listOf(true, false)) {
+            val alpha = if (dark) darkA else lightA
+            if (alpha <= 0f) continue
+            val rr = java.util.Random((seedX * 100000).toLong() + if (dark) 1 else 2)
+            canvas.saveLayer(bounds, Paint().apply { this.alpha = alpha; blendMode = BlendMode.SrcAtop })
+            rotate(theta * 180f / PI.toFloat(), Offset(cx, cy)) {
+                var y = cy - rad
+                while (y < cy + rad) {
+                    val h = wAvg * (0.04f + rr.nextFloat() * 0.07f)
+                    var x = cx - rad - rr.nextFloat() * wAvg * 3f
+                    while (x < cx + rad) {
+                        val dash = wAvg * (1.5f + rr.nextFloat() * 5f)
+                        if (rr.nextFloat() < (if (dark && darkA > 0f && lightA > 0f) 0.5f else 0.8f)) {
+                            drawRoundRect(if (dark) Color.Black else Color.White, Offset(x, y), Size(dash, h), CornerRadius(h / 2f))
+                        }
+                        x += dash + wAvg * (0.3f + rr.nextFloat() * 1.4f)
+                    }
+                    y += wAvg * (0.09f + rr.nextFloat() * 0.16f)
+                }
+            }
+            canvas.restore()
+        }
+        canvas.restore()
+        return
+    }
     // Шар фарби: суцільне тіло кольору (вкриває все під собою; прозорість — на всьому штриху, шаром).
     drawPath(body, ink)
-    // Фактура — як справжній шар фарби: смуги трохи густішої й рідшої фарби вздовж руху. Вони йдуть уздовж згладженої
-    // середини (на різких поворотах туди-сюди не закручуються вузлами), м'які й напівпрозорі (накладаються тінню, а не
-    // сірими лініями) і не виходять за мазок. Кожна смуга починається й закінчується трохи в різних місцях — як щетинки,
-    // що торкаються паперу не всі разом.
     val win = if (scrub) 7 else 4
     val sx = FloatArray(n)
     val sy = FloatArray(n)
@@ -1844,33 +1917,38 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
         val len = hypot(dx, dy).coerceAtLeast(0.001f)
         nx[i] = -dy / len; ny[i] = dx / len
     }
-    val bristles = if (scrub) 14 else 10
-    // На світлій фарбі (біле чорнило «Скла» тощо) тінь ледь помітна, на темній — ледь світліші смуги.
-    val lum = 0.299f * ink.red + 0.587f * ink.green + 0.114f * ink.blue
-    clipPath(body) {
-        for (k in 0 until bristles) {
-            val off = ((k + 0.5f) / bristles - 0.5f) * 0.92f + (rnd.nextFloat() - 0.5f) * 0.06f
-            val bw = 0.10f + rnd.nextFloat() * 0.12f
-            val dark = if (lum > 0.6f) true else if (lum < 0.25f) false else rnd.nextBoolean()
-            val tone = if (dark) Color.Black else Color.White
-            val a = (if (dark) 0.10f else 0.08f) + rnd.nextFloat() * (if (dark) 0.16f else 0.10f)
-            val from = total * rnd.nextFloat() * 0.16f
-            val to = total * (1f - rnd.nextFloat() * 0.12f)
-            val idx = (0 until n).filter { d[it] in from..to }
-            if (idx.size < 2) continue
-            val m = idx.size
-            val path = variablePath(
-                FloatArray(m) { sx[idx[it]] + nx[idx[it]] * bodyW[idx[it]] * off },
-                FloatArray(m) { sy[idx[it]] + ny[idx[it]] * bodyW[idx[it]] * off },
-                FloatArray(m) { j ->
-                    // Смуга тоншає до своїх кінців — не обрубана.
-                    val t = j / (m - 1f)
-                    bodyW[idx[j]] * bw * (0.35f + 0.65f * kotlin.math.sin(t * PI.toFloat()))
-                },
-            )
-            drawPath(path, tone.copy(alpha = a))
-        }
+    val bristles = if (scrub) 12 else 9
+    val streaks = ArrayList<Pair<Path, Boolean>>(bristles)
+    for (k in 0 until bristles) {
+        val off = ((k + 0.5f) / bristles - 0.5f) * 0.9f + (rnd.nextFloat() - 0.5f) * 0.06f
+        val bw = 0.07f + rnd.nextFloat() * 0.1f
+        val dark = when { darkA == 0f -> false; lightA == 0f -> true; else -> rnd.nextBoolean() }
+        val from = total * rnd.nextFloat() * 0.16f
+        val to = total * (1f - rnd.nextFloat() * 0.12f)
+        var i0 = 0
+        while (i0 < n && d[i0] < from) i0++
+        var i1 = n - 1
+        while (i1 > i0 && d[i1] > to) i1--
+        val m = i1 - i0 + 1
+        if (m < 2) continue
+        streaks += variablePath(
+            FloatArray(m) { sx[i0 + it] + nx[i0 + it] * bodyW[i0 + it] * off },
+            FloatArray(m) { sy[i0 + it] + ny[i0 + it] * bodyW[i0 + it] * off },
+            FloatArray(m) { j ->
+                // Смуга тоншає до своїх кінців — не обрубана.
+                val tt = j / (m - 1f)
+                bodyW[i0 + j] * bw * (0.35f + 0.65f * kotlin.math.sin(tt * PI.toFloat()))
+            },
+        ) to dark
     }
+    for (dark in listOf(true, false)) {
+        val alpha = if (dark) darkA else lightA
+        if (alpha <= 0f || streaks.none { it.second == dark }) continue
+        canvas.saveLayer(bounds, Paint().apply { this.alpha = alpha; blendMode = BlendMode.SrcAtop })
+        streaks.forEach { (p, dk) -> if (dk == dark) drawPath(p, if (dark) Color.Black else Color.White) }
+        canvas.restore()
+    }
+    canvas.restore()
 }
 
 /**

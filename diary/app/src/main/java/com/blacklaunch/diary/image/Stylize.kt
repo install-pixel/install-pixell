@@ -47,21 +47,23 @@ object Stylize {
     }
 
     /**
-     * «Аркуш»: малюнок білим олівцем на чорному папері. Білим олівцем малюють **світло**: світле на фото — густа біла
-     * штриховка, темне — чистий папір. Без інверсії й без світних ореолів довкола країв (це й давало «рентген»):
-     *  - тон — м'яка підкладка за світлом фото (обличчя впізнавані);
-     *  - штриховка — косі лінії олівця, що товщають у світлому, а в найсвітлішому — ще й перехресні; лінії ледь хвилясті,
-     *    як від руки;
-     *  - обриси — тонкі лінії лише там, де на фото справжня межа;
+     * «Аркуш»: чорно-білий комікс білою фарбою на чорному папері — як друкований комікс, лише навпаки:
+     *  - тіні — чистий чорний папір;
+     *  - півтони — растрові крапки під 45° (що світліше — то більші, аж до суцільного);
+     *  - найсвітліше — суцільна біла фарба;
+     *  - обриси — чорні лінії, що прорізають світле (тушшю по фарбі), а не світні ореоли — ніякого «рентгену»;
      *  - краї малюнка тануть у папір.
-     * [transparent] — білий олівець із прозорістю (лягає просто на фактуру паперу); інакше — сірий на чорному.
+     * Тон береться з трохи розмитого фото (великі плями, як у коміксі), обриси — лише там, де на фото справжня межа.
+     * [transparent] — біла фарба з прозорістю (лягає просто на фактуру паперу); інакше — сірий на чорному.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun pencil(src: IntArray, w: Int, h: Int, seed: Int = 7, transparent: Boolean = false): IntArray {
         val lum = luminance(src)
         autoLevels(lum)
         val n = w * h
-        val soft = boxBlur(lum, w, h, max(1, min(w, h) / 320), passes = 2)
-        // Обриси: перепад яскравості (Собель) на трохи розмитому фото — лише справжні межі, без ореолів.
+        val soft = boxBlur(lum, w, h, max(1, min(w, h) / 300), passes = 2)
+        val tone = boxBlur(lum, w, h, max(1, min(w, h) / 150), passes = 2)
+        // Обриси: перепад яскравості (Собель) на трохи розмитому фото.
         val edge = FloatArray(n)
         for (y in 1 until h - 1) for (x in 1 until w - 1) {
             val i = y * w + x
@@ -69,32 +71,30 @@ object Stylize {
             val gy = soft[i + w - 1] + 2 * soft[i + w] + soft[i + w + 1] - soft[i - w - 1] - 2 * soft[i - w] - soft[i - w + 1]
             edge[i] = sqrt(gx * gx + gy * gy)
         }
-        // Хвилястість штрихів: плавний шум.
-        var rnd = seed * 1103515245 + 12345
-        fun next(): Float { rnd = rnd * 1103515245 + 12345; return ((rnd ushr 16) and 0xFF) / 255f }
-        val wobble = boxBlur(FloatArray(n) { next() }, w, h, max(2, min(w, h) / 40), passes = 2)
-        val spacing = max(3f, min(w, h) / 85f)
-        val fade = min(w, h) * 0.07f
+        val cell = max(4f, min(w, h) / 72f)
+        val ca = 0.7071f
+        val aa = 0.75f / cell
+        val fade = min(w, h) * 0.06f
         val out = IntArray(n)
         for (y in 0 until h) for (x in 0 until w) {
             val i = y * w + x
-            val t = smoothRange(0.12f, 0.92f, soft[i]).pow(1.1f)
-            val wob = (wobble[i] - 0.5f) * 6f * spacing
-            fun hatch(u: Float, level: Float): Float {
-                val f = u / spacing
-                val d = abs(f - kotlin.math.floor(f) - 0.5f) * 2f // 0 — посередині лінії, 1 — між лініями
-                return smoothRange(d - 0.2f, d + 0.2f, level)
-            }
-            val h1 = hatch(x + y + wob, t * 1.05f)
-            val h2 = hatch(x - y + wob * 0.7f, (t - 0.55f) * 2f)
-            val line = max(h1, h2 * 0.8f)
-            val e = ((edge[i] - 0.1f) * 3.2f).coerceIn(0f, 1f) * 0.55f
-            var v = 1f - (1f - t * 0.32f) * (1f - line * 0.78f) * (1f - e)
-            // Краї малюнка тануть у папір.
+            val t = smoothRange(0.16f, 0.86f, tone[i])
+            // Растр під 45°: відстань до центру своєї клітинки.
+            val u = (x + y) * ca / cell
+            val v = (y - x) * ca / cell
+            val fu = u - kotlin.math.floor(u) - 0.5f
+            val fv = v - kotlin.math.floor(v) - 0.5f
+            val dist = sqrt(fu * fu + fv * fv)
+            val r = sqrt(t) * 0.64f
+            var ink = ((r + aa - dist) / (2f * aa)).coerceIn(0f, 1f)
+            if (t > 0.9f) ink = 1f
+            if (t < 0.05f) ink = 0f
+            // Обрис — чорна лінія тушшю по фарбі.
+            val e = ((edge[i] - 0.14f) * 4.5f).coerceIn(0f, 1f)
+            ink *= 1f - 0.95f * e
             val dEdge = min(min(x, w - 1 - x), min(y, h - 1 - y)).toFloat()
-            v *= smooth((dEdge / fade).coerceIn(0f, 1f))
-            v *= 0.9f + 0.1f * next()
-            val value = (v * MAX_LIGHT * 1.08f).coerceIn(0f, MAX_LIGHT + 0.06f)
+            ink *= smooth((dEdge / fade).coerceIn(0f, 1f))
+            val value = (ink * MAX_LIGHT * 1.08f).coerceIn(0f, MAX_LIGHT + 0.06f)
             out[i] = if (transparent) ink(value / (MAX_LIGHT + 0.06f)) else gray(value)
         }
         return out

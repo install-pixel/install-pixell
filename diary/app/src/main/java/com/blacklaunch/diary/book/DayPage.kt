@@ -174,6 +174,7 @@ fun DayPage(
     val locale = Locale.getDefault()
     ReportPaperSeed(pageSeed(day.day, part), DiaryViewModel.today() - day.day)
 
+    Box(Modifier.fillMaxSize()) {
     Box(
         Modifier
             .fillMaxSize()
@@ -189,11 +190,6 @@ fun DayPage(
                     }
                 } ?: Modifier,
             )
-            // Інструмент-курсор — поверх паперу й старіння (він не з паперу): малюється після них.
-            .drawWithContent {
-                drawContent()
-                ink?.takeIf { it.day == day.day && it.part == part }?.cursorPaint?.invoke(this)
-            }
             // «Аркуш»: усе написане й намальоване лежить на папері — темніє й світлішає разом із заломами, бере зерно.
             .paperRelief(glass, pageSeed(day.day, part))
             // Старіння: з віком сторінка тьмяніє, потирається, на ній з'являються плями — у кожної своє й назавжди те саме.
@@ -453,6 +449,21 @@ fun DayPage(
         if (first && yearsAgo != null) {
             YearsAgoCorner(yearsAgo, u, Modifier.align(Alignment.BottomEnd)) { host.jumpTo(yearsAgo) }
         }
+    }
+    // Інструмент-курсор — окремим шаром поверх паперу й старіння (він не з паперу): рух курсора перемальовує лише його,
+    // а не всю сторінку з папером.
+    ink?.takeIf { it.day == day.day && it.part == part }?.let { cs ->
+        Canvas(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(BookCorner))
+                .graphicsLayer {
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                    scaleX = cs.zoom; scaleY = cs.zoom
+                    translationX = cs.tx; translationY = cs.ty
+                },
+        ) { cs.cursorPaint?.invoke(this) }
+    }
     }
 }
 

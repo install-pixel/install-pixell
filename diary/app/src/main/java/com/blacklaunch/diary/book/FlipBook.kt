@@ -225,6 +225,22 @@ fun FlipBook(
     val topBlur = rememberGraphicsLayer()
     val backLayer = rememberGraphicsLayer()
     val stackLayer = rememberGraphicsLayer()
+    // Розмите — найдорожче в кадрі. Тож розмиту сторінку рахуємо один раз (щойно записали) і далі малюємо готовою
+    // картинкою; поки картинки ще немає (перший кадр-два) — живим розмиттям.
+    val snapWraps = androidx.compose.runtime.remember { HashMap<GraphicsLayer, GraphicsLayer>() }
+    val snaps = androidx.compose.runtime.remember { HashMap<GraphicsLayer, androidx.compose.ui.graphics.ImageBitmap?>() }
+    val wrapUnder = rememberGraphicsLayer()
+    val wrapTop = rememberGraphicsLayer()
+    val wrapBack = rememberGraphicsLayer()
+    val wrapStack = rememberGraphicsLayer()
+    snapWraps[underBlur] = wrapUnder; snapWraps[topBlur] = wrapTop; snapWraps[backLayer] = wrapBack; snapWraps[stackLayer] = wrapStack
+    fun DrawScope.snapshot(src: GraphicsLayer) {
+        val wrap = snapWraps[src] ?: return
+        snaps[src] = null
+        wrap.record { drawLayer(src) }
+        scope.launch { val img = runCatching { wrap.toImageBitmap() }.getOrNull(); snaps[src] = img }
+    }
+    val imgOf: (GraphicsLayer) -> androidx.compose.ui.graphics.ImageBitmap? = { snaps[it] }
 
     fun heavyNow() = isHeavy(state.top ?: 0) || isHeavy(state.under ?: 0)
 
@@ -379,7 +395,8 @@ fun FlipBook(
             if (!tearing && mayForward(state.index) && (state.index < currentCount - 1 || next(state.index) in 0 until state.index)) {
                 val nx = next(state.index).coerceIn(0, currentCount - 1)
                 if (nx != state.index && nx != peek) slots += Slot(nx, Role.Warm, preview = true)
-                seeThrough(nx)?.takeIf { it != state.index && it != peek && slots.none { s -> s.index == it } }?.let { slots += Slot(it, Role.Warm, preview = true) }
+                // Та, що просвічуватиме під наступною, — одразу з готовим розмиттям (невидимо), щоб на початку руху нічого не рахувалось.
+                seeThrough(nx)?.takeIf { it != state.index && it != peek && slots.none { s -> s.index == it } }?.let { slots += Slot(it, Role.WarmPeek, preview = true) }
             }
             if (peek != null) slots += Slot(peek, if (tearing) Role.TearUnder else Role.Peek, preview = true)
             slots += Slot(state.index, Role.Current, preview = false)
@@ -403,8 +420,13 @@ fun FlipBook(
         }
         slots.forEach { s ->
             key(s.index) {
+                // Розмиття — одним викликом для «просвічує» й «готується просвічувати»: та сама готова картинка переходить
+                // із ролі в роль, не рахується наново.
+                val peekish = s.role == Role.Peek || s.role == Role.WarmPeek
+                val peekBlur = if (peekish) Modifier.snapBlur(GlassBlur) else Modifier
                 val m = when (s.role) {
-                    Role.Peek -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches().blur(GlassBlur, BlurredEdgeTreatment.Unbounded)
+                    Role.Peek -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches().then(peekBlur)
+                    Role.WarmPeek -> Modifier.graphicsLayer { alpha = 0f }.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches().then(peekBlur)
                     // Зібрана наперед — не малюється й дотиків не бере.
                     Role.Warm -> Modifier.fillMaxSize().consumeTouches().drawWithContent { }
                     Role.TearUnder -> Modifier.fillMaxSize().clip(RoundedCornerShape(BookCorner)).consumeTouches()
@@ -460,8 +482,8 @@ fun FlipBook(
             Canvas(Modifier.fillMaxSize()) {
                 val glassNow = AppStyle.glass
                 val hv = isHeavy(t)
-                val back = b?.let { CurlBack(heavy = false, blur = if (glassNow) Blurred(underBlur, backLayer) else null, seed = seedOf(it), age = ageOf(it)) }
-                val frontBlur = if (!glassNow) null else if (f != null) Blurred(stackLayer, topBlur) else Blurred(underBlur, topBlur)
+                val back = b?.let { CurlBack(heavy = false, blur = if (glassNow) Blurred(underBlur, backLayer, imgOf) else null, seed = seedOf(it), age = ageOf(it)) }
+                val frontBlur = if (!glassNow) null else if (f != null) Blurred(stackLayer, topBlur, imgOf) else Blurred(underBlur, topBlur, imgOf)
                 drawCurl(CurlGeometry.at(state.progress.value, size.width, hv), layer, hv, frontBlur, seedOf(t), ageOf(t), back)
             }
         }
@@ -476,7 +498,7 @@ fun FlipBook(
  * завжди вертикальний. Торці книжки (риски збоку) верхньої сторінки не малюються — видно лише ті, що під нею.
  */
 /** Що робить сторінка в книжці зараз (див. список сторінок у [FlipBook]). */
-private enum class Role { Warm, Peek, TearUnder, Current, Under, Stack, Back, Top }
+private enum class Role { Warm, WarmPeek, Peek, TearUnder, Current, Under, Stack, Back, Top }
 
 private class Slot(val index: Int, val role: Role, val preview: Boolean)
 
@@ -574,7 +596,7 @@ private fun DrawScope.curlContent(g: CurlGeometry, layer: GraphicsLayer, heavy: 
                 // Загнутий аркуш лежить на самому собі (на своєму пласкому шматку й валику) — крізь нього розмито видно
                 // саме цю сторінку, а не ту, що під нею.
                 drawRect(Color.Black)
-                blur?.top?.let { drawLayer(it) }
+                blur?.drawTop(this)
                 drawRect(if (bHeavy) Color(0xFF15161A).copy(alpha = 0.82f) else Color(0xFF111215).copy(alpha = 0.72f))
                 val canvas = drawContext.canvas
                 canvas.saveLayer(Rect(freeEdge.coerceAtLeast(0f), 0f, w, h), Paint().apply { alpha = if (bHeavy) 0.3f else 0.22f })
@@ -735,7 +757,7 @@ private fun DrawScope.strip(
                     withTransform({
                         translate(left = d0 - x0 * k)
                         scale(scaleX = k, scaleY = 1f, pivot = Offset.Zero)
-                    }) { drawLayer(blur?.top ?: layer) }
+                    }) { if (blur != null) blur.drawTop(this) else drawLayer(layer) }
                     canvas.restore()
                 }
             }
@@ -749,12 +771,14 @@ private fun DrawScope.strip(
 private val GlassBlur = 9.dp
 
 /** Розмиті копії сторінки під низом ([under]) і верхньої ([top]) — для «Скла». */
-private class Blurred(private val underLayer: GraphicsLayer, val top: GraphicsLayer) {
+private class Blurred(private val underLayer: GraphicsLayer, val top: GraphicsLayer, private val img: (GraphicsLayer) -> androidx.compose.ui.graphics.ImageBitmap?) {
     /** Під прозорим аркушем: замість чіткої сторінки під низом — розмита (поточне обрізання лишається). */
     fun under(scope: DrawScope) = with(scope) {
         drawRect(Color.Black)
-        drawLayer(underLayer)
+        img(underLayer)?.let { drawImage(it) } ?: drawLayer(underLayer)
     }
+    /** Сама сторінка, розмита (готовою картинкою, коли вже є). */
+    fun drawTop(scope: DrawScope) = with(scope) { img(top)?.let { drawImage(it) } ?: drawLayer(top) }
 }
 
 /** Загин нижнього лівого кута, що виривається: лежить решта, клапоть — зворот, тінь, рваний край на клапті. */
@@ -889,4 +913,38 @@ private fun DrawScope.drawPeel(g: TearGeometry, layer: GraphicsLayer, paperSeed:
         drawIntoCanvas { it.restore() }
     }
     canvas.restore()
+}
+
+/**
+ * Розмиття, що рахується один раз: щойно вміст змінився — показуємо живе розмиття й одразу робимо з нього готову картинку,
+ * далі малюємо картинку. Окремим шаром — кадри гортання лише повторюють її, а не розмивають сторінку щоразу.
+ */
+@Composable
+private fun Modifier.snapBlur(radius: androidx.compose.ui.unit.Dp): Modifier {
+    val src = rememberGraphicsLayer()
+    val wrap = rememberGraphicsLayer()
+    val img = androidx.compose.runtime.remember { arrayOfNulls<androidx.compose.ui.graphics.ImageBitmap>(1) }
+    val seen = androidx.compose.runtime.remember { intArrayOf(0) }
+    var tick by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+    return this.graphicsLayer().drawWithContent {
+        val t = tick
+        val fromSnap = t != seen[0]
+        seen[0] = t
+        val b = img[0]
+        if (fromSnap && b != null && b.width == size.width.toInt() && b.height == size.height.toInt()) {
+            drawImage(b)
+            return@drawWithContent
+        }
+        // Вміст змінився (чи ще немає картинки): живе розмиття, а картинку — на наступний кадр.
+        src.renderEffect = androidx.compose.ui.graphics.BlurEffect(radius.toPx(), radius.toPx(), androidx.compose.ui.graphics.TileMode.Decal)
+        src.record { this@drawWithContent.drawContent() }
+        drawLayer(src)
+        wrap.record { drawLayer(src) }
+        scope.launch {
+            val bmp = runCatching { wrap.toImageBitmap() }.getOrNull() ?: return@launch
+            img[0] = bmp
+            tick++
+        }
+    }
 }

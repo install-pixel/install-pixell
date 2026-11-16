@@ -56,17 +56,26 @@ class LogicTest {
 
     @Test
     fun pencilKeepsLikeness() {
-        // Білим олівцем малюють світло: світле на фото — світле й на малюнку, темне — чорний папір;
-        // на межі — світла лінія обрису.
+        // Комікс білою фарбою: світле на фото — світле й на малюнку, темне — чорний папір.
         val w = 120
         val h = 90
         val out = Stylize.pencil(photo(w, h), w, h)
         fun v(y: Int) = (0 until w).map { out[y * w + it] and 0xFF }.average()
         val light = v(10)
         val dark = v(h - 10)
-        val edge = v(h / 2 + 1)
         assertTrue("світле $light має бути світлішим за темне $dark", light > dark + 40)
-        assertTrue("обрис $edge має бути світлішим за темне $dark", edge > dark + 5)
+    }
+
+    @Test
+    fun comicHalftoneInMidtones() {
+        // Плавний перехід від темного до світлого: посередині — растрові крапки (поруч і папір, і фарба), а не сірий тон.
+        val w = 200
+        val h = 120
+        val src = IntArray(w * h) { i -> val c = (i % w) * 255 / (w - 1); (0xFF shl 24) or (c shl 16) or (c shl 8) or c }
+        val out = Stylize.pencil(src, w, h)
+        val mid = (20 until h - 20).flatMap { y -> (w / 2 - 10 until w / 2 + 10).map { x -> out[y * w + x] and 0xFF } }
+        assertTrue("має бути папір між крапками", mid.any { it < 30 })
+        assertTrue("мають бути крапки фарби", mid.any { it > 110 })
     }
 
     @Test
