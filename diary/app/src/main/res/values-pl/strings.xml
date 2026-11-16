@@ -142,7 +142,7 @@
     <string name="help_write_t">Pisanie</string>
     <string name="help_write">Dotknij linii — pojawi się klawiatura, a cała książka przesunie się nad nią: tekst nie odrywa się od papieru.\n\nStron na dzień jest tyle, ile trzeba: gdy strona się zapełni, pamiętnik sam przewróci na następną i piszesz dalej. Nowe zawsze dopisuje się po napisanym.\n\nNa pierwszej stronie dnia są miejsca na zdjęcie, głos i rysunek (przerywaną linią, póki puste). Można je wyłączyć w ustawieniach pamiętnika.\n\nMiejsce (u góry po prawej) — dotknij i wpisz. Nowy dzień bierze miejsce z poprzedniego (to też można wyłączyć).</string>
     <string name="help_ink_t">Pióro i rysowanie</string>
-    <string name="help_ink">Pióro (ikona na dolnym pasku) — rysujesz prosto na stronie: podkreślić, skreślić markerem, obwieść, dorysować serduszko. Tak można zawsze, na każdej stronie.\n\nRysunek dnia — osobna kartka-płótno: dotknij miejsca „Rysunek dnia” na pierwszej stronie. Narysowane widać tam miniaturą; dotknij — przejdziesz na płótno, przesuń w lewo — usuniesz.\n\nNarzędzie chodzi za palcem jak kursor na touchpadzie: prowadź gdziekolwiek, a żeby rysować — przytrzymaj palec na chwilę. Dotknij dwa razy — narzędzie zostaje opuszczone. Przy krawędzi samo się obraca, żeby było je widać.\n\nOłówek, pędzel, spray, marker, gumka; grubość, przezroczystość, figury, wygładzanie, farba w obrębie konturu, szablon. Paleta ulubionych — przytrzymaj kolor lub narzędzie, a trafi na deseczkę nad paskiem.\n\nWszystko dokładnie — przycisk „i” na pasku pióra.</string>
+    <string name="help_ink">Pióro (ikona na dolnym pasku) — rysujesz prosto na stronie: podkreślić, skreślić markerem, obwieść, dorysować serduszko. Tak można zawsze, na każdej stronie.\n\nRysunek dnia — osobna kartka-płótno: dotknij miejsca „Rysunek dnia” na pierwszej stronie. Narysowane widać tam miniaturą; dotknij — przejdziesz na płótno, przesuń w lewo — usuniesz.\n\nNarzędzie chodzi za palcem jak kursor na touchpadzie: prowadź gdziekolwiek, a żeby rysować — przytrzymaj palec na chwilę. Dotknij dwa razy — narzędzie zostaje opuszczone. Przy krawędzi samo się obraca, żeby było je widać.\n\nOłówek, pędzel, spray, marker, gumka; grubość, przezroczystość, figury, wygładzanie, farba w obrębie konturu, szablon. Paleta ulubionych — języczek po prawej: przytrzymaj kolor lub narzędzie, a trafi na boczną deseczkę. Dotknij dwoma palcami — wstecz, trzema — naprzód.\n\nWszystko dokładnie — przycisk „i” na pasku pióra.</string>
     <string name="help_dry_t">Atrament wysycha</string>
     <string name="help_dry">Świeży atrament jest jasny i tekst można poprawiać. Następnego dnia wysycha: staje się nieco bledszy i tekstu, zdjęcia ani głosu nie da się już zmienić. Rysować można zawsze — rysunek nie wysycha.\n\nSuchy tekst można tylko skreślić: przytrzymaj palec na słowie i prowadź wzdłuż linii. W „Kartce” słowa są przekreślane ołówkiem, w „Szkle” kładzie się na nie matowa szklana kropla.\n\nWyrwać stronę: przytrzymaj lewy dolny róg i prowadź w górę. To na zawsze, bez cofania — przy grzbiecie zostaje tylko skrawek.</string>
     <string name="help_media_t">Zdjęcie i głos</string>
@@ -228,7 +228,7 @@
     <string name="ink_size">Grubość</string>
     <string name="ink_style">Linia</string>
     <string name="ink_eraser_hard">Dokładna gumka</string>
-    <string name="ink_eraser_soft">Miękka gumka (rozmyta krawędź)</string>
+    <string name="ink_eraser_soft">Miękka gumka (wymazuje częściowo, miękka krawędź)</string>
     <string name="ink_pencil">Ołówek</string>
     <string name="ink_underline">Podkreślenie</string>
     <string name="ink_smooth">Wygładzanie</string>
@@ -259,7 +259,7 @@
     <string name="ink_duplicate">Powiel zaznaczenie</string>
     <string name="ink_delete_sel">Usuń zaznaczenie</string>
     <string name="ink_clip">Farba nie wychodzi za kontur: zacznij w środku — tylko w środku, na zewnątrz — tylko dookoła</string>
-    <string name="ink_eraser_blur">Jak miękka krawędź</string>
+    <string name="ink_eraser_blur">Jak mocno wymazuje</string>
     <string name="ink_stencil">Szablon: ołówek rysuje folię, a nie linię</string>
     <string name="ink_stencil_remove">Zdejmij szablon</string>
     <string name="ink_figure_free">Odręcznie</string>
@@ -308,11 +308,11 @@
     </string-array>
     <string-array name="ink_w_blur">
         <item>Lekko</item>
-        <item>Średnio</item>
-        <item>Mocno</item>
+        <item>W połowie</item>
+        <item>Do czysta</item>
     </string-array>
     <string name="ink_help_title">Jak rysować</string>
-    <string name="ink_help_body">Ruch\n• Kursor działa jak touchpad: prowadź palcem gdziekolwiek, narzędzie podąża. Wolno — dokładniej, szybko — dalej.\n• Przytrzymaj palec chwilę — narzędzie opada i rysuje; puść — unosi się.\n• Stuknij dwa razy — narzędzie zostaje opuszczone: puszczaj palec i przekładaj, linia trwa. Stuknij ponownie — unosi się.\n• Opuść i przytrzymaj bez ruchu — kropka.\n• Dwoma palcami (gdy narzędzie uniesione) — przybliż i przesuń stronę.\n• Rysik rysuje od razu, z naciskiem; jego gumka ściera.\n\nNarzędzia\n• Ołówek — linie i kształty.\n• Pędzel — smuga; malowanie (szeroko, tam i z powrotem); wypełnienie — opuść i unieś wewnątrz zamkniętego konturu.\n• Spray — aerograf lub farba; trzymasz w miejscu — gęstnieje.\n• Marker — półprzezroczysty, płaska końcówka.\n• Gumka — dokładna, miękka (rozmyty brzeg) lub całymi liniami.\n\nSzuflada (stuknij wybrane narzędzie jeszcze raz)\n• Suwaki — grubość i przezroczystość. Pod każdym przyciskiem — co wybrano.\n• Kształt: odręcznie; „wyrównaj” — przytrzymaj na końcu, a krzywe koło, ramka, trójkąt czy prosta staną się równe; prosta, ramka, owal — od miejsca opuszczenia do końcówki.\n• Wygładzanie: za ręką, płynnie, płynniej.\n• W granicach: zacznij wewnątrz konturu — farba tylko w środku; na zewnątrz — tylko dookoła.\n• Szablon (ołówek): rysujesz folię — ścianę dla farby. „Zdejmij szablon” usuwa ją, brzeg farby zostaje równy.\n• Kosz — wyczyść stronę.\n\nKolor\n• Paleta (jest też czarny, biały i jaskrawe), ostatnie kolory, pipeta (bierze kolor z rysunku), własny kolor — od czarnego do białego.\n\nUlubione\n• Ikona palety na pasku — deseczka na farby nad narzędziami.\n• Przytrzymaj kolor lub narzędzie — trafi na paletę (narzędzie — ze wszystkimi ustawieniami i kolorem).\n• Dotknij — weź. Przytrzymaj na palecie — usuń.\n\nInne\n• Strzałki — cofnij i ponów. Ptaszek — zakończ.\n• Rysunek nie wysycha: rysować można zawsze, także na starych stronach.\n• Rysunek dnia — osobna kartka-płótno: miejsce „Rysunek dnia” na pierwszej stronie.</string>
+    <string name="ink_help_body">Ruch\n• Kursor — jak na touchpadzie: prowadź palcem gdziekolwiek, narzędzie idzie za nim. Wolno — dokładniej, szybko — dalej.\n• Przytrzymaj palec na chwilę — narzędzie opada i rysuje; puściłeś — uniosło się.\n• Dotknij dwa razy — narzędzie zostaje opuszczone: puszczaj palec i przekładaj, linia trwa. Dotknij jeszcze raz — uniosło się. Inne narzędzie zawsze bierzesz uniesione.\n• Opuściłeś i jeszcze przytrzymałeś nieruchomo — kropka.\n• Dwoma palcami (gdy narzędzie uniesione) — przybliżyć i przesunąć stronę.\n• Dotknij dwoma palcami — krok wstecz, trzema — naprzód.\n• Przy krawędzi narzędzie samo się obraca, żeby było je widać.\n• Rysik rysuje od razu, z naciskiem; jego końcówka-gumka wymazuje.\n\nNarzędzia (pasek na dole)\n• Ołówek — linie i figury.\n• Pędzel — pociągnięcie; zamalowywanie (szeroko, tam i z powrotem); wypełnienie — opuść i unieś wewnątrz zamkniętego konturu.\n• Spray — aerograf lub farba; trzymasz w miejscu — gęstnieje.\n• Marker — półprzezroczysty, płaska końcówka.\n• Gumka — dokładna; miękka (wymazuje lekko, w połowie lub prawie do czysta, z miękką krawędzią); całymi liniami.\n• Szablon — rysujesz folię-ścianę dla farby. „Zdejmij szablon” ją usuwa, krawędź farby zostaje równa.\n\nSzufladka (dotknij wybranego narzędzia jeszcze raz)\n• U góry: kolor tego narzędzia (każde ma swój), wstecz i naprzód, „i”, kosz — wyczyścić stronę.\n• Suwaki — grubość i przezroczystość, ze skalą od 1 do 10; gdy przesuwasz, na suwaku widać liczbę.\n• Figura: odręcznie; „wyrównuje” — przytrzymaj na końcu, a krzywe koło, ramka, trójkąt czy linia staną się równe (pod tym samym kątem); linia, ramka, owal — od punktu, gdzie opuściłeś, do końcówki.\n• Wygładzanie: jak ręka, płynnie, płynniej.\n• W obrębie: zacząłeś wewnątrz konturu — farba tylko w środku (na wszystkim, co tam jest); z zewnątrz — tylko dookoła.\n\nKolor\n• Paleta (jest też czarny, biały i jaskrawe), ostatnie kolory, pipeta (bierze kolor z rysunku), własny kolor — od czarnego do białego.\n\nUlubione\n• Języczek po prawej — boczna deseczka na farby.\n• Przytrzymaj kolor lub narzędzie — trafi na nią (narzędzie — ze wszystkimi ustawieniami i kolorem).\n• Dotknij — weź. Przytrzymaj na deseczce — usuń. Na dole — wstecz i naprzód.\n\nInne\n• Ptaszek — zakończ.\n• Rysunek nie wysycha: rysować można zawsze, także na starych stronach.\n• Rysunek dnia — osobna kartka-płótno: miejsce „Rysunek dnia” na pierwszej stronie.</string>
     <string name="cover_section">Okładka</string>
     <string name="cover_from_gallery">Z galerii</string>
     <string name="cover_default">Standardowa (jak w motywie)</string>
@@ -333,4 +333,5 @@
     <string name="settings_drawings">Rysunek dnia</string>
     <string name="settings_drawings_desc">Miejsce na rysunek na pierwszej stronie. Rysować na tekście można zawsze</string>
     <string name="ink_palette">Ulubione</string>
+    <string name="ink_stencil_tool">Szablon</string>
 </resources>

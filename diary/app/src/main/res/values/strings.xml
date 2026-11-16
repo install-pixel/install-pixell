@@ -140,7 +140,7 @@
     <string name="help_write_t">Writing</string>
     <string name="help_write">Tap a line — the keyboard appears and the whole book slides above it: the text never leaves the paper.\n\nA day has as many pages as it needs: when a page is full, the diary turns to the next one by itself and you keep writing. New text always goes after what\'s written.\n\nThe first page of a day has spaces for a photo, voice and a drawing (dashed while empty). They can be turned off in the diary\'s settings.\n\nPlace (top right) — tap and write it in. A new day takes the place from the previous one (this can be turned off too).</string>
     <string name="help_ink_t">Pen and drawing</string>
-    <string name="help_ink">The pen (icon in the bottom bar) — draw right over the page: underline, strike out with a marker, circle, add a little heart. You can always do this, on any page.\n\nDrawing of the day — a separate canvas sheet: tap the “Drawing of the day” space on the first page. What you drew shows there as a thumbnail; tap it to turn to the canvas, swipe it left to remove it.\n\nThe tool follows your finger like a touchpad cursor: move anywhere, and to draw — hold your finger still for a moment. Double-tap — the tool stays down. Near an edge it turns by itself so you can see it.\n\nPencil, brush, spray, marker, eraser; width, opacity, shapes, smoothing, paint within an outline, stencil. Favourites palette — hold a colour or a tool and it goes onto the board above the bar.\n\nAll the details — the “i” button on the pen bar.</string>
+    <string name="help_ink">The pen (icon in the bottom bar) — draw right over the page: underline, strike out with a marker, circle, add a little heart. You can always do this, on any page.\n\nDrawing of the day — a separate canvas sheet: tap the “Drawing of the day” space on the first page. What you drew shows there as a thumbnail; tap it to turn to the canvas, swipe it left to remove it.\n\nThe tool follows your finger like a touchpad cursor: move anywhere, and to draw — hold your finger still for a moment. Double-tap — the tool stays down. Near an edge it turns by itself so you can see it.\n\nPencil, brush, spray, marker, eraser; width, opacity, shapes, smoothing, paint within an outline, stencil. Favourites palette — the tab on the right: hold a colour or a tool and it goes onto the side board. Tap with two fingers to undo, three to redo.\n\nAll the details — the “i” button on the pen bar.</string>
     <string name="help_dry_t">Ink dries</string>
     <string name="help_dry">Fresh ink is bright and the text can be corrected. The next day it dries: it gets a little duller, and the text, photo and voice can no longer change. You can always draw — drawings never dry.\n\nDry text can only be crossed out: hold a finger on a word and slide along the line. In “Sheet” the words are struck through with pencil; in “Glass” a frosted glass drop covers them.\n\nTo tear out a page: hold the bottom left corner and pull up. It\'s forever, no undo — only a stub stays at the spine.</string>
     <string name="help_media_t">Photo and voice</string>
@@ -224,7 +224,7 @@
     <string name="ink_size">Size</string>
     <string name="ink_style">Line</string>
     <string name="ink_eraser_hard">Precise eraser</string>
-    <string name="ink_eraser_soft">Soft eraser (blurred edge)</string>
+    <string name="ink_eraser_soft">Soft eraser (erases partly, soft edge)</string>
     <string name="ink_pencil">Pencil</string>
     <string name="ink_underline">Underline</string>
     <string name="ink_smooth">Smoothing</string>
@@ -255,7 +255,7 @@
     <string name="ink_duplicate">Duplicate selection</string>
     <string name="ink_delete_sel">Delete selection</string>
     <string name="ink_clip">Paint stays on its side of an outline: start inside — only inside, outside — only around it</string>
-    <string name="ink_eraser_blur">How soft the edge is</string>
+    <string name="ink_eraser_blur">How strongly it erases</string>
     <string name="ink_stencil">Stencil: the pencil draws a film, not a line</string>
     <string name="ink_stencil_remove">Remove stencil</string>
     <string name="ink_figure_free">Freehand</string>
@@ -303,12 +303,12 @@
         <item>Whole lines</item>
     </string-array>
     <string-array name="ink_w_blur">
-        <item>Slight</item>
-        <item>Medium</item>
-        <item>Strong</item>
+        <item>Lightly</item>
+        <item>Halfway</item>
+        <item>Fully</item>
     </string-array>
     <string name="ink_help_title">How to draw</string>
-    <string name="ink_help_body">Moving\n• The cursor works like a touchpad: slide anywhere, the tool follows. Slow — more precise, fast — further.\n• Hold your finger for a moment — the tool lowers and draws; lift — it rises.\n• Double‑tap — the tool stays down: lift and re‑grip as you like, the line continues. Tap again — it rises.\n• Lower and hold still — a dot.\n• Two fingers (tool raised) — zoom and move the page.\n• A stylus draws directly, with pressure; its eraser end erases.\n\nTools\n• Pencil — lines and shapes.\n• Brush — stroke; scrub (wide, back and forth); fill — lower and lift inside a closed outline.\n• Spray — airbrush or paint; hold in place — it builds up.\n• Marker — translucent, flat tip.\n• Eraser — exact, soft (blurred edge) or whole lines.\n\nDrawer (tap the selected tool again)\n• Sliders — size and opacity. Under each button — what is selected.\n• Shape: freehand; “straighten” — hold at the end and a wobbly circle, frame, triangle or line becomes neat; line, frame, oval — from where you lowered to the tip.\n• Smoothing: as drawn, smooth, smoother.\n• Inside: start inside an outline — paint stays inside; start outside — only around it.\n• Stencil (pencil): draw a film — a wall for paint. “Remove stencil” takes it away, the paint keeps a crisp edge.\n• Bin — clear the page.\n\nColour\n• Palette (with black, white and bright ones too), recent colours, eyedropper (picks a colour from the drawing), custom colour — from black to white.\n\nFavourites\n• The palette icon on the bar — a paint board above the tools.\n• Hold a colour or a tool — it goes onto the palette (a tool with all its settings and colour).\n• Tap to take it. Hold it on the palette to remove it.\n\nOther\n• Arrows — undo and redo. Tick — finish.\n• Drawings never dry: you can draw any time, on old pages too.\n• Drawing of the day — a separate canvas sheet: the “Drawing of the day” space on the first page.</string>
+    <string name="ink_help_body">Moving\n• The cursor works like a touchpad: move your finger anywhere and the tool follows. Slowly — more precise, fast — further.\n• Hold your finger still for a moment — the tool goes down and draws; let go — it lifts.\n• Double-tap — the tool stays down: lift and reposition your finger, the line goes on. Tap again — it lifts. Another tool is always picked up lifted.\n• Put it down and hold still a bit longer — a dot.\n• Two fingers (with the tool lifted) — zoom and move the page.\n• Tap with two fingers — undo, with three — redo.\n• Near an edge the tool turns by itself so you can see it.\n• A stylus draws right away, with pressure; its eraser end erases.\n\nTools (bar at the bottom)\n• Pencil — lines and shapes.\n• Brush — a stroke; scrubbing (wide, back and forth); fill — put it down and lift inside a closed outline.\n• Spray — airbrush or paint; hold still and it gets denser.\n• Marker — semi-transparent, flat tip.\n• Eraser — precise; soft (erases lightly, halfway or almost fully, with a soft edge); whole strokes.\n• Stencil — draw a film that works as a wall for paint. “Remove stencil” takes it away and the paint keeps a clean edge.\n\nDrawer (tap the selected tool again)\n• At the top: this tool\'s colour (each tool has its own), undo and redo, “i”, the bin — clear the page.\n• Sliders — width and opacity, with a 1 to 10 scale; while you drag, the number shows on the slider.\n• Shape: freehand; “straightens” — hold at the end and a wobbly circle, box, triangle or line becomes neat (at the same angle); line, box, oval — from where you put it down to the tip.\n• Smoothing: as drawn, smooth, smoother.\n• Within: start inside an outline — paint stays inside (over everything there); start outside — only around it.\n\nColour\n• Palette (with black, white and bright ones too), recent colours, eyedropper (picks a colour from the drawing), custom colour — from black to white.\n\nFavourites\n• The tab on the right — a side paint board.\n• Hold a colour or a tool — it goes onto the board (a tool with all its settings and colour).\n• Tap to take it. Hold it on the board to remove it. Undo and redo are at its bottom.\n\nOther\n• Tick — finish.\n• Drawings never dry: you can draw any time, on old pages too.\n• Drawing of the day — a separate canvas sheet: the “Drawing of the day” space on the first page.</string>
     <string name="cover_section">Cover</string>
     <string name="cover_from_gallery">From gallery</string>
     <string name="cover_default">Default (from the theme)</string>
@@ -329,4 +329,5 @@
     <string name="settings_drawings">Drawing of the day</string>
     <string name="settings_drawings_desc">Room for a drawing on the first page. You can always draw over the text</string>
     <string name="ink_palette">Favourites</string>
+    <string name="ink_stencil_tool">Stencil</string>
 </resources>
