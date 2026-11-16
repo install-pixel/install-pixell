@@ -293,7 +293,7 @@ private const val HOLD_MS = 330L
 /** Крапка — лише коли інструмент опустили й ще потримали нерухомо (випадково не ставиться). */
 private const val DOT_MS = 420L
 /** Затримав олівець у кінці лінії — фігура вирівнюється. */
-private const val SNAP_MS = 900L
+private const val SNAP_MS = 550L
 /** Скільки лінія чекає на паузі, поки перехопишся (відпустив біля краю екрана). */
 private const val CONTINUE_MS = 2500L
 
@@ -1214,17 +1214,34 @@ private fun recognize(pts: List<Offset>, mm: Float): List<Offset>? {
         }
     }
     val body = pts.subList(0, cut.coerceAtLeast(8))
-    // Коло / овал — його похибка (середнє відхилення від овалу в рамці, частки радіуса).
-    val cx = (minX + maxX) / 2f
-    val cy = (minY + maxY) / 2f
-    val rx = ((maxX - minX) / 2f).coerceAtLeast(1f)
-    val ry = ((maxY - minY) / 2f).coerceAtLeast(1f)
-    val err = body.sumOf { kotlin.math.abs(hypot((it.x - cx) / rx, (it.y - cy) / ry) - 1f).toDouble() } / body.size
+    // Коло / овал — під тим самим кутом, під яким намальований (головні осі точок), а не завжди рівно по сторінці;
+    // майже круглий — рівне коло. Похибка — середнє відхилення від овалу (частки радіуса).
+    var mx = 0f; var my = 0f
+    body.forEach { mx += it.x; my += it.y }
+    mx /= body.size; my /= body.size
+    var sxx = 0f; var syy = 0f; var sxy = 0f
+    body.forEach { val dx = it.x - mx; val dy = it.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy }
+    var phi = 0.5f * kotlin.math.atan2(2f * sxy, sxx - syy)
+    if (kotlin.math.abs(phi) < Math.toRadians(9.0).toFloat() || kotlin.math.abs(kotlin.math.abs(phi) - PI.toFloat() / 2) < Math.toRadians(9.0).toFloat()) phi = 0f
+    val e1 = Offset(cos(phi), sin(phi))
+    val e2 = Offset(-sin(phi), cos(phi))
+    var u0 = Float.MAX_VALUE; var u1 = -Float.MAX_VALUE; var v0 = Float.MAX_VALUE; var v1 = -Float.MAX_VALUE
+    body.forEach { val d = it - Offset(mx, my); val u = d.x * e1.x + d.y * e1.y; val v = d.x * e2.x + d.y * e2.y; u0 = minOf(u0, u); u1 = maxOf(u1, u); v0 = minOf(v0, v); v1 = maxOf(v1, v) }
+    var rx = ((u1 - u0) / 2f).coerceAtLeast(1f)
+    var ry = ((v1 - v0) / 2f).coerceAtLeast(1f)
+    val oc = Offset(mx, my) + e1 * ((u0 + u1) / 2f) + e2 * ((v0 + v1) / 2f)
+    val err = body.sumOf {
+        val d = it - oc
+        val u = (d.x * e1.x + d.y * e1.y) / rx
+        val v = (d.x * e2.x + d.y * e2.y) / ry
+        kotlin.math.abs(hypot(u, v) - 1f).toDouble()
+    } / body.size
+    if (kotlin.math.abs(rx - ry) < maxOf(rx, ry) * 0.14f) { val r = (rx + ry) / 2f; rx = r; ry = r }
     fun oval(): List<Offset> {
         val n = 96
         return List(n + 6) { i ->
             val ang = -PI.toFloat() / 2 + 2f * PI.toFloat() * i / n
-            Offset(cx + rx * cos(ang), cy + ry * sin(ang))
+            oc + e1 * (rx * cos(ang)) + e2 * (ry * sin(ang))
         }
     }
     if (err < 0.07) return oval()
@@ -1253,7 +1270,22 @@ private fun recognize(pts: List<Offset>, mm: Float): List<Offset>? {
                 val ang = Math.toDegrees(kotlin.math.atan2((q.y - p.y).toDouble(), (q.x - p.x).toDouble())).let { ((it % 90) + 90) % 90 }
                 ang < 14 || ang > 76
             }
-            val quad = if (axis) listOf(Offset(minX, minY), Offset(maxX, minY), Offset(maxX, maxY), Offset(minX, maxY)) else poly
+            // Похилий — рівний прямокутник під тим самим кутом (середній нахил сторін), а не криві кути, як намальовано.
+            val quad = if (axis) listOf(Offset(minX, minY), Offset(maxX, minY), Offset(maxX, maxY), Offset(minX, maxY)) else {
+                var c4 = 0f; var s4 = 0f
+                for (i in 0 until 4) {
+                    val p = poly[i]; val q = poly[(i + 1) % 4]
+                    val ang = kotlin.math.atan2(q.y - p.y, q.x - p.x) * 4f
+                    val l = (q - p).getDistance()
+                    c4 += cos(ang) * l; s4 += sin(ang) * l
+                }
+                val th = kotlin.math.atan2(s4, c4) / 4f
+                val a1 = Offset(cos(th), sin(th))
+                val a2 = Offset(-sin(th), cos(th))
+                var p0 = Float.MAX_VALUE; var p1 = -Float.MAX_VALUE; var q0 = Float.MAX_VALUE; var q1 = -Float.MAX_VALUE
+                body.forEach { val u = it.x * a1.x + it.y * a1.y; val v = it.x * a2.x + it.y * a2.y; p0 = minOf(p0, u); p1 = maxOf(p1, u); q0 = minOf(q0, v); q1 = maxOf(q1, v) }
+                listOf(a1 * p0 + a2 * q0, a1 * p1 + a2 * q0, a1 * p1 + a2 * q1, a1 * p0 + a2 * q1)
+            }
             return dense(quad + quad.first() + quad[1].let { quad.first() + (it - quad.first()) * 0.06f })
         }
         return dense(poly + poly.first() + (poly.first() + (poly[1] - poly.first()) * 0.06f))
@@ -1423,8 +1455,9 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
         Size(cols.toFloat(), rows.toFloat()),
     ) {
         drawContext.canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
-        // «У межах»: стіни — лише обриси (і гумки, що їх стерли); заливка — усе намальоване.
-        val src = if (outKind == InkKind.CLIP) lines.filter { it.kind in OUTLINES || isEraser(it) } else lines
+        // «У межах»: стіни — лише обриси лініями (олівець, ручка; маркер — фарба, не обрис) і гумки, що їх стерли;
+        // заливка — усе намальоване.
+        val src = if (outKind == InkKind.CLIP) lines.filter { (it.kind in OUTLINES && it.kind != InkKind.MARKER) || isEraser(it) } else lines
         drawInk(src, part, cols.toFloat(), { false }, emptySet())
         drawContext.canvas.restore()
         // Трафарети — теж стіни.
@@ -1482,6 +1515,31 @@ private fun floodFill(lines: List<InkLine>, part: Int, pageW: Float, pageH: Floa
     // Розтеклось майже на всю сторінку — обрис не замкнений. Для «у межах» дозволено й назовні (почав поза обрисом —
     // фарба обходить його), але не тоді, коли стін узагалі немає.
     if (tail > px.size * (if (outKind == InkKind.CLIP) 0.985f else 0.6f)) return null
+    // «У межах», почав усередині замкненого обрису: усе, що лежить цілком усередині (інші лінії, штрихи), — теж
+    // усередині, фарба не обходить його дірками. (Почав ззовні — фарба торкається краю сторінки, тоді лише довкола.)
+    if (outKind == InkKind.CLIP) {
+        var touchesEdge = false
+        for (x in 0 until cols) if (fill[x] || fill[(rows - 1) * cols + x]) { touchesEdge = true; break }
+        if (!touchesEdge) for (y in 0 until rows) if (fill[y * cols] || fill[y * cols + cols - 1]) { touchesEdge = true; break }
+        if (!touchesEdge) {
+            val outside = BooleanArray(px.size)
+            var h2 = 0
+            var t2 = 0
+            fun seed(j: Int) { if (!fill[j] && !outside[j]) { outside[j] = true; queue[t2++] = j } }
+            for (x in 0 until cols) { seed(x); seed((rows - 1) * cols + x) }
+            for (y in 0 until rows) { seed(y * cols); seed(y * cols + cols - 1) }
+            while (h2 < t2) {
+                val i = queue[h2++]
+                val x = i % cols
+                val y = i / cols
+                if (x > 0) seed(i - 1)
+                if (x < cols - 1) seed(i + 1)
+                if (y > 0) seed(i - cols)
+                if (y < rows - 1) seed(i + cols)
+            }
+            for (i in px.indices) if (!outside[i]) fill[i] = true
+        }
+    }
     // Під обвідку: на дві клітинки (стіни товстіші на одну — і ще одна під саму лінію, не далі за неї).
     val grown = fill.copyOf()
     for (i in px.indices) if (fill[i]) {
@@ -1619,11 +1677,15 @@ private fun DrawScope.drawFill(xs: FloatArray, ys: FloatArray, x1: FloatArray, r
     drawContext.canvas.restore()
 }
 
-/** Майже горизонтальна лінія стає рівно горизонтальною (підкреслення тексту). */
+/** Майже горизонтальна лінія стає рівно горизонтальною (підкреслення тексту), майже вертикальна — вертикальною. */
 private fun snapLine(a: Offset, b: Offset): Offset {
     val dx = b.x - a.x
     val dy = b.y - a.y
-    return if (kotlin.math.abs(dy) < kotlin.math.abs(dx) * 0.12f) Offset(b.x, a.y) else b
+    return when {
+        kotlin.math.abs(dy) < kotlin.math.abs(dx) * 0.12f -> Offset(b.x, a.y)
+        kotlin.math.abs(dx) < kotlin.math.abs(dy) * 0.12f -> Offset(a.x, b.y)
+        else -> b
+    }
 }
 
 // ---------- Малювання штрихів ----------
@@ -1820,8 +1882,12 @@ private fun DrawScope.brushLine(px: FloatArray, py: FloatArray, factors: FloatAr
     val total = d[n - 1]
     // Мазок починається вузеньким кінчиком і розходиться; зафарбовування (туди-сюди) — ширше, але теж м'яко
     // починається й закінчується, а не круглою печаткою.
+    // Короткий мазок — не «зародок» довгого: що коротший, то менше звужується; зовсім короткий — повний круглий мазок.
+    val shortK = ((total - base * 1.5f) / (base * 7f)).coerceIn(0f, 1f)
+    val tip0 = if (scrub) 0.45f else 0.12f
+    val tip = tip0 + (0.92f - tip0) * (1f - shortK)
     val widths = if (closed) FloatArray(n) { base } else {
-        val t = taper(px, py, factors, if (scrub) base * 1.6f else base, if (scrub) 0.45f else 0.12f)
+        val t = taper(px, py, factors, if (scrub) base * 1.6f else base, tip)
         FloatArray(n) { t[it] }
     }
     if (mode == 1) {

@@ -56,7 +56,6 @@ object Stylize {
      * Тон береться з трохи розмитого фото (великі плями, як у коміксі), обриси — лише там, де на фото справжня межа.
      * [transparent] — біла фарба з прозорістю (лягає просто на фактуру паперу); інакше — сірий на чорному.
      */
-    @Suppress("UNUSED_PARAMETER")
     fun pencil(src: IntArray, w: Int, h: Int, seed: Int = 7, transparent: Boolean = false): IntArray {
         val lum = luminance(src)
         autoLevels(lum)
@@ -71,27 +70,38 @@ object Stylize {
             val gy = soft[i + w - 1] + 2 * soft[i + w] + soft[i + w + 1] - soft[i - w - 1] - 2 * soft[i - w] - soft[i - w + 1]
             edge[i] = sqrt(gx * gx + gy * gy)
         }
-        val cell = max(4f, min(w, h) / 72f)
+        // Крапки дрібніші й «друковані»: кожна трохи зсунута й свого розміру, край ледь нерівний — не рівна сітка.
+        val cell = max(3.5f, min(w, h) / 95f)
         val ca = 0.7071f
-        val aa = 0.75f / cell
+        val aa = 0.8f / cell
         val fade = min(w, h) * 0.06f
+        fun hash(a: Int, b: Int, k: Int): Float {
+            var x = a * 374761393 + b * 668265263 + k * 1274126177 + seed * 69069
+            x = (x xor (x ushr 13)) * 1274126177
+            return ((x xor (x ushr 16)) and 0xFFFF) / 65535f
+        }
         val out = IntArray(n)
         for (y in 0 until h) for (x in 0 until w) {
             val i = y * w + x
-            val t = smoothRange(0.16f, 0.86f, tone[i])
-            // Растр під 45°: відстань до центру своєї клітинки.
+            // Світліше, ніж було: більше півтонів ідуть у крапки, тіні не з'їдають усе.
+            val t = smoothRange(0.05f, 0.8f, tone[i]).pow(0.8f)
             val u = (x + y) * ca / cell
             val v = (y - x) * ca / cell
-            val fu = u - kotlin.math.floor(u) - 0.5f
-            val fv = v - kotlin.math.floor(v) - 0.5f
-            val dist = sqrt(fu * fu + fv * fv)
-            val r = sqrt(t) * 0.64f
+            val iu = kotlin.math.floor(u).toInt()
+            val iv = kotlin.math.floor(v).toInt()
+            val ju = (hash(iu, iv, 1) - 0.5f) * 0.22f
+            val jv = (hash(iu, iv, 2) - 0.5f) * 0.22f
+            val fu = u - iu - 0.5f - ju
+            val fv = v - iv - 0.5f - jv
+            val rough = (hash(x, y, 3) - 0.5f) * 0.05f
+            val dist = sqrt(fu * fu + fv * fv) + rough
+            val r = sqrt(t) * 0.66f * (0.9f + 0.2f * hash(iu, iv, 4))
             var ink = ((r + aa - dist) / (2f * aa)).coerceIn(0f, 1f)
-            if (t > 0.9f) ink = 1f
-            if (t < 0.05f) ink = 0f
-            // Обрис — чорна лінія тушшю по фарбі.
-            val e = ((edge[i] - 0.14f) * 4.5f).coerceIn(0f, 1f)
-            ink *= 1f - 0.95f * e
+            if (t > 0.84f) ink = 1f
+            if (t < 0.03f) ink = 0f
+            // Обрис — тонка чорна лінія тушшю по фарбі.
+            val e = ((edge[i] - 0.2f) * 4f).coerceIn(0f, 1f)
+            ink *= 1f - 0.85f * e
             val dEdge = min(min(x, w - 1 - x), min(y, h - 1 - y)).toFloat()
             ink *= smooth((dEdge / fade).coerceIn(0f, 1f))
             val value = (ink * MAX_LIGHT * 1.08f).coerceIn(0f, MAX_LIGHT + 0.06f)
