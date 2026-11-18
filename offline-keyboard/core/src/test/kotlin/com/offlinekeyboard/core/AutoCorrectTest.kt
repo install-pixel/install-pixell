@@ -45,4 +45,19 @@ class AutoCorrectTest {
         assertNull(fix(Language.EN, "iPhome", listOf("iphone")))
         assertNull(fix(Language.EN, "tganks", listOf("thanks"), rejected = setOf("tganks")))
     }
+
+    @Test
+    fun `two slips in a longer word, a close call stays, the word that fits after the previous one wins`() {
+        // A neighbouring key and a missing double letter in a long word.
+        assertEquals("привітання", fix(Language.UK, "правітаня", listOf("привітання")))
+        // Two words equally near: nothing is guessed.
+        assertNull(fix(Language.EN, "gead", listOf("head", "bead")))
+        // ...unless one of them usually follows the previous word.
+        assertEquals(
+            "bead",
+            AutoCorrect.correction(Language.EN, "gead", { it in setOf("head", "bead") }, sequenceOf("head", "bead"), context = setOf("bead")),
+        )
+        // Two slips in a short word are too many.
+        assertNull(fix(Language.UK, "пртвір", listOf("привіт")))
+    }
 }

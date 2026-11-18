@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.offlinekeyboard.core.dictionary.UserDictionary
+import com.offlinekeyboard.core.dictionary.WordPairs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
@@ -25,6 +26,14 @@ class UserDictionaryStore private constructor(context: Context) {
         if (file.isFile) UserDictionary.parse(file.readText(Charsets.UTF_8)) else UserDictionary()
     }.getOrElse { UserDictionary() }.also { it.forgetStale(System.currentTimeMillis()) }
 
+    private val pairsFile = File(context.noBackupFilesDir, PAIRS_FILE)
+    private var savedPairsVersion = 0L
+
+    /** Which word the user typed after which: their own next-word predictions (learned like the words). */
+    val pairs: WordPairs = runCatching {
+        if (pairsFile.isFile) WordPairs.parse(pairsFile.readText(Charsets.UTF_8)) else WordPairs()
+    }.getOrElse { WordPairs() }
+
     private val _changes = MutableStateFlow(0L)
 
     /** Emits on every change, for the settings screen. */
@@ -41,21 +50,30 @@ class UserDictionaryStore private constructor(context: Context) {
 
     fun saveNow() {
         main.removeCallbacks(saveRunnable)
-        if (dictionary.version == savedVersion) return
-        savedVersion = dictionary.version
-        val snapshot = dictionary.serialize()
+        if (dictionary.version != savedVersion) {
+            savedVersion = dictionary.version
+            write(file, dictionary.serialize())
+        }
+        if (pairs.version != savedPairsVersion) {
+            savedPairsVersion = pairs.version
+            write(pairsFile, pairs.serialize())
+        }
+    }
+
+    private fun write(target: File, snapshot: String) {
         io.execute {
-            val tmp = File(file.parentFile, "$FILE_NAME.tmp")
+            val tmp = File(target.parentFile, "${target.name}.tmp")
             tmp.writeText(snapshot, Charsets.UTF_8)
-            if (!tmp.renameTo(file)) {
-                file.delete()
-                tmp.renameTo(file)
+            if (!tmp.renameTo(target)) {
+                target.delete()
+                tmp.renameTo(target)
             }
         }
     }
 
     companion object {
         private const val FILE_NAME = "user_dictionary.tsv"
+        private const val PAIRS_FILE = "user_pairs.tsv"
         private const val SAVE_DELAY_MS = 3000L
 
         @Volatile

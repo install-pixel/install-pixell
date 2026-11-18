@@ -46,6 +46,11 @@ data class KeyboardSettings(
     val compactToolbar: Boolean = true,
     /** Dragging Backspace to the left deletes whole words. */
     val backspaceSwipe: Boolean = true,
+    /** Holding the space bar and sliding moves the cursor (iOS-style). */
+    val spaceCursor: Boolean = true,
+    /** Typewriter key sounds (Black Typewriter style only for now) and their volume, 0–1. */
+    val keySound: Boolean = true,
+    val keySoundVolume: Float = 0.6f,
     /** Fixes one-key slips into known words when a word ends; Backspace right after undoes it. */
     val autoCorrect: Boolean = true,
     val hapticFeedback: Boolean = true,
@@ -116,6 +121,9 @@ class SettingsRepository(context: Context) {
             prefs[Keys.SMART_PUNCTUATION] = updated.smartPunctuation
             prefs[Keys.COMPACT_TOOLBAR] = updated.compactToolbar
             prefs[Keys.BACKSPACE_SWIPE] = updated.backspaceSwipe
+            prefs[Keys.SPACE_CURSOR] = updated.spaceCursor
+            prefs[Keys.KEY_SOUND] = updated.keySound
+            prefs[Keys.KEY_SOUND_VOLUME] = updated.keySoundVolume
             prefs[Keys.AUTO_CORRECT] = updated.autoCorrect
             prefs[Keys.HAPTIC] = updated.hapticFeedback
             prefs[Keys.VIBRATION] = updated.vibration.name
@@ -209,6 +217,9 @@ class SettingsRepository(context: Context) {
             smartPunctuation = this[Keys.SMART_PUNCTUATION] ?: defaults.smartPunctuation,
             compactToolbar = this[Keys.COMPACT_TOOLBAR] ?: defaults.compactToolbar,
             backspaceSwipe = this[Keys.BACKSPACE_SWIPE] ?: defaults.backspaceSwipe,
+            spaceCursor = this[Keys.SPACE_CURSOR] ?: defaults.spaceCursor,
+            keySound = this[Keys.KEY_SOUND] ?: defaults.keySound,
+            keySoundVolume = (this[Keys.KEY_SOUND_VOLUME] ?: defaults.keySoundVolume).coerceIn(0f, 1f),
             autoCorrect = this[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
             vibration = enumOrNull<VibrationStrength>(this[Keys.VIBRATION]) ?: defaults.vibration,
@@ -252,6 +263,9 @@ class SettingsRepository(context: Context) {
         val SMART_PUNCTUATION = booleanPreferencesKey("smart_punctuation")
         val COMPACT_TOOLBAR = booleanPreferencesKey("compact_toolbar")
         val BACKSPACE_SWIPE = booleanPreferencesKey("backspace_swipe")
+        val SPACE_CURSOR = booleanPreferencesKey("space_cursor")
+        val KEY_SOUND = booleanPreferencesKey("key_sound")
+        val KEY_SOUND_VOLUME = floatPreferencesKey("key_sound_volume")
         val AUTO_CORRECT = booleanPreferencesKey("auto_correct")
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
         val VIBRATION = stringPreferencesKey("vibration_strength")

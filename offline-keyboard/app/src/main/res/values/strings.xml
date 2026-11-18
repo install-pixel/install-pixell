@@ -135,7 +135,7 @@
     <string name="translation_mode_auto">Automatically (no confirmation)</string>
     <string name="translation_mode_manual">Only after Enter</string>
     <string name="action_translate_clipboard">Translate selection / paste translated</string>
-    <string name="clipboard_chip_description">Translate the selected text, or paste the clipboard translated</string>
+    <string name="clipboard_chip_description">Clipboard history</string>
     <string name="clipboard_empty">Nothing selected, clipboard empty</string>
     <string name="translation_done_undo">✓ %1$s: %2$s  ↶</string>
     <string name="translation_pause">Insert the translation after a pause in typing</string>
@@ -304,9 +304,9 @@
     <string name="help_start">First steps</string>
     <string name="help_start_body">• «Turn on» on the main page — tick OffKey in the list of keyboards.\n• «Choose» — pick OffKey; the steps disappear.\n• The «Try it» field — try everything from this help there.\n• Everything works offline; voice and translation need models (section «Voice and translation»).\n• «Look» — the Black Glass, Black Sketch or Black Typewriter style, key brightness and height.</string>
     <string name="help_typing">Typing and gestures</string>
-    <string name="help_typing_body">• Hold a letter — its options: Ukrainian ґ ї, Polish letters, the corner digit. Slide to one and let go.\n• Hold the comma — emoji.\n• Swipe the space bar — another language; the current one is written on it.\n• Hold ⌫ — deletes character by character; drag ⌫ left — whole words.\n• Tap the strip above the keys — the buttons appear: modes on the left, computer keyboard and settings on the right.\n• The modes button — Text, Translate, Clipboard, Voice.</string>
+    <string name="help_typing_body">• Hold a letter — its options: Ukrainian ґ ї, Polish letters, the corner digit. Slide to one and let go.\n• Hold the comma — emoji.\n• Swipe the space bar — another language; the current one is written on it.\n• Hold ⌫ — deletes character by character; drag ⌫ left — whole words.\n• Hold the space bar and slide — the cursor moves through the text.\n• Tap the strip above the keys — the buttons appear: modes on the left, computer keyboard and settings on the right.\n• The modes button — Text, Translate, Clipboard, Voice.</string>
     <string name="help_correction">Autocorrect and suggestions</string>
-    <string name="help_correction_body">• A word ends with a space or a mark — one slip onto a neighbouring key is fixed («helli» → «hello»).\n• ⌫ right after a fix — brings your word back and remembers it.\n• Rare but correct words are left alone.\n• Words in «My dictionary» (added or imported) — never changed, and a slip in them is fixed to them.\n• Suggestions above the keys — tap inserts a word; hold — remove your word.\n• Turn off — «Typing» → «Fix typos»; suggestions — «My dictionary».</string>
+    <string name="help_correction_body">• A word ends with a space or a mark — one slip onto a neighbouring key is fixed («helli» → «hello»).\n• ⌫ right after a fix — brings your word back and remembers it.\n• Rare but correct words are left alone.\n• Words in «My dictionary» (added or imported) — never changed, and a slip in them is fixed to them.\n• Suggestions above the keys — tap inserts a word; hold — remove your word.\n• After a space, on the right of the strip — the words that usually come next (and your own habits).\n• Turn off — «Typing» → «Fix typos»; suggestions — «My dictionary».</string>
     <string name="help_punctuation">Punctuation and capitals</string>
     <string name="help_punctuation_body">• Start of a sentence — a capital by itself, also right after «?» and «!».\n• A space before , . ! ? : ; — moves after the mark.\n• After , ; ! ? : — a space appears by itself when you start the next word (not in numbers or addresses).\n• Two quick spaces — «. ».\n• ⌫ right after such a change — puts it back as typed.\n• Turn each off — «Typing».</string>
     <string name="help_numbers">Numbers and symbols</string>
@@ -314,7 +314,7 @@
     <string name="help_computer">Computer keyboard</string>
     <string name="help_computer_body">• The keyboard button at the top — computer or mobile keyboard; the same height.\n• Esc, Tab, Caps, Ctrl, Alt, Win, Fn (F1–F12), Del and arrows — as on a PC.\n• Tap Ctrl/Alt/Win — for the next key; two quick taps — locked.\n• Win+Space — another language.\n• Your own shortcuts — «Shortcuts».\n• Translation, voice and suggestions work; autocorrect and punctuation are off here on purpose.\n• Cursor keys on the mobile keyboard — Look → Keys.</string>
     <string name="help_voice">Voice and translation</string>
-    <string name="help_voice_body">• Models — «Voice and translation» → «Offline models»: «Download», then «Open» in the browser and choose OffKey (or «Install downloaded files»).\n• 🎤 — dictate; «comma», «period», «question mark», «new line» put marks; ✕ — cancel.\n• ⇄ — translation; another tap — the other direction.\n• Type in your language — the translation goes into the field after a sentence, a pause or Enter.\n• ↶ — bring back the original.\n• Clipboard — translate the selection or paste a translation of the copied text.\n• Your own terms — «Translation glossary».</string>
+    <string name="help_voice_body">• Models — «Voice and translation» → «Offline models»: «Download», then «Open» in the browser and choose OffKey (or «Install downloaded files»).\n• 🎤 — dictate; «comma», «period», «question mark», «new line» put marks; ✕ — cancel.\n• ⇄ — translation; another tap — the other direction.\n• Type in your language — the translation goes into the field after a sentence, a pause or Enter.\n• ↶ — bring back the original.\n• Clipboard — the last copied texts (for an hour; pinned ones stay): a tap pastes, hold to pin. ⇄ there translates the selection or the copied text.\n• Your own terms — «Translation glossary».</string>
     <string name="help_bluetooth">Bluetooth keyboard</string>
     <string name="help_bluetooth_body">• «Bluetooth keyboard» → turn it on.\n• The first time — «Make the phone visible», and on the computer Settings → Bluetooth → Add device.\n• The Bluetooth button on the keyboard — keys go to the computer; another tap — back to the phone.\n• The computer\'s language — the same as the phone\'s; Win+Space switches both.\n• While keys go to the computer — suggestions, translation and voice pause.</string>
     <string name="help_emoji">Emoji and stickers</string>
@@ -325,4 +325,14 @@
     <string name="theme_sheet_desc">Hand-drawn in white pencil on black</string>
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys, worn and a little rusty</string>
+    <string name="space_cursor">Hold the space bar and slide to move the cursor</string>
+    <string name="clipboard_title">Clipboard · tap to paste, hold to pin</string>
+    <string name="clipboard_translate">Translate the selection or the clipboard</string>
+    <string name="clipboard_clear">Forget the unpinned texts</string>
+    <string name="clipboard_history_empty">Copy a text — it will be here for an hour (pinned ones stay)</string>
+    <string name="clipboard_pinned">Pinned</string>
+    <string name="clipboard_unpinned">Unpinned</string>
+    <string name="key_sound">Typewriter sounds</string>
+    <string name="key_sound_volume">Volume: %1$d%%</string>
+    <string name="key_sound_hint">The keys click, the space bar thumps and Enter rings the carriage bell. For the Black Typewriter style for now; silent while the phone is on silent or vibrate.</string>
 </resources>

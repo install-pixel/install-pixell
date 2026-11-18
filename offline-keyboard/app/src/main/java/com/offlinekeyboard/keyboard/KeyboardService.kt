@@ -23,6 +23,7 @@ import com.offlinekeyboard.core.LatchState
 import com.offlinekeyboard.core.ModifierKey
 import com.offlinekeyboard.core.dictionary.AutoCorrect
 import com.offlinekeyboard.core.dictionary.BaseDictionary
+import com.offlinekeyboard.core.dictionary.NextWords
 import com.offlinekeyboard.core.dictionary.WordRules
 import com.offlinekeyboard.core.input.EditorCommand
 import com.offlinekeyboard.core.input.EnterLabel
@@ -70,6 +71,7 @@ class KeyboardService : InputMethodService(),
     KeyboardRootView.ToolbarListener,
     KeyboardController.Listener,
     StickerPanel.Listener,
+    ClipboardPanel.Listener,
     SpeechController.Host {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -111,6 +113,7 @@ class KeyboardService : InputMethodService(),
     override fun onCreate() {
         super.onCreate()
         instance = this
+        runCatching { getSystemService(ClipboardManager::class.java)?.addPrimaryClipChangedListener(clipboardWatcher) }
         repository = SettingsRepository(this)
         models = ModelStore(this)
         speechEngine = VoskSpeechEngine(models)
@@ -156,8 +159,10 @@ class KeyboardService : InputMethodService(),
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        runCatching { getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(clipboardWatcher) }
         speech.cancel()
         speechEngine.release()
+        keySounds?.release()
         translation.release()
         dictionary.saveNow()
         handler.removeCallbacksAndMessages(null)
@@ -205,6 +210,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.listener = this
         root.toolbarListener = this
         root.stickerPanel.listener = this
+        root.clipboardPanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
         window.window?.let {
@@ -270,6 +276,7 @@ class KeyboardService : InputMethodService(),
         leaveSegment()
         rootView?.keyboardView?.cancelAllPointers()
         rootView?.showStickers(false)
+        rootView?.showClipboard(false)
         rootView?.collapseModes()
         lastCorrection = null
         handler.removeCallbacks(firePendingShortcut)
@@ -546,6 +553,13 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
+    override fun onCursorMove(steps: Int) {
+        if (steps == 0 || (bluetoothSending && bluetoothConnected)) return
+        leaveSegment()
+        val direction = if (steps < 0) com.offlinekeyboard.core.input.Direction.LEFT else com.offlinekeyboard.core.input.Direction.RIGHT
+        repeat(kotlin.math.abs(steps)) { editor.execute(com.offlinekeyboard.core.input.EditorCommand.Move(direction)) }
+    }
+
     override fun repeatHasEffect(key: Key): Boolean {
         if (bluetoothSending && bluetoothConnected) return true
         if (translateActive && !composer.isEmpty) return true
@@ -617,12 +631,32 @@ class KeyboardService : InputMethodService(),
         if (word.isNotEmpty() && dictionary.dictionary.learn(controller.language, word, System.currentTimeMillis())) {
             dictionary.changed()
         }
+        if (word.isNotEmpty()) learnPair(before.subSequence(0, before.length - word.length), word)
+    }
+
+    /**
+     * The word just before the cursor when the cursor stands after "word " (one or more spaces right after a
+     * letter), or null: after a full stop or a line break there is no previous word to predict from.
+     */
+    private fun previousWord(before: CharSequence): String? {
+        val trimmed = before.trimEnd(' ')
+        if (trimmed.length == before.length || trimmed.isEmpty() || !trimmed.last().isLetter()) return null
+        return WordRules.trailingWord(trimmed).ifEmpty { null }
+    }
+
+    /** Remembers that [word] followed the word before it in [before] (the text before [word]). */
+    private fun learnPair(before: CharSequence, word: String) {
+        if (!learningAllowed) return
+        val previous = previousWord(before) ?: return
+        dictionary.pairs.learn(controller.language, previous, word)
+        dictionary.changed()
     }
 
     private fun updateSuggestions() {
         val root = rootView ?: return
         val ic = currentInputConnection
         if (bluetoothSending && bluetoothConnected) {
+            root.showPredictions(emptyList())
             root.showSuggestions(emptyList())
             root.showUndo(false)
             root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: $sentText")
@@ -637,11 +671,23 @@ class KeyboardService : InputMethodService(),
             speech.state == SpeechController.State.IDLE
         if (!show || ic == null || !ic.getSelectedText(0).isNullOrEmpty()) {
             root.showSuggestions(emptyList())
+            root.showPredictions(emptyList())
             return
         }
         val after = ic.getTextAfterCursor(1, 0) ?: ""
         val prefix = if (WordRules.continuesWord(after)) "" else WordRules.trailingWord(before.takeLast(WORD_CONTEXT))
-        root.showSuggestions(if (prefix.isEmpty()) emptyList() else dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
+        if (prefix.isNotEmpty()) {
+            root.showPredictions(emptyList())
+            root.showSuggestions(dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
+            return
+        }
+        // After a finished word: the words that usually come next (the user's own pairs first).
+        val language = controller.language
+        val previous = if (WordRules.continuesWord(after)) null else previousWord(before.takeLast(WORD_CONTEXT))
+        val next = previous?.let { NextWords.predict(language, it, dictionary.pairs) }.orEmpty()
+        val capital = controller.modifiers.isActive(com.offlinekeyboard.core.ModifierKey.SHIFT)
+        root.showSuggestions(emptyList())
+        root.showPredictions(next.map { if (capital) it.replaceFirstChar { c -> c.titlecase(language.locale) } else it })
     }
 
     /** The message before the cursor on one line (line breaks shown as ⏎). */
@@ -655,6 +701,7 @@ class KeyboardService : InputMethodService(),
         val prefix = WordRules.trailingWord(ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: "")
         ic.beginBatchEdit()
         if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
+        val textBefore = ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: ""
         ic.commitText("$word ", 1)
         ic.endBatchEdit()
         // The space added after the word counts as the first of two quick spaces: one more tap on the space
@@ -664,6 +711,9 @@ class KeyboardService : InputMethodService(),
         if (learningAllowed && dictionary.dictionary.learn(controller.language, word, System.currentTimeMillis())) {
             dictionary.changed()
         }
+        learnPair(textBefore, word)
+        // Predictions for the word after it right away.
+        updateSuggestions()
     }
 
     override fun onSuggestionLongPress(word: String) {
@@ -852,7 +902,8 @@ class KeyboardService : InputMethodService(),
         if (!(first.isWhitespace() || first in ".,!?;:…")) return
         val ic = currentInputConnection ?: return
         if (!ic.getSelectedText(0).isNullOrEmpty() || WordRules.continuesWord(ic.getTextAfterCursor(1, 0) ?: "")) return
-        val word = WordRules.trailingWord(ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: return)
+        val textBefore = ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: return
+        val word = WordRules.trailingWord(textBefore)
         if (word.isEmpty()) return
         val language = controller.language
         val user = dictionary.dictionary
@@ -869,6 +920,10 @@ class KeyboardService : InputMethodService(),
             known = { it in ownKeys || BaseDictionary.isKnown(language, it) },
             candidates = trusted.asSequence() + base.asSequence() + own.asSequence().map { it.word },
             rejected = rejectedWords(),
+            // Words that usually follow the previous word win a close call ("добрий деньь" → "день").
+            context = previousWord(textBefore.subSequence(0, textBefore.length - word.length))
+                ?.let { NextWords.predict(language, it, dictionary.pairs, limit = 8).toSet() }
+                .orEmpty(),
         ) ?: return
         ic.beginBatchEdit()
         ic.deleteSurroundingText(word.length, 0)
@@ -989,6 +1044,9 @@ class KeyboardService : InputMethodService(),
     /** A picked suggestion just added its space (see [onSuggestionPicked]); cleared by the next key. */
     private var softSpace = false
 
+    /** The typewriter's key sounds, made when the keyboard is first drawn. */
+    private var keySounds: KeySounds? = null
+
     /**
      * A second space within about a second after "word " turns into ". " (then the next letter is a capital), like
      * on most phone keyboards. Only in mobile mode, in normal text, never in passwords or terminals.
@@ -1034,6 +1092,58 @@ class KeyboardService : InputMethodService(),
 
     private fun refreshEmojiPages() {
         controller.emojiPages = EmojiSet.pagesWith(emojiUsage.top(EmojiSet.PAGE_SIZE), EmojiSet.parseOwn(settings.ownEmoji))
+    }
+
+    // ------------------------------------------------------------------ clipboard history
+
+    private val clipboardWatcher = ClipboardManager.OnPrimaryClipChangedListener { rememberClip() }
+
+    /** Keeps what was just copied (never a text the app marks sensitive, nor one copied from a password). */
+    private fun rememberClip() {
+        val manager = getSystemService(ClipboardManager::class.java) ?: return
+        val clip = runCatching { manager.primaryClip }.getOrNull() ?: return
+        val sensitive = clip.description?.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true
+        if (sensitive || currentField.isSensitive) return
+        val text = (0 until clip.itemCount).joinToString("\n") { clip.getItemAt(it).coerceToText(this)?.toString().orEmpty() }
+        ClipboardHistory.add(this, text)
+        if (rootView?.clipboardShown == true) rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
+    }
+
+    override fun onClipboardChip() {
+        val root = rootView ?: return
+        if (root.clipboardShown) {
+            root.showClipboard(false)
+            return
+        }
+        root.clipboardPanel.show(ClipboardHistory.items(this))
+        root.showClipboard(true)
+    }
+
+    override fun onClipPicked(text: String) {
+        rootView?.keyboardView?.feedback()
+        leaveSegment()
+        currentInputConnection?.commitText(text, 1)
+        rootView?.showClipboard(false)
+    }
+
+    override fun onClipLongPressed(text: String) {
+        val pinned = ClipboardHistory.togglePin(this, text)
+        rootView?.showStatus(getString(if (pinned) R.string.clipboard_pinned else R.string.clipboard_unpinned))
+        rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
+    }
+
+    override fun onClipboardClosed() {
+        rootView?.showClipboard(false)
+    }
+
+    override fun onClipboardTranslate() {
+        rootView?.showClipboard(false)
+        onTranslateClipboard()
+    }
+
+    override fun onClipboardClear() {
+        ClipboardHistory.clear(this)
+        rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
     }
 
     // ------------------------------------------------------------------ stickers
@@ -1204,6 +1314,11 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.spaceSwipeEnabled = settings.spaceSwipeSwitchesLanguage
         root.keyboardView.keyPreview = settings.keyPreview
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
+        root.keyboardView.spaceCursorEnabled = settings.spaceCursor
+        if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
+        root.keyboardView.keySounds = keySounds
+        root.keyboardView.soundVolume =
+            if (settings.keySound && settings.themeMode == ThemeMode.TYPEWRITER) settings.keySoundVolume else 0f
         root.compact = settings.compactToolbar
         root.hideButtons = settings.hideToolbarButtons
         val layout = controller.layout(settings.mobileCursorRow)

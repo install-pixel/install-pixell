@@ -3,6 +3,16 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.8.0 — predictions, space cursor, smarter autocorrect, clipboard history, typewriter sounds
+
+- [x] Next-word prediction after a finished word: shipped pairs (Tatoeba, CC BY 2.0 FR) and the user's
+      own (learned only while learning is on), shown at the right of the strip beside the text.
+- [x] Hold the space bar and slide: the cursor follows (a quick swipe still changes the language).
+- [x] Autocorrect weighs slips (two in longer words), frequency and the previous word; it corrects only
+      a clear winner.
+- [x] Clipboard history: the last copied texts for an hour, pinned ones stay; never passwords.
+- [x] Typewriter key sounds (synthesized) with a volume slider; silent on silent/vibrate.
+
 ## 1.7.0 — Black Typewriter, punctuation after a picked word
 
 - [x] A picked suggestion's space counts as the first of two: one more space makes ". "; a mark typed
@@ -101,6 +111,10 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 ## Later, maybe
 
 - Swipe (glide) typing: possible offline, needs large dictionaries; not planned yet.
+- Typing in several languages without switching (Polish/English share the Latin keys).
+- Emoji search by word (in the emoji panel, and an emoji among the suggestions).
+- Offline spell checker service for all apps (red underlines with choices).
+- Key sounds for the other styles; a look at Black Sketch.
 - Theme follows the launcher (one theme for all apps) — when the launcher is updated.
 - Light themes (light glass, light sheet).
 - More «rare things» styles for the shared family theme (after the typewriter).

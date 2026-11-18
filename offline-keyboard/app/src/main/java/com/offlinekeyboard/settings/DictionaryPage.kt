@@ -158,6 +158,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             confirmButton = {
                 TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                     store.dictionary.clear()
+                    store.pairs.clear()
                     store.changed()
                     store.saveNow()
                     confirmClear = false
