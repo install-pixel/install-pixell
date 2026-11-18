@@ -135,7 +135,7 @@
     <string name="translation_mode_auto">Automatically (no confirmation)</string>
     <string name="translation_mode_manual">Only after Enter</string>
     <string name="action_translate_clipboard">Translate selection / paste translated</string>
-    <string name="clipboard_chip_description">Translate the selected text, or paste the clipboard translated</string>
+    <string name="clipboard_chip_description">Clipboard history</string>
     <string name="clipboard_empty">Nothing selected, clipboard empty</string>
     <string name="translation_done_undo">✓ %1$s: %2$s  ↶</string>
     <string name="translation_pause">Insert the translation after a pause in typing</string>
@@ -314,7 +314,7 @@
     <string name="help_computer">Computer keyboard</string>
     <string name="help_computer_body">• The keyboard button at the top — computer or mobile keyboard; the same height.\n• Esc, Tab, Caps, Ctrl, Alt, Win, Fn (F1–F12), Del and arrows — as on a PC.\n• Tap Ctrl/Alt/Win — for the next key; two quick taps — locked.\n• Win+Space — another language.\n• Your own shortcuts — «Shortcuts».\n• Translation, voice and suggestions work; autocorrect and punctuation are off here on purpose.\n• Cursor keys on the mobile keyboard — Look → Keys.</string>
     <string name="help_voice">Voice and translation</string>
-    <string name="help_voice_body">• Models — «Voice and translation» → «Offline models»: «Download», then «Open» in the browser and choose OffKey (or «Install downloaded files»).\n• 🎤 — dictate; «comma», «period», «question mark», «new line» put marks; ✕ — cancel.\n• ⇄ — translation; another tap — the other direction.\n• Type in your language — the translation goes into the field after a sentence, a pause or Enter.\n• ↶ — bring back the original.\n• Clipboard — translate the selection or paste a translation of the copied text.\n• Your own terms — «Translation glossary».</string>
+    <string name="help_voice_body">• Models — «Voice and translation» → «Offline models»: «Download», then «Open» in the browser and choose OffKey (or «Install downloaded files»).\n• 🎤 — dictate; «comma», «period», «question mark», «new line» put marks; ✕ — cancel.\n• ⇄ — translation; another tap — the other direction.\n• Type in your language — the translation goes into the field after a sentence, a pause or Enter.\n• ↶ — bring back the original.\n• Clipboard — the last copied texts (for an hour; pinned ones stay): a tap pastes, hold to pin. ⇄ there translates the selection or the copied text.\n• Your own terms — «Translation glossary».</string>
     <string name="help_bluetooth">Bluetooth keyboard</string>
     <string name="help_bluetooth_body">• «Bluetooth keyboard» → turn it on.\n• The first time — «Make the phone visible», and on the computer Settings → Bluetooth → Add device.\n• The Bluetooth button on the keyboard — keys go to the computer; another tap — back to the phone.\n• The computer\'s language — the same as the phone\'s; Win+Space switches both.\n• While keys go to the computer — suggestions, translation and voice pause.</string>
     <string name="help_emoji">Emoji and stickers</string>
@@ -326,4 +326,10 @@
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys, worn and a little rusty</string>
     <string name="space_cursor">Hold the space bar and slide to move the cursor</string>
+    <string name="clipboard_title">Clipboard · tap to paste, hold to pin</string>
+    <string name="clipboard_translate">Translate the selection or the clipboard</string>
+    <string name="clipboard_clear">Forget the unpinned texts</string>
+    <string name="clipboard_history_empty">Copy a text — it will be here for an hour (pinned ones stay)</string>
+    <string name="clipboard_pinned">Pinned</string>
+    <string name="clipboard_unpinned">Unpinned</string>
 </resources>

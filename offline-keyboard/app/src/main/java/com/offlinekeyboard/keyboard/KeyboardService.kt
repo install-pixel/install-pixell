@@ -71,6 +71,7 @@ class KeyboardService : InputMethodService(),
     KeyboardRootView.ToolbarListener,
     KeyboardController.Listener,
     StickerPanel.Listener,
+    ClipboardPanel.Listener,
     SpeechController.Host {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -112,6 +113,7 @@ class KeyboardService : InputMethodService(),
     override fun onCreate() {
         super.onCreate()
         instance = this
+        runCatching { getSystemService(ClipboardManager::class.java)?.addPrimaryClipChangedListener(clipboardWatcher) }
         repository = SettingsRepository(this)
         models = ModelStore(this)
         speechEngine = VoskSpeechEngine(models)
@@ -157,6 +159,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        runCatching { getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(clipboardWatcher) }
         speech.cancel()
         speechEngine.release()
         translation.release()
@@ -206,6 +209,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.listener = this
         root.toolbarListener = this
         root.stickerPanel.listener = this
+        root.clipboardPanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
         window.window?.let {
@@ -271,6 +275,7 @@ class KeyboardService : InputMethodService(),
         leaveSegment()
         rootView?.keyboardView?.cancelAllPointers()
         rootView?.showStickers(false)
+        rootView?.showClipboard(false)
         rootView?.collapseModes()
         lastCorrection = null
         handler.removeCallbacks(firePendingShortcut)
@@ -1083,6 +1088,58 @@ class KeyboardService : InputMethodService(),
 
     private fun refreshEmojiPages() {
         controller.emojiPages = EmojiSet.pagesWith(emojiUsage.top(EmojiSet.PAGE_SIZE), EmojiSet.parseOwn(settings.ownEmoji))
+    }
+
+    // ------------------------------------------------------------------ clipboard history
+
+    private val clipboardWatcher = ClipboardManager.OnPrimaryClipChangedListener { rememberClip() }
+
+    /** Keeps what was just copied (never a text the app marks sensitive, nor one copied from a password). */
+    private fun rememberClip() {
+        val manager = getSystemService(ClipboardManager::class.java) ?: return
+        val clip = runCatching { manager.primaryClip }.getOrNull() ?: return
+        val sensitive = clip.description?.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true
+        if (sensitive || currentField.isSensitive) return
+        val text = (0 until clip.itemCount).joinToString("\n") { clip.getItemAt(it).coerceToText(this)?.toString().orEmpty() }
+        ClipboardHistory.add(this, text)
+        if (rootView?.clipboardShown == true) rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
+    }
+
+    override fun onClipboardChip() {
+        val root = rootView ?: return
+        if (root.clipboardShown) {
+            root.showClipboard(false)
+            return
+        }
+        root.clipboardPanel.show(ClipboardHistory.items(this))
+        root.showClipboard(true)
+    }
+
+    override fun onClipPicked(text: String) {
+        rootView?.keyboardView?.feedback()
+        leaveSegment()
+        currentInputConnection?.commitText(text, 1)
+        rootView?.showClipboard(false)
+    }
+
+    override fun onClipLongPressed(text: String) {
+        val pinned = ClipboardHistory.togglePin(this, text)
+        rootView?.showStatus(getString(if (pinned) R.string.clipboard_pinned else R.string.clipboard_unpinned))
+        rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
+    }
+
+    override fun onClipboardClosed() {
+        rootView?.showClipboard(false)
+    }
+
+    override fun onClipboardTranslate() {
+        rootView?.showClipboard(false)
+        onTranslateClipboard()
+    }
+
+    override fun onClipboardClear() {
+        ClipboardHistory.clear(this)
+        rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
     }
 
     // ------------------------------------------------------------------ stickers

@@ -135,7 +135,7 @@
     <string name="translation_mode_auto">Automatycznie (bez potwierdzania)</string>
     <string name="translation_mode_manual">Dopiero po Enter</string>
     <string name="action_translate_clipboard">Przetłumacz zaznaczenie / wklej z tłumaczeniem</string>
-    <string name="clipboard_chip_description">Przetłumacz zaznaczony tekst lub wklej schowek z tłumaczeniem</string>
+    <string name="clipboard_chip_description">Historia schowka</string>
     <string name="clipboard_empty">Nic nie zaznaczono, schowek pusty</string>
     <string name="translation_done_undo">✓ %1$s: %2$s  ↶</string>
     <string name="translation_pause">Wstawiaj tłumaczenie po przerwie w pisaniu</string>
@@ -314,7 +314,7 @@
     <string name="help_computer">Klawiatura komputerowa</string>
     <string name="help_computer_body">• Przycisk z klawiaturą u góry — klawiatura komputerowa lub mobilna; ta sama wysokość.\n• Esc, Tab, Caps, Ctrl, Alt, Win, Fn (F1–F12), Del i strzałki — jak na PC.\n• Dotknij Ctrl/Alt/Win — dla następnego klawisza; dwa szybkie — zablokowany.\n• Win+Spacja — inny język.\n• Własne skróty — «Skróty klawiszowe».\n• Tłumaczenie, głos i podpowiedzi działają; autokorekta i interpunkcja są tu celowo wyłączone.\n• Klawisze kursora na mobilnej — Wygląd → Klawisze.</string>
     <string name="help_voice">Głos i tłumaczenie</string>
-    <string name="help_voice_body">• Modele — «Głos i tłumaczenie» → «Modele offline»: «Pobierz», potem «Otwórz» w przeglądarce i wybierz OffKey (albo «Zainstaluj pobrane pliki»).\n• 🎤 — dyktuj; «przecinek», «kropka», «znak zapytania», «nowa linia» wstawiają znaki; ✕ — anuluj.\n• ⇄ — tłumaczenie; kolejne dotknięcie — drugi kierunek.\n• Pisz w swoim języku — tłumaczenie trafi do pola po zdaniu, przerwie lub Enter.\n• ↶ — przywróć oryginał.\n• Schowek — przetłumacz zaznaczenie albo wklej tłumaczenie skopiowanego.\n• Własne terminy — «Glosariusz tłumaczenia».</string>
+    <string name="help_voice_body">• Modele — «Głos i tłumaczenie» → «Modele offline»: «Pobierz», potem «Otwórz» w przeglądarce i wybierz OffKey (albo «Zainstaluj pobrane pliki»).\n• 🎤 — dyktuj; «przecinek», «kropka», «znak zapytania», «nowa linia» wstawiają znaki; ✕ — anuluj.\n• ⇄ — tłumaczenie; kolejne dotknięcie — drugi kierunek.\n• Pisz w swoim języku — tłumaczenie trafi do pola po zdaniu, przerwie lub Enter.\n• ↶ — przywróć oryginał.\n• Schowek — ostatnio skopiowane teksty (przez godzinę; przypięte zostają): dotknięcie wkleja, przytrzymaj — przypnij. ⇄ tamże tłumaczy zaznaczenie lub skopiowane.\n• Własne terminy — «Glosariusz tłumaczenia».</string>
     <string name="help_bluetooth">Klawiatura Bluetooth</string>
     <string name="help_bluetooth_body">• «Klawiatura Bluetooth» → włącz.\n• Za pierwszym razem — «Pokaż telefon», a na komputerze Ustawienia → Bluetooth → Dodaj urządzenie.\n• Przycisk Bluetooth na klawiaturze — klawisze idą do komputera; kolejne dotknięcie — z powrotem na telefon.\n• Język komputera — ten sam co na telefonie; Win+Spacja przełącza oba.\n• Gdy klawisze idą do komputera — podpowiedzi, tłumaczenie i głos są wstrzymane.</string>
     <string name="help_emoji">Emoji i naklejki</string>
@@ -326,4 +326,10 @@
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze, wytarte i trochę zardzewiałe</string>
     <string name="space_cursor">Przytrzymaj spację i przesuń — kursor się przesuwa</string>
+    <string name="clipboard_title">Schowek · dotknij — wklej, przytrzymaj — przypnij</string>
+    <string name="clipboard_translate">Przetłumacz zaznaczenie lub schowek</string>
+    <string name="clipboard_clear">Zapomnij nieprzypięte teksty</string>
+    <string name="clipboard_history_empty">Skopiuj tekst — będzie tu przez godzinę (przypięte zostają)</string>
+    <string name="clipboard_pinned">Przypięto</string>
+    <string name="clipboard_unpinned">Odpięto</string>
 </resources>

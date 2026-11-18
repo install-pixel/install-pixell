@@ -37,6 +37,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onModeTranslate()
         /** Translate the selection in place, or paste the clipboard translated. */
         fun onTranslateClipboard()
+        /** The clipboard chip: opens the panel of recently copied texts. */
+        fun onClipboardChip()
         fun onToolbarVoice()
         fun onToolbarVoiceCancel()
         fun onToolbarMode()
@@ -70,6 +72,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     val stickerPanel = StickerPanel(context).apply { visibility = View.GONE }
 
     val stickersShown: Boolean get() = stickerPanel.visibility == View.VISIBLE
+
+    /** The recently copied texts, in place of the keys (like the stickers). */
+    val clipboardPanel = ClipboardPanel(context).apply { visibility = View.GONE }
+
+    val clipboardShown: Boolean get() = clipboardPanel.visibility == View.VISIBLE
 
     private var theme = keyboardView.theme
 
@@ -132,7 +139,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private val textChip = button(R.string.mode_text_description) { toolbarListener?.onModeText() }
     private val translateChip = button(R.string.toolbar_translate_description) { toolbarListener?.onModeTranslate() }
-    private val clipboardChip = button(R.string.clipboard_chip_description) { toolbarListener?.onTranslateClipboard() }
+    private val clipboardChip = button(R.string.clipboard_chip_description) { toolbarListener?.onClipboardChip() }
     private val voiceChip = button(R.string.toolbar_voice_description) { toolbarListener?.onToolbarVoice() }
 
     private var recording = false
@@ -272,6 +279,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         addView(modeRow, LayoutParams(LayoutParams.MATCH_PARENT, dp(44)))
         addView(keyboardView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
+        addView(clipboardPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
         refreshCentre()
     }
@@ -314,6 +322,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         theme = value
         keyboardView.theme = value
         stickerPanel.applyTheme(value)
+        clipboardPanel.applyTheme(value)
         fadeColor = value.background
         fadePaint.shader = null
         invalidate()
@@ -406,6 +415,22 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             fadeIn(stickerPanel)
         } else {
             stickerPanel.visibility = View.GONE
+            keyboardView.visibility = View.VISIBLE
+            fadeIn(keyboardView)
+        }
+    }
+
+    /** Swaps the keys for the clipboard panel (same height) or back. */
+    fun showClipboard(show: Boolean) {
+        if (show == clipboardShown) return
+        if (show) {
+            if (stickersShown) stickerPanel.visibility = View.GONE
+            clipboardPanel.layoutParams = clipboardPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(120)) }
+            keyboardView.visibility = View.GONE
+            clipboardPanel.visibility = View.VISIBLE
+            fadeIn(clipboardPanel)
+        } else {
+            clipboardPanel.visibility = View.GONE
             keyboardView.visibility = View.VISIBLE
             fadeIn(keyboardView)
         }
