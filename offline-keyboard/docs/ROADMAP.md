@@ -113,7 +113,6 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - Swipe (glide) typing: possible offline, needs large dictionaries; not planned yet.
 - Typing in several languages without switching (Polish/English share the Latin keys).
 - Emoji search by word (in the emoji panel, and an emoji among the suggestions).
-- Offline spell checker service for all apps (red underlines with choices).
 - Key sounds for the other styles; a look at Black Sketch.
 - Theme follows the launcher (one theme for all apps) — when the launcher is updated.
 - Light themes (light glass, light sheet).
@@ -122,3 +121,4 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 ## Not planned
 
 - Handwriting input: no offline recogniser that can be bundled (ML Kit downloads its models itself).
+- Spell checker service for all apps: Android would hand the text of other apps to it; OffKey keeps text inside the keyboard.
