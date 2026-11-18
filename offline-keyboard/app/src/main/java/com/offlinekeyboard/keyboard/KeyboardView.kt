@@ -75,6 +75,22 @@ class KeyboardView(context: Context) : View(context) {
     /** Shows the pressed letter enlarged above the finger (drawn over the toolbar for the top row). */
     var keyPreview = true
     var longPressMillis = 350L
+    /** Key sounds (the typewriter style) and their volume, 0 for silence. */
+    var keySounds: KeySounds? = null
+    var soundVolume = 0f
+
+    private fun sound(key: Key) {
+        val sounds = keySounds ?: return
+        if (soundVolume <= 0f) return
+        val kind = when ((key.action as? KeyAction.Special)?.key) {
+            SpecialKey.SPACE -> KeySounds.Kind.SPACE
+            SpecialKey.ENTER -> KeySounds.Kind.RETURN
+            SpecialKey.BACKSPACE, SpecialKey.DELETE -> KeySounds.Kind.DELETE
+            else -> KeySounds.Kind.KEY
+        }
+        sounds.play(kind, soundVolume)
+    }
+
     /** Hold the space bar, then slide: the cursor follows the finger. */
     var spaceCursorEnabled = true
 
@@ -553,6 +569,7 @@ class KeyboardView(context: Context) : View(context) {
         val state = PointerState(key, x, y)
         pointers.put(id, state)
         feedback()
+        sound(key)
 
         if (key.repeatable) {
             state.repeat = object : Runnable {
@@ -560,7 +577,10 @@ class KeyboardView(context: Context) : View(context) {
                     state.repeating = true
                     // A light tick for every character a held key deletes (or moves), not only the first;
                     // none once there is nothing left to delete.
-                    if (listener?.repeatHasEffect(key) != false) feedback(light = true)
+                    if (listener?.repeatHasEffect(key) != false) {
+                        feedback(light = true)
+                        sound(key)
+                    }
                     listener?.onKey(key)
                     handler.postDelayed(this, REPEAT_INTERVAL_MS)
                 }

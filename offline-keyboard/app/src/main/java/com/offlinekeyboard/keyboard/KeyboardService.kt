@@ -162,6 +162,7 @@ class KeyboardService : InputMethodService(),
         runCatching { getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(clipboardWatcher) }
         speech.cancel()
         speechEngine.release()
+        keySounds?.release()
         translation.release()
         dictionary.saveNow()
         handler.removeCallbacksAndMessages(null)
@@ -1043,6 +1044,9 @@ class KeyboardService : InputMethodService(),
     /** A picked suggestion just added its space (see [onSuggestionPicked]); cleared by the next key. */
     private var softSpace = false
 
+    /** The typewriter's key sounds, made when the keyboard is first drawn. */
+    private var keySounds: KeySounds? = null
+
     /**
      * A second space within about a second after "word " turns into ". " (then the next letter is a capital), like
      * on most phone keyboards. Only in mobile mode, in normal text, never in passwords or terminals.
@@ -1311,6 +1315,10 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.keyPreview = settings.keyPreview
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
         root.keyboardView.spaceCursorEnabled = settings.spaceCursor
+        if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
+        root.keyboardView.keySounds = keySounds
+        root.keyboardView.soundVolume =
+            if (settings.keySound && settings.themeMode == ThemeMode.TYPEWRITER) settings.keySoundVolume else 0f
         root.compact = settings.compactToolbar
         root.hideButtons = settings.hideToolbarButtons
         val layout = controller.layout(settings.mobileCursorRow)

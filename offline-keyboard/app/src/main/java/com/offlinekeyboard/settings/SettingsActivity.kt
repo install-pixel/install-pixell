@@ -491,6 +491,27 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                     }
                 }
             }
+            RowDivider()
+            // The typewriter's key sounds (Black Typewriter only for now).
+            SwitchRow(stringResource(R.string.key_sound), s.keySound) { v -> update { it.copy(keySound = v) } }
+            if (s.keySound) {
+                Text(
+                    stringResource(R.string.key_sound_volume, (s.keySoundVolume * 100).roundToInt()),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                val sounds = remember { com.offlinekeyboard.keyboard.KeySounds(context) }
+                androidx.compose.runtime.DisposableEffect(Unit) { onDispose { sounds.release() } }
+                HandSlider(
+                    value = s.keySoundVolume,
+                    onValueChange = { v ->
+                        update { it.copy(keySoundVolume = v) }
+                        sounds.play(com.offlinekeyboard.keyboard.KeySounds.Kind.KEY, v)
+                    },
+                    valueRange = 0.1f..1f,
+                    steps = 8,
+                )
+            }
+            Text(stringResource(R.string.key_sound_hint), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
