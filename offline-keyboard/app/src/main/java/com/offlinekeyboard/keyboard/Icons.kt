@@ -53,6 +53,7 @@ object Icons {
             SurfaceStyle.FLAT -> STROKE
             SurfaceStyle.GLASS -> 1.8f
             SurfaceStyle.SHEET -> 2.2f
+            SurfaceStyle.TYPEWRITER -> 2f
         }
         if (look == SurfaceStyle.GLASS) {
             // The glow: the same line, wider and faint.

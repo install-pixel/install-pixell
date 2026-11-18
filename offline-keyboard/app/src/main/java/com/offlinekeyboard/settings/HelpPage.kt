@@ -66,7 +66,8 @@ internal fun HelpPage(onOpen: (Page) -> Unit, onBack: () -> Unit) {
 /** One section of the help, as QRAFT's menu rows: a small line icon, the name, an arrow. */
 @Composable
 private fun HelpRow(icon: Icon, title: String, onClick: () -> Unit) {
-    val sheet = LocalLook.current == Look.SHEET
+    val look = LocalLook.current
+    val sheet = look == Look.SHEET
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -78,7 +79,11 @@ private fun HelpRow(icon: Icon, title: String, onClick: () -> Unit) {
         val color = Tone.TextSecondary.toArgb()
         Canvas(Modifier.size(20.dp)) {
             drawIntoCanvas {
-                Icons.draw(it.nativeCanvas, icon, size.width / 2, size.height / 2, size.minDimension, color, if (sheet) SurfaceStyle.SHEET else SurfaceStyle.GLASS)
+                Icons.draw(it.nativeCanvas, icon, size.width / 2, size.height / 2, size.minDimension, color, when (look) {
+                    Look.SHEET -> SurfaceStyle.SHEET
+                    Look.TYPEWRITER -> SurfaceStyle.TYPEWRITER
+                    Look.GLASS -> SurfaceStyle.GLASS
+                })
             }
         }
         Spacer(Modifier.width(14.dp))

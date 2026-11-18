@@ -247,6 +247,7 @@ class KeyboardService : InputMethodService(),
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         composer.abandon()
+        softSpace = false
         partialShown = false
         currentField = FieldInfo(attribute?.inputType ?: 0, attribute?.imeOptions ?: 0)
         editor.field = currentField
@@ -656,6 +657,10 @@ class KeyboardService : InputMethodService(),
         if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
         ic.commitText("$word ", 1)
         ic.endBatchEdit()
+        // The space added after the word counts as the first of two quick spaces: one more tap on the space
+        // bar makes ". ", as if both spaces had been typed. A mark (, . ! ?) moves before it by itself.
+        softSpace = true
+        lastPunctuation = null
         if (learningAllowed && dictionary.dictionary.learn(controller.language, word, System.currentTimeMillis())) {
             dictionary.changed()
         }
@@ -981,18 +986,23 @@ class KeyboardService : InputMethodService(),
 
     private var lastSpaceAt = 0L
 
+    /** A picked suggestion just added its space (see [onSuggestionPicked]); cleared by the next key. */
+    private var softSpace = false
+
     /**
      * A second space within about a second after "word " turns into ". " (then the next letter is a capital), like
      * on most phone keyboards. Only in mobile mode, in normal text, never in passwords or terminals.
      */
     private fun doubleSpacePeriod(key: Key): Boolean {
         val isSpace = (key.action as? KeyAction.Special)?.key == SpecialKey.SPACE
+        val afterPickedWord = softSpace
+        softSpace = false
         if (!isSpace) {
             lastSpaceAt = 0L
             return false
         }
         val now = android.os.SystemClock.uptimeMillis()
-        val quick = now - lastSpaceAt <= DOUBLE_SPACE_MS
+        val quick = afterPickedWord || now - lastSpaceAt <= DOUBLE_SPACE_MS
         lastSpaceAt = now
         if (!quick || !settings.doubleSpacePeriod || controller.mode != KeyboardMode.MOBILE || translateActive) return false
         if (currentField.isSensitive || currentField.isRawKeyField || controller.modifiers.anyShortcutModifier) return false

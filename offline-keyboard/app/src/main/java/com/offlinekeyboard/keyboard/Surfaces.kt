@@ -32,6 +32,9 @@ enum class SurfaceState { NORMAL, PRESSED, SELECTED }
  *   fades down; pressed is the round-button glow (#3A3A3A → #101010); chosen has a brighter rim, not a colour.
  * - SHEET: no fill, a rounded frame drawn twice with a pencil, slightly wavy and different for every [seed];
  *   chosen is a denser stroke, pressed a faint graphite shade.
+ * - TYPEWRITER: an old typewriter key: round (a pill when much wider than tall, a rounded plate for panels and
+ *   popups, [plate]), a worn metal rim around a dark cap, with scratches, a rubbed-bright middle and a few rust
+ *   spots, different for every [seed]; pressed sinks the cap, chosen is a brass rim.
  *
  * Gradients are made once over a 0..1 square and stretched onto each surface; pencil outlines are made once
  * per size and seed. Drawing allocates nothing in the usual case. [frosted] glass is partly transparent, for
@@ -93,6 +96,7 @@ class SurfacePainter(private val density: Float) {
         inkColor: Int = 0xFFEDEDED.toInt(),
         sheen: Boolean = false,
         frosted: Boolean = false,
+        plate: Boolean = false,
     ) {
         when (style) {
             SurfaceStyle.FLAT -> {
@@ -102,6 +106,7 @@ class SurfacePainter(private val density: Float) {
             }
             SurfaceStyle.GLASS -> drawGlass(canvas, rect, radius, state, sheen, frosted)
             SurfaceStyle.SHEET -> drawSheet(canvas, rect, radius, state, seed, inkColor)
+            SurfaceStyle.TYPEWRITER -> drawTypewriter(canvas, rect, radius, state, seed, plate || sheen)
         }
     }
 
@@ -162,7 +167,160 @@ class SurfacePainter(private val density: Float) {
         canvas.drawPath(ghost, ink)
         canvas.restore()
     }
+    // ---------------------------------------------------------------- typewriter
+
+    // Aged nickel: bright on top, dull and dark below; chosen is brass. Three stops at most (see glassRim).
+    private val metalRim = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFFC9C2B2.toInt(), 0xFF6F685A.toInt(), 0xFF35302A.toInt()),
+        floatArrayOf(0f, 0.45f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val brassRim = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFFEBD9A6.toInt(), 0xFF9E874F.toInt(), 0xFF4E3F22.toInt()),
+        floatArrayOf(0f, 0.45f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val capFill = RadialGradient(0.45f, 0.38f, 0.8f, 0xFF2D2924.toInt(), 0xFF0C0A08.toInt(), Shader.TileMode.CLAMP)
+    private val capPressed = RadialGradient(0.5f, 0.55f, 0.8f, 0xFF1C1915.toInt(), 0xFF050403.toInt(), Shader.TileMode.CLAMP)
+    private val shape = Path()
+    private val capShape = Path()
+    private val wearPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val wear = object : LinkedHashMap<Long, Wear>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Wear>) = size > 400
+    }
+
+    /** The marks of age on one key, in 0..1 of its size: rust on the rim, scratches and a rubbed patch on the cap. */
+    private class Wear(val rust: FloatArray, val scratches: FloatArray, val rub: FloatArray)
+
+    private fun wearOf(seed: Int, w: Float, h: Float, plate: Boolean): Wear {
+        val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1) or (if (plate) 1L else 0L)
+        return wear.getOrPut(key) {
+            val random = Random(seed * 7919 + 17)
+            // Rust: 0–3 spots on the rim (angle around the key, size, strength); larger panels get a few more.
+            val spots = (if (plate) 2 else 0) + when (random.nextInt(10)) { in 0..2 -> 0; in 3..6 -> 1; in 7..8 -> 2; else -> 3 }
+            val rust = FloatArray(spots * 3) { i ->
+                when (i % 3) {
+                    0 -> random.nextFloat() * 6.2832f
+                    1 -> 0.6f + random.nextFloat() * 0.9f
+                    else -> 0.45f + random.nextFloat() * 0.55f
+                }
+            }
+            // Scratches: 1–4 short strokes across the cap (start x, y, angle, length).
+            val lines = 1 + random.nextInt(if (plate) 6 else 4)
+            val scratches = FloatArray(lines * 4) { i ->
+                when (i % 4) {
+                    0, 1 -> 0.22f + random.nextFloat() * 0.56f
+                    2 -> random.nextFloat() * 3.1416f
+                    else -> 0.12f + random.nextFloat() * 0.22f
+                }
+            }
+            // Where fingers rubbed the cap brighter: centre a little off the middle, size.
+            val rub = floatArrayOf(0.42f + random.nextFloat() * 0.16f, 0.4f + random.nextFloat() * 0.16f, 0.28f + random.nextFloat() * 0.12f)
+            Wear(rust, scratches, rub)
+        }
+    }
+
+    private fun drawTypewriter(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, seed: Int, plate: Boolean) {
+        // The outline: a round key, a long pill (space, Enter) or a rounded plate (panels, popups).
+        val round = !plate && rect.width() <= rect.height() * 1.3f
+        val outer = RectF(rect)
+        if (round) {
+            val r = minOf(rect.width(), rect.height()) / 2f - 0.5f * density
+            outer.set(rect.centerX() - r, rect.centerY() - r, rect.centerX() + r, rect.centerY() + r)
+        }
+        val pressed = state == SurfaceState.PRESSED
+        // A pressed key sinks a little into the machine.
+        if (pressed) outer.inset(0.8f * density, 0.8f * density)
+        val corner = when {
+            round -> outer.width() / 2f
+            plate -> radius
+            else -> outer.height() / 2f
+        }
+        shape.reset()
+        shape.addRoundRect(outer, corner, corner, Path.Direction.CW)
+
+        // The metal rim (the whole shape), then the cap inside it.
+        val rimShader = if (state == SurfaceState.SELECTED) brassRim else metalRim
+        stretch(rimShader, outer)
+        fill.shader = rimShader
+        fill.alpha = (255 * (0.55f + 0.45f * brightness)).toInt()
+        canvas.drawPath(shape, fill)
+        fill.alpha = 0xFF
+        val rimWidth = (if (plate) 1.6f else 2.4f) * density
+        inner.set(outer.left + rimWidth, outer.top + rimWidth, outer.right - rimWidth, outer.bottom - rimWidth)
+        val capCorner = maxOf(0f, corner - rimWidth)
+        capShape.reset()
+        capShape.addRoundRect(inner, capCorner, capCorner, Path.Direction.CW)
+        val cap = if (pressed) capPressed else capFill
+        stretch(cap, inner)
+        fill.shader = cap
+        canvas.drawPath(capShape, fill)
+        fill.shader = null
+
+        val marks = wearOf(seed, outer.width(), outer.height(), plate)
+        val strength = 0.5f + 0.5f * brightness
+        canvas.save()
+        canvas.clipPath(capShape)
+        // The rubbed-bright middle of the cap.
+        val rub = marks.rub
+        wearPaint.style = Paint.Style.FILL
+        wearPaint.shader = null
+        wearPaint.color = 0xFFFFFFFF.toInt()
+        wearPaint.alpha = (14 * strength).toInt()
+        val rubR = rub[2] * minOf(inner.width(), inner.height())
+        canvas.drawCircle(inner.left + rub[0] * inner.width(), inner.top + rub[1] * inner.height(), rubR, wearPaint)
+        // Scratches.
+        wearPaint.style = Paint.Style.STROKE
+        wearPaint.strokeWidth = 0.6f * density
+        wearPaint.strokeCap = Paint.Cap.ROUND
+        wearPaint.alpha = (40 * strength).toInt()
+        val sc = marks.scratches
+        val scale = minOf(inner.width(), inner.height())
+        var i = 0
+        while (i + 3 < sc.size) {
+            val x = inner.left + sc[i] * inner.width()
+            val y = inner.top + sc[i + 1] * inner.height()
+            val len = sc[i + 3] * scale
+            val dx = cos(sc[i + 2]) * len / 2
+            val dy = sin(sc[i + 2]) * len / 2
+            canvas.drawLine(x - dx, y - dy, x + dx, y + dy, wearPaint)
+            i += 4
+        }
+        canvas.restore()
+
+        // Rust on the rim: a soft brown stain with a darker core, where the nickel has worn through.
+        wearPaint.style = Paint.Style.FILL
+        val rust = marks.rust
+        val cx = outer.centerX()
+        val cy = outer.centerY()
+        val ax = outer.width() / 2f - rimWidth / 2f
+        val ay = outer.height() / 2f - rimWidth / 2f
+        i = 0
+        while (i + 2 < rust.size) {
+            val a = rust[i]
+            // A point on the rim: on the circle, or on the edge of the pill/plate (clamped ellipse).
+            val px = (cx + cos(a) * ax * 1.15f).coerceIn(outer.left + rimWidth / 2, outer.right - rimWidth / 2)
+            val py = (cy + sin(a) * ay * 1.15f).coerceIn(outer.top + rimWidth / 2, outer.bottom - rimWidth / 2)
+            val size = rust[i + 1] * rimWidth * 1.1f
+            val alpha = rust[i + 2] * strength
+            wearPaint.color = RUST
+            wearPaint.alpha = (150 * alpha).toInt()
+            canvas.drawCircle(px, py, size, wearPaint)
+            wearPaint.color = RUST_DARK
+            wearPaint.alpha = (190 * alpha).toInt()
+            canvas.drawCircle(px + size * 0.2f, py + size * 0.15f, size * 0.45f, wearPaint)
+            i += 3
+        }
+    }
+
+    private companion object {
+        const val RUST = 0xFF8C4A1E.toInt()
+        const val RUST_DARK = 0xFF4E2410.toInt()
+    }
 }
+
 
 /**
  * Pencil outlines of the sheet style, as in the launcher's `Sheet.kt`: a rounded rectangle drawn in one

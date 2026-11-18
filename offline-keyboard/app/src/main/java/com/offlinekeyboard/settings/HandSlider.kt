@@ -43,7 +43,7 @@ internal fun HandSlider(
     val span = (valueRange.endInclusive - valueRange.start).coerceAtLeast(1e-6f)
     val fraction = ((value - valueRange.start) / span).coerceIn(0f, 1f)
     val ink = Tone.TextPrimary
-    val glass = LocalLook.current == Look.GLASS
+    val glass = LocalLook.current != Look.SHEET
     Canvas(
         modifier
             .fillMaxWidth()

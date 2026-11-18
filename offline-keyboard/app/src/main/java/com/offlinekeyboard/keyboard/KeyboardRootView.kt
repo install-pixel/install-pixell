@@ -446,7 +446,15 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val isEcho = centreText == null && !showSuggestions
         val text = if (isEcho) echo ?: "" else centreText ?: ""
         if (text.toString() != status.text.toString()) {
-            status.text = text
+            val typewriter = theme.style == SurfaceStyle.TYPEWRITER
+            val grew = text.length > status.text.length && text.toString().startsWith(status.text.toString())
+            status.text = if (typewriter) TypewriterInk.apply(text, status.textSize) else text
+            // A new letter on the typewriter: the strip gives the small jolt of a typebar hitting the paper.
+            if (typewriter && grew) {
+                status.animate().cancel()
+                status.translationY = -1.2f * resources.displayMetrics.density
+                status.animate().translationY(0f).setDuration(90).start()
+            }
             // Newest text in view; earlier parts are a swipe away.
             statusScroll.post { statusScroll.smoothScrollTo(status.width, 0) }
         }

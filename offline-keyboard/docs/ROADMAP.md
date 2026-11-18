@@ -3,6 +3,15 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.7.0 — Black Typewriter, punctuation after a picked word
+
+- [x] A picked suggestion's space counts as the first of two: one more space makes ". "; a mark typed
+      next moves before the space.
+- [x] Third style «Black Typewriter» (the others stay): round keys of an old typewriter with a worn
+      nickel rim, scratches, a rubbed middle and a few rust spots (different on every key), a brass rim
+      for chosen keys, Cousine letters slightly off their line like struck through a ribbon; the text
+      strip strikes each new letter with a small jolt; settings as worn metal plates.
+
 ## 1.6.9 — own words in autocorrect
 
 - [x] Words in «My dictionary» (added, imported, or typed often) are never «corrected» away, and a slip in
@@ -94,6 +103,7 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - Swipe (glide) typing: possible offline, needs large dictionaries; not planned yet.
 - Theme follows the launcher (one theme for all apps) — when the launcher is updated.
 - Light themes (light glass, light sheet).
+- More «rare things» styles for the shared family theme (after the typewriter).
 
 ## Not planned
 

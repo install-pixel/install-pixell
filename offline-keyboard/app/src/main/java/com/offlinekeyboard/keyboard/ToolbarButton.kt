@@ -69,6 +69,10 @@ class ToolbarButton(context: Context) : View(context) {
                 regular = font(R.font.caveat_semibold) ?: Typeface.DEFAULT
                 boldFace = regular
             }
+            SurfaceStyle.TYPEWRITER -> {
+                regular = font(R.font.cousine_regular) ?: Typeface.MONOSPACE
+                boldFace = font(R.font.cousine_bold) ?: Typeface.MONOSPACE
+            }
         }
         invalidate()
     }

@@ -123,6 +123,8 @@ class KeyboardView(context: Context) : View(context) {
             SurfaceStyle.GLASS ->
                 (font(R.font.exo2_regular) ?: Typeface.DEFAULT) to (font(R.font.exo2_semibold) ?: Typeface.DEFAULT_BOLD)
             SurfaceStyle.SHEET -> (font(R.font.caveat_semibold) ?: Typeface.DEFAULT).let { it to it }
+            SurfaceStyle.TYPEWRITER ->
+                (font(R.font.cousine_bold) ?: Typeface.MONOSPACE) to (font(R.font.cousine_regular) ?: Typeface.MONOSPACE)
         }
     }
 
@@ -327,6 +329,10 @@ class KeyboardView(context: Context) : View(context) {
                 surfaces.draw(canvas, rect, r, SurfaceStyle.FLAT, t.background)
                 surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, inkColor = t.text)
             }
+            SurfaceStyle.TYPEWRITER -> {
+                surfaces.draw(canvas, rect, r, SurfaceStyle.FLAT, t.background)
+                surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, plate = true)
+            }
             SurfaceStyle.FLAT -> surfaces.draw(canvas, rect, r, t.style, t.popup)
         }
     }
@@ -388,7 +394,10 @@ class KeyboardView(context: Context) : View(context) {
         textPaint.color = color
         val isLetter = key.action is KeyAction.Text && label.length <= 2
         textPaint.typeface = if (isLetter) letterFace else labelFace
-        var size = rect.height() * (if (isLetter) 0.46f else 0.30f) * theme.textScale
+        val typewriter = theme.style == SurfaceStyle.TYPEWRITER
+        // Round typewriter keys are as wide as they are tall: the letter is sized by the smaller side.
+        val base = if (typewriter) minOf(rect.width(), rect.height()) * 1.05f else rect.height()
+        var size = base * (if (isLetter) 0.46f else 0.30f) * theme.textScale
         textPaint.textSize = size
         val maxWidth = rect.width() * 0.86f
         val measured = textPaint.measureText(label)
@@ -397,6 +406,19 @@ class KeyboardView(context: Context) : View(context) {
             textPaint.textSize = size
         }
         val y = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
+        if (typewriter) {
+            // Struck through an old ribbon: every letter a little tilted, off its line and lighter or darker,
+            // always the same way for the same letter.
+            val h = label.hashCode() * 31 + key.width.toBits()
+            val tilt = ((h and 0xFF) / 255f - 0.5f) * 4f
+            val drop = (((h ushr 8) and 0xFF) / 255f - 0.5f) * size * 0.08f
+            textPaint.alpha = (textPaint.alpha * (0.82f + ((h ushr 16) and 0xFF) / 255f * 0.18f)).toInt()
+            canvas.save()
+            canvas.rotate(tilt, rect.centerX(), rect.centerY())
+            canvas.drawText(label, rect.centerX(), y + drop, textPaint)
+            canvas.restore()
+            return
+        }
         canvas.drawText(label, rect.centerX(), y, textPaint)
     }
 
