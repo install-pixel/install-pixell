@@ -41,6 +41,7 @@ internal object Backup {
             .put("version", VERSION)
             .put("settings", SettingsRepository(context).exportJson())
             .put("dictionary", UserDictionaryStore.get(context).dictionary.serialize())
+            .put("pairs", UserDictionaryStore.get(context).pairs.serialize())
             .put("glossary", GlossaryStore.get(context).text.value)
         write(context, uri, json.toString(2))
     }
@@ -53,6 +54,12 @@ internal object Backup {
         json.optString("dictionary", null)?.let {
             val store = UserDictionaryStore.get(context)
             store.dictionary.replaceWith(it)
+            store.changed()
+            store.saveNow()
+        }
+        json.optString("pairs", null)?.let {
+            val store = UserDictionaryStore.get(context)
+            store.pairs.replaceWith(it)
             store.changed()
             store.saveNow()
         }

@@ -101,6 +101,24 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         orientation = HORIZONTAL
         suggestionViews.forEach { addView(it, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)) }
     }
+    /**
+     * Next-word predictions after a finished word: small words at the right of the strip, so the text
+     * itself stays in view on the left.
+     */
+    private val predictionViews = List(PREDICTIONS) {
+        suggestionView().apply {
+            // Sized by their word (no auto-size: it needs a fixed width).
+            setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setPadding(dp(8), 0, dp(8), 0)
+        }
+    }
+    private val predictionsRow = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        visibility = View.GONE
+        predictionViews.forEach { addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT)) }
+    }
+    private var predictions: List<String> = emptyList()
     private val modeButton = button(R.string.toolbar_mode_description) { toolbarListener?.onToolbarMode() }
     private val bluetoothButton = button(R.string.toolbar_bluetooth_description) { toolbarListener?.onToolbarBluetooth() }
         .apply { icon = Icon.BLUETOOTH }
@@ -237,6 +255,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             addView(modesButton, LayoutParams(dp(44), LayoutParams.MATCH_PARENT))
             addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            addView(predictionsRow, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
             addView(undoButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(bluetoothButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(modeButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
@@ -300,7 +319,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         invalidate()
         Icons.style = value.style
         val face = value.typeface(context)
-        suggestionViews.forEach {
+        (suggestionViews + predictionViews).forEach {
             it.setTextColor(value.text)
             it.typeface = face
         }
@@ -434,6 +453,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         undoButton.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
+    /** Next-word predictions shown beside the text (empty hides them). */
+    fun showPredictions(words: List<String>) {
+        if (words == predictions) return
+        predictions = words
+        refreshCentre()
+    }
+
     fun showSuggestions(words: List<String>) {
         if (words == suggestions) return
         suggestions = words
@@ -461,6 +487,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         status.setTextColor(theme.text)
         statusScroll.visibility = if (showSuggestions) View.GONE else View.VISIBLE
         suggestionsRow.visibility = if (showSuggestions) View.VISIBLE else View.GONE
+        val showPredictions = isEcho && predictions.isNotEmpty()
+        predictionsRow.visibility = if (showPredictions) View.VISIBLE else View.GONE
+        predictionViews.forEachIndexed { i, v ->
+            val word = predictions.getOrNull(i)
+            v.text = word ?: ""
+            v.visibility = if (word != null) View.VISIBLE else View.GONE
+            v.alpha = 0.8f
+        }
         suggestionViews.forEachIndexed { i, v ->
             val word = suggestions.getOrNull(i)
             v.text = word ?: ""
@@ -523,6 +557,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private companion object {
         const val FADE_DP = 14
         const val BUTTONS_SHOWN_MS = 6000L
+        const val PREDICTIONS = 3
         const val INACTIVE_CHIP_ALPHA = 0x70
         const val STATUS_MILLIS = 3500L
         const val SUGGESTIONS = 3

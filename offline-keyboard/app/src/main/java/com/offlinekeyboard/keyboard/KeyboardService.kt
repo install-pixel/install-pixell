@@ -23,6 +23,7 @@ import com.offlinekeyboard.core.LatchState
 import com.offlinekeyboard.core.ModifierKey
 import com.offlinekeyboard.core.dictionary.AutoCorrect
 import com.offlinekeyboard.core.dictionary.BaseDictionary
+import com.offlinekeyboard.core.dictionary.NextWords
 import com.offlinekeyboard.core.dictionary.WordRules
 import com.offlinekeyboard.core.input.EditorCommand
 import com.offlinekeyboard.core.input.EnterLabel
@@ -617,12 +618,32 @@ class KeyboardService : InputMethodService(),
         if (word.isNotEmpty() && dictionary.dictionary.learn(controller.language, word, System.currentTimeMillis())) {
             dictionary.changed()
         }
+        if (word.isNotEmpty()) learnPair(before.subSequence(0, before.length - word.length), word)
+    }
+
+    /**
+     * The word just before the cursor when the cursor stands after "word " (one or more spaces right after a
+     * letter), or null: after a full stop or a line break there is no previous word to predict from.
+     */
+    private fun previousWord(before: CharSequence): String? {
+        val trimmed = before.trimEnd(' ')
+        if (trimmed.length == before.length || trimmed.isEmpty() || !trimmed.last().isLetter()) return null
+        return WordRules.trailingWord(trimmed).ifEmpty { null }
+    }
+
+    /** Remembers that [word] followed the word before it in [before] (the text before [word]). */
+    private fun learnPair(before: CharSequence, word: String) {
+        if (!learningAllowed) return
+        val previous = previousWord(before) ?: return
+        dictionary.pairs.learn(controller.language, previous, word)
+        dictionary.changed()
     }
 
     private fun updateSuggestions() {
         val root = rootView ?: return
         val ic = currentInputConnection
         if (bluetoothSending && bluetoothConnected) {
+            root.showPredictions(emptyList())
             root.showSuggestions(emptyList())
             root.showUndo(false)
             root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: $sentText")
@@ -637,11 +658,23 @@ class KeyboardService : InputMethodService(),
             speech.state == SpeechController.State.IDLE
         if (!show || ic == null || !ic.getSelectedText(0).isNullOrEmpty()) {
             root.showSuggestions(emptyList())
+            root.showPredictions(emptyList())
             return
         }
         val after = ic.getTextAfterCursor(1, 0) ?: ""
         val prefix = if (WordRules.continuesWord(after)) "" else WordRules.trailingWord(before.takeLast(WORD_CONTEXT))
-        root.showSuggestions(if (prefix.isEmpty()) emptyList() else dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
+        if (prefix.isNotEmpty()) {
+            root.showPredictions(emptyList())
+            root.showSuggestions(dictionary.dictionary.suggestionsWithBase(controller.language, prefix))
+            return
+        }
+        // After a finished word: the words that usually come next (the user's own pairs first).
+        val language = controller.language
+        val previous = if (WordRules.continuesWord(after)) null else previousWord(before.takeLast(WORD_CONTEXT))
+        val next = previous?.let { NextWords.predict(language, it, dictionary.pairs) }.orEmpty()
+        val capital = controller.modifiers.isActive(com.offlinekeyboard.core.ModifierKey.SHIFT)
+        root.showSuggestions(emptyList())
+        root.showPredictions(next.map { if (capital) it.replaceFirstChar { c -> c.titlecase(language.locale) } else it })
     }
 
     /** The message before the cursor on one line (line breaks shown as ⏎). */
@@ -655,6 +688,7 @@ class KeyboardService : InputMethodService(),
         val prefix = WordRules.trailingWord(ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: "")
         ic.beginBatchEdit()
         if (prefix.isNotEmpty()) ic.deleteSurroundingText(prefix.length, 0)
+        val textBefore = ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: ""
         ic.commitText("$word ", 1)
         ic.endBatchEdit()
         // The space added after the word counts as the first of two quick spaces: one more tap on the space
@@ -664,6 +698,9 @@ class KeyboardService : InputMethodService(),
         if (learningAllowed && dictionary.dictionary.learn(controller.language, word, System.currentTimeMillis())) {
             dictionary.changed()
         }
+        learnPair(textBefore, word)
+        // Predictions for the word after it right away.
+        updateSuggestions()
     }
 
     override fun onSuggestionLongPress(word: String) {
