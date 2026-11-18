@@ -1,7 +1,7 @@
 name: Offline Keyboard Bigrams
 
 # Builds the next-word lists from the Tatoeba sentences (the download host is reachable from GitHub's
-# runners) and uploads them as an artifact, to be committed by hand.
+# runners) and publishes them on the keyboard-data release, to be checked and committed by hand.
 on:
   push:
     paths:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bigrams:
@@ -25,7 +25,10 @@ jobs:
           python-version: '3.12'
       - name: Build the next-word lists
         run: python3 tools/dictionary/build_bigrams.py /tmp/bigrams
-      - uses: actions/upload-artifact@v4
+      - uses: softprops/action-gh-release@v2
         with:
-          name: offline-keyboard-next-words
-          path: offline-keyboard/core/src/main/resources/dictionary/*_next.txt
+          tag_name: keyboard-data
+          name: OffKey data (built lists)
+          prerelease: true
+          body: Lists built in CI for the keyboard (next words from Tatoeba, CC BY 2.0 FR).
+          files: offline-keyboard/core/src/main/resources/dictionary/*_next.txt
