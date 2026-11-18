@@ -470,6 +470,7 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
             SwitchRow(stringResource(R.string.backspace_swipe), s.backspaceSwipe) { v ->
                 update { it.copy(backspaceSwipe = v) }
             }
+            SwitchRow(stringResource(R.string.space_cursor), s.spaceCursor) { v -> update { it.copy(spaceCursor = v) } }
             SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
                 update { it.copy(compactToolbar = v) }
             }

@@ -547,6 +547,13 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
+    override fun onCursorMove(steps: Int) {
+        if (steps == 0 || (bluetoothSending && bluetoothConnected)) return
+        leaveSegment()
+        val direction = if (steps < 0) com.offlinekeyboard.core.input.Direction.LEFT else com.offlinekeyboard.core.input.Direction.RIGHT
+        repeat(kotlin.math.abs(steps)) { editor.execute(com.offlinekeyboard.core.input.EditorCommand.Move(direction)) }
+    }
+
     override fun repeatHasEffect(key: Key): Boolean {
         if (bluetoothSending && bluetoothConnected) return true
         if (translateActive && !composer.isEmpty) return true
@@ -1241,6 +1248,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.spaceSwipeEnabled = settings.spaceSwipeSwitchesLanguage
         root.keyboardView.keyPreview = settings.keyPreview
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
+        root.keyboardView.spaceCursorEnabled = settings.spaceCursor
         root.compact = settings.compactToolbar
         root.hideButtons = settings.hideToolbarButtons
         val layout = controller.layout(settings.mobileCursorRow)

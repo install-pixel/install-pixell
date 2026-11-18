@@ -325,4 +325,5 @@
     <string name="theme_sheet_desc">Odręcznie białym ołówkiem na czarnym</string>
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze, wytarte i trochę zardzewiałe</string>
+    <string name="space_cursor">Przytrzymaj spację i przesuń — kursor się przesuwa</string>
 </resources>

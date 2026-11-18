@@ -325,4 +325,5 @@
     <string name="theme_sheet_desc">Hand-drawn in white pencil on black</string>
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys, worn and a little rusty</string>
+    <string name="space_cursor">Hold the space bar and slide to move the cursor</string>
 </resources>

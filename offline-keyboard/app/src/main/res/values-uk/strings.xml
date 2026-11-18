@@ -325,4 +325,5 @@
     <string name="theme_sheet_desc">Від руки білим олівцем на чорному</string>
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">Стара друкарська машинка: круглі клавіші з потертостями й іржею</string>
+    <string name="space_cursor">Затиснути пробіл і вести — рухається курсор</string>
 </resources>

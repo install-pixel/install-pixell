@@ -47,6 +47,8 @@ class KeyboardView(context: Context) : View(context) {
         /** Backspace dragged to the left: [words] words before the cursor; [done] when the finger lifts. */
         fun onBackspaceSwipe(words: Int, done: Boolean)
         fun onLanguageKeyLongPress()
+        /** The space bar held and dragged: move the cursor [steps] characters (negative: to the left). */
+        fun onCursorMove(steps: Int) {}
         /** Whether one more repeat of a held key changes anything (Backspace with text left to delete). */
         fun repeatHasEffect(key: Key): Boolean = true
     }
@@ -73,6 +75,8 @@ class KeyboardView(context: Context) : View(context) {
     /** Shows the pressed letter enlarged above the finger (drawn over the toolbar for the top row). */
     var keyPreview = true
     var longPressMillis = 350L
+    /** Hold the space bar, then slide: the cursor follows the finger. */
+    var spaceCursorEnabled = true
 
     private var layout = KeyboardLayout(emptyList())
     private var labelContext: LabelContext? = null
@@ -494,6 +498,9 @@ class KeyboardView(context: Context) : View(context) {
         var swipeConsumed = false
         /** Words chosen by dragging Backspace to the left; -1 while it is an ordinary press. */
         var swipeWords = -1
+        /** Space held still for a moment: moving the finger now moves the cursor (iOS-style). */
+        var cursorMode = false
+        var cursorX = 0f
         var longPress: Runnable? = null
         var repeat: Runnable? = null
 
@@ -558,6 +565,16 @@ class KeyboardView(context: Context) : View(context) {
                     handler.postDelayed(this, REPEAT_INTERVAL_MS)
                 }
             }.also { handler.postDelayed(it, REPEAT_START_MS) }
+        } else if (isSpace(key) && spaceCursorEnabled) {
+            // Held still for a moment, the space bar turns into a trackpad for the cursor; a quick swipe
+            // before that still switches the language.
+            state.longPress = Runnable {
+                state.longPressFired = true
+                state.cursorMode = true
+                state.cursorX = state.downX
+                feedback(light = true)
+                invalidate()
+            }.also { handler.postDelayed(it, SPACE_CURSOR_HOLD_MS) }
         } else if (key.alternatives.isNotEmpty() || isLanguageKey(key)) {
             state.longPress = Runnable {
                 state.longPressFired = true
@@ -587,6 +604,16 @@ class KeyboardView(context: Context) : View(context) {
             return
         }
         val key = state.key ?: return
+        if (state.cursorMode) {
+            val step = dp(SPACE_CURSOR_STEP_DP)
+            val steps = ((x - state.cursorX) / step).toInt()
+            if (steps != 0) {
+                state.cursorX += steps * step
+                listener?.onCursorMove(steps)
+                feedback(light = true)
+            }
+            return
+        }
         if (isSpace(key) && spaceSwipeEnabled && !state.swipeConsumed && abs(x - state.downX) > dp(SPACE_SWIPE_DP)) {
             state.swipeConsumed = true
             state.cancelCallbacks()
@@ -682,6 +709,8 @@ class KeyboardView(context: Context) : View(context) {
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
         const val SPACE_SWIPE_DP = 60f
+        const val SPACE_CURSOR_HOLD_MS = 320L
+        const val SPACE_CURSOR_STEP_DP = 9f
         const val BACKSPACE_SWIPE_START_DP = 28f
         const val BACKSPACE_SWIPE_STEP_DP = 30f
 
