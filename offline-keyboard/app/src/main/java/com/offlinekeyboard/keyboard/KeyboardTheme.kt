@@ -107,8 +107,9 @@ data class KeyboardTheme(
         )
 
         /**
-         * «Друкарська машинка · Темна»: an old typewriter. Round keys with a worn, slightly rusty metal rim and
-         * a dark cap, ivory letters in Cousine (a Courier-like typewriter face with Cyrillic), each a little off.
+         * «Black Typewriter»: an old typewriter. Round keys of one size on stems, a nickel rim (rusty here and
+         * there) around a glossy black cap, ivory letters in Cousine (a Courier-like typewriter face with
+         * Cyrillic), each a little off.
          */
         fun typewriter() = KeyboardTheme(
             dark = true,

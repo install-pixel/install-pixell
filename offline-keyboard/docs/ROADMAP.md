@@ -3,6 +3,13 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.8.1 — a real typewriter
+
+- [x] Black Typewriter keys like the machine: a nickel rim with a line of light, rust only on the rim,
+      a glossy black cap with a soft reflection, a shadow under each key; a pressed key goes down.
+- [x] The machine under the keys: a stem down from every key, a rail under every row.
+- [x] All round keys one size (the edge keys are no longer bigger); labels and digits stay inside.
+
 ## 1.8.0 — predictions, space cursor, smarter autocorrect, clipboard history, typewriter sounds
 
 - [x] Next-word prediction after a finished word: shipped pairs (Tatoeba, CC BY 2.0 FR) and the user's

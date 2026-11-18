@@ -226,6 +226,36 @@ class KeyboardView(context: Context) : View(context) {
             }
             top += keyHeightPx
         }
+        // Typewriter keys are all one size, as on the machine: as large as the narrowest key allows.
+        typewriterSide = keyRects.filter { it.first.style != KeyStyle.SPACER }
+            .minOfOrNull { minOf(it.second.width(), it.second.height()) - keyGap } ?: 0f
+    }
+
+    /** The diameter of a round typewriter key (and the height of a long one). */
+    private var typewriterSide = 0f
+
+    /** The typewriter key in the cell [inner]: a circle of [typewriterSide], or a pill as long as the cell. */
+    private fun typewriterBody(inner: RectF): RectF {
+        val d = typewriterSide.takeIf { it > 0f }?.coerceAtMost(minOf(inner.width(), inner.height()))
+            ?: minOf(inner.width(), inner.height())
+        val w = if (inner.width() <= inner.height() * 1.3f) d else inner.width()
+        return RectF(inner.centerX() - w / 2, inner.centerY() - d / 2, inner.centerX() + w / 2, inner.centerY() + d / 2)
+    }
+
+    /** The machine under typewriter keys: a rail under every row and a stem down from every key. */
+    private fun drawMachine(canvas: Canvas) {
+        var lastTop = Float.NaN
+        for ((_, rect) in keyRects) {
+            if (rect.top != lastTop) {
+                lastTop = rect.top
+                surfaces.drawTypewriterRail(canvas, 0f, width.toFloat(), rect.bottom - keyGap * 0.1f)
+            }
+        }
+        for ((key, rect) in keyRects) {
+            if (key.style == KeyStyle.SPACER) continue
+            val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
+            surfaces.drawTypewriterStem(canvas, typewriterBody(inner), rect.bottom + keyHeightPx * 0.35f)
+        }
     }
 
     // ------------------------------------------------------------------ drawing
@@ -256,10 +286,14 @@ class KeyboardView(context: Context) : View(context) {
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
         released.entries.removeAll { now - it.value >= RELEASE_FADE_MS }
 
+        val typewriter = theme.style == SurfaceStyle.TYPEWRITER
+        if (typewriter) drawMachine(canvas)
         for ((index, entry) in keyRects.withIndex()) {
             val (key, rect) = entry
             if (key.style == KeyStyle.SPACER) continue
             val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
+            // Where the label goes: the key, or on the typewriter the black cap inside the rim, down when pressed.
+            var face = inner
             val state = highlight(key)
             val t = theme
             val pressed = key in pressedKeys
@@ -273,10 +307,21 @@ class KeyboardView(context: Context) : View(context) {
                     else -> SurfaceState.NORMAL
                 }
                 color = if (isAction) t.confirm else t.text
-                surfaces.draw(canvas, inner, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                if (typewriter) {
+                    // A typewriter key springs back at once: no fading glow.
+                    val body = typewriterBody(inner)
+                    surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                    val rim = surfaces.typewriterRim(body.height())
+                    face = RectF(body).apply {
+                        inset(rim, rim)
+                        if (pressed) offset(0f, surfaces.typewriterSink)
+                    }
+                } else {
+                    surfaces.draw(canvas, inner, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                }
                 // A released key lets its pressed glow go softly instead of switching it off.
                 val fade = released[key]?.let { 1f - (now - it) / RELEASE_FADE_MS.toFloat() }
-                if (!pressed && fade != null && fade > 0f) {
+                if (!typewriter && !pressed && fade != null && fade > 0f) {
                     val layer = canvas.saveLayerAlpha(inner, (fade * fade * 255).toInt())
                     surfaces.draw(canvas, inner, radius, t.style, t.key, SurfaceState.PRESSED, seed = index, inkColor = color)
                     canvas.restoreToCount(layer)
@@ -295,21 +340,35 @@ class KeyboardView(context: Context) : View(context) {
             }
             val icon = iconFor(key, ctx, state)
             if (icon != null) {
-                val size = minOf(inner.height() * 0.48f, inner.width() * 0.62f, dp(26f))
-                Icons.draw(canvas, icon, inner.centerX(), inner.centerY(), size, color)
+                val size = if (typewriter) {
+                    minOf(face.height() * 0.56f, face.width() * 0.62f, dp(24f))
+                } else {
+                    minOf(inner.height() * 0.48f, inner.width() * 0.62f, dp(26f))
+                }
+                Icons.draw(canvas, icon, face.centerX(), face.centerY(), size, color)
             } else {
-                drawLabel(canvas, inner, KeyLabels.label(key, ctx), color, key)
+                drawLabel(canvas, face, KeyLabels.label(key, ctx), color, key)
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
                 // The digit sits small and quiet in the top corner, clear of the letter even in capitals.
                 hintPaint.color = (t.hint and 0x00FFFFFF) or 0xB3000000.toInt()
-                hintPaint.textSize = inner.height() * 0.19f * (1f + (theme.textScale - 1f) / 2f)
-                canvas.drawText(hint, inner.right - minOf(inner.width() * 0.12f, dp(5f)), inner.top + hintPaint.textSize + dp(2.5f), hintPaint)
+                if (typewriter) {
+                    // Inside the cap, up and to the right of the letter: nothing sticks out of the key.
+                    hintPaint.textSize = face.height() * 0.2f
+                    hintPaint.textAlign = Paint.Align.CENTER
+                    val y = face.centerY() - face.height() * 0.26f - (hintPaint.descent() + hintPaint.ascent()) / 2
+                    canvas.drawText(hint, face.centerX() + face.width() * 0.25f, y, hintPaint)
+                    hintPaint.textAlign = Paint.Align.RIGHT
+                } else {
+                    hintPaint.textSize = inner.height() * 0.19f * (1f + (theme.textScale - 1f) / 2f)
+                    canvas.drawText(hint, inner.right - minOf(inner.width() * 0.12f, dp(5f)), inner.top + hintPaint.textSize + dp(2.5f), hintPaint)
+                }
             }
             if (state == KeyHighlight.LOCKED && icon != Icon.CAPS) {
                 dotPaint.color = color
-                canvas.drawCircle(inner.centerX(), inner.bottom - dp(5f), dp(2.5f), dotPaint)
+                val y = if (typewriter) face.bottom - face.height() * 0.14f else inner.bottom - dp(5f)
+                canvas.drawCircle(face.centerX(), y, dp(if (typewriter) 2f else 2.5f), dotPaint)
             }
         }
     }
@@ -415,11 +474,13 @@ class KeyboardView(context: Context) : View(context) {
         val isLetter = key.action is KeyAction.Text && label.length <= 2
         textPaint.typeface = if (isLetter) letterFace else labelFace
         val typewriter = theme.style == SurfaceStyle.TYPEWRITER
-        // Round typewriter keys are as wide as they are tall: the letter is sized by the smaller side.
-        val base = if (typewriter) minOf(rect.width(), rect.height()) * 1.05f else rect.height()
+        // On the typewriter [rect] is the black cap: the letter is sized by its smaller side and stays inside it
+        // (a round cap is narrower above and below the middle, so words get less of its width).
+        val base = if (typewriter) minOf(rect.width(), rect.height()) * 1.25f else rect.height()
         var size = base * (if (isLetter) 0.46f else 0.30f) * theme.textScale
         textPaint.textSize = size
-        val maxWidth = rect.width() * 0.86f
+        val round = typewriter && rect.width() <= rect.height() * 1.05f
+        val maxWidth = rect.width() * (if (round) 0.78f else 0.86f)
         val measured = textPaint.measureText(label)
         if (measured > maxWidth) {
             size *= maxWidth / measured
