@@ -263,21 +263,24 @@ class SurfacePainter(private val density: Float) {
         val strength = 0.5f + 0.5f * brightness
         canvas.save()
         canvas.clipPath(capShape)
-        // The rubbed-bright middle of the cap.
+        // The rubbed-bright middle of the cap (a key only: on a large plate it would read as a stain).
         val rub = marks.rub
         wearPaint.style = Paint.Style.FILL
         wearPaint.shader = null
         wearPaint.color = 0xFFFFFFFF.toInt()
         wearPaint.alpha = (14 * strength).toInt()
-        val rubR = rub[2] * minOf(inner.width(), inner.height())
-        canvas.drawCircle(inner.left + rub[0] * inner.width(), inner.top + rub[1] * inner.height(), rubR, wearPaint)
+        if (!plate) {
+            val rubR = rub[2] * minOf(inner.width(), inner.height())
+            canvas.drawCircle(inner.left + rub[0] * inner.width(), inner.top + rub[1] * inner.height(), rubR, wearPaint)
+        }
         // Scratches.
         wearPaint.style = Paint.Style.STROKE
         wearPaint.strokeWidth = 0.6f * density
         wearPaint.strokeCap = Paint.Cap.ROUND
-        wearPaint.alpha = (40 * strength).toInt()
+        wearPaint.alpha = ((if (plate) 22 else 40) * strength).toInt()
         val sc = marks.scratches
-        val scale = minOf(inner.width(), inner.height())
+        // Scratches are a few millimetres long, on a key and on a large plate alike.
+        val scale = minOf(inner.width(), inner.height(), 48f * density)
         var i = 0
         while (i + 3 < sc.size) {
             val x = inner.left + sc[i] * inner.width()
@@ -290,7 +293,10 @@ class SurfacePainter(private val density: Float) {
         }
         canvas.restore()
 
-        // Rust on the rim: a soft brown stain with a darker core, where the nickel has worn through.
+        // Rust on the rim: a soft brown stain with a darker core, where the nickel has worn through. It stays
+        // on the key: nothing is drawn outside its outline.
+        canvas.save()
+        canvas.clipPath(shape)
         wearPaint.style = Paint.Style.FILL
         val rust = marks.rust
         val cx = outer.centerX()
@@ -301,8 +307,8 @@ class SurfacePainter(private val density: Float) {
         while (i + 2 < rust.size) {
             val a = rust[i]
             // A point on the rim: on the circle, or on the edge of the pill/plate (clamped ellipse).
-            val px = (cx + cos(a) * ax * 1.15f).coerceIn(outer.left + rimWidth / 2, outer.right - rimWidth / 2)
-            val py = (cy + sin(a) * ay * 1.15f).coerceIn(outer.top + rimWidth / 2, outer.bottom - rimWidth / 2)
+            val px = (cx + cos(a) * ax * 1.05f).coerceIn(outer.left + rimWidth / 2, outer.right - rimWidth / 2)
+            val py = (cy + sin(a) * ay * 1.05f).coerceIn(outer.top + rimWidth / 2, outer.bottom - rimWidth / 2)
             val size = rust[i + 1] * rimWidth * 1.1f
             val alpha = rust[i + 2] * strength
             wearPaint.color = RUST
@@ -313,6 +319,7 @@ class SurfacePainter(private val density: Float) {
             canvas.drawCircle(px + size * 0.2f, py + size * 0.15f, size * 0.45f, wearPaint)
             i += 3
         }
+        canvas.restore()
     }
 
     private companion object {
