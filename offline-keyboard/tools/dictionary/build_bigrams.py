@@ -28,6 +28,12 @@ WORD = {
 }
 # A sentence breaks the chain at these marks: "дякую. А ти" gives no pair "дякую → а".
 BREAK = re.compile(r"[.!?;:…()\[\]\"«»„“”]")
+# Tatoeba's example sentences are full of Tom and Mary: names never become predictions.
+NAMES = {
+    "uk": set("том тома томові томом томе мері джон джона кен кена тоні аліса боб джек".split()),
+    "pl": set("tom toma tomowi tomem tomie mary mari john johna ken kena tony jack bob alice".split()),
+    "en": set("tom mary john ken tony jack bob alice".split()),
+}
 PER_WORD = 5
 MIN_COUNT = 2
 MAX_WORDS = 12000
@@ -59,7 +65,7 @@ def build(lang):
             for chunk in BREAK.split(parts[2].lower().replace("ʼ", "'").replace("’", "'")):
                 words = [w for w in (m.group(0).strip("-'") for m in pattern.finditer(chunk)) if w]
                 for a, b in zip(words, words[1:]):
-                    if a in rank and b in rank:
+                    if a in rank and b in rank and a not in NAMES[lang] and b not in NAMES[lang]:
                         pairs[a][b] += 1
     # The most common words first, so the app can stop reading early if it ever needs to.
     lines = []
