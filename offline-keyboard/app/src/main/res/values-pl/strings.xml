@@ -302,7 +302,7 @@
     <string name="hide_toolbar_buttons_hint">Na klawiaturze mobilnej widać tylko pasek z tekstem; dotknij go, by pokazać przyciski trybów, przełączania klawiatury i ustawień. Po kilku sekundach znów się chowają.</string>
     <string name="page_help">Jak używać</string>
     <string name="help_start">Pierwsze kroki</string>
-    <string name="help_start_body">• «Włącz» na stronie głównej — zaznacz OffKey na liście klawiatur.\n• «Wybierz» — wybierz OffKey; kroki znikną.\n• Pole «Wypróbuj» — próbuj tu wszystkiego z tej pomocy.\n• Wszystko działa bez internetu; głos i tłumaczenie potrzebują modeli (dział «Głos i tłumaczenie»).\n• «Wygląd» — styl Black Glass lub Black Sketch, jasność i wysokość klawiszy.</string>
+    <string name="help_start_body">• «Włącz» na stronie głównej — zaznacz OffKey na liście klawiatur.\n• «Wybierz» — wybierz OffKey; kroki znikną.\n• Pole «Wypróbuj» — próbuj tu wszystkiego z tej pomocy.\n• Wszystko działa bez internetu; głos i tłumaczenie potrzebują modeli (dział «Głos i tłumaczenie»).\n• «Wygląd» — styl Black Glass, Black Sketch lub Black Typewriter, jasność i wysokość klawiszy.</string>
     <string name="help_typing">Pisanie i gesty</string>
     <string name="help_typing_body">• Przytrzymaj literę — warianty: polskie litery, ukraińskie ґ ї, cyfra z rogu. Przesuń do wybranej i puść.\n• Przytrzymaj przecinek — emoji.\n• Przesuń spację — inny język; bieżący jest napisany na spacji.\n• Przytrzymaj ⌫ — usuwa znak po znaku; ciągnij ⌫ w lewo — całe słowa.\n• Dotknij paska nad klawiszami — pojawią się przyciski: tryby po lewej, klawiatura komputerowa i ustawienia po prawej.\n• Przycisk trybów — Tekst, Tłumaczenie, Schowek, Głos.</string>
     <string name="help_correction">Autokorekta i podpowiedzi</string>
@@ -323,4 +323,6 @@
     <string name="help_dictionary_body">• «Mój słownik» — dodawaj i usuwaj własne słowa do podpowiedzi.\n• Zapamiętywanie wpisanych słów — włącza się tamże; słowa zostają na telefonie.\n• Import — .txt (słowo w wierszu, do języka wybranego u góry) lub JSON {\"uk\": [...], \"pl\": [...]}.\n• Eksport — wszystkie Twoje słowa w JSON.\n• Pełna kopia — «O aplikacji» → «Kopia zapasowa»: ustawienia, emoji, skróty, słownik, glosariusz. Modele nie są dołączone.</string>
     <string name="theme_glass_desc">Czarne szkło z miękkimi odblaskami</string>
     <string name="theme_sheet_desc">Odręcznie białym ołówkiem na czarnym</string>
+    <string name="theme_typewriter">Black Typewriter</string>
+    <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze, wytarte i trochę zardzewiałe</string>
 </resources>

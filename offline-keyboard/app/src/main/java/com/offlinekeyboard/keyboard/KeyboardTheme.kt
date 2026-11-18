@@ -5,10 +5,13 @@ package com.offlinekeyboard.keyboard
  * The two styles shared by all the user's apps (THEMES.md): black glass lit from above, and white pencil on
  * black paper. Since 1.2 they are the only themes; the old system/light/dark/OLED settings open as GLASS.
  */
-enum class ThemeMode { GLASS, SHEET }
+enum class ThemeMode { GLASS, SHEET, TYPEWRITER }
 
-/** How surfaces (keys, buttons, popups) are drawn: flat colour, black glass, or pencil on paper. */
-enum class SurfaceStyle { FLAT, GLASS, SHEET }
+/**
+ * How surfaces (keys, buttons, popups) are drawn: flat colour, black glass, pencil on paper, or the round
+ * worn metal-rimmed keys of an old typewriter.
+ */
+enum class SurfaceStyle { FLAT, GLASS, SHEET, TYPEWRITER }
 
 /** Key vibration: light tick, normal click, or a firm click (for thick cases and gloves). */
 enum class VibrationStrength { LIGHT, MEDIUM, STRONG }
@@ -54,6 +57,7 @@ data class KeyboardTheme(
         fun resolve(mode: ThemeMode, brightness: Float = DEFAULT_BRIGHTNESS): KeyboardTheme = when (mode) {
             ThemeMode.GLASS -> glass()
             ThemeMode.SHEET -> sheet()
+            ThemeMode.TYPEWRITER -> typewriter()
         }.withBrightness(brightness)
 
         /**
@@ -102,6 +106,27 @@ data class KeyboardTheme(
             textScale = 1.22f,
         )
 
+        /**
+         * «Друкарська машинка · Темна»: an old typewriter. Round keys with a worn, slightly rusty metal rim and
+         * a dark cap, ivory letters in Cousine (a Courier-like typewriter face with Cyrillic), each a little off.
+         */
+        fun typewriter() = KeyboardTheme(
+            dark = true,
+            background = BLACK,
+            key = 0xFF15130F.toInt(),
+            function = 0xFF15130F.toInt(),
+            pressed = 0xFF2A2620.toInt(),
+            accent = BRASS,
+            text = IVORY,
+            onAccent = IVORY,
+            hint = 0xFF9A907C.toInt(),
+            popup = 0xFF12100D.toInt(),
+            style = SurfaceStyle.TYPEWRITER,
+            confirm = CONFIRM,
+            listening = LISTENING,
+            fontRes = com.offlinekeyboard.R.font.cousine_bold,
+        )
+
         // Shared tokens of THEMES.md, section 2.
         private const val BLACK = 0xFF000000.toInt()
         private const val TEXT = 0xFFE6E6E6.toInt()
@@ -111,5 +136,7 @@ data class KeyboardTheme(
         const val CONFIRM = 0xFF8AB4F8.toInt()
         const val DANGER = 0xFFEF8A80.toInt()
         private const val LISTENING = 0xFFB0244F.toInt()
+        const val IVORY = 0xFFE9DFC6.toInt()
+        private const val BRASS = 0xFFC8B48A.toInt()
     }
 }

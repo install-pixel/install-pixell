@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -42,7 +44,7 @@ import kotlin.math.sin
  * settings: «Скло» (black glass lit from above, Exo 2) and «Аркуш» (white pencil on black paper, Caveat ×1.22).
  * Components read [LocalLook] and draw themselves accordingly.
  */
-enum class Look { GLASS, SHEET }
+enum class Look { GLASS, SHEET, TYPEWRITER }
 
 val LocalLook = staticCompositionLocalOf { Look.GLASS }
 
@@ -74,10 +76,21 @@ private val HandFont = FontFamily(
     Font(R.font.caveat_semibold, FontWeight.Bold),
 )
 
+private val TypewriterFont = FontFamily(
+    Font(R.font.cousine_regular, FontWeight.Normal),
+    Font(R.font.cousine_regular, FontWeight.Medium),
+    Font(R.font.cousine_bold, FontWeight.SemiBold),
+    Font(R.font.cousine_bold, FontWeight.Bold),
+)
+
 /** Handwriting reads smaller: all text of the sheet style is this much larger. */
 private const val HAND_SCALE = 1.22f
 
-internal fun lookOf(mode: ThemeMode?): Look = if (mode == ThemeMode.SHEET) Look.SHEET else Look.GLASS
+internal fun lookOf(mode: ThemeMode?): Look = when (mode) {
+    ThemeMode.SHEET -> Look.SHEET
+    ThemeMode.TYPEWRITER -> Look.TYPEWRITER
+    else -> Look.GLASS
+}
 
 /** The settings theme for [mode]: black tokens and the style's font for all text. */
 @Composable
@@ -95,7 +108,13 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         outline = Color(0x38FFFFFF), outlineVariant = Color(0x24FFFFFF),
         error = Tone.Danger,
     )
-    val font = TextStyle(fontFamily = if (look == Look.SHEET) HandFont else GlassFont)
+    val font = TextStyle(
+        fontFamily = when (look) {
+            Look.SHEET -> HandFont
+            Look.TYPEWRITER -> TypewriterFont
+            Look.GLASS -> GlassFont
+        },
+    )
     val density = LocalDensity.current
     // Fields and small surfaces are rounded 16 dp (THEMES.md: no rectangular frames).
     val shapes = MaterialTheme.shapes.copy(
@@ -177,6 +196,26 @@ internal fun Modifier.lookSurface(
 ): Modifier = when (LocalLook.current) {
     Look.GLASS -> glassFrame(radius, chosen, sheen, lit)
     Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else alpha, if (chosen) 2.6.dp else 2.2.dp, ink)
+    Look.TYPEWRITER -> typewriterFrame(radius, seed, chosen || lit)
+}
+
+/**
+ * The typewriter style: a plate of the old machine (the keyboard's [com.offlinekeyboard.keyboard.SurfacePainter]):
+ * a worn nickel rim with a few rust spots around a dark cap with scratches; chosen is a brass rim.
+ */
+internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): Modifier = drawWithCache {
+    val painter = com.offlinekeyboard.keyboard.SurfacePainter(density).apply { brightness = KeyboardTheme.DEFAULT_BRIGHTNESS }
+    val rect = android.graphics.RectF(0f, 0f, size.width, size.height)
+    val r = radius.toPx()
+    onDrawBehind {
+        drawIntoCanvas {
+            painter.draw(
+                it.nativeCanvas, rect, r, com.offlinekeyboard.keyboard.SurfaceStyle.TYPEWRITER, 0,
+                if (chosen) com.offlinekeyboard.keyboard.SurfaceState.SELECTED else com.offlinekeyboard.keyboard.SurfaceState.NORMAL,
+                seed = seed, plate = true,
+            )
+        }
+    }
 }
 
 /** The pencil frame of the sheet style (the keyboard's [Pencil] outline as a Compose path). */

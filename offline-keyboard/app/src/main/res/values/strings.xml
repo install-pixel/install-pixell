@@ -302,7 +302,7 @@
     <string name="hide_toolbar_buttons_hint">On the mobile keyboard only the text strip shows; tap it to show the modes, keyboard switch and settings buttons. They hide again a few seconds later.</string>
     <string name="page_help">How to use</string>
     <string name="help_start">First steps</string>
-    <string name="help_start_body">• «Turn on» on the main page — tick OffKey in the list of keyboards.\n• «Choose» — pick OffKey; the steps disappear.\n• The «Try it» field — try everything from this help there.\n• Everything works offline; voice and translation need models (section «Voice and translation»).\n• «Look» — the Black Glass or Black Sketch style, key brightness and height.</string>
+    <string name="help_start_body">• «Turn on» on the main page — tick OffKey in the list of keyboards.\n• «Choose» — pick OffKey; the steps disappear.\n• The «Try it» field — try everything from this help there.\n• Everything works offline; voice and translation need models (section «Voice and translation»).\n• «Look» — the Black Glass, Black Sketch or Black Typewriter style, key brightness and height.</string>
     <string name="help_typing">Typing and gestures</string>
     <string name="help_typing_body">• Hold a letter — its options: Ukrainian ґ ї, Polish letters, the corner digit. Slide to one and let go.\n• Hold the comma — emoji.\n• Swipe the space bar — another language; the current one is written on it.\n• Hold ⌫ — deletes character by character; drag ⌫ left — whole words.\n• Tap the strip above the keys — the buttons appear: modes on the left, computer keyboard and settings on the right.\n• The modes button — Text, Translate, Clipboard, Voice.</string>
     <string name="help_correction">Autocorrect and suggestions</string>
@@ -323,4 +323,6 @@
     <string name="help_dictionary_body">• «My dictionary» — add and remove your own words for suggestions.\n• Remembering typed words — turned on there; words stay on the phone.\n• Import — .txt (a word per line, into the language selected at the top) or JSON {\"uk\": [...], \"pl\": [...]}.\n• Export — all your words as JSON.\n• Full backup — «About» → «Backup»: settings, emoji, shortcuts, dictionary, glossary. Models are not included.</string>
     <string name="theme_glass_desc">Black glass with soft highlights</string>
     <string name="theme_sheet_desc">Hand-drawn in white pencil on black</string>
+    <string name="theme_typewriter">Black Typewriter</string>
+    <string name="theme_typewriter_desc">An old typewriter: round keys, worn and a little rusty</string>
 </resources>

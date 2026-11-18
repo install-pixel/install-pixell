@@ -226,8 +226,8 @@ class SettingsRepository(context: Context) {
             translationAuto = this[Keys.TRANSLATION_AUTO] ?: defaults.translationAuto,
             translationPauseMs = this[Keys.TRANSLATION_PAUSE] ?: defaults.translationPauseMs,
             translationAccurate = this[Keys.TRANSLATION_ACCURATE] ?: defaults.translationAccurate,
-            // Old themes (system, light, dark, OLED) are gone: anything but the sheet opens as glass.
-            themeMode = (if (this[Keys.THEME_MODE] == ThemeMode.SHEET.name) ThemeMode.SHEET else ThemeMode.GLASS),
+            // Old themes (system, light, dark, OLED) are gone: anything unknown opens as glass.
+            themeMode = ThemeMode.entries.firstOrNull { it.name == this[Keys.THEME_MODE] } ?: ThemeMode.GLASS,
             bluetoothKeyboard = this[Keys.BLUETOOTH_KEYBOARD] ?: defaults.bluetoothKeyboard,
         )
     }

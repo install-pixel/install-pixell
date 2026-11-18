@@ -128,6 +128,14 @@ class KeyboardUiTest {
         screenshot("suggestions")
         tapView(suggestion)
         assertEquals("дякую ", text(activity.plain))
+        // A mark typed right after a picked word goes next to it, before the space it added.
+        tapText(",")
+        assertEquals("дякую, ", text(activity.plain))
+        // The space a picked word adds counts as the first of two: one more space makes ". ".
+        typeWord(activity.plain, "дяк")
+        tapView(waitForView { v -> v is TextView && v.isShown && v.text.toString() == "дякую" })
+        tapSpecial(SpecialKey.SPACE)
+        assertEquals("дякую, дякую. ", text(activity.plain))
     }
 
     @Test
@@ -448,7 +456,7 @@ class KeyboardUiTest {
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet())) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter())) {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
@@ -471,6 +479,10 @@ class KeyboardUiTest {
     /** The settings follow the sheet style (pencil frames, Caveat): screenshots. */
     @Test
     fun settingsInSheet() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.SHEET)
+
+    /** The settings follow the typewriter style (worn metal plates, Cousine): screenshots. */
+    @Test
+    fun settingsInTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.TYPEWRITER)
 
     private fun settingsIn(mode: com.offlinekeyboard.keyboard.ThemeMode) {
         scenario.close()
