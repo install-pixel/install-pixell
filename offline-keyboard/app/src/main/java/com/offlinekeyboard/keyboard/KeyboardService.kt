@@ -896,7 +896,8 @@ class KeyboardService : InputMethodService(),
         if (!(first.isWhitespace() || first in ".,!?;:…")) return
         val ic = currentInputConnection ?: return
         if (!ic.getSelectedText(0).isNullOrEmpty() || WordRules.continuesWord(ic.getTextAfterCursor(1, 0) ?: "")) return
-        val word = WordRules.trailingWord(ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: return)
+        val textBefore = ic.getTextBeforeCursor(WORD_CONTEXT, 0) ?: return
+        val word = WordRules.trailingWord(textBefore)
         if (word.isEmpty()) return
         val language = controller.language
         val user = dictionary.dictionary
@@ -913,6 +914,10 @@ class KeyboardService : InputMethodService(),
             known = { it in ownKeys || BaseDictionary.isKnown(language, it) },
             candidates = trusted.asSequence() + base.asSequence() + own.asSequence().map { it.word },
             rejected = rejectedWords(),
+            // Words that usually follow the previous word win a close call ("добрий деньь" → "день").
+            context = previousWord(textBefore.subSequence(0, textBefore.length - word.length))
+                ?.let { NextWords.predict(language, it, dictionary.pairs, limit = 8).toSet() }
+                .orEmpty(),
         ) ?: return
         ic.beginBatchEdit()
         ic.deleteSurroundingText(word.length, 0)
