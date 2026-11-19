@@ -3,6 +3,16 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## 1.8.1 — a real typewriter
+
+- [x] Black Typewriter keys like the machine: a nickel rim with a line of light, rust only on the rim,
+      a glossy black cap with a soft reflection, a shadow under each key; a pressed key goes down.
+- [x] The machine under the keys: a polished stem from every key through its guide, a collar under
+      the key; stem and collar go down with the key. No grid of rails.
+- [x] A key goes 3 dp down and springs back up with a small overshoot.
+- [x] All round keys one size (the edge keys are no longer bigger); labels and digits stay inside;
+      only single letters tilt (long words stay straight).
+
 ## 1.8.0 — predictions, space cursor, smarter autocorrect, clipboard history, typewriter sounds
 
 - [x] Next-word prediction after a finished word: shipped pairs (Tatoeba, CC BY 2.0 FR) and the user's
@@ -113,7 +123,6 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - Swipe (glide) typing: possible offline, needs large dictionaries; not planned yet.
 - Typing in several languages without switching (Polish/English share the Latin keys).
 - Emoji search by word (in the emoji panel, and an emoji among the suggestions).
-- Offline spell checker service for all apps (red underlines with choices).
 - Key sounds for the other styles; a look at Black Sketch.
 - Theme follows the launcher (one theme for all apps) — when the launcher is updated.
 - Light themes (light glass, light sheet).
@@ -122,3 +131,4 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 ## Not planned
 
 - Handwriting input: no offline recogniser that can be bundled (ML Kit downloads its models itself).
+- Spell checker service for all apps: Android would hand the text of other apps to it; OffKey keeps text inside the keyboard.
