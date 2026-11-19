@@ -49,6 +49,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onToolbarSettings()
         fun onSuggestionPicked(word: String)
         fun onSuggestionLongPress(word: String)
+        /**
+         * A word of the text shown in the strip was touched: the cursor goes to its end ([select]: the word
+         * is selected). [fromEnd] counts words back from the last one (0 = the last word).
+         */
+        fun onEchoWord(fromEnd: Int, select: Boolean) {}
     }
 
     data class ToolbarState(
@@ -87,11 +92,44 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         setHorizontallyScrolling(true)
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(8), 0, dp(8), 0)
-        setOnClickListener {
-            val action = statusAction
-            if (action != null) { statusAction = null; action() } else revealButtons()
-        }
     }
+
+    /**
+     * Touching the text in the strip: a word puts the cursor there (its suggestions then replace it), a long
+     * press selects the word; anywhere else shows the buttons, or runs the message's action.
+     */
+    private val statusGestures = android.view.GestureDetector(context, object : android.view.GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: android.view.MotionEvent) = true
+        override fun onSingleTapUp(e: android.view.MotionEvent): Boolean {
+            val action = statusAction
+            when {
+                action != null -> { statusAction = null; action() }
+                !touchWord(e.x, select = false) -> revealButtons()
+            }
+            return true
+        }
+        override fun onLongPress(e: android.view.MotionEvent) {
+            if (statusAction == null && touchWord(e.x, select = true)) {
+                status.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            }
+        }
+    })
+
+    /** The word of the shown text at [x] (in the strip's text), if the text is the user's own: tells the listener. */
+    private fun touchWord(x: Float, select: Boolean): Boolean {
+        if (!showingEcho) return false
+        val layout = status.layout ?: return false
+        val text = status.text.toString()
+        val offset = layout.getOffsetForHorizontal(0, x - status.totalPaddingLeft)
+        val words = ECHO_WORD.findAll(text).toList()
+        val index = words.indexOfFirst { offset >= it.range.first && offset <= it.range.last + 1 }
+        if (index < 0) return false
+        toolbarListener?.onEchoWord(words.size - 1 - index, select)
+        return true
+    }
+
+    /** Whether the strip shows the user's text (not a message, a translation or suggestions). */
+    private var showingEcho = false
     private val statusScroll = HorizontalScrollView(context).apply {
         isHorizontalScrollBarEnabled = false
         isFillViewport = true
@@ -100,6 +138,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         isHorizontalFadingEdgeEnabled = true
         setFadingEdgeLength(dp(18))
         addView(status, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.MATCH_PARENT))
+    }
+
+    init {
+        @SuppressLint("ClickableViewAccessibility")
+        status.setOnTouchListener { _, event -> statusGestures.onTouchEvent(event) }
     }
     private val undoButton = button(R.string.toolbar_undo_translation_description) { toolbarListener?.onUndoTranslation() }
         .apply { icon = Icon.UNDO; visibility = View.GONE }
@@ -496,6 +539,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val showSuggestions = centreText == null && suggestions.isNotEmpty()
         val isEcho = centreText == null && !showSuggestions
         val text = if (isEcho) echo ?: "" else centreText ?: ""
+        showingEcho = isEcho && echo != null
         if (text.toString() != status.text.toString()) {
             val typewriter = theme.style == SurfaceStyle.TYPEWRITER
             val grew = text.length > status.text.length && text.toString().startsWith(status.text.toString())
@@ -580,6 +624,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private companion object {
+        val ECHO_WORD = Regex(ECHO_WORD_PATTERN)
         const val FADE_DP = 14
         const val BUTTONS_SHOWN_MS = 6000L
         const val PREDICTIONS = 3
@@ -588,3 +633,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val SUGGESTIONS = 3
     }
 }
+
+/** A word in the strip's text, the same for the strip and the service: letters, digits, apostrophes, hyphens. */
+internal const val ECHO_WORD_PATTERN = "[\\p{L}\\p{N}'ʼ’-]+"

@@ -243,14 +243,60 @@ class KeyboardView(context: Context) : View(context) {
         return RectF(inner.centerX() - w / 2, inner.centerY() - d / 2, inner.centerX() + w / 2, inner.centerY() + d / 2)
     }
 
-    /** The machine under typewriter keys: a stem down from every key, through its guide. */
+    /**
+     * The machine under typewriter keys: a steel lever from every key. It runs down through the gap between
+     * the keys of the row below and on towards a fulcrum far below the middle, so the levers fan in as on the
+     * machine; a pressed key pulls its lever down around that fulcrum.
+     */
     private fun drawMachine(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
-        for ((key, rect) in keyRects) {
-            if (key.style == KeyStyle.SPACER) continue
-            val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
-            val sink = typewriterDepth(key, pressedKeys, now) * surfaces.typewriterSink
-            surfaces.drawTypewriterStem(canvas, typewriterBody(inner), rect.bottom + keyHeightPx * 0.42f, sink)
+        val bodies = keyRects.filter { it.first.style != KeyStyle.SPACER }.map { (key, rect) ->
+            Triple(key, rect, typewriterBody(RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)))
         }
+        val rows = bodies.map { it.second.top }.distinct().sorted()
+        val fulcrumX = width / 2f
+        val fulcrumY = height + keyHeightPx * 2.6f
+        val bottom = height.toFloat()
+        canvas.save()
+        canvas.clipRect(0f, 0f, width.toFloat(), bottom)
+        for ((key, rect, body) in bodies) {
+            val row = rows.indexOf(rect.top)
+            val below = bodies.filter { row + 1 < rows.size && it.second.top == rows[row + 1] }.map { it.third }.sortedBy { it.left }
+            val sink = typewriterDepth(key, pressedKeys, now) * surfaces.typewriterSink
+            val w = maxOf(dp(2.6f), body.height() * 0.1f)
+            val cy = body.centerY()
+            val long = body.width() > body.height() * 1.3f
+            val xs = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
+            for (cx in xs) {
+                // Where it passes the row below: the nearest gap on the side of the middle, or (under a long
+                // key, or in the bottom row) straight on towards the fulcrum.
+                val gy = below.firstOrNull()?.centerY() ?: (body.bottom + bottom) / 2
+                val straight = cx + (fulcrumX - cx) * ((gy - cy) / (fulcrumY - cy))
+                var gap = Float.NaN
+                for (j in 0 until below.size - 1) {
+                    val x = (below[j].right + below[j + 1].left) / 2
+                    val inward = (fulcrumX - cx) * (x - cx) >= 0f || abs(fulcrumX - cx) < 2f
+                    if (inward && (gap.isNaN() || abs(x - cx) < abs(gap - cx))) gap = x
+                }
+                val rivet = !gap.isNaN() && abs(gap - cx) < body.height() * 0.9f
+                val gx = if (rivet) gap else straight
+                // On beyond, towards the fulcrum, to below the bottom edge.
+                val k = (bottom + dp(4f) - gy) / (fulcrumY - gy)
+                val points = floatArrayOf(
+                    cx, cy,
+                    cx, body.bottom + body.height() * 0.18f,
+                    gx, gy,
+                    gx + (fulcrumX - gx) * k, gy + (fulcrumY - gy) * k,
+                )
+                // Pressed: the lever turns about the fulcrum, so each point goes down by its share of the sink.
+                var i = 1
+                while (i < points.size) {
+                    points[i] += sink * (fulcrumY - points[i]) / (fulcrumY - cy)
+                    i += 2
+                }
+                surfaces.drawTypewriterLever(canvas, points, w, cy, bottom, rivet)
+            }
+        }
+        canvas.restore()
     }
 
     /**
@@ -469,6 +515,17 @@ class KeyboardView(context: Context) : View(context) {
         )
         canvas.translate(0f, (1f - e) * dp(6f))
         canvas.scale(scale, scale, bubble.centerX(), bubble.bottom)
+        if (theme.style == SurfaceStyle.TYPEWRITER) {
+            // The typewriter shows a bigger round key with the same rim, rising above the finger.
+            val d = minOf(bubble.width(), bubble.height())
+            val body = RectF(bubble.centerX() - d / 2, bubble.bottom - d, bubble.centerX() + d / 2, bubble.bottom)
+            surfaces.draw(canvas, body, radius, theme.style, theme.key, seed = b.label.hashCode())
+            val rim = surfaces.typewriterRim(d)
+            body.inset(rim, rim)
+            drawLabel(canvas, body, b.label, theme.text, b.key)
+            canvas.restoreToCount(layer)
+            return
+        }
         drawOverlaySurface(canvas, bubble, radius * 1.5f, b.label.hashCode())
         textPaint.color = theme.text
         textPaint.typeface = letterFace
@@ -557,6 +614,25 @@ class KeyboardView(context: Context) : View(context) {
         val layer = canvas.saveLayerAlpha(b.left - dp(4f), b.top - dp(4f), b.right + dp(4f), b.bottom + dp(10f), (e * 255).toInt())
         val scale = 0.92f + 0.08f * e
         canvas.scale(scale, scale, b.centerX(), b.bottom)
+        if (t.style == SurfaceStyle.TYPEWRITER) {
+            // Round keys on a steel bar; the one under the finger is down, with a brass rim.
+            surfaces.drawTypewriterBar(canvas, p.bounds)
+            p.cells.forEachIndexed { i, cell ->
+                val chosen = i == p.selected
+                val d = minOf(cell.width(), cell.height()) * 0.86f
+                val body = RectF(cell.centerX() - d / 2, cell.centerY() - d / 2, cell.centerX() + d / 2, cell.centerY() + d / 2)
+                surfaces.typewriterDepth = if (chosen) 1f else 0f
+                surfaces.draw(canvas, body, radius, t.style, t.key, if (chosen) SurfaceState.SELECTED else SurfaceState.NORMAL, seed = i)
+                surfaces.typewriterDepth = -2f
+                val rim = surfaces.typewriterRim(d)
+                body.inset(rim, rim)
+                if (chosen) body.offset(0f, surfaces.typewriterSink)
+                val color = if (chosen) t.text else (t.text and 0x00FFFFFF) or 0xA6000000.toInt()
+                drawLabel(canvas, body, p.options[i], color, p.key)
+            }
+            canvas.restoreToCount(layer)
+            return
+        }
         drawOverlaySurface(canvas, p.bounds, radius, 7)
         p.cells.forEachIndexed { i, cell ->
             if (i == p.selected) {
