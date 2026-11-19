@@ -1,0 +1,5 @@
+core/src/main/resources/dictionary/uk_apostrophe.txt (the beginnings of Ukrainian words with an apostrophe)
+is derived from the Ukrainian spelling dictionary of the dict_uk project, https://github.com/brown-uk/dict_uk,
+as packaged for LibreOffice (https://github.com/LibreOffice/dictionaries/tree/master/uk_UA), authors
+Andriy Rysin and the dict_uk contributors. It is used under the Mozilla Public License 1.1:
+https://www.mozilla.org/en-US/MPL/1.1/

@@ -263,6 +263,7 @@ class KeyboardService : InputMethodService(),
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         if (!restarting) controller.onStartField(currentField.isNumeric, currentField.isPhone)
+        carriageColumn = -1
         syncTranslateSource(showProblems = false)
         if (translateActive) translation.preload(settings.translationDirection)
         updateAutoShift()
@@ -663,6 +664,7 @@ class KeyboardService : InputMethodService(),
             return
         }
         val before = ic?.getTextBeforeCursor(ECHO_CONTEXT, 0) ?: ""
+        carriage(before)
         // The whole message so far (passwords are never repeated on screen).
         root.showEcho(if (currentField.isSensitive) null else echoOf(before))
         if (lastTranslation != null && !undoAvailable(before)) lastTranslation = null
@@ -695,6 +697,23 @@ class KeyboardService : InputMethodService(),
         val text = before.toString().trim().replace(Regex("\\s*\\n\\s*"), " ⏎ ")
         return text.ifEmpty { null }
     }
+
+    override fun onEchoWord(fromEnd: Int, select: Boolean) {
+        val ic = currentInputConnection ?: return
+        if (currentField.isSensitive || bluetoothSending) return
+        val before = ic.getTextBeforeCursor(ECHO_CONTEXT, 0)?.toString() ?: return
+        val words = echoWord.findAll(before).toList()
+        val word = words.getOrNull(words.size - 1 - fromEnd) ?: return
+        val extracted = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0) ?: return
+        val cursor = extracted.startOffset + minOf(extracted.selectionStart, extracted.selectionEnd)
+        val end = cursor - (before.length - (word.range.last + 1))
+        val start = end - word.value.length
+        if (start < 0) return
+        leaveSegment()
+        ic.setSelection(if (select) start else end, end)
+    }
+
+    private val echoWord = Regex(ECHO_WORD_PATTERN)
 
     override fun onSuggestionPicked(word: String) {
         val ic = currentInputConnection ?: return
@@ -1046,6 +1065,38 @@ class KeyboardService : InputMethodService(),
 
     /** The typewriter's key sounds, made when the keyboard is first drawn. */
     private var keySounds: KeySounds? = null
+
+    /** Where the typewriter's carriage is: characters since the last line break (-1: not known yet). */
+    private var carriageColumn = -1
+    /** Lines typed on the current sheet (returns, and lines that ran past the margin). */
+    private var sheetLines = 0
+
+    /**
+     * The typewriter's bell and paper: the bell rings a few characters before the end of a line, as on the
+     * machine, and a new sheet goes in every [SHEET_LINES] lines. Only while key sounds are on.
+     */
+    private fun carriage(before: CharSequence) {
+        val column = before.length - (before.lastIndexOf('\n') + 1)
+        val last = carriageColumn
+        carriageColumn = column
+        val sounds = keySounds ?: return
+        val volume = rootView?.keyboardView?.soundVolume ?: 0f
+        if (last < 0 || volume <= 0f || currentField.isSensitive) return
+        // Typed, not pasted: the carriage moved on by a character or a word.
+        val typed = column > last && column - last <= MAX_TYPED_STEP
+        if (typed && last % LINE_LENGTH < BELL_COLUMN && column % LINE_LENGTH >= BELL_COLUMN) {
+            sounds.play(KeySounds.Kind.BELL, volume)
+        }
+        val returned = column == 0 && last > 0 && before.endsWith("\n")
+        val wrapped = typed && column / LINE_LENGTH > last / LINE_LENGTH
+        if (returned || wrapped) {
+            sheetLines++
+            if (sheetLines >= SHEET_LINES) {
+                sheetLines = 0
+                sounds.play(KeySounds.Kind.SHEET, volume)
+            }
+        }
+    }
 
     /**
      * A second space within about a second after "word " turns into ". " (then the next letter is a capital), like
@@ -1400,6 +1451,12 @@ class KeyboardService : InputMethodService(),
         private const val DONE_MESSAGE_MS = 4000L
         private const val SENT_TEXT_MAX = 2000
         private const val ECHO_CONTEXT = 2000
+        /** A typewriter line: the bell rings at [BELL_COLUMN], eight characters before its end. */
+        private const val LINE_LENGTH = 65
+        private const val BELL_COLUMN = 57
+        private const val SHEET_LINES = 30
+        /** More than this at once (a picked word with its space is fewer) is a paste: no bell for it. */
+        private const val MAX_TYPED_STEP = 24
         private const val UNDO_SLACK = 8
         private const val DOUBLE_SPACE_MS = 1100L
         private const val CORRECTION_PREFS = "autocorrect"

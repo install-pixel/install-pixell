@@ -208,27 +208,32 @@ class SurfacePainter(private val density: Float) {
         0f, 0f, 1f, intArrayOf(0x33FFF8E6, 0x14FFF8E6, 0x00FFF8E6), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
     )
     private val bounce = RadialGradient(0f, 0f, 1f, 0x12FFF0D2, 0x00FFF0D2, Shader.TileMode.CLAMP)
-    // A polished steel stem, lit from the left.
-    private val stemShade = LinearGradient(
-        0f, 0f, 1f, 0f,
-        intArrayOf(0xFF1A1814.toInt(), 0xFFA39D8F.toInt(), 0xFF0E0D0B.toInt()),
-        floatArrayOf(0f, 0.4f, 1f),
-        Shader.TileMode.CLAMP,
-    )
-    // Deeper in the machine it is dark.
-    private val stemFade = LinearGradient(
+    // A steel key lever: lit near the keys, dark deep in the machine; with a thin line of light along it.
+    private val leverShade = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0x00000000, 0x26000000, 0xF2000000.toInt()),
-        floatArrayOf(0f, 0.55f, 1f),
+        intArrayOf(0xFF4A453C.toInt(), 0xFF2A2722.toInt(), 0xFF0C0B0A.toInt()),
+        floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
-    // The guide the stem slides through, and the collar under the key.
-    private val guideShade = LinearGradient(
+    private val leverLight = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xFF5C574D.toInt(), 0xFF24211D.toInt(), 0xFF0A0908.toInt()),
-        floatArrayOf(0f, 0.35f, 1f),
+        intArrayOf(0xBFDCD4C3.toInt(), 0x40A0988A, 0x00000000),
+        floatArrayOf(0f, 0.6f, 1f),
         Shader.TileMode.CLAMP,
     )
+    // A round rivet head, lit from the upper left.
+    private val rivetShade = RadialGradient(
+        -0.3f, -0.3f, 1.3f,
+        intArrayOf(0xFFD8D0BF.toInt(), 0xFF6D675B.toInt(), 0xFF151310.toInt()),
+        floatArrayOf(0f, 0.5f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val leverPath = Path()
+    private val leverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+    }
+    // The collar under the key.
     private val collarShade = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFFC9C2B2.toInt(), 0xFF5A554B.toInt(), 0xFF1C1A17.toInt()),
@@ -302,46 +307,75 @@ class SurfacePainter(private val density: Float) {
     }
 
     /**
-     * The mechanism under a typewriter key: a polished stem from the middle of [body] down into the dark of the
-     * machine at [bottom], through a guide that stays put, with a collar under the key. The stem and collar go
-     * down with the key by [sink]. A long key (space, Enter) stands on two stems.
+     * A key lever of the typewriter: a steel strip [width] wide along [points] (x, y pairs: from the middle of
+     * the key, down past its collar, through the gap between the keys below and on into the machine), lit
+     * near [top] and dark at [bottom]. [rivet] puts a rivet on the bend where it passes between the keys.
      */
-    fun drawTypewriterStem(canvas: Canvas, body: RectF, bottom: Float, sink: Float = 0f) {
-        val w = maxOf(3f * density, body.height() * 0.12f)
-        val top = body.centerY() + sink
-        if (bottom <= top) return
-        val long = body.width() > body.height() * 1.3f
-        val first = if (long) body.left + body.height() / 2 else body.centerX()
-        val last = if (long) body.right - body.height() / 2 else body.centerX()
-        val guideY = body.bottom + (bottom - body.bottom) * 0.45f
-        val guideH = maxOf(2.5f * density, w * 0.9f)
-        var x = first
-        while (true) {
-            oval.set(x - w / 2, top, x + w / 2, bottom)
-            stretch(stemShade, oval)
-            fill.shader = stemShade
-            canvas.drawRect(oval, fill)
-            stretch(stemFade, oval)
-            fill.shader = stemFade
-            canvas.drawRect(oval, fill)
-            // The guide: a small dark block with a lit top edge, and the slot the stem goes into.
-            oval.set(x - w * 1.3f, guideY - guideH / 2, x + w * 1.3f, guideY + guideH / 2)
-            stretch(guideShade, oval)
-            fill.shader = guideShade
-            canvas.drawRoundRect(oval, guideH * 0.3f, guideH * 0.3f, fill)
-            fill.shader = null
-            fill.color = 0xD9000000.toInt()
-            canvas.drawRect(x - w / 2, guideY - guideH * 0.15f, x + w / 2, guideY + guideH * 0.15f, fill)
-            // The collar just under the key.
-            val collarY = body.bottom + sink - w * 0.1f
-            oval.set(x - w * 0.95f, collarY - w * 0.4f, x + w * 0.95f, collarY + w * 0.4f)
-            stretch(collarShade, oval)
-            fill.shader = collarShade
-            canvas.drawRoundRect(oval, w * 0.32f, w * 0.32f, fill)
-            fill.shader = null
-            if (x >= last) break
-            x = last
+    fun drawTypewriterLever(
+        canvas: Canvas, points: FloatArray, width: Float, top: Float, bottom: Float, rivet: Boolean, collar: Boolean = true,
+    ) {
+        if (points.size < 4) return
+        leverPath.reset()
+        leverPath.moveTo(points[0], points[1])
+        var i = 2
+        while (i + 1 < points.size) {
+            leverPath.lineTo(points[i], points[i + 1])
+            i += 2
         }
+        // A dark edge, so a lever stands apart from the one behind it.
+        leverPaint.shader = null
+        leverPaint.color = 0xCC000000.toInt()
+        leverPaint.strokeWidth = width + 1.6f * density
+        canvas.drawPath(leverPath, leverPaint)
+        matrix.setScale(1f, maxOf(1f, bottom - top))
+        matrix.postTranslate(0f, top)
+        leverShade.setLocalMatrix(matrix)
+        leverPaint.shader = leverShade
+        leverPaint.strokeWidth = width
+        canvas.drawPath(leverPath, leverPaint)
+        leverLight.setLocalMatrix(matrix)
+        leverPaint.shader = leverLight
+        leverPaint.strokeWidth = width * 0.32f
+        leverPath.offset(-width * 0.22f, 0f)
+        canvas.drawPath(leverPath, leverPaint)
+        leverPaint.shader = null
+        if (rivet && points.size >= 6) drawRivet(canvas, points[4], points[5], width * 0.62f)
+        if (!collar) return
+        // The collar just under the key.
+        val x = points[2]
+        val y = points[3]
+        oval.set(x - width * 0.95f, y - width * 0.4f, x + width * 0.95f, y + width * 0.4f)
+        stretch(collarShade, oval)
+        fill.shader = collarShade
+        canvas.drawRoundRect(oval, width * 0.3f, width * 0.3f, fill)
+        fill.shader = null
+    }
+
+    private fun drawRivet(canvas: Canvas, x: Float, y: Float, r: Float) {
+        matrix.setScale(r, r)
+        matrix.postTranslate(x, y)
+        rivetShade.setLocalMatrix(matrix)
+        fill.shader = rivetShade
+        canvas.drawCircle(x, y, r, fill)
+        fill.shader = null
+    }
+
+    /**
+     * What the round keys of a typewriter popup sit on: a dark backing over [rect] and a steel bar along its
+     * middle, with a rivet at each end.
+     */
+    fun drawTypewriterBar(canvas: Canvas, rect: RectF) {
+        fill.shader = null
+        fill.color = 0xEB000000.toInt()
+        val r = rect.height() / 2
+        canvas.drawRoundRect(rect, r, r, fill)
+        val w = maxOf(3f * density, rect.height() * 0.1f)
+        val y = rect.centerY()
+        val from = rect.left + r * 0.6f
+        val to = rect.right - r * 0.6f
+        drawTypewriterLever(canvas, floatArrayOf(from, y, to, y), w, rect.top, rect.bottom + rect.height(), rivet = false, collar = false)
+        drawRivet(canvas, from, y, w * 0.7f)
+        drawRivet(canvas, to, y, w * 0.7f)
     }
 
     /**

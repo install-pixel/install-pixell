@@ -3,6 +3,29 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
+## Next — 1.10.0
+
+- [ ] Next-word prediction from the two previous words (open texts and the user's own word triples).
+- [ ] The keyboard learns where the user's finger really lands on each key and moves the invisible
+      borders between keys.
+
+## Planned
+
+- [ ] PC remote over Bluetooth: touchpad (mouse), media keys, slides, a pad of shortcuts — comfortable.
+- [ ] Data guard: a gentle warning when a card number, IBAN, PESEL or a password-like text goes into a chat.
+- [ ] Hide numbers with stars (**** 1234) — optional.
+
+## 1.9.0 — the typewriter to the end, apostrophe, touchable text
+
+- [x] Key levers like the machine: each runs through the gap between the keys below and fans in towards a
+      fulcrum; a pressed key pulls its lever down; a rivet on the bend.
+- [x] Enlarged letter: a bigger round key; long-press choices: round keys on a steel bar.
+- [x] Sounds from the owner's recordings of a real typewriter; the margin bell eight characters before the
+      end of a 65-character line; Enter is the carriage return; a new sheet every 30 lines.
+- [x] Ukrainian apostrophe put back automatically where a known word has one (мясо → м'ясо).
+- [x] The text in the strip: tap a word to put the cursor there (its suggestions replace it), hold to
+      select it; tap elsewhere in the strip shows the buttons.
+
 ## 1.8.1 — a real typewriter
 
 - [x] Black Typewriter keys like the machine: a nickel rim with a line of light, rust only on the rim,

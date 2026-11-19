@@ -72,6 +72,9 @@ object AutoCorrect {
         if (typed.drop(1).any { it.isUpperCase() } && !typed.all { it.isUpperCase() }) return null
         val lower = typed.lowercase(language.locale)
         if (lower in rejected || known(lower)) return null
+        // Ukrainian: a word with its apostrophe in place is right; one without it gets it back first.
+        if (Apostrophes.isKnown(language, lower)) return null
+        Apostrophes.restore(language, lower)?.let { return WordRules.applyCase(it, typed, language) }
         val near = neighbours[language].orEmpty()
         val budget = if (lower.length >= TWO_SLIPS_FROM) TWO_SLIPS else ONE_SLIP
         var best: String? = null
