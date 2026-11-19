@@ -157,9 +157,22 @@ class KeyboardView(context: Context) : View(context) {
         isHapticFeedbackEnabled = true
     }
 
+    /**
+     * Set before [bind] when the next layout is another language or layer: on the typewriter the old keys
+     * slide out that way (1 = to the right) and the new ones slide in after them. 0: no slide.
+     */
+    var slideDirection = 0
+
+    private var slideFrom: android.graphics.Bitmap? = null
+    private var slideAt = 0L
+    private var slideWay = 0
+
     fun bind(layout: KeyboardLayout, labels: LabelContext, keyHeightDp: Float, highlight: (Key) -> KeyHighlight) {
         val heightChanged = dp(keyHeightDp) != keyHeightPx || layout.rows.size != this.layout.rows.size
         val layoutChanged = layout != this.layout
+        val way = slideDirection
+        slideDirection = 0
+        if (layoutChanged && way != 0) snapshotForSlide(way)
         this.layout = layout
         this.labelContext = labels
         this.highlight = highlight
@@ -230,76 +243,53 @@ class KeyboardView(context: Context) : View(context) {
             }
             top += keyHeightPx
         }
-        // Typewriter keys are all one size, as on the machine: as large as the narrowest key allows.
-        typewriterSide = keyRects.filter { it.first.style != KeyStyle.SPACER }
-            .minOfOrNull { minOf(it.second.width(), it.second.height()) - keyGap } ?: 0f
+        // Typewriter letter keys are all one size, as on the machine: as large as the narrowest allows.
+        typewriterSide = keyRects.filter { it.first.style != KeyStyle.SPACER && !isTypewriterBigKey(it.first) }
+            .minOfOrNull { minOf(it.second.width(), it.second.height()) - keyGap * KEY_GAP_SHARE } ?: 0f
     }
 
     /** The diameter of a round typewriter key (and the height of a long one). */
     private var typewriterSide = 0f
 
-    /** The typewriter key in the cell [inner]: a circle of [typewriterSide], or a pill as long as the cell. */
-    private fun typewriterBody(inner: RectF): RectF {
-        val d = typewriterSide.takeIf { it > 0f }?.coerceAtMost(minOf(inner.width(), inner.height()))
-            ?: minOf(inner.width(), inner.height())
-        val w = if (inner.width() <= inner.height() * 1.3f) d else inner.width()
-        return RectF(inner.centerX() - w / 2, inner.centerY() - d / 2, inner.centerX() + w / 2, inner.centerY() + d / 2)
+    /**
+     * The typewriter key in its [cell]: letters and marks are circles of [typewriterSide] (or pills as long
+     * as the cell); Shift, Backspace, Enter, the layer and language keys use their own room, a bigger circle
+     * or a taller pill, like the big keys of the machine.
+     */
+    private fun typewriterBody(cell: RectF, key: Key): RectF {
+        val gap = keyGap * KEY_GAP_SHARE
+        val cw = cell.width() - gap
+        val ch = cell.height() - gap
+        val side = typewriterSide.takeIf { it > 0f } ?: minOf(cw, ch)
+        val h = if (isTypewriterBigKey(key)) minOf(ch, cw, side * BIG_KEY_SCALE) else minOf(side, cw, ch)
+        val w = if (cw <= h * 1.3f) h else cw
+        return RectF(cell.centerX() - w / 2, cell.centerY() - h / 2, cell.centerX() + w / 2, cell.centerY() + h / 2)
     }
 
+    /** Keys that are not a letter or a mark: on the typewriter they take their own, bigger size. */
+    private fun isTypewriterBigKey(key: Key) = key.action !is KeyAction.Text
+
+    /** One of the most used letters of any of the languages: shows more wear on the typewriter. */
+    private fun isWorn(key: Key) = letterOf(key)?.let { it in WORN_LETTERS } == true
+
     /**
-     * The machine under typewriter keys: a steel lever from every key. It runs down through the gap between
-     * the keys of the row below and on towards a fulcrum far below the middle, so the levers fan in as on the
-     * machine; a pressed key pulls its lever down around that fulcrum.
+     * The machine behind the typewriter keys: a straight steel lever from every key up into the machine,
+     * towards where the letter strikes (the strip above); the levers pivot up there, so a pressed key pulls
+     * its end of the lever down.
      */
     private fun drawMachine(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
-        val bodies = keyRects.filter { it.first.style != KeyStyle.SPACER }.map { (key, rect) ->
-            Triple(key, rect, typewriterBody(RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)))
-        }
-        val rows = bodies.map { it.second.top }.distinct().sorted()
-        val fulcrumX = width / 2f
-        val fulcrumY = height + keyHeightPx * 2.6f
-        val bottom = height.toFloat()
-        canvas.save()
-        canvas.clipRect(0f, 0f, width.toFloat(), bottom)
-        for ((key, rect, body) in bodies) {
-            val row = rows.indexOf(rect.top)
-            val below = bodies.filter { row + 1 < rows.size && it.second.top == rows[row + 1] }.map { it.third }.sortedBy { it.left }
+        val w = maxOf(dp(2.4f), typewriterSide * 0.09f)
+        for ((key, rect) in keyRects) {
+            if (key.style == KeyStyle.SPACER) continue
+            val body = typewriterBody(rect, key)
             val sink = typewriterDepth(key, pressedKeys, now) * surfaces.typewriterSink
-            val w = maxOf(dp(2.6f), body.height() * 0.1f)
-            val cy = body.centerY()
             val long = body.width() > body.height() * 1.3f
-            val xs = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
-            for (cx in xs) {
-                // Where it passes the row below: the nearest gap on the side of the middle, or (under a long
-                // key, or in the bottom row) straight on towards the fulcrum.
-                val gy = below.firstOrNull()?.centerY() ?: (body.bottom + bottom) / 2
-                val straight = cx + (fulcrumX - cx) * ((gy - cy) / (fulcrumY - cy))
-                var gap = Float.NaN
-                for (j in 0 until below.size - 1) {
-                    val x = (below[j].right + below[j + 1].left) / 2
-                    val inward = (fulcrumX - cx) * (x - cx) >= 0f || abs(fulcrumX - cx) < 2f
-                    if (inward && (gap.isNaN() || abs(x - cx) < abs(gap - cx))) gap = x
-                }
-                val rivet = !gap.isNaN() && abs(gap - cx) < body.height() * 0.9f
-                val gx = if (rivet) gap else straight
-                // On beyond, towards the fulcrum, to below the bottom edge.
-                val k = (bottom + dp(4f) - gy) / (fulcrumY - gy)
-                val points = floatArrayOf(
-                    cx, cy,
-                    cx, body.bottom + body.height() * 0.18f,
-                    gx, gy,
-                    gx + (fulcrumX - gx) * k, gy + (fulcrumY - gy) * k,
-                )
-                // Pressed: the lever turns about the fulcrum, so each point goes down by its share of the sink.
-                var i = 1
-                while (i < points.size) {
-                    points[i] += sink * (fulcrumY - points[i]) / (fulcrumY - cy)
-                    i += 2
-                }
-                surfaces.drawTypewriterLever(canvas, points, w, cy, bottom, rivet)
+            val ends = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
+            for (x in ends) {
+                surfaces.drawTypewriterRod(canvas, x + (width / 2f - x) * LEVER_CONVERGE, -dp(2f), x, body.centerY() + sink, w)
             }
         }
-        canvas.restore()
+        surfaces.drawTypewriterDepth(canvas, width.toFloat(), dp(16f))
     }
 
     /**
@@ -310,15 +300,47 @@ class KeyboardView(context: Context) : View(context) {
         if (key in pressedKeys) return 1f
         val at = released[key] ?: return 0f
         val t = ((now - at) / TYPEWRITER_SPRING_MS.toFloat()).coerceIn(0f, 1f)
+        // Back up on its spring: a quick swing that dies away; above the rest it rises only a little.
         val left = 1f - t
-        return left * left * cos(t * 1.5f * Math.PI.toFloat())
+        val swing = left * left * left * cos(t * SPRING_SWINGS * 2f * Math.PI.toFloat())
+        return if (swing < 0f) swing * SPRING_OVERSHOOT else swing
     }
 
     // ------------------------------------------------------------------ drawing
 
+    /** Keeps a picture of the keys as they are now, to slide out while the new layout slides in. */
+    private fun snapshotForSlide(way: Int) {
+        val ctx = labelContext ?: return
+        if (theme.style != SurfaceStyle.TYPEWRITER || width == 0 || height == 0 || keyRects.isEmpty()) return
+        val bitmap = slideFrom?.takeIf { it.width == width && it.height == height }
+            ?: runCatching { android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull()
+            ?: return
+        bitmap.eraseColor(theme.background)
+        drawKeys(Canvas(bitmap), ctx, SystemClock.uptimeMillis())
+        slideFrom = bitmap
+        slideAt = SystemClock.uptimeMillis()
+        slideWay = way
+    }
+
     override fun onDraw(canvas: Canvas) {
         val ctx = labelContext ?: return
         val now = SystemClock.uptimeMillis()
+        // Switching layouts on the typewriter: the old keys slide out, the new ones follow them in.
+        val old = slideFrom
+        val slide = if (old != null) ((now - slideAt) / SLIDE_MS.toFloat()).coerceIn(0f, 1f) else 1f
+        if (old != null && slide < 1f) {
+            val e = 1f - (1f - slide) * (1f - slide)
+            canvas.save()
+            canvas.translate(slideWay * e * width, 0f)
+            canvas.drawBitmap(old, 0f, 0f, null)
+            canvas.restore()
+            canvas.save()
+            canvas.translate(-slideWay * (1f - e) * width, 0f)
+            drawKeys(canvas, ctx, now)
+            canvas.restore()
+            postInvalidateOnAnimation()
+            return
+        }
         drawKeys(canvas, ctx, now)
         val p = popup
         updateBubbles(if (p != null) emptyList() else previewBubbles(ctx), now)
@@ -333,14 +355,14 @@ class KeyboardView(context: Context) : View(context) {
         // Keep drawing while something fades or grows; nothing is redrawn once it all stands still.
         // A letter that has fully grown and is still held stands still: no more frames until something changes.
         val moving = bubbles.any { !it.pressed || it.shown < 1f } || closing != null || (p != null && now - popupAt < POPUP_FADE_MS) ||
-            released.values.any { now - it < RELEASE_FADE_MS }
+            released.values.any { now - it < RELEASE_KEEP_MS }
         if (moving) postInvalidateOnAnimation()
     }
 
     private fun drawKeys(canvas: Canvas, ctx: LabelContext, now: Long) {
         val pressedKeys = HashSet<Key>()
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
-        released.entries.removeAll { now - it.value >= RELEASE_FADE_MS }
+        released.entries.removeAll { now - it.value >= RELEASE_KEEP_MS }
 
         val typewriter = theme.style == SurfaceStyle.TYPEWRITER
         if (typewriter) drawMachine(canvas, pressedKeys, now)
@@ -365,11 +387,13 @@ class KeyboardView(context: Context) : View(context) {
                 color = if (isAction) t.confirm else t.text
                 if (typewriter) {
                     // A typewriter key goes down and springs back up instead of glowing.
-                    val body = typewriterBody(inner)
+                    val body = typewriterBody(rect, key)
                     val depth = typewriterDepth(key, pressedKeys, now)
                     surfaces.typewriterDepth = depth
+                    surfaces.typewriterWorn = isWorn(key)
                     surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
                     surfaces.typewriterDepth = -2f
+                    surfaces.typewriterWorn = false
                     val rim = surfaces.typewriterRim(body.height())
                     face = RectF(body).apply {
                         inset(rim, rim)
@@ -406,7 +430,9 @@ class KeyboardView(context: Context) : View(context) {
                 }
                 Icons.draw(canvas, icon, face.centerX(), face.centerY(), size, color)
             } else {
-                drawLabel(canvas, face, KeyLabels.label(key, ctx), color, key)
+                // On the most used typewriter keys the paint of the letter is a little worn.
+                val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
+                drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
@@ -522,7 +548,10 @@ class KeyboardView(context: Context) : View(context) {
             // The typewriter shows a bigger round key with the same rim, rising above the finger.
             val d = minOf(bubble.width(), bubble.height())
             val body = RectF(bubble.centerX() - d / 2, bubble.bottom - d, bubble.centerX() + d / 2, bubble.bottom)
-            surfaces.draw(canvas, body, radius, theme.style, theme.key, seed = b.label.hashCode())
+            // The same key, only bigger: the same rust and scratches in the same places.
+            surfaces.typewriterWorn = isWorn(b.key)
+            surfaces.draw(canvas, body, radius, theme.style, theme.key, seed = keyRects.indexOfFirst { it.first === b.key })
+            surfaces.typewriterWorn = false
             val rim = surfaces.typewriterRim(d)
             body.inset(rim, rim)
             drawLabel(canvas, body, b.label, theme.text, b.key)
@@ -866,6 +895,8 @@ class KeyboardView(context: Context) : View(context) {
                 listener?.onBackspaceSwipe(state.swipeWords, done = true)
             } else if (key != null && !state.repeating && !state.longPressFired && !state.swipeConsumed) {
                 listener?.onKey(key)
+                // The typewriter key springs back up: a light tick as it comes up.
+                if (theme.style == SurfaceStyle.TYPEWRITER) feedback(light = true)
                 // A plain tap on a letter: where the finger landed on it.
                 val model = touchModel
                 val letter = letterOf(key)
@@ -936,9 +967,24 @@ class KeyboardView(context: Context) : View(context) {
         const val BUBBLE_OUT_MS = 150L
         const val POPUP_FADE_MS = 130L
         const val RELEASE_FADE_MS = 170L
+        /** How long a layout takes to slide out and the next one in (typewriter). */
+        const val SLIDE_MS = 180L
         /** How far around a touch (a share of a key) neighbouring keys compete for it. */
         const val NEAR = 0.35f
         /** How long a released typewriter key takes to spring back up (within [RELEASE_FADE_MS]). */
-        const val TYPEWRITER_SPRING_MS = 140L
+        const val TYPEWRITER_SPRING_MS = 260L
+        const val SPRING_SWINGS = 2.5f
+        const val SPRING_OVERSHOOT = 0.35f
+        /** How long a released key is remembered: its glow fading out, or its spring. */
+        const val RELEASE_KEEP_MS = 280L
+        /** How far the typewriter levers lean in towards the middle as they go up. */
+        const val LEVER_CONVERGE = 0.06f
+        /** The share of the gap between keys the typewriter keeps (the round keys use the rest). */
+        const val KEY_GAP_SHARE = 0.4f
+        /** How much bigger than a letter the typewriter's big keys (Shift, Enter…) may be. */
+        const val BIG_KEY_SCALE = 1.18f
+        /** The most used letters of Ukrainian, Polish and English: the most worn keys of the typewriter. */
+        const val WORN_LETTERS = "оаеинтрсвaeoinztrs"
+        const val WORN_INK = 0.82f
     }
 }

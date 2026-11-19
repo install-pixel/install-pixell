@@ -2,6 +2,7 @@ package com.offlinekeyboard.keyboard
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
 import android.graphics.LinearGradient
@@ -174,7 +175,7 @@ class SurfacePainter(private val density: Float) {
     // Three stops at most (see glassRim).
     private val metalRim = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xFFD9D3C3.toInt(), 0xFF4F4A41.toInt(), 0xFF8F897B.toInt()),
+        intArrayOf(0xFFF4F1E8.toInt(), 0xFF3A362F.toInt(), 0xFFBDB7A8.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
@@ -221,6 +222,20 @@ class SurfacePainter(private val density: Float) {
         floatArrayOf(0f, 0.6f, 1f),
         Shader.TileMode.CLAMP,
     )
+    // A key lever seen from the front: dark deep in the machine (up), lit near its key (down).
+    private val rodShade = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFF0C0B0A.toInt(), 0xFF3A362F.toInt(), 0xFF6A655A.toInt()),
+        floatArrayOf(0f, 0.5f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val rodLight = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0x00000000, 0x40DCD4C3, 0xB3EBE4D4.toInt()),
+        floatArrayOf(0f, 0.6f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val depthShade = LinearGradient(0f, 0f, 0f, 1f, 0xE6000000.toInt(), 0x00000000, Shader.TileMode.CLAMP)
     // A round rivet head, lit from the upper left.
     private val rivetShade = RadialGradient(
         -0.3f, -0.3f, 1.3f,
@@ -254,17 +269,17 @@ class SurfacePainter(private val density: Float) {
      * The marks of age on one key, in fractions of its size: rust pitting the rim (angle, depth into the rim,
      * size, colour, strength for every pit) and fine scratches on the cap (x, y, angle, length, strength).
      */
-    private class Wear(val rust: FloatArray, val scratches: FloatArray)
+    private class Wear(val rust: FloatArray, val scratches: FloatArray, val fewScratches: Int)
 
     private fun wearOf(seed: Int, plate: Boolean): Wear = wear.getOrPut(seed * 2 + if (plate) 1 else 0) {
         val random = Random(seed * 7919 + 17)
-        // Most keys are clean; some have one or two corroded stretches of rim, a plate a few more.
-        val patches = (if (plate) 1 else 0) + when (random.nextInt(8)) { in 0..2 -> 0; in 3..5 -> 1; else -> 2 }
+        // A machine in use: about one key in six has a short corroded stretch of rim.
+        val patches = if (random.nextInt(6) == 0) 1 else 0
         val pits = ArrayList<Float>()
         repeat(patches) {
             val from = random.nextFloat() * 6.2832f
-            val span = 0.35f + random.nextFloat() * 0.9f
-            val n = (14 + span * 30).toInt()
+            val span = 0.2f + random.nextFloat() * 0.35f
+            val n = (8 + span * 22).toInt()
             for (i in 0 until n) {
                 pits += from + span * i / n + (random.nextFloat() - 0.5f) * 0.12f
                 pits += random.nextFloat().pow(1.8f) // mostly at the outer edge, where the nickel wore through
@@ -273,8 +288,8 @@ class SurfacePainter(private val density: Float) {
                 pits += 0.35f + random.nextFloat() * 0.45f
             }
         }
-        val lines = 1 + random.nextInt(3)
-        val scratches = FloatArray(lines * 5) { i ->
+        // Up to five fine scratches: a key used often shows them all, a rarely used one at most one.
+        val scratches = FloatArray(MAX_SCRATCHES * 5) { i ->
             when (i % 5) {
                 0, 1 -> 0.2f + random.nextFloat() * 0.6f
                 2 -> random.nextFloat() * 3.1416f
@@ -282,7 +297,7 @@ class SurfacePainter(private val density: Float) {
                 else -> 0.06f + random.nextFloat() * 0.06f
             }
         }
-        Wear(pits.toFloatArray(), scratches)
+        Wear(pits.toFloatArray(), scratches, random.nextInt(2))
     }
 
     /** How wide the metal rim of a typewriter key is, for a key [height] tall (labels stay inside it). */
@@ -290,7 +305,7 @@ class SurfacePainter(private val density: Float) {
         if (plate) 2.4f * density else maxOf(2.6f * density, height / 2f * 0.19f)
 
     /** How far a pressed typewriter key goes down. */
-    val typewriterSink: Float get() = 3f * density
+    val typewriterSink: Float get() = 4.5f * density
 
     /** A soft light or shadow: [shader] (made over a unit circle) stretched to the ellipse at [cx], [cy]. */
     private fun softEllipse(canvas: Canvas, shader: Shader, cx: Float, cy: Float, rx: Float, ry: Float, alpha: Float = 1f) {
@@ -351,6 +366,39 @@ class SurfacePainter(private val density: Float) {
         fill.shader = null
     }
 
+    /**
+     * A key lever of the typewriter: a straight steel strip [width] wide from its pivot deep in the machine
+     * ([topX], [topY]) down to its key ([keyX], [keyY]); the keys in front hide all but the gaps between rows.
+     */
+    fun drawTypewriterRod(canvas: Canvas, topX: Float, topY: Float, keyX: Float, keyY: Float, width: Float) {
+        if (keyY <= topY) return
+        matrix.setScale(1f, keyY - topY)
+        matrix.postTranslate(0f, topY)
+        leverPaint.strokeCap = Paint.Cap.BUTT
+        leverPaint.shader = null
+        leverPaint.color = 0xD9000000.toInt()
+        leverPaint.strokeWidth = width + 1f * density
+        canvas.drawLine(topX, topY, keyX, keyY, leverPaint)
+        rodShade.setLocalMatrix(matrix)
+        leverPaint.shader = rodShade
+        leverPaint.strokeWidth = width
+        canvas.drawLine(topX, topY, keyX, keyY, leverPaint)
+        rodLight.setLocalMatrix(matrix)
+        leverPaint.shader = rodLight
+        leverPaint.strokeWidth = width * 0.3f
+        canvas.drawLine(topX - width * 0.22f, topY, keyX - width * 0.22f, keyY, leverPaint)
+        leverPaint.shader = null
+    }
+
+    /** The dark depth of the machine under its top edge, where the levers go in ([height] tall). */
+    fun drawTypewriterDepth(canvas: Canvas, width: Float, height: Float) {
+        oval.set(0f, 0f, width, height)
+        stretch(depthShade, oval)
+        fill.shader = depthShade
+        canvas.drawRect(oval, fill)
+        fill.shader = null
+    }
+
     private fun drawRivet(canvas: Canvas, x: Float, y: Float, r: Float) {
         matrix.setScale(r, r)
         matrix.postTranslate(x, y)
@@ -383,6 +431,9 @@ class SurfacePainter(private val density: Float) {
      * the spring of a key coming back up (a little below 0 as it overshoots); below -1 follows the state.
      */
     var typewriterDepth = -2f
+
+    /** Whether the next typewriter key is one of the most used letters: more fine scratches on it. */
+    var typewriterWorn = false
 
     /**
      * An old typewriter key, round when [rect] is square and a pill when it is long, or a rounded plate for
@@ -426,6 +477,17 @@ class SurfacePainter(private val density: Float) {
         fill.shader = null
 
         val rimWidth = typewriterRim(rect.height(), plate)
+        // Chrome: a dark band round the middle of the rim and a bright lip at its inner edge.
+        wearPaint.shader = null
+        wearPaint.style = Paint.Style.STROKE
+        for ((at, width, colour) in BEVELS) {
+            wearPaint.strokeWidth = rimWidth * width
+            wearPaint.color = colour
+            wearPaint.alpha = (Color.alpha(colour) * lit).toInt()
+            val inset = rimWidth * at
+            oval.set(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset)
+            canvas.drawRoundRect(oval, maxOf(0f, corner - inset), maxOf(0f, corner - inset), wearPaint)
+        }
         // A bright line of light along the upper left of the rim, soft at its edges.
         wearPaint.shader = null
         wearPaint.style = Paint.Style.STROKE
@@ -510,8 +572,9 @@ class SurfacePainter(private val density: Float) {
         wearPaint.color = 0xFFFFFFFF.toInt()
         val sc = marks.scratches
         val scale = minOf(iw, capRect.height(), 48f * density)
+        val shown = (if (typewriterWorn) MAX_SCRATCHES - marks.fewScratches else marks.fewScratches) * 5
         i = 0
-        while (i + 4 < sc.size) {
+        while (i + 4 < minOf(sc.size, shown)) {
             val x = capRect.left + sc[i] * iw
             val y = capRect.top + sc[i + 1] * capRect.height()
             val len = sc[i + 3] * scale
@@ -532,7 +595,10 @@ class SurfacePainter(private val density: Float) {
     private companion object {
         val RUST = intArrayOf(0xFF602E14.toInt(), 0xFF78401E.toInt(), 0xFF3E1E0E.toInt(), 0xFF8A5028.toInt())
         // The rim's line of light: a wide faint stroke under a narrow bright one.
-        val HIGHLIGHT = arrayOf(0.7f to 0.18f, 0.35f to 0.45f)
+        val HIGHLIGHT = arrayOf(0.7f to 0.22f, 0.3f to 0.7f)
+        /** Chrome bevels on the rim: where (a share of the rim from the outside), how wide, what colour. */
+        val BEVELS = arrayOf(Triple(0.55f, 0.22f, 0x47000000), Triple(0.9f, 0.16f, 0x38FFFFFF))
+        const val MAX_SCRATCHES = 5
     }
 }
 

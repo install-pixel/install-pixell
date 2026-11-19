@@ -265,6 +265,7 @@ class KeyboardService : InputMethodService(),
         super.onStartInputView(info, restarting)
         if (!restarting) controller.onStartField(currentField.isNumeric, currentField.isPhone)
         carriageColumn = -1
+        lastShown = null
         if (settings.learnTouch) touchModel.refresh()
         selStart = info?.let { minOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         selEnd = info?.let { maxOf(it.initialSelStart, it.initialSelEnd) } ?: -1
@@ -557,6 +558,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onSpaceSwipe(step: Int) {
         if (!settings.spaceSwipeSwitchesLanguage) return
+        swipeWay = if (step > 0) 1 else -1
         controller.nextLanguage(step)
         render()
     }
@@ -1109,6 +1111,17 @@ class KeyboardService : InputMethodService(),
     /** The typewriter's key sounds, made when the keyboard is first drawn. */
     private var keySounds: KeySounds? = null
 
+    /** The language, layer and mode last drawn (null: none yet in this field), and the way of a language swipe. */
+    private var lastShown: Triple<Language, Layer, KeyboardMode>? = null
+    private var swipeWay: Int? = null
+
+    /** How far a layer is from the letters: going deeper slides to the right, coming back to the left. */
+    private fun layerDepth(layer: Layer) = when (layer) {
+        Layer.LETTERS -> 0
+        Layer.SYMBOLS_MORE -> 2
+        else -> 1
+    }
+
     /** The selection in the field (start ≤ end; -1 while unknown), as last reported or as we just set it. */
     private var selStart = -1
     private var selEnd = -1
@@ -1428,6 +1441,18 @@ class KeyboardService : InputMethodService(),
         // A layer with more rows gets lower keys instead.
         val mobileRows = LayoutProvider.layout(KeyboardMode.MOBILE, controller.language, Layer.LETTERS, false).rows.size
         val keyHeight = if (layout.rows.isEmpty()) MOBILE_KEY_DP else MOBILE_KEY_DP * mobileRows / layout.rows.size
+        // Another language or layer: which way the keys slide (from the letters away: to the right; back to
+        // the letters: to the left; the language key always the same way round; a swipe its own way).
+        val shown = Triple(controller.language, controller.layer, controller.mode)
+        val before = lastShown
+        lastShown = shown
+        root.keyboardView.slideDirection = when {
+            before == null || before == shown -> 0
+            before.third != shown.third -> 1
+            before.second != shown.second -> if (layerDepth(shown.second) < layerDepth(before.second)) -1 else 1
+            else -> swipeWay ?: 1
+        }
+        swipeWay = null
         root.keyboardView.bind(
             layout = layout,
             labels = labels,
