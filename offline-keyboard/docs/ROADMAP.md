@@ -17,6 +17,12 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] No Ukrainian words in the Polish or English list and no Latin words in the Ukrainian one.
 - [x] Louder typewriter sounds at full volume.
 
+## 1.11.1 — fix
+
+- [x] No crash when the strip's text changes quickly (dictation with translation): the delayed scroll to
+      the cursor checks the text shown at that moment.
+- [x] The app shows its real version again (it showed 1.8.0).
+
 ## 1.11.0 — the typewriter: paper, straight levers, one machine
 
 - [x] The strip lies on black, slightly crumpled charcoal paper (typewriter only).
