@@ -572,9 +572,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             }
             // The cursor in view (the newest text when it is at the end); the rest is a swipe away.
             statusScroll.post {
+                // Runs a moment later: by then dictation or a translation may have changed the text, so the
+                // cursor is checked against the text shown now.
                 val layout = status.layout
-                val x = if (isEcho && layout != null && echoCursor in 0 until text.length) {
-                    (status.totalPaddingLeft + layout.getPrimaryHorizontal(echoCursor) - statusScroll.width * 0.75f).toInt()
+                val cursor = echoCursor
+                val x = if (showingEcho && layout != null && cursor in 0 until layout.text.length) {
+                    runCatching { status.totalPaddingLeft + layout.getPrimaryHorizontal(cursor) - statusScroll.width * 0.75f }
+                        .getOrDefault(status.width.toFloat()).toInt()
                 } else {
                     status.width
                 }
