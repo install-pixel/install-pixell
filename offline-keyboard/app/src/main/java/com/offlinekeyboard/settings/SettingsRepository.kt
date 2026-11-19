@@ -48,6 +48,10 @@ data class KeyboardSettings(
     val backspaceSwipe: Boolean = true,
     /** Holding the space bar and sliding moves the cursor (iOS-style). */
     val spaceCursor: Boolean = true,
+    /** Next words from the two words before (not only the last one). */
+    val longContext: Boolean = true,
+    /** The keyboard learns where the finger lands on each letter. */
+    val learnTouch: Boolean = true,
     /** Typewriter key sounds (Black Typewriter style only for now) and their volume, 0–1. */
     val keySound: Boolean = true,
     val keySoundVolume: Float = 0.6f,
@@ -122,6 +126,8 @@ class SettingsRepository(context: Context) {
             prefs[Keys.COMPACT_TOOLBAR] = updated.compactToolbar
             prefs[Keys.BACKSPACE_SWIPE] = updated.backspaceSwipe
             prefs[Keys.SPACE_CURSOR] = updated.spaceCursor
+            prefs[Keys.LONG_CONTEXT] = updated.longContext
+            prefs[Keys.LEARN_TOUCH] = updated.learnTouch
             prefs[Keys.KEY_SOUND] = updated.keySound
             prefs[Keys.KEY_SOUND_VOLUME] = updated.keySoundVolume
             prefs[Keys.AUTO_CORRECT] = updated.autoCorrect
@@ -218,6 +224,8 @@ class SettingsRepository(context: Context) {
             compactToolbar = this[Keys.COMPACT_TOOLBAR] ?: defaults.compactToolbar,
             backspaceSwipe = this[Keys.BACKSPACE_SWIPE] ?: defaults.backspaceSwipe,
             spaceCursor = this[Keys.SPACE_CURSOR] ?: defaults.spaceCursor,
+            longContext = this[Keys.LONG_CONTEXT] ?: defaults.longContext,
+            learnTouch = this[Keys.LEARN_TOUCH] ?: defaults.learnTouch,
             keySound = this[Keys.KEY_SOUND] ?: defaults.keySound,
             keySoundVolume = (this[Keys.KEY_SOUND_VOLUME] ?: defaults.keySoundVolume).coerceIn(0f, 1f),
             autoCorrect = this[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
@@ -264,6 +272,8 @@ class SettingsRepository(context: Context) {
         val COMPACT_TOOLBAR = booleanPreferencesKey("compact_toolbar")
         val BACKSPACE_SWIPE = booleanPreferencesKey("backspace_swipe")
         val SPACE_CURSOR = booleanPreferencesKey("space_cursor")
+        val LONG_CONTEXT = booleanPreferencesKey("long_context")
+        val LEARN_TOUCH = booleanPreferencesKey("learn_touch")
         val KEY_SOUND = booleanPreferencesKey("key_sound")
         val KEY_SOUND_VOLUME = floatPreferencesKey("key_sound_volume")
         val AUTO_CORRECT = booleanPreferencesKey("auto_correct")

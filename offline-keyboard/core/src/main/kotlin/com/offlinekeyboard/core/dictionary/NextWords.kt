@@ -13,21 +13,38 @@ import java.util.EnumMap
 object NextWords {
 
     private val lists = EnumMap<Language, Map<String, List<String>>>(Language::class.java)
+    private val lists2 = EnumMap<Language, Map<String, List<String>>>(Language::class.java)
 
     /** The shipped next words of [previous] (lower case), most frequent first. */
     fun base(language: Language, previous: String): List<String> = synchronized(lists) {
-        lists.getOrPut(language) { load(language) }
+        lists.getOrPut(language) { load(language, "_next") }
     }[previous.lowercase(language.locale)].orEmpty()
 
-    /** Up to [limit] predictions after [previous]: the user's own pairs seen at least twice, then the base list. */
-    fun predict(language: Language, previous: String, own: WordPairs?, limit: Int = 3): List<String> {
+    /** The shipped next words after two words ("я тебе"), most frequent first. */
+    fun base2(language: Language, earlier: String, previous: String): List<String> = synchronized(lists2) {
+        lists2.getOrPut(language) { load(language, "_next2") }
+    }["${earlier.lowercase(language.locale)} ${previous.lowercase(language.locale)}"].orEmpty()
+
+    /**
+     * Up to [limit] predictions after [previous] (and [earlier], the word before it, when known): what
+     * follows both words first (the user's own, then the shipped lists), then what follows the last word
+     * (the user's own pairs seen at least twice, then the shipped list).
+     */
+    fun predict(language: Language, previous: String, own: WordPairs?, limit: Int = 3, earlier: String? = null): List<String> {
         if (previous.isEmpty()) return emptyList()
         val out = LinkedHashMap<String, String>()
-        own?.top(language, previous, limit)?.forEach { out.putIfAbsent(it.lowercase(language.locale), it) }
-        for (word in base(language, previous)) {
-            if (out.size >= limit) break
-            out.putIfAbsent(word.lowercase(language.locale), word)
+        fun add(words: List<String>) {
+            for (word in words) {
+                if (out.size >= limit) return
+                out.putIfAbsent(word.lowercase(language.locale), word)
+            }
         }
+        if (!earlier.isNullOrEmpty()) {
+            own?.let { add(it.top(language, "$earlier $previous", limit)) }
+            add(base2(language, earlier, previous))
+        }
+        own?.let { add(it.top(language, previous, limit)) }
+        add(base(language, previous))
         return out.values.take(limit)
     }
 
@@ -42,8 +59,8 @@ object NextWords {
         return map
     }
 
-    private fun load(language: Language): Map<String, List<String>> {
-        val name = "/dictionary/${language.name.lowercase()}_next.txt"
+    private fun load(language: Language, suffix: String): Map<String, List<String>> {
+        val name = "/dictionary/${language.name.lowercase()}$suffix.txt"
         val text = NextWords::class.java.getResourceAsStream(name)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
             ?: return emptyMap()
         return parse(text)
@@ -65,7 +82,9 @@ class WordPairs(private val maxWords: Int = DEFAULT_MAX_WORDS) {
     fun learn(language: Language, previous: String, next: String) {
         val a = previous.lowercase(language.locale)
         val b = WordRules.normalizeForStorage(next) ?: return
-        if (a.isEmpty() || a.length > MAX_LENGTH) return
+        // [previous] is one word, or two ("я тебе") for what follows a pair of words.
+        if (a.isEmpty() || a.length > MAX_LENGTH * 2 + 1) return
+        if (!WordRules.fitsLanguage(a, language) || !WordRules.fitsLanguage(b, language)) return
         val map = byLanguage.getOrPut(language) { HashMap() }
         val followers = map.getOrPut(a) { HashMap() }
         val key = b.lowercase(language.locale)
@@ -111,7 +130,8 @@ class WordPairs(private val maxWords: Int = DEFAULT_MAX_WORDS) {
     }
 
     companion object {
-        const val DEFAULT_MAX_WORDS = 3000
+        /** Previous words and pairs of words kept (the least used make room). */
+        const val DEFAULT_MAX_WORDS = 6000
         const val MAX_NEXT = 8
         const val MIN_COUNT = 2
         private const val MAX_LENGTH = 40

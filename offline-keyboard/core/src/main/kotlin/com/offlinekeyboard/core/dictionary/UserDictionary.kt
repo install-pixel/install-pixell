@@ -25,6 +25,9 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
     /** Records one use of [word]. Returns false when the word is not something worth learning. */
     fun learn(language: Language, word: String, now: Long, weight: Int = 1): Boolean {
         val clean = WordRules.normalizeForStorage(word) ?: return false
+        // A Ukrainian word never goes into the Polish list or the other way round (a word typed just before
+        // switching the language, a translation, a dictation in the other language).
+        if (!WordRules.fitsLanguage(clean, language)) return false
         val map = byLanguage.getOrPut(language) { HashMap() }
         val key = clean.lowercase(language.locale)
         val old = map[key]
@@ -134,6 +137,8 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
                 val count = parts[2].toIntOrNull() ?: continue
                 val lastUsed = parts[3].toLongOrNull() ?: continue
                 val word = WordRules.normalizeForStorage(parts[1]) ?: continue
+                // Words of the other alphabet saved by older versions are dropped.
+                if (!WordRules.fitsLanguage(word, language)) continue
                 val map = dict.byLanguage.getOrPut(language) { HashMap() }
                 map[word.lowercase(language.locale)] = Entry(word, count.coerceAtLeast(1), lastUsed)
             }
@@ -174,6 +179,16 @@ object WordRules {
         if (!w.all { isWordChar(it) } || w.none { it.isLetter() }) return null
         val rest = w.substring(1)
         return if (w[0].isUpperCase() && rest.none { it.isUpperCase() }) w.lowercase() else w
+    }
+
+    /** Whether every letter of [word] is of [language]'s alphabet: Cyrillic for Ukrainian, Latin otherwise. */
+    fun fitsLanguage(word: String, language: Language): Boolean {
+        val script = if (language == Language.UK) Character.UnicodeScript.CYRILLIC else Character.UnicodeScript.LATIN
+        // ʼ (a "letter" of no particular alphabet) and combining marks fit every language.
+        return word.all {
+            val of = Character.UnicodeScript.of(it.code)
+            !it.isLetter() || of == script || of == Character.UnicodeScript.COMMON || of == Character.UnicodeScript.INHERITED
+        }
     }
 
     fun applyCase(word: String, typedPrefix: String, language: Language): String = when {

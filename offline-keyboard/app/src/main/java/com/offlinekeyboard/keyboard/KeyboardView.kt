@@ -165,7 +165,10 @@ class KeyboardView(context: Context) : View(context) {
         this.highlight = highlight
         keyHeightPx = dp(keyHeightDp)
         if (layoutChanged) {
-            cancelAllPointers()
+            // Sliding the cursor on the space bar goes on through a new layout (Shift turning on at the start
+            // of a sentence); anything else under a finger is let go.
+            val sliding = (0 until pointers.size()).any { pointers.valueAt(it).cursorMode }
+            if (!sliding) cancelAllPointers()
             computeKeyRects()
         }
         if (heightChanged) requestLayout()
@@ -699,11 +702,50 @@ class KeyboardView(context: Context) : View(context) {
         return true
     }
 
+    /** Where the user's finger lands on each letter (null: the keys' own borders only). */
+    var touchModel: TouchModel? = null
+
     private fun keyAt(x: Float, y: Float): Key? {
-        keyRects.firstOrNull { (_, r) -> r.contains(x, y) }?.let { return it.first.takeIf { k -> k.style != KeyStyle.SPACER } }
-        // Touches in the gaps or just outside go to the nearest key.
-        return keyRects.filter { it.first.style != KeyStyle.SPACER }
-            .minByOrNull { (_, r) -> distanceSq(r, x, y) }?.first
+        val hit = keyRects.firstOrNull { (_, r) -> r.contains(x, y) }?.first?.takeIf { k -> k.style != KeyStyle.SPACER }
+            // Touches in the gaps or just outside go to the nearest key.
+            ?: keyRects.filter { it.first.style != KeyStyle.SPACER }.minByOrNull { (_, r) -> distanceSq(r, x, y) }?.first
+        return learnedKey(hit, x, y)
+    }
+
+    /** The letter a touch is meant for: near a border, the key whose learned spot is nearer to it. */
+    private fun learnedKey(hit: Key?, x: Float, y: Float): Key? {
+        val model = touchModel ?: return hit
+        val hitLetter = hit?.let(::letterOf) ?: return hit
+        val hitRect = keyRects.firstOrNull { it.first === hit }?.second ?: return hit
+        var best = hit
+        var bestDistance = spotDistance(model, hitLetter, hitRect, x, y)
+        for ((key, rect) in keyRects) {
+            if (key === hit) continue
+            val letter = letterOf(key) ?: continue
+            // Only the keys right around the touch take part.
+            if (x < rect.left - rect.width() * NEAR || x > rect.right + rect.width() * NEAR ||
+                y < rect.top - rect.height() * NEAR || y > rect.bottom + rect.height() * NEAR
+            ) continue
+            val d = spotDistance(model, letter, rect, x, y)
+            if (d < bestDistance) {
+                best = key
+                bestDistance = d
+            }
+        }
+        return best
+    }
+
+    private fun spotDistance(model: TouchModel, letter: String, rect: RectF, x: Float, y: Float): Float {
+        val (ox, oy) = model.offset(letter)
+        val dx = (x - (rect.centerX() + ox * rect.width())) / rect.width()
+        val dy = (y - (rect.centerY() + oy * rect.height())) / rect.height()
+        return dx * dx + dy * dy
+    }
+
+    /** The letter a key types, lower case, if it is a single letter (the keys the touch model learns). */
+    private fun letterOf(key: Key): String? {
+        val text = (key.action as? KeyAction.Text)?.text ?: return null
+        return text.lowercase().takeIf { it.length == 1 && it[0].isLetter() }
     }
 
     private fun distanceSq(r: RectF, x: Float, y: Float): Float {
@@ -824,6 +866,13 @@ class KeyboardView(context: Context) : View(context) {
                 listener?.onBackspaceSwipe(state.swipeWords, done = true)
             } else if (key != null && !state.repeating && !state.longPressFired && !state.swipeConsumed) {
                 listener?.onKey(key)
+                // A plain tap on a letter: where the finger landed on it.
+                val model = touchModel
+                val letter = letterOf(key)
+                val rect = keyRects.firstOrNull { it.first === key }?.second
+                if (model != null && letter != null && rect != null) {
+                    model.learn(letter, (state.downX - rect.centerX()) / rect.width(), (state.downY - rect.centerY()) / rect.height())
+                }
             }
         }
         invalidate()
@@ -887,6 +936,8 @@ class KeyboardView(context: Context) : View(context) {
         const val BUBBLE_OUT_MS = 150L
         const val POPUP_FADE_MS = 130L
         const val RELEASE_FADE_MS = 170L
+        /** How far around a touch (a share of a key) neighbouring keys compete for it. */
+        const val NEAR = 0.35f
         /** How long a released typewriter key takes to spring back up (within [RELEASE_FADE_MS]). */
         const val TYPEWRITER_SPRING_MS = 140L
     }

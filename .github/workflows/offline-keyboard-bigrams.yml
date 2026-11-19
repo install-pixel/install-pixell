@@ -31,4 +31,4 @@ jobs:
           name: OffKey data (built lists)
           prerelease: true
           body: Lists built in CI for the keyboard (next words from Tatoeba, CC BY 2.0 FR).
-          files: offline-keyboard/core/src/main/resources/dictionary/*_next.txt
+          files: offline-keyboard/core/src/main/resources/dictionary/*_next*.txt

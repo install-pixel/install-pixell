@@ -90,6 +90,29 @@ internal fun Modifier.fadingEdges(scroll: ScrollState, length: Dp = 18.dp): Modi
         }
     }
 
+/** The same soft edges for a lazy list (a long list of words): faded while there is more that way. */
+internal fun Modifier.fadingEdges(list: androidx.compose.foundation.lazy.LazyListState, length: Dp = 18.dp): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val edge = length.toPx()
+        if (list.canScrollBackward) {
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black), startY = 0f, endY = edge),
+                size = Size(size.width, edge),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+        if (list.canScrollForward) {
+            drawRect(
+                brush = Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = size.height - edge, endY = size.height),
+                topLeft = Offset(0f, size.height - edge),
+                size = Size(size.width, edge),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+    }
+
 /**
  * A light spring at the ends of a scroll: dragging past the top or the bottom (also on a page shorter than
  * the screen) pulls the content a little, with growing resistance, and it springs back on release; a fling
