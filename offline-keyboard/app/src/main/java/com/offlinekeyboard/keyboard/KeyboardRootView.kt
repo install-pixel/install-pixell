@@ -267,11 +267,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     override fun onDraw(canvas: Canvas) {
         val color = fadeColor
-        if (fadePaint.shader == null || fadePaint.color != color) {
-            fadePaint.color = color
+        // On the typewriter the soft edge fades into the black paper of the strip, not into the keyboard.
+        val fadeTo = if (theme.style == SurfaceStyle.TYPEWRITER) PaperTexture.EDGE_COLOR else color
+        if (fadePaint.shader == null || fadePaint.color != fadeTo) {
+            fadePaint.color = fadeTo
             fadePaint.shader = LinearGradient(
                 0f, 0f, 0f, fadeHeight.toFloat(),
-                intArrayOf(color and 0x00FFFFFF, color), null, Shader.TileMode.CLAMP,
+                intArrayOf(fadeTo and 0x00FFFFFF, fadeTo), null, Shader.TileMode.CLAMP,
             )
         }
         canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)

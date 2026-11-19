@@ -235,7 +235,13 @@ class SurfacePainter(private val density: Float) {
         floatArrayOf(0f, 0.6f, 1f),
         Shader.TileMode.CLAMP,
     )
-    private val depthShade = LinearGradient(0f, 0f, 0f, 1f, 0xE6000000.toInt(), 0x00000000, Shader.TileMode.CLAMP)
+    // The machine's dark depth under the paper: the paper's shadow, black at its edge, fading down.
+    private val depthShade = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFF000000.toInt(), 0xCC000000.toInt(), 0x00000000),
+        floatArrayOf(0f, 0.2f, 1f),
+        Shader.TileMode.CLAMP,
+    )
     // A round rivet head, lit from the upper left.
     private val rivetShade = RadialGradient(
         -0.3f, -0.3f, 1.3f,
@@ -388,6 +394,39 @@ class SurfacePainter(private val density: Float) {
         leverPaint.strokeWidth = width * 0.3f
         canvas.drawLine(topX - width * 0.22f, topY, keyX - width * 0.22f, keyY, leverPaint)
         leverPaint.shader = null
+    }
+
+    /**
+     * The moving parts of a key lever that show: a collar on it just above its key ([x], [y], going down
+     * with the key) and, while the key is down ([depth] 0..1), a glint of light along the lever and a short
+     * flash at its top where the type strikes the paper ([topX], [topY]).
+     */
+    fun drawTypewriterLeverParts(
+        canvas: Canvas, topX: Float, topY: Float, x: Float, y: Float, width: Float, depth: Float,
+    ) {
+        if (depth > 0.02f) {
+            leverPaint.shader = null
+            leverPaint.strokeCap = Paint.Cap.ROUND
+            leverPaint.color = 0xFFFFF6E0.toInt()
+            leverPaint.alpha = (110 * depth.coerceAtMost(1f) * (0.55f + 0.45f * brightness)).toInt()
+            leverPaint.strokeWidth = width * 0.45f
+            canvas.drawLine(topX - width * 0.2f, topY, x - width * 0.2f, y, leverPaint)
+            // The type strikes: a short bright stroke where the lever goes in under the paper.
+            leverPaint.alpha = (200 * depth.coerceAtMost(1f)).toInt()
+            leverPaint.strokeWidth = width * 0.8f
+            val strike = 10f * density * depth.coerceAtMost(1f)
+            canvas.drawLine(topX, topY + 3f * density, topX + (x - topX) * 0.02f, topY + 3f * density + strike, leverPaint)
+            leverPaint.alpha = 0xFF
+            leverPaint.strokeCap = Paint.Cap.BUTT
+        }
+        oval.set(x - width * 1.05f, y - width * 0.45f, x + width * 1.05f, y + width * 0.45f)
+        stretch(collarShade, oval)
+        fill.shader = collarShade
+        canvas.drawRoundRect(oval, width * 0.3f, width * 0.3f, fill)
+        fill.shader = null
+        // A screw in the collar.
+        fill.color = 0xFF1A1815.toInt()
+        canvas.drawCircle(x, y, width * 0.18f, fill)
     }
 
     /** The dark depth of the machine under its top edge, where the levers go in ([height] tall). */

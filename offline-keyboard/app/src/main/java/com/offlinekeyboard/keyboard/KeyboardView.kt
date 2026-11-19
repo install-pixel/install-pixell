@@ -289,7 +289,26 @@ class KeyboardView(context: Context) : View(context) {
                 surfaces.drawTypewriterRod(canvas, x + (width / 2f - x) * LEVER_CONVERGE, -dp(2f), x, body.centerY() + sink, w)
             }
         }
-        surfaces.drawTypewriterDepth(canvas, width.toFloat(), dp(16f))
+        surfaces.drawTypewriterDepth(canvas, width.toFloat(), dp(18f))
+        // What moves on the levers: a collar just above every key, going down with it, and on a pressed key
+        // a glint along its lever and the strike at its top.
+        for ((key, rect) in keyRects) {
+            if (key.style == KeyStyle.SPACER) continue
+            val body = typewriterBody(rect, key)
+            val depth = typewriterDepth(key, pressedKeys, now)
+            val sink = depth * surfaces.typewriterSink
+            val long = body.width() > body.height() * 1.3f
+            val ends = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
+            for (x in ends) {
+                val topX = x + (width / 2f - x) * LEVER_CONVERGE
+                val keyY = body.centerY() + sink
+                val collarY = body.top + sink - w * 0.9f
+                // The collar sits on the lever: where the lever is at that height.
+                val t = ((collarY + dp(2f)) / (keyY + dp(2f))).coerceIn(0f, 1f)
+                val collarX = topX + (x - topX) * t
+                surfaces.drawTypewriterLeverParts(canvas, topX, 0f, collarX, collarY, w, depth.coerceAtLeast(0f))
+            }
+        }
     }
 
     /**
