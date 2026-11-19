@@ -17,6 +17,13 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] No Ukrainian words in the Polish or English list and no Latin words in the Ukrainian one.
 - [x] Louder typewriter sounds at full volume.
 
+## 1.11.2 — levers that move, paper edges
+
+- [x] Every lever has a collar just above its key that goes down with the key; a pressed key's lever
+      catches the light and its type strikes up under the paper.
+- [x] The soft top edge of the keyboard fades into the black paper (no line); the paper's lower edge is a
+      lighter lip with its shadow on the machine (no lever ends showing).
+
 ## 1.11.1 — fix
 
 - [x] No crash when the strip's text changes quickly (dictation with translation): the delayed scroll to

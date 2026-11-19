@@ -6,12 +6,15 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Black paper for the typewriter's strip: charcoal, with a soft grain, a few creases where it was crumpled
- * and the shadow of the platen along its top. Made once per size, always the same.
+ * Black paper for the typewriter's strip: charcoal, with a soft grain and a few creases where it was
+ * crumpled. Its top edge is plain [EDGE_COLOR], so the keyboard's soft top edge runs into the paper without a
+ * line; its lower edge is a slightly lighter lip, the edge of the sheet. Made once per size, always the same.
  */
 object PaperTexture {
 
     private const val BASE = 0x17
+    /** The paper's own colour, plain: what the soft edge above the keyboard fades into. */
+    const val EDGE_COLOR = 0xFF181716.toInt()
     private const val CELL = 28
 
     fun make(width: Int, height: Int, density: Float): Bitmap? {
@@ -22,14 +25,19 @@ object PaperTexture {
         val gh = height / CELL + 2
         val grid = FloatArray(gw * gh) { random.nextFloat() * 2f - 1f }
         val pixels = IntArray(width * height)
-        val shadow = 7f * density
+        val plain = 8f * density
         for (y in 0 until height) {
             val gy = y / CELL.toFloat()
             val y0 = gy.toInt()
             val fy = gy - y0
-            // The platen's shadow at the top, and a slightly lighter lip at the paper's lower edge.
-            val top = if (y < shadow) (1f - y / shadow) * -9f else 0f
-            val lip = if (y >= height - 1) 6f else 0f
+            // Plain at the very top (it meets the soft edge above), the texture growing in below it; the
+            // paper's lower edge a slightly lighter lip.
+            val texture = (y / plain).coerceAtMost(1f)
+            val lip = when (y) {
+                height - 1 -> 9f
+                height - 2 -> 4f
+                else -> 0f
+            }
             for (x in 0 until width) {
                 val gx = x / CELL.toFloat()
                 val x0 = gx.toInt()
@@ -38,7 +46,7 @@ object PaperTexture {
                 val b = grid[(y0 + 1) * gw + x0] * (1 - fx) + grid[(y0 + 1) * gw + x0 + 1] * fx
                 val blotch = (a * (1 - fy) + b * fy) * 3.5f
                 val grain = (random.nextFloat() - 0.5f) * 5f
-                val v = (BASE + blotch + grain + top + lip).toInt().coerceIn(0, 255)
+                val v = (BASE + (blotch + grain) * texture + lip).toInt().coerceIn(0, 255)
                 // A touch warmer than grey, like charcoal paper.
                 pixels[y * width + x] = (0xFF shl 24) or ((v + 1).coerceAtMost(255) shl 16) or (v shl 8) or (v - 1).coerceAtLeast(0)
             }
@@ -55,8 +63,11 @@ object PaperTexture {
             while (walked < length) {
                 val ix = x.toInt()
                 val iy = y.toInt()
-                shade(pixels, width, height, ix, iy, 9)
-                shade(pixels, width, height, ix, iy + 1, -7)
+                // Not in the plain band at the top, where the paper meets the soft edge.
+                if (iy >= plain) {
+                    shade(pixels, width, height, ix, iy, 9)
+                    shade(pixels, width, height, ix, iy + 1, -7)
+                }
                 x += dx
                 y += dy + (random.nextFloat() - 0.5f) * 0.3f
                 walked += 1f
