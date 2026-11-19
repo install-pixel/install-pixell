@@ -702,8 +702,15 @@ class KeyboardService : InputMethodService(),
         if (currentField.isSensitive) {
             root.showEcho(null)
         } else {
-            val shownBefore = before.toString().replace('\n', LINE_MARK).trimStart()
             val shownAfter = (ic?.getTextAfterCursor(ECHO_AFTER, 0) ?: "").toString().replace('\n', LINE_MARK).trimEnd()
+            var shownBefore = before.toString().replace('\n', LINE_MARK).trimStart()
+            // At the end of the text the spaces just typed are not shown; touched words count them back.
+            echoTrimmed = 0
+            if (shownAfter.isEmpty()) {
+                val trimmed = shownBefore.trimEnd()
+                echoTrimmed = shownBefore.length - trimmed.length
+                shownBefore = trimmed
+            }
             root.showEcho((shownBefore + shownAfter).ifEmpty { null }, shownBefore.length)
         }
         if (lastTranslation != null && !undoAvailable(before)) lastTranslation = null
@@ -730,6 +737,22 @@ class KeyboardService : InputMethodService(),
         val capital = controller.modifiers.isActive(com.offlinekeyboard.core.ModifierKey.SHIFT)
         root.showSuggestions(emptyList())
         root.showPredictions(next.map { if (capital) it.replaceFirstChar { c -> c.titlecase(language.locale) } else it })
+    }
+
+    override fun onEchoWord(start: Int, end: Int, select: Boolean) {
+        val ic = currentInputConnection ?: return
+        if (currentField.isSensitive || bluetoothSending || selStart < 0) return
+        // The strip shows the text before the selection and after it, one character for one: a word after
+        // the cursor counts from the selection's end, one before it from its start (and the spaces at the
+        // end of the text the strip leaves out).
+        val base = if (start >= 0) selEnd else selStart - echoTrimmed
+        val from = base + start
+        val to = base + end
+        if (from < 0) return
+        leaveSegment()
+        selStart = if (select) from else to
+        selEnd = to
+        ic.setSelection(selStart, selEnd)
     }
 
     override fun onSuggestionPicked(word: String) {
@@ -1089,6 +1112,8 @@ class KeyboardService : InputMethodService(),
     /** The selection in the field (start ≤ end; -1 while unknown), as last reported or as we just set it. */
     private var selStart = -1
     private var selEnd = -1
+    /** Spaces at the end of the text left out of the strip (see updateSuggestions). */
+    private var echoTrimmed = 0
 
     /** Where the typewriter's carriage is: characters since the last line break (-1: not known yet). */
     private var carriageColumn = -1
