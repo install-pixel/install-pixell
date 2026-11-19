@@ -91,7 +91,6 @@
     <string name="dictionary_add_word">New word</string>
     <string name="dictionary_add_invalid">Only letters, apostrophe and hyphen; 2–40 characters.</string>
     <string name="dictionary_empty">No words yet.</string>
-    <string name="dictionary_more">…and %1$d more. Use search to find them.</string>
     <string name="dictionary_clear">Delete all words</string>
     <string name="dictionary_clear_confirm">Delete the whole dictionary in all languages?</string>
     <string name="dictionary_word_removed">Removed from dictionary: %1$s</string>

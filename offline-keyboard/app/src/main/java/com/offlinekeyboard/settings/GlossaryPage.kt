@@ -6,7 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -60,7 +60,7 @@ internal fun GlossaryPage(onBack: () -> Unit) {
             onValueChange = { text = it; message = null },
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 240.dp),
+                .height(320.dp),
             textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp),
             label = { Text(stringResource(R.string.glossary_field)) },
         )

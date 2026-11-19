@@ -6,8 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -110,18 +111,17 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             }
             if (entries.isEmpty()) Text(stringResource(R.string.dictionary_empty), style = MaterialTheme.typography.bodySmall)
             if (entries.isNotEmpty()) {
-                // A small window of its own, scrolled inside (with the same fade and spring as the pages),
-                // so import, export and the rest stay close however many words there are.
-                val listScroll = rememberScrollState()
-                Column(
-                    Modifier
+                // Every word, in a small window of its own scrolled inside (a lazy list: thousands of words
+                // stay smooth), so a word typed by mistake can be found and deleted without knowing it.
+                val listState = rememberLazyListState()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 300.dp)
-                        .fadingEdges(listScroll)
-                        .bounce()
-                        .verticalScroll(listScroll),
+                        .heightIn(max = 320.dp)
+                        .fadingEdges(listState),
                 ) {
-                    entries.take(MAX_SHOWN).forEachIndexed { i, e ->
+                    itemsIndexed(entries, key = { _, e -> e.word }) { i, e ->
                         if (i > 0) RowDivider()
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(e.word, modifier = Modifier.weight(1f))
@@ -133,9 +133,6 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                         }
                     }
                 }
-            }
-            if (entries.size > MAX_SHOWN) {
-                Text(stringResource(R.string.dictionary_more, entries.size - MAX_SHOWN), style = MaterialTheme.typography.bodySmall)
             }
             ActionButton(tone = ButtonTone.DANGER, onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
         }
@@ -169,4 +166,3 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
     }
 }
 
-private const val MAX_SHOWN = 200

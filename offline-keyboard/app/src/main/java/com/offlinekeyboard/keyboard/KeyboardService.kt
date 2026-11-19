@@ -194,7 +194,8 @@ class KeyboardService : InputMethodService(),
         controller.enabledLanguages = new.enabledLanguages
         controller.shortcuts = new.shortcuts
         if (old.ownEmoji != new.ownEmoji) refreshEmojiPages()
-        if (!new.rememberLastMode && old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
+        // Choosing a mode in the settings switches to it now (also while the last mode is remembered).
+        if (old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
         translation.accurate = new.translationAccurate
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
@@ -264,6 +265,8 @@ class KeyboardService : InputMethodService(),
         super.onStartInputView(info, restarting)
         if (!restarting) controller.onStartField(currentField.isNumeric, currentField.isPhone)
         carriageColumn = -1
+        selStart = info?.let { minOf(it.initialSelStart, it.initialSelEnd) } ?: -1
+        selEnd = info?.let { maxOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         syncTranslateSource(showProblems = false)
         if (translateActive) translation.preload(settings.translationDirection)
         updateAutoShift()
@@ -295,6 +298,8 @@ class KeyboardService : InputMethodService(),
         candidatesStart: Int, candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        selStart = minOf(newSelStart, newSelEnd)
+        selEnd = maxOf(newSelStart, newSelEnd)
         if (!composer.isEmpty && !composer.isOwnCursorUpdate(newSelStart, newSelEnd, candidatesStart, candidatesEnd)) {
             // The user moved the cursor away from the segment being translated.
             leaveSegment()
@@ -557,6 +562,20 @@ class KeyboardService : InputMethodService(),
     override fun onCursorMove(steps: Int) {
         if (steps == 0 || (bluetoothSending && bluetoothConnected)) return
         leaveSegment()
+        val ic = currentInputConnection
+        if (ic != null && !currentField.isRawKeyField && selStart >= 0 && selEnd >= 0) {
+            // From the cursor as the field last reported it (and as moved since): both ways, as far as the
+            // text goes, however long it is.
+            val target = if (steps > 0) {
+                selEnd + (ic.getTextAfterCursor(steps, 0)?.length ?: 0)
+            } else {
+                selStart - (ic.getTextBeforeCursor(-steps, 0)?.length ?: 0)
+            }
+            selStart = target
+            selEnd = target
+            ic.setSelection(target, target)
+            return
+        }
         val direction = if (steps < 0) com.offlinekeyboard.core.input.Direction.LEFT else com.offlinekeyboard.core.input.Direction.RIGHT
         repeat(kotlin.math.abs(steps)) { editor.execute(com.offlinekeyboard.core.input.EditorCommand.Move(direction)) }
     }
@@ -665,8 +684,15 @@ class KeyboardService : InputMethodService(),
         }
         val before = ic?.getTextBeforeCursor(ECHO_CONTEXT, 0) ?: ""
         carriage(before)
-        // The whole message so far (passwords are never repeated on screen).
-        root.showEcho(if (currentField.isSensitive) null else echoOf(before))
+        // The whole message (passwords are never repeated on screen): what is before the cursor, and what
+        // is after it, dimmer, so every word of it can be reached from the strip.
+        if (currentField.isSensitive) {
+            root.showEcho(null)
+        } else {
+            val shownBefore = before.toString().replace('\n', LINE_MARK).trimStart()
+            val shownAfter = (ic?.getTextAfterCursor(ECHO_AFTER, 0) ?: "").toString().replace('\n', LINE_MARK).trimEnd()
+            root.showEcho((shownBefore + shownAfter).ifEmpty { null }, shownBefore.length)
+        }
         if (lastTranslation != null && !undoAvailable(before)) lastTranslation = null
         root.showUndo(lastTranslation != null)
         val show = settings.showSuggestions && currentField.allowsLearning && !translateActive &&
@@ -691,29 +717,6 @@ class KeyboardService : InputMethodService(),
         root.showSuggestions(emptyList())
         root.showPredictions(next.map { if (capital) it.replaceFirstChar { c -> c.titlecase(language.locale) } else it })
     }
-
-    /** The message before the cursor on one line (line breaks shown as ⏎). */
-    private fun echoOf(before: CharSequence): String? {
-        val text = before.toString().trim().replace(Regex("\\s*\\n\\s*"), " ⏎ ")
-        return text.ifEmpty { null }
-    }
-
-    override fun onEchoWord(fromEnd: Int, select: Boolean) {
-        val ic = currentInputConnection ?: return
-        if (currentField.isSensitive || bluetoothSending) return
-        val before = ic.getTextBeforeCursor(ECHO_CONTEXT, 0)?.toString() ?: return
-        val words = echoWord.findAll(before).toList()
-        val word = words.getOrNull(words.size - 1 - fromEnd) ?: return
-        val extracted = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0) ?: return
-        val cursor = extracted.startOffset + minOf(extracted.selectionStart, extracted.selectionEnd)
-        val end = cursor - (before.length - (word.range.last + 1))
-        val start = end - word.value.length
-        if (start < 0) return
-        leaveSegment()
-        ic.setSelection(if (select) start else end, end)
-    }
-
-    private val echoWord = Regex(ECHO_WORD_PATTERN)
 
     override fun onSuggestionPicked(word: String) {
         val ic = currentInputConnection ?: return
@@ -1065,6 +1068,10 @@ class KeyboardService : InputMethodService(),
 
     /** The typewriter's key sounds, made when the keyboard is first drawn. */
     private var keySounds: KeySounds? = null
+
+    /** The selection in the field (start ≤ end; -1 while unknown), as last reported or as we just set it. */
+    private var selStart = -1
+    private var selEnd = -1
 
     /** Where the typewriter's carriage is: characters since the last line break (-1: not known yet). */
     private var carriageColumn = -1
@@ -1451,6 +1458,10 @@ class KeyboardService : InputMethodService(),
         private const val DONE_MESSAGE_MS = 4000L
         private const val SENT_TEXT_MAX = 2000
         private const val ECHO_CONTEXT = 2000
+        /** How much of the text after the cursor the strip shows. */
+        private const val ECHO_AFTER = 1000
+        /** A line break in the strip: one mark for one character, so a touched word maps back exactly. */
+        private const val LINE_MARK = '⏎'
         /** A typewriter line: the bell rings at [BELL_COLUMN], eight characters before its end. */
         private const val LINE_LENGTH = 65
         private const val BELL_COLUMN = 57

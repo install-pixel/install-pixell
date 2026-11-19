@@ -165,7 +165,10 @@ class KeyboardView(context: Context) : View(context) {
         this.highlight = highlight
         keyHeightPx = dp(keyHeightDp)
         if (layoutChanged) {
-            cancelAllPointers()
+            // Sliding the cursor on the space bar goes on through a new layout (Shift turning on at the start
+            // of a sentence); anything else under a finger is let go.
+            val sliding = (0 until pointers.size()).any { pointers.valueAt(it).cursorMode }
+            if (!sliding) cancelAllPointers()
             computeKeyRects()
         }
         if (heightChanged) requestLayout()

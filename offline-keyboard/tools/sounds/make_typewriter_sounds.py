@@ -19,8 +19,10 @@ def read(path):
         x = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
     return rate, x
 
-def write(name, sig, rate, peak=0.85):
-    sig = sig / max(1e-9, np.max(np.abs(sig))) * peak
+def write(name, sig, rate, peak=0.97, drive=3.0):
+    # Loud enough at full volume: a soft saturation lifts the body of each strike, not only its peak.
+    sig = sig / max(1e-9, np.max(np.abs(sig)))
+    sig = np.tanh(drive * sig) / np.tanh(drive) * peak
     with wave.open(f"{out}/{name}.wav", "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
         w.writeframes((sig * 32767).astype(np.int16).tobytes())
@@ -52,7 +54,7 @@ write("tw_return", cut(typing, trate, 40.86, 0.74, fade=0.08), trate)
 t = np.arange(int(0.9 * trate)) / trate
 ring = np.exp(-t / 0.3) * np.minimum(1, t / 0.0008)
 bell = (np.sin(2 * np.pi * 3216 * t) + 0.7 * np.sin(2 * np.pi * 3300 * t) + 0.3 * np.sin(2 * np.pi * 8130 * t) * np.exp(-t / 0.12)) * ring
-write("tw_bell", bell, trate, peak=0.55)
+write("tw_bell", bell, trate, peak=0.8, drive=1.0)
 
 # A new sheet: the platen knob turning, a soft ratchet of slowed-down strikes.
 click = cut(keys, rate, 6.78, 0.06)
@@ -61,5 +63,5 @@ sheet = np.zeros(int(0.75 * rate))
 for j in range(8):
     s = int((0.04 + j * 0.08) * rate)
     sheet[s:s + len(slow)] += slow[:len(sheet) - s] * (0.55 + 0.1 * (j % 3))
-write("tw_sheet", sheet, rate, peak=0.5)
+write("tw_sheet", sheet, rate, peak=0.7, drive=2.0)
 print("ok")

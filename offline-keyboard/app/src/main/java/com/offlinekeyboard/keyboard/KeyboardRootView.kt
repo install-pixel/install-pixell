@@ -51,9 +51,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onSuggestionLongPress(word: String)
         /**
          * A word of the text shown in the strip was touched: the cursor goes to its end ([select]: the word
-         * is selected). [fromEnd] counts words back from the last one (0 = the last word).
+         * is selected). [start] and [end] are where the word is, counted in characters from the cursor
+         * (negative before it).
          */
-        fun onEchoWord(fromEnd: Int, select: Boolean) {}
+        fun onEchoWord(start: Int, end: Int, select: Boolean) {}
     }
 
     data class ToolbarState(
@@ -122,9 +123,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val text = status.text.toString()
         val offset = layout.getOffsetForHorizontal(0, x - status.totalPaddingLeft)
         val words = ECHO_WORD.findAll(text).toList()
-        val index = words.indexOfFirst { offset >= it.range.first && offset <= it.range.last + 1 }
-        if (index < 0) return false
-        toolbarListener?.onEchoWord(words.size - 1 - index, select)
+        val word = words.firstOrNull { offset >= it.range.first && offset <= it.range.last + 1 } ?: return false
+        val cursor = if (echoCursor in 0..text.length) echoCursor else text.length
+        toolbarListener?.onEchoWord(word.range.first - cursor, word.range.last + 1 - cursor, select)
         return true
     }
 
@@ -510,11 +511,17 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      * The end of the text the user is writing (or what was sent over Bluetooth), shown when there is
      * nothing else to show, so the strip always says where the text is.
      */
-    fun showEcho(text: CharSequence?) {
-        if (text?.toString() == echo?.toString()) return
+    fun showEcho(text: CharSequence?, cursor: Int = text?.length ?: 0) {
+        if (text?.toString() == echo?.toString() && cursor == echoCursor) return
         echo = text
+        echoCursor = cursor
         refreshCentre()
     }
+
+    /** Where the cursor is in [echo]: the text after it is shown dimmer. */
+    private var echoCursor = 0
+    /** The cursor position the strip shows now (-1: not the user's text). */
+    private var shownCursor = -1
 
     /** Shows the "restore original" button while the last translation can still be undone. */
     fun showUndo(visible: Boolean) {
@@ -540,18 +547,29 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val isEcho = centreText == null && !showSuggestions
         val text = if (isEcho) echo ?: "" else centreText ?: ""
         showingEcho = isEcho && echo != null
-        if (text.toString() != status.text.toString()) {
+        val cursorAt = if (isEcho) echoCursor else -1
+        if (text.toString() != status.text.toString() || cursorAt != shownCursor) {
+            shownCursor = cursorAt
             val typewriter = theme.style == SurfaceStyle.TYPEWRITER
             val grew = text.length > status.text.length && text.toString().startsWith(status.text.toString())
-            status.text = if (typewriter) TypewriterInk.apply(text, status.textSize) else text
+            val inked = if (typewriter) TypewriterInk.apply(text, status.textSize) else text
+            status.text = if (isEcho && echoCursor in 0 until text.length) dimAfter(inked, echoCursor) else inked
             // A new letter on the typewriter: the strip gives the small jolt of a typebar hitting the paper.
             if (typewriter && grew) {
                 status.animate().cancel()
                 status.translationY = -1.2f * resources.displayMetrics.density
                 status.animate().translationY(0f).setDuration(90).start()
             }
-            // Newest text in view; earlier parts are a swipe away.
-            statusScroll.post { statusScroll.smoothScrollTo(status.width, 0) }
+            // The cursor in view (the newest text when it is at the end); the rest is a swipe away.
+            statusScroll.post {
+                val layout = status.layout
+                val x = if (isEcho && layout != null && echoCursor in 0 until text.length) {
+                    (status.totalPaddingLeft + layout.getPrimaryHorizontal(echoCursor) - statusScroll.width * 0.75f).toInt()
+                } else {
+                    status.width
+                }
+                statusScroll.smoothScrollTo(x.coerceAtLeast(0), 0)
+            }
         }
         status.setTextColor(theme.text)
         statusScroll.visibility = if (showSuggestions) View.GONE else View.VISIBLE
@@ -632,6 +650,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val STATUS_MILLIS = 3500L
         const val SUGGESTIONS = 3
     }
+}
+
+/** [text] with what follows [cursor] dimmer: the part of the message after the cursor. */
+private fun dimAfter(text: CharSequence, cursor: Int): CharSequence {
+    val out = android.text.SpannableString(text)
+    out.setSpan(android.text.style.ForegroundColorSpan(0x80FFFFFF.toInt()), cursor, text.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    return out
 }
 
 /** A word in the strip's text, the same for the strip and the service: letters, digits, apostrophes, hyphens. */

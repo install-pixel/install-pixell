@@ -66,6 +66,7 @@ class WordPairs(private val maxWords: Int = DEFAULT_MAX_WORDS) {
         val a = previous.lowercase(language.locale)
         val b = WordRules.normalizeForStorage(next) ?: return
         if (a.isEmpty() || a.length > MAX_LENGTH) return
+        if (!WordRules.fitsLanguage(a, language) || !WordRules.fitsLanguage(b, language)) return
         val map = byLanguage.getOrPut(language) { HashMap() }
         val followers = map.getOrPut(a) { HashMap() }
         val key = b.lowercase(language.locale)

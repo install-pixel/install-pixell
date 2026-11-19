@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -345,9 +346,10 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
             OutlinedTextField(
                 value = sample,
                 onValueChange = { sample = it },
+                // A fixed window: long text scrolls inside it instead of stretching the page.
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 96.dp),
+                    .height(120.dp),
                 // A placeholder inside the field: a floating label would cut the frame.
                 placeholder = { Text(stringResource(R.string.try_hint)) },
                 // Sentence capitals, like a message field, so every typing rule can be tried here.
@@ -537,10 +539,10 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
         }
         Section(stringResource(R.string.default_mode)) {
             RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
-                update { it.copy(defaultMode = KeyboardMode.MOBILE) }
+                update { it.copy(defaultMode = KeyboardMode.MOBILE, lastMode = KeyboardMode.MOBILE) }
             }
             RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
-                update { it.copy(defaultMode = KeyboardMode.COMPUTER) }
+                update { it.copy(defaultMode = KeyboardMode.COMPUTER, lastMode = KeyboardMode.COMPUTER) }
             }
             SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
                 update { it.copy(rememberLastMode = v) }
