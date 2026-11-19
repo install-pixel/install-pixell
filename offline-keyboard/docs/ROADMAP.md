@@ -17,6 +17,19 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] No Ukrainian words in the Polish or English list and no Latin words in the Ukrainian one.
 - [x] Louder typewriter sounds at full volume.
 
+## 1.11.0 — the typewriter: paper, straight levers, one machine
+
+- [x] The strip lies on black, slightly crumpled charcoal paper (typewriter only).
+- [x] Straight key levers from every key up into the machine; a key goes 4.5 dp down and springs back with
+      a dying swing and a light tick.
+- [x] Chrome rims (bevel band, bright lip, sharper light); rust on about one key in six; the most used
+      letters a little worn (fine scratches, worn paint).
+- [x] The enlarged key is the same key: the same rust and scratches.
+- [x] Shift, Backspace, Enter, the layer and language keys bigger; letters as big as the row allows.
+- [x] Switching layouts slides: away from the letters to the right, back to the left, the language key
+      always round one way, a swipe its own way.
+- [x] Lower key sounds: highs rolled off, more body, a little slower; loud without distortion.
+
 ## Planned
 
 - [ ] PC remote over Bluetooth: touchpad (mouse), media keys, slides, a pad of shortcuts — comfortable.

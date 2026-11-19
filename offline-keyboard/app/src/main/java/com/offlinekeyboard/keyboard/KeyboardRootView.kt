@@ -277,9 +277,18 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)
         backgroundPaint.color = color
         canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
+        if (theme.style == SurfaceStyle.TYPEWRITER && ::infoRow.isInitialized && infoRow.height > 0) {
+            val sheet = paper?.takeIf { it.width == infoRow.width && it.height == infoRow.height }
+                ?: PaperTexture.make(infoRow.width, infoRow.height, resources.displayMetrics.density).also { paper = it }
+            sheet?.let { canvas.drawBitmap(it, infoRow.left.toFloat(), infoRow.top.toFloat(), null) }
+        }
     }
 
     private val backgroundPaint = Paint()
+
+    /** The strip (text, suggestions and buttons): on the typewriter it lies on black paper. */
+    private lateinit var infoRow: LinearLayout
+    private var paper: android.graphics.Bitmap? = null
 
     init {
         setWillNotDraw(false)
@@ -298,7 +307,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             insets
         }
 
-        val infoRow = LinearLayout(context).apply {
+        infoRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             // A tap where the hidden buttons are (or anywhere on the strip) shows them.
@@ -369,6 +378,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         clipboardPanel.applyTheme(value)
         fadeColor = value.background
         fadePaint.shader = null
+        invalidate()
         invalidate()
         Icons.style = value.style
         val face = value.typeface(context)
