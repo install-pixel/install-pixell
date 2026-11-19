@@ -325,6 +325,12 @@
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze, wytarte i trochę zardzewiałe</string>
     <string name="space_cursor">Przytrzymaj spację i przesuń — kursor się przesuwa</string>
+    <string name="long_context">Następne słowo z dwóch poprzednich</string>
+    <string name="long_context_hint">Słowa po skończonym słowie są dobierane według dwóch ostatnich słów, nie tylko jednego: z otwartych tekstów i z tego, co piszesz (tylko na tym telefonie).</string>
+    <string name="learn_touch">Ucz się, jak naciskam</string>
+    <string name="learn_touch_hint">Klawiatura zapamiętuje, gdzie naprawdę trafia twój palec na każdej literze, i lekko przesuwa niewidoczne granice między klawiszami. Tylko na tym telefonie.</string>
+    <string name="learn_touch_reset">Zapomnij, jak naciskam</string>
+    <string name="learn_touch_forgotten">Zapomniane — uczy się od nowa</string>
     <string name="clipboard_title">Schowek · dotknij — wklej, przytrzymaj — przypnij</string>
     <string name="clipboard_translate">Przetłumacz zaznaczenie lub schowek</string>
     <string name="clipboard_clear">Zapomnij nieprzypięte teksty</string>

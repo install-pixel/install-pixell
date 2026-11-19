@@ -325,6 +325,12 @@
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys, worn and a little rusty</string>
     <string name="space_cursor">Hold the space bar and slide to move the cursor</string>
+    <string name="long_context">Next word from the two words before</string>
+    <string name="long_context_hint">The words after a finished word come from the last two words, not only the last one: from open texts and from what you type (only on this phone).</string>
+    <string name="learn_touch">Learn how I tap</string>
+    <string name="learn_touch_hint">The keyboard remembers where your finger really lands on each letter and moves the invisible borders between keys a little. Only on this phone.</string>
+    <string name="learn_touch_reset">Forget how I tap</string>
+    <string name="learn_touch_forgotten">Forgotten — learning again</string>
     <string name="clipboard_title">Clipboard · tap to paste, hold to pin</string>
     <string name="clipboard_translate">Translate the selection or the clipboard</string>
     <string name="clipboard_clear">Forget the unpinned texts</string>

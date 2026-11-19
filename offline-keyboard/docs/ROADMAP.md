@@ -3,11 +3,19 @@
 The style guide for every screen is QRAFT (the family's reference app): two themes, «Скло · Темна» and
 «Аркуш · Темна»; later also two light ones (light glass, light sheet) shared by all the apps.
 
-## Next — 1.10.0
+## 1.10.0 — prediction from two words, the keyboard learns the finger, fixes
 
-- [ ] Next-word prediction from the two previous words (open texts and the user's own word triples).
-- [ ] The keyboard learns where the user's finger really lands on each key and moves the invisible
-      borders between keys.
+- [x] Next-word prediction from the two previous words (Tatoeba word triples and the user's own); a switch.
+- [x] The keyboard learns where the finger lands on each letter and moves the borders between keys; a
+      switch and «Forget how I tap».
+- [x] The strip shows the whole message, the part after the cursor dimmer: every word can be tapped
+      (cursor there) or held (selected), both before and after the cursor.
+- [x] Space-bar cursor goes both ways in long texts, and keeps going when Shift turns on.
+- [x] Choosing mobile or computer keyboard in the settings works (also with «remember the last mode»).
+- [x] The test field and the glossary are fixed windows that scroll inside.
+- [x] The dictionary shows every word (scrolls inside), to find and delete a word typed by mistake.
+- [x] No Ukrainian words in the Polish or English list and no Latin words in the Ukrainian one.
+- [x] Louder typewriter sounds at full volume.
 
 ## Planned
 

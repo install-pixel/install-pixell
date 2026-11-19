@@ -473,6 +473,16 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                 update { it.copy(backspaceSwipe = v) }
             }
             SwitchRow(stringResource(R.string.space_cursor), s.spaceCursor) { v -> update { it.copy(spaceCursor = v) } }
+            SwitchRow(stringResource(R.string.long_context), s.longContext) { v -> update { it.copy(longContext = v) } }
+            Text(stringResource(R.string.long_context_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.learn_touch), s.learnTouch) { v -> update { it.copy(learnTouch = v) } }
+            Text(stringResource(R.string.learn_touch_hint), style = MaterialTheme.typography.bodySmall)
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var touchForgotten by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            ActionButton(onClick = {
+                com.offlinekeyboard.keyboard.TouchModel.reset(context)
+                touchForgotten = true
+            }) { Text(stringResource(if (touchForgotten) R.string.learn_touch_forgotten else R.string.learn_touch_reset)) }
             SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
                 update { it.copy(compactToolbar = v) }
             }

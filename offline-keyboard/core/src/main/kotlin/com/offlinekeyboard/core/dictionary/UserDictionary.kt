@@ -184,7 +184,11 @@ object WordRules {
     /** Whether every letter of [word] is of [language]'s alphabet: Cyrillic for Ukrainian, Latin otherwise. */
     fun fitsLanguage(word: String, language: Language): Boolean {
         val script = if (language == Language.UK) Character.UnicodeScript.CYRILLIC else Character.UnicodeScript.LATIN
-        return word.all { !it.isLetter() || Character.UnicodeScript.of(it.code) == script }
+        // ʼ (a "letter" of no particular alphabet) and combining marks fit every language.
+        return word.all {
+            val of = Character.UnicodeScript.of(it.code)
+            !it.isLetter() || of == script || of == Character.UnicodeScript.COMMON || of == Character.UnicodeScript.INHERITED
+        }
     }
 
     fun applyCase(word: String, typedPrefix: String, language: Language): String = when {

@@ -265,6 +265,7 @@ class KeyboardService : InputMethodService(),
         super.onStartInputView(info, restarting)
         if (!restarting) controller.onStartField(currentField.isNumeric, currentField.isPhone)
         carriageColumn = -1
+        if (settings.learnTouch) touchModel.refresh()
         selStart = info?.let { minOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         selEnd = info?.let { maxOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         syncTranslateSource(showProblems = false)
@@ -285,6 +286,7 @@ class KeyboardService : InputMethodService(),
         lastCorrection = null
         handler.removeCallbacks(firePendingShortcut)
         dictionary.saveNow()
+        if (settings.learnTouch) touchModel.save()
         super.onFinishInputView(finishingInput)
     }
 
@@ -669,7 +671,18 @@ class KeyboardService : InputMethodService(),
         if (!learningAllowed) return
         val previous = previousWord(before) ?: return
         dictionary.pairs.learn(controller.language, previous, word)
+        // And after the two words before it ("я тебе" → "люблю"), kept with the pairs.
+        if (settings.longContext) {
+            wordBefore(before, previous)?.let { dictionary.pairs.learn(controller.language, "$it $previous", word) }
+        }
         dictionary.changed()
+    }
+
+    /** The word before [previous], the last word of [before] (null after punctuation or at the start). */
+    private fun wordBefore(before: CharSequence, previous: String): String? {
+        val trimmed = before.trimEnd(' ')
+        if (trimmed.length < previous.length) return null
+        return previousWord(trimmed.subSequence(0, trimmed.length - previous.length))
     }
 
     private fun updateSuggestions() {
@@ -712,7 +725,8 @@ class KeyboardService : InputMethodService(),
         // After a finished word: the words that usually come next (the user's own pairs first).
         val language = controller.language
         val previous = if (WordRules.continuesWord(after)) null else previousWord(before.takeLast(WORD_CONTEXT))
-        val next = previous?.let { NextWords.predict(language, it, dictionary.pairs) }.orEmpty()
+        val earlier = if (previous != null && settings.longContext) wordBefore(before.takeLast(WORD_CONTEXT), previous) else null
+        val next = previous?.let { NextWords.predict(language, it, dictionary.pairs, earlier = earlier) }.orEmpty()
         val capital = controller.modifiers.isActive(com.offlinekeyboard.core.ModifierKey.SHIFT)
         root.showSuggestions(emptyList())
         root.showPredictions(next.map { if (capital) it.replaceFirstChar { c -> c.titlecase(language.locale) } else it })
@@ -1066,6 +1080,9 @@ class KeyboardService : InputMethodService(),
     /** A picked suggestion just added its space (see [onSuggestionPicked]); cleared by the next key. */
     private var softSpace = false
 
+    /** Where the finger lands on each letter (used while "learn how I tap" is on). */
+    private val touchModel by lazy { TouchModel(this) }
+
     /** The typewriter's key sounds, made when the keyboard is first drawn. */
     private var keySounds: KeySounds? = null
 
@@ -1373,6 +1390,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.keyPreview = settings.keyPreview
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
         root.keyboardView.spaceCursorEnabled = settings.spaceCursor
+        root.keyboardView.touchModel = if (settings.learnTouch) touchModel else null
         if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
         root.keyboardView.keySounds = keySounds
         root.keyboardView.soundVolume =
