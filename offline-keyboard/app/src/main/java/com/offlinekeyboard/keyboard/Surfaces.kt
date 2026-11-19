@@ -208,21 +208,30 @@ class SurfacePainter(private val density: Float) {
         0f, 0f, 1f, intArrayOf(0x33FFF8E6, 0x14FFF8E6, 0x00FFF8E6), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
     )
     private val bounce = RadialGradient(0f, 0f, 1f, 0x12FFF0D2, 0x00FFF0D2, Shader.TileMode.CLAMP)
+    // A polished steel stem, lit from the left.
     private val stemShade = LinearGradient(
         0f, 0f, 1f, 0f,
-        intArrayOf(0xFF0C0B0A.toInt(), 0xFF4A463E.toInt(), 0xFF080707.toInt()),
-        floatArrayOf(0f, 0.45f, 1f),
+        intArrayOf(0xFF1A1814.toInt(), 0xFFA39D8F.toInt(), 0xFF0E0D0B.toInt()),
+        floatArrayOf(0f, 0.4f, 1f),
         Shader.TileMode.CLAMP,
     )
+    // Deeper in the machine it is dark.
     private val stemFade = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0x00000000, 0x33000000, 0xD9000000.toInt()),
-        floatArrayOf(0f, 0.6f, 1f),
+        intArrayOf(0x00000000, 0x26000000, 0xF2000000.toInt()),
+        floatArrayOf(0f, 0.55f, 1f),
         Shader.TileMode.CLAMP,
     )
-    private val railShade = LinearGradient(
+    // The guide the stem slides through, and the collar under the key.
+    private val guideShade = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xFF0E0D0C.toInt(), 0xFF26231F.toInt(), 0xFF080707.toInt()),
+        intArrayOf(0xFF5C574D.toInt(), 0xFF24211D.toInt(), 0xFF0A0908.toInt()),
+        floatArrayOf(0f, 0.35f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val collarShade = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFFC9C2B2.toInt(), 0xFF5A554B.toInt(), 0xFF1C1A17.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
@@ -276,7 +285,7 @@ class SurfacePainter(private val density: Float) {
         if (plate) 2.4f * density else maxOf(2.6f * density, height / 2f * 0.19f)
 
     /** How far a pressed typewriter key goes down. */
-    val typewriterSink: Float get() = 2.2f * density
+    val typewriterSink: Float get() = 3f * density
 
     /** A soft light or shadow: [shader] (made over a unit circle) stretched to the ellipse at [cx], [cy]. */
     private fun softEllipse(canvas: Canvas, shader: Shader, cx: Float, cy: Float, rx: Float, ry: Float, alpha: Float = 1f) {
@@ -293,29 +302,19 @@ class SurfacePainter(private val density: Float) {
     }
 
     /**
-     * The machine under one row of typewriter keys: a dark rail along the row's lower edge at [y], across
-     * [left]..[right].
+     * The mechanism under a typewriter key: a polished stem from the middle of [body] down into the dark of the
+     * machine at [bottom], through a guide that stays put, with a collar under the key. The stem and collar go
+     * down with the key by [sink]. A long key (space, Enter) stands on two stems.
      */
-    fun drawTypewriterRail(canvas: Canvas, left: Float, right: Float, y: Float) {
-        val h = 2.4f * density
-        oval.set(left, y - h / 2, right, y + h / 2)
-        stretch(railShade, oval)
-        fill.shader = railShade
-        canvas.drawRect(oval, fill)
-        fill.shader = null
-    }
-
-    /**
-     * The stem under a typewriter key: a metal bar from the middle of [body] down to [bottom], fading into the
-     * dark of the machine. A long key (space, Enter) stands on two.
-     */
-    fun drawTypewriterStem(canvas: Canvas, body: RectF, bottom: Float) {
-        val w = maxOf(2.4f * density, body.height() * 0.1f)
-        val top = body.centerY()
+    fun drawTypewriterStem(canvas: Canvas, body: RectF, bottom: Float, sink: Float = 0f) {
+        val w = maxOf(3f * density, body.height() * 0.12f)
+        val top = body.centerY() + sink
         if (bottom <= top) return
         val long = body.width() > body.height() * 1.3f
         val first = if (long) body.left + body.height() / 2 else body.centerX()
         val last = if (long) body.right - body.height() / 2 else body.centerX()
+        val guideY = body.bottom + (bottom - body.bottom) * 0.45f
+        val guideH = maxOf(2.5f * density, w * 0.9f)
         var x = first
         while (true) {
             oval.set(x - w / 2, top, x + w / 2, bottom)
@@ -325,12 +324,31 @@ class SurfacePainter(private val density: Float) {
             stretch(stemFade, oval)
             fill.shader = stemFade
             canvas.drawRect(oval, fill)
+            // The guide: a small dark block with a lit top edge, and the slot the stem goes into.
+            oval.set(x - w * 1.3f, guideY - guideH / 2, x + w * 1.3f, guideY + guideH / 2)
+            stretch(guideShade, oval)
+            fill.shader = guideShade
+            canvas.drawRoundRect(oval, guideH * 0.3f, guideH * 0.3f, fill)
             fill.shader = null
-            softEllipse(canvas, keyShadow, x, bottom, w * 1.2f, w * 0.8f)
+            fill.color = 0xD9000000.toInt()
+            canvas.drawRect(x - w / 2, guideY - guideH * 0.15f, x + w / 2, guideY + guideH * 0.15f, fill)
+            // The collar just under the key.
+            val collarY = body.bottom + sink - w * 0.1f
+            oval.set(x - w * 0.95f, collarY - w * 0.4f, x + w * 0.95f, collarY + w * 0.4f)
+            stretch(collarShade, oval)
+            fill.shader = collarShade
+            canvas.drawRoundRect(oval, w * 0.32f, w * 0.32f, fill)
+            fill.shader = null
             if (x >= last) break
             x = last
         }
     }
+
+    /**
+     * How far down the next typewriter key is drawn, as a share of [typewriterSink]: set by the keyboard for
+     * the spring of a key coming back up (a little below 0 as it overshoots); below -1 follows the state.
+     */
+    var typewriterDepth = -2f
 
     /**
      * An old typewriter key, round when [rect] is square and a pill when it is long, or a rounded plate for
@@ -339,8 +357,14 @@ class SurfacePainter(private val density: Float) {
     private fun drawTypewriter(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, seed: Int, plate: Boolean) {
         val corner = if (plate) minOf(radius, rect.height() / 2) else minOf(rect.width(), rect.height()) / 2f
         val half = rect.height() / 2f
-        val pressed = state == SurfaceState.PRESSED
-        val sink = if (pressed && !plate) typewriterSink else 0f
+        val depth = when {
+            plate -> 0f
+            typewriterDepth >= -1f -> typewriterDepth
+            state == SurfaceState.PRESSED -> 1f
+            else -> 0f
+        }
+        val pressed = depth > 0.5f
+        val sink = depth * typewriterSink
         val lit = 0.55f + 0.45f * brightness
         val cx = rect.centerX()
         val cy = rect.centerY()
@@ -349,7 +373,7 @@ class SurfacePainter(private val density: Float) {
         if (!plate) {
             softEllipse(
                 canvas, keyShadow, cx, cy + half * 0.28f + sink * 0.3f,
-                rect.width() / 2 + half * 0.22f, half * 1.12f - sink * 0.2f, if (pressed) 0.8f else 1f,
+                rect.width() / 2 + half * 0.22f - sink * 0.3f, half * 1.12f - sink * 0.4f, 1f - 0.25f * depth.coerceIn(0f, 1f),
             )
         }
         canvas.save()

@@ -7,8 +7,11 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 
 - [x] Black Typewriter keys like the machine: a nickel rim with a line of light, rust only on the rim,
       a glossy black cap with a soft reflection, a shadow under each key; a pressed key goes down.
-- [x] The machine under the keys: a stem down from every key, a rail under every row.
-- [x] All round keys one size (the edge keys are no longer bigger); labels and digits stay inside.
+- [x] The machine under the keys: a polished stem from every key through its guide, a collar under
+      the key; stem and collar go down with the key. No grid of rails.
+- [x] A key goes 3 dp down and springs back up with a small overshoot.
+- [x] All round keys one size (the edge keys are no longer bigger); labels and digits stay inside;
+      only single letters tilt (long words stay straight).
 
 ## 1.8.0 — predictions, space cursor, smarter autocorrect, clipboard history, typewriter sounds
 

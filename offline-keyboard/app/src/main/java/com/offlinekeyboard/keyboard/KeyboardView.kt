@@ -29,6 +29,7 @@ import com.offlinekeyboard.core.input.EnterLabel
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.SpecialKey
 import kotlin.math.abs
+import kotlin.math.cos
 
 /**
  * Draws a [KeyboardLayout] on a canvas and turns touches into key presses.
@@ -242,20 +243,26 @@ class KeyboardView(context: Context) : View(context) {
         return RectF(inner.centerX() - w / 2, inner.centerY() - d / 2, inner.centerX() + w / 2, inner.centerY() + d / 2)
     }
 
-    /** The machine under typewriter keys: a rail under every row and a stem down from every key. */
-    private fun drawMachine(canvas: Canvas) {
-        var lastTop = Float.NaN
-        for ((_, rect) in keyRects) {
-            if (rect.top != lastTop) {
-                lastTop = rect.top
-                surfaces.drawTypewriterRail(canvas, 0f, width.toFloat(), rect.bottom - keyGap * 0.1f)
-            }
-        }
+    /** The machine under typewriter keys: a stem down from every key, through its guide. */
+    private fun drawMachine(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
         for ((key, rect) in keyRects) {
             if (key.style == KeyStyle.SPACER) continue
             val inner = RectF(rect.left + keyGap / 2, rect.top + keyGap / 2, rect.right - keyGap / 2, rect.bottom - keyGap / 2)
-            surfaces.drawTypewriterStem(canvas, typewriterBody(inner), rect.bottom + keyHeightPx * 0.35f)
+            val sink = typewriterDepth(key, pressedKeys, now) * surfaces.typewriterSink
+            surfaces.drawTypewriterStem(canvas, typewriterBody(inner), rect.bottom + keyHeightPx * 0.42f, sink)
         }
+    }
+
+    /**
+     * How far down a typewriter key is (1 = all the way): down while held, then springing back up with a
+     * small overshoot, as a key on its spring does.
+     */
+    private fun typewriterDepth(key: Key, pressedKeys: Set<Key>, now: Long): Float {
+        if (key in pressedKeys) return 1f
+        val at = released[key] ?: return 0f
+        val t = ((now - at) / TYPEWRITER_SPRING_MS.toFloat()).coerceIn(0f, 1f)
+        val left = 1f - t
+        return left * left * cos(t * 1.5f * Math.PI.toFloat())
     }
 
     // ------------------------------------------------------------------ drawing
@@ -287,7 +294,7 @@ class KeyboardView(context: Context) : View(context) {
         released.entries.removeAll { now - it.value >= RELEASE_FADE_MS }
 
         val typewriter = theme.style == SurfaceStyle.TYPEWRITER
-        if (typewriter) drawMachine(canvas)
+        if (typewriter) drawMachine(canvas, pressedKeys, now)
         for ((index, entry) in keyRects.withIndex()) {
             val (key, rect) = entry
             if (key.style == KeyStyle.SPACER) continue
@@ -308,13 +315,16 @@ class KeyboardView(context: Context) : View(context) {
                 }
                 color = if (isAction) t.confirm else t.text
                 if (typewriter) {
-                    // A typewriter key springs back at once: no fading glow.
+                    // A typewriter key goes down and springs back up instead of glowing.
                     val body = typewriterBody(inner)
+                    val depth = typewriterDepth(key, pressedKeys, now)
+                    surfaces.typewriterDepth = depth
                     surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                    surfaces.typewriterDepth = -2f
                     val rim = surfaces.typewriterRim(body.height())
                     face = RectF(body).apply {
                         inset(rim, rim)
-                        if (pressed) offset(0f, surfaces.typewriterSink)
+                        offset(0f, depth * surfaces.typewriterSink)
                     }
                 } else {
                     surfaces.draw(canvas, inner, radius, t.style, t.key, surface, seed = index, inkColor = color)
@@ -491,7 +501,8 @@ class KeyboardView(context: Context) : View(context) {
             // Struck through an old ribbon: every letter a little tilted, off its line and lighter or darker,
             // always the same way for the same letter.
             val h = label.hashCode() * 31 + key.width.toBits()
-            val tilt = ((h and 0xFF) / 255f - 0.5f) * 4f
+            // Only a single letter tilts: on a word a tilt reads as a broken line.
+            val tilt = if (label.length <= 2) ((h and 0xFF) / 255f - 0.5f) * 4f else 0f
             val drop = (((h ushr 8) and 0xFF) / 255f - 0.5f) * size * 0.08f
             textPaint.alpha = (textPaint.alpha * (0.82f + ((h ushr 16) and 0xFF) / 255f * 0.18f)).toInt()
             canvas.save()
@@ -800,5 +811,7 @@ class KeyboardView(context: Context) : View(context) {
         const val BUBBLE_OUT_MS = 150L
         const val POPUP_FADE_MS = 130L
         const val RELEASE_FADE_MS = 170L
+        /** How long a released typewriter key takes to spring back up (within [RELEASE_FADE_MS]). */
+        const val TYPEWRITER_SPRING_MS = 140L
     }
 }
