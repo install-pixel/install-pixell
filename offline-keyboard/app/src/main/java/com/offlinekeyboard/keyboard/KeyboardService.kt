@@ -495,7 +495,8 @@ class KeyboardService : InputMethodService(),
         }
         leaveSegment()
         val selected = ic.getSelectedText(0)?.toString()?.takeIf { it.isNotBlank() }
-        val source = selected ?: clipboardText()
+        // The phone's clipboard, or else the newest text kept in the keyboard's list.
+        val source = selected ?: clipboardText()?.takeIf { it.isNotBlank() } ?: ClipboardHistory.items(this).firstOrNull()?.text
         if (source.isNullOrBlank()) {
             rootView?.showStatus(getString(R.string.clipboard_empty))
             return
@@ -551,8 +552,6 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ keys
 
     override fun onKey(key: Key) {
-        // The typewriter: a typebar strikes the paper for every letter.
-        if (soundStyle && key.action is KeyAction.Text && controller.layer != Layer.EMOJI) rootView?.typebarStrike()
         if (controller.layer == Layer.EMOJI) (key.action as? KeyAction.Text)?.let { recordEmoji(it.text) }
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
@@ -722,7 +721,7 @@ class KeyboardService : InputMethodService(),
             root.showPredictions(emptyList())
             root.showSuggestions(emptyList())
             root.showUndo(false)
-            root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: $sentText")
+            root.showEcho("→ ${Bluetooth.deviceName.orEmpty()}: ${sentText.takeLast(ECHO_CONTEXT)}")
             return
         }
         val before = ic?.getTextBeforeCursor(ECHO_CONTEXT, 0) ?: ""
@@ -743,7 +742,11 @@ class KeyboardService : InputMethodService(),
             }
             root.showEcho((shownBefore + shownAfter).ifEmpty { null }, shownBefore.length)
         }
-        if (lastTranslation != null && !undoAvailable(before)) lastTranslation = null
+        // A long translation reaches further back than the strip's text: read as much as it needs.
+        lastTranslation?.let { (_, inserted) ->
+            val back = if (inserted.length + UNDO_SLACK > before.length) ic?.getTextBeforeCursor(inserted.length + UNDO_SLACK, 0) ?: before else before
+            if (!undoAvailable(back)) lastTranslation = null
+        }
         root.showUndo(lastTranslation != null)
         val show = settings.showSuggestions && currentField.allowsLearning && !translateActive &&
             speech.state == SpeechController.State.IDLE
@@ -1342,6 +1345,23 @@ class KeyboardService : InputMethodService(),
         rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
     }
 
+    /** The last text swiped off the clipboard list, to bring back. */
+    private var deletedClip: ClipboardHistory.Clip? = null
+
+    override fun onClipDeleted(text: String) {
+        deletedClip = ClipboardHistory.remove(this, text)
+        val panel = rootView?.clipboardPanel ?: return
+        panel.show(ClipboardHistory.items(this))
+        panel.say(getString(R.string.clipboard_deleted)) { onClipRestore() }
+    }
+
+    override fun onClipRestore() {
+        val clip = deletedClip ?: return
+        deletedClip = null
+        ClipboardHistory.restore(this, clip)
+        rootView?.clipboardPanel?.show(ClipboardHistory.items(this))
+    }
+
     // ------------------------------------------------------------------ stickers
 
     private fun showStickers() {
@@ -1618,9 +1638,13 @@ class KeyboardService : InputMethodService(),
         private const val PREVIEW_DELAY_MS = 350L
         private const val DONE_MESSAGE_MS = 4000L
         private const val SENT_TEXT_MAX = 2000
-        private const val ECHO_CONTEXT = 2000
-        /** How much of the text after the cursor the strip shows. */
-        private const val ECHO_AFTER = 1000
+        /**
+         * How much of the text before and after the cursor the strip shows: a few lines' worth around the
+         * cursor (it moves with the cursor). More made every key slow in a long text, the strip being set
+         * again, letter by letter on the typewriter, after each one.
+         */
+        private const val ECHO_CONTEXT = 300
+        private const val ECHO_AFTER = 150
         /** A line break in the strip: one mark for one character, so a touched word maps back exactly. */
         private const val LINE_MARK = '⏎'
         /** A typewriter line: the bell rings at [BELL_COLUMN], eight characters before its end. */

@@ -54,6 +54,23 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.15.1 — the typebar strikes with the key, a cursor under the finger
+
+- [x] The paper holder sits wholly on the paper, with a strip of the machine below it before the chips or keys.
+- [x] The typebar swings up from the pressed key's side the moment the key goes down, strikes the paper
+      where the letter goes (a dark dent), rests there while held and falls back as the key comes up.
+- [x] Levers of big keys no longer lie over each other: thinner at most, and moved aside just enough.
+- [x] The right end of the strip melts into the paper like the left one.
+- [x] Sliding a finger along the text in the strip carries the cursor; the strip scrolls on at its ends.
+- [x] What the strip shows reads by kind: your text in ink, after the cursor dimmer; next words as large but
+      lighter, set apart by a line; the keyboard's own messages slanted, dimmer, with ⓘ (underlined when
+      they can be tapped); dictation or a translation on its way in the accent colour.
+- [x] Deleting in a long text (a pasted log) is quick again, held or tapped: the strip shows only the text
+      near the cursor (it moves with it), so it is not set again, letter by letter, after every key.
+- [x] Clipboard panel: swipe a text left to delete it (pinned too; the title brings it back for a few
+      seconds); pinning moves it softly; ✕ says what it will forget and does it on a second tap; long texts in
+      two lines; translate uses the newest kept text when the phone's clipboard is empty.
+
 ## 1.15.0 — typewriters polished, settings in their colours
 
 - [x] The paper under the text no longer shows the sheet's ends sliding by: the moving paper has no ends,

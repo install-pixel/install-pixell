@@ -117,7 +117,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         isSingleLine = true
         setHorizontallyScrolling(true)
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(8), 0, dp(8), 0)
+        // Room at the end for the soft right edge, so the newest letter is never under it.
+        setPadding(dp(8), 0, dp(24), 0)
     }
 
     /**
@@ -156,7 +157,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     /** Whether the strip shows the user's text (not a message, a translation or suggestions). */
     private var showingEcho = false
-    private val statusScroll = HorizontalScrollView(context).apply {
+    private val statusScroll = object : HorizontalScrollView(context) {
+        // The right end always melts into the paper (not only while there is more text that way), so the
+        // paper that moves with the text never shows an edge there.
+        override fun getRightFadingEdgeStrength(): Float = 1f
+    }.apply {
         isHorizontalScrollBarEnabled = false
         isFillViewport = true
         overScrollMode = View.OVER_SCROLL_NEVER
@@ -166,9 +171,70 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         addView(status, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.MATCH_PARENT))
     }
 
+    /** A finger sliding along the user's text in the strip carries the cursor with it. */
+    private var draggingCursor = false
+    private var dragDownX = 0f
+    private var dragDownY = 0f
+    private var dragOffset = -1
+    private val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+
     init {
         @SuppressLint("ClickableViewAccessibility")
-        status.setOnTouchListener { _, event -> statusGestures.onTouchEvent(event) }
+        status.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    draggingCursor = false
+                    dragDownX = event.x
+                    dragDownY = event.y
+                    dragOffset = -1
+                    // On the user's text a slide moves the cursor, not the strip (it scrolls at its ends).
+                    if (showingEcho && statusAction == null) statusScroll.requestDisallowInterceptTouchEvent(true)
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    if (!draggingCursor && showingEcho && statusAction == null &&
+                        kotlin.math.abs(event.x - dragDownX) > touchSlop && kotlin.math.abs(event.x - dragDownX) > kotlin.math.abs(event.y - dragDownY)
+                    ) {
+                        draggingCursor = true
+                        statusScroll.requestDisallowInterceptTouchEvent(true)
+                        // No tap or long press after a slide.
+                        statusGestures.onTouchEvent(android.view.MotionEvent.obtain(event).apply { action = android.view.MotionEvent.ACTION_CANCEL })
+                    }
+                    if (draggingCursor) {
+                        dragCursorTo(event.x)
+                        return@setOnTouchListener true
+                    }
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> if (draggingCursor) {
+                    draggingCursor = false
+                    return@setOnTouchListener true
+                }
+            }
+            statusGestures.onTouchEvent(event)
+        }
+    }
+
+    /**
+     * Puts the cursor between the characters under [x] (in the strip's text); near either end of the strip
+     * the text scrolls on, so the cursor can go anywhere in it.
+     */
+    private fun dragCursorTo(x: Float) {
+        val layout = status.layout ?: return
+        val visibleX = x - statusScroll.scrollX
+        val edge = dp(28)
+        val step = when {
+            visibleX > statusScroll.width - edge -> dp(10)
+            visibleX < edge -> -dp(10)
+            else -> 0
+        }
+        if (step != 0) statusScroll.scrollBy(step, 0)
+        val offset = layout.getOffsetForHorizontal(0, x + (if (step != 0) step else 0) - status.totalPaddingLeft)
+            .coerceIn(0, status.text.length)
+        if (offset == dragOffset) return
+        dragOffset = offset
+        val cursor = if (echoCursor in 0..status.text.length) echoCursor else status.text.length
+        if (offset == cursor) return
+        status.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+        toolbarListener?.onEchoWord(offset - cursor, offset - cursor, select = false)
     }
     private val undoButton = button(R.string.toolbar_undo_translation_description) { toolbarListener?.onUndoTranslation() }
         .apply { icon = Icon.UNDO; visibility = View.GONE }
@@ -185,13 +251,17 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         suggestionView().apply {
             // Sized by their word (no auto-size: it needs a fixed width).
             setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            // As large as the text, but lighter and set apart by a line: words offered, not written.
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             setPadding(dp(8), 0, dp(8), 0)
         }
     }
+    private val predictionsDivider = View(context)
     private val predictionsRow = LinearLayout(context).apply {
         orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
         visibility = View.GONE
+        addView(predictionsDivider, LayoutParams(dp(1), dp(22)).apply { setMargins(dp(2), 0, dp(2), 0) })
         predictionViews.forEach { addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT)) }
     }
     private var predictions: List<String> = emptyList()
@@ -421,25 +491,61 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     // ---------------------------------------------------------------- over the strip (typewriter)
 
     private val holderPainter = SurfacePainter(resources.displayMetrics.density)
-    /** When a typebar last struck the paper (uptime ms; 0: none moving). */
-    private var strikeAt = 0L
+    /** The typebar of the letter key being pressed: when it went down and came up (uptime ms; 0: not). */
+    private var strikeDownAt = 0L
+    private var strikeUpAt = 0L
+    /** How far up it was when the key came up (0..1). */
+    private var strikeHeldAt = 0f
+    /** Where its key is (x in this view) and where it strikes the paper. */
+    private var strikeFromX = 0f
     private var strikeX = 0f
 
     /**
-     * A typebar comes up out of the machine and strikes the paper where the next letter goes, as on the real
-     * machine: its tip rises from under the paper holder to the line of text and drops back, in a blink.
+     * A letter key went down ([down]) or came up. As on the machine, the typebar of that key swings up from
+     * the key's side, out from under the paper holder, and strikes the paper where the letter goes the moment
+     * the key is down; it rests there while the key is held and falls back as it comes up.
      */
-    fun typebarStrike() {
+    fun typebar(keyX: Float, down: Boolean) {
         if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized) return
+        val now = android.os.SystemClock.uptimeMillis()
+        if (down) {
+            strikeFromX = keysRow.left + keyboardView.left + keyX
+            strikeX = printX()
+            strikeDownAt = now
+            strikeUpAt = 0L
+        } else if (strikeDownAt > 0 && strikeUpAt == 0L) {
+            strikeHeldAt = strikeRise(now)
+            strikeUpAt = now
+        }
+        postInvalidateOnAnimation()
+    }
+
+    /** Where the next letter goes on the paper: just after the cursor in the strip (x in this view). */
+    private fun printX(): Float {
         val layout = status.layout
         val text = status.text
         val cursor = if (showingEcho && echoCursor in 0..text.length) echoCursor else text.length
         val at = if (layout != null) runCatching { layout.getPrimaryHorizontal(cursor) }.getOrDefault(0f) else 0f
         val advance = status.paint.measureText("0")
         val x = infoRow.left + statusScroll.left + status.left + status.totalPaddingLeft + at + advance / 2 - statusScroll.scrollX
-        strikeX = x.coerceIn(infoRow.left + statusScroll.left.toFloat(), infoRow.left + statusScroll.right.toFloat())
-        strikeAt = android.os.SystemClock.uptimeMillis()
-        postInvalidateOnAnimation()
+        return x.coerceIn(infoRow.left + statusScroll.left.toFloat(), infoRow.left + statusScroll.right.toFloat())
+    }
+
+    private fun strikeRise(now: Long): Float {
+        val t = ((now - strikeDownAt) / STRIKE_RISE_MS.toFloat()).coerceIn(0f, 1f)
+        // Fast at first and slowing into the paper.
+        return 1f - (1f - t) * (1f - t)
+    }
+
+    /** How far up the typebar is now (0 down in the machine, 1 on the paper). */
+    private fun strikeLift(now: Long): Float = when {
+        strikeDownAt == 0L -> 0f
+        strikeUpAt == 0L -> strikeRise(now)
+        else -> (strikeHeldAt * (1f - (now - strikeUpAt) / STRIKE_FALL_MS.toFloat())).coerceAtLeast(0f)
+    }
+
+    private val strikePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        maskFilter = android.graphics.BlurMaskFilter(2f * resources.displayMetrics.density, android.graphics.BlurMaskFilter.Blur.NORMAL)
     }
 
     override fun dispatchDraw(canvas: Canvas) {
@@ -450,15 +556,38 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         // The browned ends of the parchment lie over the text as well.
         paper?.overlay?.let { canvas.drawBitmap(it, infoRow.left.toFloat(), top, null) }
         val holder = dp(HOLDER_DP).toFloat()
-        val holderTop = bottom - holder * 0.55f
-        // The typebar, behind the holder.
-        val t = (android.os.SystemClock.uptimeMillis() - strikeAt) / STRIKE_MS.toFloat()
-        if (strikeAt > 0 && t < 1f) {
-            val reach = (holderTop - (top + infoRow.height * 0.42f)) * kotlin.math.sin(t * Math.PI).toFloat()
-            holderPainter.drawTypebar(canvas, strikeX, holderTop + holder * 0.5f, holderTop - reach, dp(3).toFloat())
-            postInvalidateOnAnimation()
-        } else {
-            strikeAt = 0L
+        // On the paper's lower edge; below it a strip of the machine, then the chips or the keys.
+        val holderTop = bottom - holder
+        // The typebar, behind the holder: from its pivot in the machine below, by its key, up to the paper.
+        val now = android.os.SystemClock.uptimeMillis()
+        val lift = strikeLift(now)
+        if (lift > 0f) {
+            val pivotX = strikeFromX
+            val pivotY = bottom + dp(HOLDER_GAP_DP) + dp(10)
+            val restY = holderTop + holder * 0.5f
+            val textY = top + infoRow.height * 0.42f
+            val tipX = pivotX + (strikeX - pivotX) * lift
+            val tipY = restY + (textY - restY) * lift
+            // Only the part between the machine and the paper shows (it comes out from under the holder);
+            // below that it is behind the chips and keys.
+            canvas.save()
+            canvas.clipRect(0f, top, width.toFloat(), bottom + dp(HOLDER_GAP_DP))
+            holderPainter.drawTypebar(canvas, pivotX, pivotY, tipX, tipY, dp(3).toFloat())
+            canvas.restore()
+            // On the paper: the dent of the type, a dark mark where the letter comes.
+            if (lift > 0.85f) {
+                val ink = ((lift - 0.85f) / 0.15f).coerceIn(0f, 1f)
+                strikePaint.color = (theme.text and 0x00FFFFFF) or ((0x55 * ink).toInt() shl 24)
+                val r = status.textSize * 0.32f
+                canvas.drawOval(strikeX - r * 0.8f, textY - r, strikeX + r * 0.8f, textY + r, strikePaint)
+            }
+            // Moving (going up or coming down): the next frame. Resting on the paper: nothing to redraw.
+            if (strikeUpAt != 0L || now - strikeDownAt < STRIKE_RISE_MS) postInvalidateOnAnimation()
+            // Never left up: a key held very long (or let go unseen) brings its typebar down by itself.
+            if (strikeUpAt == 0L && now - strikeDownAt > STRIKE_HOLD_MAX_MS) typebar(0f, false)
+        } else if (strikeUpAt != 0L) {
+            strikeDownAt = 0L
+            strikeUpAt = 0L
         }
         canvas.save()
         canvas.translate(0f, holderTop)
@@ -534,6 +663,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keysRow.addView(keyboardView, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         keysRow.addView(remotePanel, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         addView(keysRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        keyboardView.typebarListener = { x, down -> typebar(x, down) }
         addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         addView(clipboardPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
@@ -583,6 +713,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         volumeBar.applyTheme(value)
         holderPainter.milk = value.milk
         holderPainter.brightness = value.brightness
+        if (::infoRow.isInitialized) {
+            val gap = if (value.style == SurfaceStyle.TYPEWRITER) dp(HOLDER_GAP_DP) else 0
+            (infoRow.layoutParams as? LayoutParams)?.let { if (it.bottomMargin != gap) { it.bottomMargin = gap; infoRow.layoutParams = it } }
+        }
         fadeColor = value.background
         fadePaint.shader = null
         applyPaperToText()
@@ -768,6 +902,23 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         view.animate().alpha(restAlpha(view)).setDuration(180).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
     }
 
+    /** A message of the keyboard as shown in the strip: ⓘ, slanted, dimmer, underlined when tappable. */
+    private fun note(text: CharSequence): CharSequence {
+        val out = android.text.SpannableString("ⓘ $text")
+        val all = android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        out.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.ITALIC), 0, out.length, all)
+        out.setSpan(android.text.style.ForegroundColorSpan((theme.text and 0x00FFFFFF) or 0xA6000000.toInt()), 0, out.length, all)
+        if (statusAction != null) out.setSpan(android.text.style.UnderlineSpan(), 2, out.length, all)
+        return out
+    }
+
+    /** Text not yet confirmed (dictation, translation): brass or bronze on the typewriters, else blue. */
+    private fun liveColor(): Int = when {
+        theme.style == SurfaceStyle.TYPEWRITER -> theme.accent
+        theme.confirm != 0 -> theme.confirm
+        else -> theme.accent
+    }
+
     /** Short, non-blocking message. [onTap] makes it tappable (e.g. "restore original"). */
     fun showStatus(text: CharSequence, durationMs: Long = STATUS_MILLIS, onTap: (() -> Unit)? = null) {
         removeCallbacks(clearMessage)
@@ -834,8 +985,19 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             reInk = false
             val typewriter = theme.style == SurfaceStyle.TYPEWRITER
             val grew = text.length > status.text.length && text.toString().startsWith(status.text.toString())
-            val inked = if (typewriter) TypewriterInk.apply(text, status.textSize, if (paper != null) ::foldOf else null) else text
-            status.text = if (isEcho && echoCursor in 0 until text.length) dimAfter(inked, echoCursor, theme.text) else inked
+            status.text = when {
+                // The keyboard speaking (a hint, a question, a missing model): not the user's text, so it
+                // reads differently, a note in a dimmer slanted hand with ⓘ; underlined when it can be tapped.
+                message != null -> note(text)
+                // Dictation or a translation still on its way: the accent colour until it is confirmed.
+                centreText != null -> android.text.SpannableString(text).apply {
+                    setSpan(android.text.style.ForegroundColorSpan(liveColor()), 0, length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                else -> {
+                    val inked = if (typewriter) TypewriterInk.apply(text, status.textSize, if (paper != null) ::foldOf else null) else text
+                    if (isEcho && echoCursor in 0 until text.length) dimAfter(inked, echoCursor, theme.text) else inked
+                }
+            }
             // A new letter on the typewriter: the strip gives the small jolt of a typebar hitting the paper.
             if (typewriter && grew) {
                 status.animate().cancel()
@@ -843,7 +1005,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 status.animate().translationY(0f).setDuration(90).start()
             }
             // The cursor in view (the newest text when it is at the end); the rest is a swipe away.
-            statusScroll.post {
+            if (!draggingCursor) statusScroll.post {
                 // Runs a moment later: by then dictation or a translation may have changed the text, so the
                 // cursor is checked against the text shown now.
                 val layout = status.layout
@@ -858,6 +1020,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             }
         }
         status.setTextColor(theme.text)
+        predictionsDivider.setBackgroundColor((theme.text and 0x00FFFFFF) or 0x40000000)
         val volume = volumeShown
         volumeBar.visibility = if (volume) View.VISIBLE else View.GONE
         statusScroll.visibility = if (showSuggestions || volume) View.GONE else View.VISIBLE
@@ -868,7 +1031,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             val word = predictions.getOrNull(i)
             v.text = word ?: ""
             v.visibility = if (word != null) View.VISIBLE else View.GONE
-            v.alpha = 0.8f
+            v.alpha = 0.6f
         }
         suggestionViews.forEachIndexed { i, v ->
             val word = suggestions.getOrNull(i)
@@ -934,8 +1097,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val FADE_DP = 14
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
-        /** A typebar's way up to the paper and back. */
-        const val STRIKE_MS = 130L
+        /** The machine showing between the paper holder and what is below it. */
+        const val HOLDER_GAP_DP = 8
+        /** A typebar's way up to the paper, and back down. */
+        const val STRIKE_RISE_MS = 70L
+        const val STRIKE_FALL_MS = 110L
+        const val STRIKE_HOLD_MAX_MS = 3000L
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L

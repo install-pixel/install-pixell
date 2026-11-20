@@ -510,31 +510,38 @@ class SurfacePainter(private val density: Float) {
     }
 
     /**
-     * A typebar rising to the paper: a steel (bronze) arm [width] wide from [fromY] up to [tipY] at [x], with
-     * the type slug at its tip, inked dark on its face.
+     * A typebar swung up to the paper: a steel (bronze) arm [width] wide from its pivot ([fromX], [fromY]) to
+     * its tip ([tipX], [tipY]), with the type slug at the tip, inked dark on its face.
      */
-    fun drawTypebar(canvas: Canvas, x: Float, fromY: Float, tipY: Float, width: Float) {
-        if (tipY >= fromY) return
-        matrix.setScale(1f, fromY - tipY)
-        matrix.postTranslate(0f, tipY)
+    fun drawTypebar(canvas: Canvas, fromX: Float, fromY: Float, tipX: Float, tipY: Float, width: Float) {
+        val dx = tipX - fromX
+        val dy = tipY - fromY
+        val length = kotlin.math.hypot(dx, dy)
+        if (length < width) return
+        canvas.save()
+        // Drawn upright from the pivot, turned to point at the tip.
+        canvas.rotate(Math.toDegrees(kotlin.math.atan2(dx, -dy).toDouble()).toFloat(), fromX, fromY)
+        val top = fromY - length
+        matrix.setScale(1f, length)
+        matrix.postTranslate(0f, top)
         leverPaint.strokeCap = Paint.Cap.BUTT
         leverPaint.shader = null
         leverPaint.color = rodEdge
         leverPaint.strokeWidth = width + 1f * density
-        canvas.drawLine(x, fromY, x, tipY + width, leverPaint)
+        canvas.drawLine(fromX, fromY, fromX, top + width, leverPaint)
         leverShade.setLocalMatrix(matrix)
         leverPaint.shader = leverShade
         leverPaint.strokeWidth = width
-        canvas.drawLine(x, fromY, x, tipY + width, leverPaint)
+        canvas.drawLine(fromX, fromY, fromX, top + width, leverPaint)
         leverPaint.shader = null
-        // The slug: a little wider block with the type on its face.
-        oval.set(x - width * 0.95f, tipY, x + width * 0.95f, tipY + width * 2.6f)
+        oval.set(fromX - width * 0.95f, top, fromX + width * 0.95f, top + width * 2.6f)
         stretch(collarShade, oval)
         fill.shader = collarShade
         canvas.drawRoundRect(oval, width * 0.35f, width * 0.35f, fill)
         fill.shader = null
         fill.color = if (milk) 0xCC3E2A16.toInt() else 0xE6000000.toInt()
-        canvas.drawRect(x - width * 0.6f, tipY, x + width * 0.6f, tipY + width * 0.5f, fill)
+        canvas.drawRect(fromX - width * 0.6f, top, fromX + width * 0.6f, top + width * 0.5f, fill)
+        canvas.restore()
     }
 
     /** The dark depth of the machine under its top edge, where the levers go in ([height] tall). */

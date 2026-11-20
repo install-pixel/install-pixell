@@ -334,7 +334,7 @@
     <string name="learn_touch_hint">Клавіатура запам\'ятовує, куди насправді влучає ваш палець на кожній літері, і трохи зсуває невидимі межі між клавішами. Тільки на цьому телефоні.</string>
     <string name="learn_touch_reset">Забути, як я натискаю</string>
     <string name="learn_touch_forgotten">Забуто — вчиться заново</string>
-    <string name="clipboard_title">Буфер · дотик — вставити, затиснути — закріпити</string>
+    <string name="clipboard_title">Буфер · дотик — вставити, утримання — закріпити, свайп вліво — видалити</string>
     <string name="clipboard_translate">Перекласти виділене або буфер</string>
     <string name="clipboard_clear">Забути незакріплені тексти</string>
     <string name="clipboard_history_empty">Скопіюйте текст — він буде тут годину (закріплені лишаються)</string>
@@ -371,4 +371,7 @@
     <string name="sound_on">Звук клавіш увімкнено</string>
     <string name="sound_off">Звук клавіш вимкнено</string>
     <string name="sound_volume_set">Гучність %1$d%%</string>
+    <string name="clipboard_clear_confirm">Ще раз ✕ — забути %1$d (закріплені лишаться: %2$d)</string>
+    <string name="clipboard_only_pinned">Тут лише закріплені: утримайте, щоб відкріпити, або змахніть вліво</string>
+    <string name="clipboard_deleted">Видалено · торкніться тут, щоб повернути</string>
 </resources>

@@ -334,7 +334,7 @@
     <string name="learn_touch_hint">The keyboard remembers where your finger really lands on each letter and moves the invisible borders between keys a little. Only on this phone.</string>
     <string name="learn_touch_reset">Forget how I tap</string>
     <string name="learn_touch_forgotten">Forgotten — learning again</string>
-    <string name="clipboard_title">Clipboard · tap to paste, hold to pin</string>
+    <string name="clipboard_title">Clipboard · tap to paste, hold to pin, swipe left to delete</string>
     <string name="clipboard_translate">Translate the selection or the clipboard</string>
     <string name="clipboard_clear">Forget the unpinned texts</string>
     <string name="clipboard_history_empty">Copy a text — it will be here for an hour (pinned ones stay)</string>
@@ -371,4 +371,7 @@
     <string name="sound_on">Key sounds on</string>
     <string name="sound_off">Key sounds off</string>
     <string name="sound_volume_set">Volume %1$d%%</string>
+    <string name="clipboard_clear_confirm">Tap ✕ again to forget %1$d (pinned stay: %2$d)</string>
+    <string name="clipboard_only_pinned">Only pinned texts: hold one to unpin, or swipe it left</string>
+    <string name="clipboard_deleted">Deleted · tap here to bring it back</string>
 </resources>
