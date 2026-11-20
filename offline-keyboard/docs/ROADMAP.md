@@ -65,6 +65,11 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] What the strip shows reads by kind: your text in ink, after the cursor dimmer; next words as large but
       lighter, set apart by a line; the keyboard's own messages slanted, dimmer, with ⓘ (underlined when
       they can be tapped); dictation or a translation on its way in the accent colour.
+- [x] Deleting in a long text (a pasted log) is quick again, held or tapped: the strip shows only the text
+      near the cursor (it moves with it), so it is not set again, letter by letter, after every key.
+- [x] Clipboard panel: swipe a text left to delete it (pinned too; the title brings it back for a few
+      seconds); pinning moves it softly; ✕ says what it will forget and does it on a second tap; long texts in
+      two lines; translate uses the newest kept text when the phone's clipboard is empty.
 
 ## 1.15.0 — typewriters polished, settings in their colours
 

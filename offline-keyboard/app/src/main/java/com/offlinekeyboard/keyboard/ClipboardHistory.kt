@@ -55,6 +55,23 @@ object ClipboardHistory {
         return pin
     }
 
+    /** Forgets [text] (pinned or not); returns it, to be put back with [restore]. */
+    fun remove(context: Context, text: String): Clip? {
+        val list = load(context)
+        val clip = list.firstOrNull { it.text == text } ?: return null
+        list.remove(clip)
+        save(context)
+        return clip
+    }
+
+    /** Puts back a text forgotten with [remove]. */
+    fun restore(context: Context, clip: Clip) {
+        val list = load(context)
+        list.removeAll { it.text == clip.text }
+        list.add(clip)
+        save(context)
+    }
+
     /** Forgets the unpinned texts. */
     fun clear(context: Context) {
         load(context).removeAll { !it.pinned }

@@ -334,7 +334,7 @@
     <string name="learn_touch_hint">Klawiatura zapamiętuje, gdzie naprawdę trafia twój palec na każdej literze, i lekko przesuwa niewidoczne granice między klawiszami. Tylko na tym telefonie.</string>
     <string name="learn_touch_reset">Zapomnij, jak naciskam</string>
     <string name="learn_touch_forgotten">Zapomniane — uczy się od nowa</string>
-    <string name="clipboard_title">Schowek · dotknij — wklej, przytrzymaj — przypnij</string>
+    <string name="clipboard_title">Schowek · dotknij — wklej, przytrzymaj — przypnij, przesuń w lewo — usuń</string>
     <string name="clipboard_translate">Przetłumacz zaznaczenie lub schowek</string>
     <string name="clipboard_clear">Zapomnij nieprzypięte teksty</string>
     <string name="clipboard_history_empty">Skopiuj tekst — będzie tu przez godzinę (przypięte zostają)</string>
@@ -371,4 +371,7 @@
     <string name="sound_on">Dźwięk klawiszy włączony</string>
     <string name="sound_off">Dźwięk klawiszy wyłączony</string>
     <string name="sound_volume_set">Głośność %1$d%%</string>
+    <string name="clipboard_clear_confirm">Dotknij ✕ ponownie, aby zapomnieć %1$d (przypięte zostają: %2$d)</string>
+    <string name="clipboard_only_pinned">Tylko przypięte: przytrzymaj, aby odpiąć, lub przesuń w lewo</string>
+    <string name="clipboard_deleted">Usunięto · dotknij tutaj, aby przywrócić</string>
 </resources>
