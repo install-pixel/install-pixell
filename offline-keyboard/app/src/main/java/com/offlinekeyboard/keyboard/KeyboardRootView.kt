@@ -44,6 +44,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fun onToolbarMode()
         /** Bluetooth button: start or stop sending keys to the connected computer. */
         fun onToolbarBluetooth()
+        /** Bluetooth button held: on to the next of the chosen devices (and the phone itself), in turn. */
+        fun onToolbarBluetoothSwitch() {}
         /** Puts the original text back in place of the last translation. */
         fun onUndoTranslation()
         fun onToolbarSettings()
@@ -267,7 +269,15 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var predictions: List<String> = emptyList()
     private val modeButton = button(R.string.toolbar_mode_description) { toolbarListener?.onToolbarMode() }
     private val bluetoothButton = button(R.string.toolbar_bluetooth_description) { toolbarListener?.onToolbarBluetooth() }
-        .apply { icon = Icon.BLUETOOTH }
+        .apply {
+            icon = Icon.BLUETOOTH
+            setOnLongClickListener {
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                if (buttonsShown) revealButtons()
+                toolbarListener?.onToolbarBluetoothSwitch()
+                true
+            }
+        }
     private val remoteButton = button(R.string.toolbar_remote_description) { toolbarListener?.onToolbarRemote() }
         .apply { icon = Icon.TOUCHPAD }
 
@@ -573,13 +583,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             val gapBottom = bottom + dp(HOLDER_GAP_DP)
             val bend = holderTop + holder * 0.5f
             val arm = dp(3).toFloat()
-            // The arm: from its pivot below (by the key) to the bend, swinging over as it rises.
-            val endX = strikeFromX + (strikeX - strikeFromX) * lift
-            val endY = gapBottom + (bend - gapBottom) * lift
-            canvas.save()
-            canvas.clipRect(0f, holderTop, width.toFloat(), gapBottom)
-            holderPainter.drawTypebarArm(canvas, strikeFromX, gapBottom + dp(16), endX, endY, arm)
-            canvas.restore()
+            // The arm and its bend stay hidden in the machine, under the solid holder: nothing of the typebar
+            // shows below the paper (the light machine of the milky typewriter showed it, as if through).
             // The letter's place in the strip: its baseline and size as the strip writes it.
             impressionPaint.set(status.paint)
             val layout = status.layout
@@ -761,6 +766,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         status.typeface = face
         for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.applyStyle(value)
+        // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge.
+        bluetoothButton.plateInset = dp(LIT_PLATE_INSET_DP).toFloat()
+        remoteButton.plateInset = dp(LIT_PLATE_INSET_DP).toFloat()
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton, soundButton, remoteButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
@@ -1129,6 +1137,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val HOLDER_DP = 5
         /** The modes button's plate in the strip. */
         const val MODES_BUTTON_DP = 34
+        /** How far in a lit button's plate sits (Bluetooth, remote). */
+        const val LIT_PLATE_INSET_DP = 6
         /** The machine showing between the paper holder and what is below it. */
         const val HOLDER_GAP_DP = 8
         /** A typebar's way up to the paper, and back down. */

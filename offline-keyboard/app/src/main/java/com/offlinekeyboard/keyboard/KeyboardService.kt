@@ -150,6 +150,16 @@ class KeyboardService : InputMethodService(),
         keySounds = runCatching { KeySounds(this) }.getOrNull()
         scope.launch {
             Bluetooth.status.collect {
+                // A switch to another device: it is connected now, so typing goes there.
+                val target = switchingTo
+                if (target != null && Bluetooth.isConnected && Bluetooth.hostAddress == target) {
+                    switchingTo = null
+                    handler.removeCallbacks(switchTimeout)
+                    bluetoothSending = true
+                    sentText.setLength(0)
+                    leaveSegment()
+                    rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+                }
                 updateSuggestions()
                 render()
             }
@@ -886,6 +896,55 @@ class KeyboardService : InputMethodService(),
             else -> Unit
         }
         if (sentText.length > SENT_TEXT_MAX) sentText.delete(0, sentText.length - SENT_TEXT_MAX)
+    }
+
+    /** The device a switch is connecting to (its address), until it has. */
+    private var switchingTo: String? = null
+    private val switchTimeout = Runnable {
+        val target = switchingTo ?: return@Runnable
+        switchingTo = null
+        val name = Bluetooth.pairedDevices(this).firstOrNull { it.address == target }?.let(Bluetooth::deviceName) ?: target
+        rootView?.showStatus(getString(R.string.bluetooth_switch_failed, name), CHECK_WARNING_MS)
+    }
+
+    /**
+     * The Bluetooth button held: on to the next of the devices chosen in the settings, then the phone itself,
+     * and round again. The device typed on now is let go first (a phone is a keyboard for one at a time).
+     */
+    override fun onToolbarBluetoothSwitch() {
+        if (!bluetoothKeyboardSupported || !settings.bluetoothKeyboard) return
+        val hosts = Bluetooth.switchHosts(this)
+        if (hosts.isEmpty()) {
+            rootView?.showStatus(getString(R.string.bluetooth_switch_none), CHECK_WARNING_MS) { openSettings("bluetooth") }
+            return
+        }
+        val current = if (bluetoothSending && bluetoothConnected) Bluetooth.hostAddress else null
+        val cycle: List<android.bluetooth.BluetoothDevice?> = hosts + listOf(null)
+        val at = cycle.indexOfFirst { it?.address == current }
+        val next = cycle[(at + 1) % cycle.size]
+        handler.removeCallbacks(switchTimeout)
+        leaveSegment()
+        if (next == null) {
+            switchingTo = null
+            bluetoothSending = false
+            Bluetooth.switchTo(null)
+            rootView?.showStatus(getString(R.string.bluetooth_switch_phone))
+        } else if (bluetoothConnected && Bluetooth.hostAddress == next.address) {
+            // Already connected to it (typing went to the phone): only send there again.
+            switchingTo = null
+            bluetoothSending = true
+            sentText.setLength(0)
+            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+        } else {
+            switchingTo = next.address
+            bluetoothSending = false
+            Bluetooth.start(this)
+            Bluetooth.switchTo(next)
+            rootView?.showStatus(getString(R.string.bluetooth_switching, Bluetooth.deviceName(next)), SWITCH_TIMEOUT_MS)
+            handler.postDelayed(switchTimeout, SWITCH_TIMEOUT_MS)
+        }
+        updateSuggestions()
+        render()
     }
 
     override fun onToolbarBluetooth() {
@@ -1635,6 +1694,8 @@ class KeyboardService : InputMethodService(),
         private const val MOBILE_KEY_DP = 52f
         private const val WORD_CONTEXT = 64
         private const val CHECK_WARNING_MS = 8000L
+        /** How long a switch to another device may take before it is given up. */
+        private const val SWITCH_TIMEOUT_MS = 10_000L
         private const val PREVIEW_DELAY_MS = 350L
         private const val DONE_MESSAGE_MS = 4000L
         private const val SENT_TEXT_MAX = 2000

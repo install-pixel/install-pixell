@@ -54,6 +54,20 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.15.3 — one keyboard for several devices, a remote laid out to use
+
+- [x] Hold the Bluetooth button to switch to the next device: the devices marked ★ in the Bluetooth
+      settings in their order, then the phone itself, round again; the one typed on is let go first and the
+      strip says where it goes («→ Raspberry Pi…», then «typing on …» or «could not connect»).
+- [x] Music row of the remote, mirrored round a bigger play/pause: mute · volume− · previous · seek back ·
+      PLAY · seek on · next · volume+ · back to the keys. A tap seeks a step (the player's own: the arrow
+      keys), holding keeps seeking; holding previous/next keeps skipping; volume repeats while held.
+- [x] Navigation row round the arrows: Esc · Tab · ◀ · ▲/▼ (stacked) · ▶ · Alt+Tab · Win · ♪; arrows repeat
+      while held.
+- [x] Nothing of the typebar shows below the paper holder any more (the light machine showed its arm, as if
+      the holder were see-through); only its straight end above the holder.
+- [x] The lit Bluetooth and remote buttons are smaller plates, clear of the paper's edge.
+
 ## 1.15.2 — the typebar under the holder, the letter pressed whole
 
 - [x] The typebar no longer crosses the paper: its arm swings up from the key's side in the strip of the
@@ -119,7 +133,6 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 
 ## Planned
 
-- [ ] Remote, second version: several computers to switch between, connecting by itself.
 - [ ] Key sounds for the other styles (the sound button then shows in every style).
 - [ ] Data guard: a gentle warning when a card number, IBAN, PESEL or a password-like text goes into a chat.
 - [ ] Hide numbers with stars (**** 1234) — optional.
