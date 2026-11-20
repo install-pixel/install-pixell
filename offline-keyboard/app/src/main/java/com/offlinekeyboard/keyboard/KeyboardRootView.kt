@@ -55,6 +55,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
          * (negative before it).
          */
         fun onEchoWord(start: Int, end: Int, select: Boolean) {}
+        /** Sound button: key sounds on or off. */
+        fun onToolbarSound() {}
+        /** Sound button held: the finger chose [volume] (0.1–1); [done] when it is let go. */
+        fun onSoundVolume(volume: Float, done: Boolean) {}
+        /** Remote button: the touchpad and remote keys in place of the keys, or back. */
+        fun onToolbarRemote() {}
     }
 
     data class ToolbarState(
@@ -65,6 +71,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val voiceOffered: Boolean,
         val recording: Boolean,
         val bluetooth: BluetoothButton = BluetoothButton.HIDDEN,
+        /** null: the style has no sounds (no button); otherwise whether key sounds are on. */
+        val soundOn: Boolean? = null,
+        val soundVolume: Float = 0.6f,
+        /** The remote can be opened: sending to a connected computer. */
+        val remoteOffered: Boolean = false,
     )
 
     /** HIDDEN: the Bluetooth keyboard is off in settings; IDLE: on, typing goes to the phone; SENDING: to the computer. */
@@ -83,6 +94,18 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     val clipboardPanel = ClipboardPanel(context).apply { visibility = View.GONE }
 
     val clipboardShown: Boolean get() = clipboardPanel.visibility == View.VISIBLE
+
+    /** The computer remote: touchpad, mouse buttons and a row of keys (next to the keys in landscape). */
+    val remotePanel = RemotePanel(context).apply { visibility = View.GONE }
+
+    val remoteShown: Boolean get() = remotePanel.visibility == View.VISIBLE
+
+    /** The keys and, beside them or in their place, the remote. */
+    private val keysRow = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        clipChildren = false
+        clipToPadding = false
+    }
 
     private var theme = keyboardView.theme
 
@@ -173,6 +196,61 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private val modeButton = button(R.string.toolbar_mode_description) { toolbarListener?.onToolbarMode() }
     private val bluetoothButton = button(R.string.toolbar_bluetooth_description) { toolbarListener?.onToolbarBluetooth() }
         .apply { icon = Icon.BLUETOOTH }
+    private val remoteButton = button(R.string.toolbar_remote_description) { toolbarListener?.onToolbarRemote() }
+        .apply { icon = Icon.TOUCHPAD }
+
+    /** Key sounds: a tap turns them on or off; held, the strip becomes a volume bar under the finger. */
+    private val soundButton = ToolbarButton(context).apply {
+        contentDescription = context.getString(R.string.toolbar_sound_description)
+        isClickable = true
+    }
+    private val volumeBar = VolumeBar(context).apply { visibility = View.GONE }
+    private var volumeShown = false
+    private val startVolume = Runnable {
+        volumeShown = true
+        volumeBar.value = lastState?.soundVolume ?: 0.6f
+        soundButton.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        removeCallbacks(hideButtonsRunnable)
+        refreshCentre()
+        fadeIn(volumeBar)
+    }
+
+    init {
+        @SuppressLint("ClickableViewAccessibility")
+        soundButton.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    volumeShown = false
+                    postDelayed(startVolume, android.view.ViewConfiguration.getLongPressTimeout().toLong())
+                }
+                android.view.MotionEvent.ACTION_MOVE -> if (volumeShown) {
+                    val step = volumeBar.setFromScreenX(event.rawX)
+                    if (step) toolbarListener?.onSoundVolume(volumeBar.value, done = false)
+                    return@setOnTouchListener true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    removeCallbacks(startVolume)
+                    if (volumeShown) {
+                        volumeShown = false
+                        v.onTouchEvent(android.view.MotionEvent.obtain(event).apply { action = android.view.MotionEvent.ACTION_CANCEL })
+                        toolbarListener?.onSoundVolume(volumeBar.value, done = true)
+                        refreshCentre()
+                        if (buttonsShown) revealButtons()
+                        return@setOnTouchListener true
+                    }
+                    if (event.actionMasked == android.view.MotionEvent.ACTION_UP &&
+                        event.x in 0f..v.width.toFloat() && event.y in 0f..v.height.toFloat()
+                    ) {
+                        if (buttonsShown) revealButtons()
+                        toolbarListener?.onToolbarSound()
+                    }
+                }
+            }
+            v.onTouchEvent(event)
+            true
+        }
+    }
+
     private val settingsButton = button(R.string.toolbar_settings_description) {
         if (recording) toolbarListener?.onToolbarVoiceCancel() else toolbarListener?.onToolbarSettings()
     }
@@ -230,6 +308,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val bluetoothOn = lastState?.bluetooth?.let { it != BluetoothButton.HIDDEN } ?: false
         for ((button, present) in listOf(
             modesButton to compact,
+            soundButton to (lastState?.soundOn != null),
+            remoteButton to (lastState?.remoteOffered == true),
             bluetoothButton to bluetoothOn,
             modeButton to true,
             settingsButton to true,
@@ -351,7 +431,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(predictionsRow, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
+            addView(volumeBar, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(undoButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
+            addView(remoteButton, LayoutParams(dp(44), LayoutParams.MATCH_PARENT))
+            addView(soundButton, LayoutParams(dp(44), LayoutParams.MATCH_PARENT))
             addView(bluetoothButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(modeButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
             addView(settingsButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
@@ -365,7 +448,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         addView(infoRow, LayoutParams(LayoutParams.MATCH_PARENT, dp(44)))
         addView(modeRow, LayoutParams(LayoutParams.MATCH_PARENT, dp(44)))
-        addView(keyboardView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        keysRow.addView(keyboardView, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        keysRow.addView(remotePanel, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+        addView(keysRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         addView(clipboardPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
@@ -411,6 +496,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keyboardView.theme = value
         stickerPanel.applyTheme(value)
         clipboardPanel.applyTheme(value)
+        remotePanel.applyTheme(value)
+        volumeBar.applyTheme(value)
         fadeColor = value.background
         fadePaint.shader = null
         applyPaperToText()
@@ -425,7 +512,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         status.typeface = face
         for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.applyStyle(value)
-        for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton)) {
+        for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton, soundButton, remoteButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
             b.applyStyle(value)
@@ -447,6 +534,18 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             bluetoothButton.fill = if (sending) theme.accent else 0
             bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
         }
+        soundButton.icon = if (state.soundOn == false) Icon.SPEAKER_OFF else Icon.SPEAKER
+        soundButton.alpha = if (state.soundOn == false) 0.6f else 1f
+        val remoteOpen = remoteShown
+        if (theme.styled) {
+            remoteButton.fill = if (remoteOpen) theme.function else 0
+            remoteButton.chosen = remoteOpen
+            remoteButton.foreground = theme.text
+        } else {
+            remoteButton.fill = if (remoteOpen) theme.accent else 0
+            remoteButton.foreground = if (remoteOpen) theme.onAccent else theme.text
+        }
+        if (!state.remoteOffered && remoteOpen) showRemote(false)
         settingsButton.icon = if (state.recording) Icon.CLOSE else Icon.GEAR
         settingsButton.contentDescription = context.getString(
             if (state.recording) R.string.toolbar_voice_cancel_description else R.string.toolbar_settings_description,
@@ -500,6 +599,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     fun showStickers(show: Boolean) {
         if (show == stickersShown) return
         if (show) {
+            if (remoteShown) showRemote(false)
             stickerPanel.layoutParams = stickerPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(120)) }
             keyboardView.visibility = View.GONE
             stickerPanel.visibility = View.VISIBLE
@@ -515,6 +615,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     fun showClipboard(show: Boolean) {
         if (show == clipboardShown) return
         if (show) {
+            if (remoteShown) showRemote(false)
             if (stickersShown) stickerPanel.visibility = View.GONE
             clipboardPanel.layoutParams = clipboardPanel.layoutParams.apply { height = keyboardView.height.coerceAtLeast(dp(120)) }
             keyboardView.visibility = View.GONE
@@ -525,6 +626,43 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             keyboardView.visibility = View.VISIBLE
             fadeIn(keyboardView)
         }
+    }
+
+    /**
+     * Opens the remote or closes it. Upright it takes the place of the keys (same height); in landscape the
+     * keys keep about 60% of the width and the remote sits beside them.
+     */
+    fun showRemote(show: Boolean) {
+        if (show == remoteShown) return
+        val keysParams = keyboardView.layoutParams as LayoutParams
+        val remoteParams = remotePanel.layoutParams as LayoutParams
+        if (show) {
+            if (stickersShown) showStickers(false)
+            if (clipboardShown) showClipboard(false)
+            val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            remotePanel.besideKeyboard = landscape
+            if (landscape) {
+                keysParams.weight = KEYS_BESIDE_REMOTE
+                remoteParams.weight = 1f - KEYS_BESIDE_REMOTE
+                remoteParams.height = LayoutParams.MATCH_PARENT
+            } else {
+                remoteParams.weight = 1f
+                remoteParams.height = keyboardView.height.coerceAtLeast(dp(160))
+                keyboardView.visibility = View.GONE
+            }
+            remotePanel.visibility = View.VISIBLE
+            fadeIn(remotePanel)
+        } else {
+            remotePanel.visibility = View.GONE
+            keysParams.weight = 1f
+            if (keyboardView.visibility != View.VISIBLE) {
+                keyboardView.visibility = View.VISIBLE
+                fadeIn(keyboardView)
+            }
+        }
+        keyboardView.layoutParams = keysParams
+        remotePanel.layoutParams = remoteParams
+        lastState?.let { updateToolbar(it) }
     }
 
     /** Lets a panel that just took the place of another come in softly instead of popping up. */
@@ -624,9 +762,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             }
         }
         status.setTextColor(theme.text)
-        statusScroll.visibility = if (showSuggestions) View.GONE else View.VISIBLE
-        suggestionsRow.visibility = if (showSuggestions) View.VISIBLE else View.GONE
-        val showPredictions = isEcho && predictions.isNotEmpty()
+        val volume = volumeShown
+        volumeBar.visibility = if (volume) View.VISIBLE else View.GONE
+        statusScroll.visibility = if (showSuggestions || volume) View.GONE else View.VISIBLE
+        suggestionsRow.visibility = if (showSuggestions && !volume) View.VISIBLE else View.GONE
+        val showPredictions = isEcho && predictions.isNotEmpty() && !volume
         predictionsRow.visibility = if (showPredictions) View.VISIBLE else View.GONE
         predictionViews.forEachIndexed { i, v ->
             val word = predictions.getOrNull(i)
@@ -696,6 +836,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private companion object {
         val ECHO_WORD = Regex(ECHO_WORD_PATTERN)
         const val FADE_DP = 14
+        /** The keys' share of the width while the remote is beside them (landscape). */
+        const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L
         const val PREDICTIONS = 3
         const val INACTIVE_CHIP_ALPHA = 0x70
@@ -727,4 +869,64 @@ private class PaperDrawable(bitmap: android.graphics.Bitmap, offsetX: Float) : a
     override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
     @Deprecated("Deprecated in Java")
     override fun getOpacity() = android.graphics.PixelFormat.OPAQUE
+}
+
+/**
+ * The key sound volume while the sound button is held: a row of ten bars, lit up to the chosen one, with the
+ * percentage. The finger moves along the strip (it stays on the button; the bar follows its position).
+ */
+private class VolumeBar(context: Context) : View(context) {
+    /** 0.1–1 in steps of 0.1, as the slider in the settings. */
+    var value = 0.6f
+        set(v) { field = v; invalidate() }
+
+    private val density = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 13 * density; textAlign = Paint.Align.RIGHT }
+    private var lit = 0xFFFFFFFF.toInt()
+    private var dim = 0x44FFFFFF
+    private val location = IntArray(2)
+    private val bar = android.graphics.RectF()
+
+    fun applyTheme(theme: KeyboardTheme) {
+        lit = theme.text
+        dim = androidx.core.graphics.ColorUtils.setAlphaComponent(theme.text, 0x40)
+        text.color = theme.text
+        invalidate()
+    }
+
+    private val barsWidth get() = width - LABEL_DP * density - 2 * PAD_DP * density
+
+    /** Chooses the step under the finger at [rawX] on the screen; true when the step changed. */
+    fun setFromScreenX(rawX: Float): Boolean {
+        getLocationOnScreen(location)
+        val x = rawX - location[0] - PAD_DP * density
+        val step = ((x / barsWidth) * STEPS).toInt().coerceIn(0, STEPS - 1) + 1
+        val v = step / STEPS.toFloat()
+        if (kotlin.math.abs(v - value) < 0.01f) return false
+        value = v
+        return true
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val pad = PAD_DP * density
+        val gap = 3 * density
+        val each = (barsWidth - gap * (STEPS - 1)) / STEPS
+        val chosen = kotlin.math.round(value * STEPS).toInt()
+        for (i in 0 until STEPS) {
+            val left = pad + i * (each + gap)
+            // Rising bars, like a volume scale.
+            val h = height * (0.25f + 0.45f * (i + 1) / STEPS)
+            bar.set(left, (height - h) / 2f, left + each, (height + h) / 2f)
+            paint.color = if (i < chosen) lit else dim
+            canvas.drawRoundRect(bar, 2 * density, 2 * density, paint)
+        }
+        canvas.drawText("${chosen * 10}%", width - pad, height / 2f + text.textSize / 3f, text)
+    }
+
+    private companion object {
+        const val STEPS = 10
+        const val PAD_DP = 10
+        const val LABEL_DP = 48
+    }
 }

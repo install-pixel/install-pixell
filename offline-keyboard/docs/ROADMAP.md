@@ -54,9 +54,23 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.13.0 — computer remote, sound button
+
+- [x] Computer remote over Bluetooth (first version): a touchpad (tap = click, two fingers = right click
+      and scrolling, double tap and hold = drag), left and right buttons, Esc, Tab, Win, Alt+Tab, arrows;
+      ♪ swaps in media keys (previous, play/pause, next, volume, mute) and slides ◀ ▶. Upright it takes
+      the place of the keys, in landscape it sits beside them. The button shows while typing on the
+      computer. A computer paired before may need to pair again for the mouse.
+- [x] Sound button in the strip (styles with sounds — the typewriter for now): a tap turns key sounds on or
+      off, held the strip becomes a volume bar under the finger.
+- [x] The typewriter's end-of-line bell can be turned off (Typing settings).
+- [x] Typewriter: no letter bubble over a pressed key by default (can be turned back on).
+- [x] The first key sounds no longer come late: sounds load with the keyboard and the audio is woken up.
+
 ## Planned
 
-- [ ] PC remote over Bluetooth: touchpad (mouse), media keys, slides, a pad of shortcuts — comfortable.
+- [ ] Remote, second version: several computers to switch between, connecting by itself.
+- [ ] Key sounds for the other styles (the sound button then shows in every style).
 - [ ] Data guard: a gentle warning when a card number, IBAN, PESEL or a password-like text goes into a chat.
 - [ ] Hide numbers with stars (**** 1234) — optional.
 

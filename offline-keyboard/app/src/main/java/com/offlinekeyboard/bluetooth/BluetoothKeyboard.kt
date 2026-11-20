@@ -47,6 +47,13 @@ object Bluetooth {
 
     fun send(stroke: HidStroke): Boolean = bluetoothKeyboardSupported && BluetoothKeyboard.send(stroke)
 
+    /** The remote's mouse: [buttons] held (1 left, 2 right), a move and a wheel step. */
+    fun sendMouse(buttons: Int, dx: Int, dy: Int, wheel: Int): Boolean =
+        bluetoothKeyboardSupported && BluetoothKeyboard.sendMouse(buttons, dx, dy, wheel)
+
+    /** A media key (HID consumer usage), pressed and released. */
+    fun sendMedia(usage: Int): Boolean = bluetoothKeyboardSupported && BluetoothKeyboard.sendMedia(usage)
+
     fun hasPermission(context: Context): Boolean = bluetoothKeyboardSupported && BluetoothKeyboard.hasPermission(context)
 
     val permissions: Array<String> get() = if (bluetoothKeyboardSupported) BluetoothKeyboard.permissions else emptyArray()
@@ -137,6 +144,20 @@ object BluetoothKeyboard {
         return proxy.sendReport(device, REPORT_ID, down) && proxy.sendReport(device, REPORT_ID, up)
     }
 
+    fun sendMouse(buttons: Int, dx: Int, dy: Int, wheel: Int): Boolean {
+        val proxy = hid ?: return false
+        val device = host ?: return false
+        val report = byteArrayOf(buttons.toByte(), dx.coerceIn(-127, 127).toByte(), dy.coerceIn(-127, 127).toByte(), wheel.coerceIn(-127, 127).toByte())
+        return proxy.sendReport(device, MOUSE_REPORT_ID, report)
+    }
+
+    fun sendMedia(usage: Int): Boolean {
+        val proxy = hid ?: return false
+        val device = host ?: return false
+        val down = byteArrayOf((usage and 0xFF).toByte(), ((usage shr 8) and 0xFF).toByte())
+        return proxy.sendReport(device, MEDIA_REPORT_ID, down) && proxy.sendReport(device, MEDIA_REPORT_ID, ByteArray(2))
+    }
+
     private fun set(state: BluetoothState, device: BluetoothDevice? = host) {
         _status.value = BluetoothStatus(state, device?.let(::deviceName))
     }
@@ -146,7 +167,7 @@ object BluetoothKeyboard {
             val device = proxy as BluetoothHidDevice
             hid = device
             val sdp = BluetoothHidDeviceAppSdpSettings(
-                NAME, DESCRIPTION, PROVIDER, BluetoothHidDevice.SUBCLASS1_KEYBOARD, DESCRIPTOR,
+                NAME, DESCRIPTION, PROVIDER, BluetoothHidDevice.SUBCLASS1_COMBO, DESCRIPTOR,
             )
             if (!device.registerApp(sdp, null, null, executor, callback)) set(BluetoothState.FAILED)
         }
@@ -199,11 +220,17 @@ object BluetoothKeyboard {
 
     private const val KEY_LAST = "last_host"
     private const val REPORT_ID = 1
+    private const val MOUSE_REPORT_ID = 2
+    private const val MEDIA_REPORT_ID = 3
     private const val NAME = "OffKey"
-    private const val DESCRIPTION = "Phone keyboard"
+    private const val DESCRIPTION = "Phone keyboard and touchpad"
     private const val PROVIDER = "OffKey"
 
-    /** Standard keyboard: 8 modifier bits, a reserved byte, 5 LEDs, 6 keys; report id 1. */
+    /**
+     * Standard keyboard: 8 modifier bits, a reserved byte, 5 LEDs, 6 keys (report id 1); a mouse with three
+     * buttons, x, y and a wheel (report id 2); media keys, one 16-bit consumer usage (report id 3). A computer
+     * paired before the mouse was added may need to pair again to see it.
+     */
     private val DESCRIPTOR = intArrayOf(
         0x05, 0x01, 0x09, 0x06, 0xA1, 0x01, 0x85, REPORT_ID,
         0x05, 0x07, 0x19, 0xE0, 0x29, 0xE7, 0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95, 0x08, 0x81, 0x02,
@@ -211,6 +238,16 @@ object BluetoothKeyboard {
         0x95, 0x05, 0x75, 0x01, 0x05, 0x08, 0x19, 0x01, 0x29, 0x05, 0x91, 0x02,
         0x95, 0x01, 0x75, 0x03, 0x91, 0x01,
         0x95, 0x06, 0x75, 0x08, 0x15, 0x00, 0x25, 0x65, 0x05, 0x07, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00,
+        0xC0,
+        // Mouse.
+        0x05, 0x01, 0x09, 0x02, 0xA1, 0x01, 0x85, MOUSE_REPORT_ID, 0x09, 0x01, 0xA1, 0x00,
+        0x05, 0x09, 0x19, 0x01, 0x29, 0x03, 0x15, 0x00, 0x25, 0x01, 0x95, 0x03, 0x75, 0x01, 0x81, 0x02,
+        0x95, 0x01, 0x75, 0x05, 0x81, 0x01,
+        0x05, 0x01, 0x09, 0x30, 0x09, 0x31, 0x09, 0x38, 0x15, 0x81, 0x25, 0x7F, 0x75, 0x08, 0x95, 0x03, 0x81, 0x06,
+        0xC0, 0xC0,
+        // Media keys.
+        0x05, 0x0C, 0x09, 0x01, 0xA1, 0x01, 0x85, MEDIA_REPORT_ID,
+        0x15, 0x00, 0x26, 0xFF, 0x03, 0x19, 0x00, 0x2A, 0xFF, 0x03, 0x75, 0x10, 0x95, 0x01, 0x81, 0x00,
         0xC0,
     ).map { it.toByte() }.toByteArray()
 }

@@ -128,7 +128,7 @@ internal fun OnboardingFlow(s: KeyboardSettings, update: UpdateSettings, onDone:
                         Triple(ThemeMode.TYPEWRITER, R.string.theme_typewriter, R.string.theme_typewriter_desc),
                     )) {
                         RadioRow(stringResource(label), s.themeMode == mode, stringResource(description)) {
-                            update { it.copy(themeMode = mode) }
+                            update { it.withStyle(mode) }
                         }
                     }
                 }

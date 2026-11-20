@@ -358,4 +358,15 @@
     <string name="onb_enable">Увімкніть клавіатуру</string>
     <string name="onb_style">Виберіть стиль</string>
     <string name="onb_restart">Пройти початкове налаштування знову</string>
+    <string name="toolbar_remote_description">Тачпад і пульт для комп\'ютера</string>
+    <string name="toolbar_sound_description">Звук клавіш увімк./вимк.; утримайте, щоб змінити гучність</string>
+    <string name="remote_left">Ліва</string>
+    <string name="remote_right">Права</string>
+    <string name="remote_keyboard_description">Назад до клавіш</string>
+    <string name="remote_media_description">Медіа-клавіші</string>
+    <string name="remote_nav_description">Клавіші навігації</string>
+    <string name="typewriter_bell">Дзвіночок кінця рядка</string>
+    <string name="sound_on">Звук клавіш увімкнено</string>
+    <string name="sound_off">Звук клавіш вимкнено</string>
+    <string name="sound_volume_set">Гучність %1$d%%</string>
 </resources>
