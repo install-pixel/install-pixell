@@ -287,18 +287,60 @@ class KeyboardView(context: Context) : View(context) {
         canvas.restore()
     }
 
+    /**
+     * Sideways nudges for the far (upper) ends of levers that would run on top of another key's lever: a key's
+     * lever runs up through the gaps of the rows above, and with big keys it can lie over the lever of a key
+     * there. Its far end then moves aside just enough for the two to pass side by side. Keyed by key and end.
+     */
+    private fun leverNudges(w: Float): Map<Pair<Key, Int>, Float> {
+        class End(val key: Key, val index: Int, val x: Float, val keyY: Float, val top: Float)
+        val ends = ArrayList<End>()
+        for ((key, rect) in keyRects) {
+            if (key.style == KeyStyle.SPACER) continue
+            val body = typewriterBody(rect, key)
+            val long = body.width() > body.height() * 1.3f
+            val xs = if (long) listOf(body.left + body.height() / 2, body.right - body.height() / 2) else listOf(body.centerX())
+            xs.forEachIndexed { i, x -> ends += End(key, i, x, body.centerY(), body.top) }
+        }
+        val top = -dp(2f)
+        fun leverX(e: End, y: Float, shift: Float): Float {
+            val topX = e.x + (width / 2f - e.x) * LEVER_CONVERGE + shift
+            val t = ((y - top) / (e.keyY - top)).coerceIn(0f, 1f)
+            return topX + (e.x - topX) * t
+        }
+        val out = HashMap<Pair<Key, Int>, Float>()
+        val clear = w * 1.6f
+        for (b in ends) {
+            var shift = 0f
+            for (a in ends) {
+                // Only the keys of rows above: b's lever passes beside theirs, above them.
+                if (a.keyY >= b.keyY - 1f) continue
+                val y = a.top
+                val dx = leverX(b, y, shift) - leverX(a, y, 0f)
+                if (kotlin.math.abs(dx) >= clear) continue
+                // How much a move of the far end shows at that height.
+                val reach = (1f - (y - top) / (b.keyY - top)).coerceAtLeast(0.2f)
+                shift += (if (dx >= 0f) 1f else -1f) * (clear - kotlin.math.abs(dx)) / reach
+            }
+            if (shift != 0f) out[b.key to b.index] = shift.coerceIn(-clear * 3f, clear * 3f)
+        }
+        return out
+    }
+
     private fun drawLevers(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
-        val w = maxOf(dp(2.4f), typewriterSide * 0.09f)
+        // Never thicker than about 3 dp, so the levers of big keys keep apart.
+        val w = maxOf(dp(2.4f), typewriterSide * 0.09f).coerceAtMost(dp(3.2f))
+        val nudges = leverNudges(w)
         for ((key, rect) in keyRects) {
             if (key.style == KeyStyle.SPACER) continue
             val body = typewriterBody(rect, key)
             val sink = typewriterDepth(key, pressedKeys, now) * surfaces.typewriterSink
             val long = body.width() > body.height() * 1.3f
             val ends = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
-            for (x in ends) {
+            ends.forEachIndexed { i, x ->
                 // A pressed key pulls its whole lever: it slides down with the key and swings a little on
                 // its pivot, then springs back with the key.
-                val swing = (x - width / 2f).sign * sink * LEVER_SWING
+                val swing = (x - width / 2f).sign * sink * LEVER_SWING + (nudges[key to i] ?: 0f)
                 surfaces.drawTypewriterRod(canvas, x + (width / 2f - x) * LEVER_CONVERGE + swing, -dp(2f) + sink * LEVER_SLIDE, x, body.centerY() + sink, w)
             }
         }
@@ -312,8 +354,8 @@ class KeyboardView(context: Context) : View(context) {
             val sink = depth * surfaces.typewriterSink
             val long = body.width() > body.height() * 1.3f
             val ends = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
-            for (x in ends) {
-                val topX = x + (width / 2f - x) * LEVER_CONVERGE + (x - width / 2f).sign * sink * LEVER_SWING
+            ends.forEachIndexed { i, x ->
+                val topX = x + (width / 2f - x) * LEVER_CONVERGE + (x - width / 2f).sign * sink * LEVER_SWING + (nudges[key to i] ?: 0f)
                 val keyY = body.centerY() + sink
                 val collarY = body.top + sink - w * 0.9f
                 // The collar sits on the lever: where the lever is at that height.
@@ -763,6 +805,12 @@ class KeyboardView(context: Context) : View(context) {
         return true
     }
 
+    /**
+     * The typewriter's typebar for a letter key: (the key's middle x in this view, true) as it goes down,
+     * (_, false) as it comes up.
+     */
+    var typebarListener: ((Float, Boolean) -> Unit)? = null
+
     /** Where the user's finger lands on each letter (null: the keys' own borders only). */
     var touchModel: TouchModel? = null
 
@@ -824,6 +872,10 @@ class KeyboardView(context: Context) : View(context) {
         pointers.put(id, state)
         feedback()
         sound(key)
+        if (theme.style == SurfaceStyle.TYPEWRITER && key.action is KeyAction.Text) {
+            val rect = keyRects.firstOrNull { it.first === key }?.second
+            if (rect != null) typebarListener?.invoke(rect.centerX(), true)
+        }
 
         if (key.repeatable) {
             state.repeat = object : Runnable {
@@ -916,6 +968,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun onPointerUp(id: Int, x: Float, y: Float) {
         val state = pointers[id] ?: return
         pointers.remove(id)
+        if (theme.style == SurfaceStyle.TYPEWRITER && state.key?.action is KeyAction.Text) typebarListener?.invoke(0f, false)
         state.cancelCallbacks()
         state.key?.let { released[it] = SystemClock.uptimeMillis() }
         val p = popup

@@ -551,8 +551,6 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ keys
 
     override fun onKey(key: Key) {
-        // The typewriter: a typebar strikes the paper for every letter.
-        if (soundStyle && key.action is KeyAction.Text && controller.layer != Layer.EMOJI) rootView?.typebarStrike()
         if (controller.layer == Layer.EMOJI) (key.action as? KeyAction.Text)?.let { recordEmoji(it.text) }
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
