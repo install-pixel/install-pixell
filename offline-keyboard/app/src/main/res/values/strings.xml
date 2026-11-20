@@ -358,4 +358,15 @@
     <string name="onb_enable">Turn the keyboard on</string>
     <string name="onb_style">Pick a style</string>
     <string name="onb_restart">Run the first setup again</string>
+    <string name="toolbar_remote_description">Touchpad and remote for the computer</string>
+    <string name="toolbar_sound_description">Key sounds on or off; hold to set the volume</string>
+    <string name="remote_left">Left</string>
+    <string name="remote_right">Right</string>
+    <string name="remote_keyboard_description">Back to the keys</string>
+    <string name="remote_media_description">Media keys</string>
+    <string name="remote_nav_description">Navigation keys</string>
+    <string name="typewriter_bell">Bell at the end of a line</string>
+    <string name="sound_on">Key sounds on</string>
+    <string name="sound_off">Key sounds off</string>
+    <string name="sound_volume_set">Volume %1$d%%</string>
 </resources>

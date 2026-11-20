@@ -57,6 +57,8 @@ data class KeyboardSettings(
     /** Typewriter key sounds (Black Typewriter style only for now) and their volume, 0–1. */
     val keySound: Boolean = true,
     val keySoundVolume: Float = 0.6f,
+    /** The typewriter's margin bell near the end of a line (and the new sheet of paper). */
+    val typewriterBell: Boolean = true,
     /** Fixes one-key slips into known words when a word ends; Backspace right after undoes it. */
     val autoCorrect: Boolean = true,
     val hapticFeedback: Boolean = true,
@@ -133,6 +135,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.ONBOARDING_DONE] = updated.onboardingDone
             prefs[Keys.KEY_SOUND] = updated.keySound
             prefs[Keys.KEY_SOUND_VOLUME] = updated.keySoundVolume
+            prefs[Keys.TYPEWRITER_BELL] = updated.typewriterBell
             prefs[Keys.AUTO_CORRECT] = updated.autoCorrect
             prefs[Keys.HAPTIC] = updated.hapticFeedback
             prefs[Keys.VIBRATION] = updated.vibration.name
@@ -233,6 +236,7 @@ class SettingsRepository(context: Context) {
             onboardingDone = this[Keys.ONBOARDING_DONE] ?: asMap().isNotEmpty(),
             keySound = this[Keys.KEY_SOUND] ?: defaults.keySound,
             keySoundVolume = (this[Keys.KEY_SOUND_VOLUME] ?: defaults.keySoundVolume).coerceIn(0f, 1f),
+            typewriterBell = this[Keys.TYPEWRITER_BELL] ?: defaults.typewriterBell,
             autoCorrect = this[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
             hapticFeedback = this[Keys.HAPTIC] ?: defaults.hapticFeedback,
             vibration = enumOrNull<VibrationStrength>(this[Keys.VIBRATION]) ?: defaults.vibration,
@@ -282,6 +286,7 @@ class SettingsRepository(context: Context) {
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val KEY_SOUND = booleanPreferencesKey("key_sound")
         val KEY_SOUND_VOLUME = floatPreferencesKey("key_sound_volume")
+        val TYPEWRITER_BELL = booleanPreferencesKey("typewriter_bell")
         val AUTO_CORRECT = booleanPreferencesKey("auto_correct")
         val HAPTIC = booleanPreferencesKey("haptic_feedback")
         val VIBRATION = stringPreferencesKey("vibration_strength")
@@ -300,4 +305,15 @@ class SettingsRepository(context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val BLUETOOTH_KEYBOARD = booleanPreferencesKey("bluetooth_keyboard")
     }
+}
+
+/**
+ * Another keyboard style. The typewriter shows no letter bubble above a pressed key by default (the typebar
+ * already shows it); leaving it brings the bubble back. Either can be changed by hand afterwards.
+ */
+fun KeyboardSettings.withStyle(mode: ThemeMode): KeyboardSettings = when {
+    mode == themeMode -> this
+    mode == ThemeMode.TYPEWRITER -> copy(themeMode = mode, keyPreview = false)
+    themeMode == ThemeMode.TYPEWRITER -> copy(themeMode = mode, keyPreview = true)
+    else -> copy(themeMode = mode)
 }

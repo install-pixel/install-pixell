@@ -25,6 +25,17 @@ class KeySounds(private val context: Context) {
                 .build(),
         )
         .build()
+    /** Sounds that finished loading: SoundPool loads in the background and plays nothing before that. */
+    private val loaded = java.util.Collections.synchronizedSet(HashSet<Int>())
+    private var warmWanted = false
+
+    init {
+        pool.setOnLoadCompleteListener { _, id, status ->
+            if (status == 0) loaded += id
+            if (warmWanted && id == keys.firstOrNull()) warm()
+        }
+    }
+
     private val keys = listOf(R.raw.tw_key_1, R.raw.tw_key_2, R.raw.tw_key_3, R.raw.tw_key_4, R.raw.tw_key_5)
         .map { pool.load(context, it, 1) }
     private val space = pool.load(context, R.raw.tw_space, 1)
@@ -50,5 +61,22 @@ class KeySounds(private val context: Context) {
         pool.play(id, volume, volume, 1, 0, pitch)
     }
 
+    /**
+     * Wakes the phone's audio output with an almost silent strike, so the first real key is heard at once
+     * (the output otherwise starts with the first sound, and the first letters came late). Runs again when
+     * the sounds are still loading.
+     */
+    fun warm() {
+        val id = keys.first()
+        if (id !in loaded) { warmWanted = true; return }
+        warmWanted = false
+        if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        pool.play(id, WARM_VOLUME, WARM_VOLUME, 0, 0, 1f)
+    }
+
     fun release() = pool.release()
+
+    private companion object {
+        const val WARM_VOLUME = 0.001f
+    }
 }

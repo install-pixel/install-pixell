@@ -358,4 +358,15 @@
     <string name="onb_enable">Włącz klawiaturę</string>
     <string name="onb_style">Wybierz styl</string>
     <string name="onb_restart">Przejdź konfigurację początkową ponownie</string>
+    <string name="toolbar_remote_description">Touchpad i pilot do komputera</string>
+    <string name="toolbar_sound_description">Dźwięk klawiszy wł./wył.; przytrzymaj, aby zmienić głośność</string>
+    <string name="remote_left">Lewy</string>
+    <string name="remote_right">Prawy</string>
+    <string name="remote_keyboard_description">Wróć do klawiszy</string>
+    <string name="remote_media_description">Klawisze multimedialne</string>
+    <string name="remote_nav_description">Klawisze nawigacji</string>
+    <string name="typewriter_bell">Dzwonek na końcu wiersza</string>
+    <string name="sound_on">Dźwięk klawiszy włączony</string>
+    <string name="sound_off">Dźwięk klawiszy wyłączony</string>
+    <string name="sound_volume_set">Głośność %1$d%%</string>
 </resources>

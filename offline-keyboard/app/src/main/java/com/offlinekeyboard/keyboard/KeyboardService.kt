@@ -14,6 +14,8 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import com.offlinekeyboard.R
 import com.offlinekeyboard.bluetooth.Bluetooth
+import com.offlinekeyboard.core.HidStroke
+import kotlin.math.roundToInt
 import com.offlinekeyboard.bluetooth.bluetoothKeyboardSupported
 import com.offlinekeyboard.core.HidKeys
 import com.offlinekeyboard.core.KeyLabels
@@ -72,6 +74,7 @@ class KeyboardService : InputMethodService(),
     KeyboardController.Listener,
     StickerPanel.Listener,
     ClipboardPanel.Listener,
+    RemotePanel.Listener,
     SpeechController.Host {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -142,6 +145,9 @@ class KeyboardService : InputMethodService(),
             repository.settings.collect { applySettings(it) }
         }
         if (settings.bluetoothKeyboard) Bluetooth.start(this)
+        // Loaded now, not with the first key: SoundPool reads the sounds in the background, and before that
+        // the first letters stayed silent or came late.
+        keySounds = runCatching { KeySounds(this) }.getOrNull()
         scope.launch {
             Bluetooth.status.collect {
                 updateSuggestions()
@@ -212,6 +218,7 @@ class KeyboardService : InputMethodService(),
         root.toolbarListener = this
         root.stickerPanel.listener = this
         root.clipboardPanel.listener = this
+        root.remotePanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
         window.window?.let {
@@ -267,6 +274,7 @@ class KeyboardService : InputMethodService(),
         carriageColumn = -1
         lastShown = null
         if (settings.learnTouch) touchModel.refresh()
+        if (soundStyle && settings.keySound) keySounds?.warm()
         selStart = info?.let { minOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         selEnd = info?.let { maxOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         syncTranslateSource(showProblems = false)
@@ -876,6 +884,60 @@ class KeyboardService : InputMethodService(),
         render()
     }
 
+    // ------------------------------------------------------------------ remote
+
+    override fun onToolbarRemote() {
+        val root = rootView ?: return
+        root.showRemote(!root.remoteShown)
+    }
+
+    override fun onRemoteMouse(buttons: Int, dx: Int, dy: Int, wheel: Int) {
+        if (!Bluetooth.sendMouse(buttons, dx, dy, wheel)) remoteLost()
+    }
+
+    override fun onRemoteKey(usage: Int, modifiers: Int) {
+        if (!Bluetooth.send(HidStroke(modifiers, usage))) remoteLost()
+    }
+
+    override fun onRemoteMedia(usage: Int) {
+        if (!Bluetooth.sendMedia(usage)) remoteLost()
+    }
+
+    override fun onRemoteKeyboard() {
+        rootView?.showRemote(false)
+    }
+
+    private fun remoteLost() {
+        rootView?.showStatus(getString(R.string.bluetooth_not_connected), CHECK_WARNING_MS) { openSettings("bluetooth") }
+    }
+
+    // ------------------------------------------------------------------ sound
+
+    /** The styles that have key sounds (only the typewriter for now); the sound button shows in them. */
+    private val soundStyle: Boolean get() = settings.themeMode == ThemeMode.TYPEWRITER
+
+    override fun onToolbarSound() {
+        val on = !settings.keySound
+        settings = settings.copy(keySound = on)
+        scope.launch { repository.update { it.copy(keySound = on) } }
+        if (on) keySounds?.play(KeySounds.Kind.KEY, settings.keySoundVolume)
+        rootView?.showStatus(getString(if (on) R.string.sound_on else R.string.sound_off))
+        render()
+    }
+
+    override fun onSoundVolume(volume: Float, done: Boolean) {
+        val v = volume.coerceIn(0.1f, 1f)
+        if (!done) {
+            // A click at every step, at the new volume (heard even while sounds are off, to hear the level).
+            keySounds?.play(KeySounds.Kind.KEY, v)
+            return
+        }
+        settings = settings.copy(keySoundVolume = v, keySound = true)
+        scope.launch { repository.update { it.copy(keySoundVolume = v, keySound = true) } }
+        rootView?.showStatus(getString(R.string.sound_volume_set, (v * 100).roundToInt()))
+        render()
+    }
+
     // ------------------------------------------------------------------ toolbar
 
     /** "Aa Text" chip: plain typing (turns translation off). */
@@ -1144,6 +1206,7 @@ class KeyboardService : InputMethodService(),
         val last = carriageColumn
         carriageColumn = column
         val sounds = keySounds ?: return
+        if (!settings.typewriterBell) return
         val volume = rootView?.keyboardView?.soundVolume ?: 0f
         if (last < 0 || volume <= 0f || currentField.isSensitive) return
         // Typed, not pasted: the carriage moved on by a character or a word.
@@ -1439,8 +1502,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.touchModel = if (settings.learnTouch) touchModel else null
         if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
         root.keyboardView.keySounds = keySounds
-        root.keyboardView.soundVolume =
-            if (settings.keySound && settings.themeMode == ThemeMode.TYPEWRITER) settings.keySoundVolume else 0f
+        root.keyboardView.soundVolume = if (settings.keySound && soundStyle) settings.keySoundVolume else 0f
         root.compact = settings.compactToolbar
         root.hideButtons = settings.hideToolbarButtons
         val layout = controller.layout(settings.mobileCursorRow)
@@ -1480,6 +1542,9 @@ class KeyboardService : InputMethodService(),
                     bluetoothSending && bluetoothConnected -> KeyboardRootView.BluetoothButton.SENDING
                     else -> KeyboardRootView.BluetoothButton.IDLE
                 },
+                soundOn = if (soundStyle) settings.keySound else null,
+                soundVolume = settings.keySoundVolume,
+                remoteOffered = bluetoothKeyboardSupported && settings.bluetoothKeyboard && bluetoothSending && bluetoothConnected,
             ),
         )
     }

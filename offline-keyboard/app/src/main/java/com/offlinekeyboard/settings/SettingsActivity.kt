@@ -425,7 +425,7 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
                 Triple(ThemeMode.SHEET, R.string.theme_sheet, R.string.theme_sheet_desc),
                 Triple(ThemeMode.TYPEWRITER, R.string.theme_typewriter, R.string.theme_typewriter_desc),
             )) {
-                RadioRow(stringResource(label), s.themeMode == mode, stringResource(description)) { update { it.copy(themeMode = mode) } }
+                RadioRow(stringResource(label), s.themeMode == mode, stringResource(description)) { update { it.withStyle(mode) } }
             }
         }
         Section(stringResource(R.string.page_look_size)) {
@@ -542,6 +542,9 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                     valueRange = 0.1f..1f,
                     steps = 8,
                 )
+                SwitchRow(stringResource(R.string.typewriter_bell), s.typewriterBell) { v ->
+                    update { it.copy(typewriterBell = v) }
+                }
             }
             Text(stringResource(R.string.key_sound_hint), style = MaterialTheme.typography.bodySmall)
         }

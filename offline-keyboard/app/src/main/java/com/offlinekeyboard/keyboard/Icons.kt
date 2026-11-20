@@ -19,6 +19,7 @@ enum class Icon {
     SHIFT, SHIFT_ON, CAPS, BACKSPACE, ENTER, SEARCH, SEND, DONE, TRANSLATE,
     MIC, STOP, CLIPBOARD, GEAR, KEYBOARD, PHONE, CLOSE, HIDE,
     LEFT, RIGHT, UP, DOWN, BLUETOOTH, EMOJI, UNDO, STICKER, MODES,
+    SPEAKER, SPEAKER_OFF, TOUCHPAD,
 }
 
 object Icons {
@@ -189,6 +190,24 @@ object Icons {
                 p.addRoundRect(RectF(13.5f, 13.5f, 19.5f, 19.5f), 1.5f, 1.5f, Path.Direction.CW)
             }
             Icon.HIDE -> { p.moveTo(6f, 9.5f); p.lineTo(12f, 15.5f); p.lineTo(18f, 9.5f) }
+            Icon.SPEAKER, Icon.SPEAKER_OFF -> {
+                // A loudspeaker: its box and cone, then sound waves or a cross.
+                p.moveTo(4f, 9.5f); p.lineTo(7.5f, 9.5f); p.lineTo(12f, 5.5f); p.lineTo(12f, 18.5f)
+                p.lineTo(7.5f, 14.5f); p.lineTo(4f, 14.5f); p.close()
+                if (icon == Icon.SPEAKER) {
+                    p.addArc(RectF(11f, 8.5f, 17f, 15.5f), -55f, 110f)
+                    p.addArc(RectF(11f, 5f, 21f, 19f), -50f, 100f)
+                } else {
+                    p.line(15.5f, 9.5f, 20.5f, 14.5f)
+                    p.line(20.5f, 9.5f, 15.5f, 14.5f)
+                }
+            }
+            Icon.TOUCHPAD -> {
+                // A touchpad with its two buttons.
+                p.addRoundRect(RectF(3.5f, 4.5f, 20.5f, 19.5f), 3f, 3f, Path.Direction.CW)
+                p.line(3.5f, 14.5f, 20.5f, 14.5f)
+                p.line(12f, 14.5f, 12f, 19.5f)
+            }
         }
         return p to fill
     }
