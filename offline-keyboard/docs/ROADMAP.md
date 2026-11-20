@@ -60,6 +60,9 @@ The style guide for every screen is QRAFT (the family's reference app): two them
       machine below the holder, the bend is hidden under the holder, and only its straight end rises
       right under the letter; the whole letter is pressed into the paper, dark and soft-edged, as it strikes.
 - [x] The modes button in the strip is a smaller plate, clear of the paper's edge.
+- [x] The typewriter's end-of-line bell is off by default (Typing settings turn it on).
+- [x] Key sounds as loud in every style: the sheet and glass sounds (ready for their styles) levelled to the
+      typewriter's keys; the typewriter's carriage return no longer shouts (+3 dB over the keys, was +9).
 
 ## 1.15.1 — the typebar strikes with the key, a cursor under the finger
 
