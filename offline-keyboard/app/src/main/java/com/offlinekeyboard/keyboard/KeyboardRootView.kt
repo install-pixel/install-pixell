@@ -802,7 +802,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             remoteButton.fill = if (remoteOpen) theme.accent else 0
             remoteButton.foreground = if (remoteOpen) theme.onAccent else theme.text
         }
-        if (!state.remoteOffered && remoteOpen) showRemote(false)
+        if (!state.remoteOffered && remoteOpen && !remoteForTest) showRemote(false)
         settingsButton.icon = if (state.recording) Icon.CLOSE else Icon.GEAR
         settingsButton.alpha = restAlpha(settingsButton)
         settingsButton.contentDescription = context.getString(
@@ -890,6 +890,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      * Opens the remote or closes it. Upright it takes the place of the keys (same height); in landscape the
      * keys keep about 60% of the width and the remote sits beside them.
      */
+    /** Keeps the remote open without a connected computer (tests). */
+    internal var remoteForTest = false
+
     fun showRemote(show: Boolean) {
         if (show == remoteShown) return
         val keysParams = keyboardView.layoutParams as LayoutParams

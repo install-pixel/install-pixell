@@ -459,6 +459,7 @@ class KeyboardUiTest {
         val keyboard = service()
         instrumentation.runOnMainSync {
             keyboard.applyThemeForTest(KeyboardTheme.typewriter())
+            keyboard.inputRootForTest?.remoteForTest = true
             keyboard.inputRootForTest?.showRemote(true)
         }
         instrumentation.waitForIdleSync()
@@ -469,6 +470,7 @@ class KeyboardUiTest {
         Thread.sleep(500)
         screenshot("remote-media")
         instrumentation.runOnMainSync {
+            keyboard.inputRootForTest?.remoteForTest = false
             keyboard.inputRootForTest?.showRemote(false)
             keyboard.applyThemeForTest(KeyboardTheme.glass())
         }
