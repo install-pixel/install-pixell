@@ -514,8 +514,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val now = android.os.SystemClock.uptimeMillis()
         if (down) {
             strikeFromX = keysRow.left + keyboardView.left + keyX
-            strikeX = printX()
-            strikeLetter = letter
+            // On the user's text it strikes where the letter goes; while the strip shows suggestions or a
+            // message instead, straight up over its key, and leaves no letter on the paper.
+            val onText = showingEcho && statusScroll.visibility == View.VISIBLE && status.layout != null
+            strikeX = if (onText) printX() else strikeFromX
+            strikeLetter = if (onText) letter else ""
             strikeDownAt = now
             strikeUpAt = 0L
         } else if (strikeDownAt > 0 && strikeUpAt == 0L) {
