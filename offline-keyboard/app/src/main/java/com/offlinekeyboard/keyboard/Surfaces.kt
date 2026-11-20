@@ -176,6 +176,7 @@ class SurfacePainter(private val density: Float) {
         val body = if (state == SurfaceState.PRESSED) glassPressed else glassFill
         stretch(body, rect)
         fill.shader = body
+        fill.alpha = 0xFF
         // Frosted (over blurred keys): the dark glass lets a little of what is behind show through.
         if (frosted) fill.alpha = 0xB8
         canvas.drawRoundRect(rect, radius, radius, fill)
@@ -184,6 +185,7 @@ class SurfacePainter(private val density: Float) {
             // Soft light inside the top, gone by half height (at most 120 dp).
             stretch(sheen, rect, minOf(rect.height() / 2, 120 * density))
             fill.shader = sheen
+            fill.alpha = 0xFF
             fill.alpha = (255 * brightness).toInt()
             canvas.drawRoundRect(rect, radius, radius, fill)
             fill.alpha = 0xFF
@@ -374,6 +376,7 @@ class SurfacePainter(private val density: Float) {
         matrix.postTranslate(cx, cy)
         shader.setLocalMatrix(matrix)
         fill.shader = shader
+        fill.alpha = 0xFF
         fill.alpha = (255 * alpha.coerceIn(0f, 1f)).toInt()
         oval.set(cx - rx, cy - ry, cx + rx, cy + ry)
         canvas.drawOval(oval, fill)
@@ -422,6 +425,7 @@ class SurfacePainter(private val density: Float) {
         oval.set(x - width * 0.95f, y - width * 0.4f, x + width * 0.95f, y + width * 0.4f)
         stretch(collarShade, oval)
         fill.shader = collarShade
+        fill.alpha = 0xFF
         canvas.drawRoundRect(oval, width * 0.3f, width * 0.3f, fill)
         fill.shader = null
     }
@@ -476,6 +480,7 @@ class SurfacePainter(private val density: Float) {
         oval.set(x - width * 1.05f, y - width * 0.45f, x + width * 1.05f, y + width * 0.45f)
         stretch(collarShade, oval)
         fill.shader = collarShade
+        fill.alpha = 0xFF
         canvas.drawRoundRect(oval, width * 0.3f, width * 0.3f, fill)
         fill.shader = null
         // A screw in the collar.
@@ -493,8 +498,12 @@ class SurfacePainter(private val density: Float) {
         fill.shader = null
         fill.color = if (milk) 0x405A4026 else 0x99000000.toInt()
         canvas.drawRect(0f, height, width, height + 1.5f * density, fill)
+        // The metal itself is solid: the shadow's see-through colour must not carry over to it (it did, and
+        // the holder was a quarter opaque on the milky machine, more than half on the black one).
+        fill.color = 0xFF000000.toInt()
         stretch(metalRim, oval)
         fill.shader = metalRim
+        fill.alpha = 0xFF
         canvas.drawRect(oval, fill)
         fill.shader = null
         // A line of light along its upper edge, dimmed with the keyboard brightness.
@@ -538,6 +547,7 @@ class SurfacePainter(private val density: Float) {
         oval.set(x - w, tipY, x + w, tipY + width * 1.6f)
         stretch(collarShade, oval)
         fill.shader = collarShade
+        fill.alpha = 0xFF
         canvas.drawRoundRect(oval, width * 0.4f, width * 0.4f, fill)
         fill.shader = null
         fill.color = rodEdge
@@ -549,6 +559,7 @@ class SurfacePainter(private val density: Float) {
         oval.set(0f, 0f, width, height)
         stretch(depthShade, oval)
         fill.shader = depthShade
+        fill.alpha = 0xFF
         canvas.drawRect(oval, fill)
         fill.shader = null
     }
@@ -558,6 +569,7 @@ class SurfacePainter(private val density: Float) {
         matrix.postTranslate(x, y)
         rivetShade.setLocalMatrix(matrix)
         fill.shader = rivetShade
+        fill.alpha = 0xFF
         canvas.drawCircle(x, y, r, fill)
         fill.shader = null
     }
@@ -624,9 +636,11 @@ class SurfacePainter(private val density: Float) {
         val metal = if (state == SurfaceState.SELECTED) brassRim else metalRim
         stretch(metal, rect)
         fill.shader = metal
+        fill.alpha = 0xFF
         canvas.drawPath(shape, fill)
         stretch(rimSide, rect)
         fill.shader = rimSide
+        fill.alpha = 0xFF
         canvas.drawPath(shape, fill)
         fill.shader = null
 
@@ -704,11 +718,13 @@ class SurfacePainter(private val density: Float) {
         capShape.addRoundRect(capRect, capCorner, capCorner, Path.Direction.CW)
         stretch(capFill, capRect)
         fill.shader = capFill
+        fill.alpha = 0xFF
         canvas.drawPath(capShape, fill)
         canvas.save()
         canvas.clipPath(capShape)
         stretch(capShadow, capRect, capRect.height() * 0.35f)
         fill.shader = capShadow
+        fill.alpha = 0xFF
         canvas.drawPath(capShape, fill)
         fill.shader = null
         // Gloss: the soft reflection of a window in the upper part (dimmer when the key is down, out of the

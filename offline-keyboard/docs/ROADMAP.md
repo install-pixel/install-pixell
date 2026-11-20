@@ -67,6 +67,9 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Nothing of the typebar shows below the paper holder any more (the light machine showed its arm, as if
       the holder were see-through); only its straight end above the holder.
 - [x] The lit Bluetooth and remote buttons are smaller plates, clear of the paper's edge.
+- [x] The paper holder is solid metal (it was see-through: a quarter opaque on the milky machine), and so
+      are the other metal parts; the holder and the typebar now lie under an enlarged key or a row of choices
+      rising over the strip, instead of showing through them.
 
 ## 1.15.2 — the typebar under the holder, the letter pressed whole
 

@@ -564,8 +564,17 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private val strikeHalo = android.graphics.BlurMaskFilter(2.2f * resources.displayMetrics.density, android.graphics.BlurMaskFilter.Blur.NORMAL)
 
-    override fun dispatchDraw(canvas: Canvas) {
-        super.dispatchDraw(canvas)
+    /**
+     * The paper's still ends, the typebar and the paper holder go over the strip but under the keys: drawn
+     * just before the keys, so an enlarged key or a row of choices rising over the strip covers them (they
+     * showed through those before).
+     */
+    override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
+        if (child === keysRow) drawOverStrip(canvas)
+        return super.drawChild(canvas, child, drawingTime)
+    }
+
+    private fun drawOverStrip(canvas: Canvas) {
         if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.height <= 0) return
         val top = infoRow.top.toFloat()
         val bottom = infoRow.bottom.toFloat()
