@@ -128,6 +128,7 @@ class KeyboardView(context: Context) : View(context) {
             if (field == value) return
             field = value
             surfaces.brightness = value.brightness
+            surfaces.milk = value.milk
             setBackgroundColor(value.background)
             val (letters, labels) = faces(value)
             letterFace = letters
@@ -282,6 +283,8 @@ class KeyboardView(context: Context) : View(context) {
         canvas.save()
         canvas.clipRect(0f, 0f, width.toFloat(), height.toFloat())
         drawLevers(canvas, pressedKeys, now)
+        // The bar that holds the paper down, where the strip above meets the machine.
+        surfaces.drawPaperHolder(canvas, width.toFloat(), dp(PAPER_HOLDER_DP))
         canvas.restore()
     }
 
@@ -761,6 +764,9 @@ class KeyboardView(context: Context) : View(context) {
     /** Where the user's finger lands on each letter (null: the keys' own borders only). */
     var touchModel: TouchModel? = null
 
+    /** Whether taps teach [touchModel] (not in the keyboard's own test field). */
+    var touchLearning = true
+
     private fun keyAt(x: Float, y: Float): Key? {
         val hit = keyRects.firstOrNull { (_, r) -> r.contains(x, y) }?.first?.takeIf { k -> k.style != KeyStyle.SPACER }
             // Touches in the gaps or just outside go to the nearest key.
@@ -928,7 +934,7 @@ class KeyboardView(context: Context) : View(context) {
                 val model = touchModel
                 val letter = letterOf(key)
                 val rect = keyRects.firstOrNull { it.first === key }?.second
-                if (model != null && letter != null && rect != null) {
+                if (model != null && touchLearning && letter != null && rect != null) {
                     model.learn(letter, (state.downX - rect.centerX()) / rect.width(), (state.downY - rect.centerY()) / rect.height())
                 }
             }
@@ -1013,5 +1019,6 @@ class KeyboardView(context: Context) : View(context) {
         /** The most used letters of Ukrainian, Polish and English: the most worn keys of the typewriter. */
         const val WORN_LETTERS = "оаеинтрсвaeoinztrs"
         const val WORN_INK = 0.82f
+        const val PAPER_HOLDER_DP = 5.5f
     }
 }

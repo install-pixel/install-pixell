@@ -206,7 +206,10 @@ class KeyboardService : InputMethodService(),
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
         }
-        if (old.themeMode != new.themeMode || old.keyBrightness != new.keyBrightness) rootView?.applyTheme(currentTheme())
+        if (old.themeMode != new.themeMode || old.keyBrightness != new.keyBrightness) {
+            rootView?.applyTheme(currentTheme())
+            lightBars(currentTheme())
+        }
         if (!new.translateEnabled && old.translateEnabled) leaveSegment()
         updateSuggestions()
         render()
@@ -221,6 +224,7 @@ class KeyboardService : InputMethodService(),
         root.remotePanel.listener = this
         root.applyTheme(currentTheme())
         rootView = root
+        lightBars(currentTheme())
         window.window?.let {
             com.offlinekeyboard.settings.preferHighestRefreshRate(it)
             // Lay the keyboard out under the camera cutout too (landscape): its black background fills the
@@ -237,6 +241,12 @@ class KeyboardService : InputMethodService(),
         }
         render()
         return root
+    }
+
+    /** On a light keyboard the system's buttons below the keys (back, the keyboard switch) are drawn dark. */
+    private fun lightBars(theme: KeyboardTheme) {
+        val w = window.window ?: return
+        runCatching { androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).isAppearanceLightNavigationBars = !theme.dark }
     }
 
     private fun currentTheme() = KeyboardTheme.resolve(settings.themeMode, settings.keyBrightness)
@@ -264,6 +274,9 @@ class KeyboardService : InputMethodService(),
         softSpace = false
         partialShown = false
         currentField = FieldInfo(attribute?.inputType ?: 0, attribute?.imeOptions ?: 0)
+        // The keyboard's own settings (the test field, glossary, stickers): typing there to try keys is
+        // not writing, so nothing there is learned.
+        ownField = attribute?.packageName == packageName
         editor.field = currentField
         controller.rawKeyField = currentField.isRawKeyField
     }
@@ -653,7 +666,10 @@ class KeyboardService : InputMethodService(),
 
     // ------------------------------------------------------------------ user dictionary
 
-    private val learningAllowed: Boolean get() = settings.learnWords && currentField.allowsLearning
+    private val learningAllowed: Boolean get() = settings.learnWords && currentField.allowsLearning && !ownField
+
+    /** The field is in the keyboard's own app (see onStartInput). */
+    private var ownField = false
 
     /** When a space or punctuation follows a word, that word goes into the user dictionary. */
     private fun learnBeforeSeparator(text: String) {
@@ -914,7 +930,7 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ sound
 
     /** The styles that have key sounds (only the typewriter for now); the sound button shows in them. */
-    private val soundStyle: Boolean get() = settings.themeMode == ThemeMode.TYPEWRITER
+    private val soundStyle: Boolean get() = settings.themeMode.typewriter
 
     override fun onToolbarSound() {
         val on = !settings.keySound
@@ -1500,6 +1516,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.backspaceSwipeEnabled = settings.backspaceSwipe
         root.keyboardView.spaceCursorEnabled = settings.spaceCursor
         root.keyboardView.touchModel = if (settings.learnTouch) touchModel else null
+        root.keyboardView.touchLearning = !ownField
         if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
         root.keyboardView.keySounds = keySounds
         root.keyboardView.soundVolume = if (settings.keySound && soundStyle) settings.keySoundVolume else 0f

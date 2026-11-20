@@ -47,6 +47,60 @@ class SurfacePainter(private val density: Float) {
     /** 0.4–1: how bright rims, the top light and pencil frames are drawn (the keyboard brightness setting). */
     var brightness = 1f
 
+    /**
+     * The milky typewriter: cream caps in bronze rims on a light machine, brown shadows, no rust. Off: the
+     * black typewriter (black caps in nickel).
+     */
+    var milk = false
+        set(value) {
+            if (field == value) return
+            val black = blackShaders
+            field = value
+            if (value) milkShaders() else restore(black)
+        }
+
+    /** The black typewriter's shaders, kept to go back to (taken before the first change to milk). */
+    private val blackShaders: Array<Shader> by lazy {
+        arrayOf(metalRim, brassRim, capFill, capShadow, keyShadow, gloss, bounce, leverShade, leverLight, rodShade, rodLight, depthShade, rivetShade, collarShade)
+    }
+
+    private fun restore(s: Array<Shader>) {
+        metalRim = s[0]; brassRim = s[1]; capFill = s[2]; capShadow = s[3]; keyShadow = s[4]; gloss = s[5]; bounce = s[6]
+        leverShade = s[7]; leverLight = s[8]; rodShade = s[9]; rodLight = s[10]; depthShade = s[11]; rivetShade = s[12]; collarShade = s[13]
+    }
+
+    /** The colours that differ on the milky typewriter (see [milk]). */
+    private val edge get() = if (milk) 0x80513A22.toInt() else 0xBF000000.toInt()
+    private val capEdge get() = if (milk) 0x996B4A2A.toInt() else 0xD9000000.toInt()
+    private val rodEdge get() = if (milk) 0x80513A22.toInt() else 0xD9000000.toInt()
+
+    private fun milkShaders() {
+        fun linear(c: IntArray, at: FloatArray) = LinearGradient(0f, 0f, 0f, 1f, c, at, Shader.TileMode.CLAMP)
+        val mid = floatArrayOf(0f, 0.5f, 1f)
+        // Bronze, lit from above.
+        metalRim = linear(intArrayOf(0xFFF3DDB2.toInt(), 0xFF6E4C26.toInt(), 0xFFC9A26A.toInt()), mid)
+        brassRim = linear(intArrayOf(0xFFF7E3BC.toInt(), 0xFF8A5E2C.toInt(), 0xFFD8B47C.toInt()), mid)
+        // Milk-white enamel: bright at the top, a warm cream below.
+        capFill = linear(intArrayOf(0xFFFFFBF2.toInt(), 0xFFF0E6D2.toInt(), 0xFFF7EFDF.toInt()), floatArrayOf(0f, 0.55f, 1f))
+        capShadow = LinearGradient(0f, 0f, 0f, 1f, 0x594A3420, 0x004A3420, Shader.TileMode.CLAMP)
+        keyShadow = RadialGradient(
+            0f, 0f, 1f, intArrayOf(0x8C5A4026.toInt(), 0x4D5A4026, 0x005A4026), floatArrayOf(0f, 0.65f, 1f), Shader.TileMode.CLAMP,
+        )
+        gloss = RadialGradient(
+            0f, 0f, 1f, intArrayOf(0xB3FFFFFF.toInt(), 0x40FFFFFF, 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
+        )
+        bounce = RadialGradient(0f, 0f, 1f, 0x26FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        leverShade = linear(intArrayOf(0xFFB08A58.toInt(), 0xFF8A6A42.toInt(), 0xFF5E4428.toInt()), mid)
+        leverLight = linear(intArrayOf(0xBFF6E2BC.toInt(), 0x40E0C8A0, 0x00000000), floatArrayOf(0f, 0.6f, 1f))
+        rodShade = linear(intArrayOf(0xFF5E4428.toInt(), 0xFF8A6A42.toInt(), 0xFFB89468.toInt()), mid)
+        rodLight = linear(intArrayOf(0x00000000, 0x40F2DEB8, 0xB3FAEBCB.toInt()), floatArrayOf(0f, 0.6f, 1f))
+        depthShade = linear(intArrayOf(0x995A4026.toInt(), 0x595A4026, 0x005A4026), floatArrayOf(0f, 0.2f, 1f))
+        rivetShade = RadialGradient(
+            -0.3f, -0.3f, 1.3f, intArrayOf(0xFFF5DFB6.toInt(), 0xFF9A7240.toInt(), 0xFF4A3218.toInt()), mid, Shader.TileMode.CLAMP,
+        )
+        collarShade = linear(intArrayOf(0xFFF0D6A6.toInt(), 0xFF8A6438.toInt(), 0xFF4A3218.toInt()), mid)
+    }
+
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -173,13 +227,13 @@ class SurfacePainter(private val density: Float) {
 
     // Aged nickel, lit from above: bright top, dark middle, a lighter reflection at the bottom; chosen is brass.
     // Three stops at most (see glassRim).
-    private val metalRim = LinearGradient(
+    private var metalRim: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFFF4F1E8.toInt(), 0xFF3A362F.toInt(), 0xFFBDB7A8.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
-    private val brassRim = LinearGradient(
+    private var brassRim: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFFEBD9A6.toInt(), 0xFF6E5A30.toInt(), 0xFFB09659.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
@@ -193,57 +247,57 @@ class SurfacePainter(private val density: Float) {
         Shader.TileMode.CLAMP,
     )
     // The black cap: a little light at the top edge, darkest below the middle, a faint bounce at the bottom.
-    private val capFill = LinearGradient(
+    private var capFill: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFF24211D.toInt(), 0xFF0B0A09.toInt(), 0xFF1A1815.toInt()),
         floatArrayOf(0f, 0.55f, 1f),
         Shader.TileMode.CLAMP,
     )
     // The cap sits under the rim: the rim throws a shadow over its top.
-    private val capShadow = LinearGradient(0f, 0f, 0f, 1f, 0xB3000000.toInt(), 0x00000000, Shader.TileMode.CLAMP)
+    private var capShadow: Shader = LinearGradient(0f, 0f, 0f, 1f, 0xB3000000.toInt(), 0x00000000, Shader.TileMode.CLAMP)
     // Soft round lights and shadows, made over a unit circle and stretched to an ellipse ([softEllipse]).
-    private val keyShadow = RadialGradient(
+    private var keyShadow: Shader = RadialGradient(
         0f, 0f, 1f, intArrayOf(0xE6000000.toInt(), 0x99000000.toInt(), 0x00000000), floatArrayOf(0f, 0.65f, 1f), Shader.TileMode.CLAMP,
     )
-    private val gloss = RadialGradient(
+    private var gloss: Shader = RadialGradient(
         0f, 0f, 1f, intArrayOf(0x33FFF8E6, 0x14FFF8E6, 0x00FFF8E6), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
     )
-    private val bounce = RadialGradient(0f, 0f, 1f, 0x12FFF0D2, 0x00FFF0D2, Shader.TileMode.CLAMP)
+    private var bounce: Shader = RadialGradient(0f, 0f, 1f, 0x12FFF0D2, 0x00FFF0D2, Shader.TileMode.CLAMP)
     // A steel key lever: lit near the keys, dark deep in the machine; with a thin line of light along it.
-    private val leverShade = LinearGradient(
+    private var leverShade: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFF4A453C.toInt(), 0xFF2A2722.toInt(), 0xFF0C0B0A.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
-    private val leverLight = LinearGradient(
+    private var leverLight: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xBFDCD4C3.toInt(), 0x40A0988A, 0x00000000),
         floatArrayOf(0f, 0.6f, 1f),
         Shader.TileMode.CLAMP,
     )
     // A key lever seen from the front: dark deep in the machine (up), lit near its key (down).
-    private val rodShade = LinearGradient(
+    private var rodShade: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFF0C0B0A.toInt(), 0xFF3A362F.toInt(), 0xFF6A655A.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
-    private val rodLight = LinearGradient(
+    private var rodLight: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0x00000000, 0x40DCD4C3, 0xB3EBE4D4.toInt()),
         floatArrayOf(0f, 0.6f, 1f),
         Shader.TileMode.CLAMP,
     )
     // The machine's dark depth under the paper: the paper's shadow, black at its edge, fading down.
-    private val depthShade = LinearGradient(
+    private var depthShade: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFF000000.toInt(), 0xCC000000.toInt(), 0x00000000),
         floatArrayOf(0f, 0.2f, 1f),
         Shader.TileMode.CLAMP,
     )
     // A round rivet head, lit from the upper left.
-    private val rivetShade = RadialGradient(
+    private var rivetShade: Shader = RadialGradient(
         -0.3f, -0.3f, 1.3f,
         intArrayOf(0xFFD8D0BF.toInt(), 0xFF6D675B.toInt(), 0xFF151310.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
@@ -255,7 +309,7 @@ class SurfacePainter(private val density: Float) {
         strokeJoin = Paint.Join.ROUND
     }
     // The collar under the key.
-    private val collarShade = LinearGradient(
+    private var collarShade: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
         intArrayOf(0xFFC9C2B2.toInt(), 0xFF5A554B.toInt(), 0xFF1C1A17.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
@@ -345,7 +399,7 @@ class SurfacePainter(private val density: Float) {
         }
         // A dark edge, so a lever stands apart from the one behind it.
         leverPaint.shader = null
-        leverPaint.color = 0xCC000000.toInt()
+        leverPaint.color = rodEdge
         leverPaint.strokeWidth = width + 1.6f * density
         canvas.drawPath(leverPath, leverPaint)
         matrix.setScale(1f, maxOf(1f, bottom - top))
@@ -382,7 +436,7 @@ class SurfacePainter(private val density: Float) {
         matrix.postTranslate(0f, topY)
         leverPaint.strokeCap = Paint.Cap.BUTT
         leverPaint.shader = null
-        leverPaint.color = 0xD9000000.toInt()
+        leverPaint.color = rodEdge
         leverPaint.strokeWidth = width + 1f * density
         canvas.drawLine(topX, topY, keyX, keyY, leverPaint)
         rodShade.setLocalMatrix(matrix)
@@ -405,17 +459,17 @@ class SurfacePainter(private val density: Float) {
         canvas: Canvas, topX: Float, topY: Float, x: Float, y: Float, width: Float, depth: Float,
     ) {
         if (depth > 0.02f) {
+            // A soft glint along the lever just above the key, where it catches the light as it moves; the
+            // rest of the lever stays as it is (no flash up at the paper).
             leverPaint.shader = null
             leverPaint.strokeCap = Paint.Cap.ROUND
-            leverPaint.color = 0xFFFFF6E0.toInt()
-            leverPaint.alpha = (110 * depth.coerceAtMost(1f) * (0.55f + 0.45f * brightness)).toInt()
-            leverPaint.strokeWidth = width * 0.45f
-            canvas.drawLine(topX - width * 0.2f, topY, x - width * 0.2f, y, leverPaint)
-            // The type strikes: a short bright stroke where the lever goes in under the paper.
-            leverPaint.alpha = (200 * depth.coerceAtMost(1f)).toInt()
-            leverPaint.strokeWidth = width * 0.8f
-            val strike = 10f * density * depth.coerceAtMost(1f)
-            canvas.drawLine(topX, topY + 3f * density, topX + (x - topX) * 0.02f, topY + 3f * density + strike, leverPaint)
+            leverPaint.color = if (milk) 0xFFFFF4DC.toInt() else 0xFFE8DFCC.toInt()
+            leverPaint.alpha = (60 * depth.coerceAtMost(1f) * (0.55f + 0.45f * brightness)).toInt()
+            leverPaint.strokeWidth = width * 0.4f
+            val reach = (GLINT_DP * density / maxOf(1f, y - topY)).coerceAtMost(1f)
+            val fromX = x + (topX - x) * reach
+            val fromY = y + (topY - y) * reach
+            canvas.drawLine(fromX - width * 0.2f, fromY, x - width * 0.2f, y, leverPaint)
             leverPaint.alpha = 0xFF
             leverPaint.strokeCap = Paint.Cap.BUTT
         }
@@ -425,8 +479,34 @@ class SurfacePainter(private val density: Float) {
         canvas.drawRoundRect(oval, width * 0.3f, width * 0.3f, fill)
         fill.shader = null
         // A screw in the collar.
-        fill.color = 0xFF1A1815.toInt()
+        fill.color = if (milk) 0xFF3E2A16.toInt() else 0xFF1A1815.toInt()
         canvas.drawCircle(x, y, width * 0.18f, fill)
+    }
+
+    /**
+     * The paper holder: a polished bar across the top of the keyboard, [height] tall, holding the paper down
+     * where it goes into the machine, with a screw at each end (nickel; bronze on the milky machine).
+     */
+    fun drawPaperHolder(canvas: Canvas, width: Float, height: Float) {
+        oval.set(0f, 0f, width, height)
+        // Its shadow on the machine below.
+        fill.shader = null
+        fill.color = if (milk) 0x405A4026 else 0x99000000.toInt()
+        canvas.drawRect(0f, height, width, height + 1.5f * density, fill)
+        stretch(metalRim, oval)
+        fill.shader = metalRim
+        canvas.drawRect(oval, fill)
+        fill.shader = null
+        // A line of light along its upper edge, dimmed with the keyboard brightness.
+        fill.color = if (milk) 0xFFFFF4DC.toInt() else 0xFFF4F1E8.toInt()
+        fill.alpha = (150 * (0.55f + 0.45f * brightness)).toInt()
+        canvas.drawRect(0f, height * 0.18f, width, height * 0.18f + 0.8f * density, fill)
+        fill.alpha = 0xFF
+        fill.color = edge
+        canvas.drawRect(0f, height - 0.8f * density, width, height, fill)
+        val r = height * 0.32f
+        drawRivet(canvas, height * 1.6f, height / 2, r)
+        drawRivet(canvas, width - height * 1.6f, height / 2, r)
     }
 
     /** The dark depth of the machine under its top edge, where the levers go in ([height] tall). */
@@ -453,7 +533,7 @@ class SurfacePainter(private val density: Float) {
      */
     fun drawTypewriterBar(canvas: Canvas, rect: RectF) {
         fill.shader = null
-        fill.color = 0xEB000000.toInt()
+        fill.color = if (milk) 0xF2EADCC4.toInt() else 0xEB000000.toInt()
         val r = rect.height() / 2
         canvas.drawRoundRect(rect, r, r, fill)
         val w = maxOf(3f * density, rect.height() * 0.1f)
@@ -557,7 +637,7 @@ class SurfacePainter(private val density: Float) {
         canvas.save()
         canvas.clipPath(ring)
         wearPaint.style = Paint.Style.FILL
-        val rust = marks.rust
+        val rust = if (milk) FloatArray(0) else marks.rust
         val straight = maxOf(0f, rect.width() / 2 - corner)
         val straightY = maxOf(0f, rect.height() / 2 - corner)
         var i = 0
@@ -579,7 +659,7 @@ class SurfacePainter(private val density: Float) {
         // The outer edge of the rim.
         wearPaint.style = Paint.Style.STROKE
         wearPaint.strokeWidth = 0.9f * density
-        wearPaint.color = 0xBF000000.toInt()
+        wearPaint.color = edge
         val e = 0.45f * density
         oval.set(rect.left + e, rect.top + e, rect.right - e, rect.bottom - e)
         canvas.drawRoundRect(oval, corner - e, corner - e, wearPaint)
@@ -608,7 +688,8 @@ class SurfacePainter(private val density: Float) {
         softEllipse(canvas, bounce, cx, capRect.bottom - capRect.height() * 0.02f, iw * 0.45f, ih * 0.18f, lit)
         // Fine scratches in the celluloid.
         wearPaint.strokeWidth = 0.5f * density
-        wearPaint.color = 0xFFFFFFFF.toInt()
+        // Scratches catch the light on black; on milky enamel they hold a little dirt.
+        wearPaint.color = if (milk) 0x998A6A48.toInt() else 0xFFFFFFFF.toInt()
         val sc = marks.scratches
         val scale = minOf(iw, capRect.height(), 48f * density)
         val shown = (if (typewriterWorn) MAX_SCRATCHES - marks.fewScratches else marks.fewScratches) * 5
@@ -626,7 +707,7 @@ class SurfacePainter(private val density: Float) {
         canvas.restore()
         // Where the cap meets the rim.
         wearPaint.strokeWidth = 0.7f * density
-        wearPaint.color = 0xD9000000.toInt()
+        wearPaint.color = capEdge
         canvas.drawPath(capShape, wearPaint)
         canvas.restore()
     }
@@ -638,6 +719,8 @@ class SurfacePainter(private val density: Float) {
         /** Chrome bevels on the rim: where (a share of the rim from the outside), how wide, what colour. */
         val BEVELS = arrayOf(Triple(0.55f, 0.22f, 0x47000000), Triple(0.9f, 0.16f, 0x38FFFFFF))
         const val MAX_SCRATCHES = 5
+        /** How far up its lever a pressed key's glint reaches. */
+        const val GLINT_DP = 14f
     }
 }
 

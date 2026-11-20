@@ -5,7 +5,12 @@ package com.offlinekeyboard.keyboard
  * The two styles shared by all the user's apps (THEMES.md): black glass lit from above, and white pencil on
  * black paper. Since 1.2 they are the only themes; the old system/light/dark/OLED settings open as GLASS.
  */
-enum class ThemeMode { GLASS, SHEET, TYPEWRITER }
+enum class ThemeMode {
+    GLASS, SHEET, TYPEWRITER, MILK_TYPEWRITER;
+
+    /** Either typewriter: they share the machine, the paper strip and the sounds. */
+    val typewriter: Boolean get() = this == TYPEWRITER || this == MILK_TYPEWRITER
+}
 
 /**
  * How surfaces (keys, buttons, popups) are drawn: flat colour, black glass, pencil on paper, or the round
@@ -39,6 +44,8 @@ data class KeyboardTheme(
     val textScale: Float = 1f,
     /** How bright frames, rims and the light of glass are (0.4–1); see [withBrightness]. */
     val brightness: Float = 1f,
+    /** The milky typewriter: cream keys in bronze, a light machine, parchment in the strip. */
+    val milk: Boolean = false,
 ) {
     /**
      * The same theme dimmed to [value]: the painters scale frames, rims and light by it, labels and icons
@@ -58,6 +65,7 @@ data class KeyboardTheme(
             ThemeMode.GLASS -> glass()
             ThemeMode.SHEET -> sheet()
             ThemeMode.TYPEWRITER -> typewriter()
+            ThemeMode.MILK_TYPEWRITER -> milkTypewriter()
         }.withBrightness(brightness)
 
         /**
@@ -127,6 +135,31 @@ data class KeyboardTheme(
             listening = LISTENING,
             fontRes = com.offlinekeyboard.R.font.cousine_bold,
         )
+
+        /**
+         * «Milky Typewriter»: the same machine in light colours: milk-white enamel caps in bronze rims on a
+         * light coffee body, brown letters, and an old map's parchment in the strip.
+         */
+        fun milkTypewriter() = KeyboardTheme(
+            dark = false,
+            background = 0xFFE9DCC4.toInt(),
+            key = 0xFFF7F0E2.toInt(),
+            function = 0xFFF0E5D0.toInt(),
+            pressed = 0xFFDCCBAE.toInt(),
+            accent = 0xFF9A6B35.toInt(),
+            text = MILK_INK,
+            onAccent = 0xFFFBF6EC.toInt(),
+            hint = 0xFF8C7354.toInt(),
+            popup = 0xFFF3EAD9.toInt(),
+            style = SurfaceStyle.TYPEWRITER,
+            confirm = 0xFF7A4A1C.toInt(),
+            listening = LISTENING,
+            fontRes = com.offlinekeyboard.R.font.cousine_bold,
+            milk = true,
+        )
+
+        /** The brown of the milky typewriter's letters. */
+        const val MILK_INK = 0xFF4A3220.toInt()
 
         // Shared tokens of THEMES.md, section 2.
         private const val BLACK = 0xFF000000.toInt()

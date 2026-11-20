@@ -424,6 +424,7 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
                 Triple(ThemeMode.GLASS, R.string.theme_glass, R.string.theme_glass_desc),
                 Triple(ThemeMode.SHEET, R.string.theme_sheet, R.string.theme_sheet_desc),
                 Triple(ThemeMode.TYPEWRITER, R.string.theme_typewriter, R.string.theme_typewriter_desc),
+                Triple(ThemeMode.MILK_TYPEWRITER, R.string.theme_milk_typewriter, R.string.theme_milk_typewriter_desc),
             )) {
                 RadioRow(stringResource(label), s.themeMode == mode, stringResource(description)) { update { it.withStyle(mode) } }
             }

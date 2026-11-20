@@ -88,7 +88,7 @@ private const val HAND_SCALE = 1.22f
 
 internal fun lookOf(mode: ThemeMode?): Look = when (mode) {
     ThemeMode.SHEET -> Look.SHEET
-    ThemeMode.TYPEWRITER -> Look.TYPEWRITER
+    ThemeMode.TYPEWRITER, ThemeMode.MILK_TYPEWRITER -> Look.TYPEWRITER
     else -> Look.GLASS
 }
 
