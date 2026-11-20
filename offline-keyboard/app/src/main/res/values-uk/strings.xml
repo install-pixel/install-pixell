@@ -325,6 +325,8 @@
     <string name="theme_sheet_desc">Від руки білим олівцем на чорному</string>
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">Стара друкарська машинка: круглі клавіші з потертостями й іржею</string>
+    <string name="theme_milk_typewriter">Milky Typewriter</string>
+    <string name="theme_milk_typewriter_desc">Та сама машинка у світлих тонах: молочні клавіші в бронзі, коричневі літери, папір як стара мапа</string>
     <string name="space_cursor">Затиснути пробіл і вести — рухається курсор</string>
     <string name="long_context">Наступне слово за двома попередніми</string>
     <string name="long_context_hint">Слова після закінченого слова підбираються за двома останніми словами, а не лише за одним: з відкритих текстів і з того, що ви пишете (тільки на цьому телефоні).</string>

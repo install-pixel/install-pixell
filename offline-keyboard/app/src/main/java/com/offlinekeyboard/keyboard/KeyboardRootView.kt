@@ -348,7 +348,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     override fun onDraw(canvas: Canvas) {
         val color = fadeColor
         // On the typewriter the soft edge fades into the black paper of the strip, not into the keyboard.
-        val fadeTo = if (theme.style == SurfaceStyle.TYPEWRITER) PaperTexture.EDGE_COLOR else color
+        val fadeTo = if (theme.style == SurfaceStyle.TYPEWRITER) PaperTexture.edgeColor(theme.milk) else color
         if (fadePaint.shader == null || fadePaint.color != fadeTo) {
             fadePaint.color = fadeTo
             fadePaint.shader = LinearGradient(
@@ -369,14 +369,17 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     /** The strip (text, suggestions and buttons): on the typewriter it lies on black paper. */
     private lateinit var infoRow: LinearLayout
     private var paper: PaperTexture.Sheet? = null
+    /** Whether [paper] is the parchment of the milky typewriter. */
+    private var paperMilk = false
     /** Set when the paper changed, so the text is inked again to follow its folds. */
     private var reInk = false
 
     /** The black paper for the strip at its present size (made on first use and after a size change). */
     private fun paperSheet(): PaperTexture.Sheet? {
         if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.width <= 0 || infoRow.height <= 0) return null
-        paper?.takeIf { it.bitmap.width == infoRow.width && it.bitmap.height == infoRow.height }?.let { return it }
-        val sheet = PaperTexture.sheet(infoRow.width, infoRow.height, resources.displayMetrics.density) ?: return null
+        paper?.takeIf { it.bitmap.width == infoRow.width && it.bitmap.height == infoRow.height && paperMilk == theme.milk }?.let { return it }
+        val sheet = PaperTexture.sheet(infoRow.width, infoRow.height, resources.displayMetrics.density, parchment = theme.milk) ?: return null
+        paperMilk = theme.milk
         paper = sheet
         reInk = true
         post { applyPaperToText(); refreshCentre() }
@@ -739,7 +742,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             val typewriter = theme.style == SurfaceStyle.TYPEWRITER
             val grew = text.length > status.text.length && text.toString().startsWith(status.text.toString())
             val inked = if (typewriter) TypewriterInk.apply(text, status.textSize, if (paper != null) ::foldOf else null) else text
-            status.text = if (isEcho && echoCursor in 0 until text.length) dimAfter(inked, echoCursor) else inked
+            status.text = if (isEcho && echoCursor in 0 until text.length) dimAfter(inked, echoCursor, theme.text) else inked
             // A new letter on the typewriter: the strip gives the small jolt of a typebar hitting the paper.
             if (typewriter && grew) {
                 status.animate().cancel()
@@ -847,9 +850,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 }
 
 /** [text] with what follows [cursor] dimmer: the part of the message after the cursor. */
-private fun dimAfter(text: CharSequence, cursor: Int): CharSequence {
+private fun dimAfter(text: CharSequence, cursor: Int, color: Int): CharSequence {
     val out = android.text.SpannableString(text)
-    out.setSpan(android.text.style.ForegroundColorSpan(0x80FFFFFF.toInt()), cursor, text.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    out.setSpan(android.text.style.ForegroundColorSpan((color and 0x00FFFFFF) or 0x80000000.toInt()), cursor, text.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     return out
 }
 

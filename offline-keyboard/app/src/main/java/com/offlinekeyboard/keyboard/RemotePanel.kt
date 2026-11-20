@@ -190,6 +190,7 @@ class Touchpad(context: Context) : View(context) {
     fun applyTheme(theme: KeyboardTheme) {
         style = theme.style
         surfaces.brightness = theme.brightness
+        surfaces.milk = theme.milk
         fillColor = theme.key
         label.color = (theme.text and 0x00FFFFFF) or 0x40000000
         invalidate()

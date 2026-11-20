@@ -325,6 +325,8 @@
     <string name="theme_sheet_desc">Odręcznie białym ołówkiem na czarnym</string>
     <string name="theme_typewriter">Black Typewriter</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze, wytarte i trochę zardzewiałe</string>
+    <string name="theme_milk_typewriter">Milky Typewriter</string>
+    <string name="theme_milk_typewriter_desc">Ta sama maszyna w jasnych barwach: mleczne klawisze w brązie, brązowe litery, papier jak stara mapa</string>
     <string name="space_cursor">Przytrzymaj spację i przesuń — kursor się przesuwa</string>
     <string name="long_context">Następne słowo z dwóch poprzednich</string>
     <string name="long_context_hint">Słowa po skończonym słowie są dobierane według dwóch ostatnich słów, nie tylko jednego: z otwartych tekstów i z tego, co piszesz (tylko na tym telefonie).</string>

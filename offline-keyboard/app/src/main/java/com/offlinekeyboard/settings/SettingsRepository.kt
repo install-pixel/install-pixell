@@ -313,7 +313,7 @@ class SettingsRepository(context: Context) {
  */
 fun KeyboardSettings.withStyle(mode: ThemeMode): KeyboardSettings = when {
     mode == themeMode -> this
-    mode == ThemeMode.TYPEWRITER -> copy(themeMode = mode, keyPreview = false)
-    themeMode == ThemeMode.TYPEWRITER -> copy(themeMode = mode, keyPreview = true)
+    mode.typewriter && !themeMode.typewriter -> copy(themeMode = mode, keyPreview = false)
+    themeMode.typewriter && !mode.typewriter -> copy(themeMode = mode, keyPreview = true)
     else -> copy(themeMode = mode)
 }

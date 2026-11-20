@@ -54,6 +54,16 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.14.0 — Milky Typewriter, paper holder
+
+- [x] New style «Milky Typewriter»: the same machine in light colours — milk-white enamel keys in bronze
+      rims, brown letters, a light body with brown shadows, no rust; the strip is old parchment like an
+      explorer's map (browned edges, stains, fibres, creases) with the text in brown ink.
+- [x] Typewriter: a polished paper holder across the top of the keys, where the paper goes in.
+- [x] Typewriter: a pressed key no longer flashes bright above the top row; only a soft glint just above
+      the key.
+- [x] Nothing typed in the keyboard's own settings (the test field) is learned: words, pairs or taps.
+
 ## 1.13.0 — computer remote, sound button
 
 - [x] Computer remote over Bluetooth (first version): a touchpad (tap = click, two fingers = right click
