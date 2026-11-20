@@ -9,7 +9,7 @@
 
     <string name="voice_blocked_sensitive">Voice input is off in password and private fields.</string>
     <string name="voice_not_available">Offline voice input is not available.</string>
-    <string name="voice_model_missing">No offline voice model for this language. Import it in Settings → Offline models.</string>
+    <string name="voice_model_missing">No voice model for this language yet. Tap to download it.</string>
     <string name="voice_permission_needed">Microphone access needed</string>
 
     <string name="section_setup">Getting started</string>
@@ -91,6 +91,7 @@
     <string name="dictionary_add_word">New word</string>
     <string name="dictionary_add_invalid">Only letters, apostrophe and hyphen; 2–40 characters.</string>
     <string name="dictionary_empty">No words yet.</string>
+    <string name="dictionary_waiting">Not suggested yet: type it once more</string>
     <string name="dictionary_clear">Delete all words</string>
     <string name="dictionary_clear_confirm">Delete the whole dictionary in all languages?</string>
     <string name="dictionary_word_removed">Removed from dictionary: %1$s</string>
@@ -116,7 +117,7 @@
     <string name="voice_commands_hint">Say “кома”, “крапка”, “знак питання”, “новий рядок” (Polish: “przecinek”, “kropka”, “znak zapytania”, “nowa linia”; English: “comma”, “period”, “question mark”, “new line”).</string>
     <string name="translate_on">Translate %1$s: Enter translates</string>
     <string name="translate_not_here">No translation in this field</string>
-    <string name="translation_model_missing">No %1$s model — see Settings</string>
+    <string name="translation_model_missing">The %1$s model is not here yet. Tap to download it.</string>
     <string name="translating">Translating %1$s…</string>
     <string name="translation_discarded">Text changed — not replaced</string>
     <string name="translation_failed">Translation error: %1$s</string>
@@ -340,4 +341,21 @@
     <string name="key_sound">Typewriter sounds</string>
     <string name="key_sound_volume">Volume: %1$d%%</string>
     <string name="key_sound_hint">The keys click, the space bar thumps and Enter rings the carriage bell. For the Black Typewriter style for now; silent while the phone is on silent or vibrate.</string>
+    <string name="onb_title">Set up OffKey</string>
+    <string name="onb_how">How should the keyboard be set up?</string>
+    <string name="onb_recommended">Recommended</string>
+    <string name="onb_recommended_desc">Languages from the phone, suggestions, corrections and a dictionary that learns. Translation and voice when you need them.</string>
+    <string name="onb_minimum">Minimum</string>
+    <string name="onb_minimum_desc">A plain keyboard: no suggestions, corrections or learning.</string>
+    <string name="onb_custom">I\'ll set it up</string>
+    <string name="onb_custom_desc">A few short questions.</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_done">Done</string>
+    <string name="onb_languages">Which languages do you write in?</string>
+    <string name="onb_help">Suggestions, corrections and a learning dictionary</string>
+    <string name="onb_sound">Key sound and vibration</string>
+    <string name="onb_models_note">Translation and voice typing are offered the first time you touch their buttons: then you download the model they need.</string>
+    <string name="onb_enable">Turn the keyboard on</string>
+    <string name="onb_style">Pick a style</string>
+    <string name="onb_restart">Run the first setup again</string>
 </resources>

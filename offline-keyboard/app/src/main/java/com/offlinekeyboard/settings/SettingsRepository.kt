@@ -52,6 +52,8 @@ data class KeyboardSettings(
     val longContext: Boolean = true,
     /** The keyboard learns where the finger lands on each letter. */
     val learnTouch: Boolean = true,
+    /** The first setup (opened from the launcher) has been done. */
+    val onboardingDone: Boolean = false,
     /** Typewriter key sounds (Black Typewriter style only for now) and their volume, 0–1. */
     val keySound: Boolean = true,
     val keySoundVolume: Float = 0.6f,
@@ -128,6 +130,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.SPACE_CURSOR] = updated.spaceCursor
             prefs[Keys.LONG_CONTEXT] = updated.longContext
             prefs[Keys.LEARN_TOUCH] = updated.learnTouch
+            prefs[Keys.ONBOARDING_DONE] = updated.onboardingDone
             prefs[Keys.KEY_SOUND] = updated.keySound
             prefs[Keys.KEY_SOUND_VOLUME] = updated.keySoundVolume
             prefs[Keys.AUTO_CORRECT] = updated.autoCorrect
@@ -226,6 +229,8 @@ class SettingsRepository(context: Context) {
             spaceCursor = this[Keys.SPACE_CURSOR] ?: defaults.spaceCursor,
             longContext = this[Keys.LONG_CONTEXT] ?: defaults.longContext,
             learnTouch = this[Keys.LEARN_TOUCH] ?: defaults.learnTouch,
+            // Settings saved by a version without the first setup: that user has set the keyboard up already.
+            onboardingDone = this[Keys.ONBOARDING_DONE] ?: asMap().isNotEmpty(),
             keySound = this[Keys.KEY_SOUND] ?: defaults.keySound,
             keySoundVolume = (this[Keys.KEY_SOUND_VOLUME] ?: defaults.keySoundVolume).coerceIn(0f, 1f),
             autoCorrect = this[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
@@ -274,6 +279,7 @@ class SettingsRepository(context: Context) {
         val SPACE_CURSOR = booleanPreferencesKey("space_cursor")
         val LONG_CONTEXT = booleanPreferencesKey("long_context")
         val LEARN_TOUCH = booleanPreferencesKey("learn_touch")
+        val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val KEY_SOUND = booleanPreferencesKey("key_sound")
         val KEY_SOUND_VOLUME = floatPreferencesKey("key_sound_volume")
         val AUTO_CORRECT = booleanPreferencesKey("auto_correct")

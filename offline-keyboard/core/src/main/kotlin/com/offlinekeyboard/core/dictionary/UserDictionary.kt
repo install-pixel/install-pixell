@@ -70,12 +70,18 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
      * Up to [limit] completions of [prefix] (case-insensitive), most used first. The typed word itself
      * is skipped. Results follow the case the user started with ("Wa" → "Warszawa", "WA" → "WARSZAWA").
      */
+    /** Whether a learned word is used for suggestions: typed at least [SUGGEST_FROM] times, or a known word. */
+    fun isTrusted(language: Language, key: String, entry: Entry): Boolean =
+        entry.count >= SUGGEST_FROM || BaseDictionary.isKnown(language, key) || Apostrophes.isKnown(language, key)
+
     fun suggestions(language: Language, prefix: String, limit: Int = 3): List<String> {
         if (prefix.isEmpty()) return emptyList()
         val map = byLanguage[language] ?: return emptyList()
         val lowerPrefix = prefix.lowercase(language.locale)
         return map.entries.asSequence()
             .filter { (key, _) -> key.startsWith(lowerPrefix) && key != lowerPrefix }
+            // A word typed only once may be a slip: it waits for a second time, unless it is a known word.
+            .filter { (key, entry) -> isTrusted(language, key, entry) }
             .map { it.value }
             .sortedWith(compareByDescending<Entry> { it.count }.thenByDescending { it.lastUsed }.thenBy { it.word })
             .take(limit)
@@ -122,6 +128,9 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
     }
 
     companion object {
+        /** A word not in the base dictionary is suggested once it was typed this many times. */
+        const val SUGGEST_FROM = 2
+
         /** Per language; the least used, oldest words make room for new ones. */
         const val DEFAULT_MAX_WORDS = 5_000
 

@@ -508,6 +508,27 @@ class KeyboardUiTest {
         scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
     }
 
+    /** The first setup, opened as from the launcher while it was never done: its first screen. */
+    @Test
+    fun firstSetupShowsFromTheLauncher() {
+        scenario.close()
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        try {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(onboardingDone = false) } }
+            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN)
+                .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                .setClass(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+            ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(intent).use { settings ->
+                Thread.sleep(1500)
+                assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, settings.state)
+                screenshot("onboarding-1")
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(onboardingDone = true) } }
+        }
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
+    }
+
     @Test
     fun settingsPagesOpen() {
         scenario.close()

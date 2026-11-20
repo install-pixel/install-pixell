@@ -278,6 +278,14 @@ class KeyboardView(context: Context) : View(context) {
      * its end of the lever down.
      */
     private fun drawMachine(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
+        // The levers go in under the paper: nothing of them is drawn above the keyboard's own top edge.
+        canvas.save()
+        canvas.clipRect(0f, 0f, width.toFloat(), height.toFloat())
+        drawLevers(canvas, pressedKeys, now)
+        canvas.restore()
+    }
+
+    private fun drawLevers(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
         val w = maxOf(dp(2.4f), typewriterSide * 0.09f)
         for ((key, rect) in keyRects) {
             if (key.style == KeyStyle.SPACER) continue

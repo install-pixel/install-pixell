@@ -168,6 +168,9 @@ class FeaturesTest {
         assertFalse(d.learn(Language.EN, "user@mail", 0))
         assertTrue(d.learn(Language.EN, "NATO", 0))
         assertTrue(d.learn(Language.UK, "пʼятниця", 0))
+        // Typed once, an unknown word waits: it may be a slip. A known word is suggested at once.
+        assertEquals(emptyList<String>(), d.suggestions(Language.EN, "na"))
+        assertTrue(d.learn(Language.EN, "NATO", 0))
         assertEquals(listOf("NATO"), d.suggestions(Language.EN, "na"))
         assertEquals(listOf("пʼятниця"), d.suggestions(Language.UK, "пʼя"))
     }

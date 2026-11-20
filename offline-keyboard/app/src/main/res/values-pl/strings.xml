@@ -9,7 +9,7 @@
 
     <string name="voice_blocked_sensitive">Wprowadzanie głosowe jest wyłączone w polach haseł i polach prywatnych.</string>
     <string name="voice_not_available">Dyktowanie offline jest niedostępne.</string>
-    <string name="voice_model_missing">Brak modelu głosu offline dla tego języka. Zaimportuj go w Ustawienia → Modele offline.</string>
+    <string name="voice_model_missing">Brak jeszcze modelu głosu dla tego języka. Dotknij, aby go pobrać.</string>
     <string name="voice_permission_needed">Potrzebny dostęp do mikrofonu</string>
 
     <string name="section_setup">Jak zacząć</string>
@@ -91,6 +91,7 @@
     <string name="dictionary_add_word">Nowe słowo</string>
     <string name="dictionary_add_invalid">Tylko litery, apostrof i łącznik; 2–40 znaków.</string>
     <string name="dictionary_empty">Brak słów.</string>
+    <string name="dictionary_waiting">Jeszcze nie podpowiadane: wpisz je ponownie</string>
     <string name="dictionary_clear">Usuń wszystkie słowa</string>
     <string name="dictionary_clear_confirm">Usunąć cały słownik we wszystkich językach?</string>
     <string name="dictionary_word_removed">Usunięto ze słownika: %1$s</string>
@@ -116,7 +117,7 @@
     <string name="voice_commands_hint">Mów „przecinek”, „kropka”, „znak zapytania”, „nowa linia” (po ukraińsku: „кома”, „крапка”, „знак питання”, „новий рядок”; po angielsku: „comma”, „period”, „question mark”, „new line”).</string>
     <string name="translate_on">Tłumaczenie %1$s: Enter tłumaczy</string>
     <string name="translate_not_here">Tu tłumaczenie niedostępne</string>
-    <string name="translation_model_missing">Brak modelu %1$s — patrz Ustawienia</string>
+    <string name="translation_model_missing">Brak jeszcze modelu %1$s. Dotknij, aby go pobrać.</string>
     <string name="translating">Tłumaczę %1$s…</string>
     <string name="translation_discarded">Tekst się zmienił — nie zastąpiono</string>
     <string name="translation_failed">Błąd tłumaczenia: %1$s</string>
@@ -340,4 +341,21 @@
     <string name="key_sound">Dźwięki maszyny do pisania</string>
     <string name="key_sound_volume">Głośność: %1$d%%</string>
     <string name="key_sound_hint">Klawisze stukają, spacja głucho uderza, a Enter dzwoni karetką. Na razie dla stylu Black Typewriter; cicho, gdy telefon jest wyciszony lub na wibracjach.</string>
+    <string name="onb_title">Konfiguracja OffKey</string>
+    <string name="onb_how">Jak skonfigurować klawiaturę?</string>
+    <string name="onb_recommended">Zalecane</string>
+    <string name="onb_recommended_desc">Języki z telefonu, podpowiedzi, poprawki i słownik, który się uczy. Tłumaczenie i głos, gdy będą potrzebne.</string>
+    <string name="onb_minimum">Minimum</string>
+    <string name="onb_minimum_desc">Prosta klawiatura: bez podpowiedzi, poprawek i nauki.</string>
+    <string name="onb_custom">Skonfiguruję sam</string>
+    <string name="onb_custom_desc">Kilka krótkich pytań.</string>
+    <string name="onb_next">Dalej</string>
+    <string name="onb_done">Gotowe</string>
+    <string name="onb_languages">W jakich językach piszesz?</string>
+    <string name="onb_help">Podpowiedzi, poprawki i słownik, który się uczy</string>
+    <string name="onb_sound">Dźwięk i wibracja klawiszy</string>
+    <string name="onb_models_note">Tłumaczenie i pisanie głosem zaproponujemy, gdy pierwszy raz dotkniesz ich przycisków: wtedy pobierzesz potrzebny model.</string>
+    <string name="onb_enable">Włącz klawiaturę</string>
+    <string name="onb_style">Wybierz styl</string>
+    <string name="onb_restart">Przejdź konfigurację początkową ponownie</string>
 </resources>
