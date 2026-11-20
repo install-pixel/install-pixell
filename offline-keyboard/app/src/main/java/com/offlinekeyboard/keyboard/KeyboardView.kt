@@ -200,6 +200,8 @@ class KeyboardView(context: Context) : View(context) {
 
     /** Stops repeats and popups, e.g. when the keyboard is hidden mid-press. */
     fun cancelAllPointers() {
+        // A typebar up for a key that is let go this way comes down too.
+        if (pointers.size() > 0) typebarListener?.invoke(0f, false)
         for (i in 0 until pointers.size()) pointers.valueAt(i).cancelCallbacks()
         pointers.clear()
         popup = null
@@ -231,6 +233,7 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun computeKeyRects() {
         keyRects.clear()
+        keyRectsVersion++
         val units = layout.maxRowUnits
         if (units <= 0f || width == 0) return
         val unit = (width - paddingLeft - paddingRight) / units
@@ -327,10 +330,18 @@ class KeyboardView(context: Context) : View(context) {
         return out
     }
 
+    private var cachedNudges: Map<Pair<Key, Int>, Float>? = null
+    private var cachedNudgesFor = -1
+    private var cachedNudgesWidth = 0f
+    /** Counts the times the keys were laid out, so what depends on their places can be kept between frames. */
+    private var keyRectsVersion = 0
+
     private fun drawLevers(canvas: Canvas, pressedKeys: Set<Key>, now: Long) {
         // Never thicker than about 3 dp, so the levers of big keys keep apart.
         val w = maxOf(dp(2.4f), typewriterSide * 0.09f).coerceAtMost(dp(3.2f))
-        val nudges = leverNudges(w)
+        // Worked out once per layout (and size), not on every frame.
+        val nudges = cachedNudges?.takeIf { cachedNudgesFor == keyRectsVersion && cachedNudgesWidth == w }
+            ?: leverNudges(w).also { cachedNudges = it; cachedNudgesFor = keyRectsVersion; cachedNudgesWidth = w }
         for ((key, rect) in keyRects) {
             if (key.style == KeyStyle.SPACER) continue
             val body = typewriterBody(rect, key)

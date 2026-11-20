@@ -581,7 +581,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 val r = status.textSize * 0.32f
                 canvas.drawOval(strikeX - r * 0.8f, textY - r, strikeX + r * 0.8f, textY + r, strikePaint)
             }
-            postInvalidateOnAnimation()
+            // Moving (going up or coming down): the next frame. Resting on the paper: nothing to redraw.
+            if (strikeUpAt != 0L || now - strikeDownAt < STRIKE_RISE_MS) postInvalidateOnAnimation()
+            // Never left up: a key held very long (or let go unseen) brings its typebar down by itself.
+            if (strikeUpAt == 0L && now - strikeDownAt > STRIKE_HOLD_MAX_MS) typebar(0f, false)
         } else if (strikeUpAt != 0L) {
             strikeDownAt = 0L
             strikeUpAt = 0L
@@ -1099,6 +1102,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         /** A typebar's way up to the paper, and back down. */
         const val STRIKE_RISE_MS = 70L
         const val STRIKE_FALL_MS = 110L
+        const val STRIKE_HOLD_MAX_MS = 3000L
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L
