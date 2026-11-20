@@ -105,7 +105,9 @@ class SettingsActivity : ComponentActivity() {
                         "help" -> Page.HELP
                         else -> Page.MAIN
                     }
-                    SettingsApp(repository, startPage)
+                    // The first setup is offered only when the app is opened from the launcher.
+                    val fromLauncher = intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+                    SettingsApp(repository, startPage, fromLauncher)
                 }
             }
         }
@@ -193,15 +195,26 @@ private fun isKeyboardSelected(context: Context): Boolean = runCatching {
 }.getOrDefault(false)
 
 @Composable
-private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
+private fun SettingsApp(repository: SettingsRepository, startPage: Page, fromLauncher: Boolean) {
     val scope = rememberCoroutineScope()
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = null)
     var page by rememberSaveable { mutableStateOf(startPage) }
     val update: UpdateSettings = { transform -> scope.launch { repository.update(transform) } }
+    // Null until the settings are read: then the first setup shows if it was never done.
+    var onboarding by rememberSaveable { mutableStateOf<Boolean?>(null) }
 
-    BackHandler(enabled = page != Page.MAIN) { page = page.up }
+    BackHandler(enabled = page != Page.MAIN && onboarding != true) { page = page.up }
 
     val s = settings ?: return
+    if (onboarding == null) onboarding = fromLauncher && !s.onboardingDone
+    if (onboarding == true) {
+        OnboardingFlow(s, update) {
+            update { it.copy(onboardingDone = true) }
+            onboarding = false
+            page = Page.MAIN
+        }
+        return
+    }
     // As in QRAFT: the new page slides in a little from the side it comes from and fades in, the old one
     // slides out the other way; deeper pages come from the right, going back from the left.
     androidx.compose.animation.AnimatedContent(
@@ -222,14 +235,21 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page) {
                 )
         },
         label = "page",
-    ) { shown -> PageContent(shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } }) }
+    ) { shown ->
+        PageContent(
+            shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } },
+            onFirstSetup = { onboarding = true },
+        )
+    }
 }
 
 private const val PAGE_IN_MS = 300
 private const val PAGE_OUT_MS = 180
 
 @Composable
-private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: () -> Unit) {
+private fun PageContent(
+    page: Page, s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: () -> Unit, onFirstSetup: () -> Unit,
+) {
     val back = { onOpen(page.up) }
     when (page) {
         Page.MAIN -> MainPage(s, onOpen = onOpen)
@@ -237,7 +257,7 @@ private fun PageContent(page: Page, s: KeyboardSettings, update: UpdateSettings,
         Page.TYPING -> TypingPage(s, update, back)
         Page.LANGUAGES -> LanguagesPage(s, update, back)
         Page.VOICE -> VoicePage(s, update, onOpen, back)
-        Page.ABOUT -> AboutPage(onReset, back)
+        Page.ABOUT -> AboutPage(onReset, onFirstSetup, back)
         Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = back)
         Page.DICTIONARY -> DictionaryPage(s, update, onBack = back)
         Page.MODELS -> ModelsPage(onBack = back)
@@ -632,7 +652,7 @@ private fun VoicePage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page
 
 /** Version, privacy, the last crash and resetting the settings. */
 @Composable
-private fun AboutPage(onReset: () -> Unit, onBack: () -> Unit) {
+private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
@@ -688,6 +708,7 @@ private fun AboutPage(onReset: () -> Unit, onBack: () -> Unit) {
                     clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
                 }) { Text(stringResource(R.string.about_copy_crash)) }
             }
+            ActionButton(onClick = onFirstSetup) { Text(stringResource(R.string.onb_restart)) }
             ActionButton(tone = ButtonTone.DANGER, onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
         }
     }

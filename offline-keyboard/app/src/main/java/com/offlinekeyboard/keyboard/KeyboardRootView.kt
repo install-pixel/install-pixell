@@ -280,9 +280,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         backgroundPaint.color = color
         canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
         if (theme.style == SurfaceStyle.TYPEWRITER && ::infoRow.isInitialized && infoRow.height > 0) {
-            val sheet = paper?.takeIf { it.width == infoRow.width && it.height == infoRow.height }
-                ?: PaperTexture.make(infoRow.width, infoRow.height, resources.displayMetrics.density).also { paper = it }
-            sheet?.let { canvas.drawBitmap(it, infoRow.left.toFloat(), infoRow.top.toFloat(), null) }
+            paperSheet()?.let { canvas.drawBitmap(it.bitmap, infoRow.left.toFloat(), infoRow.top.toFloat(), null) }
         }
     }
 
@@ -290,7 +288,42 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     /** The strip (text, suggestions and buttons): on the typewriter it lies on black paper. */
     private lateinit var infoRow: LinearLayout
-    private var paper: android.graphics.Bitmap? = null
+    private var paper: PaperTexture.Sheet? = null
+    /** Set when the paper changed, so the text is inked again to follow its folds. */
+    private var reInk = false
+
+    /** The black paper for the strip at its present size (made on first use and after a size change). */
+    private fun paperSheet(): PaperTexture.Sheet? {
+        if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.width <= 0 || infoRow.height <= 0) return null
+        paper?.takeIf { it.bitmap.width == infoRow.width && it.bitmap.height == infoRow.height }?.let { return it }
+        val sheet = PaperTexture.sheet(infoRow.width, infoRow.height, resources.displayMetrics.density) ?: return null
+        paper = sheet
+        reInk = true
+        post { applyPaperToText(); refreshCentre() }
+        return sheet
+    }
+
+    /**
+     * Under the text the paper moves with it, like a sheet in the carriage: a typed letter always stays on
+     * the same spot of the paper, and the letters on a fold follow it. The rest of the strip keeps the paper
+     * still; the strip's soft edges blend the two.
+     */
+    private fun applyPaperToText() {
+        val sheet = paper
+        status.background = if (theme.style == SurfaceStyle.TYPEWRITER && sheet != null) {
+            PaperDrawable(sheet.bitmap, statusScroll.left.toFloat())
+        } else {
+            null
+        }
+    }
+
+    /** How much the character at [index] of the strip's text sits on a fold of the paper (typewriter). */
+    private fun foldOf(index: Int): Float {
+        val sheet = paper ?: return 0f
+        val advance = status.paint.measureText("0")
+        val x = statusScroll.left + status.totalPaddingLeft + (index + 0.5f) * advance
+        return sheet.foldAt(x, infoRow.height / 2f, status.textSize * 0.6f)
+    }
 
     init {
         setWillNotDraw(false)
@@ -380,6 +413,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         clipboardPanel.applyTheme(value)
         fadeColor = value.background
         fadePaint.shader = null
+        applyPaperToText()
+        reInk = true
         invalidate()
         invalidate()
         Icons.style = value.style
@@ -560,11 +595,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val text = if (isEcho) echo ?: "" else centreText ?: ""
         showingEcho = isEcho && echo != null
         val cursorAt = if (isEcho) echoCursor else -1
-        if (text.toString() != status.text.toString() || cursorAt != shownCursor) {
+        if (text.toString() != status.text.toString() || cursorAt != shownCursor || reInk) {
             shownCursor = cursorAt
+            reInk = false
             val typewriter = theme.style == SurfaceStyle.TYPEWRITER
             val grew = text.length > status.text.length && text.toString().startsWith(status.text.toString())
-            val inked = if (typewriter) TypewriterInk.apply(text, status.textSize) else text
+            val inked = if (typewriter) TypewriterInk.apply(text, status.textSize, if (paper != null) ::foldOf else null) else text
             status.text = if (isEcho && echoCursor in 0 until text.length) dimAfter(inked, echoCursor) else inked
             // A new letter on the typewriter: the strip gives the small jolt of a typebar hitting the paper.
             if (typewriter && grew) {
@@ -677,3 +713,18 @@ private fun dimAfter(text: CharSequence, cursor: Int): CharSequence {
 
 /** A word in the strip's text, the same for the strip and the service: letters, digits, apostrophes, hyphens. */
 internal const val ECHO_WORD_PATTERN = "[\\p{L}\\p{N}'ʼ’-]+"
+
+/** The strip's paper under the text: [bitmap] repeated sideways, shifted by [offsetX] to line up with the paper around it. */
+private class PaperDrawable(bitmap: android.graphics.Bitmap, offsetX: Float) : android.graphics.drawable.Drawable() {
+    private val paint = Paint().apply {
+        shader = android.graphics.BitmapShader(bitmap, Shader.TileMode.REPEAT, Shader.TileMode.CLAMP).apply {
+            setLocalMatrix(android.graphics.Matrix().apply { setTranslate(-offsetX, 0f) })
+        }
+    }
+
+    override fun draw(canvas: Canvas) = canvas.drawRect(bounds, paint)
+    override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+    override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
+    @Deprecated("Deprecated in Java")
+    override fun getOpacity() = android.graphics.PixelFormat.OPAQUE
+}

@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -123,8 +124,16 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                 ) {
                     itemsIndexed(entries, key = { _, e -> e.word }) { i, e ->
                         if (i > 0) RowDivider()
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(e.word, modifier = Modifier.weight(1f))
+                        // A word typed once (and not a known word) is kept but not suggested yet: shown dimmer.
+                        val waiting = !store.dictionary.isTrusted(language, e.word.lowercase(language.locale), e)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.alpha(if (waiting) 0.5f else 1f),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(e.word)
+                                if (waiting) Text(stringResource(R.string.dictionary_waiting), style = MaterialTheme.typography.bodySmall)
+                            }
                             Text("×${e.count}", style = MaterialTheme.typography.bodySmall)
                             TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                                 store.dictionary.remove(language, e.word)

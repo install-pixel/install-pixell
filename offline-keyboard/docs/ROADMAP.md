@@ -43,13 +43,18 @@ The style guide for every screen is QRAFT (the family's reference app): two them
       always round one way, a swipe its own way.
 - [x] Lower key sounds: highs rolled off, more body, a little slower; loud without distortion.
 
-## Planned
+## 1.12.0 — first setup, dictionary waits for a second time, letters on the folds
 
-- [ ] Dictionary: a word typed once (×1) is kept but not suggested until it is typed again (base words
-      right away); ×1 words shown dimmer in the list, «not used yet».
-- [ ] First run in three screens: «Recommended» (languages from the phone, suggestions and corrections
-      on) / «Minimum» / «I'll set it up» (short questions); turn the keyboard on; pick a style. Voice and
-      translation models offered the first time those buttons are touched (download in two taps).
+- [x] Dictionary: a word typed once is kept but not suggested until it is typed again (known words right
+      away); such words are dimmer in the list, «not suggested yet».
+- [x] First setup (opened from the launcher): «Recommended» (the phone's languages, suggestions,
+      corrections, a learning dictionary) / «Minimum» / «I'll set it up» (languages, help, sound); turning
+      the keyboard on; the style. Again from About. No voice or translation model yet: the message offers it
+      (a tap opens the models page).
+- [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
+      no lever ends showing on the paper.
+
+## Planned
 
 - [ ] PC remote over Bluetooth: touchpad (mouse), media keys, slides, a pad of shortcuts — comfortable.
 - [ ] Data guard: a gentle warning when a card number, IBAN, PESEL or a password-like text goes into a chat.

@@ -9,7 +9,7 @@
 
     <string name="voice_blocked_sensitive">Голосове введення вимкнене в полях паролів і приватних полях.</string>
     <string name="voice_not_available">Офлайн-голосове введення недоступне.</string>
-    <string name="voice_model_missing">Немає офлайн-моделі голосу для цієї мови. Імпортуйте її в Налаштування → Офлайн-моделі.</string>
+    <string name="voice_model_missing">Ще немає моделі голосу для цієї мови. Торкніться, щоб завантажити.</string>
     <string name="voice_permission_needed">Потрібен доступ до мікрофона</string>
 
     <string name="section_setup">Як почати</string>
@@ -91,6 +91,7 @@
     <string name="dictionary_add_word">Нове слово</string>
     <string name="dictionary_add_invalid">Лише літери, апостроф і дефіс; 2–40 символів.</string>
     <string name="dictionary_empty">Слів ще немає.</string>
+    <string name="dictionary_waiting">Поки не підказується: наберіть ще раз</string>
     <string name="dictionary_clear">Видалити всі слова</string>
     <string name="dictionary_clear_confirm">Видалити весь словник для всіх мов?</string>
     <string name="dictionary_word_removed">Видалено зі словника: %1$s</string>
@@ -116,7 +117,7 @@
     <string name="voice_commands_hint">Кажіть «кома», «крапка», «знак питання», «новий рядок» (польською: «przecinek», «kropka», «znak zapytania», «nowa linia»; англійською: «comma», «period», «question mark», «new line»).</string>
     <string name="translate_on">Переклад %1$s: Enter перекладає</string>
     <string name="translate_not_here">Тут переклад недоступний</string>
-    <string name="translation_model_missing">Немає моделі %1$s — див. Налаштування</string>
+    <string name="translation_model_missing">Ще немає моделі %1$s. Торкніться, щоб завантажити.</string>
     <string name="translating">Перекладаю %1$s…</string>
     <string name="translation_discarded">Текст змінився — не замінено</string>
     <string name="translation_failed">Помилка перекладу: %1$s</string>
@@ -340,4 +341,21 @@
     <string name="key_sound">Звуки друкарської машинки</string>
     <string name="key_sound_volume">Гучність: %1$d%%</string>
     <string name="key_sound_hint">Клавіші клацають, пробіл глухо стукає, а Enter дзвенить кареткою. Поки що для стилю Black Typewriter; мовчить, коли телефон у беззвучному режимі чи на вібрації.</string>
+    <string name="onb_title">Налаштування OffKey</string>
+    <string name="onb_how">Як налаштувати клавіатуру?</string>
+    <string name="onb_recommended">Рекомендовано</string>
+    <string name="onb_recommended_desc">Мови з телефона, підказки, виправлення і словник, який вчиться. Переклад і голос — коли знадобляться.</string>
+    <string name="onb_minimum">Мінімум</string>
+    <string name="onb_minimum_desc">Проста клавіатура: без підказок, виправлень і навчання.</string>
+    <string name="onb_custom">Налаштую сам</string>
+    <string name="onb_custom_desc">Кілька коротких питань.</string>
+    <string name="onb_next">Далі</string>
+    <string name="onb_done">Готово</string>
+    <string name="onb_languages">Якими мовами пишете?</string>
+    <string name="onb_help">Підказки, виправлення й словник, який вчиться</string>
+    <string name="onb_sound">Звук і вібрація клавіш</string>
+    <string name="onb_models_note">Переклад і голосовий набір запропонуємо, коли вперше торкнетеся їхніх кнопок: тоді завантажите потрібну модель.</string>
+    <string name="onb_enable">Увімкніть клавіатуру</string>
+    <string name="onb_style">Виберіть стиль</string>
+    <string name="onb_restart">Пройти початкове налаштування знову</string>
 </resources>

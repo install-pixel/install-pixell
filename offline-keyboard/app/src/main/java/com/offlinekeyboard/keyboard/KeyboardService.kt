@@ -484,7 +484,9 @@ class KeyboardService : InputMethodService(),
         val direction = TranslationDirection.detect(source, writing, settings.translationDirection.target)
             ?: settings.translationDirection
         if (!translation.isInstalled(direction)) {
-            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)))
+            rootView?.showStatus(getString(R.string.translation_model_missing, directionLabel(direction)), CHECK_WARNING_MS) {
+                openSettings("models")
+            }
             return
         }
         rootView?.showLive(getString(R.string.translating, directionLabel(direction)))
@@ -1361,7 +1363,13 @@ class KeyboardService : InputMethodService(),
 
     override fun showMessage(resId: Int, detail: String?) {
         val text = getString(resId)
-        rootView?.showStatus(if (detail.isNullOrEmpty()) text else "$text ($detail)")
+        val shown = if (detail.isNullOrEmpty()) text else "$text ($detail)"
+        // No voice model yet: a tap on the message opens the models page to download it.
+        if (resId == R.string.voice_model_missing) {
+            rootView?.showStatus(shown, CHECK_WARNING_MS) { openSettings("models") }
+        } else {
+            rootView?.showStatus(shown)
+        }
     }
 
     override fun requestMicPermission() {

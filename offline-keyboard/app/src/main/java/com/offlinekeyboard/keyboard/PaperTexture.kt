@@ -17,7 +17,39 @@ object PaperTexture {
     const val EDGE_COLOR = 0xFF181716.toInt()
     private const val CELL = 28
 
-    fun make(width: Int, height: Int, density: Float): Bitmap? {
+    /**
+     * A sheet of the paper: its picture and where its creases run ([folds]: x, y points along each crease,
+     * one list per crease), so typed letters can follow the folds.
+     */
+    class Sheet(val bitmap: Bitmap, private val folds: List<FloatArray>) {
+        /**
+         * How much a letter at [x] (on the sheet), standing [reach] around [y], sits on a fold: 0 off any
+         * fold, up to ±1 right on one (the sign tells which way that fold bends).
+         */
+        fun foldAt(x: Float, y: Float, reach: Float): Float {
+            var best = 0f
+            val px = ((x % bitmap.width) + bitmap.width) % bitmap.width
+            for ((index, points) in folds.withIndex()) {
+                var i = 0
+                while (i + 1 < points.size) {
+                    if (kotlin.math.abs(points[i] - px) < 1f) {
+                        val distance = kotlin.math.abs(points[i + 1] - y)
+                        if (distance < reach) {
+                            val strength = (1f - distance / reach) * if (index % 2 == 0) 1f else -1f
+                            if (kotlin.math.abs(strength) > kotlin.math.abs(best)) best = strength
+                        }
+                        break
+                    }
+                    i += 2
+                }
+            }
+            return best
+        }
+    }
+
+    fun make(width: Int, height: Int, density: Float): Bitmap? = sheet(width, height, density)?.bitmap
+
+    fun sheet(width: Int, height: Int, density: Float): Sheet? {
         if (width <= 0 || height <= 0) return null
         val random = Random(7)
         // Soft blotches: random values on a coarse grid, blended between the grid points.
@@ -52,7 +84,9 @@ object PaperTexture {
             }
         }
         // Creases: long faint folds, a lit edge with its shadow beside it.
+        val folds = ArrayList<FloatArray>()
         repeat(2 + width / 360) {
+            val path = ArrayList<Float>()
             val angle = (random.nextFloat() - 0.5f) * 0.9f + if (random.nextBoolean()) 0f else 3.1416f / 2 * 0.35f
             var x = random.nextFloat() * width
             var y = random.nextFloat() * height
@@ -68,12 +102,17 @@ object PaperTexture {
                     shade(pixels, width, height, ix, iy, 9)
                     shade(pixels, width, height, ix, iy + 1, -7)
                 }
+                path += x
+                path += y
                 x += dx
                 y += dy + (random.nextFloat() - 0.5f) * 0.3f
                 walked += 1f
             }
+            folds += path.toFloatArray()
         }
-        return runCatching { Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888) }.getOrNull()
+        val bitmap = runCatching { Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888) }.getOrNull()
+            ?: return null
+        return Sheet(bitmap, folds)
     }
 
     private fun shade(pixels: IntArray, width: Int, height: Int, x: Int, y: Int, by: Int) {
