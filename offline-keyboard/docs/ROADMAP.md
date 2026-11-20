@@ -54,6 +54,16 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.15.2 — the typebar under the holder, the letter pressed whole
+
+- [x] The typebar no longer crosses the paper: its arm swings up from the key's side in the strip of the
+      machine below the holder, the bend is hidden under the holder, and only its straight end rises
+      right under the letter; the whole letter is pressed into the paper, dark and soft-edged, as it strikes.
+- [x] The modes button in the strip is a smaller plate, clear of the paper's edge.
+- [x] The typewriter's end-of-line bell is off by default (Typing settings turn it on).
+- [x] Key sounds as loud in every style: the sheet and glass sounds (ready for their styles) levelled to the
+      typewriter's keys; the typewriter's carriage return no longer shouts (+3 dB over the keys, was +9).
+
 ## 1.15.1 — the typebar strikes with the key, a cursor under the finger
 
 - [x] The paper holder sits wholly on the paper, with a strip of the machine below it before the chips or keys.

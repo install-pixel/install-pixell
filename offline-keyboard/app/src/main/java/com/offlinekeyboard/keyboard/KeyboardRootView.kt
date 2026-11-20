@@ -499,18 +499,26 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     /** Where its key is (x in this view) and where it strikes the paper. */
     private var strikeFromX = 0f
     private var strikeX = 0f
+    /** The letter of the key, pressed into the paper as the typebar strikes. */
+    private var strikeLetter = ""
+    private val impressionPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val haloPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG)
 
     /**
      * A letter key went down ([down]) or came up. As on the machine, the typebar of that key swings up from
      * the key's side, out from under the paper holder, and strikes the paper where the letter goes the moment
      * the key is down; it rests there while the key is held and falls back as it comes up.
      */
-    fun typebar(keyX: Float, down: Boolean) {
+    fun typebar(keyX: Float, down: Boolean, letter: String = "") {
         if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized) return
         val now = android.os.SystemClock.uptimeMillis()
         if (down) {
             strikeFromX = keysRow.left + keyboardView.left + keyX
-            strikeX = printX()
+            // On the user's text it strikes where the letter goes; while the strip shows suggestions or a
+            // message instead, straight up over its key, and leaves no letter on the paper.
+            val onText = showingEcho && statusScroll.visibility == View.VISIBLE && status.layout != null
+            strikeX = if (onText) printX() else strikeFromX
+            strikeLetter = if (onText) letter else ""
             strikeDownAt = now
             strikeUpAt = 0L
         } else if (strikeDownAt > 0 && strikeUpAt == 0L) {
@@ -544,9 +552,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         else -> (strikeHeldAt * (1f - (now - strikeUpAt) / STRIKE_FALL_MS.toFloat())).coerceAtLeast(0f)
     }
 
-    private val strikePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        maskFilter = android.graphics.BlurMaskFilter(2f * resources.displayMetrics.density, android.graphics.BlurMaskFilter.Blur.NORMAL)
-    }
+    private val strikeHalo = android.graphics.BlurMaskFilter(2.2f * resources.displayMetrics.density, android.graphics.BlurMaskFilter.Blur.NORMAL)
 
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
@@ -558,28 +564,50 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val holder = dp(HOLDER_DP).toFloat()
         // On the paper's lower edge; below it a strip of the machine, then the chips or the keys.
         val holderTop = bottom - holder
-        // The typebar, behind the holder: from its pivot in the machine below, by its key, up to the paper.
+        // The typebar of the pressed key. Below the holder, in the strip of the machine, its arm swings up
+        // from the key's side; the bend is under the holder; above it only the straight end shows, rising
+        // right under the letter, and the letter is pressed into the paper whole.
         val now = android.os.SystemClock.uptimeMillis()
         val lift = strikeLift(now)
         if (lift > 0f) {
-            val pivotX = strikeFromX
-            val pivotY = bottom + dp(HOLDER_GAP_DP) + dp(10)
-            val restY = holderTop + holder * 0.5f
-            val textY = top + infoRow.height * 0.42f
-            val tipX = pivotX + (strikeX - pivotX) * lift
-            val tipY = restY + (textY - restY) * lift
-            // Only the part between the machine and the paper shows (it comes out from under the holder);
-            // below that it is behind the chips and keys.
+            val gapBottom = bottom + dp(HOLDER_GAP_DP)
+            val bend = holderTop + holder * 0.5f
+            val arm = dp(3).toFloat()
+            // The arm: from its pivot below (by the key) to the bend, swinging over as it rises.
+            val endX = strikeFromX + (strikeX - strikeFromX) * lift
+            val endY = gapBottom + (bend - gapBottom) * lift
             canvas.save()
-            canvas.clipRect(0f, top, width.toFloat(), bottom + dp(HOLDER_GAP_DP))
-            holderPainter.drawTypebar(canvas, pivotX, pivotY, tipX, tipY, dp(3).toFloat())
+            canvas.clipRect(0f, holderTop, width.toFloat(), gapBottom)
+            holderPainter.drawTypebarArm(canvas, strikeFromX, gapBottom + dp(16), endX, endY, arm)
             canvas.restore()
-            // On the paper: the dent of the type, a dark mark where the letter comes.
-            if (lift > 0.85f) {
-                val ink = ((lift - 0.85f) / 0.15f).coerceIn(0f, 1f)
-                strikePaint.color = (theme.text and 0x00FFFFFF) or ((0x55 * ink).toInt() shl 24)
-                val r = status.textSize * 0.32f
-                canvas.drawOval(strikeX - r * 0.8f, textY - r, strikeX + r * 0.8f, textY + r, strikePaint)
+            // The letter's place in the strip: its baseline and size as the strip writes it.
+            impressionPaint.set(status.paint)
+            val layout = status.layout
+            val baseline = if (layout != null) {
+                infoRow.top + statusScroll.top + status.top + status.totalPaddingTop + layout.getLineBaseline(0).toFloat() + status.translationY
+            } else {
+                top + infoRow.height * 0.62f
+            }
+            val metrics = impressionPaint.fontMetrics
+            // The straight end: up from under the holder to just below the letter, only when it has swung
+            // over to the letter (while the arm is still on its way it stays under the holder).
+            val reach = baseline + metrics.descent * 0.6f
+            val up = ((lift - 0.35f) / 0.65f).coerceIn(0f, 1f)
+            if (up > 0f) {
+                val tip = bend + (reach - bend) * up
+                holderPainter.drawTypebarEnd(canvas, strikeX, bend, tip, arm, impressionPaint.measureText("0") * 0.9f)
+            }
+            // The letter pressed into the paper: the whole letter, darker than the ink and soft at its edges,
+            // as the type hits; it goes as the bar falls and the typed letter takes its place.
+            if (lift > 0.7f && strikeLetter.isNotEmpty()) {
+                val ink = ((lift - 0.7f) / 0.3f).coerceIn(0f, 1f)
+                val x = strikeX - impressionPaint.measureText(strikeLetter) / 2f
+                haloPaint.set(impressionPaint)
+                haloPaint.maskFilter = strikeHalo
+                haloPaint.color = (theme.text and 0x00FFFFFF) or ((0x70 * ink).toInt() shl 24)
+                canvas.drawText(strikeLetter, x, baseline, haloPaint)
+                impressionPaint.color = (theme.text and 0x00FFFFFF) or ((0xE0 * ink).toInt() shl 24)
+                canvas.drawText(strikeLetter, x, baseline, impressionPaint)
             }
             // Moving (going up or coming down): the next frame. Resting on the paper: nothing to redraw.
             if (strikeUpAt != 0L || now - strikeDownAt < STRIKE_RISE_MS) postInvalidateOnAnimation()
@@ -639,7 +667,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             gravity = Gravity.CENTER_VERTICAL
             // A tap where the hidden buttons are (or anywhere on the strip) shows them.
             setOnClickListener { revealButtons() }
-            addView(modesButton, LayoutParams(dp(44), LayoutParams.MATCH_PARENT))
+            // A smaller plate, so it sits clear of the paper's edge and the holder; still a full-size target
+            // with the strip around it (a tap there shows the buttons too).
+            addView(modesButton, LayoutParams(dp(MODES_BUTTON_DP), dp(MODES_BUTTON_DP)).apply { setMargins(dp(5), 0, dp(5), 0) })
             addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(predictionsRow, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
@@ -663,7 +693,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keysRow.addView(keyboardView, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         keysRow.addView(remotePanel, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         addView(keysRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        keyboardView.typebarListener = { x, down -> typebar(x, down) }
+        keyboardView.typebarListener = { x, down, letter -> typebar(x, down, letter) }
         addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         addView(clipboardPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
@@ -1097,6 +1127,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val FADE_DP = 14
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
+        /** The modes button's plate in the strip. */
+        const val MODES_BUTTON_DP = 34
         /** The machine showing between the paper holder and what is below it. */
         const val HOLDER_GAP_DP = 8
         /** A typebar's way up to the paper, and back down. */

@@ -58,7 +58,7 @@ data class KeyboardSettings(
     val keySound: Boolean = true,
     val keySoundVolume: Float = 0.6f,
     /** The typewriter's margin bell near the end of a line (and the new sheet of paper). */
-    val typewriterBell: Boolean = true,
+    val typewriterBell: Boolean = false,
     /** Fixes one-key slips into known words when a word ends; Backspace right after undoes it. */
     val autoCorrect: Boolean = true,
     val hapticFeedback: Boolean = true,

@@ -201,7 +201,7 @@ class KeyboardView(context: Context) : View(context) {
     /** Stops repeats and popups, e.g. when the keyboard is hidden mid-press. */
     fun cancelAllPointers() {
         // A typebar up for a key that is let go this way comes down too.
-        if (pointers.size() > 0) typebarListener?.invoke(0f, false)
+        if (pointers.size() > 0) typebarListener?.invoke(0f, false, "")
         for (i in 0 until pointers.size()) pointers.valueAt(i).cancelCallbacks()
         pointers.clear()
         popup = null
@@ -817,10 +817,10 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     /**
-     * The typewriter's typebar for a letter key: (the key's middle x in this view, true) as it goes down,
-     * (_, false) as it comes up.
+     * The typewriter's typebar for a letter key: (the key's middle x in this view, true, the letter it types)
+     * as it goes down, (_, false, _) as it comes up.
      */
-    var typebarListener: ((Float, Boolean) -> Unit)? = null
+    var typebarListener: ((Float, Boolean, String) -> Unit)? = null
 
     /** Where the user's finger lands on each letter (null: the keys' own borders only). */
     var touchModel: TouchModel? = null
@@ -885,7 +885,8 @@ class KeyboardView(context: Context) : View(context) {
         sound(key)
         if (theme.style == SurfaceStyle.TYPEWRITER && key.action is KeyAction.Text) {
             val rect = keyRects.firstOrNull { it.first === key }?.second
-            if (rect != null) typebarListener?.invoke(rect.centerX(), true)
+            val label = labelContext?.let { KeyLabels.label(key, it) } ?: ""
+            if (rect != null) typebarListener?.invoke(rect.centerX(), true, label)
         }
 
         if (key.repeatable) {
@@ -979,7 +980,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun onPointerUp(id: Int, x: Float, y: Float) {
         val state = pointers[id] ?: return
         pointers.remove(id)
-        if (theme.style == SurfaceStyle.TYPEWRITER && state.key?.action is KeyAction.Text) typebarListener?.invoke(0f, false)
+        if (theme.style == SurfaceStyle.TYPEWRITER && state.key?.action is KeyAction.Text) typebarListener?.invoke(0f, false, "")
         state.cancelCallbacks()
         state.key?.let { released[it] = SystemClock.uptimeMillis() }
         val p = popup
