@@ -572,10 +572,12 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
             }
         }
         Section(stringResource(R.string.default_mode)) {
-            RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
+            // The keyboard that opens now: switched on the keyboard itself, it shows here too.
+            val shown = s.startMode
+            RadioRow(stringResource(R.string.mode_mobile), shown == KeyboardMode.MOBILE) {
                 update { it.copy(defaultMode = KeyboardMode.MOBILE, lastMode = KeyboardMode.MOBILE) }
             }
-            RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
+            RadioRow(stringResource(R.string.mode_computer), shown == KeyboardMode.COMPUTER) {
                 update { it.copy(defaultMode = KeyboardMode.COMPUTER, lastMode = KeyboardMode.COMPUTER) }
             }
             SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->

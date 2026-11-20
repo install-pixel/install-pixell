@@ -12,6 +12,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -48,14 +49,54 @@ enum class Look { GLASS, SHEET, TYPEWRITER }
 
 val LocalLook = staticCompositionLocalOf { Look.GLASS }
 
-/** Tokens of THEMES.md, section 2. */
+/** The colours of the settings for one keyboard style: the page, texts, ink and lines. */
+internal data class Palette(
+    val text: Color,
+    val secondary: Color,
+    val accent: Color,
+    val confirm: Color,
+    val danger: Color,
+    val ink: Color,
+    val page: Color,
+    val divider: Color,
+    /** A light page (dark texts and system buttons). */
+    val light: Boolean = false,
+    /** The milky typewriter's bronze and cream plates. */
+    val milk: Boolean = false,
+)
+
+/** Tokens of THEMES.md, section 2, and the typewriters' own: what [SettingsTheme] puts in use. */
 internal object Tone {
-    val TextPrimary = Color(0xFFE6E6E6)
-    val TextSecondary = Color(0xFF8C8C8C)
-    val Accent = Color(0xFFBDBDBD)
-    val Confirm = Color(KeyboardTheme.CONFIRM)
-    val Danger = Color(KeyboardTheme.DANGER)
-    val Ink = Color(0xFFEDEDED)
+    /** Black glass and pencil. */
+    val Dark = Palette(
+        text = Color(0xFFE6E6E6), secondary = Color(0xFF8C8C8C), accent = Color(0xFFBDBDBD),
+        confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(0xFFEDEDED),
+        page = Color.Black, divider = Color(0x1FFFFFFF),
+    )
+    /** The black typewriter: ivory letters on graphite, brass for what is chosen. */
+    val Typewriter = Palette(
+        text = Color(KeyboardTheme.IVORY), secondary = Color(0xFF9A907C), accent = Color(0xFFC8B48A),
+        confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(KeyboardTheme.IVORY),
+        page = Color(0xFF0E0D0B), divider = Color(0x24E9DFC6),
+    )
+    /** The milky typewriter: brown letters on light coffee, bronze. */
+    val Milk = Palette(
+        text = Color(KeyboardTheme.MILK_INK), secondary = Color(0xFF8C7354), accent = Color(0xFF9A6B35),
+        confirm = Color(0xFF7A4A1C), danger = Color(0xFFB03A2E), ink = Color(KeyboardTheme.MILK_INK),
+        page = Color(0xFFE9DCC4), divider = Color(0x334A3220), light = true, milk = true,
+    )
+
+    var palette by androidx.compose.runtime.mutableStateOf(Dark)
+
+    val TextPrimary get() = palette.text
+    val TextSecondary get() = palette.secondary
+    val Accent get() = palette.accent
+    val Confirm get() = palette.confirm
+    val Danger get() = palette.danger
+    val Ink get() = palette.ink
+    val Page get() = palette.page
+    val Divider get() = palette.divider
+    val light get() = palette.light
 }
 
 /** What a button does, for its colour: the one main finishing action, an irreversible one, or anything else. */
@@ -96,15 +137,39 @@ internal fun lookOf(mode: ThemeMode?): Look = when (mode) {
 @Composable
 internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
     val look = lookOf(mode)
-    val colors = darkColorScheme(
-        primary = Tone.Accent, onPrimary = Color.Black,
+    val palette = when (mode) {
+        ThemeMode.MILK_TYPEWRITER -> Tone.Milk
+        ThemeMode.TYPEWRITER -> Tone.Typewriter
+        else -> Tone.Dark
+    }
+    if (Tone.palette != palette) Tone.palette = palette
+    // Dark system buttons on the light page.
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        (view.context as? android.app.Activity)?.window?.let {
+            androidx.core.view.WindowCompat.getInsetsController(it, view).isAppearanceLightNavigationBars = palette.light
+        }
+    }
+    val colors = if (palette.light) androidx.compose.material3.lightColorScheme(
+        primary = palette.accent, onPrimary = palette.page,
+        primaryContainer = Color(0xFFF3EADA), onPrimaryContainer = palette.text,
+        secondaryContainer = Color(0xFFEFE4D0), onSecondaryContainer = palette.text,
+        background = palette.page, surface = palette.page,
+        surfaceVariant = Color(0xFFF1E7D5), surfaceContainer = Color(0xFFF1E7D5),
+        surfaceContainerLow = Color(0xFFEDE2CE), surfaceContainerHigh = Color(0xFFF4EBDC),
+        surfaceContainerHighest = Color(0xFFF7F0E2),
+        onBackground = palette.text, onSurface = palette.text, onSurfaceVariant = palette.secondary,
+        outline = Color(0x664A3220), outlineVariant = Color(0x334A3220),
+        error = palette.danger,
+    ) else darkColorScheme(
+        primary = palette.accent, onPrimary = Color.Black,
         primaryContainer = Color(0xFF1B1B1B), onPrimaryContainer = Tone.TextPrimary,
         secondaryContainer = Color(0xFF141414), onSecondaryContainer = Tone.TextPrimary,
-        background = Color.Black, surface = Color.Black,
+        background = palette.page, surface = palette.page,
         surfaceVariant = Color(0xFF0D0D0D), surfaceContainer = Color(0xFF0D0D0D),
         surfaceContainerLow = Color(0xFF080808), surfaceContainerHigh = Color(0xFF121212),
         surfaceContainerHighest = Color(0xFF1B1B1B),
-        onBackground = Tone.TextPrimary, onSurface = Tone.TextPrimary, onSurfaceVariant = Tone.TextSecondary,
+        onBackground = palette.text, onSurface = palette.text, onSurfaceVariant = palette.secondary,
         outline = Color(0x38FFFFFF), outlineVariant = Color(0x24FFFFFF),
         error = Tone.Danger,
     )
@@ -204,7 +269,10 @@ internal fun Modifier.lookSurface(
  * a worn nickel rim with a few rust spots around a dark cap with scratches; chosen is a brass rim.
  */
 internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): Modifier = drawWithCache {
-    val painter = com.offlinekeyboard.keyboard.SurfacePainter(density).apply { brightness = KeyboardTheme.DEFAULT_BRIGHTNESS }
+    val painter = com.offlinekeyboard.keyboard.SurfacePainter(density).apply {
+        brightness = KeyboardTheme.DEFAULT_BRIGHTNESS
+        milk = Tone.palette.milk
+    }
     val rect = android.graphics.RectF(0f, 0f, size.width, size.height)
     val r = radius.toPx()
     onDrawBehind {
@@ -282,23 +350,28 @@ internal fun LookSwitch(checked: Boolean) {
             val pad = (size.height - ball) / 2
             val x = pad + (size.width - 2 * pad - ball) * position
             val capsule = CornerRadius(size.height / 2)
-            val body = if (checked) {
-                Brush.verticalGradient(listOf(Color(0xFF4A4A4A), Color(0xFF262626)))
-            } else {
-                GlassSurface
+            val light = Tone.light
+            val body = when {
+                light && checked -> Brush.verticalGradient(listOf(Color(0xFFB08A58), Color(0xFF8A6438)))
+                light -> Brush.verticalGradient(listOf(Color(0xFFE2D4BA), Color(0xFFF1E7D5)))
+                checked -> Brush.verticalGradient(listOf(Color(0xFF4A4A4A), Color(0xFF262626)))
+                else -> GlassSurface
             }
-            val knob = if (checked) {
-                Brush.verticalGradient(listOf(Color.White, Color(0xFFBDBDBD)), startY = pad, endY = pad + ball)
-            } else {
-                Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = pad, endY = pad + ball)
+            val knob = when {
+                light && checked -> Brush.verticalGradient(listOf(Color(0xFFFFFBF2), Color(0xFFEFE3CC)), startY = pad, endY = pad + ball)
+                light -> Brush.verticalGradient(listOf(Color(0xFFF7F0E2), Color(0xFFD8CCB4)), startY = pad, endY = pad + ball)
+                checked -> Brush.verticalGradient(listOf(Color.White, Color(0xFFBDBDBD)), startY = pad, endY = pad + ball)
+                else -> Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = pad, endY = pad + ball)
             }
+            val rimBrush = if (light) Brush.verticalGradient(listOf(Color(0xFFF3DDB2), Color(0xFF6E4C26))) else if (checked) GlassRimChosen else GlassRim
+            val ballRim = if (light) Color(0xFF9A7A50) else Color(0xFF555555)
             val rim = 1.dp.toPx()
             val innerSize = androidx.compose.ui.geometry.Size(size.width - 2 * rim, size.height - 2 * rim)
             onDrawBehind {
                 // Rim as a fill under the body, not a stroke (see glassFrame).
-                drawRoundRect(if (checked) GlassRimChosen else GlassRim, cornerRadius = capsule)
+                drawRoundRect(rimBrush, cornerRadius = capsule)
                 drawRoundRect(body, Offset(rim, rim), innerSize, CornerRadius(innerSize.height / 2))
-                drawCircle(Color(0xFF555555), ball / 2, Offset(x + ball / 2, pad + ball / 2))
+                drawCircle(ballRim, ball / 2, Offset(x + ball / 2, pad + ball / 2))
                 drawCircle(knob, ball / 2 - rim, Offset(x + ball / 2, pad + ball / 2))
             }
         },

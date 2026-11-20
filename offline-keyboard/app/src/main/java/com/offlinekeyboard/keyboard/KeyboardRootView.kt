@@ -76,6 +76,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val soundVolume: Float = 0.6f,
         /** The remote can be opened: sending to a connected computer. */
         val remoteOffered: Boolean = false,
+        /** The keyboard's own settings are open (typing in them): the gear is dim and does nothing. */
+        val inSettings: Boolean = false,
     )
 
     /** HIDDEN: the Bluetooth keyboard is off in settings; IDLE: on, typing goes to the phone; SENDING: to the computer. */
@@ -252,7 +254,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private val settingsButton = button(R.string.toolbar_settings_description) {
-        if (recording) toolbarListener?.onToolbarVoiceCancel() else toolbarListener?.onToolbarSettings()
+        when {
+            recording -> toolbarListener?.onToolbarVoiceCancel()
+            lastState?.inSettings != true -> toolbarListener?.onToolbarSettings()
+        }
     }
 
     /** Compact toolbar: shows or hides the row of input modes. */
@@ -378,12 +383,87 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun paperSheet(): PaperTexture.Sheet? {
         if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.width <= 0 || infoRow.height <= 0) return null
         paper?.takeIf { it.bitmap.width == infoRow.width && it.bitmap.height == infoRow.height && paperMilk == theme.milk }?.let { return it }
-        val sheet = PaperTexture.sheet(infoRow.width, infoRow.height, resources.displayMetrics.density, parchment = theme.milk) ?: return null
+        val key = Triple(infoRow.width, infoRow.height, theme.milk)
+        val ready = papers[key]
+        if (ready == null) {
+            makePapers(infoRow.width, infoRow.height)
+            // Until it is ready (a moment), the plain colour of the paper.
+            return null
+        }
         paperMilk = theme.milk
-        paper = sheet
+        paper = ready
         reInk = true
         post { applyPaperToText(); refreshCentre() }
-        return sheet
+        return ready
+    }
+
+    /** Both papers (black and parchment) for each size, made once in the background. */
+    private val papers = java.util.concurrent.ConcurrentHashMap<Triple<Int, Int, Boolean>, PaperTexture.Sheet>()
+    private val making = java.util.Collections.synchronizedSet(HashSet<Pair<Int, Int>>())
+
+    /**
+     * Makes the paper for a strip [width] × [height] off the main thread, the present style's first and the
+     * other typewriter's right after, so switching between them does not wait for a new sheet.
+     */
+    private fun makePapers(width: Int, height: Int) {
+        if (!making.add(width to height)) return
+        val density = resources.displayMetrics.density
+        val first = theme.milk
+        Thread {
+            for (milk in listOf(first, !first)) {
+                val sheet = PaperTexture.sheet(width, height, density, parchment = milk) ?: continue
+                papers[Triple(width, height, milk)] = sheet
+                post { invalidate() }
+            }
+        }.apply { name = "paper"; isDaemon = true }.start()
+    }
+
+    // ---------------------------------------------------------------- over the strip (typewriter)
+
+    private val holderPainter = SurfacePainter(resources.displayMetrics.density)
+    /** When a typebar last struck the paper (uptime ms; 0: none moving). */
+    private var strikeAt = 0L
+    private var strikeX = 0f
+
+    /**
+     * A typebar comes up out of the machine and strikes the paper where the next letter goes, as on the real
+     * machine: its tip rises from under the paper holder to the line of text and drops back, in a blink.
+     */
+    fun typebarStrike() {
+        if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized) return
+        val layout = status.layout
+        val text = status.text
+        val cursor = if (showingEcho && echoCursor in 0..text.length) echoCursor else text.length
+        val at = if (layout != null) runCatching { layout.getPrimaryHorizontal(cursor) }.getOrDefault(0f) else 0f
+        val advance = status.paint.measureText("0")
+        val x = infoRow.left + statusScroll.left + status.left + status.totalPaddingLeft + at + advance / 2 - statusScroll.scrollX
+        strikeX = x.coerceIn(infoRow.left + statusScroll.left.toFloat(), infoRow.left + statusScroll.right.toFloat())
+        strikeAt = android.os.SystemClock.uptimeMillis()
+        postInvalidateOnAnimation()
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.height <= 0) return
+        val top = infoRow.top.toFloat()
+        val bottom = infoRow.bottom.toFloat()
+        // The browned ends of the parchment lie over the text as well.
+        paper?.overlay?.let { canvas.drawBitmap(it, infoRow.left.toFloat(), top, null) }
+        val holder = dp(HOLDER_DP).toFloat()
+        val holderTop = bottom - holder * 0.55f
+        // The typebar, behind the holder.
+        val t = (android.os.SystemClock.uptimeMillis() - strikeAt) / STRIKE_MS.toFloat()
+        if (strikeAt > 0 && t < 1f) {
+            val reach = (holderTop - (top + infoRow.height * 0.42f)) * kotlin.math.sin(t * Math.PI).toFloat()
+            holderPainter.drawTypebar(canvas, strikeX, holderTop + holder * 0.5f, holderTop - reach, dp(3).toFloat())
+            postInvalidateOnAnimation()
+        } else {
+            strikeAt = 0L
+        }
+        canvas.save()
+        canvas.translate(0f, holderTop)
+        holderPainter.drawPaperHolder(canvas, width.toFloat(), holder)
+        canvas.restore()
     }
 
     /**
@@ -501,6 +581,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         clipboardPanel.applyTheme(value)
         remotePanel.applyTheme(value)
         volumeBar.applyTheme(value)
+        holderPainter.milk = value.milk
+        holderPainter.brightness = value.brightness
         fadeColor = value.background
         fadePaint.shader = null
         applyPaperToText()
@@ -538,7 +620,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
         }
         soundButton.icon = if (state.soundOn == false) Icon.SPEAKER_OFF else Icon.SPEAKER
-        soundButton.alpha = if (state.soundOn == false) 0.6f else 1f
+        soundButton.alpha = restAlpha(soundButton)
         val remoteOpen = remoteShown
         if (theme.styled) {
             remoteButton.fill = if (remoteOpen) theme.function else 0
@@ -550,6 +632,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         if (!state.remoteOffered && remoteOpen) showRemote(false)
         settingsButton.icon = if (state.recording) Icon.CLOSE else Icon.GEAR
+        settingsButton.alpha = restAlpha(settingsButton)
         settingsButton.contentDescription = context.getString(
             if (state.recording) R.string.toolbar_voice_cancel_description else R.string.toolbar_settings_description,
         )
@@ -668,11 +751,21 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         lastState?.let { updateToolbar(it) }
     }
 
+    /** How see-through a view is at rest: the gear is dim inside the settings, the speaker while muted. */
+    private fun restAlpha(view: View): Float {
+        val state = lastState
+        return when {
+            view === settingsButton && state?.inSettings == true && !state.recording -> 0.35f
+            view === soundButton && state?.soundOn == false -> 0.6f
+            else -> 1f
+        }
+    }
+
     /** Lets a panel that just took the place of another come in softly instead of popping up. */
     private fun fadeIn(view: View) {
         view.animate().cancel()
         view.alpha = 0f
-        view.animate().alpha(1f).setDuration(180).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+        view.animate().alpha(restAlpha(view)).setDuration(180).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
     }
 
     /** Short, non-blocking message. [onTap] makes it tappable (e.g. "restore original"). */
@@ -839,6 +932,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private companion object {
         val ECHO_WORD = Regex(ECHO_WORD_PATTERN)
         const val FADE_DP = 14
+        /** The paper holder under the strip's paper. */
+        const val HOLDER_DP = 5
+        /** A typebar's way up to the paper and back. */
+        const val STRIKE_MS = 130L
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L

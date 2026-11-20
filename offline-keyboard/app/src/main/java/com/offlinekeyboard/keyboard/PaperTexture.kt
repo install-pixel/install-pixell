@@ -25,7 +25,15 @@ object PaperTexture {
      * A sheet of the paper: its picture and where its creases run ([folds]: x, y points along each crease,
      * one list per crease), so typed letters can follow the folds.
      */
-    class Sheet(val bitmap: Bitmap, private val folds: List<FloatArray>) {
+    class Sheet(
+        val bitmap: Bitmap,
+        private val folds: List<FloatArray>,
+        /**
+         * What lies still over everything, the text included: the browned ends of the parchment (null for the
+         * black paper). [bitmap] itself has no ends, so the paper that moves with the text never shows one.
+         */
+        val overlay: Bitmap? = null,
+    ) {
         /**
          * How much a letter at [x] (on the sheet), standing [reach] around [y], sits on a fold: 0 off any
          * fold, up to ±1 right on one (the sign tells which way that fold bends).
@@ -165,9 +173,7 @@ object PaperTexture {
             for (x in 0 until width) {
                 var dark = noise(coarse, gw, CELL, x, y) * 14f + noise(small, fw, fine, x, y) * 5f
                 dark += (random.nextFloat() - 0.5f) * 6f
-                // Age at the edges: the ends of the strip and its lower edge are browner.
-                val side = minOf(x, width - 1 - x).toFloat()
-                if (side < burn) dark -= (1f - side / burn).let { it * it } * 42f
+                // Age along the lower edge (the browned ends are in the overlay, see Sheet.overlay).
                 val bottom = (height - 1 - y).toFloat()
                 if (bottom < burn * 0.5f) dark -= (1f - bottom / (burn * 0.5f)).let { it * it } * 26f
                 for (i in stains.indices step 3) {
@@ -226,8 +232,24 @@ object PaperTexture {
         }
         val bitmap = runCatching { Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888) }.getOrNull()
             ?: return null
-        return Sheet(bitmap, folds)
+        // The browned ends: brown, stronger towards each end of the strip, ragged with the paper's blotches.
+        val ends = IntArray(width * height)
+        for (y in 0 until height) {
+            val texture = (y / plain).coerceAtMost(1f)
+            for (x in 0 until width) {
+                val side = minOf(x, width - 1 - x).toFloat()
+                if (side >= burn) continue
+                val k = (1f - side / burn).let { it * it } * (0.85f + noise(coarse, gw, CELL, x, y) * 0.3f)
+                val a = (k * 0.62f * 255 * texture).toInt().coerceIn(0, 255)
+                ends[y * width + x] = (a shl 24) or BURN
+            }
+        }
+        val overlay = runCatching { Bitmap.createBitmap(ends, width, height, Bitmap.Config.ARGB_8888) }.getOrNull()
+        return Sheet(bitmap, folds, overlay)
     }
+
+    /** The brown of the parchment's aged ends (no alpha). */
+    private const val BURN = 0x6B4A22
 
     private fun shade(pixels: IntArray, width: Int, height: Int, x: Int, y: Int, by: Int) {
         if (x !in 0 until width || y !in 0 until height) return
