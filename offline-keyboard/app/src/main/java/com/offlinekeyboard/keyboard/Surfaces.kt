@@ -509,39 +509,39 @@ class SurfacePainter(private val density: Float) {
         drawRivet(canvas, width - height * 1.6f, height / 2, r)
     }
 
-    /**
-     * A typebar swung up to the paper: a steel (bronze) arm [width] wide from its pivot ([fromX], [fromY]) to
-     * its tip ([tipX], [tipY]), with the type slug at the tip, inked dark on its face.
-     */
-    fun drawTypebar(canvas: Canvas, fromX: Float, fromY: Float, tipX: Float, tipY: Float, width: Float) {
-        val dx = tipX - fromX
-        val dy = tipY - fromY
-        val length = kotlin.math.hypot(dx, dy)
-        if (length < width) return
-        canvas.save()
-        // Drawn upright from the pivot, turned to point at the tip.
-        canvas.rotate(Math.toDegrees(kotlin.math.atan2(dx, -dy).toDouble()).toFloat(), fromX, fromY)
-        val top = fromY - length
-        matrix.setScale(1f, length)
+    /** A typebar's arm: a steel (bronze) strip [width] wide from ([fromX], [fromY]) to ([toX], [toY]). */
+    fun drawTypebarArm(canvas: Canvas, fromX: Float, fromY: Float, toX: Float, toY: Float, width: Float) {
+        val top = minOf(fromY, toY)
+        matrix.setScale(1f, maxOf(1f, kotlin.math.abs(fromY - toY)))
         matrix.postTranslate(0f, top)
-        leverPaint.strokeCap = Paint.Cap.BUTT
+        leverPaint.strokeCap = Paint.Cap.ROUND
         leverPaint.shader = null
         leverPaint.color = rodEdge
         leverPaint.strokeWidth = width + 1f * density
-        canvas.drawLine(fromX, fromY, fromX, top + width, leverPaint)
+        canvas.drawLine(fromX, fromY, toX, toY, leverPaint)
         leverShade.setLocalMatrix(matrix)
         leverPaint.shader = leverShade
         leverPaint.strokeWidth = width
-        canvas.drawLine(fromX, fromY, fromX, top + width, leverPaint)
+        canvas.drawLine(fromX, fromY, toX, toY, leverPaint)
         leverPaint.shader = null
-        oval.set(fromX - width * 0.95f, top, fromX + width * 0.95f, top + width * 2.6f)
+        leverPaint.strokeCap = Paint.Cap.BUTT
+    }
+
+    /**
+     * The straight end of a typebar rising out from under the paper holder at [x]: a stem [width] wide from
+     * [fromY] up to [tipY], with the type block ([blockWidth] wide) at its tip.
+     */
+    fun drawTypebarEnd(canvas: Canvas, x: Float, fromY: Float, tipY: Float, width: Float, blockWidth: Float) {
+        if (tipY >= fromY) return
+        drawTypebarArm(canvas, x, fromY, x, tipY + width, width)
+        val w = maxOf(blockWidth, width * 1.8f) / 2f
+        oval.set(x - w, tipY, x + w, tipY + width * 1.6f)
         stretch(collarShade, oval)
         fill.shader = collarShade
-        canvas.drawRoundRect(oval, width * 0.35f, width * 0.35f, fill)
+        canvas.drawRoundRect(oval, width * 0.4f, width * 0.4f, fill)
         fill.shader = null
-        fill.color = if (milk) 0xCC3E2A16.toInt() else 0xE6000000.toInt()
-        canvas.drawRect(fromX - width * 0.6f, top, fromX + width * 0.6f, top + width * 0.5f, fill)
-        canvas.restore()
+        fill.color = rodEdge
+        canvas.drawRect(oval.left, oval.bottom - 0.8f * density, oval.right, oval.bottom, fill)
     }
 
     /** The dark depth of the machine under its top edge, where the levers go in ([height] tall). */
