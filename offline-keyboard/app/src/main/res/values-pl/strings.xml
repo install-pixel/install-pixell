@@ -374,4 +374,9 @@
     <string name="clipboard_clear_confirm">Dotknij ✕ ponownie, aby zapomnieć %1$d (przypięte zostają: %2$d)</string>
     <string name="clipboard_only_pinned">Tylko przypięte: przytrzymaj, aby odpiąć, lub przesuń w lewo</string>
     <string name="clipboard_deleted">Usunięto · dotknij tutaj, aby przywrócić</string>
+    <string name="bluetooth_switch_hint">★ — urządzenia, między którymi przełącza przytrzymanie przycisku Bluetooth, w kolejności oznaczenia (potem znowu telefon).</string>
+    <string name="bluetooth_switch_none">Oznacz ★ urządzenia do przełączania w ustawieniach Bluetooth (dotknij)</string>
+    <string name="bluetooth_switch_phone">Pisanie na telefonie</string>
+    <string name="bluetooth_switching">→ %1$s…</string>
+    <string name="bluetooth_switch_failed">Nie udało się połączyć z %1$s</string>
 </resources>

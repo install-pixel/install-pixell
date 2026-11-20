@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -113,13 +114,21 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                 if (devices.isNotEmpty()) {
                     RowDivider()
                     Text(stringResource(R.string.bluetooth_paired), style = MaterialTheme.typography.titleSmall)
+                    // ★ marks the devices a long press on the Bluetooth button switches between, in the order marked.
+                    Text(stringResource(R.string.bluetooth_switch_hint), style = MaterialTheme.typography.bodySmall)
+                    var chosenVersion by remember { androidx.compose.runtime.mutableIntStateOf(0) }
                     for (device in devices) {
                         val name = Bluetooth.deviceName(device)
+                        val chosen = remember(chosenVersion, device.address) { Bluetooth.isSwitchHost(device.address) }
                         Row(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(name, modifier = Modifier.weight(1f))
+                            InlineButton(onClick = {
+                                Bluetooth.setSwitchHost(device.address, !chosen)
+                                chosenVersion++
+                            }) { Text(if (chosen) "★" else "☆") }
+                            Text(name, modifier = Modifier.weight(1f).padding(start = 8.dp))
                             if (status.state == BluetoothState.CONNECTED && status.deviceName == name) {
                                 Text("✓", color = MaterialTheme.colorScheme.primary)
                             } else {

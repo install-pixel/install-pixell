@@ -452,6 +452,31 @@ class KeyboardUiTest {
         assertNull(result.get())
     }
 
+    /** The computer remote (its two rows of keys): screenshots in the typewriter style. */
+    @Test
+    fun remotePanelRenders() {
+        useMode(KeyboardMode.MOBILE)
+        val keyboard = service()
+        instrumentation.runOnMainSync {
+            keyboard.applyThemeForTest(KeyboardTheme.typewriter())
+            keyboard.inputRootForTest?.remoteForTest = true
+            keyboard.inputRootForTest?.showRemote(true)
+        }
+        instrumentation.waitForIdleSync()
+        Thread.sleep(800)
+        screenshot("remote-nav")
+        instrumentation.runOnMainSync { keyboard.inputRootForTest?.remotePanel?.showMediaForTest() }
+        instrumentation.waitForIdleSync()
+        Thread.sleep(500)
+        screenshot("remote-media")
+        instrumentation.runOnMainSync {
+            keyboard.inputRootForTest?.remoteForTest = false
+            keyboard.inputRootForTest?.showRemote(false)
+            keyboard.applyThemeForTest(KeyboardTheme.glass())
+        }
+        instrumentation.waitForIdleSync()
+    }
+
     @Test
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)

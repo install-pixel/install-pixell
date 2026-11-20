@@ -374,4 +374,9 @@
     <string name="clipboard_clear_confirm">Tap ✕ again to forget %1$d (pinned stay: %2$d)</string>
     <string name="clipboard_only_pinned">Only pinned texts: hold one to unpin, or swipe it left</string>
     <string name="clipboard_deleted">Deleted · tap here to bring it back</string>
+    <string name="bluetooth_switch_hint">★ — the devices a long press on the Bluetooth button switches between, in the order you mark them (then back to the phone).</string>
+    <string name="bluetooth_switch_none">Mark the devices to switch between with ★ in Bluetooth settings (tap)</string>
+    <string name="bluetooth_switch_phone">Typing on the phone</string>
+    <string name="bluetooth_switching">→ %1$s…</string>
+    <string name="bluetooth_switch_failed">Could not connect to %1$s</string>
 </resources>

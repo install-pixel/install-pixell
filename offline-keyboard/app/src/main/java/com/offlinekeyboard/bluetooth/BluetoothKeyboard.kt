@@ -65,6 +65,24 @@ object Bluetooth {
         if (bluetoothKeyboardSupported) BluetoothKeyboard.deviceName(device) else device.address
 
     fun connect(device: BluetoothDevice): Boolean = bluetoothKeyboardSupported && BluetoothKeyboard.connect(device)
+
+    /** The address of the computer typed on now, if one is connected. */
+    val hostAddress: String? get() = if (bluetoothKeyboardSupported) BluetoothKeyboard.hostAddress else null
+
+    /** The devices chosen to switch between, in their order (paired ones only). */
+    fun switchHosts(context: Context): List<BluetoothDevice> =
+        if (bluetoothKeyboardSupported) BluetoothKeyboard.switchHosts(context) else emptyList()
+
+    fun isSwitchHost(address: String): Boolean = bluetoothKeyboardSupported && BluetoothKeyboard.isSwitchHost(address)
+
+    fun setSwitchHost(address: String, on: Boolean) {
+        if (bluetoothKeyboardSupported) BluetoothKeyboard.setSwitchHost(address, on)
+    }
+
+    /** Lets go of the computer typed on now and connects [device] instead (null: none, the phone types). */
+    fun switchTo(device: BluetoothDevice?) {
+        if (bluetoothKeyboardSupported) BluetoothKeyboard.switchTo(device)
+    }
 }
 
 /**
@@ -135,6 +153,40 @@ object BluetoothKeyboard {
 
     fun connect(device: BluetoothDevice): Boolean = hid?.connect(device) == true
 
+    val hostAddress: String? get() = host?.address
+
+    /** Where a switch is going, until it has connected (it connects once the old one has let go). */
+    @Volatile private var switchTarget: BluetoothDevice? = null
+
+    fun switchTo(device: BluetoothDevice?) {
+        val proxy = hid ?: return
+        val now = host
+        switchTarget = device
+        if (now != null && now.address != device?.address) {
+            // The phone is a keyboard for one computer at a time: first let the old one go.
+            runCatching { proxy.disconnect(now) }
+            if (device == null) switchTarget = null
+        } else if (device != null && now == null) {
+            switchTarget = null
+            runCatching { proxy.connect(device) }
+        }
+    }
+
+    fun switchHosts(context: Context): List<BluetoothDevice> {
+        val chosen = prefs()?.getString(KEY_SWITCH, null)?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+        val paired = pairedDevices(context)
+        return chosen.mapNotNull { address -> paired.firstOrNull { it.address == address } }
+    }
+
+    fun isSwitchHost(address: String): Boolean =
+        prefs()?.getString(KEY_SWITCH, null)?.split(',')?.contains(address) == true
+
+    fun setSwitchHost(address: String, on: Boolean) {
+        val now = prefs()?.getString(KEY_SWITCH, null)?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+        val next = if (on) (now - address) + address else now - address
+        prefs()?.edit()?.putString(KEY_SWITCH, next.joinToString(","))?.apply()
+    }
+
     /** Presses and releases one key. Returns false when no computer is connected. */
     fun send(stroke: HidStroke): Boolean {
         val proxy = hid ?: return false
@@ -201,6 +253,11 @@ object BluetoothKeyboard {
                 BluetoothProfile.STATE_DISCONNECTED -> if (host == null || host == device) {
                     host = null
                     if (hid != null) set(BluetoothState.WAITING, null)
+                    // Switching: the old one has let go, now the next one.
+                    switchTarget?.let { next ->
+                        switchTarget = null
+                        runCatching { hid?.connect(next) }
+                    }
                 }
             }
         }
@@ -219,6 +276,7 @@ object BluetoothKeyboard {
     }
 
     private const val KEY_LAST = "last_host"
+    private const val KEY_SWITCH = "switch_hosts"
     private const val REPORT_ID = 1
     private const val MOUSE_REPORT_ID = 2
     private const val MEDIA_REPORT_ID = 3

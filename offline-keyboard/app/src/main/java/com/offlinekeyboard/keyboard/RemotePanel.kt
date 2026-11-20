@@ -59,7 +59,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         }
         bottom.addView(mouseButton(context.getString(com.offlinekeyboard.R.string.remote_left), 1), LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         bottom.addView(mouseButton(context.getString(com.offlinekeyboard.R.string.remote_right), 2), LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
-        keyboardButton = key("", Icon.KEYBOARD) { listener?.onRemoteKeyboard() }
+        keyboardButton = key(RowKey("", Icon.KEYBOARD) { listener?.onRemoteKeyboard() })
         bottom.addView(keyboardButton, LayoutParams(dp(56), LayoutParams.MATCH_PARENT).apply { setMargins(dp(2), 0, dp(2), 0) })
         addView(bottom, LayoutParams(LayoutParams.MATCH_PARENT, dp(46)))
         pad.listener = { b, x, y, w -> listener?.onRemoteMouse(b, x, y, w) }
@@ -80,42 +80,103 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         b.foreground = t.text
     }
 
+    /**
+     * One key of the row: [weight] of its width, [action] on a tap, and on a long hold [held] again and again
+     * every [every] ms (or [action] when [held] is null and [every] is set: arrows and volume repeat).
+     */
+    private class RowKey(
+        val label: String,
+        val icon: Icon? = null,
+        val weight: Float = 1f,
+        val every: Long = 0L,
+        val held: (() -> Unit)? = null,
+        val action: () -> Unit,
+    )
+
+    /** Shows the music row (tests). */
+    internal fun showMediaForTest() {
+        media = true
+        fillKeyRow()
+    }
+
     private fun fillKeyRow() {
         keyRow.removeAllViews()
-        val items: List<Triple<String, Icon?, () -> Unit>> = if (!media) listOf(
-            Triple("Esc", null) { listener?.onRemoteKey(HID_ESC, 0) },
-            Triple("Tab", null) { listener?.onRemoteKey(HID_TAB, 0) },
-            Triple("Win", null) { listener?.onRemoteKey(0, MOD_GUI) },
-            Triple("Alt⇥", null) { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
-            Triple("", Icon.LEFT) { listener?.onRemoteKey(HID_LEFT, 0) },
-            Triple("", Icon.UP) { listener?.onRemoteKey(HID_UP, 0) },
-            Triple("", Icon.DOWN) { listener?.onRemoteKey(HID_DOWN, 0) },
-            Triple("", Icon.RIGHT) { listener?.onRemoteKey(HID_RIGHT, 0) },
-            Triple("♪", null) { media = true; fillKeyRow() },
-        ) else listOf(
-            Triple("|◁", null) { listener?.onRemoteMedia(MEDIA_PREVIOUS) },
-            Triple("▷‖", null) { listener?.onRemoteMedia(MEDIA_PLAY_PAUSE) },
-            Triple("▷|", null) { listener?.onRemoteMedia(MEDIA_NEXT) },
-            Triple("−", null) { listener?.onRemoteMedia(MEDIA_VOLUME_DOWN) },
-            Triple("+", null) { listener?.onRemoteMedia(MEDIA_VOLUME_UP) },
-            Triple("Mute", null) { listener?.onRemoteMedia(MEDIA_MUTE) },
-            // Slides: the arrow keys a presentation listens to.
-            Triple("◀", null) { listener?.onRemoteKey(HID_LEFT, 0) },
-            Triple("▶", null) { listener?.onRemoteKey(HID_RIGHT, 0) },
-            Triple("⌨", null) { media = false; fillKeyRow() },
-        )
-        for ((label, icon, action) in items) {
-            keyRow.addView(key(label, icon, action), LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+        val keys = if (!media) {
+            // Navigation, built round the arrows in the middle: what leaves on the left (Esc, Tab), what
+            // switches on the right (Alt+Tab, Win); the music row is one tap away at the far right.
+            listOf(
+                RowKey("Esc") { listener?.onRemoteKey(HID_ESC, 0) },
+                RowKey("Tab") { listener?.onRemoteKey(HID_TAB, 0) },
+                RowKey("", Icon.LEFT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
+                null, // the up and down pair, stacked in the middle
+                RowKey("", Icon.RIGHT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
+                RowKey("⇆") { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
+                RowKey("Win") { listener?.onRemoteKey(0, MOD_GUI) },
+                RowKey("♪", weight = 0.9f) { media = true; fillKeyRow() },
+            )
+        } else {
+            // Music, mirrored round a bigger play/pause: seek, then track, then volume, then mute and the way
+            // back to the keys at the ends. A tap seeks a step, holding keeps seeking; holding a track key keeps
+            // skipping.
+            listOf(
+                RowKey("♪×", weight = 0.95f) { listener?.onRemoteMedia(MEDIA_MUTE) },
+                RowKey("♪−", every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_DOWN) },
+                RowKey("|«", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_PREVIOUS) },
+                RowKey("«", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
+                RowKey("▶‖", weight = 1.6f) { listener?.onRemoteMedia(MEDIA_PLAY_PAUSE) },
+                RowKey("»", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
+                RowKey("»|", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_NEXT) },
+                RowKey("♪+", every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_UP) },
+                RowKey("⌨", weight = 0.95f) { media = false; fillKeyRow() },
+            )
+        }
+        for (k in keys) {
+            if (k == null) {
+                val pair = LinearLayout(context).apply { orientation = VERTICAL }
+                pair.addView(key(RowKey("", Icon.UP, every = REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_UP, 0) }),
+                    LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).apply { setMargins(0, 0, 0, dp(1)) })
+                pair.addView(key(RowKey("", Icon.DOWN, every = REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_DOWN, 0) }),
+                    LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).apply { setMargins(0, dp(1), 0, 0) })
+                keyRow.addView(pair, LayoutParams(0, LayoutParams.MATCH_PARENT, 1.3f).apply { setMargins(dp(2), 0, dp(2), 0) })
+            } else {
+                keyRow.addView(key(k), LayoutParams(0, LayoutParams.MATCH_PARENT, k.weight).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }
         }
     }
 
-    private fun key(label: String, icon: Icon?, action: () -> Unit) = ToolbarButton(context).apply {
-        text = label
-        this.icon = icon
+    @SuppressLint("ClickableViewAccessibility")
+    private fun key(k: RowKey) = ToolbarButton(context).apply {
+        text = k.label
+        icon = k.icon
         textSizeSp = 13f
-        setOnClickListener { action() }
+        contentDescription = DESCRIPTIONS[k.label] ?: k.label.ifEmpty { k.icon?.name?.lowercase() }
         buttons += this
         style(this)
+        if (k.every <= 0L) {
+            setOnClickListener { k.action() }
+        } else {
+            // A tap: once. Held: again and again while the finger stays.
+            val repeat = object : Runnable {
+                override fun run() {
+                    (k.held ?: k.action)()
+                    postDelayed(this, k.every)
+                }
+            }
+            var repeated = false
+            val start = Runnable { repeated = true; repeat.run() }
+            setOnTouchListener { v, e ->
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> { repeated = false; postDelayed(start, HOLD_MS) }
+                    MotionEvent.ACTION_UP -> {
+                        removeCallbacks(start); removeCallbacks(repeat)
+                        if (!repeated && e.x in 0f..v.width.toFloat() && e.y in 0f..v.height.toFloat()) k.action()
+                    }
+                    MotionEvent.ACTION_CANCEL -> { removeCallbacks(start); removeCallbacks(repeat) }
+                }
+                v.onTouchEvent(e)
+                true
+            }
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -149,6 +210,18 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         const val MEDIA_MUTE = 0xE2
         const val MEDIA_VOLUME_UP = 0xE9
         const val MEDIA_VOLUME_DOWN = 0xEA
+        /** What the short labels mean, read out by TalkBack. */
+        val DESCRIPTIONS = mapOf(
+            "⇆" to "Alt+Tab", "♪×" to "Mute", "♪−" to "Volume down", "♪+" to "Volume up",
+            "|«" to "Previous track", "«" to "Seek back", "▶‖" to "Play / pause", "»" to "Seek forward",
+            "»|" to "Next track", "⌨" to "Keys", "♪" to "Music keys",
+        )
+        /** How long a key is held before it repeats, and how often it repeats then. */
+        const val HOLD_MS = 400L
+        const val REPEAT_ARROW_MS = 110L
+        const val REPEAT_SEEK_MS = 140L
+        const val REPEAT_TRACK_MS = 550L
+        const val REPEAT_VOLUME_MS = 180L
     }
 }
 

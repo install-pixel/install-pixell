@@ -374,4 +374,9 @@
     <string name="clipboard_clear_confirm">Ще раз ✕ — забути %1$d (закріплені лишаться: %2$d)</string>
     <string name="clipboard_only_pinned">Тут лише закріплені: утримайте, щоб відкріпити, або змахніть вліво</string>
     <string name="clipboard_deleted">Видалено · торкніться тут, щоб повернути</string>
+    <string name="bluetooth_switch_hint">★ — пристрої, між якими перемикає утримання кнопки Bluetooth, у порядку, в якому ви їх позначите (потім знову телефон).</string>
+    <string name="bluetooth_switch_none">Позначте ★ пристрої для перемикання в налаштуваннях Bluetooth (торкніться)</string>
+    <string name="bluetooth_switch_phone">Друк на телефоні</string>
+    <string name="bluetooth_switching">→ %1$s…</string>
+    <string name="bluetooth_switch_failed">Не вдалося підключитися до %1$s</string>
 </resources>

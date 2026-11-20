@@ -30,6 +30,9 @@ class ToolbarButton(context: Context) : View(context) {
     var pressedFill: Int = 0
     /** Chosen (an active mode, the selected character): glass and sheet show it with a brighter rim. */
     var chosen = false
+
+    /** How far in from the edges a filled plate is drawn (the touch area stays the whole button). */
+    var plateInset = 0f
         set(value) { if (field != value) { field = value; invalidate() } }
     private var style = SurfaceStyle.FLAT
     private var regular: Typeface = Typeface.DEFAULT
@@ -79,7 +82,7 @@ class ToolbarButton(context: Context) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
-        val inset = if (fill != 0) 0f else 3f * density
+        val inset = if (fill != 0) plateInset else 3f * density
         bounds.set(inset, inset, width - inset, height - inset)
         val background = if (pressed) pressedFill else fill
         if (background != 0) {
