@@ -60,9 +60,9 @@ The style guide for every screen is QRAFT (the family's reference app): two them
       settings in their order, then the phone itself, round again; the one typed on is let go first and the
       strip says where it goes («→ Raspberry Pi…», then «typing on …» or «could not connect»).
 - [x] Music row of the remote, mirrored round a bigger play/pause: mute · volume− · previous · seek back ·
-      PLAY · seek on · next · volume+ · back to the keys. A tap seeks a step (the player's own: the arrow
+      PLAY · seek on · next · volume+ · back to the keys (short marks: ♪× ♪− |« « ▶‖ » »| ♪+ ⌨). A tap seeks a step (the player's own: the arrow
       keys), holding keeps seeking; holding previous/next keeps skipping; volume repeats while held.
-- [x] Navigation row round the arrows: Esc · Tab · ◀ · ▲/▼ (stacked) · ▶ · Alt+Tab · Win · ♪; arrows repeat
+- [x] Navigation row round the arrows: Esc · Tab · ◀ · ▲/▼ (stacked) · ▶ · ⇆ (Alt+Tab) · Win · ♪; arrows repeat
       while held.
 - [x] Nothing of the typebar shows below the paper holder any more (the light machine showed its arm, as if
       the holder were see-through); only its straight end above the holder.

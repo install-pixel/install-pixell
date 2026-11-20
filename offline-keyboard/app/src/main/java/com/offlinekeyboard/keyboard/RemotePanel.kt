@@ -110,7 +110,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
                 RowKey("", Icon.LEFT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
                 null, // the up and down pair, stacked in the middle
                 RowKey("", Icon.RIGHT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
-                RowKey("Alt⇥") { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
+                RowKey("⇆") { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
                 RowKey("Win") { listener?.onRemoteKey(0, MOD_GUI) },
                 RowKey("♪", weight = 0.9f) { media = true; fillKeyRow() },
             )
@@ -119,13 +119,13 @@ class RemotePanel(context: Context) : LinearLayout(context) {
             // back to the keys at the ends. A tap seeks a step, holding keeps seeking; holding a track key keeps
             // skipping.
             listOf(
-                RowKey("Mute", weight = 0.95f) { listener?.onRemoteMedia(MEDIA_MUTE) },
+                RowKey("♪×", weight = 0.95f) { listener?.onRemoteMedia(MEDIA_MUTE) },
                 RowKey("♪−", every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_DOWN) },
-                RowKey("|◀◀", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_PREVIOUS) },
-                RowKey("◀◀", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
+                RowKey("|«", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_PREVIOUS) },
+                RowKey("«", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
                 RowKey("▶‖", weight = 1.6f) { listener?.onRemoteMedia(MEDIA_PLAY_PAUSE) },
-                RowKey("▶▶", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
-                RowKey("▶▶|", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_NEXT) },
+                RowKey("»", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
+                RowKey("»|", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_NEXT) },
                 RowKey("♪+", every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_UP) },
                 RowKey("⌨", weight = 0.95f) { media = false; fillKeyRow() },
             )
@@ -149,7 +149,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         text = k.label
         icon = k.icon
         textSizeSp = 13f
-        contentDescription = k.label.ifEmpty { k.icon?.name?.lowercase() }
+        contentDescription = DESCRIPTIONS[k.label] ?: k.label.ifEmpty { k.icon?.name?.lowercase() }
         buttons += this
         style(this)
         if (k.every <= 0L) {
@@ -210,6 +210,12 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         const val MEDIA_MUTE = 0xE2
         const val MEDIA_VOLUME_UP = 0xE9
         const val MEDIA_VOLUME_DOWN = 0xEA
+        /** What the short labels mean, read out by TalkBack. */
+        val DESCRIPTIONS = mapOf(
+            "⇆" to "Alt+Tab", "♪×" to "Mute", "♪−" to "Volume down", "♪+" to "Volume up",
+            "|«" to "Previous track", "«" to "Seek back", "▶‖" to "Play / pause", "»" to "Seek forward",
+            "»|" to "Next track", "⌨" to "Keys", "♪" to "Music keys",
+        )
         /** How long a key is held before it repeats, and how often it repeats then. */
         const val HOLD_MS = 400L
         const val REPEAT_ARROW_MS = 110L
