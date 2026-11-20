@@ -29,6 +29,7 @@ import com.offlinekeyboard.core.input.EnterLabel
 import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.core.layout.SpecialKey
 import kotlin.math.abs
+import kotlin.math.sign
 import kotlin.math.cos
 
 /**
@@ -283,8 +284,6 @@ class KeyboardView(context: Context) : View(context) {
         canvas.save()
         canvas.clipRect(0f, 0f, width.toFloat(), height.toFloat())
         drawLevers(canvas, pressedKeys, now)
-        // The bar that holds the paper down, where the strip above meets the machine.
-        surfaces.drawPaperHolder(canvas, width.toFloat(), dp(PAPER_HOLDER_DP))
         canvas.restore()
     }
 
@@ -297,7 +296,10 @@ class KeyboardView(context: Context) : View(context) {
             val long = body.width() > body.height() * 1.3f
             val ends = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
             for (x in ends) {
-                surfaces.drawTypewriterRod(canvas, x + (width / 2f - x) * LEVER_CONVERGE, -dp(2f), x, body.centerY() + sink, w)
+                // A pressed key pulls its whole lever: it slides down with the key and swings a little on
+                // its pivot, then springs back with the key.
+                val swing = (x - width / 2f).sign * sink * LEVER_SWING
+                surfaces.drawTypewriterRod(canvas, x + (width / 2f - x) * LEVER_CONVERGE + swing, -dp(2f) + sink * LEVER_SLIDE, x, body.centerY() + sink, w)
             }
         }
         surfaces.drawTypewriterDepth(canvas, width.toFloat(), dp(18f))
@@ -311,7 +313,7 @@ class KeyboardView(context: Context) : View(context) {
             val long = body.width() > body.height() * 1.3f
             val ends = if (long) floatArrayOf(body.left + body.height() / 2, body.right - body.height() / 2) else floatArrayOf(body.centerX())
             for (x in ends) {
-                val topX = x + (width / 2f - x) * LEVER_CONVERGE
+                val topX = x + (width / 2f - x) * LEVER_CONVERGE + (x - width / 2f).sign * sink * LEVER_SWING
                 val keyY = body.centerY() + sink
                 val collarY = body.top + sink - w * 0.9f
                 // The collar sits on the lever: where the lever is at that height.
@@ -1019,6 +1021,8 @@ class KeyboardView(context: Context) : View(context) {
         /** The most used letters of Ukrainian, Polish and English: the most worn keys of the typewriter. */
         const val WORN_LETTERS = "оаеинтрсвaeoinztrs"
         const val WORN_INK = 0.82f
-        const val PAPER_HOLDER_DP = 5.5f
+        /** How much of a key's travel its lever's far end follows, and how far it swings sideways. */
+        const val LEVER_SLIDE = 0.6f
+        const val LEVER_SWING = 0.5f
     }
 }

@@ -54,6 +54,19 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.15.0 — typewriters polished, settings in their colours
+
+- [x] The paper under the text no longer shows the sheet's ends sliding by: the moving paper has no ends,
+      the browned ends of the parchment lie still over it.
+- [x] The paper holder sits at the paper's lower edge (above the mode chips when they show).
+- [x] Levers: a key goes deeper, its lever slides and swings with it and springs back; a typebar comes up
+      and strikes the paper where the letter goes.
+- [x] Switching styles is quicker: the papers are made in the background, both typewriters at once.
+- [x] Settings in the typewriters' colours: graphite and ivory for the black one, light coffee, bronze and
+      brown for the milky one.
+- [x] Mobile / computer in the settings shows the keyboard that opens now (switched on the keyboard too).
+- [x] The gear in the strip is dim while the keyboard's settings are open.
+
 ## 1.14.0 — Milky Typewriter, paper holder
 
 - [x] New style «Milky Typewriter»: the same machine in light colours — milk-white enamel keys in bronze

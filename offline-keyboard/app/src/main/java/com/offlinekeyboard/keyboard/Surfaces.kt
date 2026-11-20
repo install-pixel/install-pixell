@@ -365,7 +365,7 @@ class SurfacePainter(private val density: Float) {
         if (plate) 2.4f * density else maxOf(2.6f * density, height / 2f * 0.19f)
 
     /** How far a pressed typewriter key goes down. */
-    val typewriterSink: Float get() = 4.5f * density
+    val typewriterSink: Float get() = 6f * density
 
     /** A soft light or shadow: [shader] (made over a unit circle) stretched to the ellipse at [cx], [cy]. */
     private fun softEllipse(canvas: Canvas, shader: Shader, cx: Float, cy: Float, rx: Float, ry: Float, alpha: Float = 1f) {
@@ -507,6 +507,34 @@ class SurfacePainter(private val density: Float) {
         val r = height * 0.32f
         drawRivet(canvas, height * 1.6f, height / 2, r)
         drawRivet(canvas, width - height * 1.6f, height / 2, r)
+    }
+
+    /**
+     * A typebar rising to the paper: a steel (bronze) arm [width] wide from [fromY] up to [tipY] at [x], with
+     * the type slug at its tip, inked dark on its face.
+     */
+    fun drawTypebar(canvas: Canvas, x: Float, fromY: Float, tipY: Float, width: Float) {
+        if (tipY >= fromY) return
+        matrix.setScale(1f, fromY - tipY)
+        matrix.postTranslate(0f, tipY)
+        leverPaint.strokeCap = Paint.Cap.BUTT
+        leverPaint.shader = null
+        leverPaint.color = rodEdge
+        leverPaint.strokeWidth = width + 1f * density
+        canvas.drawLine(x, fromY, x, tipY + width, leverPaint)
+        leverShade.setLocalMatrix(matrix)
+        leverPaint.shader = leverShade
+        leverPaint.strokeWidth = width
+        canvas.drawLine(x, fromY, x, tipY + width, leverPaint)
+        leverPaint.shader = null
+        // The slug: a little wider block with the type on its face.
+        oval.set(x - width * 0.95f, tipY, x + width * 0.95f, tipY + width * 2.6f)
+        stretch(collarShade, oval)
+        fill.shader = collarShade
+        canvas.drawRoundRect(oval, width * 0.35f, width * 0.35f, fill)
+        fill.shader = null
+        fill.color = if (milk) 0xCC3E2A16.toInt() else 0xE6000000.toInt()
+        canvas.drawRect(x - width * 0.6f, tipY, x + width * 0.6f, tipY + width * 0.5f, fill)
     }
 
     /** The dark depth of the machine under its top edge, where the levers go in ([height] tall). */

@@ -86,8 +86,13 @@ internal fun HandSlider(
             if (x > start) drawLine(ink.copy(alpha = 0.9f), Offset(start, y), Offset(x, y), 3.dp.toPx(), cap = StrokeCap.Round)
             val r = 9.dp.toPx()
             // The knob: a light rim under a glass ball lit from above (two-stop gradients only, see glassFrame).
-            drawCircle(Color(0xFF9A9A9A), r, Offset(x, y))
-            drawCircle(Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = y - r, endY = y + r), r - 1.2.dp.toPx(), Offset(x, y))
+            if (Tone.light) {
+                drawCircle(Color(0xFF9A7A50), r, Offset(x, y))
+                drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFFBF2), Color(0xFFE2D4BA)), startY = y - r, endY = y + r), r - 1.2.dp.toPx(), Offset(x, y))
+            } else {
+                drawCircle(Color(0xFF9A9A9A), r, Offset(x, y))
+                drawCircle(Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = y - r, endY = y + r), r - 1.2.dp.toPx(), Offset(x, y))
+            }
         } else {
             // The whole scale: a light, barely wavy line (a quadratic curve), drawn as a tapered pencil stroke.
             val steps40 = 40
@@ -115,7 +120,7 @@ internal fun HandSlider(
             }
             // The knob: a little circle drawn round with a pencil, on black.
             val r = 8.dp.toPx()
-            drawCircle(Color.Black, r, Offset(x, thumbY))
+            drawCircle(Tone.Page, r, Offset(x, thumbY))
             translate(x - r, thumbY - r) {
                 drawPath(Pencil.tapered(Pencil.loop(2 * r, 2 * r, r, 37, 0.6.dp.toPx()), 2.dp.toPx()).asComposePath(), ink)
             }

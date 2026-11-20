@@ -321,5 +321,5 @@ internal fun formatMb(bytes: Long): String = "%.0f MB".format(bytes / 1_000_000.
 @Composable
 internal fun RowDivider() {
     if (LocalLook.current == Look.SHEET) return
-    androidx.compose.material3.HorizontalDivider(color = androidx.compose.ui.graphics.Color(0x1FFFFFFF))
+    androidx.compose.material3.HorizontalDivider(color = Tone.Divider)
 }

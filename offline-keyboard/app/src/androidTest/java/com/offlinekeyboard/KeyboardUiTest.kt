@@ -484,6 +484,10 @@ class KeyboardUiTest {
     @Test
     fun settingsInTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.TYPEWRITER)
 
+    /** The settings in the milky typewriter's light colours: screenshots. */
+    @Test
+    fun settingsInMilkTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.MILK_TYPEWRITER)
+
     private fun settingsIn(mode: com.offlinekeyboard.keyboard.ThemeMode) {
         scenario.close()
         val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)

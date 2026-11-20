@@ -201,7 +201,7 @@ class KeyboardService : InputMethodService(),
         controller.shortcuts = new.shortcuts
         if (old.ownEmoji != new.ownEmoji) refreshEmojiPages()
         // Choosing a mode in the settings switches to it now (also while the last mode is remembered).
-        if (old.defaultMode != new.defaultMode) controller.setMode(new.defaultMode)
+        if (old.startMode != new.startMode && controller.mode != new.startMode) controller.setMode(new.startMode)
         translation.accurate = new.translationAccurate
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
@@ -551,6 +551,8 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ keys
 
     override fun onKey(key: Key) {
+        // The typewriter: a typebar strikes the paper for every letter.
+        if (soundStyle && key.action is KeyAction.Text && controller.layer != Layer.EMOJI) rootView?.typebarStrike()
         if (controller.layer == Layer.EMOJI) (key.action as? KeyAction.Text)?.let { recordEmoji(it.text) }
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
@@ -1562,6 +1564,7 @@ class KeyboardService : InputMethodService(),
                 soundOn = if (soundStyle) settings.keySound else null,
                 soundVolume = settings.keySoundVolume,
                 remoteOffered = bluetoothKeyboardSupported && settings.bluetoothKeyboard && bluetoothSending && bluetoothConnected,
+                inSettings = ownField,
             ),
         )
     }
