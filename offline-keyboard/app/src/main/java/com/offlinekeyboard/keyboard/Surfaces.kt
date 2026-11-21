@@ -258,6 +258,8 @@ class SurfacePainter(private val density: Float) {
      */
     var sheetLight = false
 
+    private val foldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = 0.7f * density }
+
     private val agedEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 2.4f * density
@@ -322,6 +324,33 @@ class SurfacePainter(private val density: Float) {
                 fill.alpha = 0xFF
                 canvas.drawPath(piece, fill)
                 fill.shader = null
+            }
+            // Its own folds: every piece is a separate scrap of paper, so each has none, one or two, at its own
+            // angle and place: one side of the crease a touch lighter, the other a touch darker, a crisp line.
+            val spot = seed and 0xFFFF
+            val count = (spot * 7 + 3) % 5 / 2
+            if (count > 0) {
+                canvas.save()
+                canvas.clipPath(piece)
+                val reach = kotlin.math.hypot(w, h)
+                for (k in 0 until count) {
+                    val hash = (spot + 1) * 2654435761L.toInt() xor (k * 0x5BD1E995)
+                    val angle = ((hash ushr 3) % 360).toFloat()
+                    val fx = w * (0.2f + ((hash ushr 11) % 60) / 100f)
+                    val fy = h * (0.2f + ((hash ushr 17) % 60) / 100f)
+                    canvas.save()
+                    canvas.rotate(angle, fx, fy)
+                    foldPaint.style = Paint.Style.FILL
+                    foldPaint.color = if (sheetLight) 0x16FFFFFF else 0x0DFFFFFF
+                    canvas.drawRect(fx - reach, fy, fx + reach, fy + reach, foldPaint)
+                    foldPaint.color = if (sheetLight) 0x125A3C1E else 0x1A000000
+                    canvas.drawRect(fx - reach, fy - reach, fx + reach, fy, foldPaint)
+                    foldPaint.style = Paint.Style.STROKE
+                    foldPaint.color = if (sheetLight) 0x38FFFFFF else 0x1CFFFFFF
+                    canvas.drawLine(fx - reach, fy, fx + reach, fy, foldPaint)
+                    canvas.restore()
+                }
+                canvas.restore()
             }
             // Old parchment is browned along its cut edge.
             if (sheetLight) canvas.drawPath(piece, agedEdge)
