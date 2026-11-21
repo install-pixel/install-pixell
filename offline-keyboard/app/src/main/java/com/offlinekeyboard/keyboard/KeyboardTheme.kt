@@ -67,7 +67,7 @@ data class KeyboardTheme(
      */
     fun overBlur(): KeyboardTheme {
         if (style != SurfaceStyle.GLASS || seeThrough) return this
-        val alpha = if (dark) 0xA6 else 0xB8
+        val alpha = if (dark) 0x80 else 0x94
         return copy(background = (background and 0x00FFFFFF) or (alpha shl 24), seeThrough = true)
     }
 

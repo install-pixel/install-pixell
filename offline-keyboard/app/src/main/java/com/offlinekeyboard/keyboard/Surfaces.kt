@@ -224,7 +224,7 @@ class SurfacePainter(private val density: Float) {
         // Frosted (over blurred keys) or over the blurred app: the glass lets a little of what is behind show
         // through.
         if (frosted) fill.alpha = 0xB8
-        else if (seeThrough) fill.alpha = if (light) 0xD0 else 0xC4
+        else if (seeThrough) fill.alpha = if (light) 0xB0 else 0xA0
         canvas.drawRoundRect(rect, radius, radius, fill)
         fill.alpha = 0xFF
         if (withSheen || light) {

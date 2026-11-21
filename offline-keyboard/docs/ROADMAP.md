@@ -83,6 +83,7 @@ The style guide for every screen is QRAFT (the family's reference app): two them
       held eraser most of all. Bubble wrap a little louder.
 - [x] The enlarged letter of the top row is never cut off by the top of the keyboard.
 - [x] Typewriter: a quick tap still strikes home and leaves its letter on the paper.
+- [x] Glass over the blurred app is more see-through (the page and the keys).
 
 ## 1.17.0 — Glass, dark and light
 

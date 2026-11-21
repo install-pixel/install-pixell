@@ -107,49 +107,11 @@ object PaperTexture {
                 }
             }
         }
-        // Long soft folds across the page.
-        val folds = if (light) 2 else 3
-        val lit = if (light) 6f else 3.5f
-        val shaded = if (light) 7f else 3f
-        val crest = if (light) 5f else 6f
-        repeat(folds) {
-            val angle = (random.nextFloat() - 0.5f) * 1.4f + if (random.nextFloat() < 0.3f) 1.5708f else 0f
-            val nx = -sin(angle)
-            val ny = cos(angle)
-            val ax = cos(angle)
-            val ay = sin(angle)
-            val cx = random.nextFloat() * width
-            val cy = random.nextFloat() * height
-            val w = 14f * density
-            val wave = 6f * density
-            val waveLength = 90f * density
-            val line = 0.9f * density
-            for (y in 0 until height) {
-                val texture = (y / plain).coerceAtMost(1f)
-                if (texture <= 0f) continue
-                for (x in 0 until width) {
-                    val along = (x - cx) * ax + (y - cy) * ay
-                    val d = (x - cx) * nx + (y - cy) * ny + wave * sin(along / waveLength)
-                    if (d > 5 * w || d < -4 * w) continue
-                    var v = if (d > 0) lit * kotlin.math.exp(-d / w) else -shaded * kotlin.math.exp(d / (w * 0.7f))
-                    val q = d / line
-                    v += crest * kotlin.math.exp(-q * q)
-                    v *= texture
-                    val p = pixels[y * width + x]
-                    // On parchment shade is brown (it takes more blue and green than red).
-                    val kg = if (light && v < 0) 1.15f else 1f
-                    val kb = if (light && v < 0) 1.35f else 1f
-                    pixels[y * width + x] = (0xFF shl 24) or
-                        ((((p shr 16) and 0xFF) + v).toInt().coerceIn(0, 255) shl 16) or
-                        ((((p shr 8) and 0xFF) + v * kg).toInt().coerceIn(0, 255) shl 8) or
-                        (((p and 0xFF) + v * kb).toInt().coerceIn(0, 255))
-                }
-            }
-        }
         val bitmap = runCatching { Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888) }.getOrNull() ?: return null
         bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        // Fibres: short thin strokes, a little bent, every way (light ones on graphite, brown on parchment).
         val canvas = android.graphics.Canvas(bitmap)
+        folds(canvas, width, height, density, light, random, plain)
+        // Fibres: short thin strokes, a little bent, every way (light ones on graphite, brown on parchment).
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
             style = android.graphics.Paint.Style.STROKE
             strokeWidth = maxOf(1f, 0.4f * density)
@@ -355,6 +317,93 @@ object PaperTexture {
         }
         val overlay = runCatching { Bitmap.createBitmap(ends, width, height, Bitmap.Config.ARGB_8888) }.getOrNull()
         return Sheet(bitmap, folds, overlay)
+    }
+
+    /**
+     * Folds and wrinkles of a page that has been used: each wanders (it bends and drifts, never ruler
+     * straight), is strongest in its middle and dies out at both ends; a soft lit side, a soft shaded side and
+     * a thin line on the fold itself. A few long ones and more short wrinkles.
+     */
+    private fun folds(canvas: android.graphics.Canvas, width: Int, height: Int, density: Float, light: Boolean, random: Random, plain: Float) {
+        val blurWide = android.graphics.BlurMaskFilter(6f * density, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        val blurThin = android.graphics.BlurMaskFilter(0.8f * density, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        val side = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            strokeCap = android.graphics.Paint.Cap.BUTT
+            strokeJoin = android.graphics.Paint.Join.ROUND
+            maskFilter = blurWide
+        }
+        val crest = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            strokeCap = android.graphics.Paint.Cap.BUTT
+            strokeJoin = android.graphics.Paint.Join.ROUND
+            maskFilter = blurThin
+        }
+        val litColor = 0xFFFFFF
+        val shadeColor = if (light) 0x5A3C1E else 0x000000
+        val crestColor = if (light) 0x4A2E14 else 0xFFFFFF
+        val litAlpha = if (light) 34f else 14f
+        val shadeAlpha = if (light) 36f else 70f
+        val crestAlpha = if (light) 26f else 26f
+        val step = 3f * density
+        val long = 2 + width / (700 * density).toInt().coerceAtLeast(1)
+        val count = long + 5 + random.nextInt(4)
+        for (f in 0 until count) {
+            val isLong = f < long
+            val length = (if (isLong) width * (0.45f + random.nextFloat() * 0.5f) else (18f + random.nextFloat() * 50f) * density)
+            val strength = if (isLong) 1f else 0.45f + random.nextFloat() * 0.35f
+            var x = random.nextFloat() * width
+            var y = plain + random.nextFloat() * (height - plain)
+            var angle = (random.nextFloat() - 0.5f) * 1.6f + if (random.nextFloat() < 0.3f) 1.5708f else 0f
+            var turn = 0f
+            val n = (length / step).toInt().coerceAtLeast(3)
+            val xs = FloatArray(n)
+            val ys = FloatArray(n)
+            for (i in 0 until n) {
+                xs[i] = x; ys[i] = y
+                // The way it bends drifts slowly, with a small kink now and then.
+                turn = turn * 0.9f + (random.nextFloat() - 0.5f) * 0.05f
+                if (random.nextFloat() < 0.03f) turn += (random.nextFloat() - 0.5f) * 0.25f
+                angle += turn
+                x += cos(angle) * step
+                y += sin(angle) * step
+            }
+            // Drawn in short runs (one path each, so the soft strokes do not pile up at every joint); the width
+            // and depth change from run to run.
+            var wobble = 0.8f + random.nextFloat() * 0.4f
+            val run = 6
+            var i = 0
+            while (i < n - 1) {
+                val end = minOf(n - 1, i + run)
+                val t = (i + end) / 2f / (n - 1f)
+                wobble = (wobble + (random.nextFloat() - 0.5f) * 0.3f).coerceIn(0.5f, 1.3f)
+                val k = strength * wobble * kotlin.math.sqrt(sin(t * 3.1416f))
+                if (k > 0.02f) {
+                    val off = 4.5f * density * wobble
+                    for (pass in 0..2) {
+                        val path = android.graphics.Path()
+                        for (j in i..end) {
+                            val a = if (j < n - 1) j else j - 1
+                            val dx = xs[a + 1] - xs[a]
+                            val dy = ys[a + 1] - ys[a]
+                            val len = kotlin.math.hypot(dx, dy).coerceAtLeast(1e-3f)
+                            val o = when (pass) { 0 -> off; 1 -> -off; else -> 0f }
+                            val px = xs[j] - dy / len * o
+                            val py = ys[j] + dx / len * o
+                            if (j == i) path.moveTo(px, py) else path.lineTo(px, py)
+                        }
+                        val paint = if (pass == 2) crest else side
+                        when (pass) {
+                            0 -> { side.strokeWidth = 8f * density * wobble; side.color = ((litAlpha * k).toInt().coerceIn(0, 255) shl 24) or litColor }
+                            1 -> { side.strokeWidth = 8f * density * wobble; side.color = ((shadeAlpha * k).toInt().coerceIn(0, 255) shl 24) or shadeColor }
+                            else -> { crest.strokeWidth = 1.1f * density; crest.color = ((crestAlpha * k).toInt().coerceIn(0, 255) shl 24) or crestColor }
+                        }
+                        canvas.drawPath(path, paint)
+                    }
+                }
+                i = end
+            }
+        }
     }
 
     /** The brown of the parchment's aged ends (no alpha). */
