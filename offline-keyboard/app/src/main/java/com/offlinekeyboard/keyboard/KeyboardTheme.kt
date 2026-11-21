@@ -6,10 +6,16 @@ package com.offlinekeyboard.keyboard
  * black paper. Since 1.2 they are the only themes; the old system/light/dark/OLED settings open as GLASS.
  */
 enum class ThemeMode {
-    GLASS, SHEET, TYPEWRITER, MILK_TYPEWRITER;
+    GLASS, SHEET, TYPEWRITER, MILK_TYPEWRITER, SHEET_LIGHT;
 
     /** Either typewriter: they share the machine, the paper strip and the sounds. */
     val typewriter: Boolean get() = this == TYPEWRITER || this == MILK_TYPEWRITER
+
+    /** Either sheet (pencil on paper). */
+    val sheet: Boolean get() = this == SHEET || this == SHEET_LIGHT
+
+    /** A light tone of its style. */
+    val light: Boolean get() = this == MILK_TYPEWRITER || this == SHEET_LIGHT
 }
 
 /**
@@ -66,6 +72,7 @@ data class KeyboardTheme(
             ThemeMode.SHEET -> sheet()
             ThemeMode.TYPEWRITER -> typewriter()
             ThemeMode.MILK_TYPEWRITER -> milkTypewriter()
+            ThemeMode.SHEET_LIGHT -> sheetLight()
         }.withBrightness(brightness)
 
         /**
@@ -95,18 +102,21 @@ data class KeyboardTheme(
             fontRes = com.offlinekeyboard.R.font.exo2_regular,
         )
 
-        /** «Аркуш · Темна»: white pencil on black paper; every key a hand-drawn double-stroked frame, Caveat. */
+        /**
+         * «Аркуш · Темна»: white pencil on graphite paper; every key a piece of paper cut out by hand, with its
+         * pencil outline drawn twice, Caveat.
+         */
         fun sheet() = KeyboardTheme(
             dark = true,
-            background = BLACK,
-            key = BLACK,
-            function = BLACK,
-            pressed = 0xFF1C1C1C.toInt(),
+            background = PaperTexture.GRAPHITE_EDGE,
+            key = 0xFF2B2A27.toInt(),
+            function = 0xFF2B2A27.toInt(),
+            pressed = 0xFF35332F.toInt(),
             accent = ACCENT,
             text = INK,
             onAccent = INK,
             hint = HINT,
-            popup = BLACK,
+            popup = 0xFF2B2A27.toInt(),
             style = SurfaceStyle.SHEET,
             confirm = CONFIRM,
             listening = LISTENING,
@@ -135,6 +145,32 @@ data class KeyboardTheme(
             listening = LISTENING,
             fontRes = com.offlinekeyboard.R.font.cousine_bold,
         )
+
+        /**
+         * «Аркуш · Світла»: graphite pencil on old parchment (the milky typewriter's paper); keys are cream pieces of
+         * paper cut out by hand, Caveat.
+         */
+        fun sheetLight() = KeyboardTheme(
+            dark = false,
+            background = PaperTexture.PARCHMENT_EDGE,
+            key = 0xFFF4EBD6.toInt(),
+            function = 0xFFF4EBD6.toInt(),
+            pressed = 0xFFE4D6BA.toInt(),
+            accent = 0xFF6B5A44.toInt(),
+            text = SHEET_INK,
+            onAccent = 0xFFF8F1E2.toInt(),
+            hint = 0xFF7D6E58.toInt(),
+            popup = 0xFFF4EBD6.toInt(),
+            style = SurfaceStyle.SHEET,
+            confirm = 0xFF2F5B8C.toInt(),
+            listening = LISTENING,
+            fontRes = com.offlinekeyboard.R.font.caveat_semibold,
+            textScale = 1.22f,
+            milk = true,
+        )
+
+        /** The graphite of the light sheet's pencil. */
+        const val SHEET_INK = 0xFF3A3128.toInt()
 
         /**
          * «Milky Typewriter»: the same machine in light colours: milk-white enamel caps in bronze rims on a

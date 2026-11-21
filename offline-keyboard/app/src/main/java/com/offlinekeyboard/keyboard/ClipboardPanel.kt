@@ -33,12 +33,18 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
     }
 
     var listener: Listener? = null
+
+    /** The keyboard's click and key sound, for presses here. */
+    var tapFeedback: (() -> Unit)? = null
     private var theme: KeyboardTheme? = null
 
     private val list = LinearLayout(context).apply {
         orientation = VERTICAL
         setPadding(dp(8), dp(4), dp(8), dp(4))
         // A pinned text moves to its new place, the others make room, instead of the list jumping.
+        // Rows moving (a pin) are never cut at their edges.
+        clipChildren = false
+        clipToPadding = false
         layoutTransition = android.animation.LayoutTransition().apply {
             enableTransitionType(android.animation.LayoutTransition.CHANGING)
             setDuration(220)
@@ -57,17 +63,17 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
     private val lettersButton = ToolbarButton(context).apply {
         text = context.getString(R.string.stickers_letters)
         contentDescription = text
-        setOnClickListener { listener?.onClipboardClosed() }
+        setOnClickListener { tapFeedback?.invoke(); listener?.onClipboardClosed() }
     }
     private val translateButton = ToolbarButton(context).apply {
         icon = Icon.TRANSLATE
         contentDescription = context.getString(R.string.clipboard_translate)
-        setOnClickListener { listener?.onClipboardTranslate() }
+        setOnClickListener { tapFeedback?.invoke(); listener?.onClipboardTranslate() }
     }
     private val clearButton = ToolbarButton(context).apply {
         icon = Icon.CLOSE
         contentDescription = context.getString(R.string.clipboard_clear)
-        setOnClickListener { clearTapped() }
+        setOnClickListener { tapFeedback?.invoke(); clearTapped() }
     }
     private val resetTitle = Runnable {
         clearArmed = false
@@ -198,8 +204,11 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
                 pressedFill = it.pressed
                 foreground = it.text
             }
+            // The plate a little inside its row: its frame stays whole while rows move.
+            plateInset = 2f * resources.displayMetrics.density
             setOnClickListener { listener?.onClipPicked(clip.text) }
             setOnLongClickListener {
+                tapFeedback?.invoke()
                 listener?.onClipLongPressed(clip.text)
                 true
             }
@@ -217,6 +226,8 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
         }
         val row = android.widget.FrameLayout(context).apply {
             tag = clip.text
+            clipChildren = false
+            clipToPadding = false
             addView(plate, android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT))
             addView(text, android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT))
         }

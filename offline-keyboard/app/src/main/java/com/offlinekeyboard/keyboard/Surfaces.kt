@@ -200,15 +200,69 @@ class SurfacePainter(private val density: Float) {
         canvas.drawRoundRect(inner, radius - half, radius - half, rim)
     }
 
+    /**
+     * The sheet style's light tone: cream paper pieces with graphite pencil on parchment. Off: graphite pieces
+     * with white pencil on graphite paper.
+     */
+    var sheetLight = false
+
+    private val pieceLight = LinearGradient(0f, 0f, 0f, 1f, 0x14FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+
+    /** The outline of a paper piece (closed), by size and seed. */
+    private val pieces = object : LinkedHashMap<Long, Path>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Path>) = size > 300
+    }
+
+    /**
+     * A sheet surface: a piece of paper cut out by hand (its edge the same wavy pencil line as before), lying on
+     * the page and throwing a soft shadow; a pressed piece is pressed flat (no shadow, a little lower and
+     * darker). The pencil outline is drawn over it, fainter, so it still reads as sketched.
+     */
     private fun drawSheet(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, seed: Int, inkColor: Int) {
-        if (state == SurfaceState.PRESSED) {
-            fill.shader = null
-            fill.color = (inkColor and 0x00FFFFFF) or 0x24000000
-            canvas.drawRoundRect(rect, radius, radius, fill)
-        }
         val chosen = state == SurfaceState.SELECTED
+        val pressed = state == SurfaceState.PRESSED
         val w = rect.width()
         val h = rect.height()
+        if (w > 0f && h > 0f) {
+            val pk = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1)
+            val piece = pieces.getOrPut(pk) {
+                val pts = Pencil.loop(w, h, radius, seed, 0.9f * density)
+                Path().apply {
+                    moveTo(pts[0], pts[1])
+                    var i = 2
+                    while (i + 1 < pts.size) { lineTo(pts[i], pts[i + 1]); i += 2 }
+                    close()
+                }
+            }
+            canvas.save()
+            canvas.translate(rect.left, rect.top + if (pressed) 1.2f * density else 0f)
+            fill.shader = null
+            if (!pressed) {
+                // The piece lifts a little off the page: a soft shadow, a few offset layers down and right.
+                for (i in 1..3) {
+                    fill.color = if (sheetLight) 0x1A4A3A24 else 0x2E000000
+                    canvas.save()
+                    canvas.translate(0.35f * i * density, 0.7f * i * density)
+                    canvas.drawPath(piece, fill)
+                    canvas.restore()
+                }
+            }
+            // Each piece its own shade of the paper, a touch lighter at the top.
+            val tint = ((seed * 2654435761L) ushr 24 and 0x0F).toInt() - 7
+            val base = if (sheetLight) 0xF4EBD6 else 0x2B2A27
+            fun shade(c: Int, by: Int) = ((((c shr 16) and 0xFF) + by).coerceIn(0, 255) shl 16) or
+                ((((c shr 8) and 0xFF) + by).coerceIn(0, 255) shl 8) or (((c and 0xFF) + by).coerceIn(0, 255))
+            fill.color = 0xFF000000.toInt() or shade(base, tint + if (pressed) -10 else 0)
+            canvas.drawPath(piece, fill)
+            // A little lighter at the top, as paper catching the light (one gradient for all, stretched).
+            matrix.setScale(1f, h)
+            pieceLight.setLocalMatrix(matrix)
+            fill.shader = pieceLight
+            fill.alpha = 0xFF
+            canvas.drawPath(piece, fill)
+            fill.shader = null
+            canvas.restore()
+        }
         val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1) or
             (if (chosen) 1L else 0L)
         val (main, ghost) = outlines.getOrPut(key) {
@@ -218,10 +272,12 @@ class SurfacePainter(private val density: Float) {
         }
         canvas.save()
         canvas.translate(rect.left, rect.top)
+        if (pressed) canvas.translate(0f, 1.2f * density)
         ink.color = inkColor
-        ink.alpha = ((if (chosen) 255 else 205) * brightness).toInt()
+        // Over the paper piece the pencil line is a little fainter than on the bare page.
+        ink.alpha = ((if (chosen) 255 else 150) * brightness).toInt()
         canvas.drawPath(main, ink)
-        ink.alpha = ((if (chosen) 130 else 80) * brightness).toInt()
+        ink.alpha = ((if (chosen) 130 else 60) * brightness).toInt()
         canvas.drawPath(ghost, ink)
         canvas.restore()
     }

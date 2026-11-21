@@ -86,6 +86,19 @@ internal object Tone {
         page = Color(0xFFE9DCC4), divider = Color(0x334A3220), light = true, milk = true,
     )
 
+    /** The dark sheet: white pencil on graphite paper. */
+    val SheetDark = Palette(
+        text = Color(0xFFEDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
+        confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(0xFFEDEDED),
+        page = Color(com.offlinekeyboard.keyboard.PaperTexture.GRAPHITE_EDGE), divider = Color(0x1FFFFFFF),
+    )
+    /** The light sheet: graphite pencil on parchment. */
+    val SheetLight = Palette(
+        text = Color(KeyboardTheme.SHEET_INK), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
+        confirm = Color(0xFF2F5B8C), danger = Color(0xFFB03A2E), ink = Color(KeyboardTheme.SHEET_INK),
+        page = Color(com.offlinekeyboard.keyboard.PaperTexture.PARCHMENT_EDGE), divider = Color(0x333A3128), light = true,
+    )
+
     var palette by androidx.compose.runtime.mutableStateOf(Dark)
 
     val TextPrimary get() = palette.text
@@ -128,7 +141,7 @@ private val TypewriterFont = FontFamily(
 private const val HAND_SCALE = 1.22f
 
 internal fun lookOf(mode: ThemeMode?): Look = when (mode) {
-    ThemeMode.SHEET -> Look.SHEET
+    ThemeMode.SHEET, ThemeMode.SHEET_LIGHT -> Look.SHEET
     ThemeMode.TYPEWRITER, ThemeMode.MILK_TYPEWRITER -> Look.TYPEWRITER
     else -> Look.GLASS
 }
@@ -140,6 +153,8 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
     val palette = when (mode) {
         ThemeMode.MILK_TYPEWRITER -> Tone.Milk
         ThemeMode.TYPEWRITER -> Tone.Typewriter
+        ThemeMode.SHEET_LIGHT -> Tone.SheetLight
+        ThemeMode.SHEET -> Tone.SheetDark
         else -> Tone.Dark
     }
     if (Tone.palette != palette) Tone.palette = palette
@@ -394,4 +409,48 @@ internal fun LookMark(checked: Boolean) {
             }
         },
     )
+}
+
+
+/** A keyboard style without its tone: what the style list offers. */
+internal enum class StyleFamily { GLASS, SHEET, TYPEWRITER }
+
+internal fun familyOf(mode: ThemeMode): StyleFamily = when {
+    mode.sheet -> StyleFamily.SHEET
+    mode.typewriter -> StyleFamily.TYPEWRITER
+    else -> StyleFamily.GLASS
+}
+
+/** The mode of [family] in the [light] or dark tone (glass has only the dark one for now). */
+internal fun modeOf(family: StyleFamily, light: Boolean): ThemeMode = when (family) {
+    StyleFamily.GLASS -> ThemeMode.GLASS
+    StyleFamily.SHEET -> if (light) ThemeMode.SHEET_LIGHT else ThemeMode.SHEET
+    StyleFamily.TYPEWRITER -> if (light) ThemeMode.MILK_TYPEWRITER else ThemeMode.TYPEWRITER
+}
+
+/**
+ * The style (glass, sketch, typewriter) and, for styles that have one, the tone (dark or light): two short
+ * choices instead of one long list. Changing the style keeps the tone where it can.
+ */
+@Composable
+internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: String) {
+    val family = familyOf(s.themeMode)
+    val light = s.themeMode.light
+    Section(title) {
+        for ((f, label, description) in listOf(
+            Triple(StyleFamily.GLASS, R.string.theme_glass, R.string.theme_glass_desc),
+            Triple(StyleFamily.SHEET, R.string.theme_sheet, R.string.theme_sheet_desc),
+            Triple(StyleFamily.TYPEWRITER, R.string.theme_typewriter, R.string.theme_typewriter_desc),
+        )) {
+            RadioRow(androidx.compose.ui.res.stringResource(label), family == f, androidx.compose.ui.res.stringResource(description)) {
+                update { it.withStyle(modeOf(f, light)) }
+            }
+        }
+    }
+    if (family != StyleFamily.GLASS) {
+        Section(androidx.compose.ui.res.stringResource(R.string.tone_title)) {
+            RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_dark), !light) { update { it.withStyle(modeOf(family, false)) } }
+            RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
+        }
+    }
 }

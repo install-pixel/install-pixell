@@ -21,7 +21,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.keyboard.KeyboardService
-import com.offlinekeyboard.keyboard.ThemeMode
 
 /** How the first setup sets the keyboard up. */
 private enum class SetupChoice { RECOMMENDED, MINIMUM, CUSTOM }
@@ -121,18 +120,7 @@ internal fun OnboardingFlow(s: KeyboardSettings, update: UpdateSettings, onDone:
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
             else -> {
-                Section(stringResource(R.string.onb_style)) {
-                    for ((mode, label, description) in listOf(
-                        Triple(ThemeMode.GLASS, R.string.theme_glass, R.string.theme_glass_desc),
-                        Triple(ThemeMode.SHEET, R.string.theme_sheet, R.string.theme_sheet_desc),
-                        Triple(ThemeMode.TYPEWRITER, R.string.theme_typewriter, R.string.theme_typewriter_desc),
-                        Triple(ThemeMode.MILK_TYPEWRITER, R.string.theme_milk_typewriter, R.string.theme_milk_typewriter_desc),
-                    )) {
-                        RadioRow(stringResource(label), s.themeMode == mode, stringResource(description)) {
-                            update { it.withStyle(mode) }
-                        }
-                    }
-                }
+                StylePicker(s, update, stringResource(R.string.onb_style))
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_done)) }
             }
         }

@@ -469,6 +469,17 @@ class KeyboardUiTest {
         instrumentation.waitForIdleSync()
         Thread.sleep(500)
         screenshot("remote-media")
+        // The remote in the sketch style, both tones: pencil keys and a paper touchpad.
+        for ((name, theme) in listOf("sheet" to KeyboardTheme.sheet(), "sheet-light" to KeyboardTheme.sheetLight())) {
+            instrumentation.runOnMainSync {
+                keyboard.applyThemeForTest(theme)
+                keyboard.inputRootForTest?.showRemote(true)
+                keyboard.inputRootForTest?.remotePanel?.showNavForTest()
+            }
+            instrumentation.waitForIdleSync()
+            Thread.sleep(600)
+            screenshot("remote-nav-$name")
+        }
         instrumentation.runOnMainSync {
             keyboard.inputRootForTest?.remoteForTest = false
             keyboard.inputRootForTest?.showRemote(false)
@@ -481,7 +492,7 @@ class KeyboardUiTest {
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter())) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight())) {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
@@ -508,6 +519,10 @@ class KeyboardUiTest {
     /** The settings follow the typewriter style (worn metal plates, Cousine): screenshots. */
     @Test
     fun settingsInTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.TYPEWRITER)
+
+    /** The settings in the light sketch (graphite pencil on parchment): screenshots. */
+    @Test
+    fun settingsInSheetLight() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.SHEET_LIGHT)
 
     /** The settings in the milky typewriter's light colours: screenshots. */
     @Test
