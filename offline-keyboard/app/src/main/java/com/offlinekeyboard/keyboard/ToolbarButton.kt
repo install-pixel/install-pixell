@@ -101,7 +101,8 @@ class ToolbarButton(context: Context) : View(context) {
         textPaint.textSize = textSizeSp * textScale * scaledDensity
         textPaint.typeface = if (bold) boldFace else regular
         val gap = 5f * density
-        val available = width - 10f * density - (if (icon != null) iconSize + gap else 0f)
+        // Narrow buttons (the remote's row on a small phone) keep less margin, so "Esc" stays whole.
+        val available = width - minOf(10f * density, width * 0.12f) - (if (icon != null) iconSize + gap else 0f)
         // Shrink a little before cutting the text, so narrow phones still show whole words.
         var size = textSizeSp * textScale
         while (size > MIN_TEXT_SP && textPaint.measureText(text) > available) {
