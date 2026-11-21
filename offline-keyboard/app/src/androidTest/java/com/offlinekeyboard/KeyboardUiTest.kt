@@ -469,6 +469,17 @@ class KeyboardUiTest {
         instrumentation.waitForIdleSync()
         Thread.sleep(500)
         screenshot("remote-media")
+        // The remote in the sketch style, both tones: pencil keys and a paper touchpad.
+        for ((name, theme) in listOf("sheet" to KeyboardTheme.sheet(), "sheet-light" to KeyboardTheme.sheetLight())) {
+            instrumentation.runOnMainSync {
+                keyboard.applyThemeForTest(theme)
+                keyboard.inputRootForTest?.showRemote(true)
+                keyboard.inputRootForTest?.remotePanel?.showNavForTest()
+            }
+            instrumentation.waitForIdleSync()
+            Thread.sleep(600)
+            screenshot("remote-nav-$name")
+        }
         instrumentation.runOnMainSync {
             keyboard.inputRootForTest?.remoteForTest = false
             keyboard.inputRootForTest?.showRemote(false)

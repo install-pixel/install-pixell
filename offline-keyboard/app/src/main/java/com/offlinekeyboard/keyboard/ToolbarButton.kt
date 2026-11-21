@@ -34,6 +34,9 @@ class ToolbarButton(context: Context) : View(context) {
     /** How far in from the edges a filled plate is drawn (the touch area stays the whole button). */
     var plateInset = 0f
         set(value) { if (field != value) { field = value; invalidate() } }
+    /** The icon's size against the usual one (a busy icon a little smaller). */
+    var iconScale = 1f
+        set(value) { if (field != value) { field = value; invalidate() } }
     private var style = SurfaceStyle.FLAT
     private var regular: Typeface = Typeface.DEFAULT
     private var boldFace: Typeface = Typeface.DEFAULT_BOLD
@@ -96,7 +99,9 @@ class ToolbarButton(context: Context) : View(context) {
             surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground)
         }
 
-        val iconSize = minOf(height * 0.56f, 24f * density)
+        // A narrow button keeps its icon well inside the plate, with room round it (the remote's row).
+        val plateWidth = width - 2f * (if (fill != 0) plateInset else 3f * density)
+        val iconSize = minOf(height * 0.56f, 24f * density, plateWidth * (if (text.isEmpty()) 0.6f else 1f)) * iconScale
         textPaint.color = foreground
         textPaint.textSize = textSizeSp * textScale * scaledDensity
         textPaint.typeface = if (bold) boldFace else regular

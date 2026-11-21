@@ -102,6 +102,12 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         fillKeyRow()
     }
 
+    /** Shows the navigation row (tests). */
+    internal fun showNavForTest() {
+        media = false
+        fillKeyRow()
+    }
+
     private fun fillKeyRow() {
         keyRow.removeAllViews()
         val keys = if (!media) {
@@ -154,6 +160,8 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         plateInset = 2f * this@RemotePanel.density
         text = k.label
         icon = k.icon
+        // Two windows are busier than an arrow: a little smaller, so the drawing breathes inside the key.
+        if (k.icon == Icon.WINDOWS) iconScale = 0.82f
         textSizeSp = 13f
         contentDescription = DESCRIPTIONS[k.label] ?: k.label.ifEmpty { k.icon?.name?.lowercase() }
         buttons += this
@@ -250,6 +258,7 @@ class Touchpad(context: Context) : View(context) {
     private val surfaces = SurfacePainter(density)
     private var style = SurfaceStyle.FLAT
     private var fillColor = 0xFF1A1A1A.toInt()
+    private var ink = 0xFFEDEDED.toInt()
     private val bounds = RectF()
     private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
@@ -273,13 +282,14 @@ class Touchpad(context: Context) : View(context) {
         surfaces.milk = theme.milk
         surfaces.sheetLight = !theme.dark
         fillColor = theme.key
+        ink = theme.text
         label.color = (theme.text and 0x00FFFFFF) or 0x40000000
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         bounds.set(0f, 0f, width.toFloat(), height.toFloat())
-        surfaces.draw(canvas, bounds, 14f * density, style, fillColor, plate = true)
+        surfaces.draw(canvas, bounds, 14f * density, style, fillColor, inkColor = ink, plate = true)
         label.textSize = 13f * density * resources.configuration.fontScale
         canvas.drawText("· · ·", width / 2f, height / 2f, label)
     }
