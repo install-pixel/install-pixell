@@ -224,7 +224,7 @@ class SurfacePainter(private val density: Float) {
         // Frosted (over blurred keys) or over the blurred app: the glass lets a little of what is behind show
         // through.
         if (frosted) fill.alpha = 0xB8
-        else if (seeThrough) fill.alpha = if (light) 0xD0 else 0xC4
+        else if (seeThrough) fill.alpha = if (light) 0xB0 else 0xA0
         canvas.drawRoundRect(rect, radius, radius, fill)
         fill.alpha = 0xFF
         if (withSheen || light) {
@@ -258,7 +258,13 @@ class SurfacePainter(private val density: Float) {
      */
     var sheetLight = false
 
-    private val pieceLight = LinearGradient(0f, 0f, 0f, 1f, 0x14FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+    private val foldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = 0.7f * density }
+
+    private val agedEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.4f * density
+        color = 0x2A6B4A26
+    }
 
     /** The outline of a paper piece (closed), by size and seed. */
     private val pieces = object : LinkedHashMap<Long, Path>(64, 0.75f, true) {
@@ -292,27 +298,62 @@ class SurfacePainter(private val density: Float) {
             if (!pressed) {
                 // The piece lifts a little off the page: a soft shadow, a few offset layers down and right.
                 for (i in 1..3) {
-                    fill.color = if (sheetLight) 0x1A4A3A24 else 0x2E000000
+                    fill.color = if (sheetLight) 0x1A4A3A24 else 0x3A000000
                     canvas.save()
                     canvas.translate(0.35f * i * density, 0.7f * i * density)
                     canvas.drawPath(piece, fill)
                     canvas.restore()
                 }
             }
-            // Each piece its own shade of the paper, a touch lighter at the top.
+            // Each piece its own shade of the paper: a cut of parchment, or of the near-black graphite paper
+            // (a touch lighter than the page, so it reads as a piece lying on it).
             val tint = ((seed * 2654435761L) ushr 24 and 0x0F).toInt() - 7
-            val base = if (sheetLight) 0xF4EBD6 else 0x2B2A27
+            val base = if (sheetLight) 0xF0E2C4 else 0x1E1D19
             fun shade(c: Int, by: Int) = ((((c shr 16) and 0xFF) + by).coerceIn(0, 255) shl 16) or
                 ((((c shr 8) and 0xFF) + by).coerceIn(0, 255) shl 8) or (((c and 0xFF) + by).coerceIn(0, 255))
-            fill.color = 0xFF000000.toInt() or shade(base, tint + if (pressed) -10 else 0)
+            val by = if (sheetLight) tint + (if (pressed) -10 else 0) else tint / 3 + (if (pressed) 5 else 0)
+            fill.color = 0xFF000000.toInt() or shade(base, by)
             canvas.drawPath(piece, fill)
-            // A little lighter at the top, as paper catching the light (one gradient for all, stretched).
-            matrix.setScale(1f, h)
-            pieceLight.setLocalMatrix(matrix)
-            fill.shader = pieceLight
-            fill.alpha = 0xFF
-            canvas.drawPath(piece, fill)
-            fill.shader = null
+            // The paper's own grain on it (mottling and fibres), from a different place for every piece; no
+            // gloss: paper is matt.
+            PaperGrain.shader(sheetLight)?.let { grain ->
+                val spot = seed and 0xFFFF
+                matrix.setTranslate(-(spot % 97) * 3.1f * density, -(spot % 89) * 2.7f * density)
+                grain.setLocalMatrix(matrix)
+                fill.shader = grain
+                fill.alpha = 0xFF
+                canvas.drawPath(piece, fill)
+                fill.shader = null
+            }
+            // Its own folds: every piece is a separate scrap of paper, so each has none, one or two, at its own
+            // angle and place: one side of the crease a touch lighter, the other a touch darker, a crisp line.
+            val spot = seed and 0xFFFF
+            val count = (spot * 7 + 3) % 5 / 2
+            if (count > 0) {
+                canvas.save()
+                canvas.clipPath(piece)
+                val reach = kotlin.math.hypot(w, h)
+                for (k in 0 until count) {
+                    val hash = (spot + 1) * 2654435761L.toInt() xor (k * 0x5BD1E995)
+                    val angle = ((hash ushr 3) % 360).toFloat()
+                    val fx = w * (0.2f + ((hash ushr 11) % 60) / 100f)
+                    val fy = h * (0.2f + ((hash ushr 17) % 60) / 100f)
+                    canvas.save()
+                    canvas.rotate(angle, fx, fy)
+                    foldPaint.style = Paint.Style.FILL
+                    foldPaint.color = if (sheetLight) 0x16FFFFFF else 0x0DFFFFFF
+                    canvas.drawRect(fx - reach, fy, fx + reach, fy + reach, foldPaint)
+                    foldPaint.color = if (sheetLight) 0x125A3C1E else 0x1A000000
+                    canvas.drawRect(fx - reach, fy - reach, fx + reach, fy, foldPaint)
+                    foldPaint.style = Paint.Style.STROKE
+                    foldPaint.color = if (sheetLight) 0x38FFFFFF else 0x1CFFFFFF
+                    canvas.drawLine(fx - reach, fy, fx + reach, fy, foldPaint)
+                    canvas.restore()
+                }
+                canvas.restore()
+            }
+            // Old parchment is browned along its cut edge.
+            if (sheetLight) canvas.drawPath(piece, agedEdge)
             canvas.restore()
         }
         val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1) or

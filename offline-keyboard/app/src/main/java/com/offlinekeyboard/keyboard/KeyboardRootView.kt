@@ -508,10 +508,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             sheetMaking = key
             val density = resources.displayMetrics.density
             Thread {
-                val page = PaperTexture.sheet(key.first, key.second, density, parchment = key.third, base = PaperTexture.GRAPHITE)
+                val page = PaperTexture.journal(key.first, key.second, density, light = key.third)
                 post {
                     if (sheetMaking == key) {
-                        sheetPage = page?.bitmap
+                        sheetPage = page
                         sheetPageKey = key
                         invalidate()
                     }
@@ -577,8 +577,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             strikeDownAt = now
             strikeUpAt = 0L
         } else if (strikeDownAt > 0 && strikeUpAt == 0L) {
-            strikeHeldAt = strikeRise(now)
-            strikeUpAt = now
+            // A quick tap lets go before the typebar reaches the paper: it still strikes home and leaves the
+            // letter for a moment, then falls (it fell halfway before, and the letter was never pressed).
+            val home = strikeDownAt + STRIKE_RISE_MS + STRIKE_PRESS_MS
+            strikeHeldAt = if (now < home) 1f else strikeRise(now)
+            strikeUpAt = maxOf(now, home)
         }
         postInvalidateOnAnimation()
     }
@@ -603,7 +606,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     /** How far up the typebar is now (0 down in the machine, 1 on the paper). */
     private fun strikeLift(now: Long): Float = when {
         strikeDownAt == 0L -> 0f
-        strikeUpAt == 0L -> strikeRise(now)
+        strikeUpAt == 0L || now < strikeUpAt -> strikeRise(now)
         else -> (strikeHeldAt * (1f - (now - strikeUpAt) / STRIKE_FALL_MS.toFloat())).coerceAtLeast(0f)
     }
 
@@ -820,6 +823,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         fadeColor = value.background
         fadePaint.shader = null
+        // The sketch's paper pieces get their grain once it is made (in the background, the first time).
+        if (value.style == SurfaceStyle.SHEET) {
+            PaperGrain.prepare(resources.displayMetrics.density) { post { invalidateTree(this) } }
+        }
         // The band's height follows the tone (not while the view is still being built: insets come later).
         if (isAttachedToWindow) updateBottomSpace()
         applyPaperToText()
@@ -1005,6 +1012,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     /** Lets a panel that just took the place of another come in softly instead of popping up. */
+    private fun invalidateTree(view: View) {
+        view.invalidate()
+        if (view is ViewGroup) for (i in 0 until view.childCount) invalidateTree(view.getChildAt(i))
+    }
+
     private fun fadeIn(view: View) {
         view.animate().cancel()
         view.alpha = 0f
@@ -1217,6 +1229,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         /** A typebar's way up to the paper, and back down. */
         const val STRIKE_RISE_MS = 70L
         const val STRIKE_FALL_MS = 110L
+        /** How long a quick tap's letter rests pressed into the paper before the typebar falls. */
+        const val STRIKE_PRESS_MS = 45L
         const val STRIKE_HOLD_MAX_MS = 3000L
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f

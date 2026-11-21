@@ -14,4 +14,6 @@ What was done (see the session notes of keyboard 1.17.0):
    equalizer=f=2200:t=o:w=1.4:g=4,volume=8dB (keys), f=2000 g=4 +7 dB (space), f=2200 g=4 +6 dB (Enter),
    f=2000 g=5 +10 dB (Backspace), f=2000 g=4 +7 dB (held), then alimiter=limit=0.89. Pops are mostly peak,
    so more gain only flattens them: the keys stay ~3-6 dB under the typewriter above 1.5 kHz.
+5. 1.18.0: ~2.5 dB more gain on every sound (keys +10.5, space +9, Enter +8, Backspace +12.5, held +9.5),
+   the same limiter: about 1 dB louder in the end, as the pops are mostly peak.
 """

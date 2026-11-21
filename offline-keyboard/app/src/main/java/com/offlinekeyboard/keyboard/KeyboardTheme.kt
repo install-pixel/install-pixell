@@ -67,7 +67,7 @@ data class KeyboardTheme(
      */
     fun overBlur(): KeyboardTheme {
         if (style != SurfaceStyle.GLASS || seeThrough) return this
-        val alpha = if (dark) 0xA6 else 0xB8
+        val alpha = if (dark) 0x80 else 0x94
         return copy(background = (background and 0x00FFFFFF) or (alpha shl 24), seeThrough = true)
     }
 
@@ -148,20 +148,20 @@ data class KeyboardTheme(
         const val GLASS_INK = 0xFF1D2127.toInt()
 
         /**
-         * «Аркуш · Темна»: white pencil on graphite paper; every key a piece of paper cut out by hand, with its
-         * pencil outline drawn twice, Caveat.
+         * «Аркуш · Темна»: white pencil on near-black graphite paper, as a notebook's black page (fibres, soft
+         * folds); every key a piece of that paper cut out by hand, with its pencil outline drawn twice, Caveat.
          */
         fun sheet() = KeyboardTheme(
             dark = true,
             background = PaperTexture.GRAPHITE_EDGE,
-            key = 0xFF2B2A27.toInt(),
-            function = 0xFF2B2A27.toInt(),
-            pressed = 0xFF35332F.toInt(),
+            key = 0xFF1E1D19.toInt(),
+            function = 0xFF1E1D19.toInt(),
+            pressed = 0xFF26241F.toInt(),
             accent = ACCENT,
             text = INK,
             onAccent = INK,
             hint = HINT,
-            popup = 0xFF2B2A27.toInt(),
+            popup = 0xFF1E1D19.toInt(),
             style = SurfaceStyle.SHEET,
             confirm = CONFIRM,
             listening = LISTENING,
@@ -198,8 +198,8 @@ data class KeyboardTheme(
         fun sheetLight() = KeyboardTheme(
             dark = false,
             background = PaperTexture.PARCHMENT_EDGE,
-            key = 0xFFF4EBD6.toInt(),
-            function = 0xFFF4EBD6.toInt(),
+            key = 0xFFF0E2C4.toInt(),
+            function = 0xFFF0E2C4.toInt(),
             pressed = 0xFFE4D6BA.toInt(),
             accent = 0xFF6B5A44.toInt(),
             text = SHEET_INK,
