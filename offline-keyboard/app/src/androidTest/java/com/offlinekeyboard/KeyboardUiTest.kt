@@ -506,6 +506,11 @@ class KeyboardUiTest {
             // The enlarged letter over the keys: frosted glass, or black paper (never see-through).
             val point = keyCenter { (it.action as? KeyAction.Text)?.text == "в" } ?: throw AssertionError("no key «в»")
             touch(point.x, point.y, holdMs = 120, whileHeld = { screenshot("theme-$name-preview") })
+            if (name.startsWith("sheet")) {
+                // Capitals (and their marks) stay inside the paper pieces: Shift held, letters in capitals.
+                val shift = keyCenter { (it.action as? KeyAction.Special)?.key == SpecialKey.SHIFT }
+                if (shift != null) touch(shift.x, shift.y, holdMs = 600, whileHeld = { screenshot("theme-$name-caps") })
+            }
         }
         // Redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
         focus(activity.plain)
