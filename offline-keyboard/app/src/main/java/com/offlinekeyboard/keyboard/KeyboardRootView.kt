@@ -444,6 +444,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)
         backgroundPaint.color = color
         canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
+        if (theme.style == SurfaceStyle.SHEET) sheetPaper()?.let { canvas.drawBitmap(it, 0f, fadeHeight.toFloat(), null) }
         if (theme.style == SurfaceStyle.TYPEWRITER && ::infoRow.isInitialized && infoRow.height > 0) {
             // The paper runs the whole width, past the keys' sides (landscape: up to the camera cutout).
             paperSheet()?.let { canvas.drawBitmap(it.bitmap, 0f, infoRow.top.toFloat(), null) }
@@ -476,6 +477,34 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         reInk = true
         post { applyPaperToText(); refreshCentre() }
         return ready
+    }
+
+    /** The sheet style's whole page (graphite or parchment) for the keyboard's size, made in the background. */
+    @Volatile private var sheetPage: android.graphics.Bitmap? = null
+    private var sheetPageKey: Triple<Int, Int, Boolean>? = null
+    private var sheetMaking: Triple<Int, Int, Boolean>? = null
+
+    private fun sheetPaper(): android.graphics.Bitmap? {
+        val h = height - fadeHeight
+        if (width <= 0 || h <= 0) return null
+        val key = Triple(width, h, !theme.dark)
+        if (sheetPageKey == key) return sheetPage
+        if (sheetMaking != key) {
+            sheetMaking = key
+            val density = resources.displayMetrics.density
+            Thread {
+                val page = PaperTexture.sheet(key.first, key.second, density, parchment = key.third, base = PaperTexture.GRAPHITE)
+                post {
+                    if (sheetMaking == key) {
+                        sheetPage = page?.bitmap
+                        sheetPageKey = key
+                        invalidate()
+                    }
+                }
+            }.apply { name = "sheet-paper"; isDaemon = true }.start()
+        }
+        // Until it is ready, the paper's plain colour (the background).
+        return if (sheetPageKey?.let { it.first == width && it.third == key.third } == true) sheetPage else null
     }
 
     /** Both papers (black and parchment) for each size, made once in the background. */

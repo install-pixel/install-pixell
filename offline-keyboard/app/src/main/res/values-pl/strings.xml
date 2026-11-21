@@ -151,8 +151,8 @@
     <string name="setup_ready">Wszystko gotowe. Stuknij dowolne pole, aby pisać.</string>
     <string name="section_appearance">Wygląd</string>
     <string name="theme_title">Styl</string>
-    <string name="theme_glass">Black Glass</string>
-    <string name="theme_sheet">Black Sketch</string>
+    <string name="theme_glass">Glass</string>
+    <string name="theme_sheet">Sketch</string>
     <string name="no_browser">Nie znaleziono przeglądarki, aby otworzyć link.</string>
     <string name="models_how">Jak: 1) «Pobierz» przy modelu — przeglądarka zapisze plik. 2) Po pobraniu stuknij w przeglądarce «Otwórz» i wybierz OffKey — model zainstaluje się sam. Albo stuknij «Zainstaluj pobrane pliki» i wybierz jeden lub kilka plików — klawiatura sama rozpozna każdy.</string>
     <string name="models_download">Pobierz</string>
@@ -302,7 +302,7 @@
     <string name="hide_toolbar_buttons_hint">Na klawiaturze mobilnej widać tylko pasek z tekstem; dotknij go, by pokazać przyciski trybów, przełączania klawiatury i ustawień. Po kilku sekundach znów się chowają.</string>
     <string name="page_help">Jak używać</string>
     <string name="help_start">Pierwsze kroki</string>
-    <string name="help_start_body">• «Włącz» na stronie głównej — zaznacz OffKey na liście klawiatur.\n• «Wybierz» — wybierz OffKey; kroki znikną.\n• Pole «Wypróbuj» — próbuj tu wszystkiego z tej pomocy.\n• Wszystko działa bez internetu; głos i tłumaczenie potrzebują modeli (dział «Głos i tłumaczenie»).\n• «Wygląd» — styl Black Glass, Black Sketch lub Black Typewriter, jasność i wysokość klawiszy.</string>
+    <string name="help_start_body">• «Włącz» na stronie głównej — zaznacz OffKey na liście klawiatur.\n• «Wybierz» — wybierz OffKey; kroki znikną.\n• Pole «Wypróbuj» — próbuj tu wszystkiego z tej pomocy.\n• Wszystko działa bez internetu; głos i tłumaczenie potrzebują modeli (dział «Głos i tłumaczenie»).\n• «Wygląd» — styl Glass, Sketch lub Typewriter, ciemny lub jasny, jasność i wysokość klawiszy.</string>
     <string name="help_typing">Pisanie i gesty</string>
     <string name="help_typing_body">• Przytrzymaj literę — warianty: polskie litery, ukraińskie ґ ї, cyfra z rogu. Przesuń do wybranej i puść.\n• Przytrzymaj przecinek — emoji.\n• Przesuń spację — inny język; bieżący jest napisany na spacji.\n• Przytrzymaj ⌫ — usuwa znak po znaku; ciągnij ⌫ w lewo — całe słowa.\n• Przytrzymaj spację i przesuń — kursor jedzie po tekście.\n• Dotknij paska nad klawiszami — pojawią się przyciski: tryby po lewej, klawiatura komputerowa i ustawienia po prawej.\n• Przycisk trybów — Tekst, Tłumaczenie, Schowek, Głos.</string>
     <string name="help_correction">Autokorekta i podpowiedzi</string>
@@ -322,9 +322,9 @@
     <string name="help_dictionary">Słownik i kopia zapasowa</string>
     <string name="help_dictionary_body">• «Mój słownik» — dodawaj i usuwaj własne słowa do podpowiedzi.\n• Zapamiętywanie wpisanych słów — włącza się tamże; słowa zostają na telefonie.\n• Import — .txt (słowo w wierszu, do języka wybranego u góry) lub JSON {\"uk\": [...], \"pl\": [...]}.\n• Eksport — wszystkie Twoje słowa w JSON.\n• Pełna kopia — «O aplikacji» → «Kopia zapasowa»: ustawienia, emoji, skróty, słownik, glosariusz. Modele nie są dołączone.</string>
     <string name="theme_glass_desc">Czarne szkło z miękkimi odblaskami</string>
-    <string name="theme_sheet_desc">Odręcznie białym ołówkiem na czarnym</string>
-    <string name="theme_typewriter">Black Typewriter</string>
-    <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze, wytarte i trochę zardzewiałe</string>
+    <string name="theme_sheet_desc">Ołówek na papierze: klawisze to ręcznie wycięte karteczki</string>
+    <string name="theme_typewriter">Typewriter</string>
+    <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze na dźwigniach, wytarte latami</string>
     <string name="theme_milk_typewriter">Milky Typewriter</string>
     <string name="theme_milk_typewriter_desc">Ta sama maszyna w jasnych barwach: mleczne klawisze w brązie, brązowe litery, papier jak stara mapa</string>
     <string name="space_cursor">Przytrzymaj spację i przesuń — kursor się przesuwa</string>
@@ -340,9 +340,9 @@
     <string name="clipboard_history_empty">Skopiuj tekst — będzie tu przez godzinę (przypięte zostają)</string>
     <string name="clipboard_pinned">Przypięto</string>
     <string name="clipboard_unpinned">Odpięto</string>
-    <string name="key_sound">Dźwięki maszyny do pisania</string>
+    <string name="key_sound">Dźwięki klawiszy</string>
     <string name="key_sound_volume">Głośność: %1$d%%</string>
-    <string name="key_sound_hint">Klawisze stukają, spacja głucho uderza, a Enter dzwoni karetką. Na razie dla stylu Black Typewriter; cicho, gdy telefon jest wyciszony lub na wibracjach.</string>
+    <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Cicho, gdy telefon jest wyciszony lub na wibracjach.</string>
     <string name="onb_title">Konfiguracja OffKey</string>
     <string name="onb_how">Jak skonfigurować klawiaturę?</string>
     <string name="onb_recommended">Zalecane</string>
@@ -379,4 +379,7 @@
     <string name="bluetooth_switch_phone">Pisanie na telefonie</string>
     <string name="bluetooth_switching">→ %1$s…</string>
     <string name="bluetooth_switch_failed">Nie udało się połączyć z %1$s</string>
+    <string name="tone_title">Ton</string>
+    <string name="tone_dark">Ciemny</string>
+    <string name="tone_light">Jasny</string>
 </resources>

@@ -61,7 +61,11 @@ object PaperTexture {
 
     fun make(width: Int, height: Int, density: Float): Bitmap? = sheet(width, height, density)?.bitmap
 
-    fun sheet(width: Int, height: Int, density: Float, parchment: Boolean = false): Sheet? {
+    /** The graphite paper of the dark sheet style: a little lighter than the typewriter's charcoal. */
+    const val GRAPHITE = 0x1F
+    const val GRAPHITE_EDGE = 0xFF20201F.toInt()
+
+    fun sheet(width: Int, height: Int, density: Float, parchment: Boolean = false, base: Int = BASE): Sheet? {
         if (width <= 0 || height <= 0) return null
         if (parchment) return parchment(width, height, density)
         val random = Random(7)
@@ -91,7 +95,7 @@ object PaperTexture {
                 val b = grid[(y0 + 1) * gw + x0] * (1 - fx) + grid[(y0 + 1) * gw + x0 + 1] * fx
                 val blotch = (a * (1 - fy) + b * fy) * 3.5f
                 val grain = (random.nextFloat() - 0.5f) * 5f
-                val v = (BASE + (blotch + grain) * texture + lip).toInt().coerceIn(0, 255)
+                val v = (base + (blotch + grain) * texture + lip).toInt().coerceIn(0, 255)
                 // A touch warmer than grey, like charcoal paper.
                 pixels[y * width + x] = (0xFF shl 24) or ((v + 1).coerceAtMost(255) shl 16) or (v shl 8) or (v - 1).coerceAtLeast(0)
             }

@@ -54,6 +54,22 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.16.0 — Sketch, dark and light
+
+- [x] Style and tone are two choices: Glass, Sketch or Typewriter; dark or light (Glass has the dark tone for
+      now). The milky typewriter is the typewriter's light tone.
+- [x] Sketch on paper: the whole keyboard lies on graphite paper (dark) or old parchment (light); every key is
+      a piece of paper cut out by hand, its edge the wavy pencil line, lifted off the page with a soft
+      shadow; a pressed piece lies flat. Pencil white on graphite, graphite on parchment.
+- [x] Sketch sounds from the owner's recordings: a pencil stroke for every letter (twelve, never the same
+      twice), the lead's light tap for space, a stroke and a dot for Enter, the eraser for Backspace and its
+      rubbing while Backspace is held. As loud as the typewriter's.
+- [x] Settings in the sketch's colours: graphite or parchment page.
+- [x] Landscape: the strip's paper runs the whole width, up to the camera cutout; the keys keep a clean edge.
+- [x] Remote: Enter in the navigation row; switching windows is two windows, not an arrow mark like Tab.
+- [x] The remote's keys and mouse buttons and the clipboard panel click and sound like the keys.
+- [x] Clipboard: a pinned text moving to its place keeps its whole frame.
+
 ## 1.15.4 — switching that never sticks, softer sides in landscape
 
 - [x] Every long press on the Bluetooth button moves on to the next device, whether the last one answered
@@ -147,7 +163,7 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 
 ## Planned
 
-- [ ] Key sounds for the other styles (the sound button then shows in every style).
+- [ ] Glass, light tone, with real blur of what is behind (where the phone allows); bubble-wrap sounds.
 - [ ] Data guard: a gentle warning when a card number, IBAN, PESEL or a password-like text goes into a chat.
 - [ ] Hide numbers with stars (**** 1234) — optional.
 

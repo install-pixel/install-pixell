@@ -130,7 +130,9 @@ class KeyboardView(context: Context) : View(context) {
             field = value
             surfaces.brightness = value.brightness
             surfaces.milk = value.milk
-            setBackgroundColor(value.background)
+            surfaces.sheetLight = !value.dark
+            // The sheet style lies on paper the root draws under everything (keys and strip alike).
+            setBackgroundColor(if (value.style == SurfaceStyle.SHEET) 0 else value.background)
             val (letters, labels) = faces(value)
             letterFace = letters
             labelFace = labels
@@ -202,6 +204,7 @@ class KeyboardView(context: Context) : View(context) {
     fun cancelAllPointers() {
         // A typebar up for a key that is let go this way comes down too.
         if (pointers.size() > 0) typebarListener?.invoke(0f, false, "")
+        keySounds?.stopRubbing()
         for (i in 0 until pointers.size()) pointers.valueAt(i).cancelCallbacks()
         pointers.clear()
         popup = null
@@ -897,7 +900,11 @@ class KeyboardView(context: Context) : View(context) {
                     // none once there is nothing left to delete.
                     if (listener?.repeatHasEffect(key) != false) {
                         feedback(light = true)
-                        sound(key)
+                        // The sheet's eraser rubs on while Backspace is held; other sounds strike per letter.
+                        val rubbing = isBackspace(key) && soundVolume > 0f && keySounds?.startRubbing(soundVolume) == true
+                        if (!rubbing) sound(key)
+                    } else {
+                        keySounds?.stopRubbing()
                     }
                     listener?.onKey(key)
                     handler.postDelayed(this, REPEAT_INTERVAL_MS)
@@ -980,6 +987,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun onPointerUp(id: Int, x: Float, y: Float) {
         val state = pointers[id] ?: return
         pointers.remove(id)
+        keySounds?.stopRubbing()
         if (theme.style == SurfaceStyle.TYPEWRITER && state.key?.action is KeyAction.Text) typebarListener?.invoke(0f, false, "")
         state.cancelCallbacks()
         state.key?.let { released[it] = SystemClock.uptimeMillis() }

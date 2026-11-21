@@ -16,6 +16,12 @@ class KeySounds(private val context: Context) {
 
     enum class Kind { KEY, SPACE, RETURN, DELETE, BELL, SHEET }
 
+    /** Whose sounds: the typewriter's, or the sheet's pencil and eraser. */
+    enum class Voice { TYPEWRITER, SHEET }
+
+    /** The style's sounds now in use (set with the style). */
+    var voice = Voice.TYPEWRITER
+
     private val pool = SoundPool.Builder()
         .setMaxStreams(4)
         .setAudioAttributes(
@@ -32,7 +38,7 @@ class KeySounds(private val context: Context) {
     init {
         pool.setOnLoadCompleteListener { _, id, status ->
             if (status == 0) loaded += id
-            if (warmWanted && id == keys.firstOrNull()) warm()
+            if (warmWanted && (id == keys.firstOrNull() || id == pencil.firstOrNull())) warm()
         }
     }
 
@@ -42,6 +48,18 @@ class KeySounds(private val context: Context) {
     private val enter = pool.load(context, R.raw.tw_return, 1)
     private val bell = pool.load(context, R.raw.tw_bell, 1)
     private val sheet = pool.load(context, R.raw.tw_sheet, 1)
+    // The sheet: twelve pencil strokes (never the same twice in a row), the lead's tap for space, a long
+    // stroke and a dot for Enter, the eraser for Backspace, and its rubbing while Backspace is held.
+    private val pencil = listOf(
+        R.raw.sh_key_01, R.raw.sh_key_02, R.raw.sh_key_03, R.raw.sh_key_04, R.raw.sh_key_05, R.raw.sh_key_06,
+        R.raw.sh_key_07, R.raw.sh_key_08, R.raw.sh_key_09, R.raw.sh_key_10, R.raw.sh_key_11, R.raw.sh_key_12,
+    ).map { pool.load(context, it, 1) }
+    private val tap = pool.load(context, R.raw.sh_space, 1)
+    private val stroke = pool.load(context, R.raw.sh_return, 1)
+    private val erase = pool.load(context, R.raw.sh_erase, 1)
+    private val rubbing = pool.load(context, R.raw.sh_erase_hold, 1)
+    private var lastPencil = -1
+    private var rubbingStream = 0
     private val audio = context.getSystemService(AudioManager::class.java)
     private var next = 0
 
@@ -49,6 +67,22 @@ class KeySounds(private val context: Context) {
     fun play(kind: Kind, volume: Float) {
         if (volume <= 0f) return
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        if (voice == Voice.SHEET) {
+            val id = when (kind) {
+                Kind.KEY -> {
+                    var i = (Math.random() * pencil.size).toInt().coerceIn(0, pencil.size - 1)
+                    if (i == lastPencil) i = (i + 1) % pencil.size
+                    lastPencil = i
+                    pencil[i]
+                }
+                Kind.SPACE -> tap
+                Kind.RETURN -> stroke
+                Kind.DELETE -> erase
+                Kind.BELL, Kind.SHEET -> return
+            }
+            pool.play(id, volume, volume, 1, 0, 1f)
+            return
+        }
         val id = when (kind) {
             Kind.KEY -> keys[next++ % keys.size]
             Kind.DELETE -> keys[2]
@@ -67,11 +101,29 @@ class KeySounds(private val context: Context) {
      * the sounds are still loading.
      */
     fun warm() {
-        val id = keys.first()
+        val id = if (voice == Voice.SHEET) pencil.first() else keys.first()
         if (id !in loaded) { warmWanted = true; return }
         warmWanted = false
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
         pool.play(id, WARM_VOLUME, WARM_VOLUME, 0, 0, 1f)
+    }
+
+    /**
+     * Backspace held on the sheet: the eraser keeps rubbing (one looped sound) instead of a stroke for every
+     * letter; [stopRubbing] when it is let go. Nothing for the typewriter.
+     */
+    fun startRubbing(volume: Float): Boolean {
+        if (voice != Voice.SHEET || volume <= 0f) return false
+        if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return true
+        if (rubbingStream == 0) rubbingStream = pool.play(rubbing, volume * 0.8f, volume * 0.8f, 1, -1, 1f)
+        return true
+    }
+
+    fun stopRubbing() {
+        if (rubbingStream != 0) {
+            pool.stop(rubbingStream)
+            rubbingStream = 0
+        }
     }
 
     fun release() = pool.release()

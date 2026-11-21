@@ -297,6 +297,7 @@ class KeyboardService : InputMethodService(),
         carriageColumn = -1
         lastShown = null
         if (settings.learnTouch) touchModel.refresh()
+        keySounds?.voice = if (settings.themeMode.sheet) KeySounds.Voice.SHEET else KeySounds.Voice.TYPEWRITER
         if (soundStyle && settings.keySound) keySounds?.warm()
         selStart = info?.let { minOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         selEnd = info?.let { maxOf(it.initialSelStart, it.initialSelEnd) } ?: -1
@@ -1005,7 +1006,7 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ sound
 
     /** The styles that have key sounds (only the typewriter for now); the sound button shows in them. */
-    private val soundStyle: Boolean get() = settings.themeMode.typewriter
+    private val soundStyle: Boolean get() = settings.themeMode.typewriter || settings.themeMode.sheet
 
     override fun onToolbarSound() {
         val on = !settings.keySound
@@ -1610,6 +1611,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.touchModel = if (settings.learnTouch) touchModel else null
         root.keyboardView.touchLearning = !ownField
         if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
+        keySounds?.voice = if (settings.themeMode.sheet) KeySounds.Voice.SHEET else KeySounds.Voice.TYPEWRITER
         root.keyboardView.keySounds = keySounds
         root.keyboardView.soundVolume = if (settings.keySound && soundStyle) settings.keySoundVolume else 0f
         root.compact = settings.compactToolbar
