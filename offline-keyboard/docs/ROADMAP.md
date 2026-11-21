@@ -56,8 +56,8 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 
 ## 1.16.0 — Sketch, dark and light
 
-- [x] Style and tone are two choices: Glass, Sketch or Typewriter; dark or light (Glass has the dark tone for
-      now). The milky typewriter is the typewriter's light tone.
+- [x] Style and tone are two choices: Glass, Sketch or Typewriter; dark or light (Glass got its light tone in
+      1.17.0). The milky typewriter is the typewriter's light tone.
 - [x] Sketch on paper: the whole keyboard lies on graphite paper (dark) or old parchment (light); every key is
       a piece of paper cut out by hand, its edge the wavy pencil line, lifted off the page with a soft
       shadow; a pressed piece lies flat. Pencil white on graphite, graphite on parchment.
@@ -69,6 +69,20 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Remote: Enter in the navigation row; switching windows is two windows, not an arrow mark like Tab.
 - [x] The remote's keys and mouse buttons and the clipboard panel click and sound like the keys.
 - [x] Clipboard: a pinned text moving to its place keeps its whole frame.
+
+## 1.17.0 — Glass, dark and light
+
+- [x] Milky glass, the light tone of Glass: white glass keys lit from above with a bright rim and a soft
+      shadow on pale glass; graphite letters, Enter in blue. Settings in the same milky glass.
+- [x] Glass over the app: on Android 12+, where the phone allows it (battery saver can turn it off), the app
+      behind the keyboard is blurred and the glass lets it through, darkened (dark) or whitened (light); the
+      keyboard then ends in a lit top edge instead of the fading band. Elsewhere the glass stays solid.
+- [x] Glass sounds from the owner's bubble wrap: ten different pops for letters, a deeper one for space,
+      three in a row for Enter, air going out for Backspace and the wrap rustling while it is held.
+- [x] Sketch sounds louder on a phone's speaker (more presence), the eraser most of all.
+- [x] Remote: every key drawn as lines (a pencil in Sketch): play/pause, volume, seek, tracks, mute, the note,
+      Enter. Names inside the typewriter's rim shrink rather than lose letters.
+- [x] The band where the app fades into a light keyboard is shorter.
 
 ## 1.15.4 — switching that never sticks, softer sides in landscape
 

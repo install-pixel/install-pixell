@@ -63,6 +63,8 @@ internal data class Palette(
     val light: Boolean = false,
     /** The milky typewriter's bronze and cream plates. */
     val milk: Boolean = false,
+    /** Milky glass: white glass plates on a pale page, cool greys instead of the typewriter's bronze. */
+    val frost: Boolean = false,
 )
 
 /** Tokens of THEMES.md, section 2, and the typewriters' own: what [SettingsTheme] puts in use. */
@@ -99,6 +101,13 @@ internal object Tone {
         page = Color(com.offlinekeyboard.keyboard.PaperTexture.PARCHMENT_EDGE), divider = Color(0x333A3128), light = true,
     )
 
+    /** Milky glass: graphite letters on pale glass, blue for the main action. */
+    val GlassLight = Palette(
+        text = Color(KeyboardTheme.GLASS_INK), secondary = Color(0xFF6B717A), accent = Color(0xFF5F6670),
+        confirm = Color(0xFF2B63C6), danger = Color(0xFFC0392B), ink = Color(KeyboardTheme.GLASS_INK),
+        page = Color(KeyboardTheme.GLASS_MILK), divider = Color(0x261D2127), light = true, frost = true,
+    )
+
     var palette by androidx.compose.runtime.mutableStateOf(Dark)
 
     val TextPrimary get() = palette.text
@@ -110,6 +119,7 @@ internal object Tone {
     val Page get() = palette.page
     val Divider get() = palette.divider
     val light get() = palette.light
+    val frost get() = palette.frost
 }
 
 /** What a button does, for its colour: the one main finishing action, an irreversible one, or anything else. */
@@ -155,6 +165,7 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         ThemeMode.TYPEWRITER -> Tone.Typewriter
         ThemeMode.SHEET_LIGHT -> Tone.SheetLight
         ThemeMode.SHEET -> Tone.SheetDark
+        ThemeMode.GLASS_LIGHT -> Tone.GlassLight
         else -> Tone.Dark
     }
     if (Tone.palette != palette) Tone.palette = palette
@@ -165,7 +176,18 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
             androidx.core.view.WindowCompat.getInsetsController(it, view).isAppearanceLightNavigationBars = palette.light
         }
     }
-    val colors = if (palette.light) androidx.compose.material3.lightColorScheme(
+    val colors = if (palette.frost) androidx.compose.material3.lightColorScheme(
+        primary = palette.accent, onPrimary = Color.White,
+        primaryContainer = Color(0xFFF4F6F8), onPrimaryContainer = palette.text,
+        secondaryContainer = Color(0xFFEEF1F4), onSecondaryContainer = palette.text,
+        background = palette.page, surface = palette.page,
+        surfaceVariant = Color(0xFFF2F4F6), surfaceContainer = Color(0xFFF2F4F6),
+        surfaceContainerLow = Color(0xFFECEFF2), surfaceContainerHigh = Color(0xFFF6F7F9),
+        surfaceContainerHighest = Color(0xFFFAFBFC),
+        onBackground = palette.text, onSurface = palette.text, onSurfaceVariant = palette.secondary,
+        outline = Color(0x661D2127), outlineVariant = Color(0x331D2127),
+        error = palette.danger,
+    ) else if (palette.light) androidx.compose.material3.lightColorScheme(
         primary = palette.accent, onPrimary = palette.page,
         primaryContainer = Color(0xFFF3EADA), onPrimaryContainer = palette.text,
         secondaryContainer = Color(0xFFEFE4D0), onSecondaryContainer = palette.text,
@@ -241,6 +263,11 @@ private val GlassSurface = Brush.verticalGradient(0f to Color(0xFF1B1B1B), 0.45f
 private val GlassLit = Brush.verticalGradient(0f to Color(0xFF2E2E2E), 1f to Color(0xFF121212))
 private val GlassRim = Brush.verticalGradient(0f to Color(0xFF808080), 0.25f to Color(0xFF242424), 1f to Color(0xFF1A1A1A))
 private val GlassRimChosen = Brush.verticalGradient(0f to Color(0xFFB3B3B3), 0.3f to Color(0xFF404040), 1f to Color(0xFF333333))
+// Milky glass (the keyboard's light glass): white glass, a rim white on top and cool grey below, chosen blue.
+private val MilkSurface = Brush.verticalGradient(0f to Color(0xFFFFFFFF), 0.45f to Color(0xFFF5F6F8), 1f to Color(0xFFEAEDF0))
+private val MilkLit = Brush.verticalGradient(0f to Color(0xFFFFFFFF), 1f to Color(0xFFDDE6F3))
+private val MilkRim = Brush.verticalGradient(0f to Color(0xFFFFFFFF), 0.3f to Color(0xFFD5DAE0), 1f to Color(0xFFAEB5BF))
+private val MilkRimChosen = Brush.verticalGradient(0f to Color(0xFF9CC0F5), 0.3f to Color(0xFF6E97D8), 1f to Color(0xFF5B82C2))
 
 /**
  * Glass drawn in one pass behind the content: the 1 dp rim as a filled rounded rectangle with the body
@@ -252,11 +279,34 @@ private fun Modifier.glassFrame(radius: Dp, chosen: Boolean, sheen: Boolean, lit
     val inner = CornerRadius(maxOf(0f, r - rim))
     val innerSize = androidx.compose.ui.geometry.Size(size.width - 2 * rim, size.height - 2 * rim)
     val light = minOf(size.height / 2, 120.dp.toPx())
-    val sheenBrush = Brush.verticalGradient(0f to Color(0x14FFFFFF), 1f to Color.Transparent, startY = 0f, endY = light)
+    val frost = Tone.frost
+    val sheenBrush = Brush.verticalGradient(0f to (if (frost) Color(0x80FFFFFF) else Color(0x14FFFFFF)), 1f to Color.Transparent, startY = 0f, endY = light)
+    val shadow = 1.dp.toPx()
     onDrawBehind {
-        drawRoundRect(if (chosen) GlassRimChosen else GlassRim, cornerRadius = CornerRadius(r))
-        drawRoundRect(if (lit) GlassLit else GlassSurface, Offset(rim, rim), innerSize, inner)
-        if (sheen) drawRoundRect(sheenBrush, Offset(rim, rim), innerSize, inner)
+        if (frost) {
+            // A soft shadow under the white glass, so it stands off the pale page.
+            drawRoundRect(Color(0x14202A36), Offset(0f, shadow), size, CornerRadius(r))
+            drawRoundRect(Color(0x14202A36), Offset(0f, 2 * shadow), size, CornerRadius(r))
+        }
+        drawRoundRect(
+            when {
+                frost && chosen -> MilkRimChosen
+                frost -> MilkRim
+                chosen -> GlassRimChosen
+                else -> GlassRim
+            },
+            cornerRadius = CornerRadius(r),
+        )
+        drawRoundRect(
+            when {
+                frost && lit -> MilkLit
+                frost -> MilkSurface
+                lit -> GlassLit
+                else -> GlassSurface
+            },
+            Offset(rim, rim), innerSize, inner,
+        )
+        if (sheen || frost) drawRoundRect(sheenBrush, Offset(rim, rim), innerSize, inner)
     }
 }
 
@@ -365,21 +415,35 @@ internal fun LookSwitch(checked: Boolean) {
             val pad = (size.height - ball) / 2
             val x = pad + (size.width - 2 * pad - ball) * position
             val capsule = CornerRadius(size.height / 2)
-            val light = Tone.light
+            val light = Tone.light && !Tone.frost
+            val frost = Tone.frost
             val body = when {
+                frost && checked -> Brush.verticalGradient(listOf(Color(0xFF6E97D8), Color(0xFF3F6FC0)))
+                frost -> Brush.verticalGradient(listOf(Color(0xFFDCE0E5), Color(0xFFEEF1F4)))
                 light && checked -> Brush.verticalGradient(listOf(Color(0xFFB08A58), Color(0xFF8A6438)))
                 light -> Brush.verticalGradient(listOf(Color(0xFFE2D4BA), Color(0xFFF1E7D5)))
                 checked -> Brush.verticalGradient(listOf(Color(0xFF4A4A4A), Color(0xFF262626)))
                 else -> GlassSurface
             }
             val knob = when {
+                frost && checked -> Brush.verticalGradient(listOf(Color.White, Color(0xFFE6ECF5)), startY = pad, endY = pad + ball)
+                frost -> Brush.verticalGradient(listOf(Color.White, Color(0xFFD5DAE0)), startY = pad, endY = pad + ball)
                 light && checked -> Brush.verticalGradient(listOf(Color(0xFFFFFBF2), Color(0xFFEFE3CC)), startY = pad, endY = pad + ball)
                 light -> Brush.verticalGradient(listOf(Color(0xFFF7F0E2), Color(0xFFD8CCB4)), startY = pad, endY = pad + ball)
                 checked -> Brush.verticalGradient(listOf(Color.White, Color(0xFFBDBDBD)), startY = pad, endY = pad + ball)
                 else -> Brush.verticalGradient(listOf(Color(0xFF3A3A3A), Color(0xFF101010)), startY = pad, endY = pad + ball)
             }
-            val rimBrush = if (light) Brush.verticalGradient(listOf(Color(0xFFF3DDB2), Color(0xFF6E4C26))) else if (checked) GlassRimChosen else GlassRim
-            val ballRim = if (light) Color(0xFF9A7A50) else Color(0xFF555555)
+            val rimBrush = when {
+                frost -> if (checked) MilkRimChosen else MilkRim
+                light -> Brush.verticalGradient(listOf(Color(0xFFF3DDB2), Color(0xFF6E4C26)))
+                checked -> GlassRimChosen
+                else -> GlassRim
+            }
+            val ballRim = when {
+                frost -> Color(0xFFAEB5BF)
+                light -> Color(0xFF9A7A50)
+                else -> Color(0xFF555555)
+            }
             val rim = 1.dp.toPx()
             val innerSize = androidx.compose.ui.geometry.Size(size.width - 2 * rim, size.height - 2 * rim)
             onDrawBehind {
@@ -421,9 +485,9 @@ internal fun familyOf(mode: ThemeMode): StyleFamily = when {
     else -> StyleFamily.GLASS
 }
 
-/** The mode of [family] in the [light] or dark tone (glass has only the dark one for now). */
+/** The mode of [family] in the [light] or dark tone. */
 internal fun modeOf(family: StyleFamily, light: Boolean): ThemeMode = when (family) {
-    StyleFamily.GLASS -> ThemeMode.GLASS
+    StyleFamily.GLASS -> if (light) ThemeMode.GLASS_LIGHT else ThemeMode.GLASS
     StyleFamily.SHEET -> if (light) ThemeMode.SHEET_LIGHT else ThemeMode.SHEET
     StyleFamily.TYPEWRITER -> if (light) ThemeMode.MILK_TYPEWRITER else ThemeMode.TYPEWRITER
 }
@@ -447,10 +511,8 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
             }
         }
     }
-    if (family != StyleFamily.GLASS) {
-        Section(androidx.compose.ui.res.stringResource(R.string.tone_title)) {
-            RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_dark), !light) { update { it.withStyle(modeOf(family, false)) } }
-            RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
-        }
+    Section(androidx.compose.ui.res.stringResource(R.string.tone_title)) {
+        RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_dark), !light) { update { it.withStyle(modeOf(family, false)) } }
+        RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
     }
 }

@@ -14,4 +14,10 @@ What was done, in order (see the session notes of keyboard 1.16.0):
 5. Delete (sh_erase) and held delete (sh_erase_hold, ~1.4 s, looped): the eraser slowed to 0.82, its quick
    flutter evened out, soft edges.
 Levels by overall loudness (no compression), a plain ceiling at 0.85.
+6. 1.17.0, louder on a phone's speaker (the owner heard the pencil far quieter than the typewriter, and the
+   eraser hardly at all): above 1.5 kHz, where the speaker and the ear are, the keys were ~9 dB under the
+   typewriter's, the eraser ~15 dB, the held eraser ~18 dB. With ffmpeg:
+   equalizer=f=2200:t=o:w=1.4:g=5,volume=4dB (keys, return), f=2000 g=4 +5 dB (space),
+   f=1800 g=7 +7 dB (delete) / +9 dB (held delete, now played at full volume), then
+   alimiter=limit=0.89. The keys now match the typewriter there; the eraser is ~4 dB under it.
 """

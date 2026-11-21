@@ -119,25 +119,25 @@ class RemotePanel(context: Context) : LinearLayout(context) {
                 RowKey("", Icon.LEFT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
                 null, // the up and down pair, stacked in the middle
                 RowKey("", Icon.RIGHT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
-                RowKey("↵") { listener?.onRemoteKey(HID_ENTER, 0) },
+                RowKey("", Icon.ENTER) { listener?.onRemoteKey(HID_ENTER, 0) },
                 RowKey("", Icon.WINDOWS) { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
                 RowKey("Win") { listener?.onRemoteKey(0, MOD_GUI) },
-                RowKey("♪", weight = 0.9f) { media = true; fillKeyRow() },
+                RowKey("", Icon.MUSIC, 0.9f) { media = true; fillKeyRow() },
             )
         } else {
             // Music, mirrored round a bigger play/pause: seek, then track, then volume, then mute and the way
             // back to the keys at the ends. A tap seeks a step, holding keeps seeking; holding a track key keeps
             // skipping.
             listOf(
-                RowKey("♪×", weight = 0.95f) { listener?.onRemoteMedia(MEDIA_MUTE) },
-                RowKey("♪−", every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_DOWN) },
-                RowKey("|«", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_PREVIOUS) },
-                RowKey("«", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
-                RowKey("▶‖", weight = 1.6f) { listener?.onRemoteMedia(MEDIA_PLAY_PAUSE) },
-                RowKey("»", every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
-                RowKey("»|", every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_NEXT) },
-                RowKey("♪+", every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_UP) },
-                RowKey("⌨", weight = 0.95f) { media = false; fillKeyRow() },
+                RowKey("", Icon.SPEAKER_OFF, 0.95f) { listener?.onRemoteMedia(MEDIA_MUTE) },
+                RowKey("", Icon.VOLUME_DOWN, every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_DOWN) },
+                RowKey("", Icon.PREVIOUS, every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_PREVIOUS) },
+                RowKey("", Icon.SEEK_BACK, every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
+                RowKey("", Icon.PLAY_PAUSE, 1.6f) { listener?.onRemoteMedia(MEDIA_PLAY_PAUSE) },
+                RowKey("", Icon.SEEK_FORWARD, every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
+                RowKey("", Icon.NEXT, every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_NEXT) },
+                RowKey("", Icon.VOLUME_UP, every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_UP) },
+                RowKey("", Icon.KEYBOARD, 0.95f) { media = false; fillKeyRow() },
             )
         }
         for (k in keys) {
@@ -163,7 +163,9 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         // Two windows are busier than an arrow: a little smaller, so the drawing breathes inside the key.
         if (k.icon == Icon.WINDOWS) iconScale = 0.82f
         textSizeSp = 13f
-        contentDescription = DESCRIPTIONS[k.label] ?: k.label.ifEmpty { k.icon?.name?.lowercase() }
+        // Short names (Esc, Tab, Win) shrink rather than lose letters on a narrow row.
+        minTextSp = 7f
+        contentDescription = k.icon?.let { DESCRIPTIONS[it] } ?: k.label.ifEmpty { k.icon?.name?.lowercase() }
         buttons += this
         style(this)
         if (k.every <= 0L) {
@@ -227,9 +229,11 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         const val MEDIA_VOLUME_DOWN = 0xEA
         /** What the short labels mean, read out by TalkBack. */
         val DESCRIPTIONS = mapOf(
-            "↵" to "Enter", "♪×" to "Mute", "♪−" to "Volume down", "♪+" to "Volume up",
-            "|«" to "Previous track", "«" to "Seek back", "▶‖" to "Play / pause", "»" to "Seek forward",
-            "»|" to "Next track", "⌨" to "Keys", "♪" to "Music keys",
+            Icon.ENTER to "Enter", Icon.SPEAKER_OFF to "Mute", Icon.VOLUME_DOWN to "Volume down",
+            Icon.VOLUME_UP to "Volume up", Icon.PREVIOUS to "Previous track", Icon.SEEK_BACK to "Seek back",
+            Icon.PLAY_PAUSE to "Play / pause", Icon.SEEK_FORWARD to "Seek forward", Icon.NEXT to "Next track",
+            Icon.KEYBOARD to "Keys", Icon.MUSIC to "Music keys", Icon.WINDOWS to "Switch window",
+            Icon.LEFT to "Left", Icon.RIGHT to "Right", Icon.UP to "Up", Icon.DOWN to "Down",
         )
         /** How long a key is held before it repeats, and how often it repeats then. */
         const val HOLD_MS = 400L
@@ -281,6 +285,7 @@ class Touchpad(context: Context) : View(context) {
         surfaces.brightness = theme.brightness
         surfaces.milk = theme.milk
         surfaces.sheetLight = !theme.dark
+        surfaces.seeThrough = theme.seeThrough
         fillColor = theme.key
         ink = theme.text
         label.color = (theme.text and 0x00FFFFFF) or 0x40000000

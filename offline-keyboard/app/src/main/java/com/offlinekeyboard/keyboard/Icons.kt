@@ -20,6 +20,7 @@ enum class Icon {
     MIC, STOP, CLIPBOARD, GEAR, KEYBOARD, PHONE, CLOSE, HIDE,
     LEFT, RIGHT, UP, DOWN, BLUETOOTH, EMOJI, UNDO, STICKER, MODES,
     SPEAKER, SPEAKER_OFF, TOUCHPAD, WINDOWS,
+    VOLUME_DOWN, VOLUME_UP, PREVIOUS, NEXT, SEEK_BACK, SEEK_FORWARD, PLAY_PAUSE, MUSIC,
 }
 
 object Icons {
@@ -209,6 +210,38 @@ object Icons {
                     p.line(20.5f, 9.5f, 15.5f, 14.5f)
                 }
             }
+            Icon.VOLUME_DOWN, Icon.VOLUME_UP -> {
+                // A smaller loudspeaker with a minus or a plus beside it.
+                p.moveTo(3f, 9.5f); p.lineTo(6.5f, 9.5f); p.lineTo(10.5f, 6f); p.lineTo(10.5f, 18f)
+                p.lineTo(6.5f, 14.5f); p.lineTo(3f, 14.5f); p.close()
+                p.line(14f, 12f, 21f, 12f)
+                if (icon == Icon.VOLUME_UP) p.line(17.5f, 8.5f, 17.5f, 15.5f)
+            }
+            Icon.SEEK_BACK, Icon.SEEK_FORWARD -> {
+                // Two triangles one after the other (drawn for the back way, mirrored for forward).
+                val m = icon == Icon.SEEK_FORWARD
+                p.triangle(m, 12f, 6.5f, 12f, 17.5f, 4f, 12f)
+                p.triangle(m, 20f, 6.5f, 20f, 17.5f, 12f, 12f)
+            }
+            Icon.PREVIOUS, Icon.NEXT -> {
+                // A bar and two triangles running up to it: to the start of the track, or to the next.
+                val m = icon == Icon.NEXT
+                p.mirrorLine(m, 5f, 6.5f, 5f, 17.5f)
+                p.triangle(m, 12.5f, 7f, 12.5f, 17f, 6.5f, 12f)
+                p.triangle(m, 19.5f, 7f, 19.5f, 17f, 13.5f, 12f)
+            }
+            Icon.PLAY_PAUSE -> {
+                // Play and pause together: a triangle and two bars.
+                p.triangle(false, 3.5f, 6.5f, 3.5f, 17.5f, 12f, 12f)
+                p.line(16f, 7f, 16f, 17f)
+                p.line(20f, 7f, 20f, 17f)
+            }
+            Icon.MUSIC -> {
+                // A note: its head, the stem and a flag.
+                p.addOval(RectF(4.5f, 14.5f, 11.5f, 20f), Path.Direction.CW)
+                p.line(11.5f, 17f, 11.5f, 4f)
+                p.moveTo(11.5f, 4f); p.cubicTo(13f, 7f, 18.5f, 7f, 18f, 12f)
+            }
             Icon.TOUCHPAD -> {
                 // A touchpad with its two buttons.
                 p.addRoundRect(RectF(3.5f, 4.5f, 20.5f, 19.5f), 3f, 3f, Path.Direction.CW)
@@ -217,6 +250,17 @@ object Icons {
             }
         }
         return p to fill
+    }
+
+    /** A closed triangle; [mirror] flips it left to right in the 24 grid. */
+    private fun Path.triangle(mirror: Boolean, x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float) {
+        fun x(v: Float) = if (mirror) GRID - v else v
+        moveTo(x(x1), y1); lineTo(x(x2), y2); lineTo(x(x3), y3); close()
+    }
+
+    private fun Path.mirrorLine(mirror: Boolean, x1: Float, y1: Float, x2: Float, y2: Float) {
+        fun x(v: Float) = if (mirror) GRID - v else v
+        line(x(x1), y1, x(x2), y2)
     }
 
     private fun Path.line(x1: Float, y1: Float, x2: Float, y2: Float) {
