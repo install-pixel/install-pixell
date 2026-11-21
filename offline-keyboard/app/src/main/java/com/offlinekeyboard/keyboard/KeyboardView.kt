@@ -131,8 +131,10 @@ class KeyboardView(context: Context) : View(context) {
             surfaces.brightness = value.brightness
             surfaces.milk = value.milk
             surfaces.sheetLight = !value.dark
+            surfaces.seeThrough = value.seeThrough
             // The sheet style lies on paper the root draws under everything (keys and strip alike).
-            setBackgroundColor(if (value.style == SurfaceStyle.SHEET) 0 else value.background)
+            // Glass over the blurred app likewise: the root draws the see-through page once, under everything.
+            setBackgroundColor(if (value.style == SurfaceStyle.SHEET || value.seeThrough) 0 else value.background)
             val (letters, labels) = faces(value)
             letterFace = letters
             labelFace = labels

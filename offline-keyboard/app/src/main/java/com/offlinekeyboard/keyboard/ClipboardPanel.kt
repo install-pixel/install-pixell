@@ -138,7 +138,7 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
 
     fun applyTheme(theme: KeyboardTheme) {
         this.theme = theme
-        setBackgroundColor(theme.background)
+        setBackgroundColor(if (theme.seeThrough) 0 else theme.background)
         title.setTextColor(theme.hint)
         title.typeface = theme.typeface(context)
         for (b in listOf(lettersButton, translateButton, clearButton)) {

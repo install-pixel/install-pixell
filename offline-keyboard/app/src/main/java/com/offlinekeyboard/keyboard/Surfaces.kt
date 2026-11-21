@@ -133,6 +133,32 @@ class SurfacePainter(private val density: Float) {
     )
     private val sheen = LinearGradient(0f, 0f, 0f, 1f, 0x14FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
 
+    // Milky glass (the light tone): white glass lit from above on pale glass; the rim bright white on top and
+    // a cool grey below; chosen has a blue rim. Opaque colours, three stops at most (see glassRim).
+    private val glassFillLight = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFFFFFFFF.toInt(), 0xFFF5F6F8.toInt(), 0xFFEAEDF0.toInt()),
+        floatArrayOf(0f, 0.45f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val glassPressedLight = RadialGradient(0.5f, 0.35f, 0.8f, 0xFFC7CDD5.toInt(), 0xFFE2E6EB.toInt(), Shader.TileMode.CLAMP)
+    private val glassRimLight = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFFFFFFFF.toInt(), 0xFFD5DAE0.toInt(), 0xFFAEB5BF.toInt()),
+        floatArrayOf(0f, 0.3f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val glassRimChosenLight = LinearGradient(
+        0f, 0f, 0f, 1f,
+        intArrayOf(0xFF9CC0F5.toInt(), 0xFF6E97D8.toInt(), 0xFF5B82C2.toInt()),
+        floatArrayOf(0f, 0.3f, 1f),
+        Shader.TileMode.CLAMP,
+    )
+    private val sheenLight = LinearGradient(0f, 0f, 0f, 1f, 0x80FFFFFF.toInt(), 0x00FFFFFF, Shader.TileMode.CLAMP)
+
+    /** Glass over the blurred app (see KeyboardTheme.seeThrough): keys let a little of it through. */
+    var seeThrough = false
+
     private val outlines = object : LinkedHashMap<Long, Pair<Path, Path>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Pair<Path, Path>>) = size > 400
     }
@@ -173,25 +199,51 @@ class SurfacePainter(private val density: Float) {
     }
 
     private fun drawGlass(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, withSheen: Boolean, frosted: Boolean) {
-        val body = if (state == SurfaceState.PRESSED) glassPressed else glassFill
+        val light = sheetLight
+        val pressed = state == SurfaceState.PRESSED
+        if (light && !pressed) {
+            // Milky glass lies on pale glass: a soft shadow under it, so the white keys stand off the page.
+            fill.shader = null
+            for (i in 1..2) {
+                fill.color = 0x14202A36
+                canvas.save()
+                canvas.translate(0f, 0.8f * i * density)
+                canvas.drawRoundRect(rect, radius, radius, fill)
+                canvas.restore()
+            }
+        }
+        val body = when {
+            light && pressed -> glassPressedLight
+            light -> glassFillLight
+            pressed -> glassPressed
+            else -> glassFill
+        }
         stretch(body, rect)
         fill.shader = body
         fill.alpha = 0xFF
-        // Frosted (over blurred keys): the dark glass lets a little of what is behind show through.
+        // Frosted (over blurred keys) or over the blurred app: the glass lets a little of what is behind show
+        // through.
         if (frosted) fill.alpha = 0xB8
+        else if (seeThrough) fill.alpha = if (light) 0xD0 else 0xC4
         canvas.drawRoundRect(rect, radius, radius, fill)
         fill.alpha = 0xFF
-        if (withSheen) {
-            // Soft light inside the top, gone by half height (at most 120 dp).
-            stretch(sheen, rect, minOf(rect.height() / 2, 120 * density))
-            fill.shader = sheen
+        if (withSheen || light) {
+            // Soft light inside the top, gone by half height (at most 120 dp); milky glass always has it.
+            val glow = if (light) sheenLight else sheen
+            stretch(glow, rect, minOf(rect.height() / 2, 120 * density))
+            fill.shader = glow
             fill.alpha = 0xFF
             fill.alpha = (255 * brightness).toInt()
             canvas.drawRoundRect(rect, radius, radius, fill)
             fill.alpha = 0xFF
         }
         fill.shader = null
-        val edge = if (state == SurfaceState.SELECTED) glassRimChosen else glassRim
+        val edge = when {
+            light && state == SurfaceState.SELECTED -> glassRimChosenLight
+            light -> glassRimLight
+            state == SurfaceState.SELECTED -> glassRimChosen
+            else -> glassRim
+        }
         stretch(edge, rect)
         rim.shader = edge
         rim.alpha = (255 * brightness).toInt()
@@ -201,8 +253,8 @@ class SurfacePainter(private val density: Float) {
     }
 
     /**
-     * The sheet style's light tone: cream paper pieces with graphite pencil on parchment. Off: graphite pieces
-     * with white pencil on graphite paper.
+     * The light tone: for the sheet, cream paper pieces with graphite pencil on parchment (off: graphite pieces
+     * with white pencil on graphite paper); for glass, milky white glass (off: black glass).
      */
     var sheetLight = false
 

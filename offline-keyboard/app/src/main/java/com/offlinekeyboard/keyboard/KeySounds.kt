@@ -10,14 +10,26 @@ import com.offlinekeyboard.R
  * The sounds of the Black Typewriter style, from recordings of a real machine (see tools/sounds): a strike
  * for keys (five slightly different ones, so fast typing does not sound like a loop), a duller one for the
  * space bar, the carriage return for Enter, the margin bell near the end of a line and a new sheet of paper
- * going in. Silent while the phone is on silent or vibrate.
+ * going in; the sheet's pencil and eraser; the glass's bubble wrap. Silent while the phone is on silent or
+ * vibrate.
  */
 class KeySounds(private val context: Context) {
 
     enum class Kind { KEY, SPACE, RETURN, DELETE, BELL, SHEET }
 
-    /** Whose sounds: the typewriter's, or the sheet's pencil and eraser. */
-    enum class Voice { TYPEWRITER, SHEET }
+    /** Whose sounds: the typewriter's, the sheet's pencil and eraser, or the glass's bubble wrap. */
+    enum class Voice { TYPEWRITER, SHEET, GLASS }
+
+    companion object {
+        /** The sounds of a keyboard style. */
+        fun voiceOf(mode: ThemeMode): Voice = when {
+            mode.sheet -> Voice.SHEET
+            mode.glass -> Voice.GLASS
+            else -> Voice.TYPEWRITER
+        }
+
+        private const val WARM_VOLUME = 0.001f
+    }
 
     /** The style's sounds now in use (set with the style). */
     var voice = Voice.TYPEWRITER
@@ -38,7 +50,7 @@ class KeySounds(private val context: Context) {
     init {
         pool.setOnLoadCompleteListener { _, id, status ->
             if (status == 0) loaded += id
-            if (warmWanted && (id == keys.firstOrNull() || id == pencil.firstOrNull())) warm()
+            if (warmWanted && (id == keys.firstOrNull() || id == pencil.firstOrNull() || id == bubbles.firstOrNull())) warm()
         }
     }
 
@@ -58,6 +70,17 @@ class KeySounds(private val context: Context) {
     private val stroke = pool.load(context, R.raw.sh_return, 1)
     private val erase = pool.load(context, R.raw.sh_erase, 1)
     private val rubbing = pool.load(context, R.raw.sh_erase_hold, 1)
+    // The glass: ten bubble-wrap pops (never the same twice in a row), a deeper one for space, three in a row
+    // for Enter, the air going out for Backspace, and the wrap rustling while Backspace is held.
+    private val bubbles = listOf(
+        R.raw.gl_key_01, R.raw.gl_key_02, R.raw.gl_key_03, R.raw.gl_key_04, R.raw.gl_key_05,
+        R.raw.gl_key_06, R.raw.gl_key_07, R.raw.gl_key_08, R.raw.gl_key_09, R.raw.gl_key_10,
+    ).map { pool.load(context, it, 1) }
+    private val pop = pool.load(context, R.raw.gl_space, 1)
+    private val pops = pool.load(context, R.raw.gl_return, 1)
+    private val air = pool.load(context, R.raw.gl_delete, 1)
+    private val rustle = pool.load(context, R.raw.gl_delete_hold, 1)
+    private var lastBubble = -1
     private var lastPencil = -1
     private var rubbingStream = 0
     private val audio = context.getSystemService(AudioManager::class.java)
@@ -67,6 +90,22 @@ class KeySounds(private val context: Context) {
     fun play(kind: Kind, volume: Float) {
         if (volume <= 0f) return
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        if (voice == Voice.GLASS) {
+            val id = when (kind) {
+                Kind.KEY -> {
+                    var i = (Math.random() * bubbles.size).toInt().coerceIn(0, bubbles.size - 1)
+                    if (i == lastBubble) i = (i + 1) % bubbles.size
+                    lastBubble = i
+                    bubbles[i]
+                }
+                Kind.SPACE -> pop
+                Kind.RETURN -> pops
+                Kind.DELETE -> air
+                Kind.BELL, Kind.SHEET -> return
+            }
+            pool.play(id, volume, volume, 1, 0, 1f)
+            return
+        }
         if (voice == Voice.SHEET) {
             val id = when (kind) {
                 Kind.KEY -> {
@@ -101,7 +140,11 @@ class KeySounds(private val context: Context) {
      * the sounds are still loading.
      */
     fun warm() {
-        val id = if (voice == Voice.SHEET) pencil.first() else keys.first()
+        val id = when (voice) {
+            Voice.SHEET -> pencil.first()
+            Voice.GLASS -> bubbles.first()
+            Voice.TYPEWRITER -> keys.first()
+        }
         if (id !in loaded) { warmWanted = true; return }
         warmWanted = false
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
@@ -113,9 +156,9 @@ class KeySounds(private val context: Context) {
      * letter; [stopRubbing] when it is let go. Nothing for the typewriter.
      */
     fun startRubbing(volume: Float): Boolean {
-        if (voice != Voice.SHEET || volume <= 0f) return false
+        if (voice == Voice.TYPEWRITER || volume <= 0f) return false
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return true
-        if (rubbingStream == 0) rubbingStream = pool.play(rubbing, volume, volume, 1, -1, 1f)
+        if (rubbingStream == 0) rubbingStream = pool.play(if (voice == Voice.GLASS) rustle else rubbing, volume, volume, 1, -1, 1f)
         return true
     }
 
@@ -128,7 +171,4 @@ class KeySounds(private val context: Context) {
 
     fun release() = pool.release()
 
-    private companion object {
-        const val WARM_VOLUME = 0.001f
-    }
 }

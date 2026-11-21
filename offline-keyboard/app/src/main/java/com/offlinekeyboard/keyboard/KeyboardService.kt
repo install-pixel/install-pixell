@@ -175,6 +175,9 @@ class KeyboardService : InputMethodService(),
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) blurListener?.let { l ->
+            runCatching { getSystemService(WindowManager::class.java)?.removeCrossWindowBlurEnabledListener(l) }
+        }
         runCatching { getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(clipboardWatcher) }
         speech.cancel()
         speechEngine.release()
@@ -217,6 +220,7 @@ class KeyboardService : InputMethodService(),
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
         }
         if (old.themeMode != new.themeMode || old.keyBrightness != new.keyBrightness) {
+            updateBlur()
             rootView?.applyTheme(currentTheme())
             lightBars(currentTheme())
         }
@@ -249,6 +253,11 @@ class KeyboardService : InputMethodService(),
                 }
             }
         }
+        // The window's size decides whether the blur fits it (see updateBlur).
+        root.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (bottom - top != oldBottom - oldTop) updateBlur()
+        }
+        updateBlur()
         render()
         return root
     }
@@ -259,7 +268,45 @@ class KeyboardService : InputMethodService(),
         runCatching { androidx.core.view.WindowCompat.getInsetsController(w, w.decorView).isAppearanceLightNavigationBars = !theme.dark }
     }
 
-    private fun currentTheme() = KeyboardTheme.resolve(settings.themeMode, settings.keyBrightness)
+    private fun currentTheme(): KeyboardTheme {
+        val theme = KeyboardTheme.resolve(settings.themeMode, settings.keyBrightness)
+        return if (blurring) theme.overBlur() else theme
+    }
+
+    /** Whether the system blurs the app behind the keyboard now (glass, Android 12+, where the phone can). */
+    private var blurring = false
+    private var blurListener: java.util.function.Consumer<Boolean>? = null
+
+    /**
+     * Glass lies over the app, blurred: turns the blur behind the keyboard window on for the glass styles where
+     * the phone allows it (cross-window blur; battery saver can turn it off, and back on), off otherwise. The
+     * system blurs the whole window, so only while the window is no taller than the keyboard itself.
+     */
+    private fun updateBlur() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        val w = window.window ?: return
+        val wm = getSystemService(WindowManager::class.java) ?: return
+        if (blurListener == null) {
+            val listener = java.util.function.Consumer<Boolean> { handler.post { updateBlur() } }
+            blurListener = listener
+            runCatching { wm.addCrossWindowBlurEnabledListener(mainExecutor, listener) }
+        }
+        val root = rootView
+        val decor = w.peekDecorView()
+        // Only once both are laid out: a window taller than the keys would blur the app above them too.
+        val fits = root != null && decor != null && root.height > 0 &&
+            decor.height - root.height <= (4 * resources.displayMetrics.density).toInt()
+        val allowed = runCatching { wm.isCrossWindowBlurEnabled }.getOrDefault(false)
+        val want = settings.themeMode.glass && allowed && fits
+        if (settings.themeMode.glass) android.util.Log.i("OffKeyBlur", "window=${decor?.height} keys=${root?.height} allowed=$allowed blur=$want")
+        if (want == blurring) return
+        blurring = want
+        runCatching {
+            if (want) w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            w.setBackgroundBlurRadius(if (want) (BLUR_DP * resources.displayMetrics.density).toInt() else 0)
+        }
+        rootView?.applyTheme(currentTheme())
+    }
 
     /**
      * The fading band at the top of the keyboard is not part of the keyboard for the app: the app is laid
@@ -297,7 +344,7 @@ class KeyboardService : InputMethodService(),
         carriageColumn = -1
         lastShown = null
         if (settings.learnTouch) touchModel.refresh()
-        keySounds?.voice = if (settings.themeMode.sheet) KeySounds.Voice.SHEET else KeySounds.Voice.TYPEWRITER
+        keySounds?.voice = KeySounds.voiceOf(settings.themeMode)
         if (soundStyle && settings.keySound) keySounds?.warm()
         selStart = info?.let { minOf(it.initialSelStart, it.initialSelEnd) } ?: -1
         selEnd = info?.let { maxOf(it.initialSelStart, it.initialSelEnd) } ?: -1
@@ -1005,8 +1052,8 @@ class KeyboardService : InputMethodService(),
 
     // ------------------------------------------------------------------ sound
 
-    /** The styles that have key sounds (only the typewriter for now); the sound button shows in them. */
-    private val soundStyle: Boolean get() = settings.themeMode.typewriter || settings.themeMode.sheet
+    /** The styles that have key sounds (all of them since 1.17.0); the sound button shows in them. */
+    private val soundStyle: Boolean get() = true
 
     override fun onToolbarSound() {
         val on = !settings.keySound
@@ -1611,7 +1658,7 @@ class KeyboardService : InputMethodService(),
         root.keyboardView.touchModel = if (settings.learnTouch) touchModel else null
         root.keyboardView.touchLearning = !ownField
         if (keySounds == null) keySounds = runCatching { KeySounds(this) }.getOrNull()
-        keySounds?.voice = if (settings.themeMode.sheet) KeySounds.Voice.SHEET else KeySounds.Voice.TYPEWRITER
+        keySounds?.voice = KeySounds.voiceOf(settings.themeMode)
         root.keyboardView.keySounds = keySounds
         root.keyboardView.soundVolume = if (settings.keySound && soundStyle) settings.keySoundVolume else 0f
         root.compact = settings.compactToolbar
@@ -1704,6 +1751,8 @@ class KeyboardService : InputMethodService(),
             private set
 
         private const val STARTUP_SETTINGS_TIMEOUT_MS = 500L
+        /** How far the app behind the glass is blurred. */
+        private const val BLUR_DP = 26
         private const val MOBILE_KEY_DP = 52f
         private const val WORD_CONTEXT = 64
         private const val CHECK_WARNING_MS = 8000L

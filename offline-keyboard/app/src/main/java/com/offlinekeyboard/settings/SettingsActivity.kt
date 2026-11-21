@@ -516,7 +516,7 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                 }
             }
             RowDivider()
-            // The typewriter's key sounds (Black Typewriter only for now).
+            // The style's key sounds: typewriter, pencil or bubble wrap.
             SwitchRow(stringResource(R.string.key_sound), s.keySound) { v -> update { it.copy(keySound = v) } }
             if (s.keySound) {
                 Text(
@@ -529,13 +529,16 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                     value = s.keySoundVolume,
                     onValueChange = { v ->
                         update { it.copy(keySoundVolume = v) }
+                        sounds.voice = com.offlinekeyboard.keyboard.KeySounds.voiceOf(s.themeMode)
                         sounds.play(com.offlinekeyboard.keyboard.KeySounds.Kind.KEY, v)
                     },
                     valueRange = 0.1f..1f,
                     steps = 8,
                 )
-                SwitchRow(stringResource(R.string.typewriter_bell), s.typewriterBell) { v ->
-                    update { it.copy(typewriterBell = v) }
+                if (s.themeMode.typewriter) {
+                    SwitchRow(stringResource(R.string.typewriter_bell), s.typewriterBell) { v ->
+                        update { it.copy(typewriterBell = v) }
+                    }
                 }
             }
             Text(stringResource(R.string.key_sound_hint), style = MaterialTheme.typography.bodySmall)

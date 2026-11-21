@@ -6,7 +6,10 @@ package com.offlinekeyboard.keyboard
  * black paper. Since 1.2 they are the only themes; the old system/light/dark/OLED settings open as GLASS.
  */
 enum class ThemeMode {
-    GLASS, SHEET, TYPEWRITER, MILK_TYPEWRITER, SHEET_LIGHT;
+    GLASS, SHEET, TYPEWRITER, MILK_TYPEWRITER, SHEET_LIGHT, GLASS_LIGHT;
+
+    /** Either glass (dark or milky). */
+    val glass: Boolean get() = this == GLASS || this == GLASS_LIGHT
 
     /** Either typewriter: they share the machine, the paper strip and the sounds. */
     val typewriter: Boolean get() = this == TYPEWRITER || this == MILK_TYPEWRITER
@@ -15,7 +18,7 @@ enum class ThemeMode {
     val sheet: Boolean get() = this == SHEET || this == SHEET_LIGHT
 
     /** A light tone of its style. */
-    val light: Boolean get() = this == MILK_TYPEWRITER || this == SHEET_LIGHT
+    val light: Boolean get() = this == MILK_TYPEWRITER || this == SHEET_LIGHT || this == GLASS_LIGHT
 }
 
 /**
@@ -52,7 +55,22 @@ data class KeyboardTheme(
     val brightness: Float = 1f,
     /** The milky typewriter: cream keys in bronze, a light machine, parchment in the strip. */
     val milk: Boolean = false,
+    /**
+     * Glass over the app, blurred by the system behind the keyboard (Android 12+, where the phone allows it):
+     * the background is see-through (see [overBlur]) and the keys let a little of it through.
+     */
+    val seeThrough: Boolean = false,
 ) {
+    /**
+     * This glass theme laid over the blurred app: the background keeps its colour but lets the blur through
+     * (dark glass darkens it, milky glass whitens it). Other styles are returned as they are.
+     */
+    fun overBlur(): KeyboardTheme {
+        if (style != SurfaceStyle.GLASS || seeThrough) return this
+        val alpha = if (dark) 0xA6 else 0xB8
+        return copy(background = (background and 0x00FFFFFF) or (alpha shl 24), seeThrough = true)
+    }
+
     /**
      * The same theme dimmed to [value]: the painters scale frames, rims and light by it, labels and icons
      * dim only a quarter as much, so the keys stay easy to read at the lowest setting.
@@ -73,6 +91,7 @@ data class KeyboardTheme(
             ThemeMode.TYPEWRITER -> typewriter()
             ThemeMode.MILK_TYPEWRITER -> milkTypewriter()
             ThemeMode.SHEET_LIGHT -> sheetLight()
+            ThemeMode.GLASS_LIGHT -> glassLight()
         }.withBrightness(brightness)
 
         /**
@@ -101,6 +120,32 @@ data class KeyboardTheme(
             listening = LISTENING,
             fontRes = com.offlinekeyboard.R.font.exo2_regular,
         )
+
+        /**
+         * «Скло · Світла»: milky frosted glass: white glass keys lit from above with a bright top rim and a soft
+         * shadow, on pale glass that whitens the blurred app behind (where the phone blurs). Graphite letters,
+         * Exo 2, Enter in blue.
+         */
+        fun glassLight() = KeyboardTheme(
+            dark = false,
+            background = GLASS_MILK,
+            key = 0xFFF8F9FB.toInt(),
+            function = 0xFFEFF1F4.toInt(),
+            pressed = 0xFFD3D8DF.toInt(),
+            accent = 0xFF5F6670.toInt(),
+            text = GLASS_INK,
+            onAccent = 0xFFFFFFFF.toInt(),
+            hint = 0xFF6B717A.toInt(),
+            popup = 0xFFFAFBFC.toInt(),
+            style = SurfaceStyle.GLASS,
+            confirm = 0xFF2B63C6.toInt(),
+            listening = LISTENING,
+            fontRes = com.offlinekeyboard.R.font.exo2_regular,
+        )
+
+        /** The milky glass's page and letters. */
+        const val GLASS_MILK = 0xFFE6E9ED.toInt()
+        const val GLASS_INK = 0xFF1D2127.toInt()
 
         /**
          * «Аркуш · Темна»: white pencil on graphite paper; every key a piece of paper cut out by hand, with its

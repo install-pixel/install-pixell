@@ -496,7 +496,7 @@ class KeyboardUiTest {
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight())) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight(), "glass-light" to KeyboardTheme.glassLight(), "glass-over" to KeyboardTheme.glass().overBlur(), "glass-light-over" to KeyboardTheme.glassLight().overBlur())) {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
@@ -527,6 +527,10 @@ class KeyboardUiTest {
     /** The settings in the light sketch (graphite pencil on parchment): screenshots. */
     @Test
     fun settingsInSheetLight() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.SHEET_LIGHT)
+
+    /** The settings in the milky glass: screenshots. */
+    @Test
+    fun settingsInGlassLight() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.GLASS_LIGHT)
 
     /** The settings in the milky typewriter's light colours: screenshots. */
     @Test

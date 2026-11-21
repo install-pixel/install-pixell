@@ -67,6 +67,7 @@ class ToolbarButton(context: Context) : View(context) {
         surfaces.brightness = theme.brightness
         surfaces.milk = theme.milk
         surfaces.sheetLight = !theme.dark
+        surfaces.seeThrough = theme.seeThrough
         textScale = theme.textScale
         fun font(id: Int) = runCatching { ResourcesCompat.getFont(context, id) }.getOrNull()
         when (theme.style) {

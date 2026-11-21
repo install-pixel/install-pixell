@@ -285,6 +285,7 @@ class Touchpad(context: Context) : View(context) {
         surfaces.brightness = theme.brightness
         surfaces.milk = theme.milk
         surfaces.sheetLight = !theme.dark
+        surfaces.seeThrough = theme.seeThrough
         fillColor = theme.key
         ink = theme.text
         label.color = (theme.text and 0x00FFFFFF) or 0x40000000

@@ -321,7 +321,7 @@
     <string name="help_emoji_body">• Hold the comma and let go — the emoji panel; arrows turn pages, the first page — the most used.\n• Your own emoji and smileys — «Emoji and stickers» → «My emoji»; they get a ★ page.\n• OffKey stickers and your own animated ones — there too; they go into apps that accept them.</string>
     <string name="help_dictionary">Dictionary and backup</string>
     <string name="help_dictionary_body">• «My dictionary» — add and remove your own words for suggestions.\n• Remembering typed words — turned on there; words stay on the phone.\n• Import — .txt (a word per line, into the language selected at the top) or JSON {\"uk\": [...], \"pl\": [...]}.\n• Export — all your words as JSON.\n• Full backup — «About» → «Backup»: settings, emoji, shortcuts, dictionary, glossary. Models are not included.</string>
-    <string name="theme_glass_desc">Black glass with soft highlights</string>
+    <string name="theme_glass_desc">Glass with soft highlights: black or milky; the app behind it is blurred where the phone can</string>
     <string name="theme_sheet_desc">Pencil on paper: keys are pieces of paper cut out by hand</string>
     <string name="theme_typewriter">Typewriter</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys on levers, worn by years</string>
@@ -342,7 +342,7 @@
     <string name="clipboard_unpinned">Unpinned</string>
     <string name="key_sound">Key sounds</string>
     <string name="key_sound_volume">Volume: %1$d%%</string>
-    <string name="key_sound_hint">Typewriter: keys click, the space bar thumps, Enter is the carriage return. Sketch: a pencil writes, the eraser rubs out. Silent while the phone is on silent or vibrate.</string>
+    <string name="key_sound_hint">Typewriter: keys click, the space bar thumps, Enter is the carriage return. Sketch: a pencil writes, the eraser rubs out. Glass: bubble wrap pops. Silent while the phone is on silent or vibrate.</string>
     <string name="onb_title">Set up OffKey</string>
     <string name="onb_how">How should the keyboard be set up?</string>
     <string name="onb_recommended">Recommended</string>

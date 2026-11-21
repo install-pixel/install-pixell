@@ -427,7 +427,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      * (see KeyboardService.onComputeInsets).
      */
     // On a light keyboard the band is shorter: light paper fading over a dark app reads as a smear.
-    val fadeHeight get() = dp(if (theme.dark) FADE_DP else FADE_LIGHT_DP)
+    // Over the blurred app there is none: the system blurs the whole keyboard window, so a band would show
+    // a hard edge of blur; the glass ends in its lit top rim instead.
+    val fadeHeight get() = if (theme.seeThrough) 0 else dp(if (theme.dark) FADE_DP else FADE_LIGHT_DP)
     private val fadePaint = Paint()
     private var fadeColor = 0
 
@@ -435,16 +437,27 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val color = fadeColor
         // On the typewriter the soft edge fades into the black paper of the strip, not into the keyboard.
         val fadeTo = if (theme.style == SurfaceStyle.TYPEWRITER) PaperTexture.edgeColor(theme.milk) else color
-        if (fadePaint.shader == null || fadePaint.color != fadeTo) {
-            fadePaint.color = fadeTo
-            fadePaint.shader = LinearGradient(
-                0f, 0f, 0f, fadeHeight.toFloat(),
-                intArrayOf(fadeTo and 0x00FFFFFF, fadeTo), null, Shader.TileMode.CLAMP,
-            )
+        if (fadeHeight > 0) {
+            if (fadePaint.shader == null || fadePaint.color != fadeTo) {
+                fadePaint.color = fadeTo
+                fadePaint.shader = LinearGradient(
+                    0f, 0f, 0f, fadeHeight.toFloat(),
+                    intArrayOf(fadeTo and 0x00FFFFFF, fadeTo), null, Shader.TileMode.CLAMP,
+                )
+            }
+            canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)
         }
-        canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)
         backgroundPaint.color = color
         canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
+        if (theme.seeThrough) {
+            // The top edge of the glass plate over the app: a line of light, and a soft light below it.
+            backgroundPaint.color = if (theme.dark) 0x47FFFFFF else 0xE6FFFFFF.toInt()
+            canvas.drawRect(0f, 0f, width.toFloat(), resources.displayMetrics.density, backgroundPaint)
+            glowPaint.shader ?: run {
+                glowPaint.shader = LinearGradient(0f, 0f, 0f, dp(GLASS_GLOW_DP).toFloat(), 0x1AFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+            }
+            canvas.drawRect(0f, 0f, width.toFloat(), dp(GLASS_GLOW_DP).toFloat(), glowPaint)
+        }
         if (theme.style == SurfaceStyle.SHEET) sheetPaper()?.let { canvas.drawBitmap(it, 0f, fadeHeight.toFloat(), null) }
         if (theme.style == SurfaceStyle.TYPEWRITER && ::infoRow.isInitialized && infoRow.height > 0) {
             // The paper runs the whole width, past the keys' sides (landscape: up to the camera cutout).
@@ -453,6 +466,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private val backgroundPaint = Paint()
+    private val glowPaint = Paint()
 
     /** The strip (text, suggestions and buttons): on the typewriter it lies on black paper. */
     private lateinit var infoRow: LinearLayout
@@ -1190,6 +1204,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val ECHO_WORD = Regex(ECHO_WORD_PATTERN)
         const val FADE_DP = 14
         const val FADE_LIGHT_DP = 6
+        const val GLASS_GLOW_DP = 24
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
         /** The modes button's plate in the strip. */
