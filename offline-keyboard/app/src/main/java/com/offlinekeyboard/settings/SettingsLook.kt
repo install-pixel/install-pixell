@@ -399,9 +399,9 @@ internal object PaperState {
             val main = android.os.Handler(android.os.Looper.getMainLooper())
             com.offlinekeyboard.keyboard.PaperSheets.prepare(app, light) { main.post { ready++ } }
             Thread {
-                // Half the screen's pixels, drawn stretched: the paper is soft enough, and it is made quickly.
+                // Three quarters of the screen's pixels, drawn stretched: soft enough, and made quickly.
                 val page = runCatching {
-                    com.offlinekeyboard.keyboard.PaperTexture.journal(metrics.widthPixels / 2, metrics.heightPixels / 2, metrics.density / 2, light)
+                    com.offlinekeyboard.keyboard.PaperTexture.journal(metrics.widthPixels * 3 / 4, metrics.heightPixels * 3 / 4, metrics.density * 0.75f, light)
                 }.getOrNull()
                 main.post {
                     making.remove(light)

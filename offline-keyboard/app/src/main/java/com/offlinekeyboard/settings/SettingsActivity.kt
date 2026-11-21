@@ -370,7 +370,17 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
                 // A fixed window: long text scrolls inside it instead of stretching the page.
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(120.dp)
+                    // The sketch: a scrap of paper of its own, not a drawn frame.
+                    .then(if (LocalLook.current == Look.SHEET) Modifier.lookSurface(14.dp, seed = 23) else Modifier),
+                colors = if (LocalLook.current == Look.SHEET) {
+                    androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                    )
+                } else {
+                    androidx.compose.material3.OutlinedTextFieldDefaults.colors()
+                },
                 // A placeholder inside the field: a floating label would cut the frame.
                 placeholder = { Text(stringResource(R.string.try_hint)) },
                 // Sentence capitals, like a message field, so every typing rule can be tried here.

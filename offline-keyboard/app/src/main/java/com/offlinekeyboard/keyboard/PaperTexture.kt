@@ -147,7 +147,8 @@ object PaperTexture {
             strokeWidth = maxOf(1f, 0.4f * density)
             strokeCap = android.graphics.Paint.Cap.ROUND
         }
-        repeat((width * height / (900 * density * density / 7.5f)).toInt().coerceAtMost(6000)) {
+        paint.strokeWidth = maxOf(0.6f, 0.3f * density)
+        repeat((width * height / (900 * density * density / 5f)).toInt().coerceAtMost(4500)) {
             val x = random.nextFloat() * width
             val y = plain + random.nextFloat() * (height - plain)
             val length = (3f + random.nextFloat() * 11f) * density
@@ -155,7 +156,8 @@ object PaperTexture {
             val bend = (random.nextFloat() - 0.5f) * 0.6f
             val mx = x + cos(a) * length / 2
             val my = y + sin(a) * length / 2
-            paint.color = if (light) (((10 + random.nextInt(18)) shl 24) or 0x5A3C1E) else (((6 + random.nextInt(11)) shl 24) or 0xFFFFFF)
+            // Faint: fibres in the paper, not scratches on it (warm on the charcoal too).
+            paint.color = if (light) (((7 + random.nextInt(12)) shl 24) or 0x5A3C1E) else (((4 + random.nextInt(7)) shl 24) or 0xF2E6D2)
             canvas.drawLine(x, y, mx, my, paint)
             canvas.drawLine(mx, my, mx + cos(a + bend) * length / 2, my + sin(a + bend) * length / 2, paint)
         }
@@ -284,8 +286,8 @@ object PaperTexture {
         val baseG = (base shr 8) and 0xFF
         val baseB = base and 0xFF
         // Browns: darkening takes more blue and green than red (charcoal stays neutral).
-        val kg = if (warm) 1.15f else 1.02f
-        val kb = if (warm) 1.35f else 1.06f
+        val kg = if (warm) 1.15f else 1.05f
+        val kb = if (warm) 1.35f else 1.15f
         for (y in 0 until height) {
             val texture = if (plainTop) (y / plain).coerceAtMost(1f) else 1f
             for (x in 0 until width) {
@@ -304,8 +306,9 @@ object PaperTexture {
                 }
                 val v = dark * texture * contrast
                 val r = (baseR + v).toInt().coerceIn(0, 255)
-                val g = (baseG + v * kg).toInt().coerceIn(0, 255)
-                val b = (baseB + v * kb).toInt().coerceIn(0, 255)
+                // Charcoal stays warm both ways: lighter takes less blue than red, as darker takes more.
+                val g = (baseG + v * (if (warm || v < 0) kg else 0.93f)).toInt().coerceIn(0, 255)
+                val b = (baseB + v * (if (warm || v < 0) kb else 0.8f)).toInt().coerceIn(0, 255)
                 pixels[y * width + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
             }
         }

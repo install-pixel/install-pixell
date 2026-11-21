@@ -521,6 +521,9 @@ class KeyboardView(context: Context) : View(context) {
             if (icon != null) {
                 val size = if (typewriter) {
                     minOf(face.height() * 0.56f, face.width() * 0.62f, dp(24f))
+                } else if (theme.style == SurfaceStyle.SHEET) {
+                    // Inside the paper piece's uneven edge.
+                    minOf(inner.height() * 0.44f, inner.width() * 0.54f, dp(24f))
                 } else {
                     minOf(inner.height() * 0.48f, inner.width() * 0.62f, dp(26f))
                 }
@@ -543,7 +546,10 @@ class KeyboardView(context: Context) : View(context) {
                     hintPaint.textAlign = Paint.Align.RIGHT
                 } else {
                     hintPaint.textSize = inner.height() * 0.19f * (1f + (theme.textScale - 1f) / 2f)
-                    canvas.drawText(hint, inner.right - minOf(inner.width() * 0.12f, dp(5f)), inner.top + hintPaint.textSize + dp(2.5f), hintPaint)
+                    // On the sketch's paper piece a little further in: clear of its uneven edge.
+                    val inX = if (theme.style == SurfaceStyle.SHEET) maxOf(inner.width() * 0.14f, dp(6f)) else minOf(inner.width() * 0.12f, dp(5f))
+                    val inY = if (theme.style == SurfaceStyle.SHEET) dp(4.5f) else dp(2.5f)
+                    canvas.drawText(hint, inner.right - inX, inner.top + hintPaint.textSize + inY, hintPaint)
                 }
             }
             if (state == KeyHighlight.LOCKED && icon != Icon.CAPS) {

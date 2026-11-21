@@ -284,10 +284,11 @@ class SurfacePainter(private val density: Float) {
         fill.shader = null
         if (!pressed) {
             // The piece lifts a little off the page: a soft shadow, a few offset layers down and right.
-            for (i in 1..3) {
-                fill.color = if (sheetLight) 0x1C4A3A24 else 0x40000000
+            // Two layers of paper: a deeper shadow, soft at its edge, so the piece stands off the page.
+            for (i in 1..5) {
+                fill.color = if (sheetLight) 0x1E3A2A14 else 0x4A000000
                 canvas.save()
-                canvas.translate(0.35f * i * density, 0.7f * i * density)
+                canvas.translate(0.45f * i * density, 0.8f * i * density)
                 canvas.drawPath(piece, fill)
                 canvas.restore()
             }
