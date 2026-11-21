@@ -265,8 +265,6 @@ class SurfacePainter(private val density: Float) {
         }
         val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1) or
             (if (chosen) 1L else 0L)
-        val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1) or
-            (if (chosen) 1L else 0L)
         val (main, ghost) = outlines.getOrPut(key) {
             val width = (if (chosen) 2.2f else 1.6f) * density
             Pencil.tapered(Pencil.loop(w, h, radius, seed, 1.1f * density), width) to
