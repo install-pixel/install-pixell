@@ -34,6 +34,8 @@ class ToolbarButton(context: Context) : View(context) {
     /** How far in from the edges a filled plate is drawn (the touch area stays the whole button). */
     var plateInset = 0f
         set(value) { if (field != value) { field = value; invalidate() } }
+    /** How small the text may shrink before it is cut (sp). */
+    var minTextSp = MIN_TEXT_SP
     /** The icon's size against the usual one (a busy icon a little smaller). */
     var iconScale = 1f
         set(value) { if (field != value) { field = value; invalidate() } }
@@ -106,11 +108,18 @@ class ToolbarButton(context: Context) : View(context) {
         textPaint.textSize = textSizeSp * textScale * scaledDensity
         textPaint.typeface = if (bold) boldFace else regular
         val gap = 5f * density
-        // Narrow buttons (the remote's row on a small phone) keep less margin, so "Esc" stays whole.
-        val available = width - minOf(10f * density, width * 0.12f) - (if (icon != null) iconSize + gap else 0f)
-        // Shrink a little before cutting the text, so narrow phones still show whole words.
+        // The text stays inside the plate: on the typewriter inside its metal rim, elsewhere with a little
+        // margin (less on narrow buttons, so "Esc" stays whole on the remote's row).
+        val room = if (fill != 0) plateWidth else width.toFloat()
+        val margin = if (fill != 0 && style == SurfaceStyle.TYPEWRITER) {
+            2f * (surfaces.typewriterRim(bounds.height()) + 1.5f * density)
+        } else {
+            minOf(10f * density, room * 0.12f)
+        }
+        val available = room - margin - (if (icon != null) iconSize + gap else 0f)
+        // Shrink before cutting the text, so narrow phones still show whole words.
         var size = textSizeSp * textScale
-        while (size > MIN_TEXT_SP && textPaint.measureText(text) > available) {
+        while (size > minTextSp && textPaint.measureText(text) > available) {
             size -= 0.5f
             textPaint.textSize = size * scaledDensity
         }

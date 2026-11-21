@@ -115,7 +115,7 @@ class KeySounds(private val context: Context) {
     fun startRubbing(volume: Float): Boolean {
         if (voice != Voice.SHEET || volume <= 0f) return false
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return true
-        if (rubbingStream == 0) rubbingStream = pool.play(rubbing, volume * 0.8f, volume * 0.8f, 1, -1, 1f)
+        if (rubbingStream == 0) rubbingStream = pool.play(rubbing, volume, volume, 1, -1, 1f)
         return true
     }
 

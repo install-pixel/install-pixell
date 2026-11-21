@@ -426,7 +426,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      * of a hard line between the app and the keyboard. It is not touchable and does not shrink the app
      * (see KeyboardService.onComputeInsets).
      */
-    val fadeHeight = dp(FADE_DP)
+    // On a light keyboard the band is shorter: light paper fading over a dark app reads as a smear.
+    val fadeHeight get() = dp(if (theme.dark) FADE_DP else FADE_LIGHT_DP)
     private val fadePaint = Paint()
     private var fadeColor = 0
 
@@ -805,6 +806,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         fadeColor = value.background
         fadePaint.shader = null
+        updateBottomSpace()
         applyPaperToText()
         reInk = true
         invalidate()
@@ -1187,6 +1189,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private companion object {
         val ECHO_WORD = Regex(ECHO_WORD_PATTERN)
         const val FADE_DP = 14
+        const val FADE_LIGHT_DP = 6
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
         /** The modes button's plate in the strip. */
