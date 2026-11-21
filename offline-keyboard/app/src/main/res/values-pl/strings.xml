@@ -321,7 +321,7 @@
     <string name="help_emoji_body">• Przytrzymaj przecinek i puść — panel emoji; strzałki przewracają strony, pierwsza — najczęstsze.\n• Własne emoji i emotikony — «Emoji i naklejki» → «Moje emoji»; mają stronę ★.\n• Naklejki OffKey i własne animowane — tamże; trafiają do aplikacji, które je przyjmują.</string>
     <string name="help_dictionary">Słownik i kopia zapasowa</string>
     <string name="help_dictionary_body">• «Mój słownik» — dodawaj i usuwaj własne słowa do podpowiedzi.\n• Zapamiętywanie wpisanych słów — włącza się tamże; słowa zostają na telefonie.\n• Import — .txt (słowo w wierszu, do języka wybranego u góry) lub JSON {\"uk\": [...], \"pl\": [...]}.\n• Eksport — wszystkie Twoje słowa w JSON.\n• Pełna kopia — «O aplikacji» → «Kopia zapasowa»: ustawienia, emoji, skróty, słownik, glosariusz. Modele nie są dołączone.</string>
-    <string name="theme_glass_desc">Czarne szkło z miękkimi odblaskami</string>
+    <string name="theme_glass_desc">Szkło z miękkimi odblaskami: czarne albo mleczne; aplikacja za nim rozmyta, gdzie telefon na to pozwala</string>
     <string name="theme_sheet_desc">Ołówek na papierze: klawisze to ręcznie wycięte karteczki</string>
     <string name="theme_typewriter">Typewriter</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze na dźwigniach, wytarte latami</string>
@@ -342,7 +342,7 @@
     <string name="clipboard_unpinned">Odpięto</string>
     <string name="key_sound">Dźwięki klawiszy</string>
     <string name="key_sound_volume">Głośność: %1$d%%</string>
-    <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Cicho, gdy telefon jest wyciszony lub na wibracjach.</string>
+    <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Glass: pękają bąbelki folii. Cicho, gdy telefon jest wyciszony lub na wibracjach.</string>
     <string name="onb_title">Konfiguracja OffKey</string>
     <string name="onb_how">Jak skonfigurować klawiaturę?</string>
     <string name="onb_recommended">Zalecane</string>

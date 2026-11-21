@@ -86,7 +86,10 @@ internal fun HandSlider(
             if (x > start) drawLine(ink.copy(alpha = 0.9f), Offset(start, y), Offset(x, y), 3.dp.toPx(), cap = StrokeCap.Round)
             val r = 9.dp.toPx()
             // The knob: a light rim under a glass ball lit from above (two-stop gradients only, see glassFrame).
-            if (Tone.light) {
+            if (Tone.frost) {
+                drawCircle(Color(0xFFAEB5BF), r, Offset(x, y))
+                drawCircle(Brush.verticalGradient(listOf(Color.White, Color(0xFFD5DAE0)), startY = y - r, endY = y + r), r - 1.2.dp.toPx(), Offset(x, y))
+            } else if (Tone.light) {
                 drawCircle(Color(0xFF9A7A50), r, Offset(x, y))
                 drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFFBF2), Color(0xFFE2D4BA)), startY = y - r, endY = y + r), r - 1.2.dp.toPx(), Offset(x, y))
             } else {
