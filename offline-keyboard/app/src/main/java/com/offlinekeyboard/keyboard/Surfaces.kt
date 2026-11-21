@@ -293,11 +293,23 @@ class SurfacePainter(private val density: Float) {
                 canvas.restore()
             }
         }
+        // A piece with a fold in it is bent up along the fold: it stands higher off the page, a wider shadow.
+        val spotX = rect.left + sheetOffsetX + paperSpotX(seed)
+        val spotY = rect.top + sheetOffsetY + paperSpotY(seed)
+        if (!pressed && PaperSheets.journal(sheetLight)?.creaseAt(spotX + w / 2, spotY + h / 2, minOf(w, h) * 0.45f) != null) {
+            for (i in 6..9) {
+                fill.color = if (sheetLight) 0x123A2A14 else 0x2E000000
+                canvas.save()
+                canvas.translate(0.45f * i * density, 0.8f * i * density)
+                canvas.drawPath(piece, fill)
+                canvas.restore()
+            }
+        }
         fill.color = if (sheetLight) PaperTexture.KEY_PARCHMENT else PaperTexture.KEY_CHARCOAL
         canvas.drawPath(piece, fill)
         PaperSheets.shader(sheetLight)?.let { paper ->
-            // The part of the sheet where the piece lies (shifted for pieces in their own little views).
-            matrix.setTranslate(-(rect.left + sheetOffsetX), -(rect.top + sheetOffsetY))
+            // Its own part of the sheet (each piece a separate scrap: no fold runs on from one to the next).
+            matrix.setTranslate(-spotX, -spotY)
             paper.setLocalMatrix(matrix)
             fill.shader = paper
             fill.alpha = 0xFF
@@ -322,6 +334,11 @@ class SurfacePainter(private val density: Float) {
         }
         canvas.restore()
     }
+
+    /** Where in the key sheet the piece of [seed] is cut from, beyond its place: every piece somewhere else. */
+    fun paperSpotX(seed: Int): Float = (((seed + 1) * 2654435761L.toInt()) ushr 20).toFloat() * density * 0.37f
+
+    fun paperSpotY(seed: Int): Float = (((seed + 7) * 40503) and 0xFFF).toFloat() * density * 0.23f
 
     /** Where in the key sheet this painter's pieces lie, beyond their own place (buttons in small views). */
     var sheetOffsetX = 0f

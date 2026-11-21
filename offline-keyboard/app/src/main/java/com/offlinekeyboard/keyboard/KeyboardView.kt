@@ -531,7 +531,9 @@ class KeyboardView(context: Context) : View(context) {
             } else {
                 // On the most used typewriter keys the paint of the letter is a little worn.
                 val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
+                labelSeed = index
                 drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
+                labelSeed = -1
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
@@ -735,7 +737,13 @@ class KeyboardView(context: Context) : View(context) {
         if (sheet) {
             // A fold of the paper under the letter: the letter bends with it, as ink on a folded page (its two
             // halves a little apart, the half on the fold's lit side a little paler).
-            val crease = PaperSheets.journal(!theme.dark)?.creaseAt(rect.centerX() + surfaces.sheetOffsetX, rect.centerY() + surfaces.sheetOffsetY, size * 0.55f)
+            // Only on the keys themselves (their piece and its place in the paper known).
+            val seed = labelSeed
+            val crease = if (seed < 0) null else PaperSheets.journal(!theme.dark)?.creaseAt(
+                rect.centerX() + surfaces.sheetOffsetX + surfaces.paperSpotX(seed),
+                rect.centerY() + surfaces.sheetOffsetY + surfaces.paperSpotY(seed),
+                size * 0.55f,
+            )
             if (crease != null) {
                 drawBent(canvas, label, rect.centerX(), y, rect, crease.first, crease.second, size)
                 return
@@ -745,6 +753,9 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private val halfPlane = android.graphics.Path()
+
+    /** The seed of the key whose label is being drawn (its paper piece), -1 for popups and bubbles. */
+    private var labelSeed = -1
 
     private fun drawBent(canvas: Canvas, label: String, x: Float, y: Float, rect: RectF, crease: PaperTexture.Crease, off: Float, size: Float) {
         val nx = crease.nx
