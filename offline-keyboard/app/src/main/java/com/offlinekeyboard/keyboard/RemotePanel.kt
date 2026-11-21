@@ -34,6 +34,9 @@ class RemotePanel(context: Context) : LinearLayout(context) {
 
     var listener: Listener? = null
 
+    /** Called on every key and button press here: the keyboard's own click and sound. */
+    var tapFeedback: (() -> Unit)? = null
+
     /** Landscape: the panel stands beside the keyboard, so it needs no «keyboard» button. */
     var besideKeyboard = false
         set(value) { field = value; keyboardButton.visibility = if (value) View.GONE else View.VISIBLE }
@@ -110,7 +113,8 @@ class RemotePanel(context: Context) : LinearLayout(context) {
                 RowKey("", Icon.LEFT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_LEFT, 0) },
                 null, // the up and down pair, stacked in the middle
                 RowKey("", Icon.RIGHT, 1.1f, REPEAT_ARROW_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
-                RowKey("⇆") { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
+                RowKey("↵") { listener?.onRemoteKey(HID_ENTER, 0) },
+                RowKey("", Icon.WINDOWS) { listener?.onRemoteKey(HID_TAB, MOD_ALT) },
                 RowKey("Win") { listener?.onRemoteKey(0, MOD_GUI) },
                 RowKey("♪", weight = 0.9f) { media = true; fillKeyRow() },
             )
@@ -155,7 +159,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         buttons += this
         style(this)
         if (k.every <= 0L) {
-            setOnClickListener { k.action() }
+            setOnClickListener { tapFeedback?.invoke(); k.action() }
         } else {
             // A tap: once. Held: again and again while the finger stays.
             val repeat = object : Runnable {
@@ -168,7 +172,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
             val start = Runnable { repeated = true; repeat.run() }
             setOnTouchListener { v, e ->
                 when (e.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> { repeated = false; postDelayed(start, HOLD_MS) }
+                    MotionEvent.ACTION_DOWN -> { repeated = false; tapFeedback?.invoke(); postDelayed(start, HOLD_MS) }
                     MotionEvent.ACTION_UP -> {
                         removeCallbacks(start); removeCallbacks(repeat)
                         if (!repeated && e.x in 0f..v.width.toFloat() && e.y in 0f..v.height.toFloat()) k.action()
@@ -190,7 +194,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         // Held as long as the finger stays: drag with the other finger on the touchpad.
         setOnTouchListener { v, e ->
             when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { pad.held = button; listener?.onRemoteMouse(button, 0, 0, 0) }
+                MotionEvent.ACTION_DOWN -> { pad.held = button; tapFeedback?.invoke(); listener?.onRemoteMouse(button, 0, 0, 0) }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { pad.held = 0; listener?.onRemoteMouse(0, 0, 0, 0) }
             }
             v.onTouchEvent(e)
@@ -200,6 +204,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
     companion object {
         const val HID_ESC = 0x29
         const val HID_TAB = 0x2B
+        const val HID_ENTER = 0x28
         const val HID_RIGHT = 0x4F
         const val HID_LEFT = 0x50
         const val HID_DOWN = 0x51
@@ -214,7 +219,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         const val MEDIA_VOLUME_DOWN = 0xEA
         /** What the short labels mean, read out by TalkBack. */
         val DESCRIPTIONS = mapOf(
-            "⇆" to "Alt+Tab", "♪×" to "Mute", "♪−" to "Volume down", "♪+" to "Volume up",
+            "↵" to "Enter", "♪×" to "Mute", "♪−" to "Volume down", "♪+" to "Volume up",
             "|«" to "Previous track", "«" to "Seek back", "▶‖" to "Play / pause", "»" to "Seek forward",
             "»|" to "Next track", "⌨" to "Keys", "♪" to "Music keys",
         )

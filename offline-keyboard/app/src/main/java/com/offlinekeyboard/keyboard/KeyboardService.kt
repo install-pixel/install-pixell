@@ -1389,7 +1389,7 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onClipPicked(text: String) {
-        rootView?.keyboardView?.feedback()
+        rootView?.keyboardView?.panelTap()
         leaveSegment()
         currentInputConnection?.commitText(text, 1)
         rootView?.showClipboard(false)

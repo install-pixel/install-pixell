@@ -1034,6 +1034,12 @@ class KeyboardView(context: Context) : View(context) {
     private fun isLanguageKey(key: Key) = (key.action as? KeyAction.Special)?.key == SpecialKey.LANGUAGE
 
     /** Vibration for a tap, as set in settings; also used by the sticker panel. */
+    /** A press on one of the panels shown in place of the keys (remote, clipboard): click and key sound. */
+    fun panelTap() {
+        feedback()
+        if (soundVolume > 0f) keySounds?.play(KeySounds.Kind.KEY, soundVolume)
+    }
+
     fun feedback(light: Boolean = false) {
         if (!hapticFeedback) return
         val v = vibrator

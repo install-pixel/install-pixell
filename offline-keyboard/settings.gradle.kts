@@ -8,6 +8,9 @@ pluginManagement {
                 includeGroup("com.google.testing.platform")
             }
         }
+        // Google's official copy of Maven Central first: Maven Central itself often answers GitHub's shared
+        // runners with "429 Too Many Requests" and the build fails. Maven Central stays as the fallback.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/")
         mavenCentral()
         gradlePluginPortal()
     }
@@ -30,6 +33,9 @@ dependencyResolutionManagement {
                 includeGroup("com.google.testing.platform")
             }
         }
+        // Google's official copy of Maven Central first: Maven Central itself often answers GitHub's shared
+        // runners with "429 Too Many Requests" and the build fails. Maven Central stays as the fallback.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/")
         mavenCentral()
     }
 }

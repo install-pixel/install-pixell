@@ -445,7 +445,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         backgroundPaint.color = color
         canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
         if (theme.style == SurfaceStyle.TYPEWRITER && ::infoRow.isInitialized && infoRow.height > 0) {
-            paperSheet()?.let { canvas.drawBitmap(it.bitmap, infoRow.left.toFloat(), infoRow.top.toFloat(), null) }
+            // The paper runs the whole width, past the keys' sides (landscape: up to the camera cutout).
+            paperSheet()?.let { canvas.drawBitmap(it.bitmap, 0f, infoRow.top.toFloat(), null) }
         }
     }
 
@@ -461,12 +462,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     /** The black paper for the strip at its present size (made on first use and after a size change). */
     private fun paperSheet(): PaperTexture.Sheet? {
-        if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.width <= 0 || infoRow.height <= 0) return null
-        paper?.takeIf { it.bitmap.width == infoRow.width && it.bitmap.height == infoRow.height && paperMilk == theme.milk }?.let { return it }
-        val key = Triple(infoRow.width, infoRow.height, theme.milk)
+        if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || width <= 0 || infoRow.height <= 0) return null
+        paper?.takeIf { it.bitmap.width == width && it.bitmap.height == infoRow.height && paperMilk == theme.milk }?.let { return it }
+        val key = Triple(width, infoRow.height, theme.milk)
         val ready = papers[key]
         if (ready == null) {
-            makePapers(infoRow.width, infoRow.height)
+            makePapers(width, infoRow.height)
             // Until it is ready (a moment), the plain colour of the paper.
             return null
         }
@@ -584,43 +585,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         return super.drawChild(canvas, child, drawingTime)
     }
 
-    private val sidePaint = Paint()
-    private var sideFor = 0
-
-    /**
-     * Where the keys stop short of the window's side (landscape: the camera cutout, the navigation bar), the
-     * paper and the keys melt into the keyboard's colour there instead of ending in a hard edge.
-     */
-    override fun dispatchDraw(canvas: Canvas) {
-        super.dispatchDraw(canvas)
-        if (paddingLeft <= 0 && paddingRight <= 0) return
-        val w = dp(SIDE_FADE_DP).toFloat()
-        val color = fadeColor
-        if (sideFor != color) {
-            sidePaint.shader = LinearGradient(0f, 0f, 1f, 0f, color, color and 0x00FFFFFF, Shader.TileMode.CLAMP)
-            sideFor = color
-        }
-        val m = android.graphics.Matrix()
-        val top = fadeHeight.toFloat()
-        if (paddingLeft > 0) {
-            m.setScale(w, 1f); m.postTranslate(paddingLeft.toFloat(), 0f)
-            sidePaint.shader.setLocalMatrix(m)
-            canvas.drawRect(paddingLeft.toFloat(), top, paddingLeft + w, height.toFloat(), sidePaint)
-        }
-        if (paddingRight > 0) {
-            val x = (width - paddingRight).toFloat()
-            m.setScale(-w, 1f); m.postTranslate(x, 0f)
-            sidePaint.shader.setLocalMatrix(m)
-            canvas.drawRect(x - w, top, x, height.toFloat(), sidePaint)
-        }
-    }
-
     private fun drawOverStrip(canvas: Canvas) {
         if (theme.style != SurfaceStyle.TYPEWRITER || !::infoRow.isInitialized || infoRow.height <= 0) return
         val top = infoRow.top.toFloat()
         val bottom = infoRow.bottom.toFloat()
         // The browned ends of the parchment lie over the text as well.
-        paper?.overlay?.let { canvas.drawBitmap(it, infoRow.left.toFloat(), top, null) }
+        paper?.overlay?.let { canvas.drawBitmap(it, 0f, top, null) }
         val holder = dp(HOLDER_DP).toFloat()
         // On the paper's lower edge; below it a strip of the machine, then the chips or the keys.
         val holderTop = bottom - holder
@@ -686,7 +656,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun applyPaperToText() {
         val sheet = paper
         status.background = if (theme.style == SurfaceStyle.TYPEWRITER && sheet != null) {
-            PaperDrawable(sheet.bitmap, statusScroll.left.toFloat())
+            PaperDrawable(sheet.bitmap, (infoRow.left + statusScroll.left).toFloat())
         } else {
             null
         }
@@ -696,7 +666,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun foldOf(index: Int): Float {
         val sheet = paper ?: return 0f
         val advance = status.paint.measureText("0")
-        val x = statusScroll.left + status.totalPaddingLeft + (index + 0.5f) * advance
+        val x = infoRow.left + statusScroll.left + status.totalPaddingLeft + (index + 0.5f) * advance
         return sheet.foldAt(x, infoRow.height / 2f, status.textSize * 0.6f)
     }
 
@@ -749,6 +719,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         keysRow.addView(remotePanel, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
         addView(keysRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         keyboardView.typebarListener = { x, down, letter -> typebar(x, down, letter) }
+        remotePanel.tapFeedback = { keyboardView.panelTap() }
+        clipboardPanel.tapFeedback = { keyboardView.panelTap() }
         addView(stickerPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         addView(clipboardPanel, LayoutParams(LayoutParams.MATCH_PARENT, 0))
         applyTheme(theme)
@@ -1188,8 +1160,6 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val FADE_DP = 14
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
-        /** How far the keys and the paper melt into the side of the window (landscape). */
-        const val SIDE_FADE_DP = 18
         /** The modes button's plate in the strip. */
         const val MODES_BUTTON_DP = 34
         /** How far in a lit button's plate sits (Bluetooth, remote). */

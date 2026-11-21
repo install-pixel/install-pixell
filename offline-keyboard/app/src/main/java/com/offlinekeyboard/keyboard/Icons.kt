@@ -19,7 +19,7 @@ enum class Icon {
     SHIFT, SHIFT_ON, CAPS, BACKSPACE, ENTER, SEARCH, SEND, DONE, TRANSLATE,
     MIC, STOP, CLIPBOARD, GEAR, KEYBOARD, PHONE, CLOSE, HIDE,
     LEFT, RIGHT, UP, DOWN, BLUETOOTH, EMOJI, UNDO, STICKER, MODES,
-    SPEAKER, SPEAKER_OFF, TOUCHPAD,
+    SPEAKER, SPEAKER_OFF, TOUCHPAD, WINDOWS,
 }
 
 object Icons {
@@ -146,6 +146,13 @@ object Icons {
                         12f + 9f * cos(a).toFloat(), 12f + 9f * sin(a).toFloat(),
                     )
                 }
+            }
+            Icon.WINDOWS -> {
+                // Two windows, one over the other: switch between windows (Alt+Tab).
+                p.addRoundRect(RectF(3f, 7f, 15f, 17f), 1.5f, 1.5f, Path.Direction.CW)
+                p.moveTo(8f, 7f); p.lineTo(8f, 5.5f); p.quadTo(8f, 4f, 9.5f, 4f); p.lineTo(19.5f, 4f)
+                p.quadTo(21f, 4f, 21f, 5.5f); p.lineTo(21f, 12.5f); p.quadTo(21f, 14f, 19.5f, 14f); p.lineTo(15f, 14f)
+                p.line(4f, 10f, 14f, 10f)
             }
             Icon.KEYBOARD -> {
                 p.addRoundRect(RectF(2.5f, 6f, 21.5f, 18f), 2f, 2f, Path.Direction.CW)
