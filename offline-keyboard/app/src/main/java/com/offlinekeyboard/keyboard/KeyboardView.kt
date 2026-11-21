@@ -548,6 +548,19 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
+    private val windowSpot = IntArray(2)
+
+    /**
+     * How tall an enlarged letter or a row of choices ending at [bottom] can be: 1.2 keys, but never past the
+     * top of the keyboard window (the top row's letter rises over the strip, and with a low strip the window
+     * edge cut its top off).
+     */
+    private fun riseAbove(bottom: Float): Float {
+        getLocationInWindow(windowSpot)
+        val room = bottom + windowSpot[1] - dp(1f)
+        return minOf(keyHeightPx * 1.2f, maxOf(room, keyHeightPx * 0.8f))
+    }
+
     /** The enlarged letters above the pressed keys: bubble and label. */
     private fun previewBubbles(ctx: LabelContext): List<Triple<Key, RectF, String>> {
         if (!keyPreview) return emptyList()
@@ -560,9 +573,9 @@ class KeyboardView(context: Context) : View(context) {
             if (label.isEmpty() || label.length > 4) continue
             val anchor = keyRects.firstOrNull { it.first === key }?.second ?: continue
             val w = maxOf(anchor.width() * 1.5f, dp(44f))
-            val h = keyHeightPx * 1.2f
             val left = (anchor.centerX() - w / 2).coerceIn(0f, maxOf(0f, width - w))
             val bottom = anchor.top + keyGap
+            val h = riseAbove(bottom)
             out += Triple(key, RectF(left, bottom - h, left + w, bottom), label)
         }
         return out
@@ -657,6 +670,8 @@ class KeyboardView(context: Context) : View(context) {
         canvas.restoreToCount(layer)
     }
 
+    private val inkBounds = android.graphics.Rect()
+
     private fun drawLabel(canvas: Canvas, rect: RectF, label: String, color: Int, key: Key) {
         if (label.isEmpty()) return
         textPaint.color = color
@@ -669,13 +684,28 @@ class KeyboardView(context: Context) : View(context) {
         var size = base * (if (isLetter) 0.46f else 0.30f) * theme.textScale
         textPaint.textSize = size
         val round = typewriter && rect.width() <= rect.height() * 1.05f
-        val maxWidth = rect.width() * (if (round) 0.78f else 0.86f)
+        val sheet = theme.style == SurfaceStyle.SHEET
+        // The sheet's paper piece has a wavy, hand-cut edge a little inside the key: the letter keeps clear of it.
+        val maxWidth = rect.width() * (if (round) 0.78f else if (sheet) 0.74f else 0.86f)
         val measured = textPaint.measureText(label)
         if (measured > maxWidth) {
             size *= maxWidth / measured
             textPaint.textSize = size
         }
-        val y = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
+        var y = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
+        if (sheet) {
+            // Handwritten capitals (and Й, Ї, Ґ with their marks) are tall: the ink itself stays inside the piece.
+            textPaint.getTextBounds(label, 0, label.length, inkBounds)
+            val room = rect.height() * 0.64f
+            if (inkBounds.height() > room) {
+                size *= room / inkBounds.height()
+                textPaint.textSize = size
+                textPaint.getTextBounds(label, 0, label.length, inkBounds)
+            }
+            // Capitals centred by the ink, not by the font's line (they sat high, their marks out of the piece);
+            // small letters keep one line, so д, у and р still hang below it.
+            if (label.any { it.isUpperCase() }) y = rect.centerY() - inkBounds.exactCenterY()
+        }
         if (typewriter) {
             // Struck through an old ribbon: every letter a little tilted, off its line and lighter or darker,
             // always the same way for the same letter.
@@ -1028,9 +1058,8 @@ class KeyboardView(context: Context) : View(context) {
         val total = cellWidth * options.size
         var left = anchor.centerX() - cellWidth / 2
         left = left.coerceIn(0f, maxOf(0f, width - total))
-        val height = keyHeightPx * 1.2f
         val bottom = anchor.top + keyGap
-        val top = bottom - height
+        val top = bottom - riseAbove(bottom)
         val cells = options.indices.map { i ->
             RectF(left + i * cellWidth, top, left + (i + 1) * cellWidth, bottom)
         }

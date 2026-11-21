@@ -20,4 +20,11 @@ Levels by overall loudness (no compression), a plain ceiling at 0.85.
    equalizer=f=2200:t=o:w=1.4:g=5,volume=4dB (keys, return), f=2000 g=4 +5 dB (space),
    f=1800 g=7 +7 dB (delete) / +9 dB (held delete, now played at full volume), then
    alimiter=limit=0.89. The keys now match the typewriter there; the eraser is ~4 dB under it.
+7. 1.18.0, the owner: louder still, every fourth letter "a hit, like tape run backwards", the held eraser
+   hardly heard. The keys were rebuilt from the 1.16 files (before 1.17's lift): slowed to 0.85 (longer,
+   same pitch), cut to start where the lead is already on the paper (no slow swell) with a 5 ms fade-in,
+   full for 40 ms and then a long smooth tail to 0.34 s; the strongest grains evened out (a soft knee at
+   45 % of the peak); then equalizer=f=2500:t=o:w=1.3:g=6, each key's gain set so that above 1.5 kHz it
+   sits near the typewriter (-19 dB RMS peak, ±1.7 dB), alimiter=limit=0.89. Return the same way without
+   the reshaping; delete f=2000 g=11 +11 dB, held delete f=2000 g=11 +13 dB (~4 dB over 1.17); space +9 dB.
 """

@@ -70,6 +70,20 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] The remote's keys and mouse buttons and the clipboard panel click and sound like the keys.
 - [x] Clipboard: a pinned text moving to its place keeps its whole frame.
 
+## 1.18.0 — a notebook's paper, sounds that carry
+
+- [x] Dark sketch on near-black graphite paper, as a notebook's black page: faint mottling, fine fibres and a
+      few long soft folds; the paper pieces of the keys are cut from it, darker, matt (no gloss), with the
+      same grain.
+- [x] Light sketch on a travel diary's parchment: brown fibres, soft folds, pieces with grain and browned
+      cut edges.
+- [x] Capitals (and Й, Ї, Ґ) stay inside their paper piece.
+- [x] Pencil sounds rebuilt: they start as the lead touches the paper and fade out long (no swell that
+      sounded like tape run backwards, no hits), louder, as loud as the typewriter; the eraser louder, the
+      held eraser most of all. Bubble wrap a little louder.
+- [x] The enlarged letter of the top row is never cut off by the top of the keyboard.
+- [x] Typewriter: a quick tap still strikes home and leaves its letter on the paper.
+
 ## 1.17.0 — Glass, dark and light
 
 - [x] Milky glass, the light tone of Glass: white glass keys lit from above with a bright rim and a soft

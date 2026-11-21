@@ -61,9 +61,114 @@ object PaperTexture {
 
     fun make(width: Int, height: Int, density: Float): Bitmap? = sheet(width, height, density)?.bitmap
 
-    /** The graphite paper of the dark sheet style: a little lighter than the typewriter's charcoal. */
-    const val GRAPHITE = 0x1F
-    const val GRAPHITE_EDGE = 0xFF20201F.toInt()
+    /** The graphite paper of the dark sheet style: near black, a touch warm, as a notebook's black page. */
+    const val GRAPHITE_EDGE = 0xFF13120F.toInt()
+
+    /**
+     * The sketch style's whole page, as a notebook's: [light] the old parchment, otherwise near-black graphite
+     * paper; both with faint mottling, fine fibres and a few long, soft folds where the page was once bent (a
+     * lit side, a shaded side and a thin line on the fold). Plain at the very top, where the soft edge above
+     * the keyboard runs into it. The same every time for a size.
+     */
+    fun journal(width: Int, height: Int, density: Float, light: Boolean): Bitmap? {
+        if (width <= 0 || height <= 0) return null
+        val random = Random(if (light) 31 else 29)
+        val pixels = IntArray(width * height)
+        val plain = 8f * density
+        if (light) {
+            val parchment = parchment(width, height, density)?.bitmap ?: return null
+            parchment.getPixels(pixels, 0, width, 0, 0, width, height)
+        } else {
+            // Mottling (two sizes) and grain on the near black.
+            fun grid(cell: Int) = Triple(cell, width / cell + 2, FloatArray((width / cell + 2) * (height / cell + 2)) { random.nextFloat() * 2f - 1f })
+            val big = grid((60 * density).toInt().coerceAtLeast(8))
+            val small = grid((14 * density).toInt().coerceAtLeast(4))
+            fun noise(g: Triple<Int, Int, FloatArray>, x: Int, y: Int): Float {
+                val (cell, gw, values) = g
+                val gx = x / cell.toFloat()
+                val gy = y / cell.toFloat()
+                val x0 = gx.toInt()
+                val y0 = gy.toInt()
+                val fx = gx - x0
+                val fy = gy - y0
+                val a = values[y0 * gw + x0] * (1 - fx) + values[y0 * gw + x0 + 1] * fx
+                val b = values[(y0 + 1) * gw + x0] * (1 - fx) + values[(y0 + 1) * gw + x0 + 1] * fx
+                return a * (1 - fy) + b * fy
+            }
+            val r0 = (GRAPHITE_EDGE shr 16) and 0xFF
+            val g0 = (GRAPHITE_EDGE shr 8) and 0xFF
+            val b0 = GRAPHITE_EDGE and 0xFF
+            for (y in 0 until height) {
+                val texture = (y / plain).coerceAtMost(1f)
+                for (x in 0 until width) {
+                    val v = (noise(big, x, y) * 2.2f + noise(small, x, y) + (random.nextFloat() - 0.5f) * 2f) * texture
+                    pixels[y * width + x] = (0xFF shl 24) or
+                        ((r0 + v).toInt().coerceIn(0, 255) shl 16) or ((g0 + v).toInt().coerceIn(0, 255) shl 8) or (b0 + v).toInt().coerceIn(0, 255)
+                }
+            }
+        }
+        // Long soft folds across the page.
+        val folds = if (light) 2 else 3
+        val lit = if (light) 6f else 3.5f
+        val shaded = if (light) 7f else 3f
+        val crest = if (light) 5f else 6f
+        repeat(folds) {
+            val angle = (random.nextFloat() - 0.5f) * 1.4f + if (random.nextFloat() < 0.3f) 1.5708f else 0f
+            val nx = -sin(angle)
+            val ny = cos(angle)
+            val ax = cos(angle)
+            val ay = sin(angle)
+            val cx = random.nextFloat() * width
+            val cy = random.nextFloat() * height
+            val w = 14f * density
+            val wave = 6f * density
+            val waveLength = 90f * density
+            val line = 0.9f * density
+            for (y in 0 until height) {
+                val texture = (y / plain).coerceAtMost(1f)
+                if (texture <= 0f) continue
+                for (x in 0 until width) {
+                    val along = (x - cx) * ax + (y - cy) * ay
+                    val d = (x - cx) * nx + (y - cy) * ny + wave * sin(along / waveLength)
+                    if (d > 5 * w || d < -4 * w) continue
+                    var v = if (d > 0) lit * kotlin.math.exp(-d / w) else -shaded * kotlin.math.exp(d / (w * 0.7f))
+                    val q = d / line
+                    v += crest * kotlin.math.exp(-q * q)
+                    v *= texture
+                    val p = pixels[y * width + x]
+                    // On parchment shade is brown (it takes more blue and green than red).
+                    val kg = if (light && v < 0) 1.15f else 1f
+                    val kb = if (light && v < 0) 1.35f else 1f
+                    pixels[y * width + x] = (0xFF shl 24) or
+                        ((((p shr 16) and 0xFF) + v).toInt().coerceIn(0, 255) shl 16) or
+                        ((((p shr 8) and 0xFF) + v * kg).toInt().coerceIn(0, 255) shl 8) or
+                        (((p and 0xFF) + v * kb).toInt().coerceIn(0, 255))
+                }
+            }
+        }
+        val bitmap = runCatching { Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888) }.getOrNull() ?: return null
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        // Fibres: short thin strokes, a little bent, every way (light ones on graphite, brown on parchment).
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = maxOf(1f, 0.4f * density)
+            strokeCap = android.graphics.Paint.Cap.ROUND
+        }
+        repeat((width * height / (900 * density * density / 7.5f)).toInt().coerceAtMost(6000)) {
+            val x = random.nextFloat() * width
+            val y = plain + random.nextFloat() * (height - plain)
+            val length = (3f + random.nextFloat() * 11f) * density
+            val a = random.nextFloat() * 3.1416f
+            val bend = (random.nextFloat() - 0.5f) * 0.6f
+            val mx = x + cos(a) * length / 2
+            val my = y + sin(a) * length / 2
+            paint.color = if (light) (((10 + random.nextInt(18)) shl 24) or 0x5A3C1E) else (((6 + random.nextInt(11)) shl 24) or 0xFFFFFF)
+            canvas.drawLine(x, y, mx, my, paint)
+            canvas.drawLine(mx, my, mx + cos(a + bend) * length / 2, my + sin(a + bend) * length / 2, paint)
+        }
+        return bitmap
+    }
 
     fun sheet(width: Int, height: Int, density: Float, parchment: Boolean = false, base: Int = BASE): Sheet? {
         if (width <= 0 || height <= 0) return null
