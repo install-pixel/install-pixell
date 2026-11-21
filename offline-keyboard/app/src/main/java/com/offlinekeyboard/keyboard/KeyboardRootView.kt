@@ -820,7 +820,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         fadeColor = value.background
         fadePaint.shader = null
-        updateBottomSpace()
+        // The band's height follows the tone (not while the view is still being built: insets come later).
+        if (isAttachedToWindow) updateBottomSpace()
         applyPaperToText()
         reInk = true
         invalidate()
