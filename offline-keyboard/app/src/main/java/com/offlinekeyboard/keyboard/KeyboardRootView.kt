@@ -570,8 +570,49 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      * showed through those before).
      */
     override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
-        if (child === keysRow) drawOverStrip(canvas)
+        if (child === keysRow) {
+            // The machine's dark depth under the holder runs the whole width (beside the keys too, over the
+            // remote in landscape), not only over the keys, so the holder's shadow does not stop short.
+            if (theme.style == SurfaceStyle.TYPEWRITER) {
+                canvas.save()
+                canvas.translate(0f, keysRow.top.toFloat())
+                holderPainter.drawTypewriterDepth(canvas, width.toFloat(), dp(18).toFloat())
+                canvas.restore()
+            }
+            drawOverStrip(canvas)
+        }
         return super.drawChild(canvas, child, drawingTime)
+    }
+
+    private val sidePaint = Paint()
+    private var sideFor = 0
+
+    /**
+     * Where the keys stop short of the window's side (landscape: the camera cutout, the navigation bar), the
+     * paper and the keys melt into the keyboard's colour there instead of ending in a hard edge.
+     */
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        if (paddingLeft <= 0 && paddingRight <= 0) return
+        val w = dp(SIDE_FADE_DP).toFloat()
+        val color = fadeColor
+        if (sideFor != color) {
+            sidePaint.shader = LinearGradient(0f, 0f, 1f, 0f, color, color and 0x00FFFFFF, Shader.TileMode.CLAMP)
+            sideFor = color
+        }
+        val m = android.graphics.Matrix()
+        val top = fadeHeight.toFloat()
+        if (paddingLeft > 0) {
+            m.setScale(w, 1f); m.postTranslate(paddingLeft.toFloat(), 0f)
+            sidePaint.shader.setLocalMatrix(m)
+            canvas.drawRect(paddingLeft.toFloat(), top, paddingLeft + w, height.toFloat(), sidePaint)
+        }
+        if (paddingRight > 0) {
+            val x = (width - paddingRight).toFloat()
+            m.setScale(-w, 1f); m.postTranslate(x, 0f)
+            sidePaint.shader.setLocalMatrix(m)
+            canvas.drawRect(x - w, top, x, height.toFloat(), sidePaint)
+        }
     }
 
     private fun drawOverStrip(canvas: Canvas) {
@@ -1147,6 +1188,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val FADE_DP = 14
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
+        /** How far the keys and the paper melt into the side of the window (landscape). */
+        const val SIDE_FADE_DP = 18
         /** The modes button's plate in the strip. */
         const val MODES_BUTTON_DP = 34
         /** How far in a lit button's plate sits (Bluetooth, remote). */

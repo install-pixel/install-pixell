@@ -158,9 +158,15 @@ object BluetoothKeyboard {
     /** Where a switch is going, until it has connected (it connects once the old one has let go). */
     @Volatile private var switchTarget: BluetoothDevice? = null
 
+    /** A connection asked for and not answered yet (a device that may be away). */
+    @Volatile private var connecting: BluetoothDevice? = null
+
     fun switchTo(device: BluetoothDevice?) {
         val proxy = hid ?: return
         val now = host
+        // A device still being tried (maybe away): stop trying it, so the next one can go.
+        connecting?.let { old -> if (old.address != device?.address) runCatching { proxy.disconnect(old) } }
+        connecting = null
         switchTarget = device
         if (now != null && now.address != device?.address) {
             // The phone is a keyboard for one computer at a time: first let the old one go.
@@ -168,6 +174,7 @@ object BluetoothKeyboard {
             if (device == null) switchTarget = null
         } else if (device != null && now == null) {
             switchTarget = null
+            connecting = device
             runCatching { proxy.connect(device) }
         }
     }
@@ -246,6 +253,7 @@ object BluetoothKeyboard {
         override fun onConnectionStateChanged(device: BluetoothDevice, state: Int) {
             when (state) {
                 BluetoothProfile.STATE_CONNECTED -> {
+                    if (connecting?.address == device.address) connecting = null
                     host = device
                     rememberHost(device)
                     set(BluetoothState.CONNECTED, device)
@@ -254,8 +262,10 @@ object BluetoothKeyboard {
                     host = null
                     if (hid != null) set(BluetoothState.WAITING, null)
                     // Switching: the old one has let go, now the next one.
+                    if (connecting?.address == device.address) connecting = null
                     switchTarget?.let { next ->
                         switchTarget = null
+                        connecting = next
                         runCatching { hid?.connect(next) }
                     }
                 }

@@ -146,6 +146,8 @@ class RemotePanel(context: Context) : LinearLayout(context) {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun key(k: RowKey) = ToolbarButton(context).apply {
+        // The plate a little inside its place: the rim and its shadow whole, not cut by the row.
+        plateInset = 2f * this@RemotePanel.density
         text = k.label
         icon = k.icon
         textSizeSp = 13f

@@ -120,6 +120,10 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                     for (device in devices) {
                         val name = Bluetooth.deviceName(device)
                         val chosen = remember(chosenVersion, device.address) { Bluetooth.isSwitchHost(device.address) }
+                        // Its place in the switching order (1, 2, …).
+                        val place = remember(chosenVersion, device.address) {
+                            Bluetooth.switchHosts(context).indexOfFirst { it.address == device.address } + 1
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -127,7 +131,7 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                             InlineButton(onClick = {
                                 Bluetooth.setSwitchHost(device.address, !chosen)
                                 chosenVersion++
-                            }) { Text(if (chosen) "★" else "☆") }
+                            }) { Text(if (chosen && place > 0) "★$place" else "☆") }
                             Text(name, modifier = Modifier.weight(1f).padding(start = 8.dp))
                             if (status.state == BluetoothState.CONNECTED && status.deviceName == name) {
                                 Text("✓", color = MaterialTheme.colorScheme.primary)
