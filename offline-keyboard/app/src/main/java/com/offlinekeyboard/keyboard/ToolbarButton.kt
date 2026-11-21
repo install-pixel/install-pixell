@@ -88,7 +88,15 @@ class ToolbarButton(context: Context) : View(context) {
         invalidate()
     }
 
+    private val spot = IntArray(2)
+
     override fun onDraw(canvas: Canvas) {
+        if (style == SurfaceStyle.SHEET) {
+            // Cut from the same sheet as the keys: the part of it where the button lies.
+            getLocationInWindow(spot)
+            surfaces.sheetOffsetX = spot[0].toFloat()
+            surfaces.sheetOffsetY = spot[1].toFloat()
+        }
         val inset = if (fill != 0) plateInset else 3f * density
         bounds.set(inset, inset, width - inset, height - inset)
         val background = if (pressed) pressedFill else fill

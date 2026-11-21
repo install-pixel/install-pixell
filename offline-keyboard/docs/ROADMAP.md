@@ -70,6 +70,17 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] The remote's keys and mouse buttons and the clipboard panel click and sound like the keys.
 - [x] Clipboard: a pinned text moving to its place keeps its whole frame.
 
+## 1.19.0 — paper cut from one sheet, glass that finds its blur
+
+- [x] Sketch: one paper for everything, the light keyboard's parchment (and the same paper in charcoal for
+      the dark tone): the keys are scraps cut from a lighter sheet of it, each from where it lies (its own
+      stains, fibres and folds), with uneven hand-cut edges and a soft shadow instead of pencil-drawn frames.
+- [x] A fold crossing a key bends its letter with it.
+- [x] The settings in the sketch style lie on that paper, their cards scraps of it.
+- [x] Glass: the blur is turned on wherever nothing of the window lies above the keys (Android 15 and 16
+      reach below them, under the system buttons, which kept it off); the Look page says whether the app
+      behind is blurred, and if not, why.
+
 ## 1.18.0 — a notebook's paper, sounds that carry
 
 - [x] Dark sketch on near-black graphite paper, as a notebook's black page: faint mottling, fine fibres and a

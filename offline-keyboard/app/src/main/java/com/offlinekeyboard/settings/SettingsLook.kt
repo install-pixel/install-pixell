@@ -3,6 +3,7 @@ package com.offlinekeyboard.settings
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
@@ -15,7 +16,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -325,7 +329,7 @@ internal fun Modifier.lookSurface(
     alpha: Float = 0.8f,
 ): Modifier = when (LocalLook.current) {
     Look.GLASS -> glassFrame(radius, chosen, sheen, lit)
-    Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else alpha, if (chosen) 2.6.dp else 2.2.dp, ink)
+    Look.SHEET -> sheetFrame(radius, seed, chosen || lit, ink)
     Look.TYPEWRITER -> typewriterFrame(radius, seed, chosen || lit)
 }
 
@@ -348,6 +352,82 @@ internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): M
                 seed = seed, plate = true,
             )
         }
+    }
+}
+
+/**
+ * The sketch style: a scrap of the keyboard's paper (parchment, or the same paper in charcoal) with an uneven
+ * hand-cut edge and a soft shadow, as the keys are drawn ([com.offlinekeyboard.keyboard.SurfacePainter]);
+ * chosen, its edge gone over in pencil.
+ */
+internal fun Modifier.sheetFrame(radius: Dp, seed: Int, chosen: Boolean, ink: Color): Modifier = drawWithCache {
+    // Drawn again once the paper is made (the plain paper colour until then).
+    PaperState.ready
+    val painter = com.offlinekeyboard.keyboard.SurfacePainter(density).apply {
+        brightness = 1f
+        sheetLight = Tone.light
+        // Each card from its own part of the sheet.
+        sheetOffsetX = ((seed and 0x7FFF) % 97) * 11f * density
+        sheetOffsetY = ((seed and 0x7FFF) % 53) * 13f * density
+    }
+    val rect = android.graphics.RectF(0f, 0f, size.width, size.height)
+    val r = radius.toPx()
+    val inkArgb = ink.toArgb()
+    onDrawBehind {
+        drawIntoCanvas {
+            painter.draw(
+                it.nativeCanvas, rect, r, com.offlinekeyboard.keyboard.SurfaceStyle.SHEET, 0,
+                if (chosen) com.offlinekeyboard.keyboard.SurfaceState.SELECTED else com.offlinekeyboard.keyboard.SurfaceState.NORMAL,
+                seed = seed, inkColor = inkArgb,
+            )
+        }
+    }
+}
+
+/** When the sketch's paper (the key sheet and the settings page) is ready: read to be drawn again then. */
+internal object PaperState {
+    var ready by androidx.compose.runtime.mutableIntStateOf(0)
+    private val pages = HashMap<Boolean, android.graphics.Bitmap>()
+    private val making = HashSet<Boolean>()
+
+    /** The settings page's paper for the [light] tone, or null while it is made (it is asked for again then). */
+    fun page(context: android.content.Context, light: Boolean): android.graphics.Bitmap? {
+        pages[light]?.let { return it }
+        if (making.add(light)) {
+            val app = context.applicationContext
+            val metrics = app.resources.displayMetrics
+            val main = android.os.Handler(android.os.Looper.getMainLooper())
+            com.offlinekeyboard.keyboard.PaperSheets.prepare(app, light) { main.post { ready++ } }
+            Thread {
+                // Three quarters of the screen's pixels, drawn stretched: soft enough, and made quickly.
+                val page = runCatching {
+                    com.offlinekeyboard.keyboard.PaperTexture.journal(metrics.widthPixels * 3 / 4, metrics.heightPixels * 3 / 4, metrics.density * 0.75f, light)
+                }.getOrNull()
+                main.post {
+                    making.remove(light)
+                    if (page != null) pages[light] = page.bitmap
+                    ready++
+                }
+            }.apply { name = "settings paper"; isDaemon = true }.start()
+        }
+        return null
+    }
+}
+
+/** The sketch style's page: the keyboard's paper (parchment or charcoal) behind everything. */
+@Composable
+internal fun Modifier.paperPage(): Modifier {
+    if (LocalLook.current != Look.SHEET) return this
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val light = Tone.light
+    return drawBehind {
+        PaperState.ready
+        val page = PaperState.page(context, light) ?: return@drawBehind
+        drawImage(
+            page.asImageBitmap(),
+            dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+            filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
+        )
     }
 }
 
@@ -514,5 +594,25 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
     Section(androidx.compose.ui.res.stringResource(R.string.tone_title)) {
         RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_dark), !light) { update { it.withStyle(modeOf(family, false)) } }
         RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
+    }
+    if (family == StyleFamily.GLASS) {
+        // Whether the phone lets the glass lie over the blurred app, as the keyboard last found it.
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val state = androidx.compose.runtime.remember { com.offlinekeyboard.keyboard.BlurState.load(context).first }
+        val text = androidx.compose.ui.res.stringResource(
+            when (state) {
+                com.offlinekeyboard.keyboard.BlurState.ON -> R.string.blur_state_on
+                com.offlinekeyboard.keyboard.BlurState.NOT_ALLOWED -> R.string.blur_state_not_allowed
+                com.offlinekeyboard.keyboard.BlurState.WINDOW -> R.string.blur_state_window
+                com.offlinekeyboard.keyboard.BlurState.OLD_ANDROID -> R.string.blur_state_old
+                com.offlinekeyboard.keyboard.BlurState.UNKNOWN -> R.string.blur_state_unknown
+            },
+        )
+        androidx.compose.material3.Text(
+            text,
+            color = Tone.TextSecondary,
+            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+        )
     }
 }

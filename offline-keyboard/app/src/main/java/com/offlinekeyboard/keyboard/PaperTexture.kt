@@ -64,50 +64,80 @@ object PaperTexture {
     /** The graphite paper of the dark sheet style: near black, a touch warm, as a notebook's black page. */
     const val GRAPHITE_EDGE = 0xFF13120F.toInt()
 
-    /**
-     * The sketch style's whole page, as a notebook's: [light] the old parchment, otherwise near-black graphite
-     * paper; both with faint mottling, fine fibres and a few long, soft folds where the page was once bent (a
-     * lit side, a shaded side and a thin line on the fold). Plain at the very top, where the soft edge above
-     * the keyboard runs into it. The same every time for a size.
-     */
-    fun journal(width: Int, height: Int, density: Float, light: Boolean): Bitmap? {
-        if (width <= 0 || height <= 0) return null
-        val random = Random(if (light) 31 else 29)
-        val pixels = IntArray(width * height)
-        val plain = 8f * density
-        if (light) {
-            val parchment = parchment(width, height, density)?.bitmap ?: return null
-            parchment.getPixels(pixels, 0, width, 0, 0, width, height)
-        } else {
-            // Mottling (two sizes) and grain on the near black.
-            fun grid(cell: Int) = Triple(cell, width / cell + 2, FloatArray((width / cell + 2) * (height / cell + 2)) { random.nextFloat() * 2f - 1f })
-            val big = grid((60 * density).toInt().coerceAtLeast(8))
-            val small = grid((14 * density).toInt().coerceAtLeast(4))
-            fun noise(g: Triple<Int, Int, FloatArray>, x: Int, y: Int): Float {
-                val (cell, gw, values) = g
-                val gx = x / cell.toFloat()
-                val gy = y / cell.toFloat()
-                val x0 = gx.toInt()
-                val y0 = gy.toInt()
-                val fx = gx - x0
-                val fy = gy - y0
-                val a = values[y0 * gw + x0] * (1 - fx) + values[y0 * gw + x0 + 1] * fx
-                val b = values[(y0 + 1) * gw + x0] * (1 - fx) + values[(y0 + 1) * gw + x0 + 1] * fx
-                return a * (1 - fy) + b * fy
+    /** A sketch paper: its picture and the folds pressed into it (so letters on it can bend with them). */
+    class Journal(val bitmap: Bitmap, val creases: List<Crease>) {
+        /**
+         * The fold under ([x], [y]) within [reach] of it, if any: the fold and how far the point lies off it
+         * (signed: on the fold's lit side it is positive).
+         */
+        fun creaseAt(x: Float, y: Float, reach: Float): Pair<Crease, Float>? {
+            val px = ((x % bitmap.width) + bitmap.width) % bitmap.width
+            val py = ((y % bitmap.height) + bitmap.height) % bitmap.height
+            var best: Pair<Crease, Float>? = null
+            for (c in creases) {
+                if (c.fade(px, py) < 0.35f) continue
+                val d = c.offset(px, py)
+                if (kotlin.math.abs(d) < reach && (best == null || kotlin.math.abs(d) < kotlin.math.abs(best.second))) best = c to d
             }
-            val r0 = (GRAPHITE_EDGE shr 16) and 0xFF
-            val g0 = (GRAPHITE_EDGE shr 8) and 0xFF
-            val b0 = GRAPHITE_EDGE and 0xFF
-            for (y in 0 until height) {
-                val texture = (y / plain).coerceAtMost(1f)
-                for (x in 0 until width) {
-                    val v = (noise(big, x, y) * 2.2f + noise(small, x, y) + (random.nextFloat() - 0.5f) * 2f) * texture
-                    pixels[y * width + x] = (0xFF shl 24) or
-                        ((r0 + v).toInt().coerceIn(0, 255) shl 16) or ((g0 + v).toInt().coerceIn(0, 255) shl 8) or (b0 + v).toInt().coerceIn(0, 255)
-                }
-            }
+            return best
         }
-        foldPlanes(pixels, width, height, density, light, random, plain)
+    }
+
+    /**
+     * One fold of a page: almost straight, as a fold is, with a gentle bend and a small unevenness, dying out
+     * towards its ends. [ax], [ay] run along it, [nx], [ny] across it (towards its lit side).
+     */
+    class Crease(
+        val cx: Float, val cy: Float, val ax: Float, val ay: Float, private val length: Float,
+        private val bend: Float, private val bendLength: Float, private val phase: Float,
+        private val jitter: Float, private val jitterLength: Float, private val phase2: Float, val strength: Float,
+    ) {
+        val nx get() = -ay
+        val ny get() = ax
+
+        /** 1 in its middle, 0 at and past its ends. */
+        fun fade(x: Float, y: Float): Float {
+            val reach = kotlin.math.abs((x - cx) * ax + (y - cy) * ay) / (length / 2)
+            return if (reach >= 1f) 0f else 1f - reach * reach * reach * reach
+        }
+
+        /** How far ([x], [y]) lies off the fold, across it. */
+        fun offset(x: Float, y: Float): Float {
+            val along = (x - cx) * ax + (y - cy) * ay
+            return (x - cx) * nx + (y - cy) * ny + bend * sin(along / bendLength + phase) +
+                jitter * sin(along / jitterLength + phase2) * sin(along / (jitterLength * 2.7f))
+        }
+    }
+
+    /**
+     * The sketch style's paper, as a notebook's: [light] the old parchment (a travel diary's), otherwise the
+     * same paper in charcoal; both with mottling, stains, fine fibres and a few folds where the page was once
+     * folded. The page under the keys is plain at the very top (where the soft edge above the keyboard runs
+     * into it) and has aged edges; [keys] is the lighter paper the keys and cards are cut from (no edges: a
+     * piece can come from anywhere in it). The same every time for a size.
+     */
+    fun journal(width: Int, height: Int, density: Float, light: Boolean, keys: Boolean = false): Journal? {
+        if (width <= 0 || height <= 0) return null
+        val random = Random((if (light) 31 else 29) + (if (keys) 100 else 0))
+        val pixels = IntArray(width * height)
+        val plain = if (keys) 0f else 8f * density
+        val base = when {
+            light && keys -> KEY_PARCHMENT
+            light -> PARCHMENT_EDGE
+            keys -> KEY_CHARCOAL
+            else -> GRAPHITE_EDGE
+        }
+        val paper = parchment(
+            width, height, density,
+            seed = if (keys) 17 else 11,
+            base = base,
+            contrast = if (light) (if (keys) 0.85f else 1f) else 0.4f,
+            warm = light,
+            plainTop = !keys,
+            edges = !keys,
+        )?.bitmap ?: return null
+        paper.getPixels(pixels, 0, width, 0, 0, width, height)
+        val creases = foldPlanes(pixels, width, height, density, light, random, plain)
         val bitmap = runCatching { Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888) }.getOrNull() ?: return null
         bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
         val canvas = android.graphics.Canvas(bitmap)
@@ -117,7 +147,8 @@ object PaperTexture {
             strokeWidth = maxOf(1f, 0.4f * density)
             strokeCap = android.graphics.Paint.Cap.ROUND
         }
-        repeat((width * height / (900 * density * density / 7.5f)).toInt().coerceAtMost(6000)) {
+        paint.strokeWidth = maxOf(0.6f, 0.3f * density)
+        repeat((width * height / (900 * density * density / 5f)).toInt().coerceAtMost(4500)) {
             val x = random.nextFloat() * width
             val y = plain + random.nextFloat() * (height - plain)
             val length = (3f + random.nextFloat() * 11f) * density
@@ -125,12 +156,17 @@ object PaperTexture {
             val bend = (random.nextFloat() - 0.5f) * 0.6f
             val mx = x + cos(a) * length / 2
             val my = y + sin(a) * length / 2
-            paint.color = if (light) (((10 + random.nextInt(18)) shl 24) or 0x5A3C1E) else (((6 + random.nextInt(11)) shl 24) or 0xFFFFFF)
+            // Faint: fibres in the paper, not scratches on it (warm on the charcoal too).
+            paint.color = if (light) (((7 + random.nextInt(12)) shl 24) or 0x5A3C1E) else (((4 + random.nextInt(7)) shl 24) or 0xF2E6D2)
             canvas.drawLine(x, y, mx, my, paint)
             canvas.drawLine(mx, my, mx + cos(a + bend) * length / 2, my + sin(a + bend) * length / 2, paint)
         }
-        return bitmap
+        return Journal(bitmap, creases)
     }
+
+    /** The lighter parchment and charcoal the sketch's keys and cards are cut from. */
+    const val KEY_PARCHMENT = 0xFFF0E0BD.toInt()
+    const val KEY_CHARCOAL = 0xFF211F1B.toInt()
 
     fun sheet(width: Int, height: Int, density: Float, parchment: Boolean = false, base: Int = BASE): Sheet? {
         if (width <= 0 || height <= 0) return null
@@ -204,8 +240,18 @@ object PaperTexture {
      * browned by age (more at the ends of the strip and along its lower edge), a few water rings, fibres and
      * creases. Its top is plain [PARCHMENT_EDGE], so the soft edge above runs into it without a line.
      */
-    private fun parchment(width: Int, height: Int, density: Float): Sheet? {
-        val random = Random(11)
+    private fun parchment(
+        width: Int,
+        height: Int,
+        density: Float,
+        seed: Int = 11,
+        base: Int = PARCHMENT_EDGE,
+        contrast: Float = 1f,
+        warm: Boolean = true,
+        plainTop: Boolean = true,
+        edges: Boolean = true,
+    ): Sheet? {
+        val random = Random(seed)
         val gw = width / CELL + 2
         val gh = height / CELL + 2
         val coarse = FloatArray(gw * gh) { random.nextFloat() * 2f - 1f }
@@ -236,17 +282,20 @@ object PaperTexture {
         val pixels = IntArray(width * height)
         val plain = 8f * density
         val burn = 34f * density
-        val baseR = (PARCHMENT_EDGE shr 16) and 0xFF
-        val baseG = (PARCHMENT_EDGE shr 8) and 0xFF
-        val baseB = PARCHMENT_EDGE and 0xFF
+        val baseR = (base shr 16) and 0xFF
+        val baseG = (base shr 8) and 0xFF
+        val baseB = base and 0xFF
+        // Browns: darkening takes more blue and green than red (charcoal stays neutral).
+        val kg = if (warm) 1.15f else 1.05f
+        val kb = if (warm) 1.35f else 1.15f
         for (y in 0 until height) {
-            val texture = (y / plain).coerceAtMost(1f)
+            val texture = if (plainTop) (y / plain).coerceAtMost(1f) else 1f
             for (x in 0 until width) {
                 var dark = noise(coarse, gw, CELL, x, y) * 14f + noise(small, fw, fine, x, y) * 5f
                 dark += (random.nextFloat() - 0.5f) * 6f
                 // Age along the lower edge (the browned ends are in the overlay, see Sheet.overlay).
                 val bottom = (height - 1 - y).toFloat()
-                if (bottom < burn * 0.5f) dark -= (1f - bottom / (burn * 0.5f)).let { it * it } * 26f
+                if (edges && bottom < burn * 0.5f) dark -= (1f - bottom / (burn * 0.5f)).let { it * it } * 26f
                 for (i in stains.indices step 3) {
                     val d = kotlin.math.hypot(x - stains[i], y - stains[i + 1])
                     val r = stains[i + 2]
@@ -255,16 +304,16 @@ object PaperTexture {
                         dark -= if (d > r * 0.9f) 10f * (1f - kotlin.math.abs(d - r * 0.97f) / (r * 0.08f)).coerceAtLeast(0f) else 3f
                     }
                 }
-                val v = dark * texture
+                val v = dark * texture * contrast
                 val r = (baseR + v).toInt().coerceIn(0, 255)
-                // Browns: darkening takes more blue and green than red.
-                val g = (baseG + v * 1.15f).toInt().coerceIn(0, 255)
-                val b = (baseB + v * 1.35f).toInt().coerceIn(0, 255)
+                // Charcoal stays warm both ways: lighter takes less blue than red, as darker takes more.
+                val g = (baseG + v * (if (warm || v < 0) kg else 0.93f)).toInt().coerceIn(0, 255)
+                val b = (baseB + v * (if (warm || v < 0) kb else 0.8f)).toInt().coerceIn(0, 255)
                 pixels[y * width + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
             }
         }
         // The edge of the sheet: a thin darker line.
-        for (x in 0 until width) {
+        if (edges) for (x in 0 until width) {
             shade(pixels, width, height, x, height - 1, -40)
             shade(pixels, width, height, x, height - 2, -16)
         }
@@ -273,7 +322,7 @@ object PaperTexture {
             var fx = random.nextFloat() * width
             var fy = plain + random.nextFloat() * (height - plain)
             val a = random.nextFloat() * 6.2832f
-            val by = if (random.nextBoolean()) -9 else 7
+            val by = ((if (random.nextBoolean()) -9 else 7) * contrast).toInt()
             repeat(4 + random.nextInt(8)) {
                 shade(pixels, width, height, fx.toInt(), fy.toInt(), by)
                 fx += cos(a)
@@ -290,8 +339,8 @@ object PaperTexture {
             var walked = 0f
             while (walked < length) {
                 if (y >= plain) {
-                    shade(pixels, width, height, x.toInt(), y.toInt(), 14)
-                    shade(pixels, width, height, x.toInt(), y.toInt() + 1, -16)
+                    shade(pixels, width, height, x.toInt(), y.toInt(), (14 * contrast).toInt())
+                    shade(pixels, width, height, x.toInt(), y.toInt() + 1, (-16 * contrast).toInt())
                 }
                 path += x
                 path += y
@@ -325,43 +374,37 @@ object PaperTexture {
      * slowly away from it, with a thin crisp line on the crease itself. The crease runs almost straight, as a
      * fold does, with only a gentle bend, and dies out towards its ends.
      */
-    private fun foldPlanes(pixels: IntArray, width: Int, height: Int, density: Float, light: Boolean, random: Random, plain: Float) {
+    private fun foldPlanes(pixels: IntArray, width: Int, height: Int, density: Float, light: Boolean, random: Random, plain: Float): List<Crease> {
         val count = 3
+        val creases = ArrayList<Crease>(count)
         for (f in 0 until count) {
             val across = f == count - 1
             val angle = if (across) 1.3f + (random.nextFloat() - 0.5f) * 0.5f else (random.nextFloat() - 0.5f) * 1.2f
-            val ax = cos(angle)
-            val ay = sin(angle)
-            val nx = -ay
-            val ny = ax
-            val cx = random.nextFloat() * width
-            val cy = random.nextFloat() * height
-            val length = if (across) height * 1.4f else width * (1.2f + random.nextFloat())
             // One main fold; the others fainter.
             val strength = when (f) { 0 -> 1f; count - 1 -> 0.5f; else -> 0.55f }
+            val crease = Crease(
+                cx = random.nextFloat() * width, cy = random.nextFloat() * height,
+                ax = cos(angle), ay = sin(angle),
+                length = if (across) height * 1.4f else width * (1.2f + random.nextFloat()),
+                bend = (if (across) 6f else 9f) * density, bendLength = (if (across) 150f else 180f) * density,
+                phase = random.nextFloat() * 6.2832f,
+                jitter = 1.4f * density, jitterLength = 23f * density, phase2 = random.nextFloat() * 6.2832f,
+                strength = strength,
+            )
+            creases += crease
             val lit = (if (light) 7f else 5f) * strength
             val shaded = (if (light) 8f else 4f) * strength
             val line = (if (light) 4f else 5f) * strength
             val wideLit = 55f * density
             val wideShade = 40f * density
             val thin = 0.45f * density
-            val bend = (if (across) 6f else 9f) * density
-            val bendLength = (if (across) 150f else 180f) * density
-            val phase = random.nextFloat() * 6.2832f
-            // And a small unevenness along it: a used page's fold is never quite clean.
-            val jitter = 1.4f * density
-            val jitterLength = 23f * density
-            val phase2 = random.nextFloat() * 6.2832f
             for (y in 0 until height) {
-                val texture = (y / plain).coerceAtMost(1f)
+                val texture = if (plain > 0f) (y / plain).coerceAtMost(1f) else 1f
                 if (texture <= 0f) continue
                 for (x in 0 until width) {
-                    val along = (x - cx) * ax + (y - cy) * ay
-                    val reach = kotlin.math.abs(along) / (length / 2)
-                    if (reach >= 1f) continue
-                    val fade = 1f - reach * reach * reach * reach
-                    val d = (x - cx) * nx + (y - cy) * ny + bend * sin(along / bendLength + phase) +
-                        jitter * sin(along / jitterLength + phase2) * sin(along / (jitterLength * 2.7f))
+                    val fade = crease.fade(x.toFloat(), y.toFloat())
+                    if (fade <= 0f) continue
+                    val d = crease.offset(x.toFloat(), y.toFloat())
                     var v = if (d > 0) lit * kotlin.math.exp(-d / wideLit) else -shaded * kotlin.math.exp(d / wideShade)
                     val q = d / thin
                     if (q > -6f && q < 6f) v += line * kotlin.math.exp(-q * q)
@@ -378,6 +421,7 @@ object PaperTexture {
                 }
             }
         }
+        return creases
     }
 
     /** The brown of the parchment's aged ends (no alpha). */
