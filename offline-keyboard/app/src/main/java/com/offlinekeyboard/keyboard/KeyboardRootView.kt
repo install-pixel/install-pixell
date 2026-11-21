@@ -570,10 +570,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         if (down) {
             strikeFromX = keysRow.left + keyboardView.left + keyX
             // On the user's text it strikes where the letter goes; while the strip shows suggestions or a
-            // message instead, straight up over its key, and leaves no letter on the paper.
+            // message instead (the first letters of a field), straight up over its key. Either way it presses
+            // its letter into the paper: every stroke leaves its mark.
             val onText = showingEcho && statusScroll.visibility == View.VISIBLE && status.layout != null
             strikeX = if (onText) printX() else strikeFromX
-            strikeLetter = if (onText) letter else ""
+            strikeLetter = letter
             strikeDownAt = now
             strikeUpAt = 0L
         } else if (strikeDownAt > 0 && strikeUpAt == 0L) {
@@ -655,7 +656,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             // The letter's place in the strip: its baseline and size as the strip writes it.
             impressionPaint.set(status.paint)
             val layout = status.layout
-            val baseline = if (layout != null) {
+            val baseline = if (layout != null && statusScroll.visibility == View.VISIBLE) {
                 infoRow.top + statusScroll.top + status.top + status.totalPaddingTop + layout.getLineBaseline(0).toFloat() + status.translationY
             } else {
                 top + infoRow.height * 0.62f
@@ -673,7 +674,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             // as the type hits; it goes as the bar falls and the typed letter takes its place.
             if (lift > 0.7f && strikeLetter.isNotEmpty()) {
                 val ink = ((lift - 0.7f) / 0.3f).coerceIn(0f, 1f)
-                val x = strikeX - impressionPaint.measureText(strikeLetter) / 2f
+                val letterWidth = impressionPaint.measureText(strikeLetter)
+                // Whole on the paper, also over the keys at the very edges.
+                val x = (strikeX - letterWidth / 2f).coerceIn(dp(4).toFloat(), maxOf(dp(4).toFloat(), width - letterWidth - dp(4)))
                 haloPaint.set(impressionPaint)
                 haloPaint.maskFilter = strikeHalo
                 haloPaint.color = (theme.text and 0x00FFFFFF) or ((0x70 * ink).toInt() shl 24)
