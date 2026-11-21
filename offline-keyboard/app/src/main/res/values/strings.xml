@@ -382,4 +382,9 @@
     <string name="tone_title">Tone</string>
     <string name="tone_dark">Dark</string>
     <string name="tone_light">Light</string>
+    <string name="blur_state_on">Glass over the app: the app behind the keyboard is blurred.</string>
+    <string name="blur_state_not_allowed">The phone does not allow blur behind windows now: check battery saver and «Allow window-level blurs» in the developer options. Until then the glass is solid.</string>
+    <string name="blur_state_window">The keyboard\'s window reaches above the keys, so blur is off (it would blur the app there too).</string>
+    <string name="blur_state_old">Blur behind the keyboard needs Android 12 or newer; the glass is solid.</string>
+    <string name="blur_state_unknown">Open the keyboard once in glass: then this shows whether the app behind it is blurred.</string>
 </resources>

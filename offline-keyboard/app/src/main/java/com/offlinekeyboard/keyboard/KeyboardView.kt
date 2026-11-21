@@ -415,6 +415,12 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val ctx = labelContext ?: return
         val now = SystemClock.uptimeMillis()
+        // The sketch's keys are cut from one sheet of paper: each shows the part where it lies on screen.
+        if (theme.style == SurfaceStyle.SHEET) {
+            getLocationInWindow(windowSpot)
+            surfaces.sheetOffsetX = windowSpot[0].toFloat()
+            surfaces.sheetOffsetY = windowSpot[1].toFloat()
+        }
         // Switching layouts on the typewriter: the old keys slide out, the new ones follow them in.
         val old = slideFrom
         val slide = if (old != null) ((now - slideAt) / SLIDE_MS.toFloat()).coerceIn(0f, 1f) else 1f
@@ -720,7 +726,44 @@ class KeyboardView(context: Context) : View(context) {
             canvas.restore()
             return
         }
+        if (sheet) {
+            // A fold of the paper under the letter: the letter bends with it, as ink on a folded page (its two
+            // halves a little apart, the half on the fold's lit side a little paler).
+            val crease = PaperSheets.journal(!theme.dark)?.creaseAt(rect.centerX() + surfaces.sheetOffsetX, rect.centerY() + surfaces.sheetOffsetY, size * 0.55f)
+            if (crease != null) {
+                drawBent(canvas, label, rect.centerX(), y, rect, crease.first, crease.second, size)
+                return
+            }
+        }
         canvas.drawText(label, rect.centerX(), y, textPaint)
+    }
+
+    private val halfPlane = android.graphics.Path()
+
+    private fun drawBent(canvas: Canvas, label: String, x: Float, y: Float, rect: RectF, crease: PaperTexture.Crease, off: Float, size: Float) {
+        val nx = crease.nx
+        val ny = crease.ny
+        // Where the fold crosses, and far enough along and across it to cover the letter.
+        val px = rect.centerX() - nx * off
+        val py = rect.centerY() - ny * off
+        val far = size * 3f
+        val shift = dp(0.6f)
+        val ink = textPaint.alpha
+        for (lit in listOf(true, false)) {
+            val sign = if (lit) 1f else -1f
+            halfPlane.rewind()
+            halfPlane.moveTo(px + crease.ax * far, py + crease.ay * far)
+            halfPlane.lineTo(px - crease.ax * far, py - crease.ay * far)
+            halfPlane.lineTo(px - crease.ax * far + nx * far * sign, py - crease.ay * far + ny * far * sign)
+            halfPlane.lineTo(px + crease.ax * far + nx * far * sign, py + crease.ay * far + ny * far * sign)
+            halfPlane.close()
+            canvas.save()
+            canvas.clipPath(halfPlane)
+            textPaint.alpha = if (lit) (ink * 0.82f).toInt() else ink
+            canvas.drawText(label, x + nx * shift * sign, y + ny * shift * sign, textPaint)
+            canvas.restore()
+        }
+        textPaint.alpha = ink
     }
 
     /** Keys with a fixed meaning get a drawn icon; letters, names and text actions keep their label. */

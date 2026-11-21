@@ -276,6 +276,7 @@ class KeyboardService : InputMethodService(),
     /** Whether the system blurs the app behind the keyboard now (glass, Android 12+, where the phone can). */
     private var blurring = false
     private var blurListener: java.util.function.Consumer<Boolean>? = null
+    private val blurSpot = IntArray(2)
 
     /**
      * Glass lies over the app, blurred: turns the blur behind the keyboard window on for the glass styles where
@@ -294,11 +295,27 @@ class KeyboardService : InputMethodService(),
         val root = rootView
         val decor = w.peekDecorView()
         // Only once both are laid out: a window taller than the keys would blur the app above them too.
-        val fits = root != null && decor != null && root.height > 0 &&
-            decor.height - root.height <= (4 * resources.displayMetrics.density).toInt()
+        // What matters is the room above the keys (the system would blur the app there too); room below them
+        // (the system buttons' strip, Android 15+) is the keyboard's own.
+        val above = if (root != null && root.height > 0) {
+            root.getLocationInWindow(blurSpot)
+            blurSpot[1]
+        } else -1
+        val fits = decor != null && above in 0..(4 * resources.displayMetrics.density).toInt()
         val allowed = runCatching { wm.isCrossWindowBlurEnabled }.getOrDefault(false)
         val want = settings.themeMode.glass && allowed && fits
-        if (settings.themeMode.glass) android.util.Log.i("OffKeyBlur", "window=${decor?.height} keys=${root?.height} allowed=$allowed blur=$want")
+        if (settings.themeMode.glass) {
+            android.util.Log.i("OffKeyBlur", "window=${decor?.height} keys=${root?.height} above=$above allowed=$allowed blur=$want")
+            // For the settings: whether the glass is over the blurred app now, and if not, why.
+            if (above >= 0) {
+                val state = when {
+                    want -> BlurState.ON
+                    !allowed -> BlurState.NOT_ALLOWED
+                    else -> BlurState.WINDOW
+                }
+                BlurState.save(this, state, above)
+            }
+        }
         if (want == blurring) return
         blurring = want
         runCatching {

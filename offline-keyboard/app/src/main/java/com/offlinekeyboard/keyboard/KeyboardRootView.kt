@@ -511,7 +511,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 val page = PaperTexture.journal(key.first, key.second, density, light = key.third)
                 post {
                     if (sheetMaking == key) {
-                        sheetPage = page
+                        sheetPage = page?.bitmap
                         sheetPageKey = key
                         invalidate()
                     }
@@ -825,7 +825,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         fadePaint.shader = null
         // The sketch's paper pieces get their grain once it is made (in the background, the first time).
         if (value.style == SurfaceStyle.SHEET) {
-            PaperGrain.prepare(resources.displayMetrics.density) { post { invalidateTree(this) } }
+            PaperSheets.prepare(context, !value.dark) { post { invalidateTree(this) } }
         }
         // The band's height follows the tone (not while the view is still being built: insets come later).
         if (isAttachedToWindow) updateBottomSpace()

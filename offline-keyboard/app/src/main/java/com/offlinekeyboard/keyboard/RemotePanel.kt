@@ -292,8 +292,13 @@ class Touchpad(context: Context) : View(context) {
         invalidate()
     }
 
+    private val spot = IntArray(2)
+
     override fun onDraw(canvas: Canvas) {
         bounds.set(0f, 0f, width.toFloat(), height.toFloat())
+        getLocationInWindow(spot)
+        surfaces.sheetOffsetX = spot[0].toFloat()
+        surfaces.sheetOffsetY = spot[1].toFloat()
         surfaces.draw(canvas, bounds, 14f * density, style, fillColor, inkColor = ink, plate = true)
         label.textSize = 13f * density * resources.configuration.fontScale
         canvas.drawText("· · ·", width / 2f, height / 2f, label)

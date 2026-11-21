@@ -382,4 +382,9 @@
     <string name="tone_title">Ton</string>
     <string name="tone_dark">Ciemny</string>
     <string name="tone_light">Jasny</string>
+    <string name="blur_state_on">Szkło nad aplikacją: aplikacja za klawiaturą jest rozmyta.</string>
+    <string name="blur_state_not_allowed">Telefon nie pozwala teraz na rozmycie za oknami: sprawdź oszczędzanie baterii i «Zezwalaj na rozmycie na poziomie okna» w opcjach programisty. Do tego czasu szkło jest pełne.</string>
+    <string name="blur_state_window">Okno klawiatury sięga wyżej niż klawisze, więc rozmycie jest wyłączone (rozmyłoby też aplikację).</string>
+    <string name="blur_state_old">Rozmycie za klawiaturą wymaga Androida 12 lub nowszego; szkło jest pełne.</string>
+    <string name="blur_state_unknown">Otwórz klawiaturę raz w stylu Szkło: wtedy tu będzie widać, czy aplikacja za nią jest rozmyta.</string>
 </resources>

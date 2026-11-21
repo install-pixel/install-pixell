@@ -159,10 +159,6 @@ class SurfacePainter(private val density: Float) {
     /** Glass over the blurred app (see KeyboardTheme.seeThrough): keys let a little of it through. */
     var seeThrough = false
 
-    private val outlines = object : LinkedHashMap<Long, Pair<Path, Path>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Pair<Path, Path>>) = size > 400
-    }
-
     /**
      * Draws one surface in [rect]. [color] is used by FLAT; [inkColor] is the pencil colour of SHEET (blue for
      * the Enter key, otherwise the text colour). [sheen] adds the soft top light of large glass surfaces.
@@ -258,12 +254,9 @@ class SurfacePainter(private val density: Float) {
      */
     var sheetLight = false
 
-    private val foldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = 0.7f * density }
-
     private val agedEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = 2.4f * density
-        color = 0x2A6B4A26
+        strokeWidth = 1.4f * density
     }
 
     /** The outline of a paper piece (closed), by size and seed. */
@@ -272,108 +265,126 @@ class SurfacePainter(private val density: Float) {
     }
 
     /**
-     * A sheet surface: a piece of paper cut out by hand (its edge the same wavy pencil line as before), lying on
-     * the page and throwing a soft shadow; a pressed piece is pressed flat (no shadow, a little lower and
-     * darker). The pencil outline is drawn over it, fainter, so it still reads as sketched.
+     * A sheet surface: a scrap of paper torn or cut by hand (an uneven edge: long waves, small nicks, corners
+     * each a little different), lying on the page with a soft shadow; pressed, it lies flat (no shadow, a
+     * little lower and darker). Its paper is the part of the big key sheet where it lies (PaperSheets), so
+     * every piece has its own stains, fibres and folds; until that sheet is made, the plain paper colour.
+     * Chosen (an active mode): its edge drawn over in pencil.
      */
     private fun drawSheet(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, seed: Int, inkColor: Int) {
         val chosen = state == SurfaceState.SELECTED
         val pressed = state == SurfaceState.PRESSED
         val w = rect.width()
         val h = rect.height()
-        if (w > 0f && h > 0f) {
-            val pk = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1)
-            val piece = pieces.getOrPut(pk) {
-                val pts = Pencil.loop(w, h, radius, seed, 0.9f * density)
-                Path().apply {
-                    moveTo(pts[0], pts[1])
-                    var i = 2
-                    while (i + 1 < pts.size) { lineTo(pts[i], pts[i + 1]); i += 2 }
-                    close()
-                }
-            }
-            canvas.save()
-            canvas.translate(rect.left, rect.top + if (pressed) 1.2f * density else 0f)
-            fill.shader = null
-            if (!pressed) {
-                // The piece lifts a little off the page: a soft shadow, a few offset layers down and right.
-                for (i in 1..3) {
-                    fill.color = if (sheetLight) 0x1A4A3A24 else 0x3A000000
-                    canvas.save()
-                    canvas.translate(0.35f * i * density, 0.7f * i * density)
-                    canvas.drawPath(piece, fill)
-                    canvas.restore()
-                }
-            }
-            // Each piece its own shade of the paper: a cut of parchment, or of the near-black graphite paper
-            // (a touch lighter than the page, so it reads as a piece lying on it).
-            val tint = ((seed * 2654435761L) ushr 24 and 0x0F).toInt() - 7
-            val base = if (sheetLight) 0xF0E2C4 else 0x1E1D19
-            fun shade(c: Int, by: Int) = ((((c shr 16) and 0xFF) + by).coerceIn(0, 255) shl 16) or
-                ((((c shr 8) and 0xFF) + by).coerceIn(0, 255) shl 8) or (((c and 0xFF) + by).coerceIn(0, 255))
-            val by = if (sheetLight) tint + (if (pressed) -10 else 0) else tint / 3 + (if (pressed) 5 else 0)
-            fill.color = 0xFF000000.toInt() or shade(base, by)
-            canvas.drawPath(piece, fill)
-            // The paper's own grain on it (mottling and fibres), from a different place for every piece; no
-            // gloss: paper is matt.
-            PaperGrain.shader(sheetLight)?.let { grain ->
-                val spot = seed and 0xFFFF
-                matrix.setTranslate(-(spot % 97) * 3.1f * density, -(spot % 89) * 2.7f * density)
-                grain.setLocalMatrix(matrix)
-                fill.shader = grain
-                fill.alpha = 0xFF
-                canvas.drawPath(piece, fill)
-                fill.shader = null
-            }
-            // Its own folds: every piece is a separate scrap of paper, so each has none, one or two, at its own
-            // angle and place: one side of the crease a touch lighter, the other a touch darker, a crisp line.
-            val spot = seed and 0xFFFF
-            val count = (spot * 7 + 3) % 5 / 2
-            if (count > 0) {
+        if (w <= 0f || h <= 0f) return
+        val pk = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1)
+        val piece = pieces.getOrPut(pk) { tornPiece(w, h, radius, seed) }
+        canvas.save()
+        canvas.translate(rect.left, rect.top + if (pressed) 1.2f * density else 0f)
+        fill.shader = null
+        if (!pressed) {
+            // The piece lifts a little off the page: a soft shadow, a few offset layers down and right.
+            for (i in 1..3) {
+                fill.color = if (sheetLight) 0x1C4A3A24 else 0x40000000
                 canvas.save()
-                canvas.clipPath(piece)
-                val reach = kotlin.math.hypot(w, h)
-                for (k in 0 until count) {
-                    val hash = (spot + 1) * 2654435761L.toInt() xor (k * 0x5BD1E995)
-                    val angle = ((hash ushr 3) % 360).toFloat()
-                    val fx = w * (0.2f + ((hash ushr 11) % 60) / 100f)
-                    val fy = h * (0.2f + ((hash ushr 17) % 60) / 100f)
-                    canvas.save()
-                    canvas.rotate(angle, fx, fy)
-                    foldPaint.style = Paint.Style.FILL
-                    foldPaint.color = if (sheetLight) 0x16FFFFFF else 0x0DFFFFFF
-                    canvas.drawRect(fx - reach, fy, fx + reach, fy + reach, foldPaint)
-                    foldPaint.color = if (sheetLight) 0x125A3C1E else 0x1A000000
-                    canvas.drawRect(fx - reach, fy - reach, fx + reach, fy, foldPaint)
-                    foldPaint.style = Paint.Style.STROKE
-                    foldPaint.color = if (sheetLight) 0x38FFFFFF else 0x1CFFFFFF
-                    canvas.drawLine(fx - reach, fy, fx + reach, fy, foldPaint)
-                    canvas.restore()
-                }
+                canvas.translate(0.35f * i * density, 0.7f * i * density)
+                canvas.drawPath(piece, fill)
                 canvas.restore()
             }
-            // Old parchment is browned along its cut edge.
-            if (sheetLight) canvas.drawPath(piece, agedEdge)
-            canvas.restore()
         }
-        val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1) or
-            (if (chosen) 1L else 0L)
-        val (main, ghost) = outlines.getOrPut(key) {
-            val width = (if (chosen) 2.2f else 1.6f) * density
-            Pencil.tapered(Pencil.loop(w, h, radius, seed, 1.1f * density), width) to
-                Pencil.tapered(Pencil.loop(w, h, radius, seed + 101, 1.4f * density), width * 0.55f)
+        fill.color = if (sheetLight) PaperTexture.KEY_PARCHMENT else PaperTexture.KEY_CHARCOAL
+        canvas.drawPath(piece, fill)
+        PaperSheets.shader(sheetLight)?.let { paper ->
+            // The part of the sheet where the piece lies (shifted for pieces in their own little views).
+            matrix.setTranslate(-(rect.left + sheetOffsetX), -(rect.top + sheetOffsetY))
+            paper.setLocalMatrix(matrix)
+            fill.shader = paper
+            fill.alpha = 0xFF
+            canvas.drawPath(piece, fill)
+            fill.shader = null
         }
-        canvas.save()
-        canvas.translate(rect.left, rect.top)
-        if (pressed) canvas.translate(0f, 1.2f * density)
-        ink.color = inkColor
-        // Over the paper piece the pencil line is a little fainter than on the bare page.
-        ink.alpha = ((if (chosen) 255 else 150) * brightness).toInt()
-        canvas.drawPath(main, ink)
-        ink.alpha = ((if (chosen) 130 else 60) * brightness).toInt()
-        canvas.drawPath(ghost, ink)
+        if (pressed) {
+            fill.color = if (sheetLight) 0x1A3A2A14 else 0x22000000
+            canvas.drawPath(piece, fill)
+        }
+        // The cut edge: browned on parchment, a darker rim on charcoal; chosen, gone over in pencil.
+        if (chosen) {
+            ink.style = Paint.Style.STROKE
+            ink.strokeWidth = 1.8f * density
+            ink.color = inkColor
+            ink.alpha = (230 * brightness).toInt()
+            canvas.drawPath(piece, ink)
+            ink.style = Paint.Style.FILL
+        } else {
+            agedEdge.color = if (sheetLight) 0x386B4A26 else 0x66000000
+            canvas.drawPath(piece, agedEdge)
+        }
         canvas.restore()
     }
+
+    /** Where in the key sheet this painter's pieces lie, beyond their own place (buttons in small views). */
+    var sheetOffsetX = 0f
+    var sheetOffsetY = 0f
+
+    /**
+     * The outline of a scrap of paper of [w] × [h], always the same for the same [seed]: a rounded rectangle a
+     * little inside, its edge pushed in by long soft waves, smaller ones and a fine jagged grain.
+     */
+    private fun tornPiece(w: Float, h: Float, radius: Float, seed: Int): Path {
+        val random = java.util.Random(seed.toLong() * 7919L + 17L)
+        val r = minOf(radius * 0.7f, 6f * density, w / 2, h / 2)
+        val inset = 1.8f * density
+        // The rounded rectangle's outline, walked in small steps, each point with its inward direction.
+        val step = 1.3f * density
+        val xs = ArrayList<Float>()
+        val ys = ArrayList<Float>()
+        val nxs = ArrayList<Float>()
+        val nys = ArrayList<Float>()
+        fun add(x: Float, y: Float, nx: Float, ny: Float) { xs += x; ys += y; nxs += nx; nys += ny }
+        fun line(x0: Float, y0: Float, x1: Float, y1: Float, nx: Float, ny: Float) {
+            val n = (kotlin.math.hypot(x1 - x0, y1 - y0) / step).toInt().coerceAtLeast(1)
+            for (i in 0 until n) add(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, nx, ny)
+        }
+        fun arc(cx: Float, cy: Float, from: Float) {
+            val n = (r * 1.5708f / step).toInt().coerceAtLeast(2)
+            for (i in 0 until n) {
+                val a = from + 1.5708f * i / n
+                val c = kotlin.math.cos(a)
+                val sn = kotlin.math.sin(a)
+                add(cx + c * r, cy + sn * r, -c, -sn)
+            }
+        }
+        line(r, 0f, w - r, 0f, 0f, 1f); arc(w - r, r, -1.5708f)
+        line(w, r, w, h - r, -1f, 0f); arc(w - r, h - r, 0f)
+        line(w - r, h, r, h, 0f, -1f); arc(r, h - r, 1.5708f)
+        line(0f, h - r, 0f, r, 1f, 0f); arc(r, r, 3.1416f)
+        val n = xs.size
+        // Smooth noise round the loop (it closes on itself): values at knots, eased between them.
+        fun loopNoise(knots: Int, amplitude: Float): FloatArray {
+            val k = FloatArray(knots) { random.nextFloat() * 2f - 1f }
+            return FloatArray(n) { i ->
+                val t = i * knots / n.toFloat()
+                val i0 = t.toInt() % knots
+                val f = t - t.toInt()
+                val e = f * f * (3 - 2 * f)
+                (k[i0] * (1 - e) + k[(i0 + 1) % knots] * e) * amplitude
+            }
+        }
+        val perimeter = n * step
+        val wave = loopNoise((perimeter / (16f * density)).toInt().coerceAtLeast(4), 1.1f * density)
+        val ripple = loopNoise((perimeter / (5f * density)).toInt().coerceAtLeast(8), 0.5f * density)
+        val path = Path()
+        for (i in 0 until n) {
+            val grain = (random.nextFloat() - 0.3f) * 0.45f * density
+            val o = (inset + wave[i] + ripple[i] + grain).coerceAtLeast(0.2f * density)
+            val x = xs[i] + nxs[i] * o
+            val y = ys[i] + nys[i] * o
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        return path
+    }
+
     // ---------------------------------------------------------------- typewriter
 
     // Aged nickel, lit from above: bright top, dark middle, a lighter reflection at the bottom; chosen is brass.
