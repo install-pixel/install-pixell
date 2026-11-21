@@ -54,6 +54,17 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] Typewriter: the paper under the text moves with it, and letters on a fold of the paper bend with it;
       no lever ends showing on the paper.
 
+## 1.15.4 — switching that never sticks, softer sides in landscape
+
+- [x] Every long press on the Bluetooth button moves on to the next device, whether the last one answered
+      or not (a device that is away no longer stops the switching); a connection still being tried is
+      given up when you move on.
+- [x] The ★ of a chosen device shows its place in the order (★1, ★2, …).
+- [x] Remote keys are plates a little inside their place: rims and shadows whole.
+- [x] Landscape: where the keys stop short of the window's side (camera cutout, navigation bar) the paper
+      and the keys melt into the side; the machine's depth under the paper holder runs the whole width, over
+      the remote beside the keys too.
+
 ## 1.15.3 — one keyboard for several devices, a remote laid out to use
 
 - [x] Hold the Bluetooth button to switch to the next device: the devices marked ★ in the Bluetooth

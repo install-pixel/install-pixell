@@ -898,6 +898,9 @@ class KeyboardService : InputMethodService(),
         if (sentText.length > SENT_TEXT_MAX) sentText.delete(0, sentText.length - SENT_TEXT_MAX)
     }
 
+    /** Where in the cycle of chosen devices (and the phone, last) the last long press went. */
+    private var switchPosition = -1
+
     /** The device a switch is connecting to (its address), until it has. */
     private var switchingTo: String? = null
     private val switchTimeout = Runnable {
@@ -918,10 +921,18 @@ class KeyboardService : InputMethodService(),
             rootView?.showStatus(getString(R.string.bluetooth_switch_none), CHECK_WARNING_MS) { openSettings("bluetooth") }
             return
         }
-        val current = if (bluetoothSending && bluetoothConnected) Bluetooth.hostAddress else null
         val cycle: List<android.bluetooth.BluetoothDevice?> = hosts + listOf(null)
-        val at = cycle.indexOfFirst { it?.address == current }
-        val next = cycle[(at + 1) % cycle.size]
+        // From where typing goes now; while a switch is under way or failed (a device away), from the one
+        // last tried, so every long press moves on whether or not the last one answered.
+        val current = if (bluetoothSending && bluetoothConnected) Bluetooth.hostAddress else null
+        val at = when {
+            current != null -> cycle.indexOfFirst { it?.address == current }
+            switchPosition in cycle.indices -> switchPosition
+            else -> cycle.lastIndex
+        }
+        val nextAt = (at + 1) % cycle.size
+        switchPosition = nextAt
+        val next = cycle[nextAt]
         handler.removeCallbacks(switchTimeout)
         leaveSegment()
         if (next == null) {
