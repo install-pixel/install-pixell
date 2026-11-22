@@ -342,7 +342,7 @@
     <string name="clipboard_unpinned">Unpinned</string>
     <string name="key_sound">Key sounds</string>
     <string name="key_sound_volume">Volume: %1$d%%</string>
-    <string name="key_sound_hint">Typewriter: keys click, the space bar thumps, Enter is the carriage return. Sketch: a pencil writes, the eraser rubs out. Glass: bubble wrap pops. Silent while the phone is on silent or vibrate.</string>
+    <string name="key_sound_hint">Typewriter: keys click, the space bar thumps, Enter is the carriage return. Sketch: a pencil writes, the eraser rubs out. Glass: bubble wrap pops. Silent while the phone is on silent or vibrate. How loud they are is set by the phone: its «System sounds» volume (on some phones the ring or notification volume) in the sound settings. This slider can only make them quieter than that.</string>
     <string name="onb_title">Set up OffKey</string>
     <string name="onb_how">How should the keyboard be set up?</string>
     <string name="onb_recommended">Recommended</string>

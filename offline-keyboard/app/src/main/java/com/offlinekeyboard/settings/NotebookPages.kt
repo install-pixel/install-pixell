@@ -199,6 +199,23 @@ internal fun NotebookPages(title: String, modifier: Modifier = Modifier, content
     }
 }
 
+/**
+ * How strongly the writing follows the paper: how far it is pushed along the slope ([bend], dp), how much paler
+ * the pencil is in a crease's shadow ([fade]) and how much the creases light and shade it ([shade]).
+ */
+internal class NotebookBend(val bend: Float, val fade: Float, val shade: Float) {
+    companion object {
+        val variants = listOf(
+            NotebookBend(1.7f, 0f, 0.3f),
+            NotebookBend(3.5f, 0.3f, 0.35f),
+            NotebookBend(5.5f, 0.45f, 0.45f),
+            NotebookBend(8f, 0.6f, 0.55f),
+        )
+        /** The one in use (a launch extra «bend» picks another, to compare them). */
+        var current = variants[2]
+    }
+}
+
 /** What the measure found, for the drawing and the swipe (not composition state: it changes as it lays out). */
 private class PagesState {
     var count = 1
@@ -270,12 +287,18 @@ uniform shader content;
 uniform shader relief;
 uniform float2 origin;
 uniform float bend;
+uniform float fade;
+uniform float shade;
 half4 main(float2 p) {
     half4 r = relief.eval(p + origin);
     float2 g = (float2(r.r, r.g) - 0.5) * 3.0;
     half4 c = content.eval(p - g * bend);
-    float light = 1.0 + 0.3 * (r.b * 2.0 - 1.0);
-    return half4(clamp(c.rgb * light, 0.0, c.a), c.a);
+    float s = r.b * 2.0 - 1.0;
+    float light = 1.0 + shade * s;
+    // In the crease's shadow the pencil barely touched the paper: paler there.
+    float a = c.a * (1.0 - fade * clamp(-s, 0.0, 1.0));
+    float k = c.a > 0.0 ? a / c.a : 0.0;
+    return half4(clamp(c.rgb * light * k, 0.0, a), a);
 }
 """
 
@@ -310,7 +333,10 @@ private fun bend(relief: android.graphics.Bitmap?, photo: android.graphics.Bitma
         reliefShader.filterMode = android.graphics.BitmapShader.FILTER_MODE_LINEAR
         shader.setInputShader("relief", reliefShader)
         shader.setFloatUniform("origin", state.rootX, state.rootY)
-        shader.setFloatUniform("bend", with(density) { 1.7.dp.toPx() })
+        val v = NotebookBend.current
+        shader.setFloatUniform("bend", with(density) { v.bend.dp.toPx() })
+        shader.setFloatUniform("fade", v.fade)
+        shader.setFloatUniform("shade", v.shade)
         renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
 }

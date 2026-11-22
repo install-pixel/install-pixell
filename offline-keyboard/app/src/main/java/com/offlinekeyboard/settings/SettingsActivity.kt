@@ -76,6 +76,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        intent?.getIntExtra("bend", -1)?.takeIf { it in NotebookBend.variants.indices }?.let { NotebookBend.current = NotebookBend.variants[it] }
         super.onCreate(savedInstanceState)
         // Both styles are black: light status and navigation bar icons whatever the phone's theme.
         enableEdgeToEdge(
