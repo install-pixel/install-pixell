@@ -348,10 +348,12 @@ internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): M
     val painter = com.offlinekeyboard.keyboard.SurfacePainter(density).apply {
         brightness = KeyboardTheme.DEFAULT_BRIGHTNESS
         milk = Tone.palette.milk
+        // The window's reflection lies on the lacquer over the card's text, not behind it (see below).
+        glossOnTop = true
     }
     val rect = android.graphics.RectF(0f, 0f, size.width, size.height)
     val r = radius.toPx()
-    onDrawBehind {
+    onDrawWithContent {
         drawIntoCanvas {
             painter.draw(
                 it.nativeCanvas, rect, r, com.offlinekeyboard.keyboard.SurfaceStyle.TYPEWRITER, 0,
@@ -359,6 +361,8 @@ internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): M
                 seed = seed, plate = true,
             )
         }
+        drawContent()
+        drawIntoCanvas { painter.drawPlateGloss(it.nativeCanvas, rect) }
     }
 }
 
@@ -627,6 +631,17 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
         RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
     }
     if (family == StyleFamily.GLASS) {
+        Section(androidx.compose.ui.res.stringResource(R.string.glass_see_through)) {
+            SwitchRow(androidx.compose.ui.res.stringResource(R.string.glass_see_through), s.glassSeeThrough) { v ->
+                update { it.copy(glassSeeThrough = v) }
+            }
+            androidx.compose.material3.Text(
+                androidx.compose.ui.res.stringResource(R.string.glass_see_through_desc),
+                color = Tone.TextSecondary,
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            )
+        }
         // Whether the phone lets the glass lie over the blurred app, as the keyboard last found it.
         val context = androidx.compose.ui.platform.LocalContext.current
         val state = androidx.compose.runtime.remember { com.offlinekeyboard.keyboard.BlurState.load(context).first }

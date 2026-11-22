@@ -219,7 +219,7 @@ class KeyboardService : InputMethodService(),
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
         }
-        if (old.themeMode != new.themeMode || old.keyBrightness != new.keyBrightness) {
+        if (old.themeMode != new.themeMode || old.keyBrightness != new.keyBrightness || old.glassSeeThrough != new.glassSeeThrough) {
             updateBlur()
             rootView?.applyTheme(currentTheme())
             lightBars(currentTheme())
@@ -269,10 +269,11 @@ class KeyboardService : InputMethodService(),
     }
 
     private fun currentTheme(): KeyboardTheme {
-        // Glass always lies over the app: blurred where the system can blur behind the keyboard, otherwise
-        // the app shows through sharp (a little denser glass).
+        // Glass lies over the app only blurred: with «see-through glass» on and the system blurring behind the
+        // keyboard. Otherwise (off, or a phone that cannot blur) solid, the same in every app: the app sharp
+        // behind the letters reads badly, and most apps leave only their plain background there anyway.
         val theme = KeyboardTheme.resolve(settings.themeMode, settings.keyBrightness)
-        return theme.overBlur(blurred = blurring)
+        return if (blurring) theme.overBlur(blurred = true) else theme
     }
 
     /** Whether the system blurs the app behind the keyboard now (glass, Android 12+, where the phone can). */
@@ -313,7 +314,7 @@ class KeyboardService : InputMethodService(),
         } else -1
         val fits = decor != null && above in 0..(4 * resources.displayMetrics.density).toInt()
         val allowed = runCatching { wm.isCrossWindowBlurEnabled }.getOrDefault(false)
-        val want = settings.themeMode.glass && allowed && fits
+        val want = settings.themeMode.glass && settings.glassSeeThrough && allowed && fits
         if (settings.themeMode.glass) {
             android.util.Log.i("OffKeyBlur", "window=${decor?.height} keys=${root?.height} above=$above allowed=$allowed blur=$want")
             // For the settings: whether the glass is over the blurred app now, and if not, why.

@@ -957,7 +957,9 @@ class KeyboardView(context: Context) : View(context) {
         val e = 1f - (1f - shown) * (1f - shown) * (1f - shown)
         if (e <= 0.01f) return
         val b = p.bounds
-        val layer = canvas.saveLayerAlpha(b.left - dp(4f), b.top - dp(4f), b.right + dp(4f), b.bottom + dp(10f), (e * 255).toInt())
+        // Room round it for the soft edges (the sketch's patch melts away past its bounds).
+        val room = if (t.style == SurfaceStyle.SHEET) dp(18f) else dp(4f)
+        val layer = canvas.saveLayerAlpha(b.left - room, b.top - room, b.right + room, b.bottom + room + dp(6f), (e * 255).toInt())
         val scale = 0.92f + 0.08f * e
         canvas.scale(scale, scale, b.centerX(), b.bottom)
         if (t.style == SurfaceStyle.TYPEWRITER) {
@@ -975,6 +977,19 @@ class KeyboardView(context: Context) : View(context) {
                 if (chosen) body.offset(0f, surfaces.typewriterSink)
                 val color = if (chosen) t.text else (t.text and 0x00FFFFFF) or 0xA6000000.toInt()
                 drawLabel(canvas, body, p.options[i], color, p.key)
+            }
+            canvas.restoreToCount(layer)
+            return
+        }
+        if (t.style == SurfaceStyle.SHEET) {
+            // The sketch: no scrap of paper but a soft patch of the keyboard's paper, as the enlarged letter;
+            // the choice under the finger ringed in pencil, the letters written (bent with the paper).
+            surfaces.sheetLight = !t.dark
+            surfaces.drawSoftBand(canvas, b)
+            p.cells.forEachIndexed { i, cell ->
+                if (i == p.selected) surfaces.draw(canvas, cell, radius, t.style, t.popup, SurfaceState.SELECTED, seed = i, inkColor = t.text)
+                val color = if (i == p.selected) t.text else (t.text and 0x00FFFFFF) or 0xA6000000.toInt()
+                drawLabel(canvas, cell, p.options[i], color, p.key)
             }
             canvas.restoreToCount(layer)
             return

@@ -614,11 +614,16 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val now = android.os.SystemClock.uptimeMillis()
         if (down) {
             strikeFromX = keysRow.left + keyboardView.left + keyX
-            // On the user's text it strikes where the letter goes; while the strip shows suggestions or a
-            // message instead (the first letters of a field), straight up over its key. Either way it presses
-            // its letter into the paper: every stroke leaves its mark.
+            // It strikes where the letter goes in the text: on the strip's text after the cursor; while the strip
+            // shows suggestions instead (the first letters of a word) where the letter will stand once the text
+            // is back, not over its key (the letter landed at the far right, away from the text). Over a
+            // message, which is not the user's text, straight up over its key.
             val onText = showingEcho && statusScroll.visibility == View.VISIBLE && status.layout != null
-            strikeX = if (onText) printX() else strikeFromX
+            strikeX = when {
+                onText -> printX()
+                message == null && liveText == null -> textEndX()
+                else -> strikeFromX
+            }
             strikeLetter = letter
             strikeDownAt = now
             strikeUpAt = 0L
@@ -641,6 +646,19 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val advance = status.paint.measureText("0")
         val x = infoRow.left + statusScroll.left + status.left + status.totalPaddingLeft + at + advance / 2 - statusScroll.scrollX
         return x.coerceIn(infoRow.left + statusScroll.left.toFloat(), infoRow.left + statusScroll.right.toFloat())
+    }
+
+    /**
+     * Where the next letter goes while the strip shows suggestions: after the text before the cursor, as the
+     * strip will show it (its last line; at the right edge when it is longer than the strip).
+     */
+    private fun textEndX(): Float {
+        val text = echo?.toString() ?: ""
+        val cursor = echoCursor.coerceIn(0, text.length)
+        val before = text.substring(0, cursor).substringAfterLast('\n')
+        val advance = status.paint.measureText("0")
+        val x = infoRow.left + statusScroll.left + status.left + status.totalPaddingLeft + status.paint.measureText(before) + advance / 2
+        return x.coerceIn(infoRow.left + statusScroll.left.toFloat(), infoRow.left + statusScroll.right.toFloat() - advance / 2)
     }
 
     private fun strikeRise(now: Long): Float {

@@ -402,6 +402,18 @@ class SurfacePainter(private val density: Float) {
         softSpot(canvas, patch, rect.centerX(), rect.centerY(), r * 1.1f, r * 1.05f)
     }
 
+    /**
+     * The sketch's row of choices (a long press): the same soft patch of paper as the enlarged letter, drawn
+     * out to the width of the row; the choices are written on it and the one under the finger ringed.
+     */
+    fun drawSoftBand(canvas: Canvas, rect: RectF) {
+        val rx = rect.width() / 2
+        val ry = rect.height() / 2
+        val patch = if (sheetLight) softPatchLight else softPatchDark
+        softSpot(canvas, if (sheetLight) softBrown else softDark, rect.centerX() + ry * 0.08f, rect.centerY() + ry * 0.16f, rx + ry * 0.3f, ry * 1.15f)
+        softSpot(canvas, patch, rect.centerX(), rect.centerY(), rx + ry * 0.25f, ry * 1.1f)
+    }
+
     private val softPatchDark = RadialGradient(0f, 0f, 1f, intArrayOf(0xF5141311.toInt(), 0xE6141311.toInt(), 0x00141311), floatArrayOf(0f, 0.62f, 1f), Shader.TileMode.CLAMP)
     private val softPatchLight = RadialGradient(0f, 0f, 1f, intArrayOf(0xF5EAD9B4.toInt(), 0xE6EAD9B4.toInt(), 0x00EAD9B4), floatArrayOf(0f, 0.62f, 1f), Shader.TileMode.CLAMP)
 
@@ -616,6 +628,22 @@ class SurfacePainter(private val density: Float) {
 
     /** How far a pressed typewriter key goes down. */
     val typewriterSink: Float get() = 6f * density
+
+    /**
+     * A typewriter plate's gloss drawn by itself, over the plate's text ([glossOnTop]): the reflection lies on the
+     * lacquer over the letters too, as on the machine, rather than behind them, so text and light are one
+     * surface (the light only a little dimmer over the letters' own paint: they stay easy to read).
+     */
+    var glossOnTop = false
+
+    fun drawPlateGloss(canvas: Canvas, rect: RectF) {
+        val lit = 0.55f + 0.45f * brightness
+        val rimWidth = typewriterRim(rect.height(), true)
+        val t = rect.top + rimWidth
+        val iw = rect.width() - 2 * rimWidth
+        val ih = minOf(rect.height() - 2 * rimWidth, 60f * density)
+        softEllipse(canvas, gloss, rect.centerX() - iw * 0.12f, t + ih * 0.3f, iw * 0.42f, ih * 0.2f, lit * 0.8f)
+    }
 
     /** A soft light or shadow: [shader] (made over a unit circle) stretched to the ellipse at [cx], [cy]. */
     private fun softEllipse(canvas: Canvas, shader: Shader, cx: Float, cy: Float, rx: Float, ry: Float, alpha: Float = 1f) {
@@ -979,7 +1007,9 @@ class SurfacePainter(private val density: Float) {
         // light), and a faint bounce of light at the bottom.
         val iw = capRect.width()
         val ih = minOf(capRect.height(), if (plate) 60f * density else capRect.height())
-        if (pressed) {
+        if (plate && glossOnTop) {
+            // Drawn later over what is written on the plate (see drawPlateGloss).
+        } else if (pressed) {
             softEllipse(canvas, gloss, cx - iw * 0.1f, capRect.top + ih * 0.34f, iw * 0.36f, ih * 0.16f, 0.45f * lit)
         } else {
             softEllipse(canvas, gloss, cx - iw * 0.12f, capRect.top + ih * 0.3f, iw * 0.42f, ih * 0.2f, lit)

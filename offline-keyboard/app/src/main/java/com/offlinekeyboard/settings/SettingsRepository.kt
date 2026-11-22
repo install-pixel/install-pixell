@@ -34,6 +34,8 @@ data class KeyboardSettings(
     val keyHeightScale: Float = 1f,
     /** How bright frames, rims and light of the keys are, 0.4–1 (labels dim only a little). */
     val keyBrightness: Float = KeyboardTheme.DEFAULT_BRIGHTNESS,
+    /** Glass lies over the app, blurred, where the phone can blur behind the keyboard; otherwise (and off) solid. */
+    val glassSeeThrough: Boolean = false,
     val autoCapitalize: Boolean = true,
     val spaceSwipeSwitchesLanguage: Boolean = true,
     /** The pressed letter is shown enlarged above the finger. */
@@ -122,6 +124,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.HIDE_TOOLBAR_BUTTONS] = updated.hideToolbarButtons
             prefs[Keys.KEY_HEIGHT_SCALE] = updated.keyHeightScale
             prefs[Keys.KEY_BRIGHTNESS] = updated.keyBrightness
+            prefs[Keys.GLASS_SEE_THROUGH] = updated.glassSeeThrough
             prefs[Keys.AUTO_CAPITALIZE] = updated.autoCapitalize
             prefs[Keys.SPACE_SWIPE] = updated.spaceSwipeSwitchesLanguage
             prefs[Keys.KEY_PREVIEW] = updated.keyPreview
@@ -220,6 +223,7 @@ class SettingsRepository(context: Context) {
             hideToolbarButtons = this[Keys.HIDE_TOOLBAR_BUTTONS] ?: defaults.hideToolbarButtons,
             keyHeightScale = (this[Keys.KEY_HEIGHT_SCALE] ?: defaults.keyHeightScale)
                 .coerceIn(KeyboardSettings.MIN_KEY_HEIGHT_SCALE, KeyboardSettings.MAX_KEY_HEIGHT_SCALE),
+            glassSeeThrough = this[Keys.GLASS_SEE_THROUGH] ?: defaults.glassSeeThrough,
             keyBrightness = (this[Keys.KEY_BRIGHTNESS] ?: defaults.keyBrightness)
                 .coerceIn(KeyboardSettings.MIN_KEY_BRIGHTNESS, KeyboardSettings.MAX_KEY_BRIGHTNESS),
             autoCapitalize = this[Keys.AUTO_CAPITALIZE] ?: defaults.autoCapitalize,
@@ -273,6 +277,7 @@ class SettingsRepository(context: Context) {
         val HIDE_TOOLBAR_BUTTONS = booleanPreferencesKey("hide_toolbar_buttons")
         val KEY_HEIGHT_SCALE = floatPreferencesKey("key_height_scale")
         val KEY_BRIGHTNESS = floatPreferencesKey("key_brightness")
+        val GLASS_SEE_THROUGH = booleanPreferencesKey("glass_see_through")
         val AUTO_CAPITALIZE = booleanPreferencesKey("auto_capitalize")
         val SPACE_SWIPE = booleanPreferencesKey("space_swipe_language")
         val KEY_PREVIEW = booleanPreferencesKey("key_preview")

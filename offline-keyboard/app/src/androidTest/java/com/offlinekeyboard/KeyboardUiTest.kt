@@ -636,6 +636,16 @@ class KeyboardUiTest {
                     screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
                 }
             }
+            // The first setup in this style too (opened as from the launcher while it was never done).
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(onboardingDone = false) } }
+            val first = android.content.Intent(android.content.Intent.ACTION_MAIN)
+                .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                .setClass(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+            ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(first).use {
+                Thread.sleep(1500)
+                screenshot("settings-$tag-onboarding")
+            }
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(onboardingDone = true) } }
         } finally {
             kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS) } }
         }

@@ -321,7 +321,7 @@
     <string name="help_emoji_body">• Hold the comma and let go — the emoji panel; arrows turn pages, the first page — the most used.\n• Your own emoji and smileys — «Emoji and stickers» → «My emoji»; they get a ★ page.\n• OffKey stickers and your own animated ones — there too; they go into apps that accept them.</string>
     <string name="help_dictionary">Dictionary and backup</string>
     <string name="help_dictionary_body">• «My dictionary» — add and remove your own words for suggestions.\n• Remembering typed words — turned on there; words stay on the phone.\n• Import — .txt (a word per line, into the language selected at the top) or JSON {\"uk\": [...], \"pl\": [...]}.\n• Export — all your words as JSON.\n• Full backup — «About» → «Backup»: settings, emoji, shortcuts, dictionary, glossary. Models are not included.</string>
-    <string name="theme_glass_desc">Glass with soft highlights: black or milky; the app behind it is blurred where the phone can</string>
+    <string name="theme_glass_desc">Glass with soft highlights: black or milky</string>
     <string name="theme_sheet_desc">Pencil on paper: keys are pieces of paper cut out by hand</string>
     <string name="theme_typewriter">Typewriter</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys on levers, worn by years</string>
@@ -382,9 +382,11 @@
     <string name="tone_title">Tone</string>
     <string name="tone_dark">Dark</string>
     <string name="tone_light">Light</string>
-    <string name="blur_state_on">Glass over the app: the app behind the keyboard is blurred.</string>
-    <string name="blur_state_not_allowed">The phone does not allow blur behind windows now: check battery saver and «Allow window-level blurs» in the developer options. Until then the app shows through the glass without blur.</string>
-    <string name="blur_state_window">The keyboard\'s window reaches above the keys, so blur is off (it would blur the app there too); the app shows through without it.</string>
-    <string name="blur_state_old">Blur behind the keyboard needs Android 12 or newer; the app shows through the glass without blur.</string>
-    <string name="blur_state_unknown">Open the keyboard once in glass: then this shows whether the app behind it is blurred.</string>
+    <string name="blur_state_on">The app behind the keyboard is blurred.</string>
+    <string name="blur_state_not_allowed">This phone does not blur behind windows now (it may not be able to, or battery saver and «Allow window-level blurs» in the developer options turn it off): the glass stays solid.</string>
+    <string name="blur_state_window">The keyboard\'s window reaches above the keys, so blur is off (it would blur the app there too): the glass stays solid.</string>
+    <string name="blur_state_old">Blur behind the keyboard needs Android 12 or newer: the glass stays solid.</string>
+    <string name="glass_see_through">See-through glass</string>
+    <string name="glass_see_through_desc">The app behind the keyboard shows through, blurred, where the phone can blur. Elsewhere, and when off, the glass is solid, the same in every app. Most apps leave only their plain background under the keyboard: you see their content only where they draw there (a browser, video).</string>
+    <string name="blur_state_unknown">Open the keyboard once in glass: then this shows whether the phone blurs the app behind it.</string>
 </resources>
