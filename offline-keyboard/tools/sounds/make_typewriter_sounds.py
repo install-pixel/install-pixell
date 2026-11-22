@@ -12,7 +12,7 @@ ratchet of the platen knob made from the same keystrokes, slowed down.
 the repository), chosen by ear: tw_key_1..4 (a strike and the key coming back up; make_typewriter_sounds_v2.py,
 group 3), tw_return_1..3 (the carriage's slide end and bang, shortened to ~1.1 s), tw_bell, tw_sheet (the
 ratchet as the paper is rolled in; make_typewriter_sounds_v2b.py). Plain filtering and gain, no limiter.
-The space bar's thump is still the recording above.
+The space bar: the dullest strike of group 3 (e6a37d4b), also one of the keys.
 """
 import sys, wave
 import numpy as np
