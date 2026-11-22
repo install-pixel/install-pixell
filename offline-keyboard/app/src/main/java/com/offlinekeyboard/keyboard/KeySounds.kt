@@ -8,7 +8,7 @@ import com.offlinekeyboard.R
 
 /**
  * The sounds of the Black Typewriter style, from recordings of a real machine (see tools/sounds): a strike
- * for keys (five slightly different ones, so fast typing does not sound like a loop), a duller one for the
+ * for keys (four slightly different ones with the key coming back up, so fast typing does not sound like a loop), a duller one for the
  * space bar, the carriage return for Enter, the margin bell near the end of a line and a new sheet of paper
  * going in; the sheet's pencil and eraser; the glass's bubble wrap. Silent while the phone is on silent or
  * vibrate.
@@ -54,10 +54,10 @@ class KeySounds(private val context: Context) {
         }
     }
 
-    private val keys = listOf(R.raw.tw_key_1, R.raw.tw_key_2, R.raw.tw_key_3, R.raw.tw_key_4, R.raw.tw_key_5)
+    private val keys = listOf(R.raw.tw_key_1, R.raw.tw_key_2, R.raw.tw_key_3, R.raw.tw_key_4)
         .map { pool.load(context, it, 1) }
     private val space = pool.load(context, R.raw.tw_space, 1)
-    private val enter = pool.load(context, R.raw.tw_return, 1)
+    private val enters = listOf(R.raw.tw_return_1, R.raw.tw_return_2, R.raw.tw_return_3).map { pool.load(context, it, 1) }
     private val bell = pool.load(context, R.raw.tw_bell, 1)
     private val sheet = pool.load(context, R.raw.tw_sheet, 1)
     // The sheet: twelve pencil strokes (never the same twice in a row), the lead's tap for space, a long
@@ -136,7 +136,7 @@ class KeySounds(private val context: Context) {
             Kind.KEY -> keys[next++ % keys.size]
             Kind.DELETE -> keys[2]
             Kind.SPACE -> space
-            Kind.RETURN -> enter
+            Kind.RETURN -> anyOf(enters)
             Kind.BELL -> bell
             Kind.SHEET -> sheet
         }
