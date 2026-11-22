@@ -1,12 +1,17 @@
 name: Offline Keyboard
 
+# Runs on every push that touches the keyboard (a pull request's checks come from the push of its branch:
+# no second, identical run for the pull request). While a branch is being worked on, the emulator tests run
+# on Android 15 only; on main, by hand and for a release, on all three versions.
 on:
   workflow_call:
+    inputs:
+      screens:
+        description: 'Publish the screenshots'
+        type: boolean
+        required: false
+        default: true
   push:
-    paths:
-      - 'offline-keyboard/**'
-      - '.github/workflows/offline-keyboard.yml'
-  pull_request:
     paths:
       - 'offline-keyboard/**'
       - '.github/workflows/offline-keyboard.yml'
@@ -78,15 +83,9 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      # Android 11 (30), 14 (34) and 15 (35: the keyboard window drawn behind the navigation bar, edge to edge).
       matrix:
-        include:
-          - api: 30
-            target: default
-          - api: 34
-            target: google_apis
-          # Android 15: the keyboard window is drawn behind the navigation bar (edge to edge).
-          - api: 35
-            target: google_apis
+        include: ${{ fromJSON((github.event_name == 'push' && github.ref != 'refs/heads/main') && '[{"api":35,"target":"google_apis"}]' || '[{"api":30,"target":"default"},{"api":34,"target":"google_apis"},{"api":35,"target":"google_apis"}]') }}
     permissions:
       contents: write
     defaults:
@@ -124,6 +123,8 @@ jobs:
           arch: x86_64
           target: ${{ matrix.target }}
           disable-animations: true
+          # A real phone's screen (1080 × 2400), so the screenshots look as they do on the phone.
+          profile: pixel_6
           ram-size: 4096M
           heap-size: 512M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
@@ -141,8 +142,9 @@ jobs:
             offline-keyboard/app/build/outputs/androidTest-results/
 
       # Screenshots on a fixed release page so they can be viewed without logging in to Actions.
+      # Android 15's only (the others are kept in the run's files), and not for a release run.
       - name: Publish screenshots
-        if: always() && github.event_name != 'pull_request'
+        if: always() && matrix.api == 35 && inputs.screens != false
         continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
