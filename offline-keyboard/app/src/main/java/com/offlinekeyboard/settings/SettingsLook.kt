@@ -248,11 +248,24 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = colors, typography = type, shapes = shapes) {
         CompositionLocalProvider(
             LocalLook provides look,
+            // The sketch is written on paper: a tap leaves no grey highlight on it (a chosen option is ringed in pencil).
+            androidx.compose.foundation.LocalIndication provides (if (look == Look.SHEET) NoHighlight else androidx.compose.foundation.LocalIndication.current),
             LocalTextStyle provides LocalTextStyle.current.merge(font),
             LocalDensity provides if (look == Look.SHEET) Density(density.density, density.fontScale * HAND_SCALE) else density,
             content = content,
         )
     }
+}
+
+/** No highlight at all under a tap (the sketch). */
+private object NoHighlight : androidx.compose.foundation.IndicationNodeFactory {
+    override fun create(interactionSource: androidx.compose.foundation.interaction.InteractionSource): androidx.compose.ui.node.DelegatableNode =
+        object : androidx.compose.ui.Modifier.Node(), androidx.compose.ui.node.DrawModifierNode {
+            override fun androidx.compose.ui.graphics.drawscope.ContentDrawScope.draw() = drawContent()
+        }
+
+    override fun equals(other: Any?) = other === this
+    override fun hashCode() = 7
 }
 
 private fun Typography.withFont(font: TextStyle) = Typography(
