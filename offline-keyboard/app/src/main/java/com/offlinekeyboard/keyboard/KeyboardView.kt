@@ -135,6 +135,9 @@ class KeyboardView(context: Context) : View(context) {
             // The sheet style lies on paper the root draws under everything (keys and strip alike).
             // Glass over the blurred app likewise: the root draws the see-through page once, under everything.
             setBackgroundColor(if (value.style == SurfaceStyle.SHEET || value.seeThrough) 0 else value.background)
+            // The typewriter: a little room under the paper holder's line, so it never lies on the keys' tops.
+            val padTop = if (value.style == SurfaceStyle.TYPEWRITER) dp(4f).toInt() else 0
+            if (paddingTop != padTop) setPadding(paddingLeft, padTop, paddingRight, paddingBottom)
             val (letters, labels) = faces(value)
             letterFace = letters
             labelFace = labels
@@ -533,10 +536,16 @@ class KeyboardView(context: Context) : View(context) {
                 // On the most used typewriter keys the paint of the letter is a little worn.
                 val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
                 if (theme.style == SurfaceStyle.SHEET && isSpace(key)) drawSpaceMarks(canvas, inner, color, index)
-                if (theme.style == SurfaceStyle.SHEET && underBubble(face)) {
-                    // Under the sketch's enlarged letter (a soft patch, see-through at its edge): not written, so
-                    // nothing of it shows round the patch.
-                } else if (theme.style == SurfaceStyle.SHEET && pressed) {
+                // (Letters under the sketch's enlarged letter are written as ever: the patch is laid over them and
+                // covers them, rather than the keys being wiped away under it.)
+                // The sketch: a key with a digit in its corner keeps its letter under it (tall handwritten capitals,
+                // and Й, Ї, Ґ with their marks, reached up into the digit).
+                labelTop = if (theme.style == SurfaceStyle.SHEET && KeyLabels.hint(key, ctx) != null) {
+                    inner.top + inner.height() * 0.19f * (1f + (theme.textScale - 1f) / 2f) + dp(4.5f) + dp(2f)
+                } else {
+                    Float.NaN
+                }
+                if (theme.style == SurfaceStyle.SHEET && pressed) {
                     // Pressed into the paper: the letter sinks a little with it.
                     pressedFace.set(face)
                     pressedFace.inset(face.width() * 0.03f, face.height() * 0.03f)
@@ -545,6 +554,7 @@ class KeyboardView(context: Context) : View(context) {
                 } else {
                     drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
                 }
+                labelTop = Float.NaN
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
@@ -706,6 +716,9 @@ class KeyboardView(context: Context) : View(context) {
     private val inkBounds = android.graphics.Rect()
     private val pressedFace = RectF()
 
+    /** The sketch: where the letter of the key being drawn may start (below its corner digit), or NaN. */
+    private var labelTop = Float.NaN
+
     private fun drawLabel(canvas: Canvas, rect: RectF, label: String, color: Int, key: Key) {
         if (label.isEmpty()) return
         textPaint.color = color
@@ -741,6 +754,19 @@ class KeyboardView(context: Context) : View(context) {
             // Capitals centred by the ink, not by the font's line (they sat high, their marks out of the piece);
             // small letters keep one line, so д, у and р still hang below it.
             if (label.any { it.isUpperCase() }) y = rect.centerY() - inkBounds.exactCenterY()
+            // Under the key's digit: the ink starts below it, a little smaller if the room left needs it.
+            if (!labelTop.isNaN()) {
+                val floor = rect.bottom - dp(2f)
+                val room2 = floor - labelTop
+                if (inkBounds.height() > room2 && room2 > 0f) {
+                    size *= room2 / inkBounds.height()
+                    textPaint.textSize = size
+                    textPaint.getTextBounds(label, 0, label.length, inkBounds)
+                    if (label.any { it.isUpperCase() }) y = rect.centerY() - inkBounds.exactCenterY()
+                }
+                if (y + inkBounds.top < labelTop) y = labelTop - inkBounds.top
+                if (y + inkBounds.bottom > floor) y = floor - inkBounds.bottom
+            }
         }
         if (typewriter) {
             // Struck through an old ribbon: every letter a little tilted, off its line and lighter or darker,
@@ -794,16 +820,6 @@ class KeyboardView(context: Context) : View(context) {
         canvas.translate(rect.left, rect.top)
         canvas.drawPath(path, spacePaint)
         canvas.restore()
-    }
-
-    private val overlap = RectF()
-
-    /** Whether an enlarged letter now shown covers much of [face] (its middle part). */
-    private fun underBubble(face: RectF): Boolean {
-        if (bubbles.isEmpty()) return false
-        overlap.set(face)
-        overlap.inset(face.width() * 0.2f, face.height() * 0.2f)
-        return bubbles.any { it.shown > 0.15f && RectF.intersects(it.rect, overlap) }
     }
 
     /** Letters written on the sketch's paper, bent to its relief, by where they lie (made once each). */

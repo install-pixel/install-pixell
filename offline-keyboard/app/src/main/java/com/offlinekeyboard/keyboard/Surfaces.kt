@@ -525,10 +525,11 @@ class SurfacePainter(private val density: Float) {
         0f, 0f, 1f, intArrayOf(0x33FFF8E6, 0x14FFF8E6, 0x00FFF8E6), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP,
     )
     private var bounce: Shader = RadialGradient(0f, 0f, 1f, 0x12FFF0D2, 0x00FFF0D2, Shader.TileMode.CLAMP)
-    // A steel key lever: lit near the keys, dark deep in the machine; with a thin line of light along it.
+    // A steel key lever: lit near the keys, dark deep in the machine; with a thin line of light along it. Light
+    // enough to be seen on the black machine (darker, they were lost there, while the milky ones showed).
     private var leverShade: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xFF4A453C.toInt(), 0xFF2A2722.toInt(), 0xFF0C0B0A.toInt()),
+        intArrayOf(0xFF7A7468.toInt(), 0xFF4E4A42.toInt(), 0xFF1E1C19.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )
@@ -541,7 +542,7 @@ class SurfacePainter(private val density: Float) {
     // A key lever seen from the front: dark deep in the machine (up), lit near its key (down).
     private var rodShade: Shader = LinearGradient(
         0f, 0f, 0f, 1f,
-        intArrayOf(0xFF0C0B0A.toInt(), 0xFF3A362F.toInt(), 0xFF6A655A.toInt()),
+        intArrayOf(0xFF1E1C19.toInt(), 0xFF5A554C.toInt(), 0xFF9A9384.toInt()),
         floatArrayOf(0f, 0.5f, 1f),
         Shader.TileMode.CLAMP,
     )

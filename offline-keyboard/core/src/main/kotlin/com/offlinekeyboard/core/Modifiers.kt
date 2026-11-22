@@ -44,6 +44,11 @@ class Modifiers(private val doubleTapMillis: Long = 400L) {
         capsLock = !capsLock
     }
 
+    /** Turns Caps Lock off (it belongs to the computer layout, the only one with a Caps key). */
+    fun clearCapsLock() {
+        capsLock = false
+    }
+
     /** Sets or clears automatic sentence-start Shift without touching a Shift the user chose. */
     fun setAutoShift(enabled: Boolean) {
         val shift = state(ModifierKey.SHIFT)

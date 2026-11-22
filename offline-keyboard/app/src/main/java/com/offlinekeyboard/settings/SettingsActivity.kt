@@ -284,9 +284,10 @@ private fun PageContent(
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
     val keyboardOpen = WindowInsets.isImeVisible
     if (LocalLook.current == Look.SHEET) {
-        // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages).
+        // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages); the pages fill the
+        // screen (a turned page is a whole sheet), and ‹ on the first page leaves it instead of a Back button.
         val frame = remember { PaperFrame() }
-        Column(
+        androidx.compose.foundation.layout.Box(
             Modifier
                 .fillMaxSize()
                 .paperPage()
@@ -296,21 +297,10 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
                     frame.top = p.y
                     frame.width = it.size.width.toFloat()
                     frame.height = it.size.height.toFloat()
-                }
-                .safeDrawingPadding(),
+                },
         ) {
             androidx.compose.runtime.CompositionLocalProvider(LocalPaperFrame provides frame) {
-                NotebookPages(title, Modifier.fillMaxWidth().weight(1f), content)
-            }
-            if (onBack != null && !keyboardOpen) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
-                }
+                NotebookPages(title, onBack, Modifier.fillMaxSize(), content)
             }
         }
         return
@@ -400,46 +390,22 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 
         Section(stringResource(R.string.section_try)) {
             var sample by rememberSaveable { mutableStateOf("") }
-            OutlinedTextField(
-                value = sample,
-                onValueChange = { sample = it },
-                // A fixed window: long text scrolls inside it instead of stretching the page.
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    // The sketch: written on the page itself (one layer of paper), on ruled pencil lines.
-                    .then(
-                        if (LocalLook.current == Look.SHEET) {
-                            Modifier
-                                .drawBehind {
-                                    // Lines to write on, ruled in pencil, as on a notebook's page.
-                                    // Under each line of text, not through it (the first one below the hint).
-                                    val gap = 34.dp.toPx()
-                                    var y = 50.dp.toPx()
-                                    var line = 0
-                                    while (y < size.height - 4.dp.toPx()) {
-                                        pencilStroke(y, size.width * 0.03f, size.width * 0.97f, seed = 23 + line, alpha = 0.45f)
-                                        y += gap
-                                        line++
-                                    }
-                                }
-                        } else {
-                            Modifier
-                        },
-                    ),
-                colors = if (LocalLook.current == Look.SHEET) {
-                    androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                        unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                    )
-                } else {
-                    androidx.compose.material3.OutlinedTextFieldDefaults.colors()
-                },
-                // A placeholder inside the field: a floating label would cut the frame.
-                placeholder = { Text(stringResource(R.string.try_hint)) },
-                // Sentence capitals, like a message field, so every typing rule can be tried here.
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            )
+            if (LocalLook.current == Look.SHEET) {
+                RuledTryField(sample) { sample = it }
+            } else {
+                OutlinedTextField(
+                    value = sample,
+                    onValueChange = { sample = it },
+                    // A fixed window: long text scrolls inside it instead of stretching the page.
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    // A placeholder inside the field: a floating label would cut the frame.
+                    placeholder = { Text(stringResource(R.string.try_hint)) },
+                    // Sentence capitals, like a message field, so every typing rule can be tried here.
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                )
+            }
         }
 
         Section(stringResource(R.string.section_menu)) {
@@ -791,6 +757,65 @@ private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () 
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+}
+
+/**
+ * The sketch's try field: written on the page on ruled pencil lines, and the lines are the text's own: one under
+ * every line of text where it really is (and empty ones below), and they move with the text as the window
+ * scrolls, as writing on a page in a notebook (a fixed window of three lines; longer text scrolls inside it).
+ */
+@Composable
+private fun RuledTryField(value: String, onChange: (String) -> Unit) {
+    var layout by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+    val scroll = rememberScrollState()
+    val style = MaterialTheme.typography.bodyLarge.copy(color = Tone.TextPrimary)
+    // Writing on at the end keeps its line in sight (the window scrolls down with it).
+    androidx.compose.runtime.LaunchedEffect(value.length) { scroll.animateScrollTo(scroll.maxValue) }
+    androidx.compose.foundation.layout.Box(
+        Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .verticalScroll(scroll),
+    ) {
+        androidx.compose.foundation.text.BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            textStyle = style,
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(Tone.TextPrimary),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            onTextLayout = { layout = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp)
+                .drawBehind {
+                    val l = layout ?: return@drawBehind
+                    // At the bottom of each line of text, clear of the letters' tails.
+                    val under = 1.dp.toPx()
+                    val lines = maxOf(1, l.lineCount)
+                    var lastY = 0f
+                    for (i in 0 until lines) {
+                        lastY = l.getLineBottom(i) + under
+                        pencilStroke(lastY, size.width * 0.01f, size.width * 0.99f, seed = 23 + i, alpha = 0.45f)
+                    }
+                    // Empty lines below, as far as the field goes, the same distance apart.
+                    val step = if (lines > 1) (l.getLineBottom(lines - 1) - l.getLineBottom(0)) / (lines - 1) else l.getLineBottom(0) - l.getLineTop(0)
+                    var y = lastY + step
+                    var i = lines
+                    while (step > 0f && y < size.height - 2.dp.toPx()) {
+                        pencilStroke(y, size.width * 0.01f, size.width * 0.99f, seed = 23 + i, alpha = 0.45f)
+                        y += step
+                        i++
+                    }
+                }
+                .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 14.dp),
+            decorationBox = { inner ->
+                androidx.compose.foundation.layout.Box {
+                    if (value.isEmpty()) Text(stringResource(R.string.try_hint), style = style.copy(color = Tone.TextSecondary))
+                    inner()
+                }
             },
         )
     }

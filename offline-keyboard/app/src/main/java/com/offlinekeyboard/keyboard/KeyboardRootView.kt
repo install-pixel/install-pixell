@@ -83,7 +83,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     )
 
     /** HIDDEN: the Bluetooth keyboard is off in settings; IDLE: on, typing goes to the phone; SENDING: to the computer. */
-    enum class BluetoothButton { HIDDEN, IDLE, SENDING }
+    /** WAITING: turned on, waiting for the computer to connect (ringed, dimmer); SENDING: connected. */
+    enum class BluetoothButton { HIDDEN, IDLE, WAITING, SENDING }
 
     var toolbarListener: ToolbarListener? = null
 
@@ -288,9 +289,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
     private val volumeBar = VolumeBar(context).apply { visibility = View.GONE }
     private var volumeShown = false
+    private var volumeDownX = 0f
     private val startVolume = Runnable {
         volumeShown = true
+        // From the volume it is at (0 when the sounds are off at 0), moved by the finger from where it is.
         volumeBar.value = lastState?.soundVolume ?: 0.6f
+        volumeBar.anchor(volumeDownX)
         soundButton.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
         removeCallbacks(hideButtonsRunnable)
         refreshCentre()
@@ -303,6 +307,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     volumeShown = false
+                    volumeDownX = event.rawX
                     postDelayed(startVolume, android.view.ViewConfiguration.getLongPressTimeout().toLong())
                 }
                 android.view.MotionEvent.ACTION_MOVE -> if (volumeShown) {
@@ -385,7 +390,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val state = lastState
         if (!hideButtons || state == null || state.computerMode || buttonsShown || busy()) return true
         if (compact && modesExpanded) return true
-        return state.bluetooth == BluetoothButton.SENDING
+        return state.bluetooth == BluetoothButton.SENDING || state.bluetooth == BluetoothButton.WAITING
     }
 
     private fun refreshButtons() {
@@ -419,7 +424,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var liveText: CharSequence? = null
     private var suggestions: List<String> = emptyList()
     private var echo: CharSequence? = null
-    private val clearMessage = Runnable { message = null; statusAction = null; refreshCentre() }
+    private val clearMessage = Runnable { messageScroll?.cancel(); message = null; statusAction = null; refreshCentre() }
 
     /**
      * A band above the toolbar where the app shows through and fades into the keyboard's black, instead
@@ -436,7 +441,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     override fun onDraw(canvas: Canvas) {
         val color = fadeColor
         // On the typewriter the soft edge fades into the black paper of the strip, not into the keyboard.
-        val fadeTo = if (theme.style == SurfaceStyle.TYPEWRITER) PaperTexture.edgeColor(theme.milk) else color
+        val fadeTo = when {
+            theme.style == SurfaceStyle.TYPEWRITER -> PaperTexture.edgeColor(theme.milk)
+            // The sketch fades into its paper (into the pale ground it glowed as a light band over the paper).
+            theme.style == SurfaceStyle.SHEET && paperEdge != 0 -> paperEdge
+            else -> color
+        }
         if (fadeHeight > 0) {
             if (fadePaint.shader == null || fadePaint.color != fadeTo) {
                 fadePaint.color = fadeTo
@@ -479,14 +489,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      */
     private fun drawSheetPaper(canvas: Canvas) {
         val paper = PaperSheets.keyboard(!theme.dark) ?: return
-        val inset = dp(3).toFloat()
-        paperRect.set(inset, fadeHeight + inset, width - inset, height.toFloat())
+        // Edge to edge: with a margin, the plain ground under the sheet showed round it as a pale frame.
+        paperRect.set(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat())
         if (paperRect.width() <= 0f || paperRect.height() <= 0f) return
-        // A soft shadow under the sheet.
-        for (i in 1..4) {
-            paperShadow.color = if (theme.dark) 0x30000000 else 0x1E3A2A14
-            canvas.drawRect(paperRect.left + i * 0.5f, paperRect.top + i, paperRect.right + i * 0.5f, paperRect.bottom, paperShadow)
-        }
+        paperEdge = edgeColorOf(paper)
         // The photograph scaled to cover the sheet, centred.
         val scale = maxOf(paperRect.width() / paper.width, paperRect.height() / paper.height)
         paperMatrix.setScale(scale, scale)
@@ -510,6 +516,23 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private var paperShader: android.graphics.Bitmap? = null
+    /** The sheet's paper at its top edge (the soft band above it fades into this, not into a pale ground). */
+    private var paperEdge = 0
+    private var paperEdgeOf: android.graphics.Bitmap? = null
+
+    private fun edgeColorOf(paper: android.graphics.Bitmap): Int {
+        if (paperEdgeOf === paper) return paperEdge
+        paperEdgeOf = paper
+        var r = 0L; var g = 0L; var b = 0L; var n = 0
+        val y = (paper.height * 0.04f).toInt().coerceIn(0, paper.height - 1)
+        var x = 0
+        while (x < paper.width) {
+            val c = paper.getPixel(x, y)
+            r += (c shr 16) and 0xFF; g += (c shr 8) and 0xFF; b += c and 0xFF; n++
+            x += maxOf(1, paper.width / 64)
+        }
+        return if (n == 0) theme.background else (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
+    }
     private val paperSpot = IntArray(2)
     private val glowPaint = Paint()
 
@@ -907,9 +930,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         status.typeface = face
         for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.applyStyle(value)
-        // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge.
-        bluetoothButton.plateInset = dp(LIT_PLATE_INSET_DP).toFloat()
-        remoteButton.plateInset = dp(LIT_PLATE_INSET_DP).toFloat()
+        // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge (on the
+        // typewriter smaller still: its rim reached the paper holder's line).
+        val litInset = dp(LIT_PLATE_INSET_DP + if (value.style == SurfaceStyle.TYPEWRITER) 3 else 0).toFloat()
+        bluetoothButton.plateInset = litInset
+        remoteButton.plateInset = litInset
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton, soundButton, remoteButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
@@ -923,7 +948,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         lastState = state
         recording = state.recording
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
-        val sending = state.bluetooth == BluetoothButton.SENDING
+        // Ringed at once when turned on (it used to wait for the computer to connect, so a tap seemed to do
+        // nothing); dimmer until it is connected.
+        val sending = state.bluetooth == BluetoothButton.SENDING || state.bluetooth == BluetoothButton.WAITING
         if (theme.styled) {
             bluetoothButton.fill = if (sending) theme.function else 0
             bluetoothButton.chosen = sending
@@ -932,6 +959,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             bluetoothButton.fill = if (sending) theme.accent else 0
             bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
         }
+        bluetoothButton.alpha = if (state.bluetooth == BluetoothButton.WAITING) 0.6f else 1f
         soundButton.icon = if (state.soundOn == false) Icon.SPEAKER_OFF else Icon.SPEAKER
         soundButton.alpha = restAlpha(soundButton)
         val remoteOpen = remoteShown
@@ -1115,6 +1143,33 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         postDelayed(clearMessage, durationMs)
     }
 
+    private var messageScroll: android.animation.ObjectAnimator? = null
+    private var readingMessage: String? = null
+
+    /**
+     * A message longer than the strip: shown from its start, then it drifts slowly to its end so it can be read
+     * whole without a finger (it stays up as long as that takes).
+     */
+    private fun readMessage() {
+        // The same message shown again (the strip refreshed while typing): it goes on drifting where it is.
+        val text = message?.toString()
+        if (text == readingMessage && messageScroll?.isStarted == true) return
+        readingMessage = text
+        messageScroll?.cancel()
+        statusScroll.scrollTo(0, 0)
+        val over = status.width - statusScroll.width
+        if (over <= 0) return
+        val ms = (over / (38f * resources.displayMetrics.density) * 1000f).toLong()
+        messageScroll = android.animation.ObjectAnimator.ofInt(statusScroll, "scrollX", 0, over).apply {
+            startDelay = MESSAGE_READ_DELAY_MS
+            duration = ms
+            interpolator = android.view.animation.LinearInterpolator()
+            start()
+        }
+        removeCallbacks(clearMessage)
+        postDelayed(clearMessage, maxOf(STATUS_MILLIS, MESSAGE_READ_DELAY_MS + ms + 1500L))
+    }
+
     fun clearStatus() {
         removeCallbacks(clearMessage)
         clearMessage.run()
@@ -1197,6 +1252,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 // cursor is checked against the text shown now.
                 val layout = status.layout
                 val cursor = echoCursor
+                if (message != null) {
+                    readMessage()
+                    return@post
+                }
                 val x = if (showingEcho && layout != null && cursor in 0 until layout.text.length) {
                     runCatching { status.totalPaddingLeft + layout.getPrimaryHorizontal(cursor) - statusScroll.width * 0.75f }
                         .getOrDefault(status.width.toFloat()).toInt()
@@ -1290,6 +1349,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val MODES_BUTTON_DP = 34
         /** How far in a lit button's plate sits (Bluetooth, remote). */
         const val LIT_PLATE_INSET_DP = 6
+        /** How long a long message rests at its start before it drifts to its end. */
+        const val MESSAGE_READ_DELAY_MS = 900L
         /** The machine showing between the paper holder and what is below it. */
         const val HOLDER_GAP_DP = 8
         /** A typebar's way up to the paper, and back down. */
@@ -1338,7 +1399,7 @@ private class PaperDrawable(bitmap: android.graphics.Bitmap, offsetX: Float) : a
  * percentage. The finger moves along the strip (it stays on the button; the bar follows its position).
  */
 private class VolumeBar(context: Context) : View(context) {
-    /** 0.1–1 in steps of 0.1, as the slider in the settings. */
+    /** 0–1 in steps of 0.1 (0: the sounds off). */
     var value = 0.6f
         set(v) { field = v; invalidate() }
 
@@ -1359,11 +1420,19 @@ private class VolumeBar(context: Context) : View(context) {
 
     private val barsWidth get() = width - LABEL_DP * density - 2 * PAD_DP * density
 
-    /** Chooses the step under the finger at [rawX] on the screen; true when the step changed. */
+    private var anchorX = 0f
+    private var anchorValue = 0f
+
+    /** The finger is at [rawX] now: moving it from here changes the volume from what it is (no jump). */
+    fun anchor(rawX: Float) {
+        anchorX = rawX
+        anchorValue = value
+    }
+
+    /** Moves the volume by the finger's way from where it was put down; true when the step changed. */
     fun setFromScreenX(rawX: Float): Boolean {
-        getLocationOnScreen(location)
-        val x = rawX - location[0] - PAD_DP * density
-        val step = ((x / barsWidth) * STEPS).toInt().coerceIn(0, STEPS - 1) + 1
+        val stepWidth = (barsWidth / STEPS).coerceAtLeast(1f)
+        val step = (kotlin.math.round(anchorValue * STEPS).toInt() + ((rawX - anchorX) / stepWidth).toInt()).coerceIn(0, STEPS)
         val v = step / STEPS.toFloat()
         if (kotlin.math.abs(v - value) < 0.01f) return false
         value = v
@@ -1383,7 +1452,7 @@ private class VolumeBar(context: Context) : View(context) {
             paint.color = if (i < chosen) lit else dim
             canvas.drawRoundRect(bar, 2 * density, 2 * density, paint)
         }
-        canvas.drawText("${chosen * 10}%", width - pad, height / 2f + text.textSize / 3f, text)
+        canvas.drawText(if (chosen == 0) "0" else "${chosen * 10}%", width - pad, height / 2f + text.textSize / 3f, text)
     }
 
     private companion object {

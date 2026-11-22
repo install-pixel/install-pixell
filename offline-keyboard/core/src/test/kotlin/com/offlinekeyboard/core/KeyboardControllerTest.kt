@@ -11,6 +11,7 @@ import com.offlinekeyboard.core.layout.Language
 import com.offlinekeyboard.core.layout.Layer
 import com.offlinekeyboard.core.layout.SpecialKey
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -142,7 +143,7 @@ class KeyboardControllerTest {
     }
 
     @Test
-    fun `switching mode keeps language and caps lock`() {
+    fun `switching mode keeps language, caps lock stays on the computer layout`() {
         val c = controller(language = Language.PL)
         c.press(SpecialKey.CAPS_LOCK)
         c.press(SpecialKey.LAYER_FUNCTION)
@@ -154,9 +155,13 @@ class KeyboardControllerTest {
         assertEquals(KeyboardMode.MOBILE, changedTo)
         assertEquals(Language.PL, c.language)
         assertEquals(Layer.LETTERS, c.layer)
-        assertTrue(c.modifiers.capsLock)
+        // The mobile layout has no Caps key: Caps Lock carried over would make every letter a capital and Shift
+        // work the other way round, with nothing to turn it off.
+        assertFalse(c.modifiers.capsLock)
+        assertEquals(listOf(EditorCommand.CommitText("a")), c.type("a"))
         c.press(SpecialKey.MODE)
         assertEquals(KeyboardMode.COMPUTER, c.mode)
+        assertFalse(c.modifiers.capsLock)
     }
 
     @Test
