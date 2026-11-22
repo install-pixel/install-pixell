@@ -266,9 +266,12 @@ class KeyboardController(
                     else EditorCommand.Enter(forceNewline = mods.shift),
                 ),
             )
-            SpecialKey.SPACE -> afterKey(
-                listOf(if (modifiers.anyShortcutModifier) EditorCommand.SendKey("SPACE", mods) else EditorCommand.CommitText(" ")),
-            )
+            SpecialKey.SPACE -> {
+                val out = listOf(if (modifiers.anyShortcutModifier) EditorCommand.SendKey("SPACE", mods) else EditorCommand.CommitText(" "))
+                // The sentence-start capital is for the next letter: a space keeps it (taken away and given back
+                // a moment later, every key on the keyboard flickered between capitals and small letters).
+                if (modifiers.shiftIsAutomatic && !modifiers.anyShortcutModifier) out else afterKey(out)
+            }
             SpecialKey.TAB -> afterKey(
                 listOf(
                     if (mods.ctrl || mods.alt || mods.meta) EditorCommand.SendKey("TAB", mods)

@@ -304,7 +304,7 @@
     <string name="help_start">Pierwsze kroki</string>
     <string name="help_start_body">• «Włącz» na stronie głównej — zaznacz OffKey na liście klawiatur.\n• «Wybierz» — wybierz OffKey; kroki znikną.\n• Pole «Wypróbuj» — próbuj tu wszystkiego z tej pomocy.\n• Wszystko działa bez internetu; głos i tłumaczenie potrzebują modeli (dział «Głos i tłumaczenie»).\n• «Wygląd» — styl Glass, Sketch lub Typewriter, ciemny lub jasny, jasność i wysokość klawiszy.</string>
     <string name="help_typing">Pisanie i gesty</string>
-    <string name="help_typing_body">• Przytrzymaj literę — warianty: polskie litery, ukraińskie ґ ї, cyfra z rogu. Przesuń do wybranej i puść.\n• Przytrzymaj przecinek — emoji.\n• Przesuń spację — inny język; bieżący jest napisany na spacji.\n• Przytrzymaj ⌫ — usuwa znak po znaku; ciągnij ⌫ w lewo — całe słowa.\n• Przytrzymaj spację i przesuń — kursor jedzie po tekście.\n• Dotknij paska nad klawiszami — pojawią się przyciski: tryby po lewej, klawiatura komputerowa i ustawienia po prawej.\n• Przycisk trybów — Tekst, Tłumaczenie, Schowek, Głos.</string>
+    <string name="help_typing_body">• Przytrzymaj literę — warianty: polskie litery, ukraińskie ґ ї, cyfra z rogu. Przesuń do wybranej i puść.\n• Przytrzymaj przecinek — emoji.\n• Przesuń spację — inny język; bieżący jest napisany na spacji.\n• Przytrzymaj ⌫ — usuwa znak po znaku; ciągnij ⌫ w lewo — całe słowa.\n• Przytrzymaj spację i przesuń — kursor jedzie po tekście.\n• Dotknij paska nad klawiszami — pojawią się przyciski: tryby po lewej, klawiatura komputerowa i ustawienia po prawej.\n• Przycisk trybów — Tekst, Tłumaczenie, Schowek, Głos.\n• Przytrzymaj przycisk z głośnikiem i, nie puszczając, przesuwaj palcem po pasku — głośność dźwięku klawiszy; do końca w lewo — dźwięk wyłączony.</string>
     <string name="help_correction">Autokorekta i podpowiedzi</string>
     <string name="help_correction_body">• Słowo kończy się spacją lub znakiem — jedno trafienie w sąsiedni klawisz jest poprawiane («dziekuje» → «dziękuję»).\n• ⌫ zaraz po poprawce — przywraca Twoje słowo i je zapamiętuje.\n• Rzadkie poprawne słowa zostają nietknięte.\n• Słowa z «Mojego słownika» (dodane lub zaimportowane) — nie są zmieniane, a literówka w nich jest poprawiana właśnie do nich.\n• Podpowiedzi nad klawiszami — dotknięcie wstawia słowo; przytrzymaj — usuń swoje słowo.\n• Po spacji, z prawej strony paska — słowa, które zwykle idą dalej (i Twoje nawyki).\n• Wyłącz — «Pisanie» → «Poprawiaj literówki»; podpowiedzi — «Mój słownik».</string>
     <string name="help_punctuation">Interpunkcja i wielkie litery</string>
@@ -341,6 +341,7 @@
     <string name="clipboard_pinned">Przypięto</string>
     <string name="clipboard_unpinned">Odpięto</string>
     <string name="key_sound">Dźwięki klawiszy</string>
+    <string name="key_sound_volume_off">Głośność dźwięku: wyłączona</string>
     <string name="key_sound_volume">Głośność: %1$d%%</string>
     <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Glass: pękają bąbelki folii. Cicho, gdy telefon jest wyciszony lub na wibracjach. Głośność ustala telefon: głośność «Dźwięki systemowe» (w niektórych telefonach dzwonka lub powiadomień) w ustawieniach dźwięku. Ten suwak może je tylko ściszyć.</string>
     <string name="onb_title">Konfiguracja OffKey</string>
@@ -370,6 +371,7 @@
     <string name="typewriter_bell">Dzwonek na końcu wiersza</string>
     <string name="sound_on">Dźwięk klawiszy włączony</string>
     <string name="sound_off">Dźwięk klawiszy wyłączony</string>
+    <string name="volume_hold_hint">Przytrzymaj głośnik i przesuwaj palcem po pasku, nie puszczając</string>
     <string name="sound_volume_set">Głośność %1$d%%</string>
     <string name="clipboard_clear_confirm">Dotknij ✕ ponownie, aby zapomnieć %1$d (przypięte zostają: %2$d)</string>
     <string name="clipboard_only_pinned">Tylko przypięte: przytrzymaj, aby odpiąć, lub przesuń w lewo</string>

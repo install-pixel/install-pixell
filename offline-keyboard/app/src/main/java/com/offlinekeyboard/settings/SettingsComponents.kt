@@ -68,7 +68,7 @@ internal fun Section(title: String?, content: @Composable () -> Unit) {
                 }
                 .padding(top = if (title != null) 14.dp else 4.dp),
         ) {
-            if (title != null) Text(title, color = Tone.TextPrimary, fontSize = 19.sp)
+            if (title != null) Text(title, color = Tone.TextPlain, fontSize = 19.sp)
         }
         content()
         return
@@ -208,11 +208,19 @@ internal fun NavRow(title: String, subtitle: String?, leading: String? = null, o
         }
         Column(Modifier.weight(1f)) {
             // A name never pushes the arrow away; the hint stays on one line (… if a language makes it long).
-            Text(title, color = Tone.TextPrimary, fontSize = if (sheet) 19.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                color = Tone.TextPrimary,
+                fontSize = if (sheet) 19.sp else 17.sp,
+                // The sketch: what can be tapped is written bolder (it has no button round it).
+                fontWeight = if (sheet) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             if (!subtitle.isNullOrEmpty()) Text(subtitle, color = Tone.TextSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(8.dp))
-        Text(if (sheet) "→" else "›", color = Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
+        Text(if (sheet) "→" else "›", color = if (sheet) Tone.TextPrimary else Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
     }
 }
 
@@ -286,6 +294,7 @@ private fun CrossedRow(label: String, checked: Boolean, role: Role, onChange: (B
             label,
             color = androidx.compose.ui.graphics.lerp(Tone.TextPrimary, Tone.TextSecondary, crossed),
             fontSize = 18.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
             modifier = Modifier.drawWithContent {
                 drawContent()
                 if (crossed > 0f) {
@@ -328,7 +337,13 @@ internal fun RadioRow(label: String, selected: Boolean, description: String? = n
             Spacer(Modifier.width(12.dp))
         }
         Column {
-            Text(label, color = if (selected) Tone.TextPrimary else Tone.TextSecondary, fontSize = if (sheet) 17.sp else 16.sp)
+            // The sketch: every option in full ink and bolder, it can be tapped (the chosen one is circled).
+            Text(
+                label,
+                color = if (selected || sheet) Tone.TextPrimary else Tone.TextSecondary,
+                fontSize = if (sheet) 17.sp else 16.sp,
+                fontWeight = if (sheet) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+            )
             if (description != null) Text(description, color = Tone.TextSecondary, fontSize = 13.sp)
         }
     }

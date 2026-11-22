@@ -28,8 +28,11 @@ internal class Frost {
     private var viewWidth = 0
     private var viewHeight = 0
 
-    /** Redraws [view]'s content with [draw] into the small bitmap and blurs it. */
-    fun capture(view: View, draw: (Canvas) -> Unit) {
+    /**
+     * Redraws [view]'s content with [draw] into the small bitmap and blurs it, over [base] (the keyboard's own
+     * colour: black there showed as a dark seam at the bitmap's edges).
+     */
+    fun capture(view: View, base: Int, draw: (Canvas) -> Unit) {
         val w = maxOf(1, view.width / SCALE)
         val h = maxOf(1, view.height / SCALE)
         viewWidth = view.width
@@ -40,7 +43,7 @@ internal class Frost {
             pixels = IntArray(w * h)
             scratch = IntArray(w * h)
         }
-        bmp.eraseColor(0xFF000000.toInt())
+        bmp.eraseColor(base or 0xFF000000.toInt())
         val canvas = Canvas(bmp)
         canvas.scale(1f / SCALE, 1f / SCALE)
         draw(canvas)
@@ -63,6 +66,13 @@ internal class Frost {
             src.set(0, 0, bmp.width, bmp.height)
             dst.set(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
             canvas.drawBitmap(bmp, src, dst, paint)
+            // The top row's letter rises above the view, where nothing was captured: the bitmap's top row
+            // carried on upward, so there is no straight seam of another colour across the bubble.
+            if (rect.top < 0f) {
+                src.set(0, 0, bmp.width, 1)
+                dst.set(0f, rect.top, viewWidth.toFloat(), viewHeight.toFloat() / bmp.height)
+                canvas.drawBitmap(bmp, src, dst, paint)
+            }
         }
         canvas.restore()
     }

@@ -637,6 +637,8 @@ class KeyboardService : InputMethodService(),
     // ------------------------------------------------------------------ keys
 
     override fun onKey(key: Key) {
+        // Typing: a note on the strip (the volume set, a mode turned on) gives way to the text at once.
+        if (key.action is KeyAction.Text || (key.action as? KeyAction.Special)?.key in NOTE_CLEARING_KEYS) rootView?.dismissNote()
         if (controller.layer == Layer.EMOJI) (key.action as? KeyAction.Text)?.let { recordEmoji(it.text) }
         // The most used page is rebuilt when the panel opens, never under the finger.
         if ((key.action as? KeyAction.Special)?.key == SpecialKey.LAYER_EMOJI && controller.layer != Layer.EMOJI) refreshEmojiPages()
@@ -1115,6 +1117,8 @@ class KeyboardService : InputMethodService(),
         if (!settings.translateEnabled) return
         leaveSegment()
         setTranslateEnabled(false, settings.translationDirection)
+        // The translation's note on the strip («Переклад Укр→Pol: …») goes with it, not seconds later.
+        rootView?.clearStatus()
         updateSuggestions()
         render()
     }
@@ -1777,6 +1781,9 @@ class KeyboardService : InputMethodService(),
     }
 
     companion object {
+        /** Keys that are typing too: a note on the strip goes when they are pressed. */
+        private val NOTE_CLEARING_KEYS = setOf(SpecialKey.SPACE, SpecialKey.BACKSPACE, SpecialKey.ENTER)
+
         /** The running keyboard, for instrumentation tests only. */
         @Volatile
         internal var instance: KeyboardService? = null

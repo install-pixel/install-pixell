@@ -69,6 +69,11 @@ internal data class Palette(
     val milk: Boolean = false,
     /** Milky glass: white glass plates on a pale page, cool greys instead of the typewriter's bronze. */
     val frost: Boolean = false,
+    /**
+     * The sketch has no buttons or frames to show what can be tapped: what can is written in full ink
+     * ([text], a little bolder), plain writing a little quieter (this), hints paler ([secondary]).
+     */
+    val plain: Color = text,
 )
 
 /** Tokens of THEMES.md, section 2, and the typewriters' own: what [SettingsTheme] puts in use. */
@@ -97,13 +102,13 @@ internal object Tone {
         // Ink, not stickers: the card's creases show through the words a little.
         text = Color(0xE6EDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
         confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(0xFFEDEDED),
-        page = Color(0xFF0D0D0C), divider = Color(0x1FFFFFFF),
+        page = Color(0xFF0D0D0C), divider = Color(0x1FFFFFFF), plain = Color(0xFFBDBBB6),
     )
     /** The light sheet: graphite pencil on parchment. */
     val SheetLight = Palette(
         text = Color(0xE63A3128), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
         confirm = Color(0xFF2F5B8C), danger = Color(0xFFB03A2E), ink = Color(KeyboardTheme.SHEET_INK),
-        page = Color(0xFFCBC1AE), divider = Color(0x333A3128), light = true,
+        page = Color(0xFFCBC1AE), divider = Color(0x333A3128), light = true, plain = Color(0xFF5A4E3E),
     )
 
     /** Milky glass: graphite letters on pale glass, blue for the main action. */
@@ -117,6 +122,8 @@ internal object Tone {
 
     val TextPrimary get() = palette.text
     val TextSecondary get() = palette.secondary
+    /** Writing that is not tapped (titles, explanations): on the sketch quieter than what can be tapped. */
+    val TextPlain get() = palette.plain
     val Accent get() = palette.accent
     val Confirm get() = palette.confirm
     val Danger get() = palette.danger
@@ -194,7 +201,7 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         surfaceVariant = Color(0xFFF2F4F6), surfaceContainer = Color(0xFFF2F4F6),
         surfaceContainerLow = Color(0xFFECEFF2), surfaceContainerHigh = Color(0xFFF6F7F9),
         surfaceContainerHighest = Color(0xFFFAFBFC),
-        onBackground = palette.text, onSurface = palette.text, onSurfaceVariant = palette.secondary,
+        onBackground = palette.plain, onSurface = palette.plain, onSurfaceVariant = palette.secondary,
         outline = Color(0x661D2127), outlineVariant = Color(0x331D2127),
         error = palette.danger,
     ) else if (palette.light) androidx.compose.material3.lightColorScheme(
@@ -205,7 +212,7 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         surfaceVariant = Color(0xFFF1E7D5), surfaceContainer = Color(0xFFF1E7D5),
         surfaceContainerLow = Color(0xFFEDE2CE), surfaceContainerHigh = Color(0xFFF4EBDC),
         surfaceContainerHighest = Color(0xFFF7F0E2),
-        onBackground = palette.text, onSurface = palette.text, onSurfaceVariant = palette.secondary,
+        onBackground = palette.plain, onSurface = palette.plain, onSurfaceVariant = palette.secondary,
         outline = Color(0x664A3220), outlineVariant = Color(0x334A3220),
         error = palette.danger,
     ) else darkColorScheme(
@@ -216,7 +223,7 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         surfaceVariant = Color(0xFF0D0D0D), surfaceContainer = Color(0xFF0D0D0D),
         surfaceContainerLow = Color(0xFF080808), surfaceContainerHigh = Color(0xFF121212),
         surfaceContainerHighest = Color(0xFF1B1B1B),
-        onBackground = palette.text, onSurface = palette.text, onSurfaceVariant = palette.secondary,
+        onBackground = palette.plain, onSurface = palette.plain, onSurfaceVariant = palette.secondary,
         outline = Color(0x38FFFFFF), outlineVariant = Color(0x24FFFFFF),
         error = Tone.Danger,
     )
@@ -594,7 +601,8 @@ internal fun DrawScope.pencilStroke(y: Float, from: Float, to: Float, seed: Int,
 /** Text colour of a button by what it does (THEMES.md: one blue main action per window, red for the irreversible). */
 @Composable
 internal fun toneColor(tone: ButtonTone): Color = when (tone) {
-    ButtonTone.NEUTRAL -> MaterialTheme.colorScheme.onSurface
+    // A button can be tapped: full ink (plain writing on the sketch is quieter).
+    ButtonTone.NEUTRAL -> Tone.TextPrimary
     ButtonTone.CONFIRM -> Tone.Confirm
     ButtonTone.DANGER -> Tone.Danger
 }

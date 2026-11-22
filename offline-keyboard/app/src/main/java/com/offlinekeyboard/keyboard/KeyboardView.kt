@@ -447,7 +447,7 @@ class KeyboardView(context: Context) : View(context) {
         val closing = closingPopup?.takeIf { now - closingAt < POPUP_FADE_MS }
         if (closing == null) closingPopup = null
         if (theme.style == SurfaceStyle.GLASS && (p != null || closing != null || bubbles.isNotEmpty())) {
-            frost.capture(this) { drawKeys(it, ctx, now) }
+            frost.capture(this, theme.background) { drawKeys(it, ctx, now) }
         }
         for (b in bubbles) drawBubble(canvas, b)
         if (closing != null) drawPopup(canvas, closing, 1f - (now - closingAt) / POPUP_FADE_MS.toFloat())

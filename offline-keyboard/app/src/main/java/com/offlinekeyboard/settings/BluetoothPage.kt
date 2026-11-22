@@ -9,11 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -117,15 +117,26 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                     // ★ marks the devices a long press on the Bluetooth button switches between, in the order marked.
                     Text(stringResource(R.string.bluetooth_switch_hint), style = MaterialTheme.typography.bodySmall)
                     var chosenVersion by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-                    for (device in devices) {
+                    // The switching order (★1, ★2, …), read once per change rather than for every row.
+                    val order = remember(chosenVersion, devices) { Bluetooth.switchHosts(context).map { it.address } }
+                    // The marked devices first, in their order; then the rest as the phone lists them.
+                    val sorted = remember(order, devices) {
+                        devices.sortedBy { d -> order.indexOf(d.address).let { if (it < 0) Int.MAX_VALUE else it } }
+                    }
+                    // A window of about four devices with its own scroll: a long list does not stretch the page.
+                    val listScroll = androidx.compose.foundation.rememberScrollState()
+                    androidx.compose.foundation.layout.Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = (DEVICE_ROW_DP * 4 + DEVICE_ROW_DP / 2).dp)
+                            .verticalScroll(listScroll),
+                    ) {
+                    for (device in sorted) {
                         val name = Bluetooth.deviceName(device)
-                        val chosen = remember(chosenVersion, device.address) { Bluetooth.isSwitchHost(device.address) }
-                        // Its place in the switching order (1, 2, …).
-                        val place = remember(chosenVersion, device.address) {
-                            Bluetooth.switchHosts(context).indexOfFirst { it.address == device.address } + 1
-                        }
+                        val place = order.indexOf(device.address) + 1
+                        val chosen = place > 0
                         Row(
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = DEVICE_ROW_DP.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             InlineButton(onClick = {
@@ -142,18 +153,14 @@ internal fun BluetoothPage(s: KeyboardSettings, update: UpdateSettings, onBack: 
                             }
                         }
                     }
+                    }
                 }
             }
 
             Section(stringResource(R.string.bluetooth_section_use)) {
                 Text(stringResource(R.string.bluetooth_use_steps), style = MaterialTheme.typography.bodyMedium)
                 var sample by rememberSaveable { mutableStateOf("") }
-                OutlinedTextField(
-                    value = sample,
-                    onValueChange = { sample = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.bluetooth_open_keyboard)) },
-                )
+                TryField(sample, stringResource(R.string.bluetooth_open_keyboard), height = 84.dp) { sample = it }
             }
         }
 
@@ -174,3 +181,4 @@ private fun openSafely(context: android.content.Context, intent: Intent) {
 }
 
 private const val DISCOVERABLE_SECONDS = 120
+private const val DEVICE_ROW_DP = 48
