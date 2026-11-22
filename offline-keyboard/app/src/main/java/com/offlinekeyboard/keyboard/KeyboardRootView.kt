@@ -352,6 +352,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                     if (event.actionMasked == android.view.MotionEvent.ACTION_UP &&
                         event.x in 0f..v.width.toFloat() && event.y in 0f..v.height.toFloat()
                     ) {
+                        keyboardView.panelTap()
                         if (buttonsShown) revealButtons()
                         toolbarListener?.onToolbarSound()
                     }
@@ -694,7 +695,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             strikeFromX = keysRow.left + keyboardView.left + keyX
             // Typing: a note on the strip (a mode just turned on, a hint) gives way to the text, so the letter
             // lands in the text (over the note it struck straight up over its key, away from the text).
-            if (message != null) clearStatus()
+            dismissNote()
             // It strikes where the letter goes in the text: on the strip's text after the cursor; while the strip
             // shows suggestions, right after the word being typed (they stand a space after it); while it shows
             // a translation's source text, at its end.
@@ -1014,7 +1015,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge (on the
         // typewriter smaller still: its rim reached the paper holder's line).
         val litInset = dp(LIT_PLATE_INSET_DP + if (value.style == SurfaceStyle.TYPEWRITER) 3 else 0).toFloat()
-        for (b in listOf(bluetoothButton, remoteButton, soundButton, modeButton, settingsButton, undoButton)) b.plateInset = litInset
+        for (b in listOf(bluetoothButton, remoteButton, soundButton, modeButton, settingsButton, undoButton, modesButton)) {
+            b.plateInset = litInset
+            b.shallowPress = true
+        }
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton, soundButton, remoteButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
@@ -1059,12 +1063,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         )
 
         textChip.text = context.getString(R.string.mode_text)
-        styleChip(textChip, active = !state.translateActive && !state.recording, enabled = true)
+        // One mode down at a time, as latching keys: the open clipboard holds its plate down, Text comes up.
+        styleChip(textChip, active = !state.translateActive && !state.recording && !clipboardShown, enabled = true)
         translateChip.icon = Icon.TRANSLATE
         translateChip.text = state.translateLabel
         styleChip(translateChip, active = state.translateActive, enabled = state.translateOffered)
         clipboardChip.icon = Icon.CLIPBOARD
-        styleChip(clipboardChip, active = false, enabled = state.translateOffered)
+        styleChip(clipboardChip, active = clipboardShown, enabled = state.translateOffered)
         voiceChip.icon = if (state.recording) Icon.STOP else Icon.MIC
         voiceChip.text = context.getString(if (state.recording) R.string.mode_voice_stop else R.string.mode_voice)
         styleChip(voiceChip, active = state.recording, enabled = state.voiceOffered)
@@ -1133,6 +1138,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             keyboardView.visibility = View.VISIBLE
             fadeIn(keyboardView)
         }
+        // The Clipboard plate down while it is open, Text up (and back).
+        lastState?.let(::updateToolbar)
     }
 
     /**
@@ -1255,8 +1262,17 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         clearMessage.run()
     }
 
+    /**
+     * Something else wants the strip (typing, dictation or a translation coming in): a note on it goes now,
+     * not when its time is up (the text went on under it, and the typewriter struck its letters elsewhere).
+     */
+    fun dismissNote() {
+        if (message != null) clearStatus()
+    }
+
     /** Text shown while dictating or translating (source text in auto mode); null to clear. */
     fun showLive(text: CharSequence?) {
+        if (text != null) dismissNote()
         liveText = text
         refreshCentre()
     }
@@ -1392,6 +1408,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun button(descriptionRes: Int, onClick: () -> Unit) = ToolbarButton(context).apply {
         contentDescription = context.getString(descriptionRes)
         setOnClickListener {
+            // Heard and felt as the keys are (the strip's buttons and the modes were silent).
+            keyboardView.panelTap()
             if (buttonsShown) revealButtons()
             onClick()
         }

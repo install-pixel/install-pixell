@@ -227,10 +227,7 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
             isFocusable = false
             t?.let { setTextColor(it.text); typeface = it.typeface(context) }
         }
-        val pin = TextView(context).apply {
-            this.text = "📌"
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            gravity = Gravity.CENTER
+        val pin = PinView(context).apply {
             isClickable = false
             isFocusable = false
             visibility = if (clip.pinned) View.VISIBLE else View.INVISIBLE
@@ -290,11 +287,63 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
     private companion object {
         const val ROW_DP = 56
         /** The pin's place before a text, there whether it is pinned or not. */
-        const val PIN_DP = 24
+        const val PIN_DP = 32
         const val NOTE_MS = 4000L
         /** How far to the left a row must be swiped to go. */
         const val SWIPE_SHARE = 0.35f
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+}
+
+/**
+ * The pin that holds a text: a brass drawing pin whose steel point goes into the plate (its end hidden in it),
+ * with the dark hole it punched and a bright burr of metal round it, not a sticker laid on top.
+ */
+private class PinView(context: Context) : View(context) {
+    private val density = resources.displayMetrics.density
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        val d = density
+        val head = 7.5f * d
+        val cx = width * 0.42f
+        val cy = height * 0.36f
+        // Where the point enters the plate, down and to the right of the head.
+        val ex = cx + 8f * d
+        val ey = cy + 12f * d
+        // The punched hole and its burr.
+        paint.shader = null
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.color = 0x80FFFFFF.toInt()
+        canvas.drawOval(ex - 3.8f * d, ey - 2.2f * d, ex + 3.8f * d, ey + 2.2f * d, paint)
+        paint.color = 0xF0000000.toInt()
+        canvas.drawOval(ex - 2.4f * d, ey - 1.4f * d, ex + 2.4f * d, ey + 1.4f * d, paint)
+        // The steel point from under the head down into the hole (the rest of it is inside the plate).
+        paint.style = android.graphics.Paint.Style.STROKE
+        paint.strokeCap = android.graphics.Paint.Cap.ROUND
+        paint.strokeWidth = 2.2f * d
+        paint.shader = android.graphics.LinearGradient(cx, cy, ex, ey, 0xFFE8E8E8.toInt(), 0xFF6E6E6E.toInt(), android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawLine(cx, cy, ex, ey - 0.4f * d, paint)
+        paint.shader = null
+        // Its shadow on the plate.
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.color = 0x59000000
+        canvas.drawOval(cx - head * 0.7f, cy + head * 0.3f, cx + head * 1.2f, cy + head * 1.15f, paint)
+        // The brass head: a dome with its collar, lit from the upper left.
+        paint.shader = android.graphics.RadialGradient(
+            cx - head * 0.35f, cy - head * 0.4f, head * 1.4f,
+            intArrayOf(0xFFFFE9A8.toInt(), 0xFFC8902C.toInt(), 0xFF8A5A14.toInt(), 0xFF4A2E08.toInt()), floatArrayOf(0f, 0.22f, 0.65f, 1f),
+            android.graphics.Shader.TileMode.CLAMP,
+        )
+        canvas.drawCircle(cx, cy, head, paint)
+        paint.shader = null
+        paint.style = android.graphics.Paint.Style.STROKE
+        paint.strokeWidth = 1f * d
+        paint.color = 0xFF3E2606.toInt()
+        canvas.drawCircle(cx, cy, head, paint)
+        // The dome's rim, pressed in a little from the edge.
+        paint.color = 0x66FFE9A8
+        canvas.drawCircle(cx, cy, head * 0.62f, paint)
+    }
 }

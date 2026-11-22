@@ -32,6 +32,16 @@ class KeyboardControllerTest {
     private fun KeyboardController.type(text: String) = onKey(key(text))
 
     @Test
+    fun `a space keeps the sentence-start capital for the next letter`() {
+        val c = controller(KeyboardMode.MOBILE)
+        c.setAutoShift(true)
+        c.press(SpecialKey.SPACE)
+        assertTrue(c.modifiers.isActive(ModifierKey.SHIFT))
+        assertEquals(listOf(EditorCommand.CommitText("A")), c.type("a"))
+        assertFalse(c.modifiers.isActive(ModifierKey.SHIFT))
+    }
+
+    @Test
     fun `letters respect shift and caps lock`() {
         val c = controller()
         assertEquals(listOf(EditorCommand.CommitText("a")), c.type("a"))

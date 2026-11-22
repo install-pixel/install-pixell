@@ -341,6 +341,7 @@
     <string name="clipboard_pinned">Закріплено</string>
     <string name="clipboard_unpinned">Відкріплено</string>
     <string name="key_sound">Звуки клавіш</string>
+    <string name="key_sound_volume_off">Гучність звуку: вимкнено</string>
     <string name="key_sound_volume">Гучність: %1$d%%</string>
     <string name="key_sound_hint">Typewriter: клавіші клацають, пробіл глухо стукає, Enter — повернення каретки. Sketch: пише олівець, стирає гумка. Glass: лопаються пупирки плівки. Мовчить, коли телефон у беззвучному режимі чи на вібрації. Наскільки вони гучні, задає телефон: гучність «Системні звуки» (на деяких телефонах — дзвінка чи сповіщень) у налаштуваннях звуку. Цей повзунок може лише зробити їх тихішими за неї.</string>
     <string name="onb_title">Налаштування OffKey</string>

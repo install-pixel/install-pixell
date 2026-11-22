@@ -41,11 +41,23 @@ class ToolbarButton(context: Context) : View(context) {
     /** Told when the button goes down or comes up (a text laid over it moves with it). */
     var onPress: ((Boolean) -> Unit)? = null
 
-    /** How far down the button's face is now (px): what lies on it moves as far. */
+    /**
+     * The typewriter strip's buttons: pressed only a little way (a full key's travel took the plate under the
+     * paper holder's line).
+     */
+    var shallowPress = false
+
+    /**
+     * How far down the button's face is now (px): what lies on it moves as far. A body plate that is a switch
+     * (a mode: [chosen]) stays down while it is on, as a latching key, and comes up when another is pressed;
+     * the others come up as the finger lets go.
+     */
     val sink: Float
         get() = when {
-            !pressed || style != SurfaceStyle.TYPEWRITER || (fill == 0 && pressedFill == 0) -> 0f
-            bodyPlate -> PLATE_SINK_DP * density
+            style != SurfaceStyle.TYPEWRITER || (fill == 0 && pressedFill == 0) -> 0f
+            bodyPlate && (pressed || chosen) -> PLATE_SINK_DP * density
+            !pressed -> 0f
+            shallowPress -> surfaces.typewriterSink * SHALLOW
             else -> surfaces.typewriterSink
         }
 
@@ -134,12 +146,33 @@ class ToolbarButton(context: Context) : View(context) {
             }
             val plate = bodyPlate && style == SurfaceStyle.TYPEWRITER
             if (plate) {
-                // A body plate: it goes down by itself (the keys' sink is drawn by the painter).
+                // A body plate sits in a recess of the machine: down, the recess shows dark above it and the
+                // plate's face is a little in shadow.
+                val down = sink
+                recessPaint.color = 0x99000000.toInt()
+                canvas.drawRoundRect(bounds, r, r, recessPaint)
                 canvas.save()
-                canvas.translate(0f, sink)
+                canvas.translate(0f, down)
+                surfaces.draw(canvas, bounds, r, style, background, SurfaceState.NORMAL, seed = id xor text.hashCode(), inkColor = foreground, plate = true)
+                if (down > 0f) {
+                    recessPaint.color = 0x2E000000
+                    canvas.drawRoundRect(bounds, r, r, recessPaint)
+                    // The recess's upper edge throws a shadow onto the plate's top.
+                    recessShade.shader = android.graphics.LinearGradient(
+                        0f, bounds.top, 0f, bounds.top + 7f * density,
+                        0x66000000, 0x00000000, android.graphics.Shader.TileMode.CLAMP,
+                    )
+                    canvas.save()
+                    canvas.clipRect(bounds.left, bounds.top, bounds.right, bounds.top + 7f * density)
+                    canvas.drawRoundRect(bounds, r, r, recessShade)
+                    canvas.restore()
+                }
+                canvas.restore()
+            } else {
+                if (shallowPress && pressed && style == SurfaceStyle.TYPEWRITER) surfaces.typewriterDepth = SHALLOW
+                surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground)
+                surfaces.typewriterDepth = -2f
             }
-            surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground, plate = plate)
-            if (plate) canvas.restore()
         }
         // The ink goes down with the face it is on (it stayed put while the key went down under it).
         val inkSink = sink
@@ -207,6 +240,9 @@ class ToolbarButton(context: Context) : View(context) {
         if (inkSink != 0f) canvas.restore()
     }
 
+    private val recessPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val recessShade = Paint(Paint.ANTI_ALIAS_FLAG)
+
     private var bentKey: String? = null
     private var bent: android.graphics.Bitmap? = null
 
@@ -232,6 +268,8 @@ class ToolbarButton(context: Context) : View(context) {
 
     private companion object {
         const val MIN_TEXT_SP = 11f
-        const val PLATE_SINK_DP = 2.5f
+        const val PLATE_SINK_DP = 3.5f
+        /** How far a strip button goes down, of a key's travel. */
+        const val SHALLOW = 0.35f
     }
 }

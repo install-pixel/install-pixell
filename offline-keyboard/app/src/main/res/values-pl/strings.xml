@@ -341,6 +341,7 @@
     <string name="clipboard_pinned">Przypięto</string>
     <string name="clipboard_unpinned">Odpięto</string>
     <string name="key_sound">Dźwięki klawiszy</string>
+    <string name="key_sound_volume_off">Głośność dźwięku: wyłączona</string>
     <string name="key_sound_volume">Głośność: %1$d%%</string>
     <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Glass: pękają bąbelki folii. Cicho, gdy telefon jest wyciszony lub na wibracjach. Głośność ustala telefon: głośność «Dźwięki systemowe» (w niektórych telefonach dzwonka lub powiadomień) w ustawieniach dźwięku. Ten suwak może je tylko ściszyć.</string>
     <string name="onb_title">Konfiguracja OffKey</string>

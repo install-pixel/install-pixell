@@ -638,6 +638,15 @@ class KeyboardUiTest {
                 Thread.sleep(600)
                 val key = keyCenter { (it.action as? KeyAction.Text)?.text == "р" } ?: throw AssertionError("no key «р»")
                 touch(key.x, key.y, holdMs = 160, whileHeld = { shell("screencap -p $SCREENS/fix-$tag-strike.png") })
+                // A note on the strip (the volume just set) gives way as soon as typing starts.
+                clear(activity.plain)
+                val noted = service()
+                instrumentation.runOnMainSync { noted.inputRootForTest?.showStatus("Гучність 40%") }
+                Thread.sleep(500)
+                val first = keyCenter { (it.action as? KeyAction.Text)?.text == "л" } ?: throw AssertionError("no key «л»")
+                touch(first.x, first.y, holdMs = 160, whileHeld = { shell("screencap -p $SCREENS/fix-$tag-note-then-typing.png") })
+                Thread.sleep(400)
+                assertNull("the note stayed while typing", findView { it is TextView && it.isShown && it.text.toString().contains("Гучність") })
                 clear(activity.plain)
                 // The strip's buttons in view (they hide while typing).
                 kotlinx.coroutines.runBlocking { repository.update { it.copy(hideToolbarButtons = false) } }
@@ -662,6 +671,10 @@ class KeyboardUiTest {
                 }
                 instrumentation.waitForIdleSync()
                 Thread.sleep(700)
+                // The modes' row with the clipboard open: its plate stays down (latched), Text up.
+                tapView(toolbarButton(R.string.toolbar_modes_description))
+                Thread.sleep(700)
+                shell("screencap -p $SCREENS/fix-$tag-modes-latched.png")
                 val row = waitForView { it is ToolbarButton && it.contentDescription == "друге" }
                 instrumentation.runOnMainSync { row.getLocationOnScreen(spot) }
                 touch(spot[0] + row.width / 2f, spot[1] + row.height / 2f, holdMs = 200, whileHeld = {
@@ -692,6 +705,15 @@ class KeyboardUiTest {
                     automation.executeShellCommand("input keyevent 4").close()
                     Thread.sleep(800)
                 }
+                val typing = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                    .putExtra("page", "typing")
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(typing).use {
+                    Thread.sleep(1500)
+                    screenshot("fix-$tag-typing-1")
+                    shell("input swipe ${metrics.widthPixels * 85 / 100} ${metrics.heightPixels / 2} ${metrics.widthPixels * 15 / 100} ${metrics.heightPixels / 2} 300")
+                    Thread.sleep(1200)
+                    screenshot("fix-$tag-typing-2")
+                }
                 val look = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
                     .putExtra("page", "look")
                 ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(look).use {
@@ -713,6 +735,10 @@ class KeyboardUiTest {
                     inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, from - metrics.widthPixels * 0.6f, y, 0))
                     Thread.sleep(1200)
                     shell("screencap -p $SCREENS/fix-$tag-page-turned.png")
+                    // A swipe that starts on an option (the style «Glass» near the top) turns the page too.
+                    shell("input swipe ${metrics.widthPixels * 85 / 100} ${metrics.heightPixels * 18 / 100} ${metrics.widthPixels * 15 / 100} ${metrics.heightPixels * 18 / 100} 300")
+                    Thread.sleep(1200)
+                    shell("screencap -p $SCREENS/fix-$tag-turned-from-option.png")
                 }
             }
         } finally {
