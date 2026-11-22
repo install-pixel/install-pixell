@@ -94,13 +94,14 @@ internal object Tone {
 
     /** The dark sheet: white pencil on graphite paper. */
     val SheetDark = Palette(
-        text = Color(0xFFEDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
+        // Ink, not stickers: the card's creases show through the words a little.
+        text = Color(0xE6EDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
         confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(0xFFEDEDED),
         page = Color(0xFF0D0D0C), divider = Color(0x1FFFFFFF),
     )
     /** The light sheet: graphite pencil on parchment. */
     val SheetLight = Palette(
-        text = Color(KeyboardTheme.SHEET_INK), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
+        text = Color(0xE63A3128), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
         confirm = Color(0xFF2F5B8C), danger = Color(0xFFB03A2E), ink = Color(KeyboardTheme.SHEET_INK),
         page = Color(0xFFCBC1AE), divider = Color(0x333A3128), light = true,
     )

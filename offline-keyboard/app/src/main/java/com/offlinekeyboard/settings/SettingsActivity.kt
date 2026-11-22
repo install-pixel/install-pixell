@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -370,8 +371,25 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    // The sketch: a scrap of paper of its own, not a drawn frame.
-                    .then(if (LocalLook.current == Look.SHEET) Modifier.lookSurface(14.dp, seed = 23) else Modifier),
+                    // The sketch: drawn on the card itself (one layer of paper): a pencil frame round a part of the
+                    // card pressed in a little, darker.
+                    .then(
+                        if (LocalLook.current == Look.SHEET) {
+                            Modifier
+                                .drawBehind {
+                                    val shade = if (Tone.light) androidx.compose.ui.graphics.Color(0x225A3C1E) else androidx.compose.ui.graphics.Color(0x40000000)
+                                    drawRoundRect(shade, cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()))
+                                    // A soft shade along the top inside, as a dent in the paper.
+                                    drawRoundRect(
+                                        androidx.compose.ui.graphics.Brush.verticalGradient(listOf(shade, androidx.compose.ui.graphics.Color.Transparent), endY = 18.dp.toPx()),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()),
+                                    )
+                                }
+                                .pencilFrame(14.dp, seed = 23, alpha = 0.55f)
+                        } else {
+                            Modifier
+                        },
+                    ),
                 colors = if (LocalLook.current == Look.SHEET) {
                     androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,

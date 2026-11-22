@@ -532,7 +532,15 @@ class KeyboardView(context: Context) : View(context) {
             } else {
                 // On the most used typewriter keys the paint of the letter is a little worn.
                 val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
-                drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
+                if (theme.style == SurfaceStyle.SHEET && pressed) {
+                    // Pressed into the paper: the letter sinks a little with it.
+                    pressedFace.set(face)
+                    pressedFace.inset(face.width() * 0.03f, face.height() * 0.03f)
+                    pressedFace.offset(0f, dp(0.8f))
+                    drawLabel(canvas, pressedFace, KeyLabels.label(key, ctx), ink, key)
+                } else {
+                    drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
+                }
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
@@ -655,8 +663,10 @@ class KeyboardView(context: Context) : View(context) {
         if (e <= 0.01f) return
         val bubble = b.rect
         val scale = 0.88f + 0.12f * e
+        // Room round it for the soft edges (the sketch's patch melts away past its bounds).
+        val room = if (theme.style == SurfaceStyle.SHEET) dp(14f) else dp(4f)
         val layer = canvas.saveLayerAlpha(
-            bubble.left - dp(4f), bubble.top - dp(4f), bubble.right + dp(4f), bubble.bottom + dp(10f), (e * 255).toInt(),
+            bubble.left - room, bubble.top - room, bubble.right + room, bubble.bottom + room + dp(6f), (e * 255).toInt(),
         )
         canvas.translate(0f, (1f - e) * dp(6f))
         canvas.scale(scale, scale, bubble.centerX(), bubble.bottom)
@@ -674,7 +684,13 @@ class KeyboardView(context: Context) : View(context) {
             canvas.restoreToCount(layer)
             return
         }
-        drawOverlaySurface(canvas, bubble, radius * 1.5f, b.label.hashCode())
+        if (theme.style == SurfaceStyle.SHEET) {
+            // The sketch: the same soft round patch as the dent under the finger, rising above it.
+            surfaces.sheetLight = !theme.dark
+            surfaces.drawSoftPatch(canvas, bubble)
+        } else {
+            drawOverlaySurface(canvas, bubble, radius * 1.5f, b.label.hashCode())
+        }
         textPaint.color = theme.text
         textPaint.typeface = letterFace
         textPaint.textSize = bubble.height() * 0.5f * theme.textScale
@@ -684,6 +700,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private val inkBounds = android.graphics.Rect()
+    private val pressedFace = RectF()
 
     private fun drawLabel(canvas: Canvas, rect: RectF, label: String, color: Int, key: Key) {
         if (label.isEmpty()) return
@@ -698,6 +715,8 @@ class KeyboardView(context: Context) : View(context) {
         textPaint.textSize = size
         val round = typewriter && rect.width() <= rect.height() * 1.05f
         val sheet = theme.style == SurfaceStyle.SHEET
+        // Ink on paper, not a sticker on it: the paper's creases and stains show through the letters a little.
+        if (sheet) textPaint.alpha = (textPaint.alpha * 0.86f).toInt()
         // The sheet's paper piece has a wavy, hand-cut edge a little inside the key: the letter keeps clear of it.
         val maxWidth = rect.width() * (if (round) 0.78f else if (sheet) 0.74f else 0.86f)
         val measured = textPaint.measureText(label)
