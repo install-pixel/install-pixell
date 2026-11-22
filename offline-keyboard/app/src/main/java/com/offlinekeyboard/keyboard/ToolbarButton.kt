@@ -31,6 +31,24 @@ class ToolbarButton(context: Context) : View(context) {
     /** Chosen (an active mode, the selected character): glass and sheet show it with a brighter rim. */
     var chosen = false
 
+    /**
+     * The typewriter: not a key (keys type, and have their levers) but a control on the machine's body, a flat
+     * metal plate in a frame that goes down a little when pressed, its text with it (the mode chips, the
+     * clipboard's texts, the touchpad's mouse buttons).
+     */
+    var bodyPlate = false
+        set(value) { if (field != value) { field = value; invalidate() } }
+    /** Told when the button goes down or comes up (a text laid over it moves with it). */
+    var onPress: ((Boolean) -> Unit)? = null
+
+    /** How far down the button's face is now (px): what lies on it moves as far. */
+    val sink: Float
+        get() = when {
+            !pressed || style != SurfaceStyle.TYPEWRITER || (fill == 0 && pressedFill == 0) -> 0f
+            bodyPlate -> PLATE_SINK_DP * density
+            else -> surfaces.typewriterSink
+        }
+
     /** How far in from the edges a filled plate is drawn (the touch area stays the whole button). */
     var plateInset = 0f
         set(value) { if (field != value) { field = value; invalidate() } }
@@ -98,7 +116,13 @@ class ToolbarButton(context: Context) : View(context) {
             surfaces.sheetOffsetX = spot[0].toFloat()
             surfaces.sheetOffsetY = spot[1].toFloat()
         }
-        val inset = if (fill != 0) plateInset else 3f * density
+        // Pressed, a button without a plate shows one as small as its lit plate (on the typewriter the volume
+        // button's pressed plate reached past the paper holder's line).
+        val inset = when {
+            fill != 0 -> plateInset
+            pressed && pressedFill != 0 -> maxOf(plateInset, 3f * density)
+            else -> 3f * density
+        }
         bounds.set(inset, inset, width - inset, height - inset)
         val background = if (pressed) pressedFill else fill
         if (background != 0) {
@@ -108,7 +132,20 @@ class ToolbarButton(context: Context) : View(context) {
                 chosen -> SurfaceState.SELECTED
                 else -> SurfaceState.NORMAL
             }
-            surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground)
+            val plate = bodyPlate && style == SurfaceStyle.TYPEWRITER
+            if (plate) {
+                // A body plate: it goes down by itself (the keys' sink is drawn by the painter).
+                canvas.save()
+                canvas.translate(0f, sink)
+            }
+            surfaces.draw(canvas, bounds, r, style, background, state, seed = id xor text.hashCode(), inkColor = foreground, plate = plate)
+            if (plate) canvas.restore()
+        }
+        // The ink goes down with the face it is on (it stayed put while the key went down under it).
+        val inkSink = sink
+        if (inkSink != 0f) {
+            canvas.save()
+            canvas.translate(0f, inkSink)
         }
 
         // A narrow button keeps its icon well inside the plate, with room round it (the remote's row).
@@ -162,10 +199,12 @@ class ToolbarButton(context: Context) : View(context) {
             }
             bent?.let {
                 canvas.drawBitmap(it, 0f, 0f, null)
+                if (inkSink != 0f) canvas.restore()
                 return
             }
         }
         drawInk(canvas, foreground)
+        if (inkSink != 0f) canvas.restore()
     }
 
     private var bentKey: String? = null
@@ -186,11 +225,13 @@ class ToolbarButton(context: Context) : View(context) {
     private fun setPressedState(value: Boolean) {
         if (pressed != value) {
             pressed = value
+            onPress?.invoke(value)
             invalidate()
         }
     }
 
     private companion object {
         const val MIN_TEXT_SP = 11f
+        const val PLATE_SINK_DP = 2.5f
     }
 }

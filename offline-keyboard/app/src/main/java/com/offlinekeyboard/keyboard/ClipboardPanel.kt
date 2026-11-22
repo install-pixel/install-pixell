@@ -184,11 +184,13 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
     }
 
     private fun updateRow(row: View, clip: ClipboardHistory.Clip) {
-        ((row as android.widget.FrameLayout).getChildAt(1) as TextView).text = label(clip)
+        val frame = row as android.widget.FrameLayout
+        (frame.getChildAt(1) as TextView).text = label(clip)
+        // The pin has its own place before the text, kept when there is none: pinning no longer moves the text.
+        frame.getChildAt(2).visibility = if (clip.pinned) View.VISIBLE else View.INVISIBLE
     }
 
-    private fun label(clip: ClipboardHistory.Clip) =
-        (if (clip.pinned) "📌 " else "") + clip.text.replace(Regex("\\s+"), " ").take(240)
+    private fun label(clip: ClipboardHistory.Clip) = clip.text.replace(Regex("\\s+"), " ").take(240)
 
     /**
      * A row: the style's plate with the text on it in up to two lines. A swipe to the left takes it off
@@ -220,17 +222,31 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
             ellipsize = TextUtils.TruncateAt.END
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), 0, dp(14), 0)
+            setPadding(dp(14 + PIN_DP), 0, dp(14), 0)
             isClickable = false
             isFocusable = false
             t?.let { setTextColor(it.text); typeface = it.typeface(context) }
         }
+        val pin = TextView(context).apply {
+            this.text = "📌"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            gravity = Gravity.CENTER
+            isClickable = false
+            isFocusable = false
+            visibility = if (clip.pinned) View.VISIBLE else View.INVISIBLE
+        }
+        // The text (and its pin) lie on the plate: they go down with it when it is pressed.
+        plate.bodyPlate = true
+        plate.onPress = { text.translationY = plate.sink; pin.translationY = plate.sink }
         val row = android.widget.FrameLayout(context).apply {
             tag = clip.text
             clipChildren = false
             clipToPadding = false
             addView(plate, android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT))
             addView(text, android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT))
+            addView(pin, android.widget.FrameLayout.LayoutParams(dp(PIN_DP), android.widget.FrameLayout.LayoutParams.MATCH_PARENT).apply {
+                leftMargin = dp(8)
+            })
         }
         val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
         var downX = 0f
@@ -273,6 +289,8 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
 
     private companion object {
         const val ROW_DP = 56
+        /** The pin's place before a text, there whether it is pinned or not. */
+        const val PIN_DP = 24
         const val NOTE_MS = 4000L
         /** How far to the left a row must be swiped to go. */
         const val SWIPE_SHARE = 0.35f

@@ -617,6 +617,117 @@ class KeyboardUiTest {
         }
     }
 
+    /**
+     * Screenshots of what the user found and 1.21.2 fixes, in the styles where it showed: the typewriter's typebar
+     * with suggestions on the strip, its pressed volume button, a clipboard text pressed and pinned; the milky
+     * glass's enlarged letter on the top row; the sketch's top edge over the settings and a page half turned.
+     */
+    @Test
+    fun fixesShowInTheirStyles() {
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        val metrics = instrumentation.targetContext.resources.displayMetrics
+        try {
+            for (mode in listOf(com.offlinekeyboard.keyboard.ThemeMode.TYPEWRITER, com.offlinekeyboard.keyboard.ThemeMode.MILK_TYPEWRITER)) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                relaunchTestScreen()
+                val tag = mode.name.lowercase()
+                useMode(KeyboardMode.MOBILE)
+                useLanguage(Language.UK)
+                clear(activity.plain)
+                typeWord(activity.plain, "га")
+                Thread.sleep(600)
+                val key = keyCenter { (it.action as? KeyAction.Text)?.text == "р" } ?: throw AssertionError("no key «р»")
+                touch(key.x, key.y, holdMs = 160, whileHeld = { shell("screencap -p $SCREENS/fix-$tag-strike.png") })
+                clear(activity.plain)
+                // The strip's buttons in view (they hide while typing).
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(hideToolbarButtons = false) } }
+                Thread.sleep(800)
+                val sound = toolbarButton(R.string.toolbar_sound_description)
+                val spot = IntArray(2)
+                instrumentation.runOnMainSync { sound.getLocationOnScreen(spot) }
+                touch(spot[0] + sound.width / 2f, spot[1] + sound.height / 2f, holdMs = 200, whileHeld = {
+                    shell("screencap -p $SCREENS/fix-$tag-sound-pressed.png")
+                })
+                // Tapped back: the sound as it was.
+                touch(spot[0] + sound.width / 2f, spot[1] + sound.height / 2f, holdMs = 40)
+                val keyboard = service()
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.showClipboard(true)
+                    val panel = findViewIn(keyboard.inputRootForTest) { it is com.offlinekeyboard.keyboard.ClipboardPanel } as com.offlinekeyboard.keyboard.ClipboardPanel
+                    val now = System.currentTimeMillis()
+                    panel.show(listOf(
+                        com.offlinekeyboard.keyboard.ClipboardHistory.Clip("користується", now, pinned = true),
+                        com.offlinekeyboard.keyboard.ClipboardHistory.Clip("друге", now, pinned = false),
+                    ))
+                }
+                instrumentation.waitForIdleSync()
+                Thread.sleep(700)
+                val row = waitForView { it is ToolbarButton && it.contentDescription == "друге" }
+                instrumentation.runOnMainSync { row.getLocationOnScreen(spot) }
+                touch(spot[0] + row.width / 2f, spot[1] + row.height / 2f, holdMs = 200, whileHeld = {
+                    shell("screencap -p $SCREENS/fix-$tag-clip-pressed.png")
+                })
+                instrumentation.runOnMainSync { keyboard.inputRootForTest?.showClipboard(false) }
+                clear(activity.plain)
+            }
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS_LIGHT) } }
+            relaunchTestScreen()
+            useMode(KeyboardMode.COMPUTER)
+            val digit = keyCenter { (it.action as? KeyAction.Text)?.text == "6" } ?: throw AssertionError("no key «6»")
+            touch(digit.x, digit.y, holdMs = 300, whileHeld = { shell("screencap -p $SCREENS/fix-glass-light-top-row.png") })
+            useMode(KeyboardMode.MOBILE)
+            val letter = keyCenter { (it.action as? KeyAction.Text)?.text == "н" } ?: throw AssertionError("no key «н»")
+            touch(letter.x, letter.y, holdMs = 300, whileHeld = { shell("screencap -p $SCREENS/fix-glass-light-top-letter.png") })
+            scenario.close()
+            for (mode in listOf(com.offlinekeyboard.keyboard.ThemeMode.SHEET, com.offlinekeyboard.keyboard.ThemeMode.SHEET_LIGHT)) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                val tag = mode.name.lowercase()
+                val main = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(main).use {
+                    Thread.sleep(1500)
+                    // The try field: the keyboard comes up under the page.
+                    shell("input tap ${metrics.widthPixels / 2} ${metrics.heightPixels * 23 / 100}")
+                    Thread.sleep(2500)
+                    screenshot("fix-$tag-keyboard-edge")
+                    automation.executeShellCommand("input keyevent 4").close()
+                    Thread.sleep(800)
+                }
+                val look = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                    .putExtra("page", "look")
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(look).use {
+                    Thread.sleep(1500)
+                    val y = metrics.heightPixels * 0.45f
+                    val from = metrics.widthPixels * 0.9f
+                    val downTime = SystemClock.uptimeMillis()
+                    inject(MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, from, y, 0))
+                    for (i in 1..20) {
+                        Thread.sleep(16)
+                        inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_MOVE, from - metrics.widthPixels * 0.03f * i, y, 0))
+                        if (i == 7) {
+                            Thread.sleep(300)
+                            shell("screencap -p $SCREENS/fix-$tag-page-lifting.png")
+                        }
+                    }
+                    Thread.sleep(400)
+                    shell("screencap -p $SCREENS/fix-$tag-page-turning.png")
+                    inject(MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, from - metrics.widthPixels * 0.6f, y, 0))
+                    Thread.sleep(1200)
+                    shell("screencap -p $SCREENS/fix-$tag-page-turned.png")
+                }
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS, hideToolbarButtons = true) } }
+        }
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
+    }
+
+    private fun findViewIn(root: View?, match: (View) -> Boolean): View? {
+        if (root == null) return null
+        if (match(root)) return root
+        if (root is ViewGroup) for (i in 0 until root.childCount) findViewIn(root.getChildAt(i), match)?.let { return it }
+        return null
+    }
+
     /** The settings in the milky typewriter's light colours: screenshots. */
     @Test
     fun settingsInMilkTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.MILK_TYPEWRITER)
@@ -700,7 +811,11 @@ class KeyboardUiTest {
                 }
             }
         }
-        if (android.os.Build.VERSION.SDK_INT >= 33) shell("cmd locale set-app-locales $pkg --locales en-US")
+        // Back to the phone's own language (on a real phone it stayed in English after the tests).
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            instrumentation.targetContext.getSystemService(android.app.LocaleManager::class.java)
+                .applicationLocales = android.os.LocaleList.getEmptyLocaleList()
+        }
         scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
     }
 

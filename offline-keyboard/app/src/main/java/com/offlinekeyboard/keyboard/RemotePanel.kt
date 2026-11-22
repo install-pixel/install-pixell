@@ -197,6 +197,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun mouseButton(label: String, button: Int) = ToolbarButton(context).apply {
+        bodyPlate = true
         text = label
         textSizeSp = 14f
         buttons += this

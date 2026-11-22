@@ -1115,6 +1115,8 @@ class KeyboardService : InputMethodService(),
         if (!settings.translateEnabled) return
         leaveSegment()
         setTranslateEnabled(false, settings.translationDirection)
+        // The translation's note on the strip («Переклад Укр→Pol: …») goes with it, not seconds later.
+        rootView?.clearStatus()
         updateSuggestions()
         render()
     }

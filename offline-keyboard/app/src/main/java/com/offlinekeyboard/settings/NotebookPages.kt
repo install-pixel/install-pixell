@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.runtime.snapshotFlow
@@ -82,6 +83,7 @@ internal val LocalPaperFrame = staticCompositionLocalOf { PaperFrame() }
  * back from the first leaves the page ([onFirstBack]). Nothing scrolls, so the writing can follow the paper's
  * relief (bent with its creases, from Android 13) without floating over it.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     var page by rememberSaveable { mutableIntStateOf(0) }
@@ -102,6 +104,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
     val density = LocalDensity.current
     val topInset = with(density) { insets.calculateTopPadding().roundToPx() }
     val bottomInset = with(density) { insets.calculateBottomPadding().roundToPx() }
+    val imeOpen = WindowInsets.isImeVisible
 
     /** Starts turning towards [dir] (+1 the next page, −1 back): false when there is nowhere to go. */
     fun begin(dir: Int): Boolean {
@@ -218,6 +221,18 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                     }
                 }
             }
+            // The turning sheet is drawn over the bent page, outside its bend: inside it the sheet's paper bent and
+            // shaded with the relief as the writing does (blotchy, the parchment's burnt edge pulled down). Only
+            // its writing is bent, by the same effect given to it.
+            .drawWithContent {
+                drawContent()
+                if (st.stage == 3) {
+                    val w = size.width
+                    val r = w * 0.12f
+                    val axis = w - turned.value * (w + Math.PI.toFloat() * r * 1.1f)
+                    drawCurl(CurlGeometry(w, r, axis), sheet, sheetBack, light)
+                }
+            }
             .then(bend(relief, photo, frame, st))
             .drawWithContent {
                 when (st.stage) {
@@ -233,6 +248,8 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                 st.stage = 2
                                 st.place = st.second
                             } else {
+                                // Its writing bent as it lay on the page (the sheet is drawn outside the bend).
+                                inkTop.renderEffect = bendEffect(relief, photo, frame, st, this.density)
                                 sheet.record {
                                     if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY) else drawRect(paperColor(light))
                                     drawLayer(inkTop)
@@ -252,10 +269,6 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                     }
                     else -> {
                         drawLayer(inkUnder)
-                        val w = size.width
-                        val r = w * 0.12f
-                        val axis = w - turned.value * (w + Math.PI.toFloat() * r * 1.1f)
-                        drawCurl(CurlGeometry(w, r, axis), sheet, sheetBack, light)
                         drawContent()
                     }
                 }
@@ -266,8 +279,9 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         val side = 22.dp.roundToPx()
         val top = topInset + 20.dp.roundToPx()
         val navH = 44.dp.roundToPx()
-        // On the parchment above its burnt lower edge.
-        val navLift = if (light) 26.dp.roundToPx() else 0
+        // On the parchment above its burnt lower edge; over the keyboard clear of its soft top edge (which lies
+        // over the app: the number stood in it, on the keyboard's line).
+        val navLift = maxOf(if (light) 26.dp.roundToPx() else 0, if (imeOpen) 18.dp.roundToPx() else 0)
         val bottom = bottomInset + navLift + navH + 6.dp.roundToPx()
         val rowGap = 10.dp.roundToPx()
         val sectionGap = 24.dp.roundToPx()
@@ -468,8 +482,22 @@ half4 main(float2 p) {
 private fun bend(relief: android.graphics.Bitmap?, photo: android.graphics.Bitmap?, frame: PaperFrame, state: PagesState): Modifier {
     if (Build.VERSION.SDK_INT < 33 || relief == null || photo == null) return Modifier
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val shader = remember { android.graphics.RuntimeShader(BEND_SHADER) }
     return Modifier.graphicsLayer {
+        renderEffect = bendEffect(relief, photo, frame, state, density.density)
+    }
+}
+
+/** The bend as an effect for a layer (null before Android 13 or while the paper is not loaded). */
+private fun bendEffect(
+    relief: android.graphics.Bitmap?,
+    photo: android.graphics.Bitmap?,
+    frame: PaperFrame,
+    state: PagesState,
+    density: Float,
+): androidx.compose.ui.graphics.RenderEffect? {
+    if (Build.VERSION.SDK_INT < 33 || relief == null || photo == null) return null
+    val shader = android.graphics.RuntimeShader(BEND_SHADER)
+    run {
         val w = photo.width.toFloat()
         val h = photo.height.toFloat()
         // Root point -> page photograph pixel -> relief pixel (as drawPaper lays the photograph).
@@ -492,9 +520,9 @@ private fun bend(relief: android.graphics.Bitmap?, photo: android.graphics.Bitma
         shader.setInputShader("relief", reliefShader)
         shader.setFloatUniform("origin", state.rootX, state.rootY)
         val v = NotebookBend.current
-        shader.setFloatUniform("bend", with(density) { v.bend.dp.toPx() })
+        shader.setFloatUniform("bend", v.bend * density)
         shader.setFloatUniform("fade", v.fade)
         shader.setFloatUniform("shade", v.shade)
-        renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
+    return android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
 }

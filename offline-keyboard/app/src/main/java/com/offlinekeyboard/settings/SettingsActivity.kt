@@ -390,22 +390,7 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 
         Section(stringResource(R.string.section_try)) {
             var sample by rememberSaveable { mutableStateOf("") }
-            if (LocalLook.current == Look.SHEET) {
-                RuledTryField(sample) { sample = it }
-            } else {
-                OutlinedTextField(
-                    value = sample,
-                    onValueChange = { sample = it },
-                    // A fixed window: long text scrolls inside it instead of stretching the page.
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    // A placeholder inside the field: a floating label would cut the frame.
-                    placeholder = { Text(stringResource(R.string.try_hint)) },
-                    // Sentence capitals, like a message field, so every typing rule can be tried here.
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                )
-            }
+            TryField(sample, stringResource(R.string.try_hint)) { sample = it }
         }
 
         Section(stringResource(R.string.section_menu)) {
@@ -763,12 +748,35 @@ private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () 
 }
 
 /**
+ * A field to type in, in the page's style: lines ruled in pencil on the sketch, the style's framed field
+ * elsewhere; [hint] inside it while it is empty (a floating label cut the frame and looked out of place).
+ */
+@Composable
+internal fun TryField(value: String, hint: String, height: androidx.compose.ui.unit.Dp = 120.dp, onChange: (String) -> Unit) {
+    if (LocalLook.current == Look.SHEET) {
+        RuledTryField(value, hint, height, onChange)
+    } else {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            // A fixed window: long text scrolls inside it instead of stretching the page.
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height),
+            placeholder = { Text(hint) },
+            // Sentence capitals, like a message field, so every typing rule can be tried here.
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        )
+    }
+}
+
+/**
  * The sketch's try field: written on the page on ruled pencil lines, and the lines are the text's own: one under
  * every line of text where it really is (and empty ones below), and they move with the text as the window
  * scrolls, as writing on a page in a notebook (a fixed window of three lines; longer text scrolls inside it).
  */
 @Composable
-private fun RuledTryField(value: String, onChange: (String) -> Unit) {
+private fun RuledTryField(value: String, hint: String, height: androidx.compose.ui.unit.Dp, onChange: (String) -> Unit) {
     var layout by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
     val scroll = rememberScrollState()
     val style = MaterialTheme.typography.bodyLarge.copy(color = Tone.TextPrimary)
@@ -777,7 +785,7 @@ private fun RuledTryField(value: String, onChange: (String) -> Unit) {
     androidx.compose.foundation.layout.Box(
         Modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .height(height)
             .verticalScroll(scroll),
     ) {
         androidx.compose.foundation.text.BasicTextField(
@@ -813,7 +821,7 @@ private fun RuledTryField(value: String, onChange: (String) -> Unit) {
                 .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 14.dp),
             decorationBox = { inner ->
                 androidx.compose.foundation.layout.Box {
-                    if (value.isEmpty()) Text(stringResource(R.string.try_hint), style = style.copy(color = Tone.TextSecondary))
+                    if (value.isEmpty()) Text(hint, style = style.copy(color = Tone.TextSecondary))
                     inner()
                 }
             },

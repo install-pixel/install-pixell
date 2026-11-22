@@ -242,8 +242,21 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private val undoButton = button(R.string.toolbar_undo_translation_description) { toolbarListener?.onUndoTranslation() }
         .apply { icon = Icon.UNDO; visibility = View.GONE }
     private val suggestionViews = List(SUGGESTIONS) { suggestionView() }
+    /**
+     * The typewriter: the word being typed, at the left of its suggestions (a space before them), so the
+     * typebar strikes its next letter there and not into a suggestion. Hidden in the other styles.
+     */
+    private val suggestionLead = TextView(context).apply {
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        maxLines = 1
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(8), 0, dp(12), 0)
+        isFocusable = false
+        visibility = View.GONE
+    }
     private val suggestionsRow = LinearLayout(context).apply {
         orientation = HORIZONTAL
+        addView(suggestionLead, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
         suggestionViews.forEach { addView(it, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)) }
     }
     /**
@@ -289,6 +302,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
     private val volumeBar = VolumeBar(context).apply { visibility = View.GONE }
     private var volumeShown = false
+    private var volumeMoved = false
     private var volumeDownX = 0f
     private val startVolume = Runnable {
         volumeShown = true
@@ -307,12 +321,16 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     volumeShown = false
+                    volumeMoved = false
                     volumeDownX = event.rawX
                     postDelayed(startVolume, android.view.ViewConfiguration.getLongPressTimeout().toLong())
                 }
                 android.view.MotionEvent.ACTION_MOVE -> if (volumeShown) {
                     val step = volumeBar.setFromScreenX(event.rawX)
-                    if (step) toolbarListener?.onSoundVolume(volumeBar.value, done = false)
+                    if (step) {
+                        volumeMoved = true
+                        toolbarListener?.onSoundVolume(volumeBar.value, done = false)
+                    }
                     return@setOnTouchListener true
                 }
                 android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
@@ -320,8 +338,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                     if (volumeShown) {
                         volumeShown = false
                         v.onTouchEvent(android.view.MotionEvent.obtain(event).apply { action = android.view.MotionEvent.ACTION_CANCEL })
-                        toolbarListener?.onSoundVolume(volumeBar.value, done = true)
-                        refreshCentre()
+                        if (volumeMoved) {
+                            toolbarListener?.onSoundVolume(volumeBar.value, done = true)
+                            refreshCentre()
+                        } else {
+                            // Let go on the bar without sliding (as if to pick a step on it): it says how.
+                            refreshCentre()
+                            showStatus(context.getString(R.string.volume_hold_hint))
+                        }
                         if (buttonsShown) revealButtons()
                         return@setOnTouchListener true
                     }
@@ -353,6 +377,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private val translateChip = button(R.string.toolbar_translate_description) { toolbarListener?.onModeTranslate() }
     private val clipboardChip = button(R.string.clipboard_chip_description) { toolbarListener?.onClipboardChip() }
     private val voiceChip = button(R.string.toolbar_voice_description) { toolbarListener?.onToolbarVoice() }
+
+    init {
+        // On the typewriter, controls on the machine's body rather than keys (see ToolbarButton.bodyPlate).
+        for (c in listOf(textChip, translateChip, clipboardChip, voiceChip)) c.bodyPlate = true
+    }
 
     private var recording = false
     private lateinit var modeRow: LinearLayout
@@ -434,7 +463,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     // On a light keyboard the band is shorter: light paper fading over a dark app reads as a smear.
     // Over the blurred app there is none: the system blurs the whole keyboard window, so a band would show
     // a hard edge of blur; the glass ends in its lit top rim instead.
-    val fadeHeight get() = if (theme.seeThrough) 0 else dp(if (theme.dark) FADE_DP else FADE_LIGHT_DP)
+    // The sketch: the same in its dark and light paper (its paper itself fades out, see drawSheetPaper).
+    val fadeHeight get() = when {
+        theme.seeThrough -> 0
+        theme.style == SurfaceStyle.SHEET -> dp(FADE_SHEET_DP)
+        else -> dp(if (theme.dark) FADE_DP else FADE_LIGHT_DP)
+    }
     private val fadePaint = Paint()
     private var fadeColor = 0
 
@@ -447,7 +481,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             theme.style == SurfaceStyle.SHEET && paperEdge != 0 -> paperEdge
             else -> color
         }
-        if (fadeHeight > 0) {
+        // The sketch draws no band of colour: its paper's own top fades out (a band of one colour lay over the
+        // paper as a strip with an edge below it, and in the first frame after a change of tone it still had
+        // the other paper's colour: a yellow line over the black paper).
+        if (fadeHeight > 0 && theme.style != SurfaceStyle.SHEET) {
             if (fadePaint.shader == null || fadePaint.color != fadeTo) {
                 fadePaint.color = fadeTo
                 fadePaint.shader = LinearGradient(
@@ -458,6 +495,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight.toFloat(), fadePaint)
         }
         backgroundPaint.color = color
+        // Under the sketch's paper only where it is opaque (under its fading top the app shows through).
         canvas.drawRect(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat(), backgroundPaint)
         if (theme.seeThrough) {
             // The top edge of the glass plate over the app: a line of light, and a soft light below it.
@@ -489,8 +527,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      */
     private fun drawSheetPaper(canvas: Canvas) {
         val paper = PaperSheets.keyboard(!theme.dark) ?: return
-        // Edge to edge: with a margin, the plain ground under the sheet showed round it as a pale frame.
-        paperRect.set(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat())
+        // Edge to edge: with a margin, the plain ground under the sheet showed round it as a pale frame. Up to
+        // the window's top: the paper's top part fades out over the app (its own edge melts, no band over it).
+        paperRect.set(0f, 0f, width.toFloat(), height.toFloat())
         if (paperRect.width() <= 0f || paperRect.height() <= 0f) return
         paperEdge = edgeColorOf(paper)
         // The photograph scaled to cover the sheet, centred.
@@ -512,8 +551,24 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             paperSpot[0] + paperRect.left + (paperRect.width() - paper.width * scale) / 2,
             paperSpot[1] + paperRect.top + (paperRect.height() - paper.height * scale) / 2,
         )
-        canvas.drawRect(paperRect, paperPaint)
+        val fade = fadeHeight.toFloat()
+        if (fade <= 0f) {
+            canvas.drawRect(paperRect, paperPaint)
+            return
+        }
+        canvas.drawRect(0f, fade, paperRect.right, paperRect.bottom, paperPaint)
+        val layer = canvas.saveLayer(0f, 0f, paperRect.right, fade, null)
+        canvas.drawRect(0f, 0f, paperRect.right, fade, paperPaint)
+        if (paperFadeHeight != fade) {
+            paperFadeHeight = fade
+            paperFade.shader = LinearGradient(0f, 0f, 0f, fade, 0x00000000, 0xFF000000.toInt(), Shader.TileMode.CLAMP)
+        }
+        canvas.drawRect(0f, 0f, paperRect.right, fade, paperFade)
+        canvas.restoreToCount(layer)
     }
+
+    private val paperFade = Paint().apply { xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN) }
+    private var paperFadeHeight = -1f
 
     private var paperShader: android.graphics.Bitmap? = null
     /** The sheet's paper at its top edge (the soft band above it fades into this, not into a pale ground). */
@@ -637,15 +692,19 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val now = android.os.SystemClock.uptimeMillis()
         if (down) {
             strikeFromX = keysRow.left + keyboardView.left + keyX
+            // Typing: a note on the strip (a mode just turned on, a hint) gives way to the text, so the letter
+            // lands in the text (over the note it struck straight up over its key, away from the text).
+            if (message != null) clearStatus()
             // It strikes where the letter goes in the text: on the strip's text after the cursor; while the strip
-            // shows suggestions instead (the first letters of a word) where the letter will stand once the text
-            // is back, not over its key (the letter landed at the far right, away from the text). Over a
-            // message, which is not the user's text, straight up over its key.
+            // shows suggestions, right after the word being typed (they stand a space after it); while it shows
+            // a translation's source text, at its end.
             val onText = showingEcho && statusScroll.visibility == View.VISIBLE && status.layout != null
+            val live = liveText
             strikeX = when {
+                suggestionsRow.visibility == View.VISIBLE && suggestionLead.visibility == View.VISIBLE -> leadEndX()
                 onText -> printX()
-                message == null && liveText == null -> textEndX()
-                else -> strikeFromX
+                live != null -> lineEndX(live.toString())
+                else -> textEndX()
             }
             strikeLetter = letter
             strikeDownAt = now
@@ -678,10 +737,30 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun textEndX(): Float {
         val text = echo?.toString() ?: ""
         val cursor = echoCursor.coerceIn(0, text.length)
-        val before = text.substring(0, cursor).substringAfterLast('\n')
+        return lineEndX(text.substring(0, cursor))
+    }
+
+    /** Where a letter goes after [text] (its last line) written from the strip's start. */
+    private fun lineEndX(text: String): Float {
+        val before = text.substringAfterLast('\n')
         val advance = status.paint.measureText("0")
         val x = infoRow.left + statusScroll.left + status.left + status.totalPaddingLeft + status.paint.measureText(before) + advance / 2
         return x.coerceIn(infoRow.left + statusScroll.left.toFloat(), infoRow.left + statusScroll.right.toFloat() - advance / 2)
+    }
+
+    /** Right after the word being typed, at the left of the suggestions. */
+    private fun leadEndX(): Float {
+        val advance = suggestionLead.paint.measureText("0")
+        val word = suggestionLead.text?.toString() ?: ""
+        return infoRow.left + suggestionsRow.left + suggestionLead.left + suggestionLead.totalPaddingLeft +
+            suggestionLead.paint.measureText(word) + advance / 2
+    }
+
+    /** The word being typed: the text before the cursor back to the last space. */
+    private fun typedWord(): String {
+        val text = echo?.toString() ?: return ""
+        val before = text.substring(0, echoCursor.coerceIn(0, text.length))
+        return before.substring(before.indexOfLast { it.isWhitespace() } + 1)
     }
 
     private fun strikeRise(now: Long): Float {
@@ -929,12 +1008,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             it.typeface = face
         }
         status.typeface = face
+        suggestionLead.typeface = face
+        suggestionLead.setTextColor(value.text)
         for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.applyStyle(value)
         // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge (on the
         // typewriter smaller still: its rim reached the paper holder's line).
         val litInset = dp(LIT_PLATE_INSET_DP + if (value.style == SurfaceStyle.TYPEWRITER) 3 else 0).toFloat()
-        bluetoothButton.plateInset = litInset
-        remoteButton.plateInset = litInset
+        for (b in listOf(bluetoothButton, remoteButton, soundButton, modeButton, settingsButton, undoButton)) b.plateInset = litInset
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton, soundButton, remoteButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
@@ -1271,6 +1351,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         volumeBar.visibility = if (volume) View.VISIBLE else View.GONE
         statusScroll.visibility = if (showSuggestions || volume) View.GONE else View.VISIBLE
         suggestionsRow.visibility = if (showSuggestions && !volume) View.VISIBLE else View.GONE
+        if (theme.style == SurfaceStyle.TYPEWRITER && showSuggestions) {
+            suggestionLead.text = TypewriterInk.apply(typedWord(), suggestionLead.textSize, null)
+            // Room for the next letter even before the first one, so it never lands on a suggestion.
+            suggestionLead.minWidth = (suggestionLead.paint.measureText("0") * 1.5f).toInt() + dp(20)
+            suggestionLead.visibility = View.VISIBLE
+        } else {
+            suggestionLead.visibility = View.GONE
+        }
         val showPredictions = isEcho && predictions.isNotEmpty() && !volume
         predictionsRow.visibility = if (showPredictions) View.VISIBLE else View.GONE
         predictionViews.forEachIndexed { i, v ->
@@ -1342,6 +1430,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val ECHO_WORD = Regex(ECHO_WORD_PATTERN)
         const val FADE_DP = 14
         const val FADE_LIGHT_DP = 6
+        const val FADE_SHEET_DP = 12
         const val GLASS_GLOW_DP = 24
         /** The paper holder under the strip's paper. */
         const val HOLDER_DP = 5
