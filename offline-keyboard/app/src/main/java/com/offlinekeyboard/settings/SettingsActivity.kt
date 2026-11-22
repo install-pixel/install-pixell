@@ -378,8 +378,9 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
                             Modifier
                                 .drawBehind {
                                     // Lines to write on, ruled in pencil, as on a notebook's page.
-                                    val gap = 30.dp.toPx()
-                                    var y = gap + 6.dp.toPx()
+                                    // Under each line of text, not through it (the first one below the hint).
+                                    val gap = 34.dp.toPx()
+                                    var y = 50.dp.toPx()
                                     var line = 0
                                     while (y < size.height - 4.dp.toPx()) {
                                         pencilStroke(y, size.width * 0.03f, size.width * 0.97f, seed = 23 + line, alpha = 0.45f)
