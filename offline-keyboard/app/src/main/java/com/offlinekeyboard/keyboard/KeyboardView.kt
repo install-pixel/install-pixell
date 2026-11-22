@@ -532,6 +532,7 @@ class KeyboardView(context: Context) : View(context) {
             } else {
                 // On the most used typewriter keys the paint of the letter is a little worn.
                 val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
+                if (theme.style == SurfaceStyle.SHEET && isSpace(key)) drawSpaceMarks(canvas, inner, color, index)
                 if (theme.style == SurfaceStyle.SHEET && underBubble(face)) {
                     // Under the sketch's enlarged letter (a soft patch, see-through at its edge): not written, so
                     // nothing of it shows round the patch.
@@ -757,6 +758,42 @@ class KeyboardView(context: Context) : View(context) {
         }
         if (sheet && drawWrittenInk(canvas, label, rect, y)) return
         canvas.drawText(label, rect.centerX(), y, textPaint)
+    }
+
+    private val spaceMarks = HashMap<Long, android.graphics.Path>()
+    private val spacePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    /**
+     * The sketch's space bar has no key drawn round it: a light pencil stroke under its name, its ends turned up
+     * a little, shows how far it reaches.
+     */
+    private fun drawSpaceMarks(canvas: Canvas, rect: RectF, color: Int, seed: Int) {
+        val w = rect.width()
+        val h = rect.height()
+        val key = (w.toInt().toLong() shl 32) or h.toInt().toLong()
+        val path = spaceMarks.getOrPut(key) {
+            val n = 24
+            val points = FloatArray(n * 2 + 4)
+            val x0 = w * 0.06f
+            val x1 = w * 0.94f
+            val base = h * 0.8f
+            val lift = h * 0.16f
+            val random = java.util.Random(seed.toLong() * 31 + 7)
+            for (i in 0 until n) {
+                val t = i / (n - 1f)
+                points[i * 2] = x0 + (x1 - x0) * t
+                // Flat in the middle, the ends curling up: a bracket drawn in one stroke, a little uneven.
+                val end = maxOf(0f, kotlin.math.abs(t - 0.5f) * 2f - 0.86f) / 0.14f
+                points[i * 2 + 1] = base - lift * end * end + (random.nextFloat() - 0.5f) * dp(0.6f)
+            }
+            Pencil.tapered(points.copyOf(n * 2), dp(1.3f))
+        }
+        spacePaint.color = color
+        spacePaint.alpha = ((color ushr 24) * 0.32f).toInt()
+        canvas.save()
+        canvas.translate(rect.left, rect.top)
+        canvas.drawPath(path, spacePaint)
+        canvas.restore()
     }
 
     private val overlap = RectF()
