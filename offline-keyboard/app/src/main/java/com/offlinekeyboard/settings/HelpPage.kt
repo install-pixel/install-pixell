@@ -87,8 +87,15 @@ private fun HelpRow(icon: Icon, title: String, onClick: () -> Unit) {
             }
         }
         Spacer(Modifier.width(14.dp))
-        Text(title, color = Tone.TextPrimary, fontSize = if (sheet) 18.sp else 16.sp, modifier = Modifier.weight(1f))
-        Text(if (sheet) "→" else "›", color = Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
+        // The sketch: a topic can be tapped, so it is written in full ink and bolder (as the other menus).
+        Text(
+            title,
+            color = Tone.TextPrimary,
+            fontSize = if (sheet) 18.sp else 16.sp,
+            fontWeight = if (sheet) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+            modifier = Modifier.weight(1f),
+        )
+        Text(if (sheet) "→" else "›", color = if (sheet) Tone.TextPrimary else Tone.TextSecondary, fontSize = if (sheet) 20.sp else 22.sp)
     }
 }
 
@@ -97,7 +104,7 @@ internal fun HelpTopicPage(onBack: () -> Unit) {
     val topic = shownHelpTopic
     PageScaffold(stringResource(topic.title), onBack) {
         Section(null) {
-            Text(stringResource(topic.body), color = Tone.TextPrimary.copy(alpha = 0.9f), fontSize = 16.sp, lineHeight = 23.sp)
+            Text(stringResource(topic.body), color = Tone.TextPlain, fontSize = 16.sp, lineHeight = 23.sp)
         }
     }
 }

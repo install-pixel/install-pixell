@@ -691,6 +691,21 @@ class KeyboardUiTest {
             useMode(KeyboardMode.MOBILE)
             val letter = keyCenter { (it.action as? KeyAction.Text)?.text == "н" } ?: throw AssertionError("no key «н»")
             touch(letter.x, letter.y, holdMs = 300, whileHeld = { shell("screencap -p $SCREENS/fix-glass-light-top-letter.png") })
+            // The sketch's clipboard: its pin drawn in pencil.
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.SHEET) } }
+            relaunchTestScreen()
+            useMode(KeyboardMode.MOBILE)
+            run {
+                val keyboard = service()
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.showClipboard(true)
+                    val panel = findViewIn(keyboard.inputRootForTest) { it is com.offlinekeyboard.keyboard.ClipboardPanel } as com.offlinekeyboard.keyboard.ClipboardPanel
+                    panel.show(listOf(com.offlinekeyboard.keyboard.ClipboardHistory.Clip("користується", System.currentTimeMillis(), pinned = true)))
+                }
+                Thread.sleep(800)
+                shell("screencap -p $SCREENS/fix-sheet-clip-pin.png")
+                instrumentation.runOnMainSync { keyboard.inputRootForTest?.showClipboard(false) }
+            }
             scenario.close()
             for (mode in listOf(com.offlinekeyboard.keyboard.ThemeMode.SHEET, com.offlinekeyboard.keyboard.ThemeMode.SHEET_LIGHT)) {
                 kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
@@ -704,6 +719,29 @@ class KeyboardUiTest {
                     screenshot("fix-$tag-keyboard-edge")
                     automation.executeShellCommand("input keyevent 4").close()
                     Thread.sleep(800)
+                }
+                // Going to another page turns the sheet (forward) and back (the earlier one turned back over).
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(main).use {
+                    Thread.sleep(1500)
+                    // A recording of the turns (the screenshots come too late to catch one).
+                    val recording = automation.executeShellCommand("screenrecord --time-limit 6 --bit-rate 4000000 $SCREENS/nav-$tag.mp4")
+                    Thread.sleep(500)
+                    shell("input tap ${metrics.widthPixels / 2} ${metrics.heightPixels * 40 / 100}")
+                    Thread.sleep(150)
+                    shell("screencap -p $SCREENS/fix-$tag-open-turning.png")
+                    Thread.sleep(1500)
+                    shell("screencap -p $SCREENS/fix-$tag-open-done.png")
+                    automation.executeShellCommand("input keyevent 4").close()
+                    Thread.sleep(250)
+                    shell("screencap -p $SCREENS/fix-$tag-back-turning.png")
+                    Thread.sleep(2500)
+                    recording.close()
+                }
+                val dictionary = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                    .putExtra("page", "dictionary")
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(dictionary).use {
+                    Thread.sleep(1500)
+                    screenshot("fix-$tag-dictionary-1")
                 }
                 val typing = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
                     .putExtra("page", "typing")

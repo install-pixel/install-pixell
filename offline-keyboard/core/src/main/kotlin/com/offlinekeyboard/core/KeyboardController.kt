@@ -258,7 +258,12 @@ class KeyboardController(
             SpecialKey.META -> tapModifier(ModifierKey.META, now)
             SpecialKey.CAPS_LOCK -> { modifiers.toggleCapsLock(); emptyList() }
 
-            SpecialKey.BACKSPACE -> afterKey(listOf(if (mods.ctrl) EditorCommand.DeleteWordBackward else EditorCommand.DeleteBackward))
+            SpecialKey.BACKSPACE -> {
+                val out = listOf(if (mods.ctrl) EditorCommand.DeleteWordBackward else EditorCommand.DeleteBackward)
+                // As the space: the automatic capital is not used up by a deletion (the keyboard works out again
+                // where the cursor is; taken away and given back, every key flickered).
+                if (modifiers.shiftIsAutomatic && !modifiers.anyShortcutModifier) out else afterKey(out)
+            }
             SpecialKey.DELETE -> afterKey(listOf(if (mods.ctrl) EditorCommand.DeleteWordForward else EditorCommand.DeleteForward))
             SpecialKey.ENTER -> afterKey(
                 listOf(

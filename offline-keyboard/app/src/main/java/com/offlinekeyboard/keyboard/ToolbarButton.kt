@@ -61,6 +61,14 @@ class ToolbarButton(context: Context) : View(context) {
             else -> surfaces.typewriterSink
         }
 
+    /** Where the ink on the face is against the button's middle (px): the face's travel and, on a body plate, its place. */
+    val inkOffset: Float
+        get() = if (bodyPlate && style == SurfaceStyle.TYPEWRITER && (fill != 0 || pressedFill != 0)) {
+            sink - PLATE_SINK_DP * density / 2
+        } else {
+            sink
+        }
+
     /** How far in from the edges a filled plate is drawn (the touch area stays the whole button). */
     var plateInset = 0f
         set(value) { if (field != value) { field = value; invalidate() } }
@@ -151,6 +159,9 @@ class ToolbarButton(context: Context) : View(context) {
                 val down = sink
                 recessPaint.color = 0x99000000.toInt()
                 canvas.drawRoundRect(bounds, r, r, recessPaint)
+                // The face is the recess less its travel: at rest it sits at the recess's top, down it fills its
+                // foot (down from the whole place it went under the keys' edge and was cut off).
+                bounds.bottom -= PLATE_SINK_DP * density
                 canvas.save()
                 canvas.translate(0f, down)
                 surfaces.draw(canvas, bounds, r, style, background, SurfaceState.NORMAL, seed = id xor text.hashCode(), inkColor = foreground, plate = true)
@@ -175,7 +186,7 @@ class ToolbarButton(context: Context) : View(context) {
             }
         }
         // The ink goes down with the face it is on (it stayed put while the key went down under it).
-        val inkSink = sink
+        val inkSink = inkOffset
         if (inkSink != 0f) {
             canvas.save()
             canvas.translate(0f, inkSink)

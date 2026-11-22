@@ -42,6 +42,14 @@ class KeyboardControllerTest {
     }
 
     @Test
+    fun `a deletion keeps the sentence-start capital`() {
+        val c = controller(KeyboardMode.MOBILE)
+        c.setAutoShift(true)
+        c.press(SpecialKey.BACKSPACE)
+        assertTrue(c.modifiers.isActive(ModifierKey.SHIFT))
+    }
+
+    @Test
     fun `letters respect shift and caps lock`() {
         val c = controller()
         assertEquals(listOf(EditorCommand.CommitText("a")), c.type("a"))

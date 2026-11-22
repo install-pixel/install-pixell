@@ -90,6 +90,7 @@
     <string name="dictionary_words">Słowa</string>
     <string name="dictionary_add_word">Nowe słowo</string>
     <string name="dictionary_add_invalid">Tylko litery, apostrof i łącznik; 2–40 znaków.</string>
+    <string name="dictionary_more">↓ jeszcze %1$d</string>
     <string name="dictionary_empty">Brak słów.</string>
     <string name="dictionary_waiting">Jeszcze nie podpowiadane: wpisz je ponownie</string>
     <string name="dictionary_clear">Usuń wszystkie słowa</string>

@@ -90,6 +90,7 @@
     <string name="dictionary_words">Words</string>
     <string name="dictionary_add_word">New word</string>
     <string name="dictionary_add_invalid">Only letters, apostrophe and hyphen; 2–40 characters.</string>
+    <string name="dictionary_more">↓ %1$d more</string>
     <string name="dictionary_empty">No words yet.</string>
     <string name="dictionary_waiting">Not suggested yet: type it once more</string>
     <string name="dictionary_clear">Delete all words</string>

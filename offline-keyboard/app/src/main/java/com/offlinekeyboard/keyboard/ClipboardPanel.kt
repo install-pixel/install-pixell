@@ -228,13 +228,17 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
             t?.let { setTextColor(it.text); typeface = it.typeface(context) }
         }
         val pin = PinView(context).apply {
+            // The sketch draws its pin in pencil, as everything on its paper; the others a metal one.
+            pencil = t?.style == SurfaceStyle.SHEET
+            ink = t?.text ?: ink
             isClickable = false
             isFocusable = false
             visibility = if (clip.pinned) View.VISIBLE else View.INVISIBLE
         }
         // The text (and its pin) lie on the plate: they go down with it when it is pressed.
         plate.bodyPlate = true
-        plate.onPress = { text.translationY = plate.sink; pin.translationY = plate.sink }
+        plate.onPress = { text.translationY = plate.inkOffset; pin.translationY = plate.inkOffset }
+        plate.post { plate.onPress?.invoke(false) }
         val row = android.widget.FrameLayout(context).apply {
             tag = clip.text
             clipChildren = false
@@ -297,10 +301,13 @@ class ClipboardPanel(context: Context) : LinearLayout(context) {
 }
 
 /**
- * The pin that holds a text: a brass drawing pin whose steel point goes into the plate (its end hidden in it),
- * with the dark hole it punched and a bright burr of metal round it, not a sticker laid on top.
+ * The pin that holds a text. The typewriter's (and glass's): a brass drawing pin, its domed head solid metal
+ * with a highlight, its steel point going into the plate (the end hidden in it) through a punched hole with a
+ * bright burr. The sketch's: the same pin drawn in pencil.
  */
 private class PinView(context: Context) : View(context) {
+    var pencil = false
+    var ink = 0xFFEDEDED.toInt()
     private val density = resources.displayMetrics.density
     private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 
@@ -312,6 +319,10 @@ private class PinView(context: Context) : View(context) {
         // Where the point enters the plate, down and to the right of the head.
         val ex = cx + 8f * d
         val ey = cy + 12f * d
+        if (pencil) {
+            drawPencil(canvas, cx, cy, ex, ey, head)
+            return
+        }
         // The punched hole and its burr.
         paint.shader = null
         paint.style = android.graphics.Paint.Style.FILL
@@ -328,22 +339,79 @@ private class PinView(context: Context) : View(context) {
         paint.shader = null
         // Its shadow on the plate.
         paint.style = android.graphics.Paint.Style.FILL
-        paint.color = 0x59000000
+        paint.color = 0x73000000
         canvas.drawOval(cx - head * 0.7f, cy + head * 0.3f, cx + head * 1.2f, cy + head * 1.15f, paint)
-        // The brass head: a dome with its collar, lit from the upper left.
+        // The head: solid brass first (nothing of the plate shows through it), then its dome's light.
+        paint.color = 0xFF9A6A1E.toInt()
+        canvas.drawCircle(cx, cy, head, paint)
         paint.shader = android.graphics.RadialGradient(
-            cx - head * 0.35f, cy - head * 0.4f, head * 1.4f,
-            intArrayOf(0xFFFFE9A8.toInt(), 0xFFC8902C.toInt(), 0xFF8A5A14.toInt(), 0xFF4A2E08.toInt()), floatArrayOf(0f, 0.22f, 0.65f, 1f),
+            cx - head * 0.3f, cy - head * 0.35f, head * 1.3f,
+            intArrayOf(0xFFF6D98A.toInt(), 0xFFC8902C.toInt(), 0xFF8A5A14.toInt(), 0xFF4A2E08.toInt()), floatArrayOf(0f, 0.3f, 0.7f, 1f),
             android.graphics.Shader.TileMode.CLAMP,
         )
         canvas.drawCircle(cx, cy, head, paint)
         paint.shader = null
+        // The bright spot of the light on the dome.
+        paint.color = 0xE6FFFFFF.toInt()
+        canvas.drawOval(cx - head * 0.55f, cy - head * 0.6f, cx - head * 0.1f, cy - head * 0.3f, paint)
         paint.style = android.graphics.Paint.Style.STROKE
         paint.strokeWidth = 1f * d
         paint.color = 0xFF3E2606.toInt()
         canvas.drawCircle(cx, cy, head, paint)
         // The dome's rim, pressed in a little from the edge.
-        paint.color = 0x66FFE9A8
+        paint.color = 0x80FFE9A8.toInt()
         canvas.drawCircle(cx, cy, head * 0.62f, paint)
+    }
+
+    /**
+     * The pin in pencil: a drawing pin seen from the side and leaning, as a hand draws one (a round head with a
+     * line from it read as a magnifier): its flat cap, the waist under it, the collar, the point into its hole.
+     */
+    private fun drawPencil(canvas: android.graphics.Canvas, cx: Float, cy: Float, ex: Float, ey: Float, head: Float) {
+        val d = density
+        paint.shader = null
+        paint.strokeCap = android.graphics.Paint.Cap.ROUND
+        paint.strokeJoin = android.graphics.Paint.Join.ROUND
+        paint.color = ink
+        // The hole the point went into.
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.alpha = 200
+        canvas.drawOval(ex - 2f * d, ey - 1.1f * d, ex + 2f * d, ey + 1.1f * d, paint)
+        canvas.save()
+        // Leaning: its point in the hole, its cap up and to the left.
+        canvas.rotate(-35f, ex, ey)
+        val x = ex
+        val tip = ey
+        val collar = tip - 6f * d
+        val waistTop = collar - 7f * d
+        val cap = waistTop - 3f * d
+        paint.style = android.graphics.Paint.Style.STROKE
+        // The point.
+        paint.strokeWidth = 1.4f * d
+        paint.alpha = 225
+        canvas.drawLine(x, collar, x, tip - 0.6f * d, paint)
+        // The collar: a short wide band.
+        paint.strokeWidth = 1.3f * d
+        canvas.drawRoundRect(x - 5f * d, collar - 2f * d, x + 5f * d, collar, 1f * d, 1f * d, paint)
+        // The waist: narrower, between the collar and the cap.
+        val waist = android.graphics.Path().apply {
+            moveTo(x - 3.2f * d, collar - 2f * d)
+            lineTo(x - 2.2f * d, waistTop)
+            moveTo(x + 3.2f * d, collar - 2f * d)
+            lineTo(x + 2.2f * d, waistTop)
+        }
+        canvas.drawPath(waist, paint)
+        // The flat cap, gone over twice.
+        paint.strokeWidth = 1.5f * d
+        canvas.drawRoundRect(x - 6.5f * d, cap, x + 6.5f * d, waistTop, 1.5f * d, 1.5f * d, paint)
+        paint.strokeWidth = 0.8f * d
+        paint.alpha = 110
+        canvas.drawRoundRect(x - 6.8f * d, cap - 0.6f * d, x + 6.2f * d, waistTop + 0.4f * d, 1.5f * d, 1.5f * d, paint)
+        // A few strokes of shading on the waist's right side.
+        for (k in 0..2) {
+            val y = waistTop + (k + 1) * 1.8f * d
+            canvas.drawLine(x + 0.6f * d, y, x + 2.4f * d, y - 0.8f * d, paint)
+        }
+        canvas.restore()
     }
 }
