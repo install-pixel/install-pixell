@@ -335,7 +335,8 @@ internal fun Modifier.lookSurface(
     alpha: Float = 0.8f,
 ): Modifier = when (LocalLook.current) {
     Look.GLASS -> glassFrame(radius, chosen, sheen, lit)
-    Look.SHEET -> sheetFrame(radius, seed, chosen || lit, ink)
+    // One sheet of paper: buttons and boxes are drawn on it in pencil, not laid on it.
+    Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else alpha, if (chosen) 2.6.dp else 2.2.dp, ink)
     Look.TYPEWRITER -> typewriterFrame(radius, seed, chosen || lit)
 }
 
@@ -411,13 +412,25 @@ internal object PaperState {
             val main = android.os.Handler(android.os.Looper.getMainLooper())
             com.offlinekeyboard.keyboard.PaperSheets.prepare(app, light) { main.post { ready++ } }
             Thread {
-                // Three quarters of the screen's pixels, drawn stretched: soft enough, and made quickly.
+                // The owner's photograph of the paper (the keyboard's black paper, or a burnt-edged parchment),
+                // turned upright for the tall page.
                 val page = runCatching {
-                    com.offlinekeyboard.keyboard.PaperTexture.journal(metrics.widthPixels * 3 / 4, metrics.heightPixels * 3 / 4, metrics.density * 0.75f, light)
+                    val options = android.graphics.BitmapFactory.Options().apply { inScaled = false }
+                    val photo = android.graphics.BitmapFactory.decodeResource(
+                        app.resources,
+                        if (light) com.offlinekeyboard.R.drawable.sheet_page_light else com.offlinekeyboard.R.drawable.sheet_keys_dark,
+                        options,
+                    )
+                    if (photo.width > photo.height && metrics.heightPixels > metrics.widthPixels) {
+                        val turn = android.graphics.Matrix().apply { postRotate(90f) }
+                        android.graphics.Bitmap.createBitmap(photo, 0, 0, photo.width, photo.height, turn, true)
+                    } else {
+                        photo
+                    }
                 }.getOrNull()
                 main.post {
                     making.remove(light)
-                    if (page != null) pages[light] = page.bitmap
+                    if (page != null) pages[light] = page
                     ready++
                 }
             }.apply { name = "settings paper"; isDaemon = true }.start()
@@ -426,7 +439,7 @@ internal object PaperState {
     }
 }
 
-/** The sketch style's page: the keyboard's paper (parchment or charcoal) behind everything. */
+/** The sketch style's page: one sheet of paper behind everything, written on like a notebook's page. */
 @Composable
 internal fun Modifier.paperPage(): Modifier {
     if (LocalLook.current != Look.SHEET) return this
@@ -435,10 +448,16 @@ internal fun Modifier.paperPage(): Modifier {
     return drawBehind {
         PaperState.ready
         val page = PaperState.page(context, light) ?: return@drawBehind
+        // Scaled to cover the page, centred (the paper keeps its proportions).
+        val scale = maxOf(size.width / page.width, size.height / page.height)
+        val srcW = (size.width / scale).toInt().coerceAtMost(page.width)
+        val srcH = (size.height / scale).toInt().coerceAtMost(page.height)
         drawImage(
             page.asImageBitmap(),
+            srcOffset = androidx.compose.ui.unit.IntOffset((page.width - srcW) / 2, (page.height - srcH) / 2),
+            srcSize = androidx.compose.ui.unit.IntSize(srcW, srcH),
             dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
-            filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
+            filterQuality = androidx.compose.ui.graphics.FilterQuality.Medium,
         )
     }
 }

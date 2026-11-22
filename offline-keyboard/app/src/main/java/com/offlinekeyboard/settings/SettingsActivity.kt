@@ -284,6 +284,7 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
     Column(
         Modifier
             .fillMaxSize()
+            .paperPage()
             .safeDrawingPadding(),
     ) {
         Column(
@@ -371,21 +372,21 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    // The sketch: drawn on the card itself (one layer of paper): a pencil frame round a part of the
-                    // card pressed in a little, darker.
+                    // The sketch: written on the page itself (one layer of paper), on ruled pencil lines.
                     .then(
                         if (LocalLook.current == Look.SHEET) {
                             Modifier
                                 .drawBehind {
-                                    val shade = if (Tone.light) androidx.compose.ui.graphics.Color(0x225A3C1E) else androidx.compose.ui.graphics.Color(0x40000000)
-                                    drawRoundRect(shade, cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()))
-                                    // A soft shade along the top inside, as a dent in the paper.
-                                    drawRoundRect(
-                                        androidx.compose.ui.graphics.Brush.verticalGradient(listOf(shade, androidx.compose.ui.graphics.Color.Transparent), endY = 18.dp.toPx()),
-                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()),
-                                    )
+                                    // Lines to write on, ruled in pencil, as on a notebook's page.
+                                    val gap = 30.dp.toPx()
+                                    var y = gap + 6.dp.toPx()
+                                    var line = 0
+                                    while (y < size.height - 4.dp.toPx()) {
+                                        pencilStroke(y, size.width * 0.03f, size.width * 0.97f, seed = 23 + line, alpha = 0.45f)
+                                        y += gap
+                                        line++
+                                    }
                                 }
-                                .pencilFrame(14.dp, seed = 23, alpha = 0.55f)
                         } else {
                             Modifier
                         },

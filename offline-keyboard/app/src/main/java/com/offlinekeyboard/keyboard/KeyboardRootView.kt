@@ -499,10 +499,18 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             paperPaint.shader = android.graphics.BitmapShader(paper, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
         }
         paperPaint.shader.setLocalMatrix(paperMatrix)
+        // For the letters written on it, which bend with its creases: where it lies in the window.
+        getLocationInWindow(paperSpot)
+        PaperSheets.place(
+            scale,
+            paperSpot[0] + paperRect.left + (paperRect.width() - paper.width * scale) / 2,
+            paperSpot[1] + paperRect.top + (paperRect.height() - paper.height * scale) / 2,
+        )
         canvas.drawRect(paperRect, paperPaint)
     }
 
     private var paperShader: android.graphics.Bitmap? = null
+    private val paperSpot = IntArray(2)
     private val glowPaint = Paint()
 
     /** The strip (text, suggestions and buttons): on the typewriter it lies on black paper. */

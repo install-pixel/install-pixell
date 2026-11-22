@@ -532,7 +532,10 @@ class KeyboardView(context: Context) : View(context) {
             } else {
                 // On the most used typewriter keys the paint of the letter is a little worn.
                 val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
-                if (theme.style == SurfaceStyle.SHEET && pressed) {
+                if (theme.style == SurfaceStyle.SHEET && underBubble(face)) {
+                    // Under the sketch's enlarged letter (a soft patch, see-through at its edge): not written, so
+                    // nothing of it shows round the patch.
+                } else if (theme.style == SurfaceStyle.SHEET && pressed) {
                     // Pressed into the paper: the letter sinks a little with it.
                     pressedFace.set(face)
                     pressedFace.inset(face.width() * 0.03f, face.height() * 0.03f)
@@ -752,9 +755,97 @@ class KeyboardView(context: Context) : View(context) {
             canvas.restore()
             return
         }
+        if (sheet && drawWrittenInk(canvas, label, rect, y)) return
         canvas.drawText(label, rect.centerX(), y, textPaint)
     }
 
+    private val overlap = RectF()
+
+    /** Whether an enlarged letter now shown covers much of [face] (its middle part). */
+    private fun underBubble(face: RectF): Boolean {
+        if (bubbles.isEmpty()) return false
+        overlap.set(face)
+        overlap.inset(face.width() * 0.2f, face.height() * 0.2f)
+        return bubbles.any { it.shown > 0.15f && RectF.intersects(it.rect, overlap) }
+    }
+
+    /** Letters written on the sketch's paper, bent to its relief, by where they lie (made once each). */
+    private val writtenInk = object : LinkedHashMap<String, android.graphics.Bitmap>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, android.graphics.Bitmap>) = size > 260
+    }
+    private val inkPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    /**
+     * The sketch: [label] written on the keyboard's paper as ink on it, not over it: it bends with the paper's
+     * creases (shifted along the slope of the relief) and is darker where the paper is in shade, lighter on
+     * its lit faces. False until the paper and its place are known (then it is written plainly).
+     */
+    private fun drawWrittenInk(canvas: Canvas, label: String, rect: RectF, y: Float): Boolean {
+        val relief = PaperSheets.relief(!theme.dark) ?: return false
+        val scale = PaperSheets.placeScale
+        if (scale <= 0f) return false
+        getLocationInWindow(windowSpot)
+        val pad = dp(8f).toInt()
+        val left = (rect.left - pad).toInt()
+        val top = (rect.top - pad).toInt()
+        val w = rect.width().toInt() + 2 * pad
+        val h = rect.height().toInt() + 2 * pad
+        if (w <= 0 || h <= 0) return false
+        val key = "$label|$left,$top,$w,$h|${windowSpot[0]},${windowSpot[1]}|${textPaint.color}|${textPaint.textSize}|${textPaint.typeface?.hashCode()}|${PaperSheets.placed}|${theme.dark}"
+        val bitmap = writtenInk[key] ?: run {
+            val made = writeInk(label, rect, y, left, top, w, h, relief, scale) ?: return false
+            writtenInk[key] = made
+            made
+        }
+        canvas.drawBitmap(bitmap, left.toFloat(), top.toFloat(), null)
+        return true
+    }
+
+    private fun writeInk(label: String, rect: RectF, y: Float, left: Int, top: Int, w: Int, h: Int, relief: PaperSheets.Relief, scale: Float): android.graphics.Bitmap? {
+        val plain = runCatching { android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return null
+        inkPaint.set(textPaint)
+        inkPaint.color = 0xFFFFFFFF.toInt()
+        android.graphics.Canvas(plain).drawText(label, rect.centerX() - left, y - top, inkPaint)
+        val src = IntArray(w * h)
+        plain.getPixels(src, 0, w, 0, 0, w, h)
+        plain.recycle()
+        val out = IntArray(w * h)
+        val ink = textPaint.color
+        val inkA = (ink ushr 24) and 0xFF
+        val ir = (ink shr 16) and 0xFF
+        val ig = (ink shr 8) and 0xFF
+        val ib = ink and 0xFF
+        val bend = dp(1.7f)
+        // Window point -> the photograph's pixel -> the relief's small copy.
+        val toMap = relief.scale / scale
+        val ox = windowSpot[0] + left - PaperSheets.placeX
+        val oy = windowSpot[1] + top - PaperSheets.placeY
+        for (py in 0 until h) {
+            for (px in 0 until w) {
+                val u = (ox + px) * toMap
+                val v = (oy + py) * toMap
+                // Where this point of the ink came from before the paper was crumpled under it.
+                val sx = px - relief.sample(relief.gx, u, v) * bend
+                val sy = py - relief.sample(relief.gy, u, v) * bend
+                val x0 = sx.toInt()
+                val y0 = sy.toInt()
+                if (x0 < 0 || y0 < 0 || x0 >= w - 1 || y0 >= h - 1) continue
+                val fx = sx - x0
+                val fy = sy - y0
+                val i = y0 * w + x0
+                val a = ((src[i] ushr 24) * (1 - fx) + (src[i + 1] ushr 24) * fx) * (1 - fy) +
+                    ((src[i + w] ushr 24) * (1 - fx) + (src[i + w + 1] ushr 24) * fx) * fy
+                if (a < 1f) continue
+                val light = 1f + 0.45f * relief.sample(relief.shade, u, v)
+                val alpha = (a * inkA / 255f).toInt().coerceIn(0, 255)
+                out[py * w + px] = (alpha shl 24) or
+                    ((ir * light).toInt().coerceIn(0, 255) shl 16) or
+                    ((ig * light).toInt().coerceIn(0, 255) shl 8) or
+                    (ib * light).toInt().coerceIn(0, 255)
+            }
+        }
+        return runCatching { android.graphics.Bitmap.createBitmap(out, w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull()
+    }
 
     /** Keys with a fixed meaning get a drawn icon; letters, names and text actions keep their label. */
     private fun iconFor(key: Key, ctx: LabelContext, state: KeyHighlight): Icon? {

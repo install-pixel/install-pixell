@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -53,10 +54,21 @@ internal fun languageName(language: Language): String = stringResource(
  */
 @Composable
 internal fun Section(title: String?, content: @Composable () -> Unit) {
+    val sheet = LocalLook.current == Look.SHEET
     Column(
         Modifier
             .fillMaxWidth()
-            .lookSurface(20.dp, seed = title?.hashCode() ?: 7, sheen = true, alpha = 0.6f)
+            .then(
+                if (sheet) {
+                    // The sketch: no card, the section written on the page; a pencil line above it divides it from
+                    // the one before, as in a notebook.
+                    Modifier.drawBehind {
+                        pencilStroke(2.dp.toPx(), size.width * 0.02f, size.width * 0.98f, seed = title?.hashCode() ?: 7, alpha = 0.5f)
+                    }
+                } else {
+                    Modifier.lookSurface(20.dp, seed = title?.hashCode() ?: 7, sheen = true, alpha = 0.6f)
+                },
+            )
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
