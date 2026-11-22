@@ -424,7 +424,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var liveText: CharSequence? = null
     private var suggestions: List<String> = emptyList()
     private var echo: CharSequence? = null
-    private val clearMessage = Runnable { message = null; statusAction = null; refreshCentre() }
+    private val clearMessage = Runnable { messageScroll?.cancel(); message = null; statusAction = null; refreshCentre() }
 
     /**
      * A band above the toolbar where the app shows through and fades into the keyboard's black, instead
@@ -1125,6 +1125,33 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         postDelayed(clearMessage, durationMs)
     }
 
+    private var messageScroll: android.animation.ObjectAnimator? = null
+    private var readingMessage: String? = null
+
+    /**
+     * A message longer than the strip: shown from its start, then it drifts slowly to its end so it can be read
+     * whole without a finger (it stays up as long as that takes).
+     */
+    private fun readMessage() {
+        // The same message shown again (the strip refreshed while typing): it goes on drifting where it is.
+        val text = message?.toString()
+        if (text == readingMessage && messageScroll?.isStarted == true) return
+        readingMessage = text
+        messageScroll?.cancel()
+        statusScroll.scrollTo(0, 0)
+        val over = status.width - statusScroll.width
+        if (over <= 0) return
+        val ms = (over / (38f * resources.displayMetrics.density) * 1000f).toLong()
+        messageScroll = android.animation.ObjectAnimator.ofInt(statusScroll, "scrollX", 0, over).apply {
+            startDelay = MESSAGE_READ_DELAY_MS
+            duration = ms
+            interpolator = android.view.animation.LinearInterpolator()
+            start()
+        }
+        removeCallbacks(clearMessage)
+        postDelayed(clearMessage, maxOf(STATUS_MILLIS, MESSAGE_READ_DELAY_MS + ms + 1500L))
+    }
+
     fun clearStatus() {
         removeCallbacks(clearMessage)
         clearMessage.run()
@@ -1207,6 +1234,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 // cursor is checked against the text shown now.
                 val layout = status.layout
                 val cursor = echoCursor
+                if (message != null) {
+                    readMessage()
+                    return@post
+                }
                 val x = if (showingEcho && layout != null && cursor in 0 until layout.text.length) {
                     runCatching { status.totalPaddingLeft + layout.getPrimaryHorizontal(cursor) - statusScroll.width * 0.75f }
                         .getOrDefault(status.width.toFloat()).toInt()
@@ -1300,6 +1331,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         const val MODES_BUTTON_DP = 34
         /** How far in a lit button's plate sits (Bluetooth, remote). */
         const val LIT_PLATE_INSET_DP = 6
+        /** How long a long message rests at its start before it drifts to its end. */
+        const val MESSAGE_READ_DELAY_MS = 900L
         /** The machine showing between the paper holder and what is below it. */
         const val HOLDER_GAP_DP = 8
         /** A typebar's way up to the paper, and back down. */
