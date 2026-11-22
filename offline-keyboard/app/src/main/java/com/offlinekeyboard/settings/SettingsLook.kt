@@ -96,13 +96,13 @@ internal object Tone {
     val SheetDark = Palette(
         text = Color(0xFFEDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
         confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(0xFFEDEDED),
-        page = Color(com.offlinekeyboard.keyboard.PaperTexture.GRAPHITE_EDGE), divider = Color(0x1FFFFFFF),
+        page = Color(0xFF0D0D0C), divider = Color(0x1FFFFFFF),
     )
     /** The light sheet: graphite pencil on parchment. */
     val SheetLight = Palette(
         text = Color(KeyboardTheme.SHEET_INK), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
         confirm = Color(0xFF2F5B8C), danger = Color(0xFFB03A2E), ink = Color(KeyboardTheme.SHEET_INK),
-        page = Color(com.offlinekeyboard.keyboard.PaperTexture.PARCHMENT_EDGE), divider = Color(0x333A3128), light = true,
+        page = Color(0xFFCBC1AE), divider = Color(0x333A3128), light = true,
     )
 
     /** Milky glass: graphite letters on pale glass, blue for the main action. */
@@ -173,6 +173,11 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         else -> Tone.Dark
     }
     if (Tone.palette != palette) Tone.palette = palette
+    // The sketch's cards are scraps of the owner's paper photographs: load them (once) for this tone.
+    if (look == Look.SHEET) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(palette.light) { PaperState.prepare(context, palette.light) }
+    }
     // Dark system buttons on the light page.
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
@@ -389,6 +394,12 @@ internal object PaperState {
     var ready by androidx.compose.runtime.mutableIntStateOf(0)
     private val pages = HashMap<Boolean, android.graphics.Bitmap>()
     private val making = HashSet<Boolean>()
+
+    /** Loads the papers of the cards for the [light] tone; the cards are drawn again when they are there. */
+    fun prepare(context: android.content.Context, light: Boolean) {
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        com.offlinekeyboard.keyboard.PaperSheets.prepare(context.applicationContext, light) { main.post { ready++ } }
+    }
 
     /** The settings page's paper for the [light] tone, or null while it is made (it is asked for again then). */
     fun page(context: android.content.Context, light: Boolean): android.graphics.Bitmap? {

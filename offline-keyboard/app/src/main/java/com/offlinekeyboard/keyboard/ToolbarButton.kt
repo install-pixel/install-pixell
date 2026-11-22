@@ -92,7 +92,8 @@ class ToolbarButton(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         if (style == SurfaceStyle.SHEET) {
-            // Cut from the same sheet as the keys: the part of it where the button lies.
+            // Written on the keyboard's paper like the keys (a dent when pressed, a pencil ring when chosen).
+            surfaces.paperPieces = false
             getLocationInWindow(spot)
             surfaces.sheetOffsetX = spot[0].toFloat()
             surfaces.sheetOffsetY = spot[1].toFloat()

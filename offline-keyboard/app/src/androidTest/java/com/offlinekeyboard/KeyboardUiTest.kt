@@ -496,7 +496,7 @@ class KeyboardUiTest {
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight(), "glass-light" to KeyboardTheme.glassLight(), "glass-over" to KeyboardTheme.glass().overBlur(), "glass-light-over" to KeyboardTheme.glassLight().overBlur())) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight(), "glass-light" to KeyboardTheme.glassLight(), "glass-over" to KeyboardTheme.glass().overBlur(), "glass-light-over" to KeyboardTheme.glassLight().overBlur(), "glass-sharp" to KeyboardTheme.glass().overBlur(blurred = false), "glass-light-sharp" to KeyboardTheme.glassLight().overBlur(blurred = false))) {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
@@ -509,7 +509,15 @@ class KeyboardUiTest {
             if (name.startsWith("sheet")) {
                 // Capitals (and their marks) stay inside the paper pieces: Shift held, letters in capitals.
                 val shift = keyCenter { (it.action as? KeyAction.Special)?.key == SpecialKey.SHIFT }
-                if (shift != null) touch(shift.x, shift.y, holdMs = 600, whileHeld = { screenshot("theme-$name-caps") })
+                if (shift != null) {
+                    // A tap turns on capitals for the next letter: the keys show them until it is tapped off.
+                    touch(shift.x, shift.y, holdMs = 60)
+                    instrumentation.waitForIdleSync()
+                    Thread.sleep(500)
+                    screenshot("theme-$name-caps")
+                    touch(shift.x, shift.y, holdMs = 60)
+                    instrumentation.waitForIdleSync()
+                }
             }
         }
         // Redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.

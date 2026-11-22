@@ -277,6 +277,10 @@ class SurfacePainter(private val density: Float) {
         val w = rect.width()
         val h = rect.height()
         if (w <= 0f || h <= 0f) return
+        if (!paperPieces) {
+            drawWritten(canvas, rect, radius, state, seed, inkColor)
+            return
+        }
         val pk = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1)
         val piece = pieces.getOrPut(pk) { tornPiece(w, h, radius, seed) }
         canvas.save()
@@ -293,18 +297,8 @@ class SurfacePainter(private val density: Float) {
                 canvas.restore()
             }
         }
-        // A piece with a fold in it is bent up along the fold: it stands higher off the page, a wider shadow.
         val spotX = rect.left + sheetOffsetX + paperSpotX(seed)
         val spotY = rect.top + sheetOffsetY + paperSpotY(seed)
-        if (!pressed && PaperSheets.journal(sheetLight)?.creaseAt(spotX + w / 2, spotY + h / 2, minOf(w, h) * 0.45f) != null) {
-            for (i in 6..9) {
-                fill.color = if (sheetLight) 0x123A2A14 else 0x2E000000
-                canvas.save()
-                canvas.translate(0.45f * i * density, 0.8f * i * density)
-                canvas.drawPath(piece, fill)
-                canvas.restore()
-            }
-        }
         fill.color = if (sheetLight) PaperTexture.KEY_PARCHMENT else PaperTexture.KEY_CHARCOAL
         canvas.drawPath(piece, fill)
         PaperSheets.shader(sheetLight)?.let { paper ->
@@ -333,6 +327,71 @@ class SurfacePainter(private val density: Float) {
             canvas.drawPath(piece, agedEdge)
         }
         canvas.restore()
+    }
+
+    /**
+     * Sketch keys on the keyboard's paper are not drawn as keys (false): only their letter is written on the
+     * paper; pressed, the paper gives under the finger (a dent), chosen, a pencil ring round it. True (popups,
+     * the touchpad, the settings' cards): a scrap of paper laid on top.
+     */
+    var paperPieces = true
+
+    private val dentShade = RadialGradient(0f, 0f, 1f, intArrayOf(0x00000000, 0x00000000, 0x66000000), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+    private val dentLight = RadialGradient(0f, 0f, 1f, intArrayOf(0x00FFFFFF, 0x00FFFFFF, 0x40FFFFFF), floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP)
+    private val dentOval = RectF()
+    private val dentClip = Path()
+    private val rings = object : LinkedHashMap<Long, Path>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Path>) = size > 120
+    }
+
+    /** A key written on the paper: nothing but, pressed, a dent in the paper, or chosen, a pencil ring. */
+    private fun drawWritten(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, seed: Int, inkColor: Int) {
+        val w = rect.width()
+        val h = rect.height()
+        when (state) {
+            SurfaceState.PRESSED -> {
+                // The paper pressed in under the finger: its upper inner side in shade, the lower one catching
+                // the light (light from the top left), all a touch darker; soft, no outline.
+                val rx = minOf(w * 0.5f, h * 0.62f)
+                val ry = h * 0.46f
+                val cx = rect.centerX()
+                val cy = rect.centerY()
+                dentOval.set(cx - rx, cy - ry, cx + rx, cy + ry)
+                dentClip.rewind()
+                dentClip.addOval(dentOval, Path.Direction.CW)
+                canvas.save()
+                canvas.clipPath(dentClip)
+                fill.shader = null
+                fill.color = if (sheetLight) 0x0E3A2A14 else 0x1A000000
+                canvas.drawOval(dentOval, fill)
+                val shift = 0.18f
+                for ((shader, sign) in listOf(dentShade to 1f, dentLight to -1f)) {
+                    matrix.setScale(rx * 1.05f, ry * 1.05f)
+                    matrix.postTranslate(cx + rx * shift * sign, cy + ry * shift * sign)
+                    shader.setLocalMatrix(matrix)
+                    fill.shader = shader
+                    fill.alpha = if (sheetLight && shader === dentLight) 0xFF else if (shader === dentLight) 0x70 else 0xFF
+                    canvas.drawOval(dentOval, fill)
+                }
+                fill.shader = null
+                fill.alpha = 0xFF
+                canvas.restore()
+            }
+            SurfaceState.SELECTED -> {
+                // Chosen (Shift on, a mode): ringed in pencil, as one marks a word on a page.
+                val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or (seed and 0xFFFF).toLong()
+                val ring = rings.getOrPut(key) {
+                    Pencil.tapered(Pencil.loop(w * 0.86f, h * 0.8f, minOf(w, h) * 0.4f, seed, 1.2f * density), 1.7f * density)
+                }
+                canvas.save()
+                canvas.translate(rect.left + w * 0.07f, rect.top + h * 0.1f)
+                ink.color = inkColor
+                ink.alpha = (200 * brightness).toInt()
+                canvas.drawPath(ring, ink)
+                canvas.restore()
+            }
+            SurfaceState.NORMAL -> Unit
+        }
     }
 
     /** Where in the key sheet the piece of [seed] is cut from, beyond its place: every piece somewhere else. */

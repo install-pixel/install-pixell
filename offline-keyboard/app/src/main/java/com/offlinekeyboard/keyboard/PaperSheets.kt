@@ -1,51 +1,53 @@
 package com.offlinekeyboard.keyboard
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Shader
+import com.offlinekeyboard.R
 
 /**
- * The paper the sketch style's keys, buttons and settings cards are cut from: one big sheet per tone (the
- * lighter parchment, or the same paper in charcoal, see PaperTexture.journal), made once in the background.
- * Every piece shows the part of the sheet where it lies, so no two look alike, and a fold that crosses a key
- * is the same fold its letter bends with.
+ * The sketch style's papers, from the owner's photographs of real paper: the sheet the keyboard is written on
+ * (crumpled black paper, or stained parchment) and the paper of the scraps laid on top (cards in the settings,
+ * the touchpad, popups: a lighter crumpled black, or an old page). Loaded once in the background.
  */
 object PaperSheets {
 
-    private class Made(val journal: PaperTexture.Journal, val shader: BitmapShader)
+    private class Papers(val keyboard: Bitmap, val cards: BitmapShader)
 
-    @Volatile private var light: Made? = null
-    @Volatile private var dark: Made? = null
+    @Volatile private var light: Papers? = null
+    @Volatile private var dark: Papers? = null
     private val making = HashSet<Boolean>()
     private val waiting = HashMap<Boolean, ArrayList<() -> Unit>>()
 
-    /** The sheet as a repeating shader, or null until it is made. */
-    fun shader(lightTone: Boolean): BitmapShader? = (if (lightTone) light else dark)?.shader
+    /** The sheet the keyboard is written on, or null until it is loaded. */
+    fun keyboard(lightTone: Boolean): Bitmap? = (if (lightTone) light else dark)?.keyboard
 
-    /** The sheet itself (its folds), or null until it is made. */
-    fun journal(lightTone: Boolean): PaperTexture.Journal? = (if (lightTone) light else dark)?.journal
+    /** The paper of the scraps on top, repeating, or null until it is loaded. */
+    fun shader(lightTone: Boolean): BitmapShader? = (if (lightTone) light else dark)?.cards
 
-    /** Makes the sheet of [lightTone] in the background (once); [ready] runs on that thread when it is there. */
+    /** Loads the papers of [lightTone] in the background (once); [ready] runs on that thread when they are there. */
     fun prepare(context: Context, lightTone: Boolean, ready: () -> Unit) {
-        val metrics = context.resources.displayMetrics
+        val resources = context.applicationContext.resources
         synchronized(this) {
             if ((if (lightTone) light else dark) != null) return
             waiting.getOrPut(lightTone) { ArrayList() } += ready
             if (!making.add(lightTone)) return
         }
         Thread {
-            // As wide as the screen's long side (landscape too) and about half the screen tall: big enough that
-            // pieces rarely meet the place where it repeats.
-            val width = maxOf(metrics.widthPixels, metrics.heightPixels)
-            val height = minOf(metrics.widthPixels, metrics.heightPixels).coerceAtLeast((420 * metrics.density).toInt())
-            val journal = runCatching { PaperTexture.journal(width, height, metrics.density, lightTone, keys = true) }.getOrNull()
-            val made = journal?.let { Made(it, BitmapShader(it.bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)) }
+            val made = runCatching {
+                val options = BitmapFactory.Options().apply { inScaled = false }
+                val keyboard = BitmapFactory.decodeResource(resources, if (lightTone) R.drawable.sheet_keys_light else R.drawable.sheet_keys_dark, options)
+                val cards = BitmapFactory.decodeResource(resources, if (lightTone) R.drawable.sheet_cards_light else R.drawable.sheet_cards_dark, options)
+                Papers(keyboard, BitmapShader(cards, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR))
+            }.getOrNull()
             val callbacks = synchronized(this) {
                 if (lightTone) light = made else dark = made
                 making.remove(lightTone)
                 waiting.remove(lightTone).orEmpty()
             }
             callbacks.forEach { it() }
-        }.apply { name = "paper sheet"; isDaemon = true }.start()
+        }.apply { name = "papers"; isDaemon = true }.start()
     }
 }

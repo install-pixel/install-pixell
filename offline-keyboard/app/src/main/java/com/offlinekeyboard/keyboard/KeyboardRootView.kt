@@ -458,7 +458,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             }
             canvas.drawRect(0f, 0f, width.toFloat(), dp(GLASS_GLOW_DP).toFloat(), glowPaint)
         }
-        if (theme.style == SurfaceStyle.SHEET) sheetPaper()?.let { canvas.drawBitmap(it, 0f, fadeHeight.toFloat(), null) }
+        if (theme.style == SurfaceStyle.SHEET) drawSheetPaper(canvas)
         if (theme.style == SurfaceStyle.TYPEWRITER && ::infoRow.isInitialized && infoRow.height > 0) {
             // The paper runs the whole width, past the keys' sides (landscape: up to the camera cutout).
             paperSheet()?.let { canvas.drawBitmap(it.bitmap, 0f, infoRow.top.toFloat(), null) }
@@ -466,6 +466,43 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private val backgroundPaint = Paint()
+
+    private val paperPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val paperShadow = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val paperMatrix = android.graphics.Matrix()
+    private val paperRect = android.graphics.RectF()
+
+    /**
+     * The sketch: the keyboard is a sheet of paper (the owner's photograph: crumpled black paper, or stained
+     * parchment) lying on a plain dark or pale ground, a little inside its edges with a soft shadow; the
+     * letters are written on it. Until the photograph is loaded, the plain ground.
+     */
+    private fun drawSheetPaper(canvas: Canvas) {
+        val paper = PaperSheets.keyboard(!theme.dark) ?: return
+        val inset = dp(3).toFloat()
+        paperRect.set(inset, fadeHeight + inset, width - inset, height.toFloat())
+        if (paperRect.width() <= 0f || paperRect.height() <= 0f) return
+        // A soft shadow under the sheet.
+        for (i in 1..4) {
+            paperShadow.color = if (theme.dark) 0x30000000 else 0x1E3A2A14
+            canvas.drawRect(paperRect.left + i * 0.5f, paperRect.top + i, paperRect.right + i * 0.5f, paperRect.bottom, paperShadow)
+        }
+        // The photograph scaled to cover the sheet, centred.
+        val scale = maxOf(paperRect.width() / paper.width, paperRect.height() / paper.height)
+        paperMatrix.setScale(scale, scale)
+        paperMatrix.postTranslate(
+            paperRect.left + (paperRect.width() - paper.width * scale) / 2,
+            paperRect.top + (paperRect.height() - paper.height * scale) / 2,
+        )
+        if (paperPaint.shader == null || paperShader?.let { it !== paper } != false) {
+            paperShader = paper
+            paperPaint.shader = android.graphics.BitmapShader(paper, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP)
+        }
+        paperPaint.shader.setLocalMatrix(paperMatrix)
+        canvas.drawRect(paperRect, paperPaint)
+    }
+
+    private var paperShader: android.graphics.Bitmap? = null
     private val glowPaint = Paint()
 
     /** The strip (text, suggestions and buttons): on the typewriter it lies on black paper. */

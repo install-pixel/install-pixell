@@ -283,7 +283,6 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
     Column(
         Modifier
             .fillMaxSize()
-            .paperPage()
             .safeDrawingPadding(),
     ) {
         Column(

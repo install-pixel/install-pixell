@@ -269,8 +269,10 @@ class KeyboardService : InputMethodService(),
     }
 
     private fun currentTheme(): KeyboardTheme {
+        // Glass always lies over the app: blurred where the system can blur behind the keyboard, otherwise
+        // the app shows through sharp (a little denser glass).
         val theme = KeyboardTheme.resolve(settings.themeMode, settings.keyBrightness)
-        return if (blurring) theme.overBlur() else theme
+        return theme.overBlur(blurred = blurring)
     }
 
     /** Whether the system blurs the app behind the keyboard now (glass, Android 12+, where the phone can). */
