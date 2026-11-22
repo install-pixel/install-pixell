@@ -66,9 +66,10 @@ class KeySounds(private val context: Context) {
         R.raw.sh_key_01, R.raw.sh_key_02, R.raw.sh_key_03, R.raw.sh_key_04, R.raw.sh_key_05, R.raw.sh_key_06,
         R.raw.sh_key_07, R.raw.sh_key_08, R.raw.sh_key_09, R.raw.sh_key_10, R.raw.sh_key_11, R.raw.sh_key_12,
     ).map { pool.load(context, it, 1) }
-    private val tap = pool.load(context, R.raw.sh_space, 1)
-    private val stroke = pool.load(context, R.raw.sh_return, 1)
-    private val erase = pool.load(context, R.raw.sh_erase, 1)
+    // Several of each, taken in turn at random (never the same twice in a row), so quick typing is not a loop.
+    private val taps = listOf(R.raw.sh_space_1, R.raw.sh_space_2, R.raw.sh_space_3, R.raw.sh_space_4).map { pool.load(context, it, 1) }
+    private val strokes = listOf(R.raw.sh_return_1, R.raw.sh_return_2, R.raw.sh_return_3).map { pool.load(context, it, 1) }
+    private val erases = listOf(R.raw.sh_erase_1, R.raw.sh_erase_2, R.raw.sh_erase_3, R.raw.sh_erase_4).map { pool.load(context, it, 1) }
     private val rubbing = pool.load(context, R.raw.sh_erase_hold, 1)
     // The glass: ten bubble-wrap pops (never the same twice in a row), a deeper one for space, three in a row
     // for Enter, the air going out for Backspace, and the wrap rustling while Backspace is held.
@@ -82,6 +83,15 @@ class KeySounds(private val context: Context) {
     private val rustle = pool.load(context, R.raw.gl_delete_hold, 1)
     private var lastBubble = -1
     private var lastPencil = -1
+    private val lastOf = HashMap<List<Int>, Int>()
+
+    /** One of [ids] at random, never the one played last from them. */
+    private fun anyOf(ids: List<Int>): Int {
+        var i = (Math.random() * ids.size).toInt().coerceIn(0, ids.size - 1)
+        if (ids.size > 1 && i == lastOf[ids]) i = (i + 1) % ids.size
+        lastOf[ids] = i
+        return ids[i]
+    }
     private var rubbingStream = 0
     private val audio = context.getSystemService(AudioManager::class.java)
     private var next = 0
@@ -114,9 +124,9 @@ class KeySounds(private val context: Context) {
                     lastPencil = i
                     pencil[i]
                 }
-                Kind.SPACE -> tap
-                Kind.RETURN -> stroke
-                Kind.DELETE -> erase
+                Kind.SPACE -> anyOf(taps)
+                Kind.RETURN -> anyOf(strokes)
+                Kind.DELETE -> anyOf(erases)
                 Kind.BELL, Kind.SHEET -> return
             }
             pool.play(id, volume, volume, 1, 0, 1f)
@@ -158,16 +168,29 @@ class KeySounds(private val context: Context) {
     fun startRubbing(volume: Float): Boolean {
         if (voice == Voice.TYPEWRITER || volume <= 0f) return false
         if (audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return true
+        rubbingVolume = volume
         if (rubbingStream == 0) rubbingStream = pool.play(if (voice == Voice.GLASS) rustle else rubbing, volume, volume, 1, -1, 1f)
         return true
     }
 
+    /** Lets the held sound go: it fades out over ~60 ms (cut off at once, its last sample clicked like a tap). */
     fun stopRubbing() {
-        if (rubbingStream != 0) {
-            pool.stop(rubbingStream)
-            rubbingStream = 0
+        val stream = rubbingStream
+        if (stream == 0) return
+        rubbingStream = 0
+        val start = rubbingVolume
+        val steps = 6
+        for (k in 1..steps) {
+            fader.postDelayed({
+                val v = start * (1f - k / steps.toFloat())
+                pool.setVolume(stream, v, v)
+                if (k == steps) pool.stop(stream)
+            }, k * 10L)
         }
     }
+
+    private val fader = android.os.Handler(android.os.Looper.getMainLooper())
+    private var rubbingVolume = 1f
 
     fun release() = pool.release()
 
