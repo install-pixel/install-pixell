@@ -136,16 +136,40 @@ class ToolbarButton(context: Context) : View(context) {
         val shown = if (text.isEmpty()) "" else TextUtils.ellipsize(text, textPaint, maxOf(available, 0f), TextUtils.TruncateAt.END).toString()
         val textWidth = if (shown.isEmpty()) 0f else textPaint.measureText(shown)
         val total = (if (icon != null) iconSize else 0f) + (if (icon != null && shown.isNotEmpty()) gap else 0f) + textWidth
-        var x = (width - total) / 2
+        val x0 = (width - total) / 2
         val cy = height / 2f
-        icon?.let {
-            Icons.draw(canvas, it, x + iconSize / 2, cy, iconSize, foreground)
-            x += iconSize + gap
+        fun drawInk(c: Canvas, color: Int) {
+            var x = x0
+            icon?.let {
+                Icons.draw(c, it, x + iconSize / 2, cy, iconSize, color)
+                x += iconSize + gap
+            }
+            if (shown.isNotEmpty()) {
+                textPaint.color = color
+                c.drawText(shown, x, cy - (textPaint.descent() + textPaint.ascent()) / 2, textPaint)
+            }
         }
-        if (shown.isNotEmpty()) {
-            canvas.drawText(shown, x, cy - (textPaint.descent() + textPaint.ascent()) / 2, textPaint)
+        if (style == SurfaceStyle.SHEET && width > 0 && height > 0) {
+            // Written on the paper, it bends with its relief as the keys' letters (made again only on a change).
+            val key = "$shown|$icon|$iconSize|${textPaint.textSize}|${spot[0]},${spot[1]}|$width,$height|$foreground|${PaperSheets.placed}|${surfaces.sheetLight}"
+            if (key != bentKey) {
+                bentKey = key
+                bent = runCatching {
+                    val mask = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                    drawInk(Canvas(mask), 0xFFFFFFFF.toInt())
+                    InkBend.bend(mask, spot[0], spot[1], foreground, density, surfaces.sheetLight).also { mask.recycle() }
+                }.getOrNull()
+            }
+            bent?.let {
+                canvas.drawBitmap(it, 0f, 0f, null)
+                return
+            }
         }
+        drawInk(canvas, foreground)
     }
+
+    private var bentKey: String? = null
+    private var bent: android.graphics.Bitmap? = null
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
