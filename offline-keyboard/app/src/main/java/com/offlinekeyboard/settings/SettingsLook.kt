@@ -422,14 +422,56 @@ internal object PaperState {
     var ready by androidx.compose.runtime.mutableIntStateOf(0)
     private val pages = HashMap<Boolean, android.graphics.Bitmap>()
     private val making = HashSet<Boolean>()
-    private val reliefs = HashMap<Boolean, android.graphics.Bitmap>()
+    private val reliefs = HashMap<String, android.graphics.Bitmap>()
+    private val reliefMaking = HashSet<String>()
 
     /**
      * The relief of the settings page's paper for the [light] tone as a small picture for the notebook's bend
      * (red, green: the slope across and down, 0.5 flat; blue: light 0.5 neutral), the same size as the page
      * photograph divided by [reliefScale]; null until the page is made.
      */
-    fun relief(light: Boolean): android.graphics.Bitmap? = reliefs[light]
+    fun relief(light: Boolean): android.graphics.Bitmap? {
+        val smoothness = NotebookBend.current.smooth
+        val key = "$light/$smoothness"
+        reliefs[key]?.let { return it }
+        val page = pages[light] ?: return null
+        if (reliefMaking.add(key)) {
+            val main = android.os.Handler(android.os.Looper.getMainLooper())
+            Thread {
+                val made = makeRelief(page, smoothness)
+                main.post {
+                    reliefMaking.remove(key)
+                    if (made != null) {
+                        reliefs[key] = made.first
+                        reliefScale = made.second
+                    }
+                    ready++
+                }
+            }.apply { name = "settings relief"; isDaemon = true }.start()
+        }
+        return null
+    }
+
+    /**
+     * The page photograph's relief as the small picture [relief] gives: the slope smoothed over [smoothness]
+     * points (only the big folds bend the writing; a slope that turns within a stroke stretches and tears it),
+     * the light and shade of the creases kept fine (the pencil fades in a crease's shadow).
+     */
+    private fun makeRelief(p: android.graphics.Bitmap, smoothness: Int): Pair<android.graphics.Bitmap, Float>? = runCatching {
+        val r = com.offlinekeyboard.keyboard.PaperSheets.reliefOf(p)
+        val gx = smooth(r.gx, r.width, r.height, smoothness)
+        val gy = smooth(r.gy, r.width, r.height, smoothness)
+        val shade = smooth(r.shade, r.width, r.height, 1)
+        // The smoothed slope is gentler: bring the strongest folds back to full strength.
+        var top = 1e-6f
+        for (i in gx.indices) top = maxOf(top, kotlin.math.abs(gx[i]), kotlin.math.abs(gy[i]))
+        val lift = (1.5f / top).coerceIn(1f, 4f)
+        val px = IntArray(r.width * r.height) { i ->
+            fun c(v: Float, k: Float) = ((v * k + 0.5f).coerceIn(0f, 1f) * 255).toInt()
+            (0xFF shl 24) or (c(gx[i] * lift, 1f / 3f) shl 16) or (c(gy[i] * lift, 1f / 3f) shl 8) or c(shade[i], 0.5f)
+        }
+        android.graphics.Bitmap.createBitmap(px, r.width, r.height, android.graphics.Bitmap.Config.ARGB_8888) to (1f / r.scale)
+    }.getOrNull()
 
     /** How many page-photograph pixels one pixel of [relief] spans. */
     var reliefScale = 1f
@@ -466,29 +508,9 @@ internal object PaperState {
                         photo
                     }
                 }.getOrNull()
-                // Its relief, read from the photograph as the keyboard's (where the paper is lighter or darker).
-                val relief = page?.let { p ->
-                    runCatching {
-                        val r = com.offlinekeyboard.keyboard.PaperSheets.reliefOf(p)
-                        // Smoother than the keyboard's: the settings' handwriting is small, and a slope that
-                        // turns within a stroke tears it at the crease; the big folds still bend the lines.
-                        val gx = smooth(r.gx, r.width, r.height, 2)
-                        val gy = smooth(r.gy, r.width, r.height, 2)
-                        val shade = smooth(r.shade, r.width, r.height, 1)
-                        val px = IntArray(r.width * r.height) { i ->
-                            fun c(v: Float, k: Float) = ((v * k + 0.5f).coerceIn(0f, 1f) * 255).toInt()
-                            (0xFF shl 24) or (c(gx[i], 1f / 3f) shl 16) or (c(gy[i], 1f / 3f) shl 8) or c(shade[i], 0.5f)
-                        }
-                        android.graphics.Bitmap.createBitmap(px, r.width, r.height, android.graphics.Bitmap.Config.ARGB_8888) to (1f / r.scale)
-                    }.getOrNull()
-                }
                 main.post {
                     making.remove(light)
                     if (page != null) pages[light] = page
-                    if (relief != null) {
-                        reliefs[light] = relief.first
-                        reliefScale = relief.second
-                    }
                     ready++
                 }
             }.apply { name = "settings paper"; isDaemon = true }.start()

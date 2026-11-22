@@ -91,6 +91,9 @@ class KeyboardController(
         mode = newMode
         layer = Layer.LETTERS
         modifiers.releaseAll()
+        // Caps Lock is a key of the computer layout only: carried over to the mobile one, every letter came out
+        // as a capital and Shift the other way round, with no key there to turn it off.
+        if (newMode != KeyboardMode.COMPUTER) modifiers.clearCapsLock()
         listener?.onModeChanged(newMode)
     }
 

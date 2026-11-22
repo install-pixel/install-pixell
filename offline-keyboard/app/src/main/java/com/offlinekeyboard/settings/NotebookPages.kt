@@ -203,16 +203,20 @@ internal fun NotebookPages(title: String, modifier: Modifier = Modifier, content
  * How strongly the writing follows the paper: how far it is pushed along the slope ([bend], dp), how much paler
  * the pencil is in a crease's shadow ([fade]) and how much the creases light and shade it ([shade]).
  */
-internal class NotebookBend(val bend: Float, val fade: Float, val shade: Float) {
+internal class NotebookBend(val bend: Float, val fade: Float, val shade: Float, val smooth: Int) {
     companion object {
         val variants = listOf(
-            NotebookBend(1.7f, 0f, 0.3f),
-            NotebookBend(3.5f, 0.3f, 0.35f),
-            NotebookBend(5.5f, 0.45f, 0.45f),
-            NotebookBend(8f, 0.6f, 0.55f),
+            // 0: 1.21.0 (every crease bends the writing: letters stretched at the sharp ones).
+            NotebookBend(5.5f, 0.45f, 0.45f, 2),
+            // 1: only the folds bend it, the creases fade the pencil.
+            NotebookBend(4.5f, 0.45f, 0.3f, 7),
+            // 2: only the big folds, further.
+            NotebookBend(6f, 0.45f, 0.3f, 12),
+            // 3: hardly bent, the creases only fade the pencil and shade it.
+            NotebookBend(1.2f, 0.55f, 0.35f, 7),
         )
         /** The one in use (a launch extra «bend» picks another, to compare them). */
-        var current = variants[2]
+        var current = variants[1]
     }
 }
 
