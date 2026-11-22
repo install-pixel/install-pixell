@@ -441,7 +441,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     override fun onDraw(canvas: Canvas) {
         val color = fadeColor
         // On the typewriter the soft edge fades into the black paper of the strip, not into the keyboard.
-        val fadeTo = if (theme.style == SurfaceStyle.TYPEWRITER) PaperTexture.edgeColor(theme.milk) else color
+        val fadeTo = when {
+            theme.style == SurfaceStyle.TYPEWRITER -> PaperTexture.edgeColor(theme.milk)
+            // The sketch fades into its paper (into the pale ground it glowed as a light band over the paper).
+            theme.style == SurfaceStyle.SHEET && paperEdge != 0 -> paperEdge
+            else -> color
+        }
         if (fadeHeight > 0) {
             if (fadePaint.shader == null || fadePaint.color != fadeTo) {
                 fadePaint.color = fadeTo
@@ -484,14 +489,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      */
     private fun drawSheetPaper(canvas: Canvas) {
         val paper = PaperSheets.keyboard(!theme.dark) ?: return
-        val inset = dp(3).toFloat()
-        paperRect.set(inset, fadeHeight + inset, width - inset, height.toFloat())
+        // Edge to edge: with a margin, the plain ground under the sheet showed round it as a pale frame.
+        paperRect.set(0f, fadeHeight.toFloat(), width.toFloat(), height.toFloat())
         if (paperRect.width() <= 0f || paperRect.height() <= 0f) return
-        // A soft shadow under the sheet.
-        for (i in 1..4) {
-            paperShadow.color = if (theme.dark) 0x30000000 else 0x1E3A2A14
-            canvas.drawRect(paperRect.left + i * 0.5f, paperRect.top + i, paperRect.right + i * 0.5f, paperRect.bottom, paperShadow)
-        }
+        paperEdge = edgeColorOf(paper)
         // The photograph scaled to cover the sheet, centred.
         val scale = maxOf(paperRect.width() / paper.width, paperRect.height() / paper.height)
         paperMatrix.setScale(scale, scale)
@@ -515,6 +516,23 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     private var paperShader: android.graphics.Bitmap? = null
+    /** The sheet's paper at its top edge (the soft band above it fades into this, not into a pale ground). */
+    private var paperEdge = 0
+    private var paperEdgeOf: android.graphics.Bitmap? = null
+
+    private fun edgeColorOf(paper: android.graphics.Bitmap): Int {
+        if (paperEdgeOf === paper) return paperEdge
+        paperEdgeOf = paper
+        var r = 0L; var g = 0L; var b = 0L; var n = 0
+        val y = (paper.height * 0.04f).toInt().coerceIn(0, paper.height - 1)
+        var x = 0
+        while (x < paper.width) {
+            val c = paper.getPixel(x, y)
+            r += (c shr 16) and 0xFF; g += (c shr 8) and 0xFF; b += c and 0xFF; n++
+            x += maxOf(1, paper.width / 64)
+        }
+        return if (n == 0) theme.background else (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
+    }
     private val paperSpot = IntArray(2)
     private val glowPaint = Paint()
 

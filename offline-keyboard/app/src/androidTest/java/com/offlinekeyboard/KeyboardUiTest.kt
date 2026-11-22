@@ -219,6 +219,9 @@ class KeyboardUiTest {
 
     @Test
     fun typoIsCorrectedAndBackspaceBringsItBack() {
+        // Undoing a correction keeps that word uncorrected for good: on a real phone the last run left it there.
+        instrumentation.targetContext.getSharedPreferences("autocorrect", android.content.Context.MODE_PRIVATE)
+            .edit().remove("rejected").commit()
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
         typeWord(activity.plain, "пртвіт")
