@@ -150,22 +150,23 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                val dim = Tone.TextSecondary
+                // In pencil, as the page's writing (pale grey it was lost on the parchment).
+                val dim = Tone.TextPrimary.copy(alpha = 0.8f)
                 Text(
                     "‹",
                     color = if (page == 0 && onFirstBack == null) dim.copy(alpha = 0.3f) else dim,
-                    fontSize = 26.sp,
+                    fontSize = 30.sp,
                     modifier = Modifier
                         .clickable(interactionSource = null, indication = null) {
                             if (page == 0) onFirstBack?.invoke() else if (begin(-1)) finish(true)
                         }
                         .padding(horizontal = 22.dp, vertical = 4.dp),
                 )
-                Text("${page + 1}", color = dim, fontSize = 15.sp)
+                Text("${page + 1}", color = dim, fontSize = 17.sp)
                 Text(
                     "›",
                     color = if (st.count <= 1) dim.copy(alpha = 0.3f) else dim,
-                    fontSize = 26.sp,
+                    fontSize = 30.sp,
                     modifier = Modifier
                         .clickable(interactionSource = null, indication = null) { if (begin(1)) finish(true) }
                         .padding(horizontal = 22.dp, vertical = 4.dp),
@@ -265,7 +266,9 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         val side = 22.dp.roundToPx()
         val top = topInset + 20.dp.roundToPx()
         val navH = 44.dp.roundToPx()
-        val bottom = bottomInset + navH + 6.dp.roundToPx()
+        // On the parchment above its burnt lower edge.
+        val navLift = if (light) 26.dp.roundToPx() else 0
+        val bottom = bottomInset + navLift + navH + 6.dp.roundToPx()
         val rowGap = 10.dp.roundToPx()
         val sectionGap = 24.dp.roundToPx()
         val room = (h - top - bottom).coerceAtLeast(1)
@@ -297,7 +300,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         layout(w, h) {
             if (shown >= 0) for (i in placeables.indices) if (pageOf[i] == shown) placeables[i].place(side, yOf[i])
             // The turner only while no page is being taken (it is not part of a page).
-            if (st.stage == 0 || st.stage == 3) nav.place(0, h - bottomInset - navH)
+            if (st.stage == 0 || st.stage == 3) nav.place(0, h - bottomInset - navLift - navH)
         }
     }
 }
