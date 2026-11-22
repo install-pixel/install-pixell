@@ -29,10 +29,19 @@ class KeySounds(private val context: Context) {
         }
 
         private const val WARM_VOLUME = 0.001f
+        /** The pencil: the writing's level, and how much of a stroke touches each letter on top of it. */
+        private const val PEN_WRITE = 0.95f
+        private const val PEN_TOUCH = 0.28f
+        /** How long the writing goes on after a letter before it fades. */
+        private const val WRITE_HOLD_MS = 260L
     }
 
     /** The style's sounds now in use (set with the style). */
     var voice = Voice.TYPEWRITER
+        set(value) {
+            if (value != Voice.SHEET) haltWriting()
+            field = value
+        }
 
     private val pool = SoundPool.Builder()
         .setMaxStreams(4)
@@ -71,6 +80,13 @@ class KeySounds(private val context: Context) {
     private val strokes = listOf(R.raw.sh_return_1, R.raw.sh_return_2, R.raw.sh_return_3).map { pool.load(context, it, 1) }
     private val erases = listOf(R.raw.sh_erase_1, R.raw.sh_erase_2, R.raw.sh_erase_3, R.raw.sh_erase_4).map { pool.load(context, it, 1) }
     private val rubbing = pool.load(context, R.raw.sh_erase_hold, 1)
+    // The pencil writing on while letters come: one continuous line (looped), kept up by every letter and let
+    // fade out a moment after the last, so typing sounds like a hand writing, not a stroke per letter.
+    private val writeLoop = pool.load(context, R.raw.sh_write_loop, 1)
+    private var writeStream = 0
+    private var writing = false
+    private var writeGen = 0
+    private val stopWriting = Runnable { fadeWriting() }
     // The glass: seven bubble-wrap pops (never the same twice in a row), deeper ones for space, two or three in
     // a row for Enter, a puff of air for Backspace, and those puffs in turn while Backspace is held.
     private val bubbles = listOf(
@@ -122,11 +138,18 @@ class KeySounds(private val context: Context) {
                     var i = (Math.random() * pencil.size).toInt().coerceIn(0, pencil.size - 1)
                     if (i == lastPencil) i = (i + 1) % pencil.size
                     lastPencil = i
-                    pencil[i]
+                    write(volume)
+                    // Only a light touch of a stroke on top of the writing.
+                    pool.play(pencil[i], volume * PEN_TOUCH, volume * PEN_TOUCH, 1, 0, 1f)
+                    return
                 }
                 Kind.SPACE -> anyOf(taps)
                 Kind.RETURN -> anyOf(strokes)
-                Kind.DELETE -> anyOf(erases)
+                Kind.DELETE -> {
+                    // The eraser does not rub while the pencil writes.
+                    haltWriting()
+                    anyOf(erases)
+                }
                 Kind.BELL, Kind.SHEET -> return
             }
             pool.play(id, volume, volume, 1, 0, 1f)
@@ -146,6 +169,51 @@ class KeySounds(private val context: Context) {
         val pitch = (if (kind == Kind.DELETE) 0.85f else 1f) * (if (vary) 0.95f + Math.random().toFloat() * 0.1f else 1f)
         val loud = volume * (if (vary) 0.82f + Math.random().toFloat() * 0.18f else 1f)
         pool.play(id, loud, loud, 1, 0, pitch)
+    }
+
+    /** Keeps the pencil writing (starts or resumes it at [volume]); it fades out a moment after the last letter. */
+    private fun write(volume: Float) {
+        writeGen++
+        fader.removeCallbacks(stopWriting)
+        val v = volume * PEN_WRITE
+        if (writeStream == 0) {
+            writeStream = pool.play(writeLoop, v, v, 0, -1, 1f)
+        } else {
+            pool.setVolume(writeStream, v, v)
+            if (!writing) pool.resume(writeStream)
+        }
+        writing = writeStream != 0
+        writeVolume = v
+        fader.postDelayed(stopWriting, WRITE_HOLD_MS)
+    }
+
+    private var writeVolume = 0f
+
+    /** Stops the writing at once (Backspace, another style). */
+    private fun haltWriting() {
+        writeGen++
+        fader.removeCallbacks(stopWriting)
+        if (writeStream != 0 && writing) pool.pause(writeStream)
+        writing = false
+    }
+
+    /** The writing dies away over ~150 ms and pauses (the next letter goes on from where it stopped). */
+    private fun fadeWriting() {
+        val stream = writeStream
+        if (stream == 0 || !writing) return
+        val gen = writeGen
+        val steps = 5
+        for (k in 1..steps) {
+            fader.postDelayed({
+                if (gen != writeGen) return@postDelayed
+                val v = writeVolume * (1f - k / steps.toFloat())
+                pool.setVolume(stream, v, v)
+                if (k == steps) {
+                    pool.pause(stream)
+                    writing = false
+                }
+            }, k * 30L)
+        }
     }
 
     /**
