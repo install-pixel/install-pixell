@@ -8,7 +8,7 @@ import com.offlinekeyboard.R
 
 /**
  * The sounds of the Black Typewriter style, from recordings of a real machine (see tools/sounds): a strike
- * for keys (four slightly different ones with the key coming back up, so fast typing does not sound like a loop), a duller one for the
+ * for keys (three strikes with the key coming back up, each a little higher or lower and louder or softer, so fast typing does not sound like a loop), a duller one for the
  * space bar, the carriage return for Enter, the margin bell near the end of a line and a new sheet of paper
  * going in; the sheet's pencil and eraser; the glass's bubble wrap. Silent while the phone is on silent or
  * vibrate.
@@ -54,7 +54,7 @@ class KeySounds(private val context: Context) {
         }
     }
 
-    private val keys = listOf(R.raw.tw_key_1, R.raw.tw_key_2, R.raw.tw_key_3, R.raw.tw_key_4)
+    private val keys = listOf(R.raw.tw_key_1, R.raw.tw_key_2, R.raw.tw_key_3)
         .map { pool.load(context, it, 1) }
     private val space = pool.load(context, R.raw.tw_space, 1)
     private val enters = listOf(R.raw.tw_return_1, R.raw.tw_return_2, R.raw.tw_return_3).map { pool.load(context, it, 1) }
@@ -140,8 +140,12 @@ class KeySounds(private val context: Context) {
             Kind.BELL -> bell
             Kind.SHEET -> sheet
         }
-        val pitch = if (kind == Kind.DELETE) 0.85f else 1f
-        pool.play(id, volume, volume, 1, 0, pitch)
+        // Every strike a little different, as real keys: ±5 % in pitch and 82-100 % loud (three strikes alone
+        // would repeat); Backspace lower, as before.
+        val vary = kind == Kind.KEY || kind == Kind.DELETE
+        val pitch = (if (kind == Kind.DELETE) 0.85f else 1f) * (if (vary) 0.95f + Math.random().toFloat() * 0.1f else 1f)
+        val loud = volume * (if (vary) 0.82f + Math.random().toFloat() * 0.18f else 1f)
+        pool.play(id, loud, loud, 1, 0, pitch)
     }
 
     /**
