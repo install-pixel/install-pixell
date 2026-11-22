@@ -284,9 +284,10 @@ private fun PageContent(
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
     val keyboardOpen = WindowInsets.isImeVisible
     if (LocalLook.current == Look.SHEET) {
-        // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages).
+        // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages); the pages fill the
+        // screen (a turned page is a whole sheet), and ‹ on the first page leaves it instead of a Back button.
         val frame = remember { PaperFrame() }
-        Column(
+        androidx.compose.foundation.layout.Box(
             Modifier
                 .fillMaxSize()
                 .paperPage()
@@ -296,21 +297,10 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
                     frame.top = p.y
                     frame.width = it.size.width.toFloat()
                     frame.height = it.size.height.toFloat()
-                }
-                .safeDrawingPadding(),
+                },
         ) {
             androidx.compose.runtime.CompositionLocalProvider(LocalPaperFrame provides frame) {
-                NotebookPages(title, Modifier.fillMaxWidth().weight(1f), content)
-            }
-            if (onBack != null && !keyboardOpen) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
-                }
+                NotebookPages(title, onBack, Modifier.fillMaxSize(), content)
             }
         }
         return
