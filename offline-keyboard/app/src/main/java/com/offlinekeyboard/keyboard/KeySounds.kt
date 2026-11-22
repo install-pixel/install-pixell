@@ -71,15 +71,15 @@ class KeySounds(private val context: Context) {
     private val strokes = listOf(R.raw.sh_return_1, R.raw.sh_return_2, R.raw.sh_return_3).map { pool.load(context, it, 1) }
     private val erases = listOf(R.raw.sh_erase_1, R.raw.sh_erase_2, R.raw.sh_erase_3, R.raw.sh_erase_4).map { pool.load(context, it, 1) }
     private val rubbing = pool.load(context, R.raw.sh_erase_hold, 1)
-    // The glass: ten bubble-wrap pops (never the same twice in a row), a deeper one for space, three in a row
-    // for Enter, the air going out for Backspace, and the wrap rustling while Backspace is held.
+    // The glass: seven bubble-wrap pops (never the same twice in a row), deeper ones for space, two or three in
+    // a row for Enter, a puff of air for Backspace, and those puffs in turn while Backspace is held.
     private val bubbles = listOf(
         R.raw.gl_key_01, R.raw.gl_key_02, R.raw.gl_key_03, R.raw.gl_key_04, R.raw.gl_key_05,
-        R.raw.gl_key_06, R.raw.gl_key_07, R.raw.gl_key_08, R.raw.gl_key_09, R.raw.gl_key_10,
+        R.raw.gl_key_06, R.raw.gl_key_07,
     ).map { pool.load(context, it, 1) }
-    private val pop = pool.load(context, R.raw.gl_space, 1)
-    private val pops = pool.load(context, R.raw.gl_return, 1)
-    private val air = pool.load(context, R.raw.gl_delete, 1)
+    private val popsForSpace = listOf(R.raw.gl_space_1, R.raw.gl_space_2, R.raw.gl_space_3, R.raw.gl_space_4).map { pool.load(context, it, 1) }
+    private val popsForReturn = listOf(R.raw.gl_return_1, R.raw.gl_return_2, R.raw.gl_return_3).map { pool.load(context, it, 1) }
+    private val airs = listOf(R.raw.gl_delete_1, R.raw.gl_delete_2).map { pool.load(context, it, 1) }
     private val rustle = pool.load(context, R.raw.gl_delete_hold, 1)
     private var lastBubble = -1
     private var lastPencil = -1
@@ -108,9 +108,9 @@ class KeySounds(private val context: Context) {
                     lastBubble = i
                     bubbles[i]
                 }
-                Kind.SPACE -> pop
-                Kind.RETURN -> pops
-                Kind.DELETE -> air
+                Kind.SPACE -> anyOf(popsForSpace)
+                Kind.RETURN -> anyOf(popsForReturn)
+                Kind.DELETE -> anyOf(airs)
                 Kind.BELL, Kind.SHEET -> return
             }
             pool.play(id, volume, volume, 1, 0, 1f)

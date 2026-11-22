@@ -16,4 +16,10 @@ What was done (see the session notes of keyboard 1.17.0):
    so more gain only flattens them: the keys stay ~3-6 dB under the typewriter above 1.5 kHz.
 5. 1.18.0: ~2.5 dB more gain on every sound (keys +10.5, space +9, Enter +8, Backspace +12.5, held +9.5),
    the same limiter: about 1 dB louder in the end, as the pops are mostly peak.
+6. 1.21.0: replaced (the earlier lifts were asked for while the phone's «System sounds» volume was low; highs
+   above 4 kHz were rolled off and the limiter flattened the pops). New source: the owner's ElevenLabs foley
+   (WAV 48 kHz, not kept in the repository): candidates by tools/sounds/make_glass_sounds_v2.py, the owner's
+   picks by make_glass_sounds_v2b.py. Keys gl_key_01..07 (no pitch change: raised pops sounded like lips),
+   space gl_space_1..4, Return gl_return_1..3 (two or three of the key pops quickly in a row), Backspace
+   gl_delete_1..2, held Backspace gl_delete_hold (those two puffs in turn, looped; the rustle irritated).
 """
