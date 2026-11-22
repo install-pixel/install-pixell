@@ -135,6 +135,9 @@ class KeyboardView(context: Context) : View(context) {
             // The sheet style lies on paper the root draws under everything (keys and strip alike).
             // Glass over the blurred app likewise: the root draws the see-through page once, under everything.
             setBackgroundColor(if (value.style == SurfaceStyle.SHEET || value.seeThrough) 0 else value.background)
+            // The typewriter: a little room under the paper holder's line, so it never lies on the keys' tops.
+            val padTop = if (value.style == SurfaceStyle.TYPEWRITER) dp(4f).toInt() else 0
+            if (paddingTop != padTop) setPadding(paddingLeft, padTop, paddingRight, paddingBottom)
             val (letters, labels) = faces(value)
             letterFace = letters
             labelFace = labels
