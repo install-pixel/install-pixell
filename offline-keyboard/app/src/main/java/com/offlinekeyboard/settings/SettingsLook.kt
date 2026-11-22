@@ -397,9 +397,43 @@ internal fun Modifier.sheetFrame(radius: Dp, seed: Int, chosen: Boolean, ink: Co
 
 /** When the sketch's paper (the key sheet and the settings page) is ready: read to be drawn again then. */
 internal object PaperState {
+    /** [v] (a [w] × [h] grid) averaged over a (2[r]+1)² square round each point, twice (close to a soft blur). */
+    private fun smooth(v: FloatArray, w: Int, h: Int, r: Int): FloatArray {
+        var src = v
+        repeat(2) {
+            val tmp = FloatArray(w * h)
+            val out = FloatArray(w * h)
+            val k = 2 * r + 1
+            for (y in 0 until h) for (x in 0 until w) {
+                var sum = 0f
+                for (d in -r..r) sum += src[y * w + (x + d).coerceIn(0, w - 1)]
+                tmp[y * w + x] = sum / k
+            }
+            for (y in 0 until h) for (x in 0 until w) {
+                var sum = 0f
+                for (d in -r..r) sum += tmp[(y + d).coerceIn(0, h - 1) * w + x]
+                out[y * w + x] = sum / k
+            }
+            src = out
+        }
+        return src
+    }
+
     var ready by androidx.compose.runtime.mutableIntStateOf(0)
     private val pages = HashMap<Boolean, android.graphics.Bitmap>()
     private val making = HashSet<Boolean>()
+    private val reliefs = HashMap<Boolean, android.graphics.Bitmap>()
+
+    /**
+     * The relief of the settings page's paper for the [light] tone as a small picture for the notebook's bend
+     * (red, green: the slope across and down, 0.5 flat; blue: light 0.5 neutral), the same size as the page
+     * photograph divided by [reliefScale]; null until the page is made.
+     */
+    fun relief(light: Boolean): android.graphics.Bitmap? = reliefs[light]
+
+    /** How many page-photograph pixels one pixel of [relief] spans. */
+    var reliefScale = 1f
+        private set
 
     /** Loads the papers of the cards for the [light] tone; the cards are drawn again when they are there. */
     fun prepare(context: android.content.Context, light: Boolean) {
@@ -432,9 +466,29 @@ internal object PaperState {
                         photo
                     }
                 }.getOrNull()
+                // Its relief, read from the photograph as the keyboard's (where the paper is lighter or darker).
+                val relief = page?.let { p ->
+                    runCatching {
+                        val r = com.offlinekeyboard.keyboard.PaperSheets.reliefOf(p)
+                        // Smoother than the keyboard's: the settings' handwriting is small, and a slope that
+                        // turns within a stroke tears it at the crease; the big folds still bend the lines.
+                        val gx = smooth(r.gx, r.width, r.height, 2)
+                        val gy = smooth(r.gy, r.width, r.height, 2)
+                        val shade = smooth(r.shade, r.width, r.height, 1)
+                        val px = IntArray(r.width * r.height) { i ->
+                            fun c(v: Float, k: Float) = ((v * k + 0.5f).coerceIn(0f, 1f) * 255).toInt()
+                            (0xFF shl 24) or (c(gx[i], 1f / 3f) shl 16) or (c(gy[i], 1f / 3f) shl 8) or c(shade[i], 0.5f)
+                        }
+                        android.graphics.Bitmap.createBitmap(px, r.width, r.height, android.graphics.Bitmap.Config.ARGB_8888) to (1f / r.scale)
+                    }.getOrNull()
+                }
                 main.post {
                     making.remove(light)
                     if (page != null) pages[light] = page
+                    if (relief != null) {
+                        reliefs[light] = relief.first
+                        reliefScale = relief.second
+                    }
                     ready++
                 }
             }.apply { name = "settings paper"; isDaemon = true }.start()

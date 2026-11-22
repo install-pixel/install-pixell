@@ -62,6 +62,9 @@ object PaperSheets {
         placed++
     }
 
+    /** The relief of any photograph of paper (the settings' page too): see [Relief]. */
+    fun reliefOf(bitmap: Bitmap): Relief = relief(bitmap)
+
     private fun relief(bitmap: Bitmap): Relief {
         val w = 360
         val h = (bitmap.height * w / bitmap.width.toFloat()).toInt().coerceAtLeast(2)

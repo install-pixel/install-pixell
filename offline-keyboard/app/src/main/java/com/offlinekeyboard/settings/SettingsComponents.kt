@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,23 @@ internal fun languageName(language: Language): String = stringResource(
 @Composable
 internal fun Section(title: String?, content: @Composable () -> Unit) {
     val sheet = LocalLook.current == Look.SHEET
+    if (sheet && LocalNotebook.current) {
+        // On the notebook's pages: the title (under its pencil line) and every row straight onto the page, so a
+        // long section goes on over the next page instead of being cut off.
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .layoutId(NOTEBOOK_SECTION)
+                .fillMaxWidth()
+                .drawBehind {
+                    pencilStroke(2.dp.toPx(), size.width * 0.01f, size.width * 0.99f, seed = title?.hashCode() ?: 7, alpha = 0.5f)
+                }
+                .padding(top = if (title != null) 14.dp else 4.dp),
+        ) {
+            if (title != null) Text(title, color = Tone.TextPrimary, fontSize = 19.sp)
+        }
+        content()
+        return
+    }
     Column(
         Modifier
             .fillMaxWidth()

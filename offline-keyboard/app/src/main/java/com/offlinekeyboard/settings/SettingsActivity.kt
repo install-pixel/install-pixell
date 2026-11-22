@@ -44,6 +44,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -279,8 +281,40 @@ private fun PageContent(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
-    val scroll = rememberScrollState()
     val keyboardOpen = WindowInsets.isImeVisible
+    if (LocalLook.current == Look.SHEET) {
+        // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages).
+        val frame = remember { PaperFrame() }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .paperPage()
+                .onGloballyPositioned {
+                    val p = it.positionInRoot()
+                    frame.left = p.x
+                    frame.top = p.y
+                    frame.width = it.size.width.toFloat()
+                    frame.height = it.size.height.toFloat()
+                }
+                .safeDrawingPadding(),
+        ) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalPaperFrame provides frame) {
+                NotebookPages(title, Modifier.fillMaxWidth().weight(1f), content)
+            }
+            if (onBack != null && !keyboardOpen) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
+                }
+            }
+        }
+        return
+    }
+    val scroll = rememberScrollState()
     Column(
         Modifier
             .fillMaxSize()
