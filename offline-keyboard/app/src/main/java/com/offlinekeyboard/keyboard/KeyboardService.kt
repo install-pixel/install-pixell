@@ -1084,23 +1084,27 @@ class KeyboardService : InputMethodService(),
 
     override fun onToolbarSound() {
         val on = !settings.keySound
-        settings = settings.copy(keySound = on)
-        scope.launch { repository.update { it.copy(keySound = on) } }
+        // Turned on from 0, at a quiet level rather than silent.
+        val volume = if (on && settings.keySoundVolume <= 0f) 0.3f else settings.keySoundVolume
+        settings = settings.copy(keySound = on, keySoundVolume = volume)
+        scope.launch { repository.update { it.copy(keySound = on, keySoundVolume = volume) } }
         if (on) keySounds?.play(KeySounds.Kind.KEY, settings.keySoundVolume)
         rootView?.showStatus(getString(if (on) R.string.sound_on else R.string.sound_off))
         render()
     }
 
     override fun onSoundVolume(volume: Float, done: Boolean) {
-        val v = volume.coerceIn(0.1f, 1f)
+        val v = volume.coerceIn(0f, 1f)
         if (!done) {
             // A click at every step, at the new volume (heard even while sounds are off, to hear the level).
-            keySounds?.play(KeySounds.Kind.KEY, v)
+            if (v > 0f) keySounds?.play(KeySounds.Kind.KEY, v)
             return
         }
-        settings = settings.copy(keySoundVolume = v, keySound = true)
-        scope.launch { repository.update { it.copy(keySoundVolume = v, keySound = true) } }
-        rootView?.showStatus(getString(R.string.sound_volume_set, (v * 100).roundToInt()))
+        // Down to 0 the sounds go off (the button crossed out) and 0 is kept: held again, it starts from there.
+        val on = v > 0f
+        settings = settings.copy(keySoundVolume = v, keySound = on)
+        scope.launch { repository.update { it.copy(keySoundVolume = v, keySound = on) } }
+        rootView?.showStatus(if (on) getString(R.string.sound_volume_set, (v * 100).roundToInt()) else getString(R.string.sound_off))
         render()
     }
 
@@ -1725,6 +1729,7 @@ class KeyboardService : InputMethodService(),
                 bluetooth = when {
                     !bluetoothKeyboardSupported || !settings.bluetoothKeyboard -> KeyboardRootView.BluetoothButton.HIDDEN
                     bluetoothSending && bluetoothConnected -> KeyboardRootView.BluetoothButton.SENDING
+                    bluetoothSending -> KeyboardRootView.BluetoothButton.WAITING
                     else -> KeyboardRootView.BluetoothButton.IDLE
                 },
                 soundOn = if (soundStyle) settings.keySound else null,

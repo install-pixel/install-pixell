@@ -83,7 +83,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     )
 
     /** HIDDEN: the Bluetooth keyboard is off in settings; IDLE: on, typing goes to the phone; SENDING: to the computer. */
-    enum class BluetoothButton { HIDDEN, IDLE, SENDING }
+    /** WAITING: turned on, waiting for the computer to connect (ringed, dimmer); SENDING: connected. */
+    enum class BluetoothButton { HIDDEN, IDLE, WAITING, SENDING }
 
     var toolbarListener: ToolbarListener? = null
 
@@ -288,9 +289,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
     private val volumeBar = VolumeBar(context).apply { visibility = View.GONE }
     private var volumeShown = false
+    private var volumeDownX = 0f
     private val startVolume = Runnable {
         volumeShown = true
+        // From the volume it is at (0 when the sounds are off at 0), moved by the finger from where it is.
         volumeBar.value = lastState?.soundVolume ?: 0.6f
+        volumeBar.anchor(volumeDownX)
         soundButton.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
         removeCallbacks(hideButtonsRunnable)
         refreshCentre()
@@ -303,6 +307,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     volumeShown = false
+                    volumeDownX = event.rawX
                     postDelayed(startVolume, android.view.ViewConfiguration.getLongPressTimeout().toLong())
                 }
                 android.view.MotionEvent.ACTION_MOVE -> if (volumeShown) {
@@ -385,7 +390,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val state = lastState
         if (!hideButtons || state == null || state.computerMode || buttonsShown || busy()) return true
         if (compact && modesExpanded) return true
-        return state.bluetooth == BluetoothButton.SENDING
+        return state.bluetooth == BluetoothButton.SENDING || state.bluetooth == BluetoothButton.WAITING
     }
 
     private fun refreshButtons() {
@@ -907,9 +912,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         }
         status.typeface = face
         for (b in listOf(textChip, translateChip, clipboardChip, voiceChip)) b.applyStyle(value)
-        // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge.
-        bluetoothButton.plateInset = dp(LIT_PLATE_INSET_DP).toFloat()
-        remoteButton.plateInset = dp(LIT_PLATE_INSET_DP).toFloat()
+        // A lit button is a smaller plate inside its place, so it sits clear of the paper's edge (on the
+        // typewriter smaller still: its rim reached the paper holder's line).
+        val litInset = dp(LIT_PLATE_INSET_DP + if (value.style == SurfaceStyle.TYPEWRITER) 3 else 0).toFloat()
+        bluetoothButton.plateInset = litInset
+        remoteButton.plateInset = litInset
         for (b in listOf(modeButton, settingsButton, bluetoothButton, undoButton, modesButton, soundButton, remoteButton)) {
             b.foreground = value.text
             b.pressedFill = value.pressed
@@ -923,7 +930,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         lastState = state
         recording = state.recording
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
-        val sending = state.bluetooth == BluetoothButton.SENDING
+        // Ringed at once when turned on (it used to wait for the computer to connect, so a tap seemed to do
+        // nothing); dimmer until it is connected.
+        val sending = state.bluetooth == BluetoothButton.SENDING || state.bluetooth == BluetoothButton.WAITING
         if (theme.styled) {
             bluetoothButton.fill = if (sending) theme.function else 0
             bluetoothButton.chosen = sending
@@ -932,6 +941,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             bluetoothButton.fill = if (sending) theme.accent else 0
             bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
         }
+        bluetoothButton.alpha = if (state.bluetooth == BluetoothButton.WAITING) 0.6f else 1f
         soundButton.icon = if (state.soundOn == false) Icon.SPEAKER_OFF else Icon.SPEAKER
         soundButton.alpha = restAlpha(soundButton)
         val remoteOpen = remoteShown
@@ -1338,7 +1348,7 @@ private class PaperDrawable(bitmap: android.graphics.Bitmap, offsetX: Float) : a
  * percentage. The finger moves along the strip (it stays on the button; the bar follows its position).
  */
 private class VolumeBar(context: Context) : View(context) {
-    /** 0.1–1 in steps of 0.1, as the slider in the settings. */
+    /** 0–1 in steps of 0.1 (0: the sounds off). */
     var value = 0.6f
         set(v) { field = v; invalidate() }
 
@@ -1359,11 +1369,19 @@ private class VolumeBar(context: Context) : View(context) {
 
     private val barsWidth get() = width - LABEL_DP * density - 2 * PAD_DP * density
 
-    /** Chooses the step under the finger at [rawX] on the screen; true when the step changed. */
+    private var anchorX = 0f
+    private var anchorValue = 0f
+
+    /** The finger is at [rawX] now: moving it from here changes the volume from what it is (no jump). */
+    fun anchor(rawX: Float) {
+        anchorX = rawX
+        anchorValue = value
+    }
+
+    /** Moves the volume by the finger's way from where it was put down; true when the step changed. */
     fun setFromScreenX(rawX: Float): Boolean {
-        getLocationOnScreen(location)
-        val x = rawX - location[0] - PAD_DP * density
-        val step = ((x / barsWidth) * STEPS).toInt().coerceIn(0, STEPS - 1) + 1
+        val stepWidth = (barsWidth / STEPS).coerceAtLeast(1f)
+        val step = (kotlin.math.round(anchorValue * STEPS).toInt() + ((rawX - anchorX) / stepWidth).toInt()).coerceIn(0, STEPS)
         val v = step / STEPS.toFloat()
         if (kotlin.math.abs(v - value) < 0.01f) return false
         value = v
@@ -1383,7 +1401,7 @@ private class VolumeBar(context: Context) : View(context) {
             paint.color = if (i < chosen) lit else dim
             canvas.drawRoundRect(bar, 2 * density, 2 * density, paint)
         }
-        canvas.drawText("${chosen * 10}%", width - pad, height / 2f + text.textSize / 3f, text)
+        canvas.drawText(if (chosen == 0) "0" else "${chosen * 10}%", width - pad, height / 2f + text.textSize / 3f, text)
     }
 
     private companion object {
