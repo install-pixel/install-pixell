@@ -108,7 +108,8 @@ class StickerPanel(context: Context) : LinearLayout(context) {
 
     fun applyTheme(theme: KeyboardTheme) {
         this.theme = theme
-        setBackgroundColor(if (theme.seeThrough) 0 else theme.background)
+        // The sketch lies on the paper the root draws under everything, as the keys; glass over the app likewise.
+        setBackgroundColor(if (theme.seeThrough || theme.style == SurfaceStyle.SHEET) 0 else theme.background)
         title.setTextColor(theme.hint)
         title.typeface = theme.typeface(context)
         for (b in listOf(lettersButton, emojiButton, boyButton, girlButton)) b.applyStyle(theme)

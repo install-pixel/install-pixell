@@ -496,7 +496,7 @@ class KeyboardUiTest {
     fun everyThemeRenders() {
         useMode(KeyboardMode.MOBILE)
         useLanguage(Language.UK)
-        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight(), "glass-light" to KeyboardTheme.glassLight(), "glass-over" to KeyboardTheme.glass().overBlur(), "glass-light-over" to KeyboardTheme.glassLight().overBlur())) {
+        for ((name, theme) in listOf("glass" to KeyboardTheme.glass(), "sheet" to KeyboardTheme.sheet(), "typewriter" to KeyboardTheme.typewriter(), "milk" to KeyboardTheme.milkTypewriter(), "sheet-light" to KeyboardTheme.sheetLight(), "glass-light" to KeyboardTheme.glassLight(), "glass-over" to KeyboardTheme.glass().overBlur(), "glass-light-over" to KeyboardTheme.glassLight().overBlur(), "glass-sharp" to KeyboardTheme.glass().overBlur(blurred = false), "glass-light-sharp" to KeyboardTheme.glassLight().overBlur(blurred = false))) {
             val keyboard = service()
             instrumentation.runOnMainSync { keyboard.applyThemeForTest(theme) }
             instrumentation.waitForIdleSync()
@@ -509,7 +509,15 @@ class KeyboardUiTest {
             if (name.startsWith("sheet")) {
                 // Capitals (and their marks) stay inside the paper pieces: Shift held, letters in capitals.
                 val shift = keyCenter { (it.action as? KeyAction.Special)?.key == SpecialKey.SHIFT }
-                if (shift != null) touch(shift.x, shift.y, holdMs = 600, whileHeld = { screenshot("theme-$name-caps") })
+                if (shift != null) {
+                    // A tap turns on capitals for the next letter: the keys show them until it is tapped off.
+                    touch(shift.x, shift.y, holdMs = 60)
+                    instrumentation.waitForIdleSync()
+                    Thread.sleep(500)
+                    screenshot("theme-$name-caps")
+                    touch(shift.x, shift.y, holdMs = 60)
+                    instrumentation.waitForIdleSync()
+                }
             }
         }
         // Redraws later the Android 15 emulator sometimes ignores the next taps: settle as at the start.
@@ -537,6 +545,75 @@ class KeyboardUiTest {
     @Test
     fun settingsInGlassLight() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.GLASS_LIGHT)
 
+    /**
+     * Every panel of the keyboard in every style, chosen as the user does (in the settings), so the glass is
+     * the one the phone really shows: screenshots «panel-<style>-<panel>», to find anything still drawn the
+     * old way. Only screenshots: what each panel does is checked by the tests above.
+     */
+    @Test
+    fun everyPanelInEveryTheme() {
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        val modes = com.offlinekeyboard.keyboard.ThemeMode.entries
+        try {
+            for (mode in modes) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                relaunchTestScreen()
+                val tag = mode.name.lowercase().replace('_', '-')
+                fun shot(panel: String) {
+                    instrumentation.waitForIdleSync()
+                    Thread.sleep(700)
+                    screenshot("panel-$tag-$panel")
+                }
+                useMode(KeyboardMode.MOBILE)
+                useLanguage(Language.UK)
+                clear(activity.plain)
+                shot("letters")
+                longPressText("е", screenshotName = "panel-$tag-popup")
+                clear(activity.plain)
+                typeWord(activity.plain, "дяк")
+                shot("suggestions")
+                clear(activity.plain)
+                tapSpecial(SpecialKey.LAYER_SYMBOLS)
+                shot("symbols")
+                tapSpecial(SpecialKey.LAYER_NUMPAD)
+                shot("numpad")
+                tapSpecial(SpecialKey.LAYER_LETTERS)
+                openEmoji()
+                shot("emoji")
+                tapSpecial(SpecialKey.LAYER_LETTERS)
+                val keyboard = service()
+                instrumentation.runOnMainSync { keyboard.inputRootForTest?.showStickers(true) }
+                shot("stickers")
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.showStickers(false)
+                    keyboard.inputRootForTest?.showClipboard(true)
+                }
+                shot("clipboard")
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.showClipboard(false)
+                    keyboard.inputRootForTest?.remoteForTest = true
+                    keyboard.inputRootForTest?.showRemote(true)
+                    keyboard.inputRootForTest?.remotePanel?.showNavForTest()
+                }
+                shot("remote-nav")
+                instrumentation.runOnMainSync { keyboard.inputRootForTest?.remotePanel?.showMediaForTest() }
+                shot("remote-media")
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.remoteForTest = false
+                    keyboard.inputRootForTest?.showRemote(false)
+                }
+                useMode(KeyboardMode.COMPUTER)
+                shot("computer")
+                tapSpecial(SpecialKey.SHIFT)
+                shot("computer-shift")
+                tapSpecial(SpecialKey.SHIFT)
+                useMode(KeyboardMode.MOBILE)
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS) } }
+        }
+    }
+
     /** The settings in the milky typewriter's light colours: screenshots. */
     @Test
     fun settingsInMilkTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.MILK_TYPEWRITER)
@@ -559,6 +636,16 @@ class KeyboardUiTest {
                     screenshot("settings-$tag-${page.ifEmpty { "main" }}-2")
                 }
             }
+            // The first setup in this style too (opened as from the launcher while it was never done).
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(onboardingDone = false) } }
+            val first = android.content.Intent(android.content.Intent.ACTION_MAIN)
+                .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                .setClass(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+            ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(first).use {
+                Thread.sleep(1500)
+                screenshot("settings-$tag-onboarding")
+            }
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(onboardingDone = true) } }
         } finally {
             kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS) } }
         }

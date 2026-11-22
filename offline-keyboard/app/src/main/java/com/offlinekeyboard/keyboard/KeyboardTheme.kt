@@ -62,12 +62,14 @@ data class KeyboardTheme(
     val seeThrough: Boolean = false,
 ) {
     /**
-     * This glass theme laid over the blurred app: the background keeps its colour but lets the blur through
-     * (dark glass darkens it, milky glass whitens it). Other styles are returned as they are.
+     * This glass theme laid over the app: the background keeps its colour but lets the app through (dark glass
+     * darkens it, milky glass whitens it); over the [blurred] app more of it, where the system cannot blur a
+     * little less (the app behind stays sharp, so the glass is denser to keep the keys easy to read). Other
+     * styles are returned as they are.
      */
-    fun overBlur(): KeyboardTheme {
+    fun overBlur(blurred: Boolean = true): KeyboardTheme {
         if (style != SurfaceStyle.GLASS || seeThrough) return this
-        val alpha = if (dark) 0x80 else 0x94
+        val alpha = if (blurred) (if (dark) 0x80 else 0x94) else (if (dark) 0xB8 else 0xC4)
         return copy(background = (background and 0x00FFFFFF) or (alpha shl 24), seeThrough = true)
     }
 
@@ -197,7 +199,8 @@ data class KeyboardTheme(
          */
         fun sheetLight() = KeyboardTheme(
             dark = false,
-            background = PaperTexture.PARCHMENT_EDGE,
+            // The pale ground the parchment sheet lies on.
+            background = 0xFFCBC1AE.toInt(),
             key = 0xFFF0E2C4.toInt(),
             function = 0xFFF0E2C4.toInt(),
             pressed = 0xFFE4D6BA.toInt(),

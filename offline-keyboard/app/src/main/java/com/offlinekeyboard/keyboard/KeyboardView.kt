@@ -415,7 +415,8 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val ctx = labelContext ?: return
         val now = SystemClock.uptimeMillis()
-        // The sketch's keys are cut from one sheet of paper: each shows the part where it lies on screen.
+        // The sketch's keys are written on the keyboard's paper (no keys drawn); popups lie on it as scraps.
+        surfaces.paperPieces = false
         if (theme.style == SurfaceStyle.SHEET) {
             getLocationInWindow(windowSpot)
             surfaces.sheetOffsetX = windowSpot[0].toFloat()
@@ -531,9 +532,19 @@ class KeyboardView(context: Context) : View(context) {
             } else {
                 // On the most used typewriter keys the paint of the letter is a little worn.
                 val ink = if (typewriter && isWorn(key)) (color and 0x00FFFFFF) or (((color ushr 24) * WORN_INK).toInt() shl 24) else color
-                labelSeed = index
-                drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
-                labelSeed = -1
+                if (theme.style == SurfaceStyle.SHEET && isSpace(key)) drawSpaceMarks(canvas, inner, color, index)
+                if (theme.style == SurfaceStyle.SHEET && underBubble(face)) {
+                    // Under the sketch's enlarged letter (a soft patch, see-through at its edge): not written, so
+                    // nothing of it shows round the patch.
+                } else if (theme.style == SurfaceStyle.SHEET && pressed) {
+                    // Pressed into the paper: the letter sinks a little with it.
+                    pressedFace.set(face)
+                    pressedFace.inset(face.width() * 0.03f, face.height() * 0.03f)
+                    pressedFace.offset(0f, dp(0.8f))
+                    drawLabel(canvas, pressedFace, KeyLabels.label(key, ctx), ink, key)
+                } else {
+                    drawLabel(canvas, face, KeyLabels.label(key, ctx), ink, key)
+                }
             }
 
             KeyLabels.hint(key, ctx)?.let { hint ->
@@ -601,21 +612,21 @@ class KeyboardView(context: Context) : View(context) {
      */
     private fun drawOverlaySurface(canvas: Canvas, rect: RectF, r: Float, seed: Int) {
         val t = theme
+        surfaces.paperPieces = true
         when (t.style) {
             SurfaceStyle.GLASS -> {
                 frost.drawBehind(canvas, rect, r, t.background)
                 surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, inkColor = t.text, sheen = true, frosted = true)
             }
-            SurfaceStyle.SHEET -> {
-                surfaces.draw(canvas, rect, r, SurfaceStyle.FLAT, t.background)
-                surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, inkColor = t.text)
-            }
+            // A scrap of paper laid over the keys (opaque, with its own uneven edge).
+            SurfaceStyle.SHEET -> surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, inkColor = t.text)
             SurfaceStyle.TYPEWRITER -> {
                 surfaces.draw(canvas, rect, r, SurfaceStyle.FLAT, t.background)
                 surfaces.draw(canvas, rect, r, t.style, t.popup, seed = seed, plate = true)
             }
             SurfaceStyle.FLAT -> surfaces.draw(canvas, rect, r, t.style, t.popup)
         }
+        surfaces.paperPieces = false
     }
 
     /** An enlarged letter on its way in (while pressed) or out (after release); [shown] runs 0 → 1. */
@@ -656,8 +667,10 @@ class KeyboardView(context: Context) : View(context) {
         if (e <= 0.01f) return
         val bubble = b.rect
         val scale = 0.88f + 0.12f * e
+        // Room round it for the soft edges (the sketch's patch melts away past its bounds).
+        val room = if (theme.style == SurfaceStyle.SHEET) dp(14f) else dp(4f)
         val layer = canvas.saveLayerAlpha(
-            bubble.left - dp(4f), bubble.top - dp(4f), bubble.right + dp(4f), bubble.bottom + dp(10f), (e * 255).toInt(),
+            bubble.left - room, bubble.top - room, bubble.right + room, bubble.bottom + room + dp(6f), (e * 255).toInt(),
         )
         canvas.translate(0f, (1f - e) * dp(6f))
         canvas.scale(scale, scale, bubble.centerX(), bubble.bottom)
@@ -675,7 +688,13 @@ class KeyboardView(context: Context) : View(context) {
             canvas.restoreToCount(layer)
             return
         }
-        drawOverlaySurface(canvas, bubble, radius * 1.5f, b.label.hashCode())
+        if (theme.style == SurfaceStyle.SHEET) {
+            // The sketch: the same soft round patch as the dent under the finger, rising above it.
+            surfaces.sheetLight = !theme.dark
+            surfaces.drawSoftPatch(canvas, bubble)
+        } else {
+            drawOverlaySurface(canvas, bubble, radius * 1.5f, b.label.hashCode())
+        }
         textPaint.color = theme.text
         textPaint.typeface = letterFace
         textPaint.textSize = bubble.height() * 0.5f * theme.textScale
@@ -685,6 +704,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private val inkBounds = android.graphics.Rect()
+    private val pressedFace = RectF()
 
     private fun drawLabel(canvas: Canvas, rect: RectF, label: String, color: Int, key: Key) {
         if (label.isEmpty()) return
@@ -699,6 +719,8 @@ class KeyboardView(context: Context) : View(context) {
         textPaint.textSize = size
         val round = typewriter && rect.width() <= rect.height() * 1.05f
         val sheet = theme.style == SurfaceStyle.SHEET
+        // Ink on paper, not a sticker on it: the paper's creases and stains show through the letters a little.
+        if (sheet) textPaint.alpha = (textPaint.alpha * 0.86f).toInt()
         // The sheet's paper piece has a wavy, hand-cut edge a little inside the key: the letter keeps clear of it.
         val maxWidth = rect.width() * (if (round) 0.78f else if (sheet) 0.74f else 0.86f)
         val measured = textPaint.measureText(label)
@@ -734,53 +756,165 @@ class KeyboardView(context: Context) : View(context) {
             canvas.restore()
             return
         }
-        if (sheet) {
-            // A fold of the paper under the letter: the letter bends with it, as ink on a folded page (its two
-            // halves a little apart, the half on the fold's lit side a little paler).
-            // Only on the keys themselves (their piece and its place in the paper known).
-            val seed = labelSeed
-            val crease = if (seed < 0) null else PaperSheets.journal(!theme.dark)?.creaseAt(
-                rect.centerX() + surfaces.sheetOffsetX + surfaces.paperSpotX(seed),
-                rect.centerY() + surfaces.sheetOffsetY + surfaces.paperSpotY(seed),
-                size * 0.55f,
-            )
-            if (crease != null) {
-                drawBent(canvas, label, rect.centerX(), y, rect, crease.first, crease.second, size)
-                return
-            }
-        }
+        if (sheet && drawWrittenInk(canvas, label, rect, y)) return
         canvas.drawText(label, rect.centerX(), y, textPaint)
     }
 
-    private val halfPlane = android.graphics.Path()
+    private val spaceMarks = HashMap<Long, android.graphics.Path>()
+    private val spacePaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    /** The seed of the key whose label is being drawn (its paper piece), -1 for popups and bubbles. */
-    private var labelSeed = -1
-
-    private fun drawBent(canvas: Canvas, label: String, x: Float, y: Float, rect: RectF, crease: PaperTexture.Crease, off: Float, size: Float) {
-        val nx = crease.nx
-        val ny = crease.ny
-        // Where the fold crosses, and far enough along and across it to cover the letter.
-        val px = rect.centerX() - nx * off
-        val py = rect.centerY() - ny * off
-        val far = size * 3f
-        val shift = dp(0.6f)
-        val ink = textPaint.alpha
-        for (lit in listOf(true, false)) {
-            val sign = if (lit) 1f else -1f
-            halfPlane.rewind()
-            halfPlane.moveTo(px + crease.ax * far, py + crease.ay * far)
-            halfPlane.lineTo(px - crease.ax * far, py - crease.ay * far)
-            halfPlane.lineTo(px - crease.ax * far + nx * far * sign, py - crease.ay * far + ny * far * sign)
-            halfPlane.lineTo(px + crease.ax * far + nx * far * sign, py + crease.ay * far + ny * far * sign)
-            halfPlane.close()
-            canvas.save()
-            canvas.clipPath(halfPlane)
-            textPaint.alpha = if (lit) (ink * 0.82f).toInt() else ink
-            canvas.drawText(label, x + nx * shift * sign, y + ny * shift * sign, textPaint)
-            canvas.restore()
+    /**
+     * The sketch's space bar has no key drawn round it: a light pencil stroke under its name, its ends turned up
+     * a little, shows how far it reaches.
+     */
+    private fun drawSpaceMarks(canvas: Canvas, rect: RectF, color: Int, seed: Int) {
+        val w = rect.width()
+        val h = rect.height()
+        val key = (w.toInt().toLong() shl 32) or h.toInt().toLong()
+        val path = spaceMarks.getOrPut(key) {
+            val n = 24
+            val points = FloatArray(n * 2 + 4)
+            val x0 = w * 0.06f
+            val x1 = w * 0.94f
+            val base = h * 0.8f
+            val lift = h * 0.16f
+            val random = java.util.Random(seed.toLong() * 31 + 7)
+            for (i in 0 until n) {
+                val t = i / (n - 1f)
+                points[i * 2] = x0 + (x1 - x0) * t
+                // Flat in the middle, the ends curling up: a bracket drawn in one stroke, a little uneven.
+                val end = maxOf(0f, kotlin.math.abs(t - 0.5f) * 2f - 0.86f) / 0.14f
+                points[i * 2 + 1] = base - lift * end * end + (random.nextFloat() - 0.5f) * dp(0.6f)
+            }
+            Pencil.tapered(points.copyOf(n * 2), dp(1.3f))
         }
-        textPaint.alpha = ink
+        spacePaint.color = color
+        spacePaint.alpha = ((color ushr 24) * 0.32f).toInt()
+        canvas.save()
+        canvas.translate(rect.left, rect.top)
+        canvas.drawPath(path, spacePaint)
+        canvas.restore()
+    }
+
+    private val overlap = RectF()
+
+    /** Whether an enlarged letter now shown covers much of [face] (its middle part). */
+    private fun underBubble(face: RectF): Boolean {
+        if (bubbles.isEmpty()) return false
+        overlap.set(face)
+        overlap.inset(face.width() * 0.2f, face.height() * 0.2f)
+        return bubbles.any { it.shown > 0.15f && RectF.intersects(it.rect, overlap) }
+    }
+
+    /** Letters written on the sketch's paper, bent to its relief, by where they lie (made once each). */
+    private val writtenInk = object : LinkedHashMap<String, android.graphics.Bitmap>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, android.graphics.Bitmap>) = size > 260
+    }
+    private val inkPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    /**
+     * The sketch: [label] written on the keyboard's paper as ink on it, not over it: it bends with the paper's
+     * creases (shifted along the slope of the relief) and is darker where the paper is in shade, lighter on
+     * its lit faces. False until the paper and its place are known (then it is written plainly).
+     */
+    private fun drawWrittenInk(canvas: Canvas, label: String, rect: RectF, y: Float): Boolean {
+        val relief = PaperSheets.relief(!theme.dark) ?: return false
+        val scale = PaperSheets.placeScale
+        if (scale <= 0f) return false
+        getLocationInWindow(windowSpot)
+        val pad = dp(8f).toInt()
+        val left = (rect.left - pad).toInt()
+        val top = (rect.top - pad).toInt()
+        val w = rect.width().toInt() + 2 * pad
+        val h = rect.height().toInt() + 2 * pad
+        if (w <= 0 || h <= 0) return false
+        val key = "$label|$left,$top,$w,$h|${windowSpot[0]},${windowSpot[1]}|${textPaint.color}|${textPaint.textSize}|${textPaint.typeface?.hashCode()}|${PaperSheets.placed}|${theme.dark}"
+        val bitmap = writtenInk[key] ?: run {
+            val made = writeInk(label, rect, y, left, top, w, h, relief, scale) ?: return false
+            writtenInk[key] = made
+            made
+        }
+        canvas.drawBitmap(bitmap, left.toFloat(), top.toFloat(), null)
+        return true
+    }
+
+    private fun writeInk(label: String, rect: RectF, y: Float, left: Int, top: Int, w: Int, h: Int, relief: PaperSheets.Relief, scale: Float): android.graphics.Bitmap? {
+        val plain = runCatching { android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return null
+        // An emoji is a coloured picture, not pencil: it bends with the paper too, but keeps its own colours.
+        val picture = isPicture(label)
+        inkPaint.set(textPaint)
+        // (Text next to an emoji, as «😀 1/8», takes the pencil's colour: the emoji itself ignores it.)
+        inkPaint.color = if (picture) textPaint.color or 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        android.graphics.Canvas(plain).drawText(label, rect.centerX() - left, y - top, inkPaint)
+        val src = IntArray(w * h)
+        plain.getPixels(src, 0, w, 0, 0, w, h)
+        plain.recycle()
+        val out = IntArray(w * h)
+        val ink = textPaint.color
+        val inkA = (ink ushr 24) and 0xFF
+        val ir = (ink shr 16) and 0xFF
+        val ig = (ink shr 8) and 0xFF
+        val ib = ink and 0xFF
+        val bend = dp(1.7f)
+        // Window point -> the photograph's pixel -> the relief's small copy.
+        val toMap = relief.scale / scale
+        val ox = windowSpot[0] + left - PaperSheets.placeX
+        val oy = windowSpot[1] + top - PaperSheets.placeY
+        for (py in 0 until h) {
+            for (px in 0 until w) {
+                val u = (ox + px) * toMap
+                val v = (oy + py) * toMap
+                // Where this point of the ink came from before the paper was crumpled under it.
+                val sx = px - relief.sample(relief.gx, u, v) * bend
+                val sy = py - relief.sample(relief.gy, u, v) * bend
+                val x0 = sx.toInt()
+                val y0 = sy.toInt()
+                if (x0 < 0 || y0 < 0 || x0 >= w - 1 || y0 >= h - 1) continue
+                val fx = sx - x0
+                val fy = sy - y0
+                val i = y0 * w + x0
+                val a = ((src[i] ushr 24) * (1 - fx) + (src[i + 1] ushr 24) * fx) * (1 - fy) +
+                    ((src[i + w] ushr 24) * (1 - fx) + (src[i + w + 1] ushr 24) * fx) * fy
+                if (a < 1f) continue
+                val light = 1f + 0.45f * relief.sample(relief.shade, u, v)
+                if (picture) {
+                    // The picture's colour where the ink came from, weighted by coverage (no dark fringe), lit and
+                    // shaded by the creases a little less than pencil, and a touch of the paper through it.
+                    val w00 = (1 - fx) * (1 - fy) * (src[i] ushr 24)
+                    val w10 = fx * (1 - fy) * (src[i + 1] ushr 24)
+                    val w01 = (1 - fx) * fy * (src[i + w] ushr 24)
+                    val w11 = fx * fy * (src[i + w + 1] ushr 24)
+                    val sum = w00 + w10 + w01 + w11
+                    if (sum <= 0f) continue
+                    fun channel(shift: Int) = (((src[i] shr shift) and 0xFF) * w00 + ((src[i + 1] shr shift) and 0xFF) * w10 +
+                        ((src[i + w] shr shift) and 0xFF) * w01 + ((src[i + w + 1] shr shift) and 0xFF) * w11) / sum
+                    val shade = 1f + 0.25f * (light - 1f) / 0.45f
+                    val alpha = (a * 0.92f).toInt().coerceIn(0, 255)
+                    out[py * w + px] = (alpha shl 24) or
+                        ((channel(16) * shade).toInt().coerceIn(0, 255) shl 16) or
+                        ((channel(8) * shade).toInt().coerceIn(0, 255) shl 8) or
+                        (channel(0) * shade).toInt().coerceIn(0, 255)
+                    continue
+                }
+                val alpha = (a * inkA / 255f).toInt().coerceIn(0, 255)
+                out[py * w + px] = (alpha shl 24) or
+                    ((ir * light).toInt().coerceIn(0, 255) shl 16) or
+                    ((ig * light).toInt().coerceIn(0, 255) shl 8) or
+                    (ib * light).toInt().coerceIn(0, 255)
+            }
+        }
+        return runCatching { android.graphics.Bitmap.createBitmap(out, w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull()
+    }
+
+    /** Whether [label] is an emoji (drawn in its own colours): pictographs, symbols with the emoji sign, flags. */
+    private fun isPicture(label: String): Boolean {
+        var i = 0
+        while (i < label.length) {
+            val cp = label.codePointAt(i)
+            if (cp >= 0x1F000 || cp == 0xFE0F || cp in 0x2600..0x27BF || cp in 0x2B00..0x2BFF || cp in 0x2190..0x21FF && label.contains('️')) return true
+            i += Character.charCount(cp)
+        }
+        return false
     }
 
     /** Keys with a fixed meaning get a drawn icon; letters, names and text actions keep their label. */
@@ -823,7 +957,9 @@ class KeyboardView(context: Context) : View(context) {
         val e = 1f - (1f - shown) * (1f - shown) * (1f - shown)
         if (e <= 0.01f) return
         val b = p.bounds
-        val layer = canvas.saveLayerAlpha(b.left - dp(4f), b.top - dp(4f), b.right + dp(4f), b.bottom + dp(10f), (e * 255).toInt())
+        // Room round it for the soft edges (the sketch's patch melts away past its bounds).
+        val room = if (t.style == SurfaceStyle.SHEET) dp(18f) else dp(4f)
+        val layer = canvas.saveLayerAlpha(b.left - room, b.top - room, b.right + room, b.bottom + room + dp(6f), (e * 255).toInt())
         val scale = 0.92f + 0.08f * e
         canvas.scale(scale, scale, b.centerX(), b.bottom)
         if (t.style == SurfaceStyle.TYPEWRITER) {
@@ -841,6 +977,19 @@ class KeyboardView(context: Context) : View(context) {
                 if (chosen) body.offset(0f, surfaces.typewriterSink)
                 val color = if (chosen) t.text else (t.text and 0x00FFFFFF) or 0xA6000000.toInt()
                 drawLabel(canvas, body, p.options[i], color, p.key)
+            }
+            canvas.restoreToCount(layer)
+            return
+        }
+        if (t.style == SurfaceStyle.SHEET) {
+            // The sketch: no scrap of paper but a soft patch of the keyboard's paper, as the enlarged letter;
+            // the choice under the finger ringed in pencil, the letters written (bent with the paper).
+            surfaces.sheetLight = !t.dark
+            surfaces.drawSoftBand(canvas, b)
+            p.cells.forEachIndexed { i, cell ->
+                if (i == p.selected) surfaces.draw(canvas, cell, radius, t.style, t.popup, SurfaceState.SELECTED, seed = i, inkColor = t.text)
+                val color = if (i == p.selected) t.text else (t.text and 0x00FFFFFF) or 0xA6000000.toInt()
+                drawLabel(canvas, cell, p.options[i], color, p.key)
             }
             canvas.restoreToCount(layer)
             return

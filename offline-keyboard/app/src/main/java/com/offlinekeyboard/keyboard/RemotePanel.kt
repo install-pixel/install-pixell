@@ -293,13 +293,39 @@ class Touchpad(context: Context) : View(context) {
     }
 
     private val spot = IntArray(2)
+    /** The sketch's pencil outline of the pad, made again only when the pad's size changes. */
+    private var outline: android.graphics.Path? = null
+    private var outlineW = 0
+    private var outlineH = 0
+    private val outlinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.FILL }
 
     override fun onDraw(canvas: Canvas) {
         bounds.set(0f, 0f, width.toFloat(), height.toFloat())
         getLocationInWindow(spot)
         surfaces.sheetOffsetX = spot[0].toFloat()
         surfaces.sheetOffsetY = spot[1].toFloat()
-        surfaces.draw(canvas, bounds, 14f * density, style, fillColor, inkColor = ink, plate = true)
+        if (style == SurfaceStyle.SHEET) {
+            // The sketch has no pieces of paper: the keyboard's own paper runs on under the touchpad, which is
+            // only outlined in pencil, as the ring round a chosen key.
+            val inset = 3f * density
+            val w = width - 2 * inset
+            val h = height - 2 * inset
+            if (w > 0f && h > 0f) {
+                if (outline == null || outlineW != width || outlineH != height) {
+                    outline = Pencil.tapered(Pencil.loop(w, h, 16f * density, 11, 1.4f * density), 1.7f * density)
+                    outlineW = width
+                    outlineH = height
+                }
+                outlinePaint.color = ink
+                outlinePaint.alpha = (150 * surfaces.brightness).toInt().coerceIn(60, 255)
+                canvas.save()
+                canvas.translate(inset, inset)
+                canvas.drawPath(outline!!, outlinePaint)
+                canvas.restore()
+            }
+        } else {
+            surfaces.draw(canvas, bounds, 14f * density, style, fillColor, inkColor = ink, plate = true)
+        }
         label.textSize = 13f * density * resources.configuration.fontScale
         canvas.drawText("· · ·", width / 2f, height / 2f, label)
     }

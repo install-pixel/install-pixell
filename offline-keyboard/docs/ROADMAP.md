@@ -70,6 +70,25 @@ The style guide for every screen is QRAFT (the family's reference app): two them
 - [x] The remote's keys and mouse buttons and the clipboard panel click and sound like the keys.
 - [x] Clipboard: a pinned text moving to its place keeps its whole frame.
 
+## 1.21.0 — ink that lies in the creases, a notebook's page for the settings
+
+- [x] Sketch: the letters bend with the paper's creases and are darker in their shade, lighter on the lit
+      faces (read from the photograph's relief), as ink on the paper, not over it.
+- [x] The enlarged letter is a soft round patch of paper; the letter under it is not written meanwhile.
+- [x] Dark sketch on a sharper photograph of crumpled black paper.
+- [x] The settings in the sketch style are one notebook page (black paper, or a burnt-edged parchment):
+      sections divided by pencil lines, the try field ruled in pencil, buttons drawn in pencil.
+
+## 1.20.0 — letters written on real paper, glass you can see through
+
+- [x] Sketch: the keyboard is a sheet of the owner's paper photographs (crumpled black paper, or stained
+      parchment) lying on a plain ground; the keys are not drawn, their letters are written on the paper.
+      Pressed, the paper gives under the finger (a soft dent); chosen keys are ringed in pencil.
+- [x] Popups, the touchpad and the settings' cards are scraps of another paper (a lighter crumpled black, or
+      an old page) with uneven edges and a deep shadow, on a plain dark or pale page.
+- [x] Glass always lets the app show through: blurred where the phone blurs behind windows, otherwise sharp
+      through a little denser glass.
+
 ## 1.19.0 — paper cut from one sheet, glass that finds its blur
 
 - [x] Sketch: one paper for everything, the light keyboard's parchment (and the same paper in charcoal for

@@ -27,4 +27,12 @@ Levels by overall loudness (no compression), a plain ceiling at 0.85.
    45 % of the peak); then equalizer=f=2500:t=o:w=1.3:g=6, each key's gain set so that above 1.5 kHz it
    sits near the typewriter (-19 dB RMS peak, ±1.7 dB), alimiter=limit=0.89. Return the same way without
    the reshaping; delete f=2000 g=11 +11 dB, held delete f=2000 g=11 +13 dB (~4 dB over 1.17); space +9 dB.
+8. 1.21.0: replaced. The lifts of 1.17/1.18 were asked for while the phone's «System sounds» volume was low
+   (it sets how loud the keyboard is): the highs rolled off at 2.4 kHz and the limiter made the pencil a dull
+   scrape. New source: the owner's ElevenLabs foley (WAV 48 kHz, not kept in the repository), made with
+   tools/sounds/make_sheet_sounds_v2.py: high-pass 250 Hz (eraser 120 Hz), a steep low-pass near 9 kHz
+   (eraser 7 kHz) against the generator's metallic top, plain gain (no limiter, no pitch change), soft edges.
+   Keys sh_key_01..12 (strokes), space sh_space_1..4 (one dot each), Return sh_return_1..3 (a stroke and a
+   dot), Backspace sh_erase_1..4 (one rub each), held Backspace sh_erase_hold (rubbing, looped; it fades out
+   when let go). Chosen by the owner by ear from the candidates.
 """

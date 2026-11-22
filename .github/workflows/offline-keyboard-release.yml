@@ -1,15 +1,12 @@
 name: Offline Keyboard Release
 
-# Publishes a GitHub release page with direct download links: the APK and all offline model packs.
-# Runs when this file changes on the keyboard branch, on a keyboard-v* tag, or manually. A manual run with
-# a version (for example 1.0.0) also publishes a final, non-test release "OffKey 1.0.0" (tag keyboard-v1.0.0).
+# Publishes the keyboard: a manual run with a version (for example 1.0.0) publishes the release "OffKey 1.0.0"
+# (tag keyboard-v1.0.0) with the APK, and updates the permanent latest-APK link. The offline models change
+# rarely and are big (~3.5 GB): they are rebuilt and uploaded to the permanent model release (keyboard-models,
+# where the app's Download buttons point) only when asked for (models: true).
 
 on:
   push:
-    branches:
-      - claude/offline-keyboard-android-w9kw2a
-    paths:
-      - '.github/workflows/offline-keyboard-release.yml'
     tags:
       - 'keyboard-v*'
   workflow_dispatch:
@@ -18,6 +15,11 @@ on:
         description: 'Final release version, e.g. 1.0.0 (empty: just a build)'
         required: false
         default: ''
+      models:
+        description: 'Also rebuild and upload the offline models (only when they changed)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -25,14 +27,18 @@ permissions:
 jobs:
   apk:
     uses: ./.github/workflows/offline-keyboard.yml
+    with:
+      screens: false
     permissions:
       contents: write
 
   models:
+    if: inputs.models
     uses: ./.github/workflows/offline-keyboard-models.yml
 
   publish:
     needs: [apk, models]
+    if: always() && needs.apk.result == 'success' && (needs.models.result == 'success' || needs.models.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -45,13 +51,18 @@ jobs:
         run: |
           mkdir -p out
           cp dl/offline-keyboard-debug-apk/app-debug.apk out/OfflineKeyboard.apk
-          cp dl/offline-keyboard-mt-*/offline-keyboard-mt-*.zip out/
-          for m in vosk-model-small-uk-v3-small vosk-model-small-pl-0.22 vosk-model-small-en-us-0.15; do
-            cp "dl/$m/$m.zip" out/
-          done
+          if [ "${{ inputs.models }}" = "true" ]; then
+            mkdir -p models
+            cp dl/offline-keyboard-mt-*/offline-keyboard-mt-*.zip models/
+            for m in vosk-model-small-uk-v3-small vosk-model-small-pl-0.22 vosk-model-small-en-us-0.15; do
+              cp "dl/$m/$m.zip" models/
+            done
+            ls -la models
+          fi
           ls -la out
 
       - name: Publish release
+        if: inputs.version == ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-build-${{ github.run_number }}
@@ -60,13 +71,8 @@ jobs:
           prerelease: true
           files: out/*
           body: |
-            **Як встановити**
-            1. Завантажте `OfflineKeyboard.apk` і встановіть (нова версія ставиться поверх старої, налаштування зберігаються).
-            2. Голос: завантажте потрібні `vosk-model-small-…zip` (українська `uk`, польська `pl`, англійська `en-us`).
-            3. Переклад: `offline-keyboard-mt-ЗВІДКИ-КУДИ.zip` (uk — українська, pl — польська, en — англійська), наприклад `offline-keyboard-mt-uk-pl.zip`. Файли з `-accurate` — точніші, але більші й повільніші моделі.
-            4. Після завантаження торкніться «Відкрити» й виберіть OffKey — модель встановиться сама. Або: Налаштування → «Офлайн-моделі» → «Встановити завантажені файли» (можна кілька одразу). Розпаковувати zip не треба.
-
-            Застосунок працює без інтернету; файли моделей потрібні лише один раз.
+            Тестова збірка. Завантажте `OfflineKeyboard.apk` і встановіть (ставиться поверх старої, налаштування зберігаються).
+            Моделі голосу й перекладу: https://github.com/${{ github.repository }}/releases/tag/keyboard-models
 
       - name: Publish the final release
         if: inputs.version != ''
@@ -77,13 +83,13 @@ jobs:
           target_commitish: ${{ github.sha }}
           prerelease: false
           make_latest: false
-          files: out/*
+          files: out/OfflineKeyboard.apk
           body: |
             **OffKey ${{ inputs.version }}** — офлайн-клавіатура для Android: українська, польська, англійська.
             Без інтернету: набір, автовиправлення, голосовий ввід, переклад між трьома мовами, стікери, теми «Скло» і «Аркуш» (від руки), комп'ютерний режим і Bluetooth-клавіатура.
 
             **Встановлення:** завантажте `OfflineKeyboard.apk` і встановіть. Нова версія ставиться поверх старої.
-            **Моделі** голосу (`vosk-model-small-…zip`) і перекладу (`offline-keyboard-mt-…zip`) — за бажанням: після завантаження «Відкрити» → OffKey.
+            **Моделі** голосу й перекладу (за бажанням, один раз): https://github.com/${{ github.repository }}/releases/tag/keyboard-models — після завантаження «Відкрити» → OffKey.
 
       # Permanent link to the newest APK: …/releases/download/keyboard-latest/OfflineKeyboard.apk
       - name: Update the latest-APK release
@@ -102,6 +108,7 @@ jobs:
       # A model upload that GitHub broke off (a 500 mid-upload) leaves an asset that is neither replaced nor
       # downloadable, and every later upload of that file fails. Remove such leftovers first.
       - name: Drop half-uploaded model files
+        if: inputs.models
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -113,13 +120,14 @@ jobs:
 
       # Fixed address for the app's "Download" buttons: …/releases/download/keyboard-models/<file>.zip
       - name: Update the permanent model release
+        if: inputs.models
         uses: softprops/action-gh-release@v2
         with:
           tag_name: keyboard-models
           name: OffKey — моделі
           target_commitish: ${{ github.sha }}
           make_latest: false
-          files: out/*.zip
+          files: models/*.zip
           body: |
             Офлайн-моделі для клавіатури. Кнопки «Завантажити» в застосунку ведуть сюди.
             Після завантаження: Налаштування → «Офлайн-моделі» → «Імпортувати» й виберіть файл (розпаковувати не треба).

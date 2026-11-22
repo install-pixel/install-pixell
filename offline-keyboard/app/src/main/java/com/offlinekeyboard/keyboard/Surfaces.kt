@@ -277,6 +277,10 @@ class SurfacePainter(private val density: Float) {
         val w = rect.width()
         val h = rect.height()
         if (w <= 0f || h <= 0f) return
+        if (!paperPieces) {
+            drawWritten(canvas, rect, radius, state, seed, inkColor)
+            return
+        }
         val pk = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or ((seed and 0xFFFF).toLong() shl 1)
         val piece = pieces.getOrPut(pk) { tornPiece(w, h, radius, seed) }
         canvas.save()
@@ -293,18 +297,8 @@ class SurfacePainter(private val density: Float) {
                 canvas.restore()
             }
         }
-        // A piece with a fold in it is bent up along the fold: it stands higher off the page, a wider shadow.
         val spotX = rect.left + sheetOffsetX + paperSpotX(seed)
         val spotY = rect.top + sheetOffsetY + paperSpotY(seed)
-        if (!pressed && PaperSheets.journal(sheetLight)?.creaseAt(spotX + w / 2, spotY + h / 2, minOf(w, h) * 0.45f) != null) {
-            for (i in 6..9) {
-                fill.color = if (sheetLight) 0x123A2A14 else 0x2E000000
-                canvas.save()
-                canvas.translate(0.45f * i * density, 0.8f * i * density)
-                canvas.drawPath(piece, fill)
-                canvas.restore()
-            }
-        }
         fill.color = if (sheetLight) PaperTexture.KEY_PARCHMENT else PaperTexture.KEY_CHARCOAL
         canvas.drawPath(piece, fill)
         PaperSheets.shader(sheetLight)?.let { paper ->
@@ -334,6 +328,94 @@ class SurfacePainter(private val density: Float) {
         }
         canvas.restore()
     }
+
+    /**
+     * Sketch keys on the keyboard's paper are not drawn as keys (false): only their letter is written on the
+     * paper; pressed, the paper gives under the finger (a dent), chosen, a pencil ring round it. True (popups,
+     * the touchpad, the settings' cards): a scrap of paper laid on top.
+     */
+    var paperPieces = true
+
+    // Soft round shades with no edge (they fade to nothing): one unit gradient each, stretched to the dent.
+    private val softDark = RadialGradient(0f, 0f, 1f, 0x66000000, 0x00000000, Shader.TileMode.CLAMP)
+    private val softBrown = RadialGradient(0f, 0f, 1f, 0x405A3C1E, 0x005A3C1E, Shader.TileMode.CLAMP)
+    private val softLight = RadialGradient(0f, 0f, 1f, 0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+    private val softCream = RadialGradient(0f, 0f, 1f, 0x55FFF7E6, 0x00FFF7E6, Shader.TileMode.CLAMP)
+    private val dentOval = RectF()
+    private val rings = object : LinkedHashMap<Long, Path>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Path>) = size > 120
+    }
+
+    /** A key written on the paper: nothing but, pressed, a dent in the paper, or chosen, a pencil ring. */
+    private fun drawWritten(canvas: Canvas, rect: RectF, radius: Float, state: SurfaceState, seed: Int, inkColor: Int) {
+        val w = rect.width()
+        val h = rect.height()
+        when (state) {
+            SurfaceState.PRESSED -> {
+                // The paper pressed in under the finger: a soft shade where it gives (upper left, light from the
+                // top left) and a soft light where it rises again (lower right); no edge, no grey: on parchment
+                // the shade is a warm brown, so it melts into the paper.
+                val r = minOf(w * 0.55f, h * 0.6f)
+                val cx = rect.centerX()
+                val cy = rect.centerY()
+                fill.alpha = 0xFF
+                softSpot(canvas, if (sheetLight) softBrown else softDark, cx - r * 0.12f, cy - r * 0.14f, r * 1.05f, r * 0.95f)
+                softSpot(canvas, if (sheetLight) softCream else softLight, cx + r * 0.22f, cy + r * 0.3f, r * 0.8f, r * 0.62f)
+            }
+            SurfaceState.SELECTED -> {
+                // Chosen (Shift on, a mode): ringed in pencil, as one marks a word on a page.
+                val key = (w.toInt().toLong() shl 40) or (h.toInt().toLong() shl 24) or (seed and 0xFFFF).toLong()
+                val ring = rings.getOrPut(key) {
+                    Pencil.tapered(Pencil.loop(w * 0.86f, h * 0.8f, minOf(w, h) * 0.4f, seed, 1.2f * density), 1.7f * density)
+                }
+                canvas.save()
+                canvas.translate(rect.left + w * 0.07f, rect.top + h * 0.1f)
+                ink.color = inkColor
+                ink.alpha = (200 * brightness).toInt()
+                canvas.drawPath(ring, ink)
+                canvas.restore()
+            }
+            SurfaceState.NORMAL -> Unit
+        }
+    }
+
+    /** One soft round shade ([shader], a unit radial gradient) stretched to [rx] × [ry] at [cx], [cy]. */
+    private fun softSpot(canvas: Canvas, shader: Shader, cx: Float, cy: Float, rx: Float, ry: Float) {
+        matrix.setScale(rx, ry)
+        matrix.postTranslate(cx, cy)
+        shader.setLocalMatrix(matrix)
+        fill.shader = shader
+        dentOval.set(cx - rx, cy - ry, cx + rx, cy + ry)
+        canvas.drawOval(dentOval, fill)
+        fill.shader = null
+    }
+
+    /**
+     * The sketch's enlarged letter: not a scrap of paper but a soft round patch of the keyboard's paper rising
+     * over what is under it (opaque in the middle, melting away at its edge), the letter written on it.
+     */
+    fun drawSoftPatch(canvas: Canvas, rect: RectF) {
+        val r = minOf(rect.width(), rect.height()) / 2
+        val patch = if (sheetLight) softPatchLight else softPatchDark
+        // A soft shadow under it, then the patch.
+        softSpot(canvas, if (sheetLight) softBrown else softDark, rect.centerX() + r * 0.08f, rect.centerY() + r * 0.16f, r * 1.15f, r * 1.1f)
+        softSpot(canvas, patch, rect.centerX(), rect.centerY(), r * 1.1f, r * 1.05f)
+    }
+
+    /**
+     * The sketch's row of choices (a long press): the same soft patch of paper as the enlarged letter, drawn
+     * out to the width of the row; the choices are written on it and the one under the finger ringed.
+     */
+    fun drawSoftBand(canvas: Canvas, rect: RectF) {
+        val rx = rect.width() / 2
+        val ry = rect.height() / 2
+        val patch = if (sheetLight) softPatchLight else softPatchDark
+        softSpot(canvas, if (sheetLight) softBrown else softDark, rect.centerX() + ry * 0.08f, rect.centerY() + ry * 0.16f, rx + ry * 0.3f, ry * 1.15f)
+        softSpot(canvas, patch, rect.centerX(), rect.centerY(), rx + ry * 0.25f, ry * 1.1f)
+    }
+
+    private val softPatchDark = RadialGradient(0f, 0f, 1f, intArrayOf(0xF5141311.toInt(), 0xE6141311.toInt(), 0x00141311), floatArrayOf(0f, 0.62f, 1f), Shader.TileMode.CLAMP)
+    private val softPatchLight = RadialGradient(0f, 0f, 1f, intArrayOf(0xF5EAD9B4.toInt(), 0xE6EAD9B4.toInt(), 0x00EAD9B4), floatArrayOf(0f, 0.62f, 1f), Shader.TileMode.CLAMP)
 
     /** Where in the key sheet the piece of [seed] is cut from, beyond its place: every piece somewhere else. */
     fun paperSpotX(seed: Int): Float = (((seed + 1) * 2654435761L.toInt()) ushr 20).toFloat() * density * 0.37f
@@ -546,6 +628,22 @@ class SurfacePainter(private val density: Float) {
 
     /** How far a pressed typewriter key goes down. */
     val typewriterSink: Float get() = 6f * density
+
+    /**
+     * A typewriter plate's gloss drawn by itself, over the plate's text ([glossOnTop]): the reflection lies on the
+     * lacquer over the letters too, as on the machine, rather than behind them, so text and light are one
+     * surface (the light only a little dimmer over the letters' own paint: they stay easy to read).
+     */
+    var glossOnTop = false
+
+    fun drawPlateGloss(canvas: Canvas, rect: RectF) {
+        val lit = 0.55f + 0.45f * brightness
+        val rimWidth = typewriterRim(rect.height(), true)
+        val t = rect.top + rimWidth
+        val iw = rect.width() - 2 * rimWidth
+        val ih = minOf(rect.height() - 2 * rimWidth, 60f * density)
+        softEllipse(canvas, gloss, rect.centerX() - iw * 0.12f, t + ih * 0.3f, iw * 0.42f, ih * 0.2f, lit * 0.8f)
+    }
 
     /** A soft light or shadow: [shader] (made over a unit circle) stretched to the ellipse at [cx], [cy]. */
     private fun softEllipse(canvas: Canvas, shader: Shader, cx: Float, cy: Float, rx: Float, ry: Float, alpha: Float = 1f) {
@@ -909,7 +1007,9 @@ class SurfacePainter(private val density: Float) {
         // light), and a faint bounce of light at the bottom.
         val iw = capRect.width()
         val ih = minOf(capRect.height(), if (plate) 60f * density else capRect.height())
-        if (pressed) {
+        if (plate && glossOnTop) {
+            // Drawn later over what is written on the plate (see drawPlateGloss).
+        } else if (pressed) {
             softEllipse(canvas, gloss, cx - iw * 0.1f, capRect.top + ih * 0.34f, iw * 0.36f, ih * 0.16f, 0.45f * lit)
         } else {
             softEllipse(canvas, gloss, cx - iw * 0.12f, capRect.top + ih * 0.3f, iw * 0.42f, ih * 0.2f, lit)

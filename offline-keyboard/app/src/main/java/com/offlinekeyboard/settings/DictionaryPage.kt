@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -115,20 +116,36 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                 // Every word, in a small window of its own scrolled inside (a lazy list: thousands of words
                 // stay smooth), so a word typed by mistake can be found and deleted without knowing it.
                 val listState = rememberLazyListState()
+                // The sketch: the words written one per ruled pencil line, five lines high, scrolled inside (the
+                // lines go with the words, as in the try field); a notebook of thousands of words is not turned.
+                val sheet = LocalLook.current == Look.SHEET
+                val lineHeight = 44.dp
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 320.dp)
+                        .heightIn(max = if (sheet) lineHeight * 5 else 320.dp)
                         .fadingEdges(listState),
                 ) {
                     itemsIndexed(entries, key = { _, e -> e.word }) { i, e ->
-                        if (i > 0) RowDivider()
+                        if (i > 0 && !sheet) RowDivider()
                         // A word typed once (and not a known word) is kept but not suggested yet: shown dimmer.
                         val waiting = !store.dictionary.isTrusted(language, e.word.lowercase(language.locale), e)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.alpha(if (waiting) 0.5f else 1f),
+                            modifier = Modifier
+                                .then(
+                                    if (sheet) {
+                                        Modifier
+                                            .heightIn(min = lineHeight)
+                                            .drawBehind {
+                                                pencilStroke(size.height - 3.dp.toPx(), size.width * 0.01f, size.width * 0.99f, seed = 31 + i % 7, alpha = 0.45f)
+                                            }
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .alpha(if (waiting) 0.5f else 1f),
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(e.word)

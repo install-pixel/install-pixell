@@ -321,7 +321,7 @@
     <string name="help_emoji_body">• Przytrzymaj przecinek i puść — panel emoji; strzałki przewracają strony, pierwsza — najczęstsze.\n• Własne emoji i emotikony — «Emoji i naklejki» → «Moje emoji»; mają stronę ★.\n• Naklejki OffKey i własne animowane — tamże; trafiają do aplikacji, które je przyjmują.</string>
     <string name="help_dictionary">Słownik i kopia zapasowa</string>
     <string name="help_dictionary_body">• «Mój słownik» — dodawaj i usuwaj własne słowa do podpowiedzi.\n• Zapamiętywanie wpisanych słów — włącza się tamże; słowa zostają na telefonie.\n• Import — .txt (słowo w wierszu, do języka wybranego u góry) lub JSON {\"uk\": [...], \"pl\": [...]}.\n• Eksport — wszystkie Twoje słowa w JSON.\n• Pełna kopia — «O aplikacji» → «Kopia zapasowa»: ustawienia, emoji, skróty, słownik, glosariusz. Modele nie są dołączone.</string>
-    <string name="theme_glass_desc">Szkło z miękkimi odblaskami: czarne albo mleczne; aplikacja za nim rozmyta, gdzie telefon na to pozwala</string>
+    <string name="theme_glass_desc">Szkło z miękkimi odblaskami: czarne albo mleczne</string>
     <string name="theme_sheet_desc">Ołówek na papierze: klawisze to ręcznie wycięte karteczki</string>
     <string name="theme_typewriter">Typewriter</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze na dźwigniach, wytarte latami</string>
@@ -342,7 +342,7 @@
     <string name="clipboard_unpinned">Odpięto</string>
     <string name="key_sound">Dźwięki klawiszy</string>
     <string name="key_sound_volume">Głośność: %1$d%%</string>
-    <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Glass: pękają bąbelki folii. Cicho, gdy telefon jest wyciszony lub na wibracjach.</string>
+    <string name="key_sound_hint">Typewriter: klawisze stukają, spacja głucho uderza, Enter to powrót karetki. Sketch: pisze ołówek, ściera gumka. Glass: pękają bąbelki folii. Cicho, gdy telefon jest wyciszony lub na wibracjach. Głośność ustala telefon: głośność «Dźwięki systemowe» (w niektórych telefonach dzwonka lub powiadomień) w ustawieniach dźwięku. Ten suwak może je tylko ściszyć.</string>
     <string name="onb_title">Konfiguracja OffKey</string>
     <string name="onb_how">Jak skonfigurować klawiaturę?</string>
     <string name="onb_recommended">Zalecane</string>
@@ -382,9 +382,11 @@
     <string name="tone_title">Ton</string>
     <string name="tone_dark">Ciemny</string>
     <string name="tone_light">Jasny</string>
-    <string name="blur_state_on">Szkło nad aplikacją: aplikacja za klawiaturą jest rozmyta.</string>
-    <string name="blur_state_not_allowed">Telefon nie pozwala teraz na rozmycie za oknami: sprawdź oszczędzanie baterii i «Zezwalaj na rozmycie na poziomie okna» w opcjach programisty. Do tego czasu szkło jest pełne.</string>
-    <string name="blur_state_window">Okno klawiatury sięga wyżej niż klawisze, więc rozmycie jest wyłączone (rozmyłoby też aplikację).</string>
-    <string name="blur_state_old">Rozmycie za klawiaturą wymaga Androida 12 lub nowszego; szkło jest pełne.</string>
-    <string name="blur_state_unknown">Otwórz klawiaturę raz w stylu Szkło: wtedy tu będzie widać, czy aplikacja za nią jest rozmyta.</string>
+    <string name="blur_state_on">Aplikacja za klawiaturą jest rozmyta.</string>
+    <string name="blur_state_not_allowed">Ten telefon nie rozmywa teraz za oknami (może nie umieć albo wyłącza to oszczędzanie baterii lub «Zezwalaj na rozmycie na poziomie okna» w opcjach programisty): szkło zostaje pełne.</string>
+    <string name="blur_state_window">Okno klawiatury sięga wyżej niż klawisze, więc rozmycie jest wyłączone (rozmyłoby też aplikację): szkło zostaje pełne.</string>
+    <string name="blur_state_old">Rozmycie za klawiaturą wymaga Androida 12 lub nowszego: szkło zostaje pełne.</string>
+    <string name="glass_see_through">Prześwitujące szkło</string>
+    <string name="glass_see_through_desc">Aplikacja za klawiaturą prześwituje, rozmyta, gdzie telefon umie rozmywać. Gdzie indziej, i po wyłączeniu, szkło jest pełne, takie samo w każdej aplikacji. Większość aplikacji zostawia pod klawiaturą tylko swoje jednolite tło: treść widać tylko tam, gdzie rysują pod nią (przeglądarka, wideo).</string>
+    <string name="blur_state_unknown">Otwórz klawiaturę raz w stylu Szkło: wtedy tu będzie widać, czy telefon rozmywa aplikację za nią.</string>
 </resources>

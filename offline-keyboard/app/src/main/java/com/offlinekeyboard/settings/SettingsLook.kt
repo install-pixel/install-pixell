@@ -94,15 +94,16 @@ internal object Tone {
 
     /** The dark sheet: white pencil on graphite paper. */
     val SheetDark = Palette(
-        text = Color(0xFFEDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
+        // Ink, not stickers: the card's creases show through the words a little.
+        text = Color(0xE6EDEDED), secondary = Color(0xFF8F8C86), accent = Color(0xFFBDBDBD),
         confirm = Color(KeyboardTheme.CONFIRM), danger = Color(KeyboardTheme.DANGER), ink = Color(0xFFEDEDED),
-        page = Color(com.offlinekeyboard.keyboard.PaperTexture.GRAPHITE_EDGE), divider = Color(0x1FFFFFFF),
+        page = Color(0xFF0D0D0C), divider = Color(0x1FFFFFFF),
     )
     /** The light sheet: graphite pencil on parchment. */
     val SheetLight = Palette(
-        text = Color(KeyboardTheme.SHEET_INK), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
+        text = Color(0xE63A3128), secondary = Color(0xFF7D6E58), accent = Color(0xFF6B5A44),
         confirm = Color(0xFF2F5B8C), danger = Color(0xFFB03A2E), ink = Color(KeyboardTheme.SHEET_INK),
-        page = Color(com.offlinekeyboard.keyboard.PaperTexture.PARCHMENT_EDGE), divider = Color(0x333A3128), light = true,
+        page = Color(0xFFCBC1AE), divider = Color(0x333A3128), light = true,
     )
 
     /** Milky glass: graphite letters on pale glass, blue for the main action. */
@@ -173,6 +174,11 @@ internal fun SettingsTheme(mode: ThemeMode?, content: @Composable () -> Unit) {
         else -> Tone.Dark
     }
     if (Tone.palette != palette) Tone.palette = palette
+    // The sketch's cards are scraps of the owner's paper photographs: load them (once) for this tone.
+    if (look == Look.SHEET) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(palette.light) { PaperState.prepare(context, palette.light) }
+    }
     // Dark system buttons on the light page.
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
@@ -329,7 +335,8 @@ internal fun Modifier.lookSurface(
     alpha: Float = 0.8f,
 ): Modifier = when (LocalLook.current) {
     Look.GLASS -> glassFrame(radius, chosen, sheen, lit)
-    Look.SHEET -> sheetFrame(radius, seed, chosen || lit, ink)
+    // One sheet of paper: buttons and boxes are drawn on it in pencil, not laid on it.
+    Look.SHEET -> pencilFrame(radius, seed, if (chosen) 1f else alpha, if (chosen) 2.6.dp else 2.2.dp, ink)
     Look.TYPEWRITER -> typewriterFrame(radius, seed, chosen || lit)
 }
 
@@ -341,10 +348,12 @@ internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): M
     val painter = com.offlinekeyboard.keyboard.SurfacePainter(density).apply {
         brightness = KeyboardTheme.DEFAULT_BRIGHTNESS
         milk = Tone.palette.milk
+        // The window's reflection lies on the lacquer over the card's text, not behind it (see below).
+        glossOnTop = true
     }
     val rect = android.graphics.RectF(0f, 0f, size.width, size.height)
     val r = radius.toPx()
-    onDrawBehind {
+    onDrawWithContent {
         drawIntoCanvas {
             painter.draw(
                 it.nativeCanvas, rect, r, com.offlinekeyboard.keyboard.SurfaceStyle.TYPEWRITER, 0,
@@ -352,6 +361,8 @@ internal fun Modifier.typewriterFrame(radius: Dp, seed: Int, chosen: Boolean): M
                 seed = seed, plate = true,
             )
         }
+        drawContent()
+        drawIntoCanvas { painter.drawPlateGloss(it.nativeCanvas, rect) }
     }
 }
 
@@ -386,9 +397,49 @@ internal fun Modifier.sheetFrame(radius: Dp, seed: Int, chosen: Boolean, ink: Co
 
 /** When the sketch's paper (the key sheet and the settings page) is ready: read to be drawn again then. */
 internal object PaperState {
+    /** [v] (a [w] × [h] grid) averaged over a (2[r]+1)² square round each point, twice (close to a soft blur). */
+    private fun smooth(v: FloatArray, w: Int, h: Int, r: Int): FloatArray {
+        var src = v
+        repeat(2) {
+            val tmp = FloatArray(w * h)
+            val out = FloatArray(w * h)
+            val k = 2 * r + 1
+            for (y in 0 until h) for (x in 0 until w) {
+                var sum = 0f
+                for (d in -r..r) sum += src[y * w + (x + d).coerceIn(0, w - 1)]
+                tmp[y * w + x] = sum / k
+            }
+            for (y in 0 until h) for (x in 0 until w) {
+                var sum = 0f
+                for (d in -r..r) sum += tmp[(y + d).coerceIn(0, h - 1) * w + x]
+                out[y * w + x] = sum / k
+            }
+            src = out
+        }
+        return src
+    }
+
     var ready by androidx.compose.runtime.mutableIntStateOf(0)
     private val pages = HashMap<Boolean, android.graphics.Bitmap>()
     private val making = HashSet<Boolean>()
+    private val reliefs = HashMap<Boolean, android.graphics.Bitmap>()
+
+    /**
+     * The relief of the settings page's paper for the [light] tone as a small picture for the notebook's bend
+     * (red, green: the slope across and down, 0.5 flat; blue: light 0.5 neutral), the same size as the page
+     * photograph divided by [reliefScale]; null until the page is made.
+     */
+    fun relief(light: Boolean): android.graphics.Bitmap? = reliefs[light]
+
+    /** How many page-photograph pixels one pixel of [relief] spans. */
+    var reliefScale = 1f
+        private set
+
+    /** Loads the papers of the cards for the [light] tone; the cards are drawn again when they are there. */
+    fun prepare(context: android.content.Context, light: Boolean) {
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        com.offlinekeyboard.keyboard.PaperSheets.prepare(context.applicationContext, light) { main.post { ready++ } }
+    }
 
     /** The settings page's paper for the [light] tone, or null while it is made (it is asked for again then). */
     fun page(context: android.content.Context, light: Boolean): android.graphics.Bitmap? {
@@ -399,13 +450,45 @@ internal object PaperState {
             val main = android.os.Handler(android.os.Looper.getMainLooper())
             com.offlinekeyboard.keyboard.PaperSheets.prepare(app, light) { main.post { ready++ } }
             Thread {
-                // Three quarters of the screen's pixels, drawn stretched: soft enough, and made quickly.
+                // The owner's photograph of the paper (the keyboard's black paper, or a burnt-edged parchment),
+                // turned upright for the tall page.
                 val page = runCatching {
-                    com.offlinekeyboard.keyboard.PaperTexture.journal(metrics.widthPixels * 3 / 4, metrics.heightPixels * 3 / 4, metrics.density * 0.75f, light)
+                    val options = android.graphics.BitmapFactory.Options().apply { inScaled = false }
+                    val photo = android.graphics.BitmapFactory.decodeResource(
+                        app.resources,
+                        if (light) com.offlinekeyboard.R.drawable.sheet_page_light else com.offlinekeyboard.R.drawable.sheet_keys_dark,
+                        options,
+                    )
+                    if (photo.width > photo.height && metrics.heightPixels > metrics.widthPixels) {
+                        val turn = android.graphics.Matrix().apply { postRotate(90f) }
+                        android.graphics.Bitmap.createBitmap(photo, 0, 0, photo.width, photo.height, turn, true)
+                    } else {
+                        photo
+                    }
                 }.getOrNull()
+                // Its relief, read from the photograph as the keyboard's (where the paper is lighter or darker).
+                val relief = page?.let { p ->
+                    runCatching {
+                        val r = com.offlinekeyboard.keyboard.PaperSheets.reliefOf(p)
+                        // Smoother than the keyboard's: the settings' handwriting is small, and a slope that
+                        // turns within a stroke tears it at the crease; the big folds still bend the lines.
+                        val gx = smooth(r.gx, r.width, r.height, 2)
+                        val gy = smooth(r.gy, r.width, r.height, 2)
+                        val shade = smooth(r.shade, r.width, r.height, 1)
+                        val px = IntArray(r.width * r.height) { i ->
+                            fun c(v: Float, k: Float) = ((v * k + 0.5f).coerceIn(0f, 1f) * 255).toInt()
+                            (0xFF shl 24) or (c(gx[i], 1f / 3f) shl 16) or (c(gy[i], 1f / 3f) shl 8) or c(shade[i], 0.5f)
+                        }
+                        android.graphics.Bitmap.createBitmap(px, r.width, r.height, android.graphics.Bitmap.Config.ARGB_8888) to (1f / r.scale)
+                    }.getOrNull()
+                }
                 main.post {
                     making.remove(light)
-                    if (page != null) pages[light] = page.bitmap
+                    if (page != null) pages[light] = page
+                    if (relief != null) {
+                        reliefs[light] = relief.first
+                        reliefScale = relief.second
+                    }
                     ready++
                 }
             }.apply { name = "settings paper"; isDaemon = true }.start()
@@ -414,7 +497,7 @@ internal object PaperState {
     }
 }
 
-/** The sketch style's page: the keyboard's paper (parchment or charcoal) behind everything. */
+/** The sketch style's page: one sheet of paper behind everything, written on like a notebook's page. */
 @Composable
 internal fun Modifier.paperPage(): Modifier {
     if (LocalLook.current != Look.SHEET) return this
@@ -423,10 +506,16 @@ internal fun Modifier.paperPage(): Modifier {
     return drawBehind {
         PaperState.ready
         val page = PaperState.page(context, light) ?: return@drawBehind
+        // Scaled to cover the page, centred (the paper keeps its proportions).
+        val scale = maxOf(size.width / page.width, size.height / page.height)
+        val srcW = (size.width / scale).toInt().coerceAtMost(page.width)
+        val srcH = (size.height / scale).toInt().coerceAtMost(page.height)
         drawImage(
             page.asImageBitmap(),
+            srcOffset = androidx.compose.ui.unit.IntOffset((page.width - srcW) / 2, (page.height - srcH) / 2),
+            srcSize = androidx.compose.ui.unit.IntSize(srcW, srcH),
             dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
-            filterQuality = androidx.compose.ui.graphics.FilterQuality.Low,
+            filterQuality = androidx.compose.ui.graphics.FilterQuality.Medium,
         )
     }
 }
@@ -596,6 +685,17 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
         RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
     }
     if (family == StyleFamily.GLASS) {
+        Section(androidx.compose.ui.res.stringResource(R.string.glass_see_through)) {
+            SwitchRow(androidx.compose.ui.res.stringResource(R.string.glass_see_through), s.glassSeeThrough) { v ->
+                update { it.copy(glassSeeThrough = v) }
+            }
+            androidx.compose.material3.Text(
+                androidx.compose.ui.res.stringResource(R.string.glass_see_through_desc),
+                color = Tone.TextSecondary,
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            )
+        }
         // Whether the phone lets the glass lie over the blurred app, as the keyboard last found it.
         val context = androidx.compose.ui.platform.LocalContext.current
         val state = androidx.compose.runtime.remember { com.offlinekeyboard.keyboard.BlurState.load(context).first }

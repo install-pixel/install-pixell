@@ -7,6 +7,12 @@ Both inputs: mono 44.1 kHz WAV (ffmpeg -i in.mp3 -ac 1 -ar 44100 out.wav). Keys 
 from the single keystrokes; Enter is a carriage return cut from the typing; the margin bell is made from the
 bell's own two partials measured in the typing (it always rings over other keys there); a new sheet is a soft
 ratchet of the platen knob made from the same keystrokes, slowed down.
+
+1.21.0: keys, Return, bell and new sheet replaced with the owner's ElevenLabs foley (WAV 48 kHz, not kept in
+the repository), chosen by ear: tw_key_1..4 (a strike and the key coming back up; make_typewriter_sounds_v2.py,
+group 3), tw_return_1..3 (the carriage's slide end and bang, shortened to ~1.1 s), tw_bell, tw_sheet (the
+ratchet as the paper is rolled in; make_typewriter_sounds_v2b.py). Plain filtering and gain, no limiter.
+The space bar: the dullest strike of group 3 (e6a37d4b), also one of the keys.
 """
 import sys, wave
 import numpy as np

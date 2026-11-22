@@ -44,6 +44,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -73,6 +76,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        intent?.getIntExtra("bend", -1)?.takeIf { it in NotebookBend.variants.indices }?.let { NotebookBend.current = NotebookBend.variants[it] }
         super.onCreate(savedInstanceState)
         // Both styles are black: light status and navigation bar icons whatever the phone's theme.
         enableEdgeToEdge(
@@ -278,8 +282,40 @@ private fun PageContent(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
-    val scroll = rememberScrollState()
     val keyboardOpen = WindowInsets.isImeVisible
+    if (LocalLook.current == Look.SHEET) {
+        // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages).
+        val frame = remember { PaperFrame() }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .paperPage()
+                .onGloballyPositioned {
+                    val p = it.positionInRoot()
+                    frame.left = p.x
+                    frame.top = p.y
+                    frame.width = it.size.width.toFloat()
+                    frame.height = it.size.height.toFloat()
+                }
+                .safeDrawingPadding(),
+        ) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalPaperFrame provides frame) {
+                NotebookPages(title, Modifier.fillMaxWidth().weight(1f), content)
+            }
+            if (onBack != null && !keyboardOpen) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    InlineButton(onClick = onBack) { Text(stringResource(R.string.back), fontSize = 16.sp) }
+                }
+            }
+        }
+        return
+    }
+    val scroll = rememberScrollState()
     Column(
         Modifier
             .fillMaxSize()
@@ -371,8 +407,26 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    // The sketch: a scrap of paper of its own, not a drawn frame.
-                    .then(if (LocalLook.current == Look.SHEET) Modifier.lookSurface(14.dp, seed = 23) else Modifier),
+                    // The sketch: written on the page itself (one layer of paper), on ruled pencil lines.
+                    .then(
+                        if (LocalLook.current == Look.SHEET) {
+                            Modifier
+                                .drawBehind {
+                                    // Lines to write on, ruled in pencil, as on a notebook's page.
+                                    // Under each line of text, not through it (the first one below the hint).
+                                    val gap = 34.dp.toPx()
+                                    var y = 50.dp.toPx()
+                                    var line = 0
+                                    while (y < size.height - 4.dp.toPx()) {
+                                        pencilStroke(y, size.width * 0.03f, size.width * 0.97f, seed = 23 + line, alpha = 0.45f)
+                                        y += gap
+                                        line++
+                                    }
+                                }
+                        } else {
+                            Modifier
+                        },
+                    ),
                 colors = if (LocalLook.current == Look.SHEET) {
                     androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
