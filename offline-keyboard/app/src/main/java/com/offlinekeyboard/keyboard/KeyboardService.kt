@@ -277,6 +277,8 @@ class KeyboardService : InputMethodService(),
 
     /** Whether the system blurs the app behind the keyboard now (glass, Android 12+, where the phone can). */
     private var blurring = false
+    /** Whether the keyboard window's own background was made see-through (once, for the glass). */
+    private var windowSeeThrough = false
     private var blurListener: java.util.function.Consumer<Boolean>? = null
     private val blurSpot = IntArray(2)
 
@@ -286,8 +288,14 @@ class KeyboardService : InputMethodService(),
      * system blurs the whole window, so only while the window is no taller than the keyboard itself.
      */
     private fun updateBlur() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         val w = window.window ?: return
+        // Glass always shows the app through, blurred or not: the window itself must be see-through, or the
+        // half-transparent glass lies on the window's default black (phones that do not allow blur, Android < 12).
+        if (settings.themeMode.glass && !windowSeeThrough) {
+            windowSeeThrough = true
+            runCatching { w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)) }
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         val wm = getSystemService(WindowManager::class.java) ?: return
         if (blurListener == null) {
             val listener = java.util.function.Consumer<Boolean> { handler.post { updateBlur() } }
@@ -321,7 +329,6 @@ class KeyboardService : InputMethodService(),
         if (want == blurring) return
         blurring = want
         runCatching {
-            if (want) w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
             w.setBackgroundBlurRadius(if (want) (BLUR_DP * resources.displayMetrics.density).toInt() else 0)
         }
         rootView?.applyTheme(currentTheme())

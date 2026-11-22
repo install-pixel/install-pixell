@@ -545,6 +545,75 @@ class KeyboardUiTest {
     @Test
     fun settingsInGlassLight() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.GLASS_LIGHT)
 
+    /**
+     * Every panel of the keyboard in every style, chosen as the user does (in the settings), so the glass is
+     * the one the phone really shows: screenshots «panel-<style>-<panel>», to find anything still drawn the
+     * old way. Only screenshots: what each panel does is checked by the tests above.
+     */
+    @Test
+    fun everyPanelInEveryTheme() {
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        val modes = com.offlinekeyboard.keyboard.ThemeMode.entries
+        try {
+            for (mode in modes) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                relaunchTestScreen()
+                val tag = mode.name.lowercase().replace('_', '-')
+                fun shot(panel: String) {
+                    instrumentation.waitForIdleSync()
+                    Thread.sleep(700)
+                    screenshot("panel-$tag-$panel")
+                }
+                useMode(KeyboardMode.MOBILE)
+                useLanguage(Language.UK)
+                clear(activity.plain)
+                shot("letters")
+                longPressText("е", screenshotName = "panel-$tag-popup")
+                clear(activity.plain)
+                typeWord(activity.plain, "дяк")
+                shot("suggestions")
+                clear(activity.plain)
+                tapSpecial(SpecialKey.LAYER_SYMBOLS)
+                shot("symbols")
+                tapSpecial(SpecialKey.LAYER_NUMPAD)
+                shot("numpad")
+                tapSpecial(SpecialKey.LAYER_LETTERS)
+                openEmoji()
+                shot("emoji")
+                tapSpecial(SpecialKey.LAYER_LETTERS)
+                val keyboard = service()
+                instrumentation.runOnMainSync { keyboard.inputRootForTest?.showStickers(true) }
+                shot("stickers")
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.showStickers(false)
+                    keyboard.inputRootForTest?.showClipboard(true)
+                }
+                shot("clipboard")
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.showClipboard(false)
+                    keyboard.inputRootForTest?.remoteForTest = true
+                    keyboard.inputRootForTest?.showRemote(true)
+                    keyboard.inputRootForTest?.remotePanel?.showNavForTest()
+                }
+                shot("remote-nav")
+                instrumentation.runOnMainSync { keyboard.inputRootForTest?.remotePanel?.showMediaForTest() }
+                shot("remote-media")
+                instrumentation.runOnMainSync {
+                    keyboard.inputRootForTest?.remoteForTest = false
+                    keyboard.inputRootForTest?.showRemote(false)
+                }
+                useMode(KeyboardMode.COMPUTER)
+                shot("computer")
+                tapSpecial(SpecialKey.SHIFT)
+                shot("computer-shift")
+                tapSpecial(SpecialKey.SHIFT)
+                useMode(KeyboardMode.MOBILE)
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS) } }
+        }
+    }
+
     /** The settings in the milky typewriter's light colours: screenshots. */
     @Test
     fun settingsInMilkTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.MILK_TYPEWRITER)

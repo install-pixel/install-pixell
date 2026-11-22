@@ -840,8 +840,11 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun writeInk(label: String, rect: RectF, y: Float, left: Int, top: Int, w: Int, h: Int, relief: PaperSheets.Relief, scale: Float): android.graphics.Bitmap? {
         val plain = runCatching { android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return null
+        // An emoji is a coloured picture, not pencil: it bends with the paper too, but keeps its own colours.
+        val picture = isPicture(label)
         inkPaint.set(textPaint)
-        inkPaint.color = 0xFFFFFFFF.toInt()
+        // (Text next to an emoji, as «😀 1/8», takes the pencil's colour: the emoji itself ignores it.)
+        inkPaint.color = if (picture) textPaint.color or 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
         android.graphics.Canvas(plain).drawText(label, rect.centerX() - left, y - top, inkPaint)
         val src = IntArray(w * h)
         plain.getPixels(src, 0, w, 0, 0, w, h)
@@ -874,6 +877,25 @@ class KeyboardView(context: Context) : View(context) {
                     ((src[i + w] ushr 24) * (1 - fx) + (src[i + w + 1] ushr 24) * fx) * fy
                 if (a < 1f) continue
                 val light = 1f + 0.45f * relief.sample(relief.shade, u, v)
+                if (picture) {
+                    // The picture's colour where the ink came from, weighted by coverage (no dark fringe), lit and
+                    // shaded by the creases a little less than pencil, and a touch of the paper through it.
+                    val w00 = (1 - fx) * (1 - fy) * (src[i] ushr 24)
+                    val w10 = fx * (1 - fy) * (src[i + 1] ushr 24)
+                    val w01 = (1 - fx) * fy * (src[i + w] ushr 24)
+                    val w11 = fx * fy * (src[i + w + 1] ushr 24)
+                    val sum = w00 + w10 + w01 + w11
+                    if (sum <= 0f) continue
+                    fun channel(shift: Int) = (((src[i] shr shift) and 0xFF) * w00 + ((src[i + 1] shr shift) and 0xFF) * w10 +
+                        ((src[i + w] shr shift) and 0xFF) * w01 + ((src[i + w + 1] shr shift) and 0xFF) * w11) / sum
+                    val shade = 1f + 0.25f * (light - 1f) / 0.45f
+                    val alpha = (a * 0.92f).toInt().coerceIn(0, 255)
+                    out[py * w + px] = (alpha shl 24) or
+                        ((channel(16) * shade).toInt().coerceIn(0, 255) shl 16) or
+                        ((channel(8) * shade).toInt().coerceIn(0, 255) shl 8) or
+                        (channel(0) * shade).toInt().coerceIn(0, 255)
+                    continue
+                }
                 val alpha = (a * inkA / 255f).toInt().coerceIn(0, 255)
                 out[py * w + px] = (alpha shl 24) or
                     ((ir * light).toInt().coerceIn(0, 255) shl 16) or
@@ -882,6 +904,17 @@ class KeyboardView(context: Context) : View(context) {
             }
         }
         return runCatching { android.graphics.Bitmap.createBitmap(out, w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull()
+    }
+
+    /** Whether [label] is an emoji (drawn in its own colours): pictographs, symbols with the emoji sign, flags. */
+    private fun isPicture(label: String): Boolean {
+        var i = 0
+        while (i < label.length) {
+            val cp = label.codePointAt(i)
+            if (cp >= 0x1F000 || cp == 0xFE0F || cp in 0x2600..0x27BF || cp in 0x2B00..0x2BFF || cp in 0x2190..0x21FF && label.contains('️')) return true
+            i += Character.charCount(cp)
+        }
+        return false
     }
 
     /** Keys with a fixed meaning get a drawn icon; letters, names and text actions keep their label. */
