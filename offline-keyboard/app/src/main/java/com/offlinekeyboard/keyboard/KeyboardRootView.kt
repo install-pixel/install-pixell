@@ -452,6 +452,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private var message: CharSequence? = null
     private var statusAction: (() -> Unit)? = null
     private var liveText: CharSequence? = null
+    /** Where the user's own typed text ends in [liveText] (the translation follows it); -1: all of it. */
+    private var liveTypedEnd = -1
     private var suggestions: List<String> = emptyList()
     private var echo: CharSequence? = null
     private val clearMessage = Runnable { messageScroll?.cancel(); message = null; statusAction = null; refreshCentre() }
@@ -706,7 +708,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 showingEcho && laidOut -> printX()
                 // A translation on its way: right after the end of what the strip shows, measured where it really
                 // stands (measured afresh, the letter fell on the last one shown, with its prefix and slant).
-                live != null && laidOut -> printX()
+                live != null && laidOut -> printX(if (liveTypedEnd >= 0) liveTypedEnd else null)
                 live != null -> lineEndX(live.toString())
                 else -> textEndX()
             }
@@ -724,10 +726,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     /** Where the next letter goes on the paper: just after the cursor in the strip (x in this view). */
-    private fun printX(): Float {
+    private fun printX(at: Int? = null): Float {
         val layout = status.layout
         val text = status.text
-        val cursor = if (showingEcho && echoCursor in 0..text.length) echoCursor else text.length
+        val cursor = at?.coerceIn(0, text.length) ?: if (showingEcho && echoCursor in 0..text.length) echoCursor else text.length
         val at = if (layout != null) runCatching { layout.getPrimaryHorizontal(cursor) }.getOrDefault(0f) else 0f
         val advance = status.paint.measureText("0")
         val x = infoRow.left + statusScroll.left + status.left + status.totalPaddingLeft + at + advance / 2 - statusScroll.scrollX
@@ -1274,9 +1276,10 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     /** Text shown while dictating or translating (source text in auto mode); null to clear. */
-    fun showLive(text: CharSequence?) {
+    fun showLive(text: CharSequence?, typedEnd: Int = -1) {
         if (text != null) dismissNote()
         liveText = text
+        liveTypedEnd = if (text != null) typedEnd.coerceAtMost(text.length) else -1
         refreshCentre()
     }
 

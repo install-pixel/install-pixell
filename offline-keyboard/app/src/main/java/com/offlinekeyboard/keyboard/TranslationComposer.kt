@@ -83,6 +83,28 @@ class TranslationComposer(
         return result
     }
 
+    /**
+     * The word goes on right after its translation (no space between): the translation is taken back out
+     * and its [source] becomes the segment again, so the word is translated whole (it came back in pieces:
+     * «пири» and then «евід» on their own). False when [inserted] is not right before the cursor.
+     */
+    fun reopen(source: String, inserted: String): Boolean {
+        if (!buffer.isEmpty() || pending || inserted.isEmpty()) return false
+        // Only a word cut off: after a space or a mark the next letter starts a new word.
+        if (!inserted.last().isLetterOrDigit()) return false
+        val ic = connection() ?: return false
+        val before = ic.getTextBeforeCursor(inserted.length, 0)?.toString() ?: return false
+        if (before != inserted) return false
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(inserted.length, 0)
+        segmentStart = cursorPosition().let { if (it >= 0) it - inserted.length else -1 }
+        buffer.append(source)
+        generation++
+        setComposing(ic, buffer)
+        ic.endBatchEdit()
+        return true
+    }
+
     /** Translation failed: keep the source as composing text so the user can edit or commit it. */
     fun translationFailed(forGeneration: Int) {
         if (forGeneration == generation) pending = false

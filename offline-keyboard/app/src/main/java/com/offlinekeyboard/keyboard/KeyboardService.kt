@@ -230,6 +230,8 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onCreateInputView(): View {
+        // As smooth as the owner set the phone (90/120 Hz where allowed).
+        RefreshRate.apply(window?.window, this)
         val root = KeyboardRootView(this)
         root.keyboardView.listener = this
         root.toolbarListener = this
@@ -453,7 +455,19 @@ class KeyboardService : InputMethodService(),
     private fun directionLabel(direction: TranslationDirection) = "${direction.source.code}→${direction.target.code}"
 
     private val previewRunnable = Runnable { requestPreview() }
-    private val pauseRunnable = Runnable { if (settings.translationAuto && !composer.isEmpty && !composer.pending) startTranslation() }
+    // A pause translates only finished words: after a space or a mark (a word half written was translated,
+    // and its rest later on its own).
+    private val pauseRunnable = Runnable {
+        if (settings.translationAuto && !composer.isEmpty && !composer.pending && wordFinished(composer.text)) startTranslation()
+    }
+
+    private fun wordFinished(text: String) = text.isNotEmpty() && (text.last().isWhitespace() || text.last() in WORD_ENDS)
+
+    /** The part of [text] made of finished words (up to its last space or mark); the word being typed is left out. */
+    private fun finishedWords(text: String): String {
+        val end = text.indexOfLast { it.isWhitespace() || it in WORD_ENDS }
+        return if (end < 0) "" else text.substring(0, end + 1)
+    }
 
     /** After each change of the segment: preview soon, and (automatic mode) insert after a pause. */
     private fun segmentChanged() {
@@ -463,21 +477,41 @@ class KeyboardService : InputMethodService(),
             rootView?.showLive(null)
             return
         }
-        rootView?.showLive("${settings.translationDirection.target.code}: …")
+        // On the strip: what is being typed, and a space after it the translation of its finished words.
+        showTyping(composer.text, lastPreview)
         handler.postDelayed(previewRunnable, PREVIEW_DELAY_MS)
         if (settings.translationAuto && settings.translationPauseMs > 0) {
             handler.postDelayed(pauseRunnable, settings.translationPauseMs.toLong())
         }
     }
 
+    /** The preview of the finished words shown last (kept while the next word is typed). */
+    private var lastPreview: String? = null
+
+    /** The strip while translating: the typed source (the typebar strikes after it) and the preview a space on. */
+    private fun showTyping(source: String, preview: String?) {
+        val code = settings.translationDirection.target.code
+        val shown = if (preview.isNullOrBlank()) source else "$source   $code: $preview"
+        rootView?.showLive(shown, typedEnd = source.length)
+    }
+
     private fun requestPreview() {
-        val source = composer.text
-        if (source.isBlank()) return
+        val typed = composer.text
+        // Only finished words: two letters of a word have no translation, and the model makes one up.
+        val source = finishedWords(typed)
+        if (source.isBlank()) {
+            lastPreview = null
+            showTyping(typed, null)
+            return
+        }
         val generation = composer.generation
         val direction = settings.translationDirection
         translation.preview(source, direction) { result ->
             if (generation != composer.generation || composer.pending) return@preview
-            if (result is TranslationResult.Success) rootView?.showLive("${direction.target.code}: ${result.text.trim()}")
+            if (result is TranslationResult.Success) {
+                lastPreview = result.text.trim()
+                showTyping(composer.text, lastPreview)
+            }
         }
     }
 
@@ -515,6 +549,7 @@ class KeyboardService : InputMethodService(),
     private fun leaveSegment() {
         handler.removeCallbacks(previewRunnable)
         handler.removeCallbacks(pauseRunnable)
+        lastPreview = null
         composer.leave()
         rootView?.showLive(null)
     }
@@ -722,6 +757,11 @@ class KeyboardService : InputMethodService(),
                 EditorCommand.OpenStickers -> showStickers()
                 is EditorCommand.CommitText ->
                     if (translateActive) {
+                        // The word goes on right after its translation: it is the same word, translated whole.
+                        val letter = command.text.firstOrNull()?.isLetterOrDigit() == true
+                        lastTranslation?.let { (source, inserted) ->
+                            if (letter && composer.isEmpty && composer.reopen(source, inserted)) lastTranslation = null
+                        }
                         composer.append(command.text)
                         if (settings.translationAuto && endsSentence(command.text)) startTranslation() else segmentChanged()
                     } else if (!punctuate(command.text)) {
@@ -1781,6 +1821,9 @@ class KeyboardService : InputMethodService(),
     }
 
     companion object {
+        /** Marks that end a word for the translation (with a space). */
+        private const val WORD_ENDS = ",;:.!?…)»\""
+
         /** Keys that are typing too: a note on the strip goes when they are pressed. */
         private val NOTE_CLEARING_KEYS = setOf(SpecialKey.SPACE, SpecialKey.BACKSPACE, SpecialKey.ENTER)
 

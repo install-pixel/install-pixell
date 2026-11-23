@@ -134,7 +134,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         st.second = if (st.top == page) st.under else st.top
         st.place = st.first
         st.stage = 1
-        scope.launch { turned.snapTo(if (dir > 0) 0f else 1f) }
+        scope.launch { turned.snapTo(if (dir > 0) 0f else BACK_START) }
         return true
     }
 
@@ -142,7 +142,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
     fun finish(complete: Boolean) {
         scope.launch {
             snapshotFlow { st.stage }.first { it == 3 }
-            val target = if (st.dir > 0) (if (complete) 1f else 0f) else (if (complete) 0f else 1f)
+            val target = if (st.dir > 0) (if (complete) 1f else 0f) else (if (complete) 0f else BACK_START)
             turned.animateTo(target, tween((300 * kotlin.math.abs(target - turned.value) + 120).toInt()))
             if (complete) page = if (st.dir > 0) st.under else st.top
             st.stage = 0
@@ -156,7 +156,8 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
     /** Page [index]'s number, written on it between the turner's arrows. */
     fun DrawScope.drawNumber(index: Int) {
         if (st.navHeight <= 0f) return
-        val text = numbers.measure("${index + 1}", numberStyle)
+        // «1 / 3»: how many pages and where the end is (one page: just «1»).
+        val text = numbers.measure(if (st.count > 1) "${index + 1} / ${st.count}" else "${index + 1}", numberStyle)
         drawText(
             text,
             topLeft = Offset((size.width - text.size.width) / 2f, st.navTop + (st.navHeight - text.size.height) / 2f),
@@ -175,11 +176,19 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                // In pencil, as the page's writing (pale grey it was lost on the parchment).
+                // In pencil, as the page's writing (pale grey it was lost on the parchment). The arrows say where they
+                // lead: full ink to another page of this menu; pale where the menu ends (back from its first page to
+                // the menu before, on from its last page round to the first). Per page, as they are recorded with it.
                 val dim = Tone.TextPrimary.copy(alpha = 0.8f)
+                val pale = dim.copy(alpha = 0.3f)
+                val index = when (st.stage) {
+                    1, 2 -> st.place.coerceAtLeast(0)
+                    3 -> st.under
+                    else -> page
+                }
                 Text(
                     "‹",
-                    color = if (page == 0 && onFirstBack == null) dim.copy(alpha = 0.3f) else dim,
+                    color = if (index == 0) pale else dim,
                     fontSize = 30.sp,
                     modifier = Modifier
                         .clickable(interactionSource = null, indication = null) {
@@ -189,10 +198,10 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                 )
                 // The number is written on the page itself (see drawNumber), so it turns with its sheet; here
                 // only its place between the arrows.
-                androidx.compose.foundation.layout.Spacer(Modifier.width(28.dp))
+                androidx.compose.foundation.layout.Spacer(Modifier.width(64.dp))
                 Text(
                     "›",
-                    color = if (st.count <= 1) dim.copy(alpha = 0.3f) else dim,
+                    color = if (index >= st.count - 1) pale else dim,
                     fontSize = 30.sp,
                     modifier = Modifier
                         .clickable(interactionSource = null, indication = null) { if (begin(1)) finish(true) }
@@ -240,7 +249,9 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                         }
                     }
                     if (st.stage != 0) {
-                        val t = if (st.dir > 0) (-dx / w).coerceIn(0f, 1f) else 1f - (dx / w).coerceIn(0f, 1f)
+                        // Back: from where the sheet's edge is just at the screen's edge, so it comes under the finger
+                        // at once (from fully turned it stayed out of sight for the first centimetres: a delay).
+                        val t = if (st.dir > 0) (-dx / w).coerceIn(0f, 1f) else BACK_START * (1f - (dx / w).coerceIn(0f, 1f))
                         scope.launch { turned.snapTo(t) }
                     }
                 }
@@ -307,17 +318,12 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                 // The sheet's back: this very sheet from behind. Every point of it where it is on the
                                 // face (the turn shows it mirrored, as seen from behind: mirrored here as well, its creases
                                 // were not under the face's), its creases raised where the face's sink (their light and
-                                // shadow swapped), a little darker, its writing showing through faintly.
+                                // shadow swapped), a little darker. Opaque: nothing of the writing shows through (it looked
+                                // like an X-ray of the page).
                                 sheetBack.renderEffect = backEffect(relief, photo, frame, st, topPaper, light)
+
                                 sheetBack.record {
                                     if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
-                                    // The writing through the paper: barely there (the layer itself is shared with the
-                                    // front, so it is faded here, not by its own alpha).
-                                    drawIntoCanvas { c ->
-                                        c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = SHOW_THROUGH })
-                                        drawLayer(inkTop)
-                                        c.restore()
-                                    }
                                     drawRect(Color.Black.copy(alpha = if (light) 0.08f else 0.18f))
                                 }
                                 st.stage = 3
@@ -379,6 +385,9 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
 }
 
 private const val NAV = "notebook-nav"
+
+/** Where a turn back starts: the sheet's roll just at the screen's left edge (its share of a whole turn). */
+private const val BACK_START = 0.8f
 
 /**
  * The sketch's menu: going to another page turns the sheet as the notebook's own pages turn. The page shown is
@@ -630,8 +639,6 @@ private fun flipOf(variant: Int): Pair<Float, Float> = when (variant) {
     else -> 1f to 1f
 }
 
-/** How much of a sheet's writing shows through on its back. */
-private const val SHOW_THROUGH = 0.1f
 
 /** The back of a sheet: its paper with the relief's light and shadow swapped (a crease sunk on the face is raised). */
 private const val BACK_SHADER = """

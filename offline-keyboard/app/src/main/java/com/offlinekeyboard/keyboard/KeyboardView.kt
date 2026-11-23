@@ -128,6 +128,7 @@ class KeyboardView(context: Context) : View(context) {
         set(value) {
             if (field == value) return
             field = value
+            forgetRestingKeys()
             surfaces.brightness = value.brightness
             surfaces.milk = value.milk
             surfaces.sheetLight = !value.dark
@@ -223,6 +224,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        forgetRestingKeys()
         computeKeyRects()
         excludeBackGesture(w, h)
     }
@@ -459,6 +461,48 @@ class KeyboardView(context: Context) : View(context) {
         if (moving) postInvalidateOnAnimation()
     }
 
+    /** The typewriter's keys at rest, drawn once each (with their shadow): see [drawRestingKey]. */
+    private val restingKeys = HashMap<String, android.graphics.Bitmap>()
+
+    /** Forgets the kept keys (another look or size). */
+    private fun forgetRestingKeys() {
+        restingKeys.values.forEach { it.recycle() }
+        restingKeys.clear()
+    }
+
+    /** A typewriter key at rest from its kept picture (made on first use). */
+    private fun drawRestingKey(canvas: Canvas, body: RectF, index: Int, surface: SurfaceState, color: Int, worn: Boolean) {
+        val t = theme
+        // Room round the body for its shadow on the machine.
+        val pad = body.height() * 0.5f
+        val w = (body.width() + 2 * pad).toInt().coerceAtLeast(1)
+        val h = (body.height() + 2 * pad).toInt().coerceAtLeast(1)
+        val key = "$index|$w|$h|${body.width()}|${body.height()}|$surface|$color|$worn|${t.key}|${t.milk}|${t.brightness}"
+        val bitmap = restingKeys[key] ?: run {
+            val made = runCatching { android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull()
+                ?: return drawLiveKey(canvas, body, index, surface, color, worn)
+            val c = Canvas(made)
+            val at = RectF(pad, pad, pad + body.width(), pad + body.height())
+            surfaces.typewriterDepth = 0f
+            surfaces.typewriterWorn = worn
+            surfaces.draw(c, at, radius, t.style, t.key, surface, seed = index, inkColor = color)
+            surfaces.typewriterDepth = -2f
+            surfaces.typewriterWorn = false
+            if (restingKeys.size > MAX_RESTING_KEYS) forgetRestingKeys()
+            restingKeys[key] = made
+            made
+        }
+        canvas.drawBitmap(bitmap, body.left - pad, body.top - pad, null)
+    }
+
+    private fun drawLiveKey(canvas: Canvas, body: RectF, index: Int, surface: SurfaceState, color: Int, worn: Boolean) {
+        surfaces.typewriterDepth = 0f
+        surfaces.typewriterWorn = worn
+        surfaces.draw(canvas, body, radius, theme.style, theme.key, surface, seed = index, inkColor = color)
+        surfaces.typewriterDepth = -2f
+        surfaces.typewriterWorn = false
+    }
+
     private fun drawKeys(canvas: Canvas, ctx: LabelContext, now: Long) {
         val pressedKeys = HashSet<Key>()
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
@@ -489,11 +533,17 @@ class KeyboardView(context: Context) : View(context) {
                     // A typewriter key goes down and springs back up instead of glowing.
                     val body = typewriterBody(rect, key)
                     val depth = typewriterDepth(key, pressedKeys, now)
-                    surfaces.typewriterDepth = depth
-                    surfaces.typewriterWorn = isWorn(key)
-                    surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
-                    surfaces.typewriterDepth = -2f
-                    surfaces.typewriterWorn = false
+                    if (depth == 0f && surface != SurfaceState.PRESSED) {
+                        // At rest a key looks the same every frame: drawn once and kept (every frame redrawing ~40
+                        // metal keys with their rims, rust and scratches took twice a frame's time while typing).
+                        drawRestingKey(canvas, body, index, surface, color, isWorn(key))
+                    } else {
+                        surfaces.typewriterDepth = depth
+                        surfaces.typewriterWorn = isWorn(key)
+                        surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                        surfaces.typewriterDepth = -2f
+                        surfaces.typewriterWorn = false
+                    }
                     val rim = surfaces.typewriterRim(body.height())
                     face = RectF(body).apply {
                         inset(rim, rim)
@@ -1034,6 +1084,7 @@ class KeyboardView(context: Context) : View(context) {
     // ------------------------------------------------------------------ touch
 
     private inner class PointerState(var key: Key?, val downX: Float, val downY: Float) {
+        val downAt = android.os.SystemClock.uptimeMillis()
         var longPressFired = false
         var repeating = false
         var swipeConsumed = false
@@ -1217,9 +1268,20 @@ class KeyboardView(context: Context) : View(context) {
             return
         }
         if (isSpace(key) && spaceSwipeEnabled && !state.swipeConsumed && abs(x - state.downX) > dp(SPACE_SWIPE_DP)) {
-            state.swipeConsumed = true
-            state.cancelCallbacks()
-            listener?.onSpaceSwipe(if (x > state.downX) 1 else -1)
+            val quick = android.os.SystemClock.uptimeMillis() - state.downAt <= SPACE_SWIPE_MAX_MS
+            if (quick || !spaceCursorEnabled) {
+                state.swipeConsumed = true
+                state.cancelCallbacks()
+                listener?.onSpaceSwipe(if (x > state.downX) 1 else -1)
+            } else {
+                // Both gestures on the space bar: a slow drag is the cursor (it switched the language when the
+                // finger set off before the hold was over); only a quick swipe switches the language.
+                state.cancelCallbacks()
+                state.longPressFired = true
+                state.cursorMode = true
+                state.cursorX = x
+                feedback(light = true)
+            }
             invalidate()
         }
         if (isBackspace(key) && backspaceSwipeEnabled) {
@@ -1323,10 +1385,14 @@ class KeyboardView(context: Context) : View(context) {
     private fun dp(value: Float) = value * resources.displayMetrics.density
 
     private companion object {
+        /** How many kept key pictures at most (several layers and shift states). */
+        private const val MAX_RESTING_KEYS = 400
         const val EXCLUSION_DP = 200
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
         const val SPACE_SWIPE_DP = 60f
+        /** A swipe along the space bar switches the language only when quick (a slower drag moves the cursor). */
+        const val SPACE_SWIPE_MAX_MS = 280L
         const val SPACE_CURSOR_HOLD_MS = 320L
         const val SPACE_CURSOR_STEP_DP = 9f
         const val BACKSPACE_SWIPE_START_DP = 28f

@@ -4,6 +4,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
@@ -691,6 +694,53 @@ internal fun LookMark(checked: Boolean) {
 /** A keyboard style without its tone: what the style list offers. */
 internal enum class StyleFamily { GLASS, SHEET, TYPEWRITER }
 
+/** The picture of [family]'s keyboard in its [light] or dark variant. */
+private fun previewOf(family: StyleFamily, light: Boolean): Int = when (family) {
+    StyleFamily.GLASS -> if (light) R.drawable.style_preview_glass_light else R.drawable.style_preview_glass
+    StyleFamily.SHEET -> if (light) R.drawable.style_preview_sheet_light else R.drawable.style_preview_sheet
+    StyleFamily.TYPEWRITER -> if (light) R.drawable.style_preview_milk else R.drawable.style_preview_typewriter
+}
+
+/** The name of [family]'s [light] or dark variant (Сніжна, Графітова…). */
+private fun variantName(family: StyleFamily, light: Boolean): Int = when (family) {
+    StyleFamily.GLASS -> if (light) R.string.style_glass_light else R.string.style_glass_dark
+    StyleFamily.SHEET -> if (light) R.string.style_sheet_light else R.string.style_sheet_dark
+    StyleFamily.TYPEWRITER -> if (light) R.string.style_typewriter_light else R.string.style_typewriter_dark
+}
+
+/** A variant to choose: its keyboard as a picture, its name under it; the chosen one framed. */
+@Composable
+private fun VariantCard(preview: Int, name: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val sheet = LocalLook.current == Look.SHEET
+    androidx.compose.foundation.layout.Column(
+        modifier
+            .then(
+                when {
+                    sheet && selected -> Modifier.pencilFrame(12.dp, name.length, alpha = 0.9f)
+                    sheet -> Modifier
+                    else -> Modifier.lookSurface(12.dp, chosen = selected, lit = selected)
+                },
+            )
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(6.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(preview),
+            contentDescription = name,
+            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+            modifier = Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+        )
+        androidx.compose.material3.Text(
+            name,
+            color = if (selected || sheet) Tone.TextPrimary else Tone.TextSecondary,
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
 internal fun familyOf(mode: ThemeMode): StyleFamily = when {
     mode.sheet -> StyleFamily.SHEET
     mode.typewriter -> StyleFamily.TYPEWRITER
@@ -721,11 +771,24 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
             RadioRow(androidx.compose.ui.res.stringResource(label), family == f, androidx.compose.ui.res.stringResource(description)) {
                 update { it.withStyle(modeOf(f, light)) }
             }
+            // Under the chosen collection its two variants, each shown as its keyboard (a separate «Tone» block
+            // said nothing of what the variants look like).
+            if (family == f) {
+                androidx.compose.foundation.layout.Row(
+                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+                ) {
+                    for (lightOne in listOf(false, true)) {
+                        VariantCard(
+                            preview = previewOf(f, lightOne),
+                            name = androidx.compose.ui.res.stringResource(variantName(f, lightOne)),
+                            selected = light == lightOne,
+                            modifier = Modifier.weight(1f),
+                        ) { update { it.withStyle(modeOf(f, lightOne)) } }
+                    }
+                }
+            }
         }
-    }
-    Section(androidx.compose.ui.res.stringResource(R.string.tone_title)) {
-        RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_dark), !light) { update { it.withStyle(modeOf(family, false)) } }
-        RadioRow(androidx.compose.ui.res.stringResource(R.string.tone_light), light) { update { it.withStyle(modeOf(family, true)) } }
     }
     if (family == StyleFamily.GLASS) {
         Section(androidx.compose.ui.res.stringResource(R.string.glass_see_through)) {
