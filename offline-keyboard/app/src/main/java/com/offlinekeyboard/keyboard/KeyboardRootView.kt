@@ -699,11 +699,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             // It strikes where the letter goes in the text: on the strip's text after the cursor; while the strip
             // shows suggestions, right after the word being typed (they stand a space after it); while it shows
             // a translation's source text, at its end.
-            val onText = showingEcho && statusScroll.visibility == View.VISIBLE && status.layout != null
+            val laidOut = statusScroll.visibility == View.VISIBLE && status.layout != null
             val live = liveText
             strikeX = when {
                 suggestionsRow.visibility == View.VISIBLE && suggestionLead.visibility == View.VISIBLE -> leadEndX()
-                onText -> printX()
+                showingEcho && laidOut -> printX()
+                // A translation on its way: right after the end of what the strip shows, measured where it really
+                // stands (measured afresh, the letter fell on the last one shown, with its prefix and slant).
+                live != null && laidOut -> printX()
                 live != null -> lineEndX(live.toString())
                 else -> textEndX()
             }

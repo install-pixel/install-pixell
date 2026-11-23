@@ -756,6 +756,23 @@ class KeyboardUiTest {
                     .putExtra("page", "look")
                 ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(look).use {
                     Thread.sleep(1500)
+                    // A light touch at the edge, moved a little and let go: nothing on the page may jump.
+                    run {
+                        val rec = automation.executeShellCommand("screenrecord --time-limit 3 --bit-rate 6000000 $SCREENS/touch-$tag.mp4")
+                        Thread.sleep(600)
+                        val ty = metrics.heightPixels * 0.45f
+                        val tx = metrics.widthPixels * 0.9f
+                        val t0 = SystemClock.uptimeMillis()
+                        inject(MotionEvent.obtain(t0, t0, MotionEvent.ACTION_DOWN, tx, ty, 0))
+                        for (i in 1..4) {
+                            Thread.sleep(30)
+                            inject(MotionEvent.obtain(t0, SystemClock.uptimeMillis(), MotionEvent.ACTION_MOVE, tx - i * 8f, ty, 0))
+                        }
+                        Thread.sleep(500)
+                        inject(MotionEvent.obtain(t0, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, tx - 32f, ty, 0))
+                        Thread.sleep(1600)
+                        rec.close()
+                    }
                     val y = metrics.heightPixels * 0.45f
                     val from = metrics.widthPixels * 0.9f
                     val downTime = SystemClock.uptimeMillis()

@@ -311,7 +311,9 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
                 },
         ) {
             androidx.compose.runtime.CompositionLocalProvider(LocalPaperFrame provides frame) {
-                NotebookPages(title, onBack, Modifier.fillMaxSize(), content)
+                // Back from the first page of the main menu leaves the settings (there is nothing before it).
+                val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+                NotebookPages(title, onBack ?: activity?.let { a -> { a.finish() } }, Modifier.fillMaxSize(), content)
             }
         }
         return

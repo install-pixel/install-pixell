@@ -1,5 +1,7 @@
 package com.offlinekeyboard.settings
 
+import androidx.compose.ui.text.drawText
+
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 
 import android.os.Build
@@ -17,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.clickable
@@ -102,6 +105,8 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
     val relief = PaperState.relief(light)
     val photo = PaperState.page(context, light)
     val inkTop = rememberGraphicsLayer()
+    /** The turning sheet's writing, bent as on the page: a layer of its own (see below). */
+    val inkTopBent = rememberGraphicsLayer()
     val inkUnder = rememberGraphicsLayer()
     val sheet = rememberGraphicsLayer()
     val sheetBack = rememberGraphicsLayer()
@@ -146,6 +151,19 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         }
     }
 
+    val numbers = androidx.compose.ui.text.rememberTextMeasurer()
+    val numberStyle = MaterialTheme.typography.bodyLarge.copy(color = Tone.TextPrimary.copy(alpha = 0.8f), fontSize = 17.sp)
+
+    /** Page [index]'s number, written on it between the turner's arrows. */
+    fun DrawScope.drawNumber(index: Int) {
+        if (st.navHeight <= 0f) return
+        val text = numbers.measure("${index + 1}", numberStyle)
+        drawText(
+            text,
+            topLeft = Offset((size.width - text.size.width) / 2f, st.navTop + (st.navHeight - text.size.height) / 2f),
+        )
+    }
+
     Layout(
         content = {
             androidx.compose.runtime.CompositionLocalProvider(LocalNotebook provides true) {
@@ -170,14 +188,9 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                         }
                         .padding(horizontal = 22.dp, vertical = 4.dp),
                 )
-                // The number belongs to its page: taken with it while the pages are recorded, the lower page's
-                // during a turn (it vanished while turning and came back after).
-                val number = when (st.stage) {
-                    1, 2 -> st.place.coerceAtLeast(0)
-                    3 -> st.under
-                    else -> page
-                }
-                Text("${number + 1}", color = dim, fontSize = 17.sp)
+                // The number is written on the page itself (see drawNumber), so it turns with its sheet; here
+                // only its place between the arrows.
+                androidx.compose.foundation.layout.Spacer(Modifier.width(28.dp))
                 Text(
                     "›",
                     color = if (st.count <= 1) dim.copy(alpha = 0.3f) else dim,
@@ -262,24 +275,35 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
             })
             .drawWithContent {
                 when (st.stage) {
-                    0 -> drawContent()
+                    0 -> {
+                        drawContent()
+                        drawNumber(page)
+                    }
                     1, 2 -> {
                         // Taking the two pages, one a frame: each laid out alone (no page turner) and recorded.
                         val takingFirst = st.stage == 1
                         val wanted = if (takingFirst) st.first else st.second
                         if (st.place == wanted) {
                             val layer = if (wanted == st.top) inkTop else inkUnder
-                            layer.record { this@drawWithContent.drawContent() }
+                            // The page with its number on it: one sheet, written once (the number drawn apart changed
+                            // the moment a page was taken, before the sheet hid it).
+                            layer.record {
+                                this@drawWithContent.drawContent()
+                                drawNumber(wanted)
+                            }
                             if (takingFirst) {
                                 st.stage = 2
                                 st.place = st.second
                             } else {
                                 // Its writing bent as it lay on the page (the sheet is drawn outside the bend).
                                 val topPaper = variantOf(st.top)
-                                inkTop.renderEffect = bendEffect(relief, photo, frame, st, this.density, topPaper)
+                                // On a layer of its own: given to the page's own picture, the bend was applied twice in
+                                // the frame that still shows that picture on the (bent) page: the text jumped.
+                                inkTopBent.record { drawLayer(inkTop) }
+                                inkTopBent.renderEffect = bendEffect(relief, photo, frame, st, this.density, topPaper)
                                 sheet.record {
                                     if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
-                                    drawLayer(inkTop)
+                                    drawLayer(inkTopBent)
                                 }
                                 // The sheet's back: this very sheet from behind. Every point of it where it is on the
                                 // face (the turn shows it mirrored, as seen from behind: mirrored here as well, its creases
@@ -292,7 +316,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                     // front, so it is faded here, not by its own alpha).
                                     drawIntoCanvas { c ->
                                         c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = SHOW_THROUGH })
-                                        drawLayer(inkTop)
+                                        drawLayer(inkTopBent)
                                         c.restore()
                                     }
                                     drawRect(Color.Black.copy(alpha = if (light) 0.08f else 0.18f))
@@ -348,6 +372,8 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         layout(w, h) {
             if (shown >= 0) for (i in placeables.indices) if (pageOf[i] == shown) placeables[i].place(side, yOf[i])
             // The turner is part of every page (its number turns with the sheet).
+            st.navTop = (h - bottomInset - navLift - navH).toFloat()
+            st.navHeight = navH.toFloat()
             nav.place(0, h - bottomInset - navLift - navH)
         }
     }
@@ -451,7 +477,7 @@ private suspend fun windowPixels(view: android.view.View, box: android.graphics.
     }
 }
 
-private const val TURN_MS = 420
+private const val TURN_MS = 750
 
 private fun paperColor(light: Boolean) = if (light) Color(0xFFE8D7B0) else Color(0xFF161513)
 
@@ -568,6 +594,9 @@ private class PagesState {
     var second = 0
     var rootX by androidx.compose.runtime.mutableFloatStateOf(0f)
     var rootY by androidx.compose.runtime.mutableFloatStateOf(0f)
+    /** Where the page turner's row is: the page's number is written in its middle. */
+    var navTop = 0f
+    var navHeight = 0f
 }
 
 /** The page photograph drawn as [paperPage] draws it, for the part of the screen at root ([x], [y]). */
