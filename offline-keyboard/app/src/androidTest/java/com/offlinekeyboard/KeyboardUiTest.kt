@@ -755,7 +755,8 @@ class KeyboardUiTest {
                 val look = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
                     .putExtra("page", "look")
                 ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(look).use {
-                    Thread.sleep(1500)
+                    // Long enough for the paper's relief to be ready (the writing bends once it is).
+                    Thread.sleep(5000)
                     // A light touch at the edge, moved a little and let go: nothing on the page may jump.
                     run {
                         val rec = automation.executeShellCommand("screenrecord --time-limit 3 --bit-rate 6000000 $SCREENS/touch-$tag.mp4")

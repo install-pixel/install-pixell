@@ -105,8 +105,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
     val relief = PaperState.relief(light)
     val photo = PaperState.page(context, light)
     val inkTop = rememberGraphicsLayer()
-    /** The turning sheet's writing, bent as on the page: a layer of its own (see below). */
-    val inkTopBent = rememberGraphicsLayer()
+    val openPage = rememberGraphicsLayer()
     val inkUnder = rememberGraphicsLayer()
     val sheet = rememberGraphicsLayer()
     val sheetBack = rememberGraphicsLayer()
@@ -266,18 +265,18 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                     drawCurl(CurlGeometry(w, r, axis), sheet, sheetBack, light)
                 }
             }
-            .then(bend(relief, photo, frame, st) {
-                when (st.stage) {
-                    0 -> variantOf(page)
-                    1, 2 -> variantOf(st.first)
-                    else -> variantOf(st.under)
-                }
-            })
             .drawWithContent {
                 when (st.stage) {
+                    // The open page drawn as the turning pages are: its picture, bent by itself. (A bend on the page's
+                    // own layer and one on each taken picture were two different things: the writing jumped when a
+                    // page was taken.)
                     0 -> {
-                        drawContent()
-                        drawNumber(page)
+                        openPage.record {
+                            this@drawWithContent.drawContent()
+                            drawNumber(page)
+                        }
+                        openPage.renderEffect = bendEffect(relief, photo, frame, st, this.density, variantOf(page))
+                        drawLayer(openPage)
                     }
                     1, 2 -> {
                         // Taking the two pages, one a frame: each laid out alone (no page turner) and recorded.
@@ -291,19 +290,19 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                 this@drawWithContent.drawContent()
                                 drawNumber(wanted)
                             }
+                            // Each page's picture carries its own bend: drawn inside the page's bent layer a picture
+                            // is not bent by it (the writing jumped by the bend's offset the moment a page was taken),
+                            // so while turning that layer bends nothing and every picture bends itself.
+                            layer.renderEffect = bendEffect(relief, photo, frame, st, this.density, variantOf(wanted))
                             if (takingFirst) {
                                 st.stage = 2
                                 st.place = st.second
                             } else {
                                 // Its writing bent as it lay on the page (the sheet is drawn outside the bend).
                                 val topPaper = variantOf(st.top)
-                                // On a layer of its own: given to the page's own picture, the bend was applied twice in
-                                // the frame that still shows that picture on the (bent) page: the text jumped.
-                                inkTopBent.record { drawLayer(inkTop) }
-                                inkTopBent.renderEffect = bendEffect(relief, photo, frame, st, this.density, topPaper)
                                 sheet.record {
                                     if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
-                                    drawLayer(inkTopBent)
+                                    drawLayer(inkTop)
                                 }
                                 // The sheet's back: this very sheet from behind. Every point of it where it is on the
                                 // face (the turn shows it mirrored, as seen from behind: mirrored here as well, its creases
@@ -316,7 +315,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                     // front, so it is faded here, not by its own alpha).
                                     drawIntoCanvas { c ->
                                         c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = SHOW_THROUGH })
-                                        drawLayer(inkTopBent)
+                                        drawLayer(inkTop)
                                         c.restore()
                                     }
                                     drawRect(Color.Black.copy(alpha = if (light) 0.08f else 0.18f))
@@ -676,19 +675,6 @@ half4 main(float2 p) {
     return half4(clamp(c.rgb * light * k, 0.0, a), a);
 }
 """
-
-/**
- * The writing bent with the paper's relief (Android 13+): every point of the page's ink is taken from a little
- * up or down the paper's slope there, and lit or shaded with its creases, as the keyboard's letters are.
- */
-@Composable
-private fun bend(relief: android.graphics.Bitmap?, photo: android.graphics.Bitmap?, frame: PaperFrame, state: PagesState, variant: () -> Int): Modifier {
-    if (Build.VERSION.SDK_INT < 33 || relief == null || photo == null) return Modifier
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    return Modifier.graphicsLayer {
-        renderEffect = bendEffect(relief, photo, frame, state, density.density, variant())
-    }
-}
 
 /** The bend as an effect for a layer (null before Android 13 or while the paper is not loaded). */
 private fun bendEffect(
