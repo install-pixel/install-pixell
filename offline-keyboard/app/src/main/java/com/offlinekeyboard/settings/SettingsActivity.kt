@@ -78,6 +78,7 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         intent?.getIntExtra("bend", -1)?.takeIf { it in NotebookBend.variants.indices }?.let { NotebookBend.current = NotebookBend.variants[it] }
         super.onCreate(savedInstanceState)
+        com.offlinekeyboard.keyboard.RefreshRate.apply(window, this)
         // Both styles are black: light status and navigation bar icons whatever the phone's theme.
         enableEdgeToEdge(
             statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
@@ -173,11 +174,16 @@ private fun previewVibration(context: Context, strength: VibrationStrength) {
 
 internal enum class Page(val depth: Int) {
     MAIN(0), LOOK(1), TYPING(1), LANGUAGES(1), VOICE(1), ABOUT(1),
-    SHORTCUTS(1), DICTIONARY(1), BLUETOOTH(1), STICKERS(1), MODELS(2), GLOSSARY(2), HELP(1), HELP_TOPIC(2);
+    SHORTCUTS(2), DICTIONARY(1), BLUETOOTH(1), STICKERS(1), MODELS(2), GLOSSARY(2), HELP(2), HELP_TOPIC(3);
 
-    /** One step back: the models and the glossary live inside «Voice and translation», topics in the help. */
+    /**
+     * One step back: the models and the glossary live inside «Voice and translation», the shortcuts inside
+     * «Languages and keyboard», the help inside «Help and more», its topics in the help.
+     */
     val up: Page get() = when (this) {
         MODELS, GLOSSARY -> VOICE
+        SHORTCUTS -> LANGUAGES
+        HELP -> ABOUT
         HELP_TOPIC -> HELP
         else -> MAIN
     }
@@ -210,6 +216,24 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page, fromLau
 
     BackHandler(enabled = page != Page.MAIN && onboarding != true) { page = page.up }
 
+    val appContext = LocalContext.current.applicationContext
+    // Reset: every setting (the dictionary too when asked), then straight to the first setup's questions, as
+    // the first time (turning the keyboard on is skipped: it still is).
+    fun resetAll(withDictionary: Boolean) {
+        scope.launch {
+            repository.reset()
+            if (withDictionary) {
+                val store = UserDictionaryStore.get(appContext)
+                store.dictionary.clear()
+                store.pairs.clear()
+                store.changed()
+                store.saveNow()
+            }
+            page = Page.MAIN
+            onboarding = true
+        }
+    }
+
     val s = settings ?: return
     if (onboarding == null) onboarding = fromLauncher && !s.onboardingDone
     if (onboarding == true) {
@@ -223,10 +247,7 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page, fromLau
     // The sketch: a notebook, so another page is turned to, as its own pages are (it appeared without it).
     if (LocalLook.current == Look.SHEET) {
         PageTurnHost(page, forward = { from, to -> to.depth > from.depth }) { shown ->
-            PageContent(
-                shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } },
-                onFirstSetup = { onboarding = true },
-            )
+            PageContent(shown, s, update, onOpen = { page = it }, onReset = ::resetAll)
         }
         return
     }
@@ -251,10 +272,7 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page, fromLau
         },
         label = "page",
     ) { shown ->
-        PageContent(
-            shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } },
-            onFirstSetup = { onboarding = true },
-        )
+        PageContent(shown, s, update, onOpen = { page = it }, onReset = ::resetAll)
     }
 }
 
@@ -263,16 +281,16 @@ private const val PAGE_OUT_MS = 180
 
 @Composable
 private fun PageContent(
-    page: Page, s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: () -> Unit, onFirstSetup: () -> Unit,
+    page: Page, s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onReset: (Boolean) -> Unit,
 ) {
     val back = { onOpen(page.up) }
     when (page) {
         Page.MAIN -> MainPage(s, onOpen = onOpen)
         Page.LOOK -> LookPage(s, update, back)
         Page.TYPING -> TypingPage(s, update, back)
-        Page.LANGUAGES -> LanguagesPage(s, update, back)
+        Page.LANGUAGES -> LanguagesPage(s, update, onOpen, back)
         Page.VOICE -> VoicePage(s, update, onOpen, back)
-        Page.ABOUT -> AboutPage(onReset, onFirstSetup, back)
+        Page.ABOUT -> AboutPage(onOpen, onReset, back)
         Page.SHORTCUTS -> ShortcutsPage(s, update, onBack = back)
         Page.DICTIONARY -> DictionaryPage(s, update, onBack = back)
         Page.MODELS -> ModelsPage(onBack = back)
@@ -407,12 +425,17 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
         }
 
         Section(stringResource(R.string.section_menu)) {
-            // As in QRAFT: the help comes first.
-            NavRow(stringResource(R.string.page_help), subtitle = null, leading = "•••") { onOpen(Page.HELP) }
-            RowDivider()
+            // One page of eight, each a subject of its own, the most used first (the dictionary was hard to find
+            // among eleven rows over two pages).
             NavRow(stringResource(R.string.page_look), stringResource(R.string.page_look_summary)) { onOpen(Page.LOOK) }
             RowDivider()
             NavRow(stringResource(R.string.page_typing), stringResource(R.string.page_typing_summary)) { onOpen(Page.TYPING) }
+            RowDivider()
+            val words = remember(dictionaryVersion) { Language.entries.sumOf { dictionary.dictionary.size(it) } }
+            NavRow(
+                stringResource(R.string.page_dictionary),
+                stringResource(if (s.learnWords) R.string.page_dictionary_summary_on else R.string.page_dictionary_summary_off, words),
+            ) { onOpen(Page.DICTIONARY) }
             RowDivider()
             NavRow(stringResource(R.string.page_languages), stringResource(R.string.page_languages_summary)) { onOpen(Page.LANGUAGES) }
             RowDivider()
@@ -425,14 +448,6 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
             NavRow(stringResource(R.string.page_voice), stringResource(R.string.page_voice_summary, installed, total)) { onOpen(Page.VOICE) }
             RowDivider()
             NavRow(stringResource(R.string.page_stickers), stringResource(R.string.page_stickers_summary)) { onOpen(Page.STICKERS) }
-            RowDivider()
-            val words = remember(dictionaryVersion) { Language.entries.sumOf { dictionary.dictionary.size(it) } }
-            NavRow(
-                stringResource(R.string.page_dictionary),
-                stringResource(if (s.learnWords) R.string.page_dictionary_summary_on else R.string.page_dictionary_summary_off, words),
-            ) { onOpen(Page.DICTIONARY) }
-            RowDivider()
-            NavRow(stringResource(R.string.page_shortcuts), stringResource(R.string.page_shortcuts_summary, s.shortcuts.size)) { onOpen(Page.SHORTCUTS) }
             RowDivider()
             NavRow(
                 stringResource(R.string.page_bluetooth),
@@ -447,6 +462,7 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 /** Theme, key brightness and key size: everything about how the keyboard looks. */
 @Composable
 private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
+    val context = LocalContext.current
     PageScaffold(stringResource(R.string.page_look), onBack) {
         StylePicker(s, update, stringResource(R.string.theme_title))
         Section(stringResource(R.string.page_look_size)) {
@@ -468,61 +484,7 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
                 )
             }
         }
-        Section(stringResource(R.string.section_keys)) {
-            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
-                update { it.copy(mobileCursorRow = v) }
-            }
-            Text(stringResource(R.string.mobile_cursor_row_hint), style = MaterialTheme.typography.bodySmall)
-            SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v ->
-                update { it.copy(hideToolbarButtons = v) }
-            }
-            Text(stringResource(R.string.hide_toolbar_buttons_hint), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-/** How typing behaves: corrections, capitals, punctuation help, gestures, the enlarged letter, vibration. */
-@Composable
-private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
-    val context = LocalContext.current
-    PageScaffold(stringResource(R.string.page_typing), onBack) {
-        Section(stringResource(R.string.page_typing_text)) {
-            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v ->
-                update { it.copy(autoCorrect = v) }
-            }
-            SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v ->
-                update { it.copy(autoCapitalize = v) }
-            }
-            SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
-                update { it.copy(doubleSpacePeriod = v) }
-            }
-            SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation) { v ->
-                update { it.copy(smartPunctuation = v) }
-            }
-        }
-        Section(stringResource(R.string.page_typing_keys)) {
-            SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
-                update { it.copy(keyPreview = v) }
-            }
-            SwitchRow(stringResource(R.string.backspace_swipe), s.backspaceSwipe) { v ->
-                update { it.copy(backspaceSwipe = v) }
-            }
-            SwitchRow(stringResource(R.string.space_cursor), s.spaceCursor) { v -> update { it.copy(spaceCursor = v) } }
-            SwitchRow(stringResource(R.string.long_context), s.longContext) { v -> update { it.copy(longContext = v) } }
-            Text(stringResource(R.string.long_context_hint), style = MaterialTheme.typography.bodySmall)
-            SwitchRow(stringResource(R.string.learn_touch), s.learnTouch) { v -> update { it.copy(learnTouch = v) } }
-            Text(stringResource(R.string.learn_touch_hint), style = MaterialTheme.typography.bodySmall)
-            val context = androidx.compose.ui.platform.LocalContext.current
-            var touchForgotten by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            ActionButton(onClick = {
-                com.offlinekeyboard.keyboard.TouchModel.reset(context)
-                touchForgotten = true
-            }) { Text(stringResource(if (touchForgotten) R.string.learn_touch_forgotten else R.string.learn_touch_reset)) }
-            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
-                update { it.copy(compactToolbar = v) }
-            }
-        }
-        Section(stringResource(R.string.page_typing_vibration)) {
+        Section(stringResource(R.string.section_sound_feel)) {
             SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v ->
                 update { it.copy(hapticFeedback = v) }
             }
@@ -582,9 +544,61 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
     }
 }
 
+/** How typing behaves: corrections, capitals, punctuation help, gestures, the enlarged letter, vibration. */
+@Composable
+private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
+    val context = LocalContext.current
+    PageScaffold(stringResource(R.string.page_typing), onBack) {
+        Section(stringResource(R.string.page_typing_text)) {
+            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v ->
+                update { it.copy(autoCorrect = v) }
+            }
+            SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v ->
+                update { it.copy(autoCapitalize = v) }
+            }
+            SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
+                update { it.copy(doubleSpacePeriod = v) }
+            }
+            SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation) { v ->
+                update { it.copy(smartPunctuation = v) }
+            }
+        }
+        Section(stringResource(R.string.page_typing_keys)) {
+            SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v ->
+                update { it.copy(keyPreview = v) }
+            }
+            SwitchRow(stringResource(R.string.backspace_swipe), s.backspaceSwipe) { v ->
+                update { it.copy(backspaceSwipe = v) }
+            }
+            SwitchRow(stringResource(R.string.space_cursor), s.spaceCursor) { v -> update { it.copy(spaceCursor = v) } }
+            SwitchRow(stringResource(R.string.long_context), s.longContext) { v -> update { it.copy(longContext = v) } }
+            Text(stringResource(R.string.long_context_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.learn_touch), s.learnTouch) { v -> update { it.copy(learnTouch = v) } }
+            Text(stringResource(R.string.learn_touch_hint), style = MaterialTheme.typography.bodySmall)
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var touchForgotten by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            ActionButton(onClick = {
+                com.offlinekeyboard.keyboard.TouchModel.reset(context)
+                touchForgotten = true
+            }) { Text(stringResource(if (touchForgotten) R.string.learn_touch_forgotten else R.string.learn_touch_reset)) }
+            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
+                update { it.copy(compactToolbar = v) }
+            }
+            SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
+                update { it.copy(mobileCursorRow = v) }
+            }
+            Text(stringResource(R.string.mobile_cursor_row_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v ->
+                update { it.copy(hideToolbarButtons = v) }
+            }
+            Text(stringResource(R.string.hide_toolbar_buttons_hint), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
 /** Input languages, the default mode (phone or computer) and the layout extras. */
 @Composable
-private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
+private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page) -> Unit, onBack: () -> Unit) {
     PageScaffold(stringResource(R.string.page_languages), onBack) {
         Section(stringResource(R.string.input_languages)) {
             for (language in Language.entries) {
@@ -613,6 +627,9 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
             SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
                 update { it.copy(rememberLastMode = v) }
             }
+        }
+        Section(stringResource(R.string.page_shortcuts)) {
+            NavRow(stringResource(R.string.page_shortcuts), stringResource(R.string.page_shortcuts_summary, s.shortcuts.size)) { onOpen(Page.SHORTCUTS) }
         }
     }
 }
@@ -688,9 +705,10 @@ private fun VoicePage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page
 
 /** Version, privacy, the last crash and resetting the settings. */
 @Composable
-private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () -> Unit) {
+private fun AboutPage(onOpen: (Page) -> Unit, onReset: (Boolean) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
+    var resetDictionary by remember { mutableStateOf(false) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val backupSaver = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -716,8 +734,13 @@ private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () 
         }
     }
     PageScaffold(stringResource(R.string.page_about), onBack) {
+        Section(stringResource(R.string.section_help)) {
+            NavRow(stringResource(R.string.page_help), subtitle = null) { onOpen(Page.HELP) }
+        }
+
         Section(stringResource(R.string.app_name)) {
             Text(stringResource(R.string.about_description), style = MaterialTheme.typography.bodyMedium)
+            // Always the version installed (it is read from the app, never written by hand).
             Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall)
         }
 
@@ -734,18 +757,27 @@ private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () 
             backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
 
-        Section(stringResource(R.string.section_settings_reset)) {
+        // A report to send by hand (the app itself sends nothing anywhere): through the phone's «Share».
+        Section(stringResource(R.string.section_report)) {
             val crash = remember { com.offlinekeyboard.KeyboardApp.crashFile(context).takeIf { it.isFile }?.readText() }
-            if (crash != null) {
-                Text(stringResource(R.string.about_last_crash), style = MaterialTheme.typography.titleSmall)
-                Text(crash.lineSequence().take(6).joinToString("\n"), style = MaterialTheme.typography.bodySmall)
-                ActionButton(onClick = {
-                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
-                }) { Text(stringResource(R.string.about_copy_crash)) }
+            Text(stringResource(if (crash != null) R.string.report_with_crash else R.string.report_text), style = MaterialTheme.typography.bodySmall)
+            ActionButton(onClick = {
+                val report = buildString {
+                    append("OffKey ").append(BuildConfig.VERSION_NAME).append(" (").append(BuildConfig.VERSION_CODE).append(")\n")
+                    append("Android ").append(android.os.Build.VERSION.RELEASE).append(" · ").append(android.os.Build.MANUFACTURER)
+                        .append(' ').append(android.os.Build.MODEL).append("\n\n")
+                    if (crash != null) append(crash) else append(context.getString(R.string.report_describe))
+                }
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, report)
+                runCatching { context.startActivity(Intent.createChooser(send, context.getString(R.string.report_send))) }
+            }) { Text(stringResource(R.string.report_send)) }
+        }
+
+        Section(stringResource(R.string.section_settings_reset)) {
+            Text(stringResource(R.string.reset_text), style = MaterialTheme.typography.bodySmall)
+            ActionButton(tone = ButtonTone.DANGER, onClick = { resetDictionary = false; showResetDialog = true }) {
+                Text(stringResource(R.string.reset_settings))
             }
-            ActionButton(onClick = onFirstSetup) { Text(stringResource(R.string.onb_restart)) }
-            ActionButton(tone = ButtonTone.DANGER, onClick = { showResetDialog = true }) { Text(stringResource(R.string.reset_settings)) }
         }
     }
 
@@ -753,11 +785,17 @@ private fun AboutPage(onReset: () -> Unit, onFirstSetup: () -> Unit, onBack: () 
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             title = { Text(stringResource(R.string.reset_settings)) },
-            text = { Text(stringResource(R.string.reset_confirm)) },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    Text(stringResource(R.string.reset_confirm))
+                    // Off unless asked: the words gathered over months are not wiped by accident.
+                    SwitchRow(stringResource(R.string.reset_dictionary_too), resetDictionary) { resetDictionary = it }
+                }
+            },
             confirmButton = {
                 TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
                     showResetDialog = false
-                    onReset()
+                    onReset(resetDictionary)
                 }) { Text(stringResource(R.string.reset)) }
             },
             dismissButton = {

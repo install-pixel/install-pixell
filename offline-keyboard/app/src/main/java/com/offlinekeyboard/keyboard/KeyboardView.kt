@@ -128,6 +128,7 @@ class KeyboardView(context: Context) : View(context) {
         set(value) {
             if (field == value) return
             field = value
+            forgetRestingKeys()
             surfaces.brightness = value.brightness
             surfaces.milk = value.milk
             surfaces.sheetLight = !value.dark
@@ -223,6 +224,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        forgetRestingKeys()
         computeKeyRects()
         excludeBackGesture(w, h)
     }
@@ -459,6 +461,48 @@ class KeyboardView(context: Context) : View(context) {
         if (moving) postInvalidateOnAnimation()
     }
 
+    /** The typewriter's keys at rest, drawn once each (with their shadow): see [drawRestingKey]. */
+    private val restingKeys = HashMap<String, android.graphics.Bitmap>()
+
+    /** Forgets the kept keys (another look or size). */
+    private fun forgetRestingKeys() {
+        restingKeys.values.forEach { it.recycle() }
+        restingKeys.clear()
+    }
+
+    /** A typewriter key at rest from its kept picture (made on first use). */
+    private fun drawRestingKey(canvas: Canvas, body: RectF, index: Int, surface: SurfaceState, color: Int, worn: Boolean) {
+        val t = theme
+        // Room round the body for its shadow on the machine.
+        val pad = body.height() * 0.5f
+        val w = (body.width() + 2 * pad).toInt().coerceAtLeast(1)
+        val h = (body.height() + 2 * pad).toInt().coerceAtLeast(1)
+        val key = "$index|$w|$h|${body.width()}|${body.height()}|$surface|$color|$worn|${t.key}|${t.milk}|${t.brightness}"
+        val bitmap = restingKeys[key] ?: run {
+            val made = runCatching { android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull()
+                ?: return drawLiveKey(canvas, body, index, surface, color, worn)
+            val c = Canvas(made)
+            val at = RectF(pad, pad, pad + body.width(), pad + body.height())
+            surfaces.typewriterDepth = 0f
+            surfaces.typewriterWorn = worn
+            surfaces.draw(c, at, radius, t.style, t.key, surface, seed = index, inkColor = color)
+            surfaces.typewriterDepth = -2f
+            surfaces.typewriterWorn = false
+            if (restingKeys.size > MAX_RESTING_KEYS) forgetRestingKeys()
+            restingKeys[key] = made
+            made
+        }
+        canvas.drawBitmap(bitmap, body.left - pad, body.top - pad, null)
+    }
+
+    private fun drawLiveKey(canvas: Canvas, body: RectF, index: Int, surface: SurfaceState, color: Int, worn: Boolean) {
+        surfaces.typewriterDepth = 0f
+        surfaces.typewriterWorn = worn
+        surfaces.draw(canvas, body, radius, theme.style, theme.key, surface, seed = index, inkColor = color)
+        surfaces.typewriterDepth = -2f
+        surfaces.typewriterWorn = false
+    }
+
     private fun drawKeys(canvas: Canvas, ctx: LabelContext, now: Long) {
         val pressedKeys = HashSet<Key>()
         for (i in 0 until pointers.size()) pointers.valueAt(i).key?.let(pressedKeys::add)
@@ -489,11 +533,17 @@ class KeyboardView(context: Context) : View(context) {
                     // A typewriter key goes down and springs back up instead of glowing.
                     val body = typewriterBody(rect, key)
                     val depth = typewriterDepth(key, pressedKeys, now)
-                    surfaces.typewriterDepth = depth
-                    surfaces.typewriterWorn = isWorn(key)
-                    surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
-                    surfaces.typewriterDepth = -2f
-                    surfaces.typewriterWorn = false
+                    if (depth == 0f && surface != SurfaceState.PRESSED) {
+                        // At rest a key looks the same every frame: drawn once and kept (every frame redrawing ~40
+                        // metal keys with their rims, rust and scratches took twice a frame's time while typing).
+                        drawRestingKey(canvas, body, index, surface, color, isWorn(key))
+                    } else {
+                        surfaces.typewriterDepth = depth
+                        surfaces.typewriterWorn = isWorn(key)
+                        surfaces.draw(canvas, body, radius, t.style, t.key, surface, seed = index, inkColor = color)
+                        surfaces.typewriterDepth = -2f
+                        surfaces.typewriterWorn = false
+                    }
                     val rim = surfaces.typewriterRim(body.height())
                     face = RectF(body).apply {
                         inset(rim, rim)
@@ -1323,6 +1373,8 @@ class KeyboardView(context: Context) : View(context) {
     private fun dp(value: Float) = value * resources.displayMetrics.density
 
     private companion object {
+        /** How many kept key pictures at most (several layers and shift states). */
+        private const val MAX_RESTING_KEYS = 400
         const val EXCLUSION_DP = 200
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L

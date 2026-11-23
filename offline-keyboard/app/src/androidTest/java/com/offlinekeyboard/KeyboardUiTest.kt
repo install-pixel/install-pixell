@@ -810,6 +810,57 @@ class KeyboardUiTest {
         return null
     }
 
+    /**
+     * Frame timing (gfxinfo) while typing in every style and while turning the settings' pages: written to
+     * $SCREENS/perf.txt, to find what is slow. Measures only, asserts nothing.
+     */
+    @Test
+    fun framesWhileTypingAndTurning() {
+        val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
+        val pkg = instrumentation.targetContext.packageName
+        val metrics = instrumentation.targetContext.resources.displayMetrics
+        val report = StringBuilder()
+        fun summary(label: String) {
+            val out = shellOutput("dumpsys gfxinfo $pkg")
+            val keep = out.lines().filter { line ->
+                listOf("Total frames rendered", "Janky frames", "50th percentile", "90th percentile", "95th percentile", "99th percentile", "Number Slow UI thread", "Number Slow bitmap uploads", "Number Slow issue draw commands").any { line.trim().startsWith(it) }
+            }
+            report.append("== ").append(label).append('\n').append(keep.joinToString("\n")).append("\n\n")
+        }
+        try {
+            for (mode in com.offlinekeyboard.keyboard.ThemeMode.entries) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                relaunchTestScreen()
+                useMode(KeyboardMode.MOBILE)
+                useLanguage(Language.UK)
+                clear(activity.plain)
+                shell("dumpsys gfxinfo $pkg reset")
+                typeWord(activity.plain, "привітякспраави")
+                summary("typing " + mode.name)
+            }
+            scenario.close()
+            for (mode in listOf(com.offlinekeyboard.keyboard.ThemeMode.SHEET, com.offlinekeyboard.keyboard.ThemeMode.SHEET_LIGHT)) {
+                kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = mode) } }
+                val typing = android.content.Intent(instrumentation.targetContext, com.offlinekeyboard.settings.SettingsActivity::class.java)
+                    .putExtra("page", "typing")
+                ActivityScenario.launch<com.offlinekeyboard.settings.SettingsActivity>(typing).use {
+                    Thread.sleep(4000)
+                    shell("dumpsys gfxinfo $pkg reset")
+                    repeat(4) {
+                        shell("input swipe ${metrics.widthPixels * 85 / 100} ${metrics.heightPixels / 2} ${metrics.widthPixels * 15 / 100} ${metrics.heightPixels / 2} 350")
+                        Thread.sleep(1200)
+                    }
+                    summary("turning " + mode.name)
+                }
+            }
+        } finally {
+            kotlinx.coroutines.runBlocking { repository.update { it.copy(themeMode = com.offlinekeyboard.keyboard.ThemeMode.GLASS) } }
+            java.io.File(instrumentation.targetContext.cacheDir, "perf.txt").writeText(report.toString())
+            shell("cp ${instrumentation.targetContext.cacheDir}/perf.txt $SCREENS/perf.txt")
+        }
+        scenario = ActivityScenario.launch(KeyboardTestActivity::class.java)
+    }
+
     /** The settings in the milky typewriter's light colours: screenshots. */
     @Test
     fun settingsInMilkTypewriter() = settingsIn(com.offlinekeyboard.keyboard.ThemeMode.MILK_TYPEWRITER)
