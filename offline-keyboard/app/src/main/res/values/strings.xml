@@ -315,7 +315,8 @@
     <string name="help_computer">Computer keyboard</string>
     <string name="help_computer_body">• The keyboard button on the strip: a computer keyboard (Esc, Tab, Ctrl, Alt, Win, Fn, arrows) or back to the phone one.\n• Ctrl, Alt, Win: a tap for the next key, two quick taps to keep them.\n• Your own key combinations: «Languages and keyboard».</string>
     <string name="help_voice">Voice and translation</string>
-    <string name="help_voice_body">• 🎤: dictate; say «comma», «full stop», «new line» for marks.\n• ⇄: translate; again: another direction. The translation goes in after a finished sentence, a pause after a word, or Enter.\n• ↶: the original back.\n• The models are downloaded once: «Voice and translation» → «Offline models». The phone itself recognises and translates.</string>
+    <string name="help_voice_body">• 🎤: dictate; say «comma», «full stop», «new line» for marks.\n• ⇄: translate; again: another direction. The translation goes in after a finished sentence, a pause after a word, or Enter.\n• ↶: the original back.\n• The models are downloaded once: «Voice and translation» → «Offline models». The phone itself recognises and translates.
+• In translation mode everything typed or dictated is translated; typos are not fixed in it (⌫ corrects).</string>
     <string name="help_bluetooth">Bluetooth keyboard</string>
     <string name="help_bluetooth_body">• «Computer» → turn on; the first time, «Make the phone visible» and add it on the computer (Bluetooth → Add device).\n• The Bluetooth button on the keyboard: keys go to the computer; again: back to the phone.\n• The touchpad: a mouse, or arrows (the button in its corner) for a TV box.</string>
     <string name="help_emoji">Emoji and stickers</string>
@@ -326,7 +327,7 @@
     <string name="theme_sheet_desc">Pencil on paper: handwritten keys</string>
     <string name="theme_typewriter">Chronicle</string>
     <string name="theme_typewriter_desc">An old typewriter: round keys on levers</string>
-    <string name="theme_milk_typewriter">Chronicle · Cream</string>
+    <string name="theme_milk_typewriter">Chronicle Ivory</string>
     <string name="theme_milk_typewriter_desc">The same machine in light colours: milky keys in bronze, brown letters, old map paper</string>
     <string name="space_cursor">Hold the space bar and slide to move the cursor</string>
     <string name="long_context">Next word from the two words before</string>
@@ -405,8 +406,8 @@
     <string name="style_glass_light">Northern</string>
     <string name="style_sheet_dark">Graphite</string>
     <string name="style_sheet_light">Parchment</string>
-    <string name="style_typewriter_dark">Ink</string>
-    <string name="style_typewriter_light">Cream</string>
+    <string name="style_typewriter_dark">Noir</string>
+    <string name="style_typewriter_light">Ivory</string>
     <string name="onb_g_languages">The keyboard\'s languages. A swipe along the space bar switches between them.</string>
     <string name="onb_g_text_title">Corrections and punctuation</string>
     <string name="onb_g_text">Help while typing: a typo is fixed when the word ends (⌫ right after brings yours back), a capital starts a sentence, two spaces make a full stop, spaces around commas and marks are put right.</string>
@@ -417,4 +418,8 @@
     <string name="onb_g_sound">Each style has its own sound: a typewriter clicks, a pencil writes, glass pops. The volume and the vibration\'s strength are in «Look and sound».</string>
     <string name="onb_g_voice">Dictation and translation (Ukrainian · Polish · English) work on the phone, without the internet, but need models, downloaded once: «Voice and translation» → «Offline models» → «Download», then «Open» in the browser and choose OffKey. You can do it later: the keyboard offers it the first time you touch 🎤 or ⇄.</string>
     <string name="onb_g_computer">The phone can be a Bluetooth keyboard and touchpad for a computer or a TV box: «Computer» in the settings, when you need it.</string>
+    <string name="remember_mode_on_hint">The keyboard opens as you left it; the choice above shows which opens now.</string>
+    <string name="remember_mode_off_hint">The keyboard always opens as chosen above.</string>
+    <string name="cursor_row_small_keys">With low keys and the cursor row the letters get small: raise the key height in «Look and sound».</string>
+    <string name="compact_and_hidden">With the compact strip as well almost every button is hidden: a tap on the strip shows them.</string>
 </resources>

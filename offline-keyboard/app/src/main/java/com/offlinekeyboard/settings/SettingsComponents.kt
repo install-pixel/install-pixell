@@ -199,7 +199,7 @@ internal fun NavRow(title: String, subtitle: String?, leading: String? = null, o
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = if (sheet) 10.dp else 12.dp),
+            .padding(horizontal = 6.dp, vertical = if (sheet) 7.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {

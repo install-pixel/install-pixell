@@ -421,7 +421,8 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 
         Section(stringResource(R.string.section_try)) {
             var sample by rememberSaveable { mutableStateOf("") }
-            TryField(sample, stringResource(R.string.try_hint)) { sample = it }
+            // On the sketch's page two ruled lines (it scrolls inside): the whole menu fits on one page under it.
+            TryField(sample, stringResource(R.string.try_hint), height = if (LocalLook.current == Look.SHEET) 84.dp else 120.dp) { sample = it }
         }
 
         Section(stringResource(R.string.section_menu)) {
@@ -588,10 +589,18 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                 update { it.copy(mobileCursorRow = v) }
             }
             Text(stringResource(R.string.mobile_cursor_row_hint), style = MaterialTheme.typography.bodySmall)
+            // Low keys and a cursor row on top of them: the letters get small (the keyboard keeps its height).
+            if (s.mobileCursorRow && s.keyHeightScale < 0.9f) {
+                Text(stringResource(R.string.cursor_row_small_keys), style = MaterialTheme.typography.bodySmall, color = Tone.Danger)
+            }
             SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v ->
                 update { it.copy(hideToolbarButtons = v) }
             }
             Text(stringResource(R.string.hide_toolbar_buttons_hint), style = MaterialTheme.typography.bodySmall)
+            // With the compact strip as well, nearly every button is out of sight: said so.
+            if (s.compactToolbar && s.hideToolbarButtons) {
+                Text(stringResource(R.string.compact_and_hidden), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -627,6 +636,11 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (
             SwitchRow(stringResource(R.string.remember_last_mode), s.rememberLastMode) { v ->
                 update { it.copy(rememberLastMode = v) }
             }
+            // How the two go together (both decide which keyboard opens).
+            Text(
+                stringResource(if (s.rememberLastMode) R.string.remember_mode_on_hint else R.string.remember_mode_off_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
         Section(stringResource(R.string.page_shortcuts)) {
             NavRow(stringResource(R.string.page_shortcuts), stringResource(R.string.page_shortcuts_summary, s.shortcuts.size)) { onOpen(Page.SHORTCUTS) }
@@ -852,7 +866,8 @@ private fun RuledTryField(value: String, hint: String, height: androidx.compose.
     val scroll = rememberScrollState()
     val style = MaterialTheme.typography.bodyLarge.copy(color = Tone.TextPrimary)
     // Writing on at the end keeps its line in sight (the window scrolls down with it).
-    androidx.compose.runtime.LaunchedEffect(value.length) { scroll.animateScrollTo(scroll.maxValue) }
+    // Empty, it stays at its top (the hint on its first line: a lower window scrolled it out of sight).
+    androidx.compose.runtime.LaunchedEffect(value.length) { if (value.isEmpty()) scroll.scrollTo(0) else scroll.animateScrollTo(scroll.maxValue) }
     androidx.compose.foundation.layout.Box(
         Modifier
             .fillMaxWidth()

@@ -315,7 +315,8 @@
     <string name="help_computer">Комп’ютерна клавіатура</string>
     <string name="help_computer_body">• Кнопка з клавіатурою на смужці — комп\'ютерна клавіатура (Esc, Tab, Ctrl, Alt, Win, Fn, стрілки) або назад мобільна.\n• Ctrl, Alt, Win — дотик для наступної клавіші, два швидкі — зафіксувати.\n• Свої комбінації — «Мови й клавіатура».</string>
     <string name="help_voice">Голос і переклад</string>
-    <string name="help_voice_body">• 🎤 — диктуйте; «кома», «крапка», «новий рядок» ставлять знаки.\n• ⇄ — переклад; ще дотик — інший напрямок. Переклад з\'являється після закінченого речення, паузи після слова або Enter.\n• ↶ — повернути оригінал.\n• Моделі завантажуються один раз: «Голос і переклад» → «Офлайн-моделі». Розпізнає й перекладає сам телефон.</string>
+    <string name="help_voice_body">• 🎤 — диктуйте; «кома», «крапка», «новий рядок» ставлять знаки.\n• ⇄ — переклад; ще дотик — інший напрямок. Переклад з\'являється після закінченого речення, паузи після слова або Enter.\n• ↶ — повернути оригінал.\n• Моделі завантажуються один раз: «Голос і переклад» → «Офлайн-моделі». Розпізнає й перекладає сам телефон.
+• У режимі перекладу перекладається все набране й надиктоване; одруківки в ньому не виправляються (⌫ виправляє).</string>
     <string name="help_bluetooth">Bluetooth-клавіатура</string>
     <string name="help_bluetooth_body">• «Комп\'ютер» → увімкнути; перший раз — «Зробити телефон видимим» і додати його на комп\'ютері (Bluetooth → Додати пристрій).\n• Кнопка Bluetooth на клавіатурі — клавіші йдуть на комп\'ютер; ще дотик — назад на телефон.\n• Тачпад — миша або стрілки (кнопка в його куті) для ТВ-приставки.</string>
     <string name="help_emoji">Емодзі й стікери</string>
@@ -326,7 +327,7 @@
     <string name="theme_sheet_desc">Олівець на папері: клавіші, написані від руки</string>
     <string name="theme_typewriter">Chronicle</string>
     <string name="theme_typewriter_desc">Стара друкарська машинка: круглі клавіші на важелях</string>
-    <string name="theme_milk_typewriter">Chronicle · Кремова</string>
+    <string name="theme_milk_typewriter">Chronicle Ivory</string>
     <string name="theme_milk_typewriter_desc">Та сама машинка у світлих тонах: молочні клавіші в бронзі, коричневі літери, папір як стара мапа</string>
     <string name="space_cursor">Затиснути пробіл і вести — рухається курсор</string>
     <string name="long_context">Наступне слово за двома попередніми</string>
@@ -401,12 +402,12 @@
     <string name="report_send">Надіслати звіт</string>
     <string name="reset_text">Усі налаштування — як спочатку, потім знову перше налаштування.</string>
     <string name="reset_dictionary_too">І словник теж</string>
-    <string name="style_glass_dark">Опівнічна</string>
-    <string name="style_glass_light">Сніжна</string>
-    <string name="style_sheet_dark">Графітова</string>
-    <string name="style_sheet_light">Пергаментна</string>
-    <string name="style_typewriter_dark">Чорнильна</string>
-    <string name="style_typewriter_light">Кремова</string>
+    <string name="style_glass_dark">Midnight</string>
+    <string name="style_glass_light">Northern</string>
+    <string name="style_sheet_dark">Graphite</string>
+    <string name="style_sheet_light">Parchment</string>
+    <string name="style_typewriter_dark">Noir</string>
+    <string name="style_typewriter_light">Ivory</string>
     <string name="onb_g_languages">Мови клавіатури. Свайп по пробілу перемикає між ними.</string>
     <string name="onb_g_text_title">Виправлення й пунктуація</string>
     <string name="onb_g_text">Допомога під час набору: одруківку виправлено, коли слово закінчилось (⌫ одразу після — повертає ваше), речення починається з великої, два пробіли — крапка, пробіли біля ком і знаків стають правильно.</string>
@@ -417,4 +418,8 @@
     <string name="onb_g_sound">Кожен стиль має свій звук: друкарка клацає, олівець пише, скло лопається. Гучність і силу вібрації можна змінити у «Вигляд і звук».</string>
     <string name="onb_g_voice">Диктування й переклад (українська · польська · англійська) працюють на телефоні, без інтернету, але потрібні моделі — завантажуються один раз: «Голос і переклад» → «Офлайн-моделі» → «Завантажити», потім «Відкрити» в браузері й вибрати OffKey. Можна й пізніше: клавіатура запропонує це, коли вперше торкнетеся 🎤 чи ⇄.</string>
     <string name="onb_g_computer">Телефон може бути Bluetooth-клавіатурою й тачпадом для комп\'ютера чи ТВ-приставки: «Комп\'ютер» у налаштуваннях, коли знадобиться.</string>
+    <string name="remember_mode_on_hint">Клавіатура відкривається такою, якою ви її лишили; вибір вище показує, яка відкриється зараз.</string>
+    <string name="remember_mode_off_hint">Клавіатура завжди відкривається такою, як вибрано вище.</string>
+    <string name="cursor_row_small_keys">З низькими клавішами й курсорним рядом літери стають дрібними: збільште висоту клавіш у «Вигляд і звук».</string>
+    <string name="compact_and_hidden">Разом із компактною панеллю майже всі кнопки сховані: дотик до смужки показує їх.</string>
 </resources>

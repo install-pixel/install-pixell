@@ -30,7 +30,8 @@ data class KeyboardSettings(
     val enabledLanguages: List<Language> = Language.entries,
     val mobileCursorRow: Boolean = false,
     /** Mobile keyboard: the toolbar buttons hide until the text strip is tapped. */
-    val hideToolbarButtons: Boolean = true,
+    // Off at first: a newcomer saw an empty strip and did not know the buttons were there.
+    val hideToolbarButtons: Boolean = false,
     val keyHeightScale: Float = 1f,
     /** How bright frames, rims and light of the keys are, 0.4–1 (labels dim only a little). */
     val keyBrightness: Float = KeyboardTheme.DEFAULT_BRIGHTNESS,

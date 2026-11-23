@@ -1084,6 +1084,7 @@ class KeyboardView(context: Context) : View(context) {
     // ------------------------------------------------------------------ touch
 
     private inner class PointerState(var key: Key?, val downX: Float, val downY: Float) {
+        val downAt = android.os.SystemClock.uptimeMillis()
         var longPressFired = false
         var repeating = false
         var swipeConsumed = false
@@ -1267,9 +1268,20 @@ class KeyboardView(context: Context) : View(context) {
             return
         }
         if (isSpace(key) && spaceSwipeEnabled && !state.swipeConsumed && abs(x - state.downX) > dp(SPACE_SWIPE_DP)) {
-            state.swipeConsumed = true
-            state.cancelCallbacks()
-            listener?.onSpaceSwipe(if (x > state.downX) 1 else -1)
+            val quick = android.os.SystemClock.uptimeMillis() - state.downAt <= SPACE_SWIPE_MAX_MS
+            if (quick || !spaceCursorEnabled) {
+                state.swipeConsumed = true
+                state.cancelCallbacks()
+                listener?.onSpaceSwipe(if (x > state.downX) 1 else -1)
+            } else {
+                // Both gestures on the space bar: a slow drag is the cursor (it switched the language when the
+                // finger set off before the hold was over); only a quick swipe switches the language.
+                state.cancelCallbacks()
+                state.longPressFired = true
+                state.cursorMode = true
+                state.cursorX = x
+                feedback(light = true)
+            }
             invalidate()
         }
         if (isBackspace(key) && backspaceSwipeEnabled) {
@@ -1379,6 +1391,8 @@ class KeyboardView(context: Context) : View(context) {
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
         const val SPACE_SWIPE_DP = 60f
+        /** A swipe along the space bar switches the language only when quick (a slower drag moves the cursor). */
+        const val SPACE_SWIPE_MAX_MS = 280L
         const val SPACE_CURSOR_HOLD_MS = 320L
         const val SPACE_CURSOR_STEP_DP = 9f
         const val BACKSPACE_SWIPE_START_DP = 28f

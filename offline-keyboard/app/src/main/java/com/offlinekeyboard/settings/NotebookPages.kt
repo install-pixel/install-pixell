@@ -321,6 +321,7 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                 // shadow swapped), a little darker. Opaque: nothing of the writing shows through (it looked
                                 // like an X-ray of the page).
                                 sheetBack.renderEffect = backEffect(relief, photo, frame, st, topPaper, light)
+
                                 sheetBack.record {
                                     if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
                                     drawRect(Color.Black.copy(alpha = if (light) 0.08f else 0.18f))

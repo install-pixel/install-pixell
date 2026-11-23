@@ -315,7 +315,8 @@
     <string name="help_computer">Klawiatura komputerowa</string>
     <string name="help_computer_body">• Przycisk z klawiaturą na pasku — klawiatura komputera (Esc, Tab, Ctrl, Alt, Win, Fn, strzałki) lub z powrotem telefonu.\n• Ctrl, Alt, Win — dotknięcie dla następnego klawisza, dwa szybkie — zablokuj.\n• Własne kombinacje — «Języki i klawiatura».</string>
     <string name="help_voice">Głos i tłumaczenie</string>
-    <string name="help_voice_body">• 🎤 — dyktuj; «przecinek», «kropka», «nowa linia» wstawiają znaki.\n• ⇄ — tłumaczenie; ponownie — inny kierunek. Tłumaczenie pojawia się po zakończonym zdaniu, pauzie po słowie lub Enter.\n• ↶ — przywróć oryginał.\n• Modele pobiera się raz: «Głos i tłumaczenie» → «Modele offline». Rozpoznaje i tłumaczy sam telefon.</string>
+    <string name="help_voice_body">• 🎤 — dyktuj; «przecinek», «kropka», «nowa linia» wstawiają znaki.\n• ⇄ — tłumaczenie; ponownie — inny kierunek. Tłumaczenie pojawia się po zakończonym zdaniu, pauzie po słowie lub Enter.\n• ↶ — przywróć oryginał.\n• Modele pobiera się raz: «Głos i tłumaczenie» → «Modele offline». Rozpoznaje i tłumaczy sam telefon.
+• W trybie tłumaczenia tłumaczone jest wszystko, co wpisane lub podyktowane; literówki nie są w nim poprawiane (⌫ poprawia).</string>
     <string name="help_bluetooth">Klawiatura Bluetooth</string>
     <string name="help_bluetooth_body">• «Komputer» → włącz; za pierwszym razem «Pokaż telefon» i dodaj go w komputerze (Bluetooth → Dodaj urządzenie).\n• Przycisk Bluetooth na klawiaturze — klawisze idą do komputera; ponownie — z powrotem do telefonu.\n• Touchpad — mysz lub strzałki (przycisk w jego rogu) dla przystawki TV.</string>
     <string name="help_emoji">Emoji i naklejki</string>
@@ -326,7 +327,7 @@
     <string name="theme_sheet_desc">Ołówek na papierze: klawisze pisane ręcznie</string>
     <string name="theme_typewriter">Chronicle</string>
     <string name="theme_typewriter_desc">Stara maszyna do pisania: okrągłe klawisze na dźwigniach</string>
-    <string name="theme_milk_typewriter">Chronicle · Kremowa</string>
+    <string name="theme_milk_typewriter">Chronicle Ivory</string>
     <string name="theme_milk_typewriter_desc">Ta sama maszyna w jasnych barwach: mleczne klawisze w brązie, brązowe litery, papier jak stara mapa</string>
     <string name="space_cursor">Przytrzymaj spację i przesuń — kursor się przesuwa</string>
     <string name="long_context">Następne słowo z dwóch poprzednich</string>
@@ -401,12 +402,12 @@
     <string name="report_send">Wyślij raport</string>
     <string name="reset_text">Wszystkie ustawienia od nowa, potem znów pierwsza konfiguracja.</string>
     <string name="reset_dictionary_too">Także mój słownik</string>
-    <string name="style_glass_dark">Nocna</string>
-    <string name="style_glass_light">Śnieżna</string>
-    <string name="style_sheet_dark">Grafitowa</string>
-    <string name="style_sheet_light">Pergaminowa</string>
-    <string name="style_typewriter_dark">Atramentowa</string>
-    <string name="style_typewriter_light">Kremowa</string>
+    <string name="style_glass_dark">Midnight</string>
+    <string name="style_glass_light">Northern</string>
+    <string name="style_sheet_dark">Graphite</string>
+    <string name="style_sheet_light">Parchment</string>
+    <string name="style_typewriter_dark">Noir</string>
+    <string name="style_typewriter_light">Ivory</string>
     <string name="onb_g_languages">Języki klawiatury. Przesunięcie po spacji przełącza między nimi.</string>
     <string name="onb_g_text_title">Poprawki i interpunkcja</string>
     <string name="onb_g_text">Pomoc podczas pisania: literówka jest poprawiana po zakończeniu słowa (⌫ zaraz potem przywraca Twoje), zdanie zaczyna się wielką literą, dwie spacje to kropka, spacje przy przecinkach i znakach są wstawiane poprawnie.</string>
@@ -417,4 +418,8 @@
     <string name="onb_g_sound">Każdy styl ma swój dźwięk: maszyna stuka, ołówek pisze, szkło pęka. Głośność i siłę wibracji zmienisz w «Wygląd i dźwięk».</string>
     <string name="onb_g_voice">Dyktowanie i tłumaczenie (ukraiński · polski · angielski) działają na telefonie, bez internetu, ale potrzebują modeli, pobieranych raz: «Głos i tłumaczenie» → «Modele offline» → «Pobierz», potem «Otwórz» w przeglądarce i wybierz OffKey. Można później: klawiatura zaproponuje to przy pierwszym dotknięciu 🎤 lub ⇄.</string>
     <string name="onb_g_computer">Telefon może być klawiaturą Bluetooth i touchpadem dla komputera lub przystawki TV: «Komputer» w ustawieniach, gdy będzie potrzebny.</string>
+    <string name="remember_mode_on_hint">Klawiatura otwiera się tak, jak ją zostawiono; wybór powyżej pokazuje, która otworzy się teraz.</string>
+    <string name="remember_mode_off_hint">Klawiatura zawsze otwiera się tak, jak wybrano powyżej.</string>
+    <string name="cursor_row_small_keys">Przy niskich klawiszach i rzędzie kursora litery są małe: zwiększ wysokość klawiszy w «Wygląd i dźwięk».</string>
+    <string name="compact_and_hidden">Razem z kompaktowym paskiem prawie wszystkie przyciski są ukryte: dotknięcie paska je pokazuje.</string>
 </resources>
