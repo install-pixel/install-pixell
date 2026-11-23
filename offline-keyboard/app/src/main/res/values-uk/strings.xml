@@ -422,4 +422,5 @@
     <string name="remember_mode_off_hint">Клавіатура завжди відкривається такою, як вибрано вище.</string>
     <string name="cursor_row_small_keys">З низькими клавішами й курсорним рядом літери стають дрібними: збільште висоту клавіш у «Вигляд і звук».</string>
     <string name="compact_and_hidden">Разом із компактною панеллю майже всі кнопки сховані: дотик до смужки показує їх.</string>
+    <string name="size_mb">%1$d МБ</string>
 </resources>

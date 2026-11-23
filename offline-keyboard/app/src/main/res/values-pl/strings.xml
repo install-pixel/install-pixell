@@ -422,4 +422,5 @@
     <string name="remember_mode_off_hint">Klawiatura zawsze otwiera się tak, jak wybrano powyżej.</string>
     <string name="cursor_row_small_keys">Przy niskich klawiszach i rzędzie kursora litery są małe: zwiększ wysokość klawiszy w «Wygląd i dźwięk».</string>
     <string name="compact_and_hidden">Razem z kompaktowym paskiem prawie wszystkie przyciski są ukryte: dotknięcie paska je pokazuje.</string>
+    <string name="size_mb">%1$d MB</string>
 </resources>

@@ -422,4 +422,5 @@
     <string name="remember_mode_off_hint">The keyboard always opens as chosen above.</string>
     <string name="cursor_row_small_keys">With low keys and the cursor row the letters get small: raise the key height in «Look and sound».</string>
     <string name="compact_and_hidden">With the compact strip as well almost every button is hidden: a tap on the strip shows them.</string>
+    <string name="size_mb">%1$d MB</string>
 </resources>

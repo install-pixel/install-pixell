@@ -360,7 +360,10 @@ private fun RadioDot(selected: Boolean) {
     }
 }
 
-internal fun formatMb(bytes: Long): String = "%.0f MB".format(bytes / 1_000_000.0)
+/** A size in megabytes, written as the interface's language writes it (it said «MB» beside «МБ»). */
+@androidx.compose.runtime.Composable
+internal fun formatMb(bytes: Long): String =
+    androidx.compose.ui.res.stringResource(com.offlinekeyboard.R.string.size_mb, Math.round(bytes / 1_000_000.0).toInt())
 
 /** A thin line between rows of a glass card; the sheet has none (its rows are just written on the paper). */
 @Composable
