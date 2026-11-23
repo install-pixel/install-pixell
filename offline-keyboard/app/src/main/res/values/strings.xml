@@ -316,7 +316,7 @@
     <string name="help_computer_body">• The keyboard button on the strip: a computer keyboard (Esc, Tab, Ctrl, Alt, Win, Fn, arrows) or back to the phone one.\n• Ctrl, Alt, Win: a tap for the next key, two quick taps to keep them.\n• Your own key combinations: «Languages and keyboard».</string>
     <string name="help_voice">Voice and translation</string>
     <string name="help_voice_body">• 🎤: dictate; say «comma», «full stop», «new line» for marks.\n• ⇄: translate; again: another direction. The translation goes in after a finished sentence, a pause after a word, or Enter.\n• ↶: the original back.\n• The models are downloaded once: «Voice and translation» → «Offline models». The phone itself recognises and translates.
-• In translation mode everything typed or dictated is translated; typos are not fixed in it (⌫ corrects).</string>
+• In translation mode everything typed or dictated is translated; typos are not fixed in it (⌫ corrects).\n• Your own models: a larger, more accurate translation is offered right there («accurate»); for voice any Vosk model from alphacephei.com/vosk/models (its name must contain uk, pl or en): download the zip in the browser, then «Other models» → «Import».</string>
     <string name="help_bluetooth">Bluetooth keyboard</string>
     <string name="help_bluetooth_body">• «Computer» → turn on; the first time, «Make the phone visible» and add it on the computer (Bluetooth → Add device).\n• The Bluetooth button on the keyboard: keys go to the computer; again: back to the phone.\n• The touchpad: a mouse, or arrows (the button in its corner) for a TV box.</string>
     <string name="help_emoji">Emoji and stickers</string>

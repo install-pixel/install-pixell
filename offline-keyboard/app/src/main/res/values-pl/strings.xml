@@ -316,7 +316,7 @@
     <string name="help_computer_body">• Przycisk z klawiaturą na pasku — klawiatura komputera (Esc, Tab, Ctrl, Alt, Win, Fn, strzałki) lub z powrotem telefonu.\n• Ctrl, Alt, Win — dotknięcie dla następnego klawisza, dwa szybkie — zablokuj.\n• Własne kombinacje — «Języki i klawiatura».</string>
     <string name="help_voice">Głos i tłumaczenie</string>
     <string name="help_voice_body">• 🎤 — dyktuj; «przecinek», «kropka», «nowa linia» wstawiają znaki.\n• ⇄ — tłumaczenie; ponownie — inny kierunek. Tłumaczenie pojawia się po zakończonym zdaniu, pauzie po słowie lub Enter.\n• ↶ — przywróć oryginał.\n• Modele pobiera się raz: «Głos i tłumaczenie» → «Modele offline». Rozpoznaje i tłumaczy sam telefon.
-• W trybie tłumaczenia tłumaczone jest wszystko, co wpisane lub podyktowane; literówki nie są w nim poprawiane (⌫ poprawia).</string>
+• W trybie tłumaczenia tłumaczone jest wszystko, co wpisane lub podyktowane; literówki nie są w nim poprawiane (⌫ poprawia).\n• Własne modele: dokładniejsze tłumaczenie jest oferowane tamże («dokładny»); dla głosu dowolny model Vosk z alphacephei.com/vosk/models (w nazwie musi być uk, pl lub en): pobierz zip w przeglądarce, potem «Inne modele» → «Importuj».</string>
     <string name="help_bluetooth">Klawiatura Bluetooth</string>
     <string name="help_bluetooth_body">• «Komputer» → włącz; za pierwszym razem «Pokaż telefon» i dodaj go w komputerze (Bluetooth → Dodaj urządzenie).\n• Przycisk Bluetooth na klawiaturze — klawisze idą do komputera; ponownie — z powrotem do telefonu.\n• Touchpad — mysz lub strzałki (przycisk w jego rogu) dla przystawki TV.</string>
     <string name="help_emoji">Emoji i naklejki</string>
