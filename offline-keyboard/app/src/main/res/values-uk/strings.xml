@@ -90,6 +90,7 @@
     <string name="dictionary_words">Слова</string>
     <string name="dictionary_add_word">Нове слово</string>
     <string name="dictionary_add_invalid">Лише літери, апостроф і дефіс; 2–40 символів.</string>
+    <string name="dictionary_more">↓ ще %1$d</string>
     <string name="dictionary_empty">Слів ще немає.</string>
     <string name="dictionary_waiting">Поки не підказується: наберіть ще раз</string>
     <string name="dictionary_clear">Видалити всі слова</string>

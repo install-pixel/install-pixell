@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,14 +81,15 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (l in Language.entries) {
                     val count = remember(version, l) { store.dictionary.size(l) }
-                    FilterChip(selected = language == l, onClick = { language = l }, label = { Text("${l.code} ($count)") })
+                    LanguageChip("${l.code} ($count)", language == l) { language = l }
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = newWord,
                     onValueChange = { newWord = it; addError = false },
-                    label = { Text(stringResource(R.string.dictionary_add_word)) },
+                    // A hint inside the field: a floating label cut the frame (as the try field).
+                    placeholder = { Text(stringResource(R.string.dictionary_add_word)) },
                     singleLine = true,
                     isError = addError,
                     modifier = Modifier.weight(1f),
@@ -101,10 +104,13 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                 }) { Text(stringResource(R.string.add)) }
             }
             if (addError) Text(stringResource(R.string.dictionary_add_invalid), color = MaterialTheme.colorScheme.error)
+            // The search and the words under it are one block: on the sketch's pages they never part (the window of
+            // words stood alone at the top of the next page, its first word faded, and it was not clear what it was).
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text(stringResource(R.string.search)) },
+                placeholder = { Text(stringResource(R.string.search)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -159,6 +165,23 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                         }
                     }
                 }
+                // How many more words are below the window: plain that it goes on.
+                val more by androidx.compose.runtime.remember(entries) {
+                    androidx.compose.runtime.derivedStateOf {
+                        val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                        (entries.size - last - 1).coerceAtLeast(0)
+                    }
+                }
+                if (more > 0) {
+                    Text(
+                        stringResource(R.string.dictionary_more, more),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Tone.TextSecondary,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
             }
             ActionButton(tone = ButtonTone.DANGER, onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
         }
@@ -192,3 +215,22 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
     }
 }
 
+/**
+ * A language of the dictionary to show. The sketch: its name written, the chosen one circled in pencil (the
+ * glass chip's gloss looked like lacquer on the paper); the other styles: their chip.
+ */
+@Composable
+private fun LanguageChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    if (LocalLook.current == Look.SHEET) {
+        androidx.compose.foundation.layout.Box(
+            Modifier
+                .then(if (selected) Modifier.pencilFrame(14.dp, label.length, alpha = 0.9f) else Modifier)
+                .clickable(interactionSource = null, indication = null, onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Text(label, color = Tone.TextPrimary, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        }
+    } else {
+        FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
+    }
+}

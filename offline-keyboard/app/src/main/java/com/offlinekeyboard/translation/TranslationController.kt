@@ -61,7 +61,11 @@ class TranslationController(private val models: ModelStore, private val glossary
     private fun run(text: String, direction: TranslationDirection, beams: Int): TranslationResult = try {
         val engine = engineFor(direction)
         glossary?.let { engine.glossary = it.glossary }
-        engine.translate(text, direction, beams)
+        when (val result = engine.translate(text, direction, beams)) {
+            // Nothing made up: a result the model invented for what it could not translate keeps the text.
+            is TranslationResult.Success -> TranslationResult.Success(com.offlinekeyboard.core.translation.TranslationGuard.accept(text, result.text))
+            else -> result
+        }
     } catch (e: Throwable) {
         // OutOfMemoryError included: report instead of crashing the keyboard.
         release(direction)

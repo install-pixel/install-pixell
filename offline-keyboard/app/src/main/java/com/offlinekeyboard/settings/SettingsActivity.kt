@@ -107,6 +107,7 @@ class SettingsActivity : ComponentActivity() {
                         "look" -> Page.LOOK
                         "typing" -> Page.TYPING
                         "help" -> Page.HELP
+                        "dictionary" -> Page.DICTIONARY
                         else -> Page.MAIN
                     }
                     // The first setup is offered only when the app is opened from the launcher.
@@ -216,6 +217,16 @@ private fun SettingsApp(repository: SettingsRepository, startPage: Page, fromLau
             update { it.copy(onboardingDone = true) }
             onboarding = false
             page = Page.MAIN
+        }
+        return
+    }
+    // The sketch: a notebook, so another page is turned to, as its own pages are (it appeared without it).
+    if (LocalLook.current == Look.SHEET) {
+        PageTurnHost(page, forward = { from, to -> to.depth > from.depth }) { shown ->
+            PageContent(
+                shown, s, update, onOpen = { page = it }, onReset = { scope.launch { repository.reset() } },
+                onFirstSetup = { onboarding = true },
+            )
         }
         return
     }
@@ -526,7 +537,9 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                 }
             }
             RowDivider()
-            // The style's key sounds: typewriter, pencil or bubble wrap.
+            // The style's key sounds: typewriter, pencil or bubble wrap. The switch, its volume (and the bell) are
+            // one block: on the sketch's pages they never part.
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth()) {
             SwitchRow(stringResource(R.string.key_sound), s.keySound) { v ->
                 // Turned on from 0, at a quiet level rather than silent (as the keyboard's button does).
                 update { it.copy(keySound = v, keySoundVolume = if (v && it.keySoundVolume <= 0f) 0.3f else it.keySoundVolume) }
@@ -560,6 +573,7 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                         update { it.copy(typewriterBell = v) }
                     }
                 }
+            }
             }
             Text(stringResource(R.string.key_sound_hint), style = MaterialTheme.typography.bodySmall)
         }

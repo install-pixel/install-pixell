@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.clickable
@@ -50,6 +52,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Constraints
@@ -167,7 +170,14 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                         }
                         .padding(horizontal = 22.dp, vertical = 4.dp),
                 )
-                Text("${page + 1}", color = dim, fontSize = 17.sp)
+                // The number belongs to its page: taken with it while the pages are recorded, the lower page's
+                // during a turn (it vanished while turning and came back after).
+                val number = when (st.stage) {
+                    1, 2 -> st.place.coerceAtLeast(0)
+                    3 -> st.under
+                    else -> page
+                }
+                Text("${number + 1}", color = dim, fontSize = 17.sp)
                 Text(
                     "›",
                     color = if (st.count <= 1) dim.copy(alpha = 0.3f) else dim,
@@ -271,18 +281,19 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                                     if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
                                     drawLayer(inkTop)
                                 }
+                                // The sheet's back: this very sheet from behind. Every point of it where it is on the
+                                // face (the turn shows it mirrored, as seen from behind: mirrored here as well, its creases
+                                // were not under the face's), its creases raised where the face's sink (their light and
+                                // shadow swapped), a little darker, its writing showing through faintly.
+                                sheetBack.renderEffect = backEffect(relief, photo, frame, st, topPaper, light)
                                 sheetBack.record {
-                                    // The sheet's back: this very sheet seen from behind (its paper mirrored), a little
-                                    // darker, its writing showing through faintly, mirrored.
-                                    withTransform({ scale(-1f, 1f, Offset(size.width / 2, size.height / 2)) }) {
-                                        if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
-                                        // The writing through the paper: barely there (the layer itself is shared with
-                                        // the front, so it is faded here, not by its own alpha).
-                                        drawIntoCanvas { c ->
-                                            c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = SHOW_THROUGH })
-                                            drawLayer(inkTop)
-                                            c.restore()
-                                        }
+                                    if (photo != null) drawPaper(photo, frame, st.rootX, st.rootY, topPaper) else drawRect(paperColor(light))
+                                    // The writing through the paper: barely there (the layer itself is shared with the
+                                    // front, so it is faded here, not by its own alpha).
+                                    drawIntoCanvas { c ->
+                                        c.saveLayer(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height), androidx.compose.ui.graphics.Paint().apply { alpha = SHOW_THROUGH })
+                                        drawLayer(inkTop)
+                                        c.restore()
                                     }
                                     drawRect(Color.Black.copy(alpha = if (light) 0.08f else 0.18f))
                                 }
@@ -292,10 +303,8 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
                         }
                         drawLayer(if (st.first == st.top) inkTop else inkUnder)
                     }
-                    else -> {
-                        drawLayer(inkUnder)
-                        drawContent()
-                    }
+                    // The lower page as recorded, its number with it (not drawn twice).
+                    else -> drawLayer(inkUnder)
                 }
             },
     ) { measurables, constraints ->
@@ -338,13 +347,111 @@ internal fun NotebookPages(title: String, onFirstBack: (() -> Unit)?, modifier: 
         val shown = if (st.place == -2) page.coerceIn(0, p) else st.place
         layout(w, h) {
             if (shown >= 0) for (i in placeables.indices) if (pageOf[i] == shown) placeables[i].place(side, yOf[i])
-            // The turner only while no page is being taken (it is not part of a page).
-            if (st.stage == 0 || st.stage == 3) nav.place(0, h - bottomInset - navLift - navH)
+            // The turner is part of every page (its number turns with the sheet).
+            nav.place(0, h - bottomInset - navLift - navH)
         }
     }
 }
 
 private const val NAV = "notebook-nav"
+
+/**
+ * The sketch's menu: going to another page turns the sheet as the notebook's own pages turn. The page shown is
+ * taken as the screen shows it and turned away over the new one: forward to the left, back to the right (the
+ * mirrored turn). Taken whole, nothing under it changes while it turns.
+ */
+@Composable
+internal fun <T> PageTurnHost(target: T, forward: (from: T, to: T) -> Boolean, content: @Composable (T) -> Unit) {
+    var shown by androidx.compose.runtime.remember { mutableStateOf(target) }
+    val face = rememberGraphicsLayer()
+    val back = rememberGraphicsLayer()
+    val turned = remember { Animatable(0f) }
+    var turning by remember { mutableStateOf(false) }
+    var mirrored by remember { mutableStateOf(false) }
+    val light = Tone.light
+    val context = LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    val photo = PaperState.page(context, light)
+    val hostDensity = androidx.compose.ui.platform.LocalDensity.current
+    val hostDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+    var box by remember { mutableStateOf(android.graphics.Rect()) }
+
+    androidx.compose.runtime.LaunchedEffect(target) {
+        if (target == shown) return@LaunchedEffect
+        val ahead = forward(shown, target)
+        // The page as the screen shows it (a layer's own picture came out empty: the writing's bend is drawn by
+        // the GPU only).
+        val old = windowPixels(view, box)
+        if (old == null) {
+            shown = target
+            return@LaunchedEffect
+        }
+        val image = old.asImageBitmap()
+        val size = androidx.compose.ui.unit.IntSize(old.width, old.height)
+        face.record(hostDensity, hostDirection, size) {
+            if (ahead) {
+                drawImage(image)
+            } else {
+                // Drawn mirrored, turned in a mirror: it shows the right way round, turning to the right.
+                withTransform({ scale(-1f, 1f, Offset(this.size.width / 2, this.size.height / 2)) }) { drawImage(image) }
+            }
+        }
+        back.record(hostDensity, hostDirection, size) {
+            val frame = PaperFrame().apply { width = this@record.size.width; height = this@record.size.height }
+            if (photo != null) drawPaper(photo, frame, 0f, 0f, 1) else drawRect(paperColor(light))
+            drawRect(Color.Black.copy(alpha = if (light) 0.08f else 0.18f))
+        }
+        mirrored = !ahead
+        turned.snapTo(0f)
+        turning = true
+        shown = target
+        // From the next frame: the turn starts at its start (the frame clock may still hold an earlier time).
+        androidx.compose.runtime.withFrameNanos { }
+        turned.animateTo(1f, tween(TURN_MS))
+        turning = false
+        old.recycle()
+    }
+
+    androidx.compose.foundation.layout.Box(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned {
+                val p = it.positionInWindow()
+                box = android.graphics.Rect(p.x.toInt(), p.y.toInt(), p.x.toInt() + it.size.width, p.y.toInt() + it.size.height)
+            }
+            .drawWithContent {
+                drawContent()
+                if (turning) {
+                    val w = size.width
+                    val r = w * 0.12f
+                    val axis = w - turned.value * (w + Math.PI.toFloat() * r * 1.1f)
+                    if (mirrored) {
+                        withTransform({ scale(-1f, 1f, Offset(w / 2, size.height / 2)) }) { drawCurl(CurlGeometry(w, r, axis), face, back, light) }
+                    } else {
+                        drawCurl(CurlGeometry(w, r, axis), face, back, light)
+                    }
+                }
+            },
+    ) {
+        content(shown)
+    }
+}
+
+/** The window's pixels in [box] as the screen shows them (null when the phone cannot give them). */
+private suspend fun windowPixels(view: android.view.View, box: android.graphics.Rect): android.graphics.Bitmap? {
+    val window = (view.context as? android.app.Activity)?.window ?: return null
+    if (box.width() <= 0 || box.height() <= 0) return null
+    val bitmap = android.graphics.Bitmap.createBitmap(box.width(), box.height(), android.graphics.Bitmap.Config.ARGB_8888)
+    return kotlinx.coroutines.suspendCancellableCoroutine { done ->
+        runCatching {
+            android.view.PixelCopy.request(window, box, bitmap, { result ->
+                done.resumeWith(Result.success(if (result == android.view.PixelCopy.SUCCESS) bitmap else null))
+            }, android.os.Handler(android.os.Looper.getMainLooper()))
+        }.onFailure { done.resumeWith(Result.success(null)) }
+    }
+}
+
+private const val TURN_MS = 420
 
 private fun paperColor(light: Boolean) = if (light) Color(0xFFE8D7B0) else Color(0xFF161513)
 
@@ -498,6 +605,25 @@ private fun flipOf(variant: Int): Pair<Float, Float> = when (variant) {
 /** How much of a sheet's writing shows through on its back. */
 private const val SHOW_THROUGH = 0.1f
 
+/** The back of a sheet: its paper with the relief's light and shadow swapped (a crease sunk on the face is raised). */
+private const val BACK_SHADER = """
+uniform shader content;
+uniform shader relief;
+uniform float2 origin;
+uniform float2 flip;
+uniform float2 area;
+uniform float strength;
+half4 main(float2 p) {
+    float2 q = float2(flip.x < 0.0 ? area.x - p.x : p.x, flip.y < 0.0 ? area.y - p.y : p.y);
+    half4 r = relief.eval(q + origin);
+    float s = r.b * 2.0 - 1.0;
+    half4 c = content.eval(p);
+    // The face's light is in the photograph: taken out and turned the other way.
+    float k = clamp(1.0 - strength * s, 0.4, 1.6);
+    return half4(clamp(c.rgb * k, 0.0, c.a), c.a);
+}
+"""
+
 private const val BEND_SHADER = """
 uniform shader content;
 uniform shader relief;
@@ -546,6 +672,43 @@ private fun bendEffect(
 ): androidx.compose.ui.graphics.RenderEffect? {
     if (Build.VERSION.SDK_INT < 33 || relief == null || photo == null) return null
     val shader = android.graphics.RuntimeShader(BEND_SHADER)
+    setRelief(shader, relief, photo, frame, state, variant)
+    run {
+        val v = NotebookBend.current
+        shader.setFloatUniform("bend", v.bend * density)
+        shader.setFloatUniform("fade", v.fade)
+        shader.setFloatUniform("shade", v.shade)
+    }
+    return android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
+}
+
+/** The back of a sheet as an effect (null before Android 13 or while the paper is not loaded). */
+private fun backEffect(
+    relief: android.graphics.Bitmap?,
+    photo: android.graphics.Bitmap?,
+    frame: PaperFrame,
+    state: PagesState,
+    variant: Int,
+    light: Boolean,
+): androidx.compose.ui.graphics.RenderEffect? {
+    if (Build.VERSION.SDK_INT < 33 || relief == null || photo == null) return null
+    val shader = android.graphics.RuntimeShader(BACK_SHADER)
+    setRelief(shader, relief, photo, frame, state, variant)
+    // The parchment's relief is strong: turned at full strength its back came out blotchy.
+    shader.setFloatUniform("strength", if (light) 0.3f else 0.9f)
+    return android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
+}
+
+/** The relief under the page, laid as [drawPaper] lays the photograph (turned as page [variant]'s sheet). */
+@androidx.annotation.RequiresApi(33)
+private fun setRelief(
+    shader: android.graphics.RuntimeShader,
+    relief: android.graphics.Bitmap,
+    photo: android.graphics.Bitmap,
+    frame: PaperFrame,
+    state: PagesState,
+    variant: Int,
+) {
     run {
         val w = photo.width.toFloat()
         val h = photo.height.toFloat()
@@ -571,10 +734,5 @@ private fun bendEffect(
         val (fx, fy) = flipOf(variant)
         shader.setFloatUniform("flip", fx, fy)
         shader.setFloatUniform("area", frame.width, frame.height)
-        val v = NotebookBend.current
-        shader.setFloatUniform("bend", v.bend * density)
-        shader.setFloatUniform("fade", v.fade)
-        shader.setFloatUniform("shade", v.shade)
     }
-    return android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
 }
