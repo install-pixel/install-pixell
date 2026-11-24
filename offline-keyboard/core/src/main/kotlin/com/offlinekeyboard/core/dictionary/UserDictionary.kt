@@ -94,13 +94,19 @@ class UserDictionary(private val maxWordsPerLanguage: Int = DEFAULT_MAX_WORDS) {
      * without duplicates.
      */
     fun suggestionsWithBase(language: Language, prefix: String, limit: Int = 3): List<String> {
-        val own = suggestions(language, prefix, limit)
+        // Pieces of common words learned before (a search box, a slip) are not offered over the word itself.
+        val own = suggestions(language, prefix, limit + FRAGMENT_SLACK)
+            .filterNot { BaseDictionary.isFragment(language, it) }
+            .take(limit)
         if (own.size >= limit) return own
         val seen = own.mapTo(HashSet()) { it.lowercase(language.locale) }
         val base = BaseDictionary.suggestions(language, prefix, limit + own.size)
             .filter { seen.add(it.lowercase(language.locale)) }
         return own + base.take(limit - own.size)
     }
+
+    /** Fragments that might be dropped from the user's suggestions (see [suggestionsWithBase]). */
+    private val FRAGMENT_SLACK = 3
 
     private fun evict(map: HashMap<String, Entry>) {
         val toRemove = map.size - maxWordsPerLanguage

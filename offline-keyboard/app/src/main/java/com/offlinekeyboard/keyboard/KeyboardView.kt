@@ -1268,8 +1268,14 @@ class KeyboardView(context: Context) : View(context) {
             return
         }
         if (isSpace(key) && spaceSwipeEnabled && !state.swipeConsumed && abs(x - state.downX) > dp(SPACE_SWIPE_DP)) {
-            val quick = android.os.SystemClock.uptimeMillis() - state.downAt <= SPACE_SWIPE_MAX_MS
-            if (quick || !spaceCursorEnabled) {
+            val elapsed = android.os.SystemClock.uptimeMillis() - state.downAt
+            // With the cursor on the space bar too, the language needs a longer, quicker swipe: a fast
+            // cursor drag switched the language now and then.
+            val far = abs(x - state.downX) > dp(SPACE_SWIPE_STRICT_DP)
+            val quick = elapsed <= SPACE_SWIPE_STRICT_MS
+            if (spaceCursorEnabled && quick && !far) {
+                // Not decided yet: a few more pixels make it a language swipe, a moment more the cursor.
+            } else if (!spaceCursorEnabled || (quick && far)) {
                 state.swipeConsumed = true
                 state.cancelCallbacks()
                 listener?.onSpaceSwipe(if (x > state.downX) 1 else -1)
@@ -1391,8 +1397,9 @@ class KeyboardView(context: Context) : View(context) {
         const val REPEAT_START_MS = 400L
         const val REPEAT_INTERVAL_MS = 50L
         const val SPACE_SWIPE_DP = 60f
-        /** A swipe along the space bar switches the language only when quick (a slower drag moves the cursor). */
-        const val SPACE_SWIPE_MAX_MS = 280L
+        /** Both gestures on: the language swipe must cover this much within [SPACE_SWIPE_STRICT_MS]. */
+        const val SPACE_SWIPE_STRICT_DP = 110f
+        const val SPACE_SWIPE_STRICT_MS = 220L
         const val SPACE_CURSOR_HOLD_MS = 320L
         const val SPACE_CURSOR_STEP_DP = 9f
         const val BACKSPACE_SWIPE_START_DP = 28f

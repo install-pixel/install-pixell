@@ -336,7 +336,7 @@
     <string name="learn_touch_hint">The keyboard remembers where your finger really lands on each letter and moves the invisible borders between keys a little. Only on this phone.</string>
     <string name="learn_touch_reset">Forget how I tap</string>
     <string name="learn_touch_forgotten">Forgotten — learning again</string>
-    <string name="clipboard_title">Clipboard · tap to paste, hold to pin, swipe left to delete</string>
+    <string name="clipboard_title">Clipboard</string>
     <string name="clipboard_translate">Translate the selection or the clipboard</string>
     <string name="clipboard_clear">Forget the unpinned texts</string>
     <string name="clipboard_history_empty">Copy a text — it will be here for an hour (pinned ones stay)</string>
@@ -378,11 +378,11 @@
     <string name="clipboard_clear_confirm">Tap ✕ again to forget %1$d (pinned stay: %2$d)</string>
     <string name="clipboard_only_pinned">Only pinned texts: hold one to unpin, or swipe it left</string>
     <string name="clipboard_deleted">Deleted · tap here to bring it back</string>
-    <string name="bluetooth_switch_hint">★ — the devices a long press on the Bluetooth button switches between, in the order you mark them (then back to the phone).</string>
-    <string name="bluetooth_switch_none">Mark the devices to switch between with ★ in Bluetooth settings (tap)</string>
+    <string name="bluetooth_switch_hint">★ marks the devices a long press on the Bluetooth button goes round, in the order you star them. A tap goes back to typing on the phone.</string>
+    <string name="bluetooth_switch_none">Star ★ the devices to switch between in the device settings (tap)</string>
     <string name="bluetooth_switch_phone">Typing on the phone</string>
-    <string name="bluetooth_switching">→ %1$s…</string>
-    <string name="bluetooth_switch_failed">Could not connect to %1$s</string>
+    <string name="bluetooth_switching">Connecting to %1$s…</string>
+    <string name="bluetooth_switch_failed">%1$s did not answer (out of reach or off?)</string>
     <string name="tone_title">Tone</string>
     <string name="tone_dark">Dark</string>
     <string name="tone_light">Light</string>
@@ -423,4 +423,7 @@
     <string name="cursor_row_small_keys">With low keys and the cursor row the letters get small: raise the key height in «Look and sound».</string>
     <string name="compact_and_hidden">With the compact strip as well almost every button is hidden: a tap on the strip shows them.</string>
     <string name="size_mb">%1$d MB</string>
+    <string name="mode_text_plain">Text</string>
+    <string name="assist_paused">Suggestions and corrections paused · tap «Text» to bring them back</string>
+    <string name="assist_resumed">Suggestions and corrections on</string>
 </resources>

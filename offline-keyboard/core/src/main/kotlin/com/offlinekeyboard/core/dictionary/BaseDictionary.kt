@@ -47,6 +47,25 @@ object BaseDictionary {
             .toList()
     }
 
+    /**
+     * [word] is not a word but the start of a common one («швидк» of «швидко»): a word cut short, as search
+     * fields and slips leave behind. Such pieces are not learned (they came back as suggestions).
+     */
+    fun isFragment(language: Language, word: String, common: Int = COMMON_WORDS): Boolean {
+        if (word.length < 2) return false
+        val key = matchKey(word, language)
+        if (isKnown(language, key)) return false
+        val keys = keys(language)
+        for (i in 0 until minOf(common, keys.size)) {
+            val k = keys[i]
+            if (k.length > key.length && k.startsWith(key)) return true
+        }
+        return false
+    }
+
+    /** How many of the most frequent words count as common for [isFragment]. */
+    const val COMMON_WORDS = 8000
+
     private fun matchKey(word: String, language: Language) =
         word.lowercase(language.locale).replace('ʼ', '\'').replace('’', '\'')
 

@@ -336,7 +336,7 @@
     <string name="learn_touch_hint">Klawiatura zapamiętuje, gdzie naprawdę trafia twój palec na każdej literze, i lekko przesuwa niewidoczne granice między klawiszami. Tylko na tym telefonie.</string>
     <string name="learn_touch_reset">Zapomnij, jak naciskam</string>
     <string name="learn_touch_forgotten">Zapomniane — uczy się od nowa</string>
-    <string name="clipboard_title">Schowek · dotknij — wklej, przytrzymaj — przypnij, przesuń w lewo — usuń</string>
+    <string name="clipboard_title">Schowek</string>
     <string name="clipboard_translate">Przetłumacz zaznaczenie lub schowek</string>
     <string name="clipboard_clear">Zapomnij nieprzypięte teksty</string>
     <string name="clipboard_history_empty">Skopiuj tekst — będzie tu przez godzinę (przypięte zostają)</string>
@@ -378,11 +378,11 @@
     <string name="clipboard_clear_confirm">Dotknij ✕ ponownie, aby zapomnieć %1$d (przypięte zostają: %2$d)</string>
     <string name="clipboard_only_pinned">Tylko przypięte: przytrzymaj, aby odpiąć, lub przesuń w lewo</string>
     <string name="clipboard_deleted">Usunięto · dotknij tutaj, aby przywrócić</string>
-    <string name="bluetooth_switch_hint">★ — urządzenia, między którymi przełącza przytrzymanie przycisku Bluetooth, w kolejności oznaczenia (potem znowu telefon).</string>
-    <string name="bluetooth_switch_none">Oznacz ★ urządzenia do przełączania w ustawieniach Bluetooth (dotknij)</string>
+    <string name="bluetooth_switch_hint">★ — urządzenia, między którymi po kolei przełącza długie naciśnięcie przycisku Bluetooth, w kolejności oznaczenia. Dotknięcie — z powrotem pisanie na telefonie.</string>
+    <string name="bluetooth_switch_none">Oznacz ★ urządzenia do przełączania w ustawieniach (dotknij)</string>
     <string name="bluetooth_switch_phone">Pisanie na telefonie</string>
-    <string name="bluetooth_switching">→ %1$s…</string>
-    <string name="bluetooth_switch_failed">Nie udało się połączyć z %1$s</string>
+    <string name="bluetooth_switching">Łączę z %1$s…</string>
+    <string name="bluetooth_switch_failed">%1$s nie odpowiada (za daleko lub wyłączone?)</string>
     <string name="tone_title">Ton</string>
     <string name="tone_dark">Ciemny</string>
     <string name="tone_light">Jasny</string>
@@ -423,4 +423,7 @@
     <string name="cursor_row_small_keys">Przy niskich klawiszach i rzędzie kursora litery są małe: zwiększ wysokość klawiszy w «Wygląd i dźwięk».</string>
     <string name="compact_and_hidden">Razem z kompaktowym paskiem prawie wszystkie przyciski są ukryte: dotknięcie paska je pokazuje.</string>
     <string name="size_mb">%1$d MB</string>
+    <string name="mode_text_plain">Tekst</string>
+    <string name="assist_paused">Podpowiedzi i poprawki wstrzymane · «Tekst» — przywróć</string>
+    <string name="assist_resumed">Podpowiedzi i poprawki działają</string>
 </resources>
