@@ -939,7 +939,9 @@ private fun RuledTryField(value: String, hint: String, height: androidx.compose.
             onTextLayout = { layout = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 120.dp)
+                // As tall as its window, not taller: a taller text scrolled its first line out of sight as soon as
+                // the writing began (the window scrolled down to the empty lines).
+                .heightIn(min = height)
                 .drawBehind {
                     val l = layout ?: return@drawBehind
                     // At the bottom of each line of text, clear of the letters' tails.

@@ -1476,9 +1476,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
 
     private fun suggestionView() = TextView(context).apply {
         gravity = Gravity.CENTER
-        maxLines = 1
-        // Long words get a smaller font instead of being cut.
-        setAutoSizeTextTypeUniformWithConfiguration(11, 16, 1, TypedValue.COMPLEX_UNIT_SP)
+        // One line that never breaks: with only «maxLines = 1» a long word was broken into syllables and only
+        // its start was shown («Мари» for «Марихуани», three alike), while a tap put in the whole word.
+        isSingleLine = true
+        hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
+        breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+        // Long words get a smaller font; one that still does not fit ends in «…», never cut short.
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        setAutoSizeTextTypeUniformWithConfiguration(9, 16, 1, TypedValue.COMPLEX_UNIT_SP)
         setPadding(dp(2), 0, dp(2), 0)
         isFocusable = false
         setOnClickListener { (it as TextView).text?.toString()?.takeIf(String::isNotEmpty)?.let { w -> toolbarListener?.onSuggestionPicked(w) } }
