@@ -730,6 +730,9 @@ private fun VariantCard(preview: Int, name: String, selected: Boolean, modifier:
             painter = androidx.compose.ui.res.painterResource(preview),
             contentDescription = name,
             contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+            // Marked by an alpha of 254/255: the sketch page's paper effect then touches it only lightly, so the
+            // picture shows the style as it is (the creases' shade blotched the white Northern).
+            alpha = PICTURE_ALPHA,
             modifier = Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
         )
         androidx.compose.material3.Text(
@@ -824,3 +827,6 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
         }
     }
 }
+
+/** A style's picture is drawn at this alpha, by which the sketch page's paper effect knows it (see NotebookPages). */
+internal const val PICTURE_ALPHA = 254f / 255f
