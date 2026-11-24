@@ -433,10 +433,10 @@
     <string name="section_buttons">Buttons above the keys</string>
     <string name="clipboard_button_show">«Clipboard» button</string>
     <string name="sound_button_show">Sound button</string>
-    <string name="voice_button_show">Voice input</string>
-    <string name="voice_button_hint">Off: there is no voice button on the keyboard.</string>
-    <string name="translate_button_show">Translation</string>
-    <string name="translate_button_hint">Off: there is no translation button on the keyboard.</string>
+    <string name="voice_button_show">Voice button on the keyboard</string>
+    <string name="voice_button_hint">Dictation without the internet; needs the language\'s model.</string>
+    <string name="translate_button_show">Translation button on the keyboard</string>
+    <string name="translate_button_hint">Translation without the internet; needs the direction\'s model.</string>
     <string name="translation_when_word">After each word</string>
     <string name="translation_when_word_desc">The translation comes 2 s after a word.</string>
     <string name="translation_when_sentence">After a sentence</string>
