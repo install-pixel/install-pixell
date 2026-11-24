@@ -1447,6 +1447,42 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             v.text = word ?: ""
             v.isEnabled = word != null
         }
+        if (showSuggestions) {
+            if (suggestionsRow.width > 0) fitSuggestions() else suggestionsRow.post { fitSuggestions() }
+        }
+    }
+
+    /**
+     * Each word as much room as it needs: the places are shared by the words' widths (a long word was squeezed
+     * into a third and shown cut), the font made smaller when all three together do not fit, and a word that
+     * still does not fit at the smallest size drifts (marquee) so it can be read whole.
+     */
+    private fun fitSuggestions() {
+        val lead = if (suggestionLead.visibility == View.VISIBLE) suggestionLead.width else 0
+        val room = suggestionsRow.width - lead
+        if (room <= 0) return
+        val density = resources.displayMetrics.scaledDensity
+        val paint = android.text.TextPaint(suggestionViews[0].paint)
+        paint.textSize = SUGGESTION_SP * density
+        val pad = dp(10)
+        val natural = suggestionViews.map { v ->
+            val w = v.text?.toString().orEmpty()
+            if (w.isEmpty()) 0f else paint.measureText(w) + pad
+        }
+        val total = natural.sum()
+        val scale = if (total > room) (room / total).coerceAtLeast(MIN_SUGGESTION_SP / SUGGESTION_SP) else 1f
+        val sizeSp = SUGGESTION_SP * scale
+        suggestionViews.forEachIndexed { i, v ->
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+            val params = v.layoutParams as LayoutParams
+            // Empty places keep a little room, so the words do not jump when one is missing.
+            val weight = if (natural[i] > 0f) natural[i] else room / 10f
+            if (params.weight != weight) { params.weight = weight; v.layoutParams = params }
+            // Drifts only when it still does not fit in its share.
+            val share = room * weight / (natural.sumOf { (if (it > 0f) it else room / 10f).toDouble() }).toFloat()
+            val needs = natural[i] * scale - pad > share - pad
+            v.isSelected = needs
+        }
     }
 
     private fun styleChip(view: ToolbarButton, active: Boolean, enabled: Boolean) {
@@ -1481,9 +1517,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         isSingleLine = true
         hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
         breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
-        // Long words get a smaller font; one that still does not fit ends in «…», never cut short.
-        ellipsize = android.text.TextUtils.TruncateAt.END
-        setAutoSizeTextTypeUniformWithConfiguration(9, 16, 1, TypedValue.COMPLEX_UNIT_SP)
+        // The whole word always in sight: the places are shared by the words' lengths and the font gets smaller
+        // (see fitSuggestions); a word that still does not fit drifts slowly, never cut or ended in «…».
+        ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+        marqueeRepeatLimit = -1
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, SUGGESTION_SP)
         setPadding(dp(2), 0, dp(2), 0)
         isFocusable = false
         setOnClickListener { (it as TextView).text?.toString()?.takeIf(String::isNotEmpty)?.let { w -> toolbarListener?.onSuggestionPicked(w) } }
@@ -1533,6 +1571,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L
+        /** The suggestions' font, and how small it may get before a word drifts instead. */
+        const val SUGGESTION_SP = 16f
+        const val MIN_SUGGESTION_SP = 11f
         const val BLUETOOTH_PULSE_MS = 650L
         const val PREDICTIONS = 3
         const val INACTIVE_CHIP_ALPHA = 0x70
