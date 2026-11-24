@@ -250,7 +250,7 @@
     <string name="compact_toolbar">Compact: one row, modes under the ▦ button</string>
     <string name="auto_correct">Fix typos</string>
     <string name="backspace_swipe">Drag Backspace to the left to delete words</string>
-    <string name="toolbar_modes_description">Input modes</string>
+    <string name="toolbar_modes_description">Menu</string>
     <string name="autocorrect_done">%1$s → %2$s · ⌫ to undo</string>
     <string name="autocorrect_undone">Kept «%1$s»; it will not be corrected again</string>
     <string name="backspace_swipe_preview">Delete: «%1$s»</string>
@@ -421,7 +421,7 @@
     <string name="remember_mode_on_hint">Opens as you left it.</string>
     <string name="remember_mode_off_hint">Always opens as chosen above.</string>
     <string name="cursor_row_small_keys">Low keys with the cursor row make the letters small: raise the key height in «Look and sound».</string>
-    <string name="compact_and_hidden">Almost every button is hidden now: a tap on the strip shows them.</string>
+    <string name="compact_and_hidden">The buttons are under the menu button at the left.</string>
     <string name="size_mb">%1$d MB</string>
     <string name="mode_text_plain">Text</string>
     <string name="assist_paused">Suggestions and corrections paused · tap «Text» to bring them back</string>
@@ -467,8 +467,8 @@
     <string name="help_buttons_bt_b">There when «Other devices» is on. A tap: typing goes to the connected device (the button lights up); another tap: back to the phone. Not connected: the tap connects to the first ★ device, and the button pulses while it connects. A long press: on to the next ★ device.</string>
     <string name="help_buttons_touchpad_t">Touchpad</string>
     <string name="help_buttons_touchpad_b">There while typing goes to a device. In place of the keys: slide to move the mouse, tap to click, two fingers to scroll. The button in the corner switches to arrows (for a TV): a swipe is one arrow, a swipe held repeats it, a tap is Enter. «АБВ»: back to the keys.</string>
-    <string name="help_buttons_modes_t">Modes ▦</string>
-    <string name="help_buttons_modes_b">With the compact toolbar the mode buttons are under this button; a tap opens their row. Lit while translating or dictating.</string>
+    <string name="help_buttons_modes_t">Menu ▦</string>
+    <string name="help_buttons_modes_b">The button at the left, always in its place. A tap opens the buttons at the right and, on the compact toolbar, the modes row; another tap, or typing, folds them away. While you write, the strip takes the whole width.</string>
     <string name="help_buttons_text_t">Aa Text</string>
     <string name="help_buttons_text_b">Plain typing. When you are in it already, a tap pauses suggestions and corrections (the button then says just «Text»); another tap brings them back. From translation it goes back to plain typing. The main switch «Suggestions and corrections» takes the button away.</string>
     <string name="help_buttons_translate_t">Translation</string>
@@ -481,8 +481,8 @@
     <string name="help_buttons_undo_b">Shown after a translation: puts your own text back in its place.</string>
     <string name="help_buttons_compact_t">Compact toolbar</string>
     <string name="help_buttons_compact_b">On: one row above the keys, the mode buttons under ▦. Off: a second row with Text, Translation, Clipboard and Voice. Each mode button has its own place; one taken away in the settings leaves its place empty, so the others never move. None wanted: no row at all.</string>
-    <string name="help_buttons_hide_t">Hide the buttons</string>
-    <string name="help_buttons_hide_b">On: the mobile keyboard shows only the text strip; a tap on it shows the buttons for a few seconds.</string>
+    <string name="help_buttons_hide_t">Menu button shown</string>
+    <string name="help_buttons_hide_b">On: the menu button at the left is in sight and the buttons at the right show while nothing is being written. Off: the menu button is not drawn, but a tap at its place still opens the menu.</string>
     <string name="help_s_look">Look and sound</string>
     <string name="help_look_style_t">Style</string>
     <string name="help_look_style_b">Three collections: Poise (glass), Atelier (pencil on paper), Chronicle (a typewriter). A tap on a collection shows its two variants, dark and light; the keyboard changes when you choose a variant.</string>
@@ -504,7 +504,7 @@
     <string name="help_assist_autocorrect_t">Fix typos</string>
     <string name="help_assist_autocorrect_b">When a word ends (a space or a mark), a typo in it is fixed and the strip says what became what. ⌫ right after: your word comes back and is never fixed again. Off: words stay as typed.</string>
     <string name="help_assist_suggestions_t">Word suggestions</string>
-    <string name="help_assist_suggestions_b">Three words above the keys that begin with what you typed; a tap puts the word in with a space. A long press on a suggestion removes your own word. After a space, smaller at the right: words that usually come next. Turned on in «My dictionary».</string>
+    <string name="help_assist_suggestions_b">Words above the keys that begin with what you typed, always whole (a swipe sideways shows more); a tap puts the word in with a space. A long press on a suggestion removes your own word. After a space, smaller at the right: words that usually come next. Turned on in «My dictionary».</string>
     <string name="help_assist_nextword_t">Better next-word suggestions</string>
     <string name="help_assist_nextword_b">On: the next word is chosen by the two words before it; off: by the last one only.</string>
     <string name="help_assist_punctuation_t">Smart punctuation</string>
@@ -598,4 +598,10 @@
     <string name="computer_button_hint">While typing goes to another device, it is always there.</string>
     <string name="help_buttons_icons_t">How to read the icons</string>
     <string name="help_buttons_icons_b">A button that switches between two things shows where a tap leads. An on/off button shows its state.</string>
+    <string name="help_buttons_typedtext_t">Typed text above the keys</string>
+    <string name="help_buttons_typedtext_b">The strip repeats what you write, in whole words; a tap on a word puts the cursor there. Off: the text is only in the app\'s field and the strip shows just suggestions and notes. The cursor can also be moved with the space bar.</string>
+    <string name="menu_button_show">Menu button at the left</string>
+    <string name="menu_button_hint">Off: not drawn, but a tap at its place still opens the menu.</string>
+    <string name="typed_text_show">Typed text above the keys</string>
+    <string name="typed_text_hint">Off: the text only in the app\'s field.</string>
 </resources>

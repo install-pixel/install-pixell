@@ -640,10 +640,14 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
             SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
                 update { it.copy(compactToolbar = v) }
             }
-            SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v ->
-                update { it.copy(hideToolbarButtons = v) }
+            SwitchRow(stringResource(R.string.menu_button_show), !s.hideToolbarButtons) { v ->
+                update { it.copy(hideToolbarButtons = !v) }
             }
-            Text(stringResource(R.string.hide_toolbar_buttons_hint), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.menu_button_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.typed_text_show), s.showTypedText) { v ->
+                update { it.copy(showTypedText = v) }
+            }
+            Text(stringResource(R.string.typed_text_hint), style = MaterialTheme.typography.bodySmall)
             SwitchRow(stringResource(R.string.clipboard_button_show), s.clipboardButton) { v ->
                 update { it.copy(clipboardButton = v) }
             }

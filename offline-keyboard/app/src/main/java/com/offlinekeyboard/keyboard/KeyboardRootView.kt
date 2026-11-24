@@ -271,6 +271,17 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         addView(suggestionLead, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
         suggestionViews.forEach { addView(it, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)) }
     }
+    /** The suggestions at their full size: when they do not fit together, a swipe sideways shows the rest. */
+    private val suggestionsScroll = HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+        isFillViewport = true
+        isHorizontalFadingEdgeEnabled = true
+        setFadingEdgeLength(dp(18))
+        overScrollMode = View.OVER_SCROLL_NEVER
+        addView(suggestionsRow, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+        ))
+    }
     /**
      * Next-word predictions after a finished word: small words at the right of the strip, so the text
      * itself stays in view on the left.
@@ -299,7 +310,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             icon = Icon.BLUETOOTH
             setOnLongClickListener {
                 performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                if (buttonsShown) revealButtons()
+                if (menuOpen && hideButtons) revealButtons()
                 toolbarListener?.onToolbarBluetoothSwitch()
                 true
             }
@@ -358,14 +369,14 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                             refreshCentre()
                             showStatus(context.getString(R.string.volume_hold_hint))
                         }
-                        if (buttonsShown) revealButtons()
+                        if (menuOpen && hideButtons) revealButtons()
                         return@setOnTouchListener true
                     }
                     if (event.actionMasked == android.view.MotionEvent.ACTION_UP &&
                         event.x in 0f..v.width.toFloat() && event.y in 0f..v.height.toFloat()
                     ) {
                         keyboardView.panelTap()
-                        if (buttonsShown) revealButtons()
+                        if (menuOpen && hideButtons) revealButtons()
                         toolbarListener?.onToolbarSound()
                     }
                 }
@@ -383,8 +394,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     /** Compact toolbar: shows or hides the row of input modes. */
+    /**
+     * The menu button at the left: always in its place (seen, or with «show the menu button» off unseen but
+     * still answering a touch there). A tap opens the buttons at the right and, on the compact toolbar, the
+     * modes row; another tap, or typing, folds them away.
+     */
     private val modesButton = button(R.string.toolbar_modes_description) { toggleModes() }
-        .apply { icon = Icon.MODES; visibility = View.GONE }
+        .apply { icon = Icon.MODES }
 
     private val textChip = button(R.string.mode_text_description) { toolbarListener?.onModeText() }
     private val translateChip = button(R.string.toolbar_translate_description) { toolbarListener?.onModeTranslate() }
@@ -407,8 +423,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             refreshModesRow()
         }
     /**
-     * Mobile keyboard: the toolbar buttons (modes, Bluetooth, computer keyboard, settings) stay hidden and
-     * only the text strip shows, until the strip is tapped; they hide again a few seconds later.
+     * «Show the menu button» off: the menu button at the left is not drawn (its place still answers a touch),
+     * and the buttons at the right come only with it.
      */
     var hideButtons = false
         set(value) {
@@ -416,45 +432,61 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             field = value
             refreshButtons()
         }
-    private var buttonsShown = false
-    private val hideButtonsRunnable = Runnable { buttonsShown = false; refreshButtons() }
+    /** The menu opened by the left button (the buttons at the right, and the modes row when compact). */
+    private var menuOpen = false
+    private val hideButtonsRunnable = Runnable { menuOpen = false; modesExpanded = false; refreshModesRow() }
 
+    /** A tap on the strip where nothing else is: the menu, for a few seconds. */
     fun revealButtons() {
         removeCallbacks(hideButtonsRunnable)
-        if (!buttonsShown) {
-            buttonsShown = true
-            refreshButtons()
+        if (!menuOpen) {
+            menuOpen = true
+            modesExpanded = true
+            refreshModesRow()
         }
         postDelayed(hideButtonsRunnable, BUTTONS_SHOWN_MS)
     }
 
+    /** Something is being written on the strip (the text, suggestions, next words, a translation coming). */
+    private fun writing(): Boolean =
+        !echo.isNullOrEmpty() || suggestions.isNotEmpty() || predictions.isNotEmpty() || liveText != null
+
+    /**
+     * The buttons at the right: in view while nothing is being written (with the menu button shown), or while
+     * the menu is open; typing folds them away so the strip has its whole width.
+     */
     private fun buttonsVisible(): Boolean {
-        val state = lastState
-        if (!hideButtons || state == null || state.computerMode || buttonsShown || busy()) return true
-        if (compact && modesExpanded) return true
-        return state.bluetooth == BluetoothButton.SENDING || state.bluetooth == BluetoothButton.WAITING
+        if (lastState == null || menuOpen) return true
+        return !hideButtons && !writing()
     }
 
     private fun refreshButtons() {
         val visible = buttonsVisible()
-        val bluetoothOn = lastState?.bluetooth?.let { it != BluetoothButton.HIDDEN } ?: false
-        for ((button, present) in listOf(
-            modesButton to (compact && lastState?.modeRowShown != false),
-            soundButton to (lastState?.soundOn != null),
-            remoteButton to (lastState?.remoteOffered == true),
-            bluetoothButton to bluetoothOn,
-            modeButton to (lastState?.modeKeyShown != false),
-            settingsButton to true,
+        val state = lastState
+        val bluetoothOn = state?.bluetooth?.let { it != BluetoothButton.HIDDEN } ?: false
+        // Never folded away while they are part of what is happening: the cancel of dictation (the gear is ✕
+        // then), the Bluetooth button while it connects or sends, the touchpad while typing goes to a device.
+        val recording = state?.recording == true
+        val linked = state?.bluetooth == BluetoothButton.SENDING || state?.bluetooth == BluetoothButton.WAITING
+        for ((button, present, always) in listOf(
+            Triple(soundButton, state?.soundOn != null, false),
+            Triple(remoteButton, state?.remoteOffered == true, true),
+            Triple(bluetoothButton, bluetoothOn, linked),
+            Triple(modeButton, state?.modeKeyShown != false, false),
+            Triple(settingsButton, true, recording),
         )) {
             val target = when {
                 !present -> View.GONE
-                visible -> View.VISIBLE
-                // Invisible, not gone: the text strip keeps its place and width.
-                else -> View.INVISIBLE
+                visible || always -> View.VISIBLE
+                // Gone, not invisible: the strip takes their room while writing.
+                else -> View.GONE
             }
             if (target == View.VISIBLE && button.visibility != View.VISIBLE) fadeIn(button)
             button.visibility = target
         }
+        // The menu button always keeps its place; with «show the menu button» off it is not drawn but answers.
+        modesButton.visibility = View.VISIBLE
+        modesButton.alpha = if (hideButtons && !menuOpen && !busy()) 0f else 1f
     }
 
     private var modesExpanded = false
@@ -484,6 +516,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         theme.style == SurfaceStyle.SHEET -> dp(FADE_SHEET_DP)
         else -> dp(if (theme.dark) FADE_DP else FADE_LIGHT_DP)
     }
+    /**
+     * The compact toolbar's modes row while it is up: it lies over the app (the app is told the keyboard's top
+     * is still below it, so nothing moves). 0 when there is none.
+     */
+    val overlayHeight: Int
+        get() = if (compact && ::modeRow.isInitialized && modeRow.visibility == View.VISIBLE) modeRow.height else 0
+
     private val fadePaint = Paint()
     private var fadeColor = 0
 
@@ -716,7 +755,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             val laidOut = statusScroll.visibility == View.VISIBLE && status.layout != null
             val live = liveText
             strikeX = when {
-                suggestionsRow.visibility == View.VISIBLE && suggestionLead.visibility == View.VISIBLE -> leadEndX()
+                suggestionsScroll.visibility == View.VISIBLE && suggestionLead.visibility == View.VISIBLE -> leadEndX()
                 showingEcho && laidOut -> printX()
                 // A translation on its way: right after the end of what the strip shows, measured where it really
                 // stands (measured afresh, the letter fell on the last one shown, with its prefix and slant).
@@ -770,7 +809,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     private fun leadEndX(): Float {
         val advance = suggestionLead.paint.measureText("0")
         val word = suggestionLead.text?.toString() ?: ""
-        return infoRow.left + suggestionsRow.left + suggestionLead.left + suggestionLead.totalPaddingLeft +
+        return infoRow.left + suggestionsScroll.left - suggestionsScroll.scrollX + suggestionLead.left + suggestionLead.totalPaddingLeft +
             suggestionLead.paint.measureText(word) + advance / 2
     }
 
@@ -929,7 +968,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             // with the strip around it (a tap there shows the buttons too).
             addView(modesButton, LayoutParams(dp(MODES_BUTTON_DP), dp(MODES_BUTTON_DP)).apply { setMargins(dp(5), 0, dp(5), 0) })
             addView(statusScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
-            addView(suggestionsRow, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            addView(suggestionsScroll, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(predictionsRow, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
             addView(volumeBar, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(undoButton, LayoutParams(dp(48), LayoutParams.MATCH_PARENT))
@@ -1131,15 +1170,21 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     fun collapseModes() {
         modesExpanded = false
         removeCallbacks(hideButtonsRunnable)
-        buttonsShown = false
+        menuOpen = false
         refreshModesRow()
     }
 
     private fun busy() = lastState?.let { it.translateActive || it.recording } ?: false
 
     private fun toggleModes() {
-        if (buttonsShown) revealButtons()
-        if (busy()) foldedWhileBusy = !foldedWhileBusy else modesExpanded = !modesExpanded
+        removeCallbacks(hideButtonsRunnable)
+        if (busy() && compact) {
+            foldedWhileBusy = !foldedWhileBusy
+            menuOpen = !foldedWhileBusy
+        } else {
+            menuOpen = !menuOpen
+            modesExpanded = menuOpen
+        }
         refreshModesRow()
     }
 
@@ -1148,8 +1193,15 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         if (!busy) foldedWhileBusy = false
         val open = if (busy) !foldedWhileBusy else modesExpanded
         // Lit while translating or dictating even when folded, so the mode is not forgotten.
-        modesButton.fill = if (compact && (open || busy)) theme.function else 0
+        modesButton.fill = if (menuOpen || (compact && (open || busy))) theme.function else 0
         val showRow = (!compact || open) && (lastState?.modeRowShown != false || busy)
+        // Compact: the row comes up above the strip, over the app, which keeps its size (see overlayHeight); it
+        // made the keyboard taller and the app jump each time. Not compact: in its place under the strip.
+        val wantedAt = if (compact) indexOfChild(infoRow) else indexOfChild(infoRow) + 1
+        if (indexOfChild(modeRow) != wantedAt) {
+            removeView(modeRow)
+            addView(modeRow, if (compact) indexOfChild(infoRow) else indexOfChild(infoRow) + 1)
+        }
         if (showRow && modeRow.visibility != View.VISIBLE) fadeIn(modeRow)
         modeRow.visibility = if (showRow) View.VISIBLE else View.GONE
         refreshButtons()
@@ -1337,6 +1389,13 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      */
     fun showEcho(text: CharSequence?, cursor: Int = text?.length ?: 0) {
         if (text?.toString() == echo?.toString() && cursor == echoCursor) return
+        // Writing folds the open menu away (the strip gets its width back).
+        if (menuOpen && text?.toString() != echo?.toString()) {
+            removeCallbacks(hideButtonsRunnable)
+            menuOpen = false
+            modesExpanded = false
+            post { refreshModesRow() }
+        }
         echo = text
         echoCursor = cursor
         refreshCentre()
@@ -1425,7 +1484,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val volume = volumeShown
         volumeBar.visibility = if (volume) View.VISIBLE else View.GONE
         statusScroll.visibility = if (showSuggestions || volume) View.GONE else View.VISIBLE
-        suggestionsRow.visibility = if (showSuggestions && !volume) View.VISIBLE else View.GONE
+        suggestionsScroll.visibility = if (showSuggestions && !volume) View.VISIBLE else View.GONE
         if (theme.style == SurfaceStyle.TYPEWRITER && showSuggestions) {
             suggestionLead.text = TypewriterInk.apply(typedWord(), suggestionLead.textSize, null)
             // Room for the next letter even before the first one, so it never lands on a suggestion.
@@ -1447,19 +1506,22 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             v.text = word ?: ""
             v.isEnabled = word != null
         }
+        // Writing began or ended: the buttons at the right fold away or come back.
+        refreshButtons()
         if (showSuggestions) {
-            if (suggestionsRow.width > 0) fitSuggestions() else suggestionsRow.post { fitSuggestions() }
+            // After the buttons have made way (the strip's width changes when they fold away).
+            suggestionsScroll.post { fitSuggestions() }
         }
     }
 
     /**
-     * Each word as much room as it needs: the places are shared by the words' widths (a long word was squeezed
-     * into a third and shown cut), the font made smaller when all three together do not fit, and a word that
-     * still does not fit at the smallest size drifts (marquee) so it can be read whole.
+     * Each word whole and at the strip's size: as much room as it needs (a long word was squeezed into a third
+     * and shown cut), the room left over shared out, a sideways swipe for words that do not fit together, and
+     * one longer than the strip drifting (marquee) so it can be read.
      */
     private fun fitSuggestions() {
         val lead = if (suggestionLead.visibility == View.VISIBLE) suggestionLead.width else 0
-        val room = suggestionsRow.width - lead
+        val room = suggestionsScroll.width - lead
         if (room <= 0) return
         val density = resources.displayMetrics.scaledDensity
         val paint = android.text.TextPaint(suggestionViews[0].paint)
@@ -1469,20 +1531,21 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             val w = v.text?.toString().orEmpty()
             if (w.isEmpty()) 0f else paint.measureText(w) + pad
         }
+        // Whole words at the strip's size (never smaller): the room left over is shared out; when they do not
+        // fit together the row scrolls sideways (a swipe shows the rest), and one longer than the strip drifts.
         val total = natural.sum()
-        val scale = if (total > room) (room / total).coerceAtLeast(MIN_SUGGESTION_SP / SUGGESTION_SP) else 1f
-        val sizeSp = SUGGESTION_SP * scale
+        val spare = if (total < room) (room - total) / natural.count { it > 0f }.coerceAtLeast(1) else 0f
         suggestionViews.forEachIndexed { i, v ->
-            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+            val width = if (natural[i] > 0f) minOf(natural[i] + spare, room.toFloat()).toInt() else 0
             val params = v.layoutParams as LayoutParams
-            // Empty places keep a little room, so the words do not jump when one is missing.
-            val weight = if (natural[i] > 0f) natural[i] else room / 10f
-            if (params.weight != weight) { params.weight = weight; v.layoutParams = params }
-            // Drifts only when it still does not fit in its share.
-            val share = room * weight / (natural.sumOf { (if (it > 0f) it else room / 10f).toDouble() }).toFloat()
-            val needs = natural[i] * scale - pad > share - pad
-            v.isSelected = needs
+            if (params.width != width || params.weight != 0f) {
+                params.width = width
+                params.weight = 0f
+                v.layoutParams = params
+            }
+            v.isSelected = natural[i] > room
         }
+        suggestionsScroll.scrollTo(0, 0)
     }
 
     private fun styleChip(view: ToolbarButton, active: Boolean, enabled: Boolean) {
@@ -1505,7 +1568,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         setOnClickListener {
             // Heard and felt as the keys are (the strip's buttons and the modes were silent).
             keyboardView.panelTap()
-            if (buttonsShown) revealButtons()
+            if (menuOpen && hideButtons) revealButtons()
             onClick()
         }
     }
@@ -1571,9 +1634,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L
-        /** The suggestions' font, and how small it may get before a word drifts instead. */
+        /** The suggestions' font (whole words at it; never made smaller). */
         const val SUGGESTION_SP = 16f
-        const val MIN_SUGGESTION_SP = 11f
+
         const val BLUETOOTH_PULSE_MS = 650L
         const val PREDICTIONS = 3
         const val INACTIVE_CHIP_ALPHA = 0x70

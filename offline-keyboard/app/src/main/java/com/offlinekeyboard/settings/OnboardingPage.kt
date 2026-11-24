@@ -160,8 +160,10 @@ internal fun OnboardingFlow(s: KeyboardSettings, update: UpdateSettings, onDone:
                 Section(null) {
                     SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v -> update { it.copy(compactToolbar = v) } }
                     GuideNote(HelpItems.buttons_compact)
-                    SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v -> update { it.copy(hideToolbarButtons = v) } }
+                    SwitchRow(stringResource(R.string.menu_button_show), !s.hideToolbarButtons) { v -> update { it.copy(hideToolbarButtons = !v) } }
                     GuideNote(HelpItems.buttons_hide)
+                    SwitchRow(stringResource(R.string.typed_text_show), s.showTypedText) { v -> update { it.copy(showTypedText = v) } }
+                    GuideNote(HelpItems.buttons_typedtext)
                 }
                 Section(null) {
                     SwitchRow(stringResource(R.string.clipboard_button_show), s.clipboardButton) { v -> update { it.copy(clipboardButton = v) } }
@@ -283,6 +285,8 @@ private fun common(s: KeyboardSettings, languages: List<Language>) = s.copy(
     keyPreview = !s.themeMode.typewriter,
     assistPaused = false,
     translateEnabled = false,
+    // The menu button at the left in sight, in every way of setting up (in Minimum it is all there is).
+    hideToolbarButtons = false,
     // Translation and voice wait until they are turned on (their buttons appear then).
     translateButton = false,
     voiceButton = false,

@@ -101,6 +101,8 @@ data class KeyboardSettings(
     val soundButton: Boolean = true,
     /** The button that switches to the computer keyboard (and back). */
     val computerButton: Boolean = true,
+    /** The text being written shown on the strip above the keys (some read it in the app's field only). */
+    val showTypedText: Boolean = true,
 ) {
     /** When the translation goes into the field: after each word (a pause), after a sentence, or at Enter. */
     val translationWhen: TranslationWhen get() = when {
@@ -193,6 +195,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.CLIPBOARD_BUTTON] = updated.clipboardButton
             prefs[Keys.SOUND_BUTTON] = updated.soundButton
             prefs[Keys.COMPUTER_BUTTON] = updated.computerButton
+            prefs[Keys.SHOW_TYPED_TEXT] = updated.showTypedText
         }
     }
 
@@ -304,6 +307,7 @@ class SettingsRepository(context: Context) {
             clipboardButton = this[Keys.CLIPBOARD_BUTTON] ?: defaults.clipboardButton,
             soundButton = this[Keys.SOUND_BUTTON] ?: defaults.soundButton,
             computerButton = this[Keys.COMPUTER_BUTTON] ?: defaults.computerButton,
+            showTypedText = this[Keys.SHOW_TYPED_TEXT] ?: defaults.showTypedText,
         )
     }
 
@@ -359,6 +363,7 @@ class SettingsRepository(context: Context) {
         val CLIPBOARD_BUTTON = booleanPreferencesKey("clipboard_button")
         val SOUND_BUTTON = booleanPreferencesKey("sound_button")
         val COMPUTER_BUTTON = booleanPreferencesKey("computer_button")
+        val SHOW_TYPED_TEXT = booleanPreferencesKey("show_typed_text")
     }
 }
 

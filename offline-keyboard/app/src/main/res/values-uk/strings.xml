@@ -250,7 +250,7 @@
     <string name="compact_toolbar">Компактно: один ряд, режими під кнопкою ▦</string>
     <string name="auto_correct">Виправляти одруківки</string>
     <string name="backspace_swipe">Свайп по ⌫ вліво видаляє слова</string>
-    <string name="toolbar_modes_description">Режими введення</string>
+    <string name="toolbar_modes_description">Меню</string>
     <string name="autocorrect_done">%1$s → %2$s · ⌫ — повернути</string>
     <string name="autocorrect_undone">Залишено «%1$s», більше не виправлятиму</string>
     <string name="backspace_swipe_preview">Видалити: «%1$s»</string>
@@ -421,7 +421,7 @@
     <string name="remember_mode_on_hint">Відкривається такою, як ви лишили.</string>
     <string name="remember_mode_off_hint">Завжди відкривається такою, як вибрано вище.</string>
     <string name="cursor_row_small_keys">Низькі клавіші з рядом курсора — дрібні літери: збільште висоту клавіш у «Вигляд і звук».</string>
-    <string name="compact_and_hidden">Майже всі кнопки сховані: дотик до смужки показує їх.</string>
+    <string name="compact_and_hidden">Кнопки — під кнопкою меню зліва.</string>
     <string name="size_mb">%1$d МБ</string>
     <string name="mode_text_plain">Текст</string>
     <string name="assist_paused">Підказки й виправлення на паузі · «Текст» — повернути</string>
@@ -467,8 +467,8 @@
     <string name="help_buttons_bt_b">Є, коли увімкнено «Інші пристрої». Дотик — друк іде на підключений пристрій (кнопка світиться), ще дотик — назад на телефон. Не підключено — дотик підключає до першого пристрою з ★, кнопка пульсує, поки підключається. Довгий натиск — наступний пристрій з ★.</string>
     <string name="help_buttons_touchpad_t">Тачпад</string>
     <string name="help_buttons_touchpad_b">Є, поки друк іде на пристрій. Замість клавіш: ведіть пальцем — рухається миша, дотик — клік, два пальці — прокрутка. Кнопка в куті перемикає на стрілки (для телевізора): свайп — одна стрілка, свайп і тримати — повтор, дотик — Enter. «АБВ» — назад до клавіш.</string>
-    <string name="help_buttons_modes_t">Режими ▦</string>
-    <string name="help_buttons_modes_b">У компактній панелі кнопки режимів сховані під цією кнопкою; дотик відкриває їхній ряд. Підсвічена під час перекладу чи диктування.</string>
+    <string name="help_buttons_modes_t">Меню ▦</string>
+    <string name="help_buttons_modes_b">Кнопка зліва, завжди на своєму місці. Дотик відкриває кнопки праворуч, а в компактній панелі ще й ряд режимів; ще дотик або набір — ховає їх. Поки ви пишете, смужка займає всю ширину.</string>
     <string name="help_buttons_text_t">Aa Текст</string>
     <string name="help_buttons_text_b">Звичайний набір. Коли ви вже в ньому, дотик ставить підказки й виправлення на паузу (на кнопці лишається «Текст»); ще дотик — повертає. З перекладу дотик повертає до звичайного набору. Кнопку прибирає головний перемикач «Підказки й виправлення».</string>
     <string name="help_buttons_translate_t">Переклад</string>
@@ -481,8 +481,8 @@
     <string name="help_buttons_undo_b">З\'являється після перекладу: повертає ваш текст замість перекладу.</string>
     <string name="help_buttons_compact_t">Компактна панель</string>
     <string name="help_buttons_compact_b">Увімкнено — один ряд над клавішами, кнопки режимів під ▦. Вимкнено — другий ряд: Текст, Переклад, Буфер, Голос. Кожна кнопка режиму має своє місце; прибрана в налаштуваннях лишає його порожнім, тож інші не зсуваються. Жодної не потрібно — ряду немає взагалі.</string>
-    <string name="help_buttons_hide_t">Ховати кнопки</string>
-    <string name="help_buttons_hide_b">Увімкнено — на мобільній клавіатурі видно лише смужку з текстом; дотик до неї показує кнопки на кілька секунд.</string>
+    <string name="help_buttons_hide_t">Кнопка меню видна</string>
+    <string name="help_buttons_hide_b">Увімкнено — кнопку меню зліва видно, а кнопки праворуч з\'являються, поки нічого не пишеться. Вимкнено — кнопку не видно, але дотик на її місці так само відкриває меню.</string>
     <string name="help_s_look">Вигляд і звук</string>
     <string name="help_look_style_t">Стиль</string>
     <string name="help_look_style_b">Три колекції: Poise (скло), Atelier (олівець на папері), Chronicle (друкарська машинка). Дотик до колекції показує два її варіанти — темний і світлий; клавіатура змінюється, коли виберете варіант.</string>
@@ -504,7 +504,7 @@
     <string name="help_assist_autocorrect_t">Виправляти одруківки</string>
     <string name="help_assist_autocorrect_b">Коли слово закінчилось (пробіл чи знак), одруківку в ньому виправлено, а смужка показує, що на що. ⌫ одразу після — повертає ваше слово, і клавіатура більше його не чіпає. Вимкнено — слова лишаються як набрані.</string>
     <string name="help_assist_suggestions_t">Підказки слів</string>
-    <string name="help_assist_suggestions_b">Над клавішами три слова, що починаються з набраного; дотик вставляє слово з пробілом. Утримання підказки прибирає ваше слово зі словника. Після пробілу праворуч дрібніше — слова, що зазвичай ідуть далі. Вмикається в «Мій словник».</string>
+    <string name="help_assist_suggestions_b">Над клавішами слова, що починаються з набраного, завжди цілі (свайп убік — ще); дотик вставляє слово з пробілом. Утримання підказки прибирає ваше слово зі словника. Після пробілу праворуч дрібніше — слова, що зазвичай ідуть далі. Вмикається в «Мій словник».</string>
     <string name="help_assist_nextword_t">Точніші підказки наступного слова</string>
     <string name="help_assist_nextword_b">Увімкнено — наступне слово підбирається за двома попередніми; вимкнено — лише за одним.</string>
     <string name="help_assist_punctuation_t">Розумна пунктуація</string>
@@ -598,4 +598,10 @@
     <string name="computer_button_hint">Поки друк іде на інший пристрій, кнопка є завжди.</string>
     <string name="help_buttons_icons_t">Як читати значки</string>
     <string name="help_buttons_icons_b">Кнопка, що перемикає між двома речами, показує, куди веде дотик. Кнопка «увімк./вимк.» показує свій стан.</string>
+    <string name="help_buttons_typedtext_t">Набраний текст над клавішами</string>
+    <string name="help_buttons_typedtext_b">Смужка повторює те, що ви пишете, цілими словами; дотик до слова ставить туди курсор. Вимкнено — текст лише в полі застосунку, а на смужці тільки підказки й повідомлення. Курсор можна вести й пробілом.</string>
+    <string name="menu_button_show">Кнопка меню зліва</string>
+    <string name="menu_button_hint">Вимкнено — її не видно, але дотик на її місці відкриває меню.</string>
+    <string name="typed_text_show">Набраний текст над клавішами</string>
+    <string name="typed_text_hint">Вимкнено — текст лише в полі застосунку.</string>
 </resources>

@@ -350,9 +350,14 @@ class KeyboardService : InputMethodService(),
         val root = rootView ?: return
         if (!root.isShown || isFullscreenMode) return
         val band = root.fadeHeight
-        outInsets.contentTopInsets += band
-        outInsets.visibleTopInsets += band
-        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_VISIBLE
+        val top = outInsets.contentTopInsets + band
+        // The compact modes row lies over the app: the app's room ends below it (it neither shrinks nor jumps
+        // when the row comes and goes), and touches on the row still come to the keyboard.
+        val over = root.overlayHeight
+        outInsets.contentTopInsets = top + over
+        outInsets.visibleTopInsets = top + over
+        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
+        outInsets.touchableRegion.set(0, top, root.width.coerceAtLeast(1), top + root.height)
     }
 
     // Never take over the screen with the extract-text window: typing must happen in the app's own field.
@@ -869,7 +874,8 @@ class KeyboardService : InputMethodService(),
         carriage(before)
         // The whole message (passwords are never repeated on screen): what is before the cursor, and what
         // is after it, dimmer, so every word of it can be reached from the strip.
-        if (currentField.isSensitive) {
+        // Passwords are never repeated on screen; and some want the text only in the app's field.
+        if (currentField.isSensitive || !settings.showTypedText) {
             root.showEcho(null)
         } else {
             val shownAfter = (ic?.getTextAfterCursor(ECHO_AFTER, 0) ?: "").toString().replace('\n', LINE_MARK).trimEnd()

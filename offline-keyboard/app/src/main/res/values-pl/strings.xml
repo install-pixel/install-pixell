@@ -250,7 +250,7 @@
     <string name="compact_toolbar">Kompaktowo: jeden rząd, tryby pod przyciskiem ▦</string>
     <string name="auto_correct">Poprawiać literówki</string>
     <string name="backspace_swipe">Przeciągnij ⌫ w lewo, aby usuwać słowa</string>
-    <string name="toolbar_modes_description">Tryby wprowadzania</string>
+    <string name="toolbar_modes_description">Menu</string>
     <string name="autocorrect_done">%1$s → %2$s · ⌫ — cofnij</string>
     <string name="autocorrect_undone">Zostawiono «%1$s», nie będzie już poprawiane</string>
     <string name="backspace_swipe_preview">Usuń: «%1$s»</string>
@@ -421,7 +421,7 @@
     <string name="remember_mode_on_hint">Otwiera się tak, jak ją zostawiono.</string>
     <string name="remember_mode_off_hint">Zawsze otwiera się tak, jak wybrano wyżej.</string>
     <string name="cursor_row_small_keys">Niskie klawisze z rzędem kursora to małe litery: zwiększ wysokość w «Wygląd i dźwięk».</string>
-    <string name="compact_and_hidden">Prawie wszystkie przyciski są ukryte: dotknięcie paska je pokazuje.</string>
+    <string name="compact_and_hidden">Przyciski są pod przyciskiem menu po lewej.</string>
     <string name="size_mb">%1$d MB</string>
     <string name="mode_text_plain">Tekst</string>
     <string name="assist_paused">Podpowiedzi i poprawki wstrzymane · «Tekst» — przywróć</string>
@@ -467,8 +467,8 @@
     <string name="help_buttons_bt_b">Jest, gdy włączone są «Inne urządzenia». Dotknięcie — pisanie idzie na połączone urządzenie (przycisk świeci), jeszcze raz — z powrotem na telefon. Brak połączenia — dotknięcie łączy z pierwszym urządzeniem ★, przycisk pulsuje podczas łączenia. Długie naciśnięcie — następne urządzenie ★.</string>
     <string name="help_buttons_touchpad_t">Touchpad</string>
     <string name="help_buttons_touchpad_b">Jest, gdy pisanie idzie na urządzenie. Zamiast klawiszy: przesuwaj palcem — mysz, dotknięcie — klik, dwa palce — przewijanie. Przycisk w rogu przełącza na strzałki (dla telewizora): przesunięcie — jedna strzałka, przesunięcie i przytrzymanie — powtarza, dotknięcie — Enter. «АБВ» — z powrotem do klawiszy.</string>
-    <string name="help_buttons_modes_t">Tryby ▦</string>
-    <string name="help_buttons_modes_b">W kompaktowym pasku przyciski trybów są pod tym przyciskiem; dotknięcie otwiera ich rząd. Podświetlony podczas tłumaczenia lub dyktowania.</string>
+    <string name="help_buttons_modes_t">Menu ▦</string>
+    <string name="help_buttons_modes_b">Przycisk po lewej, zawsze na swoim miejscu. Dotknięcie otwiera przyciski po prawej, a w kompaktowym pasku także rząd trybów; jeszcze raz lub pisanie — chowa je. Gdy piszesz, pasek zajmuje całą szerokość.</string>
     <string name="help_buttons_text_t">Aa Tekst</string>
     <string name="help_buttons_text_b">Zwykłe pisanie. Gdy już w nim jesteś, dotknięcie wstrzymuje podpowiedzi i poprawki (na przycisku zostaje «Tekst»); jeszcze raz — przywraca. Z tłumaczenia wraca do zwykłego pisania. Przycisk usuwa główny przełącznik «Podpowiedzi i poprawki».</string>
     <string name="help_buttons_translate_t">Tłumaczenie</string>
@@ -481,8 +481,8 @@
     <string name="help_buttons_undo_b">Pojawia się po tłumaczeniu: przywraca twój tekst zamiast tłumaczenia.</string>
     <string name="help_buttons_compact_t">Kompaktowy pasek</string>
     <string name="help_buttons_compact_b">Włączone — jeden rząd nad klawiszami, przyciski trybów pod ▦. Wyłączone — drugi rząd: Tekst, Tłumaczenie, Schowek, Głos. Każdy przycisk trybu ma swoje miejsce; usunięty w ustawieniach zostawia je puste, więc inne się nie przesuwają. Żaden niepotrzebny — rzędu nie ma wcale.</string>
-    <string name="help_buttons_hide_t">Ukrywanie przycisków</string>
-    <string name="help_buttons_hide_b">Włączone — na klawiaturze mobilnej widać tylko pasek z tekstem; dotknięcie pokazuje przyciski na kilka sekund.</string>
+    <string name="help_buttons_hide_t">Przycisk menu widoczny</string>
+    <string name="help_buttons_hide_b">Włączone — przycisk menu po lewej jest widoczny, a przyciski po prawej pokazują się, gdy nic nie jest pisane. Wyłączone — przycisku nie widać, ale dotknięcie w jego miejscu nadal otwiera menu.</string>
     <string name="help_s_look">Wygląd i dźwięk</string>
     <string name="help_look_style_t">Styl</string>
     <string name="help_look_style_b">Trzy kolekcje: Poise (szkło), Atelier (ołówek na papierze), Chronicle (maszyna do pisania). Dotknięcie kolekcji pokazuje dwa warianty — ciemny i jasny; klawiatura zmienia się po wyborze wariantu.</string>
@@ -504,7 +504,7 @@
     <string name="help_assist_autocorrect_t">Poprawiać literówki</string>
     <string name="help_assist_autocorrect_b">Gdy słowo się kończy (spacja lub znak), literówka jest poprawiana, a pasek pokazuje, co na co. ⌫ zaraz potem — twoje słowo wraca i nie jest już poprawiane. Wyłączone — słowa zostają jak wpisane.</string>
     <string name="help_assist_suggestions_t">Podpowiedzi słów</string>
-    <string name="help_assist_suggestions_b">Nad klawiszami trzy słowa zaczynające się od wpisanego; dotknięcie wstawia słowo ze spacją. Przytrzymanie podpowiedzi usuwa twoje słowo. Po spacji, mniejsze po prawej — słowa, które zwykle idą dalej. Włącza się w «Mój słownik».</string>
+    <string name="help_assist_suggestions_b">Nad klawiszami słowa zaczynające się od wpisanego, zawsze całe (przesunięcie w bok — więcej); dotknięcie wstawia słowo ze spacją. Przytrzymanie podpowiedzi usuwa twoje słowo. Po spacji, mniejsze po prawej — słowa, które zwykle idą dalej. Włącza się w «Mój słownik».</string>
     <string name="help_assist_nextword_t">Trafniejsze podpowiedzi następnego słowa</string>
     <string name="help_assist_nextword_b">Włączone — następne słowo dobierane jest według dwóch poprzednich; wyłączone — tylko według ostatniego.</string>
     <string name="help_assist_punctuation_t">Inteligentna interpunkcja</string>
@@ -598,4 +598,10 @@
     <string name="computer_button_hint">Gdy pisanie idzie na inne urządzenie, przycisk jest zawsze.</string>
     <string name="help_buttons_icons_t">Jak czytać ikony</string>
     <string name="help_buttons_icons_b">Przycisk przełączający między dwiema rzeczami pokazuje, dokąd prowadzi dotknięcie. Przycisk wł./wył. pokazuje swój stan.</string>
+    <string name="help_buttons_typedtext_t">Wpisany tekst nad klawiszami</string>
+    <string name="help_buttons_typedtext_b">Pasek powtarza to, co piszesz, całymi słowami; dotknięcie słowa stawia tam kursor. Wyłączone — tekst jest tylko w polu aplikacji, a pasek pokazuje tylko podpowiedzi i komunikaty. Kursor można też prowadzić spacją.</string>
+    <string name="menu_button_show">Przycisk menu po lewej</string>
+    <string name="menu_button_hint">Wyłączone — nie widać go, ale dotknięcie w jego miejscu otwiera menu.</string>
+    <string name="typed_text_show">Wpisany tekst nad klawiszami</string>
+    <string name="typed_text_hint">Wyłączone — tekst tylko w polu aplikacji.</string>
 </resources>
