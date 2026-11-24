@@ -1,5 +1,6 @@
 package com.offlinekeyboard.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,11 +45,17 @@ internal fun KeyboardPreview(s: KeyboardSettings) {
             .fillMaxWidth()
             .padding(bottom = 8.dp)
             // A thin frame, so a black keyboard on a black page still reads as a keyboard.
-            .then(if (sheet) Modifier else Modifier.shadow(6.dp, shape).clip(shape).border(1.dp, Tone.TextSecondary.copy(alpha = 0.35f), shape)),
+            .then(
+                if (sheet) Modifier
+                else Modifier.shadow(6.dp, shape).clip(shape)
+                    .background(androidx.compose.ui.graphics.Color(theme.background))
+                    .border(1.dp, Tone.TextSecondary.copy(alpha = 0.35f), shape),
+            ),
     ) {
         AndroidView(
             factory = { KeyboardView(it).apply { listener = Silent } },
-            modifier = Modifier.fillMaxWidth(),
+            // The typewriter's round keys rise above their row (the top one was cut by the card's edge).
+            modifier = Modifier.fillMaxWidth().padding(top = if (theme.style == SurfaceStyle.TYPEWRITER) 10.dp else 0.dp),
             update = { view ->
                 view.theme = theme
                 view.keyPreview = s.keyPreview

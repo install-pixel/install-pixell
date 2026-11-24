@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -322,7 +324,22 @@ internal fun PageScaffold(
     if (LocalLook.current == Look.SHEET && header != null) {
         Column(Modifier.fillMaxSize().paperPage().safeDrawingPadding()) {
             Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { header() }
-            Box(Modifier.fillMaxWidth().weight(1f)) { PageScaffold(title, onBack, null, content) }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                PageScaffold(title, onBack, null, content)
+                // Where the strip of paper with the keyboard meets the page: a soft band instead of a hard edge.
+                val page = Tone.Page
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .offset(y = (-18).dp)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(page.copy(alpha = 0f), page.copy(alpha = 0.55f), page.copy(alpha = 0f)),
+                            ),
+                        ),
+                )
+            }
         }
         return
     }
