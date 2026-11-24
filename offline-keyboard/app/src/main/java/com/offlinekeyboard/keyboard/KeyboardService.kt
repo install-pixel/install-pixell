@@ -158,7 +158,7 @@ class KeyboardService : InputMethodService(),
                     bluetoothSending = true
                     sentText.setLength(0)
                     leaveSegment()
-                    rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+                    rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: "", controller.language.code))
                 }
                 updateSuggestions()
                 render()
@@ -1099,7 +1099,7 @@ class KeyboardService : InputMethodService(),
             switchingTo = null
             bluetoothSending = true
             sentText.setLength(0)
-            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: "", controller.language.code))
         } else {
             switchingTo = next.address
             bluetoothSending = false
@@ -1130,7 +1130,7 @@ class KeyboardService : InputMethodService(),
             bluetoothSending = true
             sentText.setLength(0)
             leaveSegment()
-            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: "", controller.language.code))
         }
         updateSuggestions()
         render()
@@ -1731,6 +1731,8 @@ class KeyboardService : InputMethodService(),
 
     override fun onLanguageChanged(language: Language) {
         scope.launch { repository.update { it.copy(lastLanguage = language) } }
+        // Typing goes to a device: its own language turns the keys into letters, so it is said which to set.
+        if (bluetoothSending) rootView?.showStatus(getString(R.string.bluetooth_device_language, language.code))
         syncTranslateSource(showProblems = true)
         updateSuggestions()
     }
@@ -1841,6 +1843,9 @@ class KeyboardService : InputMethodService(),
                 translateShown = settings.translateButton,
                 clipboardShown = settings.clipboardButton,
                 voiceShown = settings.voiceButton,
+                // Taken away in the settings, it is still there while typing goes to another device (Ctrl, Esc,
+                // F-keys and arrows are needed there) and while the other keyboard is open (the way back).
+                modeKeyShown = settings.computerButton || bluetoothSending || controller.mode != settings.defaultMode,
             ),
         )
     }

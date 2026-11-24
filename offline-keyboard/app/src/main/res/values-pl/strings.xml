@@ -173,7 +173,7 @@
     <string name="bluetooth_cannot_send">«%1$s» nie da się wpisać w układzie urządzenia</string>
     <string name="bluetooth_not_connected">Brak połączonego urządzenia · dotknij — ustawienia</string>
     <string name="bluetooth_typing_here">Znów piszesz na telefonie</string>
-    <string name="bluetooth_typing_there">Piszesz na %1$s</string>
+    <string name="bluetooth_typing_there">Piszesz na %1$s · język tam: %2$s</string>
     <string name="page_bluetooth">Inne urządzenia</string>
     <string name="page_bluetooth_on">Komputer, telewizor, tablet przez Bluetooth · włączone</string>
     <string name="page_bluetooth_off">Komputer, telewizor, tablet przez Bluetooth · wyłączone</string>
@@ -198,7 +198,7 @@
     <string name="bluetooth_use_steps">• Dotknięcie przycisku Bluetooth nad klawiszami — pisanie idzie na urządzenie (przycisk świeci). Jeszcze raz — z powrotem na telefon.\n• Jeszcze nie połączono — dotknięcie łączy z pierwszym urządzeniem ★ (przycisk pulsuje podczas łączenia).\n• Długie naciśnięcie — następne urządzenie ★, po kolei.\n• Przycisk touchpada — mysz albo strzałki dla przystawki TV.</string>
     <string name="bluetooth_open_keyboard">Stuknij, aby otworzyć klawiaturę</string>
     <string name="bluetooth_section_notes">Warto wiedzieć</string>
-    <string name="bluetooth_notes">Klawisze są wysyłane jak z prawdziwej klawiatury: urządzenie musi mieć ten sam język co klawiatura (Укр/Pol/Eng); przełączaj go tam jak na tym urządzeniu. Liter, których nie ma w jego układzie, nie wysyła się. Gdy pisanie idzie na urządzenie, podpowiedzi, tłumaczenie i głos czekają. Tekst ze schowka też jest tam wpisywany.</string>
+    <string name="bluetooth_notes">Klawiatura wysyła klawisze, nie litery: literę wybiera język urządzenia. Włącz na nim język klawiatury (Укр/Pol/Eng); przy innym języku w tych samych miejscach wyjdą jego litery. Gdy pisanie idzie na urządzenie, podpowiedzi, tłumaczenie i głos czekają; tekst ze schowka jest wpisywany tam.</string>
     <string name="translation_direction_hint">Kolejne dotknięcie przycisku tłumaczenia nad klawiszami — następny język.</string>
     <string name="page_glossary">Słownik tłumaczenia</string>
     <string name="page_glossary_summary">Twoje poprawki · %1$d</string>
@@ -426,7 +426,7 @@
     <string name="mode_text_plain">Tekst</string>
     <string name="assist_paused">Podpowiedzi i poprawki wstrzymane · «Tekst» — przywróć</string>
     <string name="assist_resumed">Podpowiedzi i poprawki działają</string>
-    <string name="section_assist">Podpowiedzi i poprawki</string>
+    <string name="section_assist">Pomoc podczas pisania</string>
     <string name="assist_master">Podpowiedzi i poprawki</string>
     <string name="assist_master_hint">Wyłączone: klawiatura tylko pisze, przycisku «Tekst» nie ma.</string>
     <string name="smart_punctuation_hint">Usuwa spację przed , . ! ? i stawia po.</string>
@@ -460,13 +460,13 @@
     <string name="help_buttons_gear_t">Ustawienia</string>
     <string name="help_buttons_gear_b">Otwiera ustawienia OffKey. Blady, gdy piszesz w samych ustawieniach. Podczas dyktowania zmienia się w ✕ — anuluj.</string>
     <string name="help_buttons_modekey_t">Mobilna / komputerowa</string>
-    <string name="help_buttons_modekey_b">Przełącza klawiaturę mobilną i komputerową (Esc, Tab, Ctrl, Alt, Win, F1–F12, strzałki). Gdy otwarta komputerowa, na przycisku jest telefon — powrót. Szary, gdy zamiast klawiszy otwarty jest schowek, emoji lub touchpad.</string>
+    <string name="help_buttons_modekey_b">Przełącza klawiaturę mobilną i komputerową (Esc, Tab, Ctrl, Alt, Win, F1–F12, strzałki). Szary, gdy zamiast klawiszy otwarty jest panel. Można usunąć w «Przyciski nad klawiszami»; gdy pisanie idzie na inne urządzenie, przycisk jest zawsze.</string>
     <string name="help_buttons_sound_t">Dźwięk</string>
     <string name="help_buttons_sound_b">Dotknięcie włącza lub wyłącza dźwięk klawiszy. Przytrzymaj i przesuń po pasku — głośność. Tylko w stylach z dźwiękiem. Przycisk można usunąć: «Tekst i klawisze» → «Przyciski nad klawiszami».</string>
     <string name="help_buttons_bt_t">Bluetooth</string>
     <string name="help_buttons_bt_b">Jest, gdy włączone są «Inne urządzenia». Dotknięcie — pisanie idzie na połączone urządzenie (przycisk świeci), jeszcze raz — z powrotem na telefon. Brak połączenia — dotknięcie łączy z pierwszym urządzeniem ★, przycisk pulsuje podczas łączenia. Długie naciśnięcie — następne urządzenie ★.</string>
     <string name="help_buttons_touchpad_t">Touchpad</string>
-    <string name="help_buttons_touchpad_b">Jest, gdy pisanie idzie na urządzenie. Zamiast klawiszy: przesuwaj palcem — mysz, dotknięcie — klik, dwa palce — przewijanie. Przycisk w rogu przełącza mysz na strzałki (dla przystawki TV).</string>
+    <string name="help_buttons_touchpad_b">Jest, gdy pisanie idzie na urządzenie. Zamiast klawiszy: przesuwaj palcem — mysz, dotknięcie — klik, dwa palce — przewijanie. Przycisk w rogu przełącza na strzałki (dla telewizora): przesunięcie — jedna strzałka, przesunięcie i przytrzymanie — powtarza, dotknięcie — Enter.</string>
     <string name="help_buttons_modes_t">Tryby ▦</string>
     <string name="help_buttons_modes_b">W kompaktowym pasku przyciski trybów są pod tym przyciskiem; dotknięcie otwiera ich rząd. Podświetlony podczas tłumaczenia lub dyktowania.</string>
     <string name="help_buttons_text_t">Aa Tekst</string>
@@ -579,7 +579,7 @@
     <string name="help_devices_star_t">★ do przełączania</string>
     <string name="help_devices_star_b">Oznacz ★ urządzenia na liście; długie naciśnięcie przycisku Bluetooth przełącza między nimi po kolei, w kolejności oznaczenia.</string>
     <string name="help_devices_devlang_t">Język na urządzeniu</string>
-    <string name="help_devices_devlang_b">Klawisze idą jak z prawdziwej klawiatury: urządzenie musi mieć ten sam język; przełączaj go tam jak zwykle. Litery spoza jego układu nie są wysyłane.</string>
+    <string name="help_devices_devlang_b">Klawiatura wysyła klawisze, nie litery: literę wybiera język urządzenia. Włącz na nim język klawiatury (pasek podpowie jaki); przy innym języku w tych samych miejscach wyjdą jego litery.</string>
     <string name="help_devices_waits_t">Co czeka</string>
     <string name="help_devices_waits_b">Gdy pisanie idzie na urządzenie, podpowiedzi, tłumaczenie i głos czekają; tekst ze schowka jest wpisywany tam.</string>
     <string name="help_s_backup">Kopia i reset</string>
@@ -593,4 +593,9 @@
     <string name="help_nothing_found">Nic nie znaleziono</string>
     <string name="onb_g_assist">Pomoc podczas pisania. Jeden główny przełącznik włącza lub wyłącza całość.</string>
     <string name="onb_g_buttons">Przyciski nad klawiszami: tylko potrzebne.</string>
+    <string name="bluetooth_device_language">Na urządzeniu też włącz %1$s</string>
+    <string name="computer_button_show">Przycisk klawiatury komputerowej</string>
+    <string name="computer_button_hint">Gdy pisanie idzie na inne urządzenie, przycisk jest zawsze.</string>
+    <string name="help_buttons_icons_t">Jak czytać ikony</string>
+    <string name="help_buttons_icons_b">Przycisk przełączający między dwiema rzeczami pokazuje, dokąd prowadzi dotknięcie. Przycisk wł./wył. pokazuje swój stan.</string>
 </resources>

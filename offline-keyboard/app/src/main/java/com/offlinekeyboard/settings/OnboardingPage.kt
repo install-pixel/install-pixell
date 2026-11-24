@@ -168,6 +168,8 @@ internal fun OnboardingFlow(s: KeyboardSettings, update: UpdateSettings, onDone:
                     GuideNote(HelpItems.buttons_clipboard)
                     SwitchRow(stringResource(R.string.sound_button_show), s.soundButton) { v -> update { it.copy(soundButton = v) } }
                     GuideNote(HelpItems.buttons_sound)
+                    SwitchRow(stringResource(R.string.computer_button_show), s.computerButton) { v -> update { it.copy(computerButton = v) } }
+                    GuideNote(HelpItems.buttons_modekey)
                 }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
@@ -297,6 +299,7 @@ private fun recommended(s: KeyboardSettings, languages: List<Language>) = common
     learnTouch = true,
     clipboardButton = true,
     soundButton = true,
+    computerButton = true,
 )
 
 /** Just a keyboard: no help while typing, nothing learned, no mode buttons (no row at all), no sound button. */
@@ -311,6 +314,9 @@ private fun minimum(s: KeyboardSettings, languages: List<Language>) = common(s, 
     keySound = false,
     clipboardButton = false,
     soundButton = false,
+    computerButton = false,
+    defaultMode = KeyboardMode.MOBILE,
+    lastMode = KeyboardMode.MOBILE,
 )
 
 /** The keyboard's languages the phone uses, in the keyboard's order; Ukrainian when it uses none of them. */

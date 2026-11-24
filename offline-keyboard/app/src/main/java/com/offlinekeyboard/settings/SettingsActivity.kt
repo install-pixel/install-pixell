@@ -14,6 +14,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -310,8 +311,21 @@ private fun PageContent(
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
+internal fun PageScaffold(
+    title: String,
+    onBack: (() -> Unit)?,
+    // Stays in place above the page while it scrolls or its pages turn (the keyboard preview of «Look and sound»).
+    header: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     val keyboardOpen = WindowInsets.isImeVisible
+    if (LocalLook.current == Look.SHEET && header != null) {
+        Column(Modifier.fillMaxSize().paperPage().safeDrawingPadding()) {
+            Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { header() }
+            Box(Modifier.fillMaxWidth().weight(1f)) { PageScaffold(title, onBack, null, content) }
+        }
+        return
+    }
     if (LocalLook.current == Look.SHEET) {
         // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages); the pages fill the
         // screen (a turned page is a whole sheet), and ‹ on the first page leaves it instead of a Back button.
@@ -343,6 +357,7 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
             .paperPage()
             .safeDrawingPadding(),
     ) {
+        if (header != null) Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { header() }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -464,7 +479,7 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 @Composable
 private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
     val context = LocalContext.current
-    PageScaffold(stringResource(R.string.page_look), onBack) {
+    PageScaffold(stringResource(R.string.page_look), onBack, header = { KeyboardPreview(s) }) {
         StylePicker(s, update, stringResource(R.string.theme_title))
         Section(stringResource(R.string.page_look_size)) {
             SliderBlock(stringResource(R.string.key_brightness, (s.keyBrightness * 100).roundToInt()), stringResource(R.string.key_brightness_hint)) {
@@ -618,6 +633,10 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
             SwitchRow(stringResource(R.string.sound_button_show), s.soundButton) { v ->
                 update { it.copy(soundButton = v) }
             }
+            SwitchRow(stringResource(R.string.computer_button_show), s.computerButton) { v ->
+                update { it.copy(computerButton = v) }
+            }
+            Text(stringResource(R.string.computer_button_hint), style = MaterialTheme.typography.bodySmall)
             // Nearly every button out of sight: said so (a tap on the strip shows them).
             if (s.compactToolbar && s.hideToolbarButtons) {
                 Text(stringResource(R.string.compact_and_hidden), style = MaterialTheme.typography.bodySmall)

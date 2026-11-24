@@ -173,7 +173,7 @@
     <string name="bluetooth_cannot_send">«%1$s» cannot be typed in the device\'s layout</string>
     <string name="bluetooth_not_connected">No device connected · tap for settings</string>
     <string name="bluetooth_typing_here">Typing on the phone again</string>
-    <string name="bluetooth_typing_there">Typing on %1$s</string>
+    <string name="bluetooth_typing_there">Typing on %1$s · language there: %2$s</string>
     <string name="page_bluetooth">Other devices</string>
     <string name="page_bluetooth_on">Computer, TV, tablet over Bluetooth · on</string>
     <string name="page_bluetooth_off">Computer, TV, tablet over Bluetooth · off</string>
@@ -198,7 +198,7 @@
     <string name="bluetooth_use_steps">• A tap on the Bluetooth button above the keys: typing goes to the device (the button lights up). Another tap: back to the phone.\n• Not connected yet: the tap connects to the first ★ device (the button pulses while it connects).\n• A long press: on to the next ★ device, round and round.\n• The touchpad button: a mouse, or arrows for a TV box.</string>
     <string name="bluetooth_open_keyboard">Tap here to open the keyboard</string>
     <string name="bluetooth_section_notes">Good to know</string>
-    <string name="bluetooth_notes">The keys are sent as from a real keyboard: the device must use the same language as the keyboard (Укр/Pol/Eng); switch it there as you do on that device. Letters its layout does not have are not sent. While typing goes to a device, suggestions, translation and voice wait. Text from the clipboard is typed there too.</string>
+    <string name="bluetooth_notes">The keyboard sends keys, not letters: the device\'s language decides the letter. Set it to the keyboard\'s language (Укр/Pol/Eng); with another one, its letters come out in the same places. While typing goes to a device, suggestions, translation and voice wait; text from the clipboard is typed there.</string>
     <string name="translation_direction_hint">Another tap on the translation button above the keys moves on to the next language.</string>
     <string name="page_glossary">Translation glossary</string>
     <string name="page_glossary_summary">Your corrections · %1$d</string>
@@ -426,7 +426,7 @@
     <string name="mode_text_plain">Text</string>
     <string name="assist_paused">Suggestions and corrections paused · tap «Text» to bring them back</string>
     <string name="assist_resumed">Suggestions and corrections on</string>
-    <string name="section_assist">Suggestions and corrections</string>
+    <string name="section_assist">Help while typing</string>
     <string name="assist_master">Suggestions and corrections</string>
     <string name="assist_master_hint">Off: the keyboard only types, and the «Text» button is gone.</string>
     <string name="smart_punctuation_hint">Removes the space before , . ! ? and puts one after.</string>
@@ -460,13 +460,13 @@
     <string name="help_buttons_gear_t">Settings</string>
     <string name="help_buttons_gear_b">Opens OffKey\'s settings. Pale while you type in the settings themselves. While dictating it becomes ✕: cancel.</string>
     <string name="help_buttons_modekey_t">Mobile / computer keyboard</string>
-    <string name="help_buttons_modekey_b">Switches between the mobile keyboard and the computer one (Esc, Tab, Ctrl, Alt, Win, F1–F12, arrows). With the computer keyboard open it shows a phone: back. Grey while the clipboard, emoji or the touchpad is in place of the keys.</string>
+    <string name="help_buttons_modekey_b">Switches between the mobile keyboard and the computer one (Esc, Tab, Ctrl, Alt, Win, F1–F12, arrows). Grey while a panel is in place of the keys. It can be taken away in «Buttons above the keys»; while typing goes to another device it is always there.</string>
     <string name="help_buttons_sound_t">Sound</string>
     <string name="help_buttons_sound_b">A tap turns the key sounds on or off. Hold it and slide along the strip: the volume. Only in styles with sounds. It can be taken away: «Text and keys» → «Buttons above the keys».</string>
     <string name="help_buttons_bt_t">Bluetooth</string>
     <string name="help_buttons_bt_b">There when «Other devices» is on. A tap: typing goes to the connected device (the button lights up); another tap: back to the phone. Not connected: the tap connects to the first ★ device, and the button pulses while it connects. A long press: on to the next ★ device.</string>
     <string name="help_buttons_touchpad_t">Touchpad</string>
-    <string name="help_buttons_touchpad_b">There while typing goes to a device. In place of the keys: slide to move the mouse, tap to click, two fingers to scroll. The button in its corner switches the mouse to arrows (for a TV box).</string>
+    <string name="help_buttons_touchpad_b">There while typing goes to a device. In place of the keys: slide to move the mouse, tap to click, two fingers to scroll. The button in the corner switches to arrows (for a TV): a swipe is one arrow, a swipe held repeats it, a tap is Enter.</string>
     <string name="help_buttons_modes_t">Modes ▦</string>
     <string name="help_buttons_modes_b">With the compact toolbar the mode buttons are under this button; a tap opens their row. Lit while translating or dictating.</string>
     <string name="help_buttons_text_t">Aa Text</string>
@@ -579,7 +579,7 @@
     <string name="help_devices_star_t">★ for switching</string>
     <string name="help_devices_star_b">Star ★ devices in the list; a long press on the Bluetooth button goes round them in the order you starred them.</string>
     <string name="help_devices_devlang_t">The language on the device</string>
-    <string name="help_devices_devlang_b">Keys go as from a real keyboard: the device must use the same language; switch it there as usual. Letters its layout does not have are not sent.</string>
+    <string name="help_devices_devlang_b">The keyboard sends keys, not letters: the device\'s language decides the letter. Set it to the keyboard\'s language (the strip says which); with another one, its letters come out in the same places.</string>
     <string name="help_devices_waits_t">What waits</string>
     <string name="help_devices_waits_b">While typing goes to a device, suggestions, translation and voice wait; text from the clipboard is typed there.</string>
     <string name="help_s_backup">Backup and reset</string>
@@ -593,4 +593,9 @@
     <string name="help_nothing_found">Nothing found</string>
     <string name="onb_g_assist">Help while typing. One main switch turns it all on or off.</string>
     <string name="onb_g_buttons">The buttons above the keys: only those you need.</string>
+    <string name="bluetooth_device_language">Set the device to %1$s too</string>
+    <string name="computer_button_show">Computer keyboard button</string>
+    <string name="computer_button_hint">While typing goes to another device, it is always there.</string>
+    <string name="help_buttons_icons_t">How to read the icons</string>
+    <string name="help_buttons_icons_b">A button that switches between two things shows where a tap leads. An on/off button shows its state.</string>
 </resources>

@@ -351,7 +351,10 @@ class Touchpad(context: Context) : View(context) {
         strokeJoin = Paint.Join.ROUND
     }
 
-    /** Draws the corner button: the mode it is in (a pointer, or four arrows). */
+    /**
+     * Draws the corner button: the mode a tap leads to (as the keyboard button and «?123» do): four arrows
+     * while it is a mouse, a pointer while it presses arrows.
+     */
     private fun drawModeButton(canvas: Canvas) {
         val size = MODE_BOX_DP * density
         modeBox.set(width - size, 0f, width.toFloat(), size)
@@ -361,7 +364,7 @@ class Touchpad(context: Context) : View(context) {
         modePaint.color = ink
         modePaint.alpha = (200 * surfaces.brightness).toInt().coerceIn(110, 230)
         modePaint.strokeWidth = 1.6f * density
-        if (arrows) {
+        if (!arrows) {
             // Four arrows, a cross.
             canvas.drawLine(cx - r, cy, cx + r, cy, modePaint)
             canvas.drawLine(cx, cy - r, cx, cy + r, modePaint)
@@ -421,6 +424,16 @@ class Touchpad(context: Context) : View(context) {
     // The arrows mode.
     private var arrowRestX = 0f
     private var arrowRestY = 0f
+    /** The arrow this swipe pressed (0: none yet): one press a swipe, as a remote's button. */
+    private var arrowPressed = 0
+    /** The finger kept down after the swipe: the arrow repeats, as a remote's button held. */
+    private val arrowRepeat = object : Runnable {
+        override fun run() {
+            if (arrowPressed == 0) return
+            keyListener?.invoke(arrowPressed)
+            postDelayed(this, ARROW_REPEAT_MS)
+        }
+    }
     private var held2 = false
     private val holdMenu = Runnable {
         held2 = true
@@ -459,6 +472,8 @@ class Touchpad(context: Context) : View(context) {
                 moved = 0f
                 arrowRestX = 0f
                 arrowRestY = 0f
+                arrowPressed = 0
+                removeCallbacks(arrowRepeat)
                 held2 = false
                 postDelayed(holdMenu, HOLD_MENU_MS)
             }
@@ -475,21 +490,30 @@ class Touchpad(context: Context) : View(context) {
                 moved += hypot(dx, dy)
                 if (moved > TAP_SLOP_DP * density) removeCallbacks(holdMenu)
                 if (held2 || e.pointerCount > 1) return true
+                if (arrowPressed != 0) return true
                 arrowRestX += dx
                 arrowRestY += dy
                 val step = ARROW_STEP_DP * density
-                // The way the finger goes most: one arrow press for every step along it.
-                if (kotlin.math.abs(arrowRestX) >= kotlin.math.abs(arrowRestY)) {
-                    while (arrowRestX >= step) { keyListener?.invoke(HID_RIGHT); arrowRestX -= step; arrowRestY = 0f }
-                    while (arrowRestX <= -step) { keyListener?.invoke(HID_LEFT); arrowRestX += step; arrowRestY = 0f }
-                } else {
-                    while (arrowRestY >= step) { keyListener?.invoke(HID_DOWN); arrowRestY -= step; arrowRestX = 0f }
-                    while (arrowRestY <= -step) { keyListener?.invoke(HID_UP); arrowRestY += step; arrowRestX = 0f }
+                // One press a swipe, the way the finger went most, however long the swipe (a longer one pressed
+                // twice and skipped an item); the finger kept down then repeats it.
+                val usage = when {
+                    kotlin.math.abs(arrowRestX) >= kotlin.math.abs(arrowRestY) && arrowRestX >= step -> HID_RIGHT
+                    kotlin.math.abs(arrowRestX) >= kotlin.math.abs(arrowRestY) && arrowRestX <= -step -> HID_LEFT
+                    kotlin.math.abs(arrowRestY) > kotlin.math.abs(arrowRestX) && arrowRestY >= step -> HID_DOWN
+                    kotlin.math.abs(arrowRestY) > kotlin.math.abs(arrowRestX) && arrowRestY <= -step -> HID_UP
+                    else -> 0
+                }
+                if (usage != 0) {
+                    arrowPressed = usage
+                    keyListener?.invoke(usage)
+                    postDelayed(arrowRepeat, ARROW_REPEAT_DELAY_MS)
                 }
             }
             MotionEvent.ACTION_POINTER_UP -> fingers = e.pointerCount - 1
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(holdMenu)
+                removeCallbacks(arrowRepeat)
+                arrowPressed = 0
                 val now = SystemClock.uptimeMillis()
                 val tap = e.actionMasked == MotionEvent.ACTION_UP && !held2 && now - downAt < TAP_MS * 2 && moved < TAP_SLOP_DP * density
                 if (tap) keyListener?.invoke(if (maxFingers >= 2) HID_ESC else HID_ENTER)
@@ -617,6 +641,9 @@ class Touchpad(context: Context) : View(context) {
         const val MODE_BOX_DP = 44f
         /** The arrows mode: a press for every so far the finger goes, and how long a hold is for the menu key. */
         const val ARROW_STEP_DP = 36f
+        /** A swipe held at its end: the arrow repeats after this, then this often. */
+        const val ARROW_REPEAT_DELAY_MS = 500L
+        const val ARROW_REPEAT_MS = 150L
         const val HOLD_MENU_MS = 550L
         const val HID_RIGHT = 0x4F
         const val HID_LEFT = 0x50

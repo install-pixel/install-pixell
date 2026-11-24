@@ -99,6 +99,8 @@ data class KeyboardSettings(
     val clipboardButton: Boolean = true,
     /** The sound button in the top row (the styles with sounds). */
     val soundButton: Boolean = true,
+    /** The button that switches to the computer keyboard (and back). */
+    val computerButton: Boolean = true,
 ) {
     /** When the translation goes into the field: after each word (a pause), after a sentence, or at Enter. */
     val translationWhen: TranslationWhen get() = when {
@@ -190,6 +192,7 @@ class SettingsRepository(context: Context) {
             prefs[Keys.VOICE_BUTTON] = updated.voiceButton
             prefs[Keys.CLIPBOARD_BUTTON] = updated.clipboardButton
             prefs[Keys.SOUND_BUTTON] = updated.soundButton
+            prefs[Keys.COMPUTER_BUTTON] = updated.computerButton
         }
     }
 
@@ -300,6 +303,7 @@ class SettingsRepository(context: Context) {
             voiceButton = this[Keys.VOICE_BUTTON] ?: defaults.voiceButton,
             clipboardButton = this[Keys.CLIPBOARD_BUTTON] ?: defaults.clipboardButton,
             soundButton = this[Keys.SOUND_BUTTON] ?: defaults.soundButton,
+            computerButton = this[Keys.COMPUTER_BUTTON] ?: defaults.computerButton,
         )
     }
 
@@ -354,6 +358,7 @@ class SettingsRepository(context: Context) {
         val VOICE_BUTTON = booleanPreferencesKey("voice_button")
         val CLIPBOARD_BUTTON = booleanPreferencesKey("clipboard_button")
         val SOUND_BUTTON = booleanPreferencesKey("sound_button")
+        val COMPUTER_BUTTON = booleanPreferencesKey("computer_button")
     }
 }
 

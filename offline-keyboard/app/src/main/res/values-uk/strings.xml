@@ -173,7 +173,7 @@
     <string name="bluetooth_cannot_send">«%1$s» не можна надрукувати в розкладці пристрою</string>
     <string name="bluetooth_not_connected">Пристрій не підключено · дотик — налаштування</string>
     <string name="bluetooth_typing_here">Знову друкуєте на телефоні</string>
-    <string name="bluetooth_typing_there">Друкуєте на %1$s</string>
+    <string name="bluetooth_typing_there">Друкуєте на %1$s · мова на пристрої: %2$s</string>
     <string name="page_bluetooth">Інші пристрої</string>
     <string name="page_bluetooth_on">Комп\'ютер, телевізор, планшет через Bluetooth · увімкнено</string>
     <string name="page_bluetooth_off">Комп\'ютер, телевізор, планшет через Bluetooth · вимкнено</string>
@@ -198,7 +198,7 @@
     <string name="bluetooth_use_steps">• Дотик до кнопки Bluetooth над клавішами — друк іде на пристрій (кнопка світиться). Ще дотик — знову на телефоні.\n• Ще не підключено — дотик підключає до першого пристрою з ★ (кнопка пульсує, поки підключається).\n• Довгий натиск — наступний пристрій з ★, по колу.\n• Кнопка тачпада — миша або стрілки для ТВ-приставки.</string>
     <string name="bluetooth_open_keyboard">Торкніться, щоб відкрити клавіатуру</string>
     <string name="bluetooth_section_notes">Варто знати</string>
-    <string name="bluetooth_notes">Клавіші надсилаються, як зі справжньої клавіатури: на пристрої має бути та сама мова, що й на клавіатурі (Укр/Pol/Eng); перемикайте її там так, як на тому пристрої. Літери, яких немає в його розкладці, не надсилаються. Поки друк іде на пристрій, підказки, переклад і голос чекають. Текст із буфера теж друкується там.</string>
+    <string name="bluetooth_notes">Клавіатура надсилає клавіші, а не літери: літеру вибирає мова пристрою. Увімкніть на ньому мову клавіатури (Укр/Pol/Eng); з іншою мовою на тих самих місцях вийдуть її літери. Поки друк іде на пристрій, підказки, переклад і голос чекають; текст із буфера друкується там.</string>
     <string name="translation_direction_hint">Ще один дотик до кнопки перекладу над клавішами — наступна мова.</string>
     <string name="page_glossary">Словник перекладу</string>
     <string name="page_glossary_summary">Ваші виправлення · %1$d</string>
@@ -426,7 +426,7 @@
     <string name="mode_text_plain">Текст</string>
     <string name="assist_paused">Підказки й виправлення на паузі · «Текст» — повернути</string>
     <string name="assist_resumed">Підказки й виправлення знову працюють</string>
-    <string name="section_assist">Підказки й виправлення</string>
+    <string name="section_assist">Допомога під час набору</string>
     <string name="assist_master">Підказки й виправлення</string>
     <string name="assist_master_hint">Вимкнено — клавіатура лише друкує, кнопки «Текст» немає.</string>
     <string name="smart_punctuation_hint">Прибирає пробіл перед , . ! ? і ставить після.</string>
@@ -460,13 +460,13 @@
     <string name="help_buttons_gear_t">Налаштування</string>
     <string name="help_buttons_gear_b">Відкриває налаштування OffKey. Бліда, поки ви друкуєте в самих налаштуваннях. Під час диктування на її місці ✕ — скасувати.</string>
     <string name="help_buttons_modekey_t">Мобільна / комп\'ютерна</string>
-    <string name="help_buttons_modekey_b">Перемикає мобільну й комп\'ютерну клавіатуру (Esc, Tab, Ctrl, Alt, Win, F1–F12, стрілки). Коли відкрита комп\'ютерна, на кнопці телефон — повернутися. Сіра, поки замість клавіш відкрито буфер, емодзі чи тачпад.</string>
+    <string name="help_buttons_modekey_b">Перемикає мобільну й комп\'ютерну клавіатуру (Esc, Tab, Ctrl, Alt, Win, F1–F12, стрілки). Сіра, поки замість клавіш відкрита панель. Можна прибрати в «Кнопки над клавішами»; поки друк іде на інший пристрій, кнопка є завжди.</string>
     <string name="help_buttons_sound_t">Звук</string>
     <string name="help_buttons_sound_b">Дотик вмикає чи вимикає звук клавіш. Утримайте й ведіть пальцем по смужці — гучність. Лише в стилях зі звуком. Кнопку можна прибрати: «Текст і клавіші» → «Кнопки над клавішами».</string>
     <string name="help_buttons_bt_t">Bluetooth</string>
     <string name="help_buttons_bt_b">Є, коли увімкнено «Інші пристрої». Дотик — друк іде на підключений пристрій (кнопка світиться), ще дотик — назад на телефон. Не підключено — дотик підключає до першого пристрою з ★, кнопка пульсує, поки підключається. Довгий натиск — наступний пристрій з ★.</string>
     <string name="help_buttons_touchpad_t">Тачпад</string>
-    <string name="help_buttons_touchpad_b">Є, поки друк іде на пристрій. Замість клавіш: ведіть пальцем — рухається миша, дотик — клік, два пальці — прокрутка. Кнопка в куті перемикає мишу на стрілки (для ТВ-приставки).</string>
+    <string name="help_buttons_touchpad_b">Є, поки друк іде на пристрій. Замість клавіш: ведіть пальцем — рухається миша, дотик — клік, два пальці — прокрутка. Кнопка в куті перемикає на стрілки (для телевізора): свайп — одна стрілка, свайп і тримати — повтор, дотик — Enter.</string>
     <string name="help_buttons_modes_t">Режими ▦</string>
     <string name="help_buttons_modes_b">У компактній панелі кнопки режимів сховані під цією кнопкою; дотик відкриває їхній ряд. Підсвічена під час перекладу чи диктування.</string>
     <string name="help_buttons_text_t">Aa Текст</string>
@@ -579,7 +579,7 @@
     <string name="help_devices_star_t">★ для перемикання</string>
     <string name="help_devices_star_b">Позначте ★ пристрої у списку; довгий натиск кнопки Bluetooth перемикає між ними по колу, у порядку позначення.</string>
     <string name="help_devices_devlang_t">Мова на пристрої</string>
-    <string name="help_devices_devlang_b">Клавіші йдуть як зі справжньої клавіатури: на пристрої має бути та сама мова; перемикайте її там як звичайно. Літери, яких немає в його розкладці, не надсилаються.</string>
+    <string name="help_devices_devlang_b">Клавіатура надсилає клавіші, а не літери: літеру вибирає мова пристрою. Увімкніть на ньому мову клавіатури (смужка підкаже яку); з іншою мовою на тих самих місцях вийдуть її літери.</string>
     <string name="help_devices_waits_t">Що чекає</string>
     <string name="help_devices_waits_b">Поки друк іде на пристрій, підказки, переклад і голос чекають; текст із буфера друкується там.</string>
     <string name="help_s_backup">Резервна копія й скидання</string>
@@ -593,4 +593,9 @@
     <string name="help_nothing_found">Нічого не знайдено</string>
     <string name="onb_g_assist">Допомога під час набору. Один головний перемикач вмикає чи вимикає її всю.</string>
     <string name="onb_g_buttons">Кнопки над клавішами: лише ті, що потрібні.</string>
+    <string name="bluetooth_device_language">На пристрої теж увімкніть %1$s</string>
+    <string name="computer_button_show">Кнопка комп\'ютерної клавіатури</string>
+    <string name="computer_button_hint">Поки друк іде на інший пристрій, кнопка є завжди.</string>
+    <string name="help_buttons_icons_t">Як читати значки</string>
+    <string name="help_buttons_icons_b">Кнопка, що перемикає між двома речами, показує, куди веде дотик. Кнопка «увімк./вимк.» показує свій стан.</string>
 </resources>

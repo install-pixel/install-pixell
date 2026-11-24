@@ -15,6 +15,7 @@ internal enum class HelpSection(val title: Int, val icon: Icon, val items: List<
         HelpItem(R.string.help_start_presets_t, R.string.help_start_presets_b),
     )),
     BUTTONS(R.string.help_s_buttons, Icon.MODES, listOf(
+        HelpItem(R.string.help_buttons_icons_t, R.string.help_buttons_icons_b),
         HelpItem(R.string.help_buttons_strip_t, R.string.help_buttons_strip_b),
         HelpItem(R.string.help_buttons_gear_t, R.string.help_buttons_gear_b, Icon.GEAR),
         HelpItem(R.string.help_buttons_modekey_t, R.string.help_buttons_modekey_b, Icon.KEYBOARD),
@@ -105,20 +106,21 @@ internal object HelpItems {
     val start_enable get() = HelpSection.START.items[0]
     val start_try get() = HelpSection.START.items[1]
     val start_presets get() = HelpSection.START.items[2]
-    val buttons_strip get() = HelpSection.BUTTONS.items[0]
-    val buttons_gear get() = HelpSection.BUTTONS.items[1]
-    val buttons_modekey get() = HelpSection.BUTTONS.items[2]
-    val buttons_sound get() = HelpSection.BUTTONS.items[3]
-    val buttons_bt get() = HelpSection.BUTTONS.items[4]
-    val buttons_touchpad get() = HelpSection.BUTTONS.items[5]
-    val buttons_modes get() = HelpSection.BUTTONS.items[6]
-    val buttons_text get() = HelpSection.BUTTONS.items[7]
-    val buttons_translate get() = HelpSection.BUTTONS.items[8]
-    val buttons_clipboard get() = HelpSection.BUTTONS.items[9]
-    val buttons_voice get() = HelpSection.BUTTONS.items[10]
-    val buttons_undo get() = HelpSection.BUTTONS.items[11]
-    val buttons_compact get() = HelpSection.BUTTONS.items[12]
-    val buttons_hide get() = HelpSection.BUTTONS.items[13]
+    val buttons_icons get() = HelpSection.BUTTONS.items[0]
+    val buttons_strip get() = HelpSection.BUTTONS.items[1]
+    val buttons_gear get() = HelpSection.BUTTONS.items[2]
+    val buttons_modekey get() = HelpSection.BUTTONS.items[3]
+    val buttons_sound get() = HelpSection.BUTTONS.items[4]
+    val buttons_bt get() = HelpSection.BUTTONS.items[5]
+    val buttons_touchpad get() = HelpSection.BUTTONS.items[6]
+    val buttons_modes get() = HelpSection.BUTTONS.items[7]
+    val buttons_text get() = HelpSection.BUTTONS.items[8]
+    val buttons_translate get() = HelpSection.BUTTONS.items[9]
+    val buttons_clipboard get() = HelpSection.BUTTONS.items[10]
+    val buttons_voice get() = HelpSection.BUTTONS.items[11]
+    val buttons_undo get() = HelpSection.BUTTONS.items[12]
+    val buttons_compact get() = HelpSection.BUTTONS.items[13]
+    val buttons_hide get() = HelpSection.BUTTONS.items[14]
     val look_style get() = HelpSection.LOOK.items[0]
     val look_preview get() = HelpSection.LOOK.items[1]
     val look_seethrough get() = HelpSection.LOOK.items[2]

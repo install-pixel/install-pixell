@@ -87,6 +87,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val translateShown: Boolean = true,
         val clipboardShown: Boolean = true,
         val voiceShown: Boolean = true,
+        /** The computer / mobile keyboard button (taken away in the settings, back while it is needed). */
+        val modeKeyShown: Boolean = true,
     ) {
         /** Any button below the strip: none, and the row is not there at all. */
         val modeRowShown: Boolean get() = textShown || translateShown || clipboardShown || voiceShown
@@ -441,7 +443,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             soundButton to (lastState?.soundOn != null),
             remoteButton to (lastState?.remoteOffered == true),
             bluetoothButton to bluetoothOn,
-            modeButton to true,
+            modeButton to (lastState?.modeKeyShown != false),
             settingsButton to true,
         )) {
             val target = when {
