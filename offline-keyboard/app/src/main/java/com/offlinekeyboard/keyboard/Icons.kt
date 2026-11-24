@@ -19,7 +19,7 @@ enum class Icon {
     SHIFT, SHIFT_ON, CAPS, BACKSPACE, ENTER, SEARCH, SEND, DONE, TRANSLATE,
     MIC, STOP, CLIPBOARD, GEAR, KEYBOARD, PHONE, CLOSE, HIDE,
     LEFT, RIGHT, UP, DOWN, BLUETOOTH, EMOJI, UNDO, STICKER, MODES,
-    SPEAKER, SPEAKER_OFF, TOUCHPAD, WINDOWS,
+    SPEAKER, SPEAKER_OFF, TOUCHPAD, WINDOWS, ARROW_KEYS,
     VOLUME_DOWN, VOLUME_UP, PREVIOUS, NEXT, SEEK_BACK, SEEK_FORWARD, PLAY_PAUSE, MUSIC,
 }
 
@@ -241,6 +241,11 @@ object Icons {
                 p.addOval(RectF(4.5f, 14.5f, 11.5f, 20f), Path.Direction.CW)
                 p.line(11.5f, 17f, 11.5f, 4f)
                 p.moveTo(11.5f, 4f); p.cubicTo(13f, 7f, 18.5f, 7f, 18f, 12f)
+            }
+            Icon.ARROW_KEYS -> {
+                // The arrow keys of a keyboard: one key above three.
+                p.addRoundRect(RectF(9.5f, 5f, 14.5f, 10f), 1.2f, 1.2f, Path.Direction.CW)
+                for (x in listOf(3.5f, 9.5f, 15.5f)) p.addRoundRect(RectF(x, 12f, x + 5f, 17f), 1.2f, 1.2f, Path.Direction.CW)
             }
             Icon.TOUCHPAD -> {
                 // A touchpad with its two buttons.

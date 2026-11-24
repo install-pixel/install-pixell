@@ -47,6 +47,7 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
     var query by remember { mutableStateOf("") }
     var newWord by remember { mutableStateOf("") }
     var confirmClear by remember { mutableStateOf(false) }
+    var confirmFragments by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf(false) }
     var fileMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -69,9 +70,13 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
 
     PageScaffold(stringResource(R.string.page_dictionary), onBack) {
         Section(stringResource(R.string.dictionary_settings)) {
-            SwitchRow(stringResource(R.string.dictionary_learn), s.learnWords) { v -> update { it.copy(learnWords = v) } }
+            // Both are part of «Підказки й виправлення» («Текст і клавіші»): pale while that is off.
+            if (!s.assistEnabled) {
+                Text(stringResource(R.string.dictionary_assist_off), style = MaterialTheme.typography.bodySmall, color = Tone.Danger)
+            }
+            SwitchRow(stringResource(R.string.dictionary_learn), s.learnWords, enabled = s.assistEnabled) { v -> update { it.copy(learnWords = v) } }
             Text(stringResource(R.string.dictionary_learn_hint), style = MaterialTheme.typography.bodySmall)
-            SwitchRow(stringResource(R.string.dictionary_suggestions), s.showSuggestions) { v ->
+            SwitchRow(stringResource(R.string.dictionary_suggestions), s.showSuggestions, enabled = s.assistEnabled) { v ->
                 update { it.copy(showSuggestions = v) }
             }
             Text(stringResource(R.string.dictionary_suggestions_hint), style = MaterialTheme.typography.bodySmall)
@@ -182,6 +187,37 @@ internal fun DictionaryPage(s: KeyboardSettings, update: UpdateSettings, onBack:
                     )
                 }
             }
+            }
+            // Pieces of common words learned by mistake («швидк» for «швидко»): listed, removed only when confirmed.
+            val fragments = remember(version) {
+                Language.entries.flatMap { l ->
+                    store.dictionary.entries(l).map { it.word }
+                        .filter { com.offlinekeyboard.core.dictionary.BaseDictionary.isFragment(l, it) }
+                        .map { l to it }
+                }
+            }
+            if (fragments.isNotEmpty()) {
+                ActionButton(onClick = { confirmFragments = true }) {
+                    Text(stringResource(R.string.dictionary_fragments, fragments.size))
+                }
+            }
+            if (confirmFragments) {
+                AlertDialog(
+                    onDismissRequest = { confirmFragments = false },
+                    title = { Text(stringResource(R.string.dictionary_fragments, fragments.size)) },
+                    text = {
+                        Text(stringResource(R.string.dictionary_fragments_confirm, fragments.joinToString(", ") { it.second }))
+                    },
+                    confirmButton = {
+                        TextButton(colors = toneTextColors(ButtonTone.DANGER), onClick = {
+                            fragments.forEach { (l, w) -> store.dictionary.remove(l, w) }
+                            store.changed()
+                            store.saveNow()
+                            confirmFragments = false
+                        }) { Text(stringResource(R.string.delete)) }
+                    },
+                    dismissButton = { TextButton(onClick = { confirmFragments = false }) { Text(stringResource(R.string.cancel)) } },
+                )
             }
             ActionButton(tone = ButtonTone.DANGER, onClick = { confirmClear = true }) { Text(stringResource(R.string.dictionary_clear)) }
         }

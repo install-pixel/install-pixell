@@ -816,6 +816,9 @@ class KeyboardUiTest {
      */
     @Test
     fun framesWhileTypingAndTurning() {
+        // A measurement for a real phone: on the CI's slow emulators it only took the time (a job ran out of it).
+        val emulator = Build.FINGERPRINT.contains("generic") || Build.HARDWARE.contains("ranchu") || Build.PRODUCT.contains("sdk")
+        org.junit.Assume.assumeFalse("frame timing is measured on a real phone", emulator)
         val repository = com.offlinekeyboard.settings.SettingsRepository(instrumentation.targetContext)
         val pkg = instrumentation.targetContext.packageName
         val metrics = instrumentation.targetContext.resources.displayMetrics

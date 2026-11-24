@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.layout.EmojiSet
-import com.offlinekeyboard.keyboard.StickerCharacter
 import com.offlinekeyboard.keyboard.Stickers
 
 /** The user's own emoji and stickers, and who Lingo is in the built-in stickers. */
@@ -92,15 +91,6 @@ internal fun StickersPage(s: KeyboardSettings, update: UpdateSettings, onBack: (
                     }
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
-            }
-        }
-
-        Section(stringResource(R.string.sticker_character)) {
-            RadioRow(stringResource(R.string.sticker_boy_description), s.stickerCharacter == StickerCharacter.BOY) {
-                update { it.copy(stickerCharacter = StickerCharacter.BOY) }
-            }
-            RadioRow(stringResource(R.string.sticker_girl_description), s.stickerCharacter == StickerCharacter.GIRL) {
-                update { it.copy(stickerCharacter = StickerCharacter.GIRL) }
             }
         }
     }

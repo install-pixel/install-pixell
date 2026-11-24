@@ -14,6 +14,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -310,8 +313,36 @@ private fun PageContent(
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Composable () -> Unit) {
+internal fun PageScaffold(
+    title: String,
+    onBack: (() -> Unit)?,
+    // Stays in place above the page while it scrolls or its pages turn (the keyboard preview of «Look and sound»).
+    header: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     val keyboardOpen = WindowInsets.isImeVisible
+    if (LocalLook.current == Look.SHEET && header != null) {
+        Column(Modifier.fillMaxSize().paperPage().safeDrawingPadding()) {
+            Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { header() }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                PageScaffold(title, onBack, null, content)
+                // Where the strip of paper with the keyboard meets the page: a soft band instead of a hard edge.
+                val page = Tone.Page
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .offset(y = (-18).dp)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(page.copy(alpha = 0f), page.copy(alpha = 0.55f), page.copy(alpha = 0f)),
+                            ),
+                        ),
+                )
+            }
+        }
+        return
+    }
     if (LocalLook.current == Look.SHEET) {
         // The sketch: a notebook's pages to turn, not a list to scroll (see NotebookPages); the pages fill the
         // screen (a turned page is a whole sheet), and ‹ on the first page leaves it instead of a Back button.
@@ -343,6 +374,7 @@ internal fun PageScaffold(title: String, onBack: (() -> Unit)?, content: @Compos
             .paperPage()
             .safeDrawingPadding(),
     ) {
+        if (header != null) Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) { header() }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -464,7 +496,7 @@ private fun MainPage(s: KeyboardSettings, onOpen: (Page) -> Unit) {
 @Composable
 private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
     val context = LocalContext.current
-    PageScaffold(stringResource(R.string.page_look), onBack) {
+    PageScaffold(stringResource(R.string.page_look), onBack, header = { KeyboardPreview(s) }) {
         StylePicker(s, update, stringResource(R.string.theme_title))
         Section(stringResource(R.string.page_look_size)) {
             SliderBlock(stringResource(R.string.key_brightness, (s.keyBrightness * 100).roundToInt()), stringResource(R.string.key_brightness_hint)) {
@@ -540,28 +572,41 @@ private fun LookPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> 
                 }
             }
             }
-            Text(stringResource(R.string.key_sound_hint), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
-/** How typing behaves: corrections, capitals, punctuation help, gestures, the enlarged letter, vibration. */
+/**
+ * «Текст і клавіші»: the help while typing (one main switch over suggestions, corrections and learning), the
+ * plain text rules, the keys and gestures, and the buttons above the keys.
+ */
 @Composable
 private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -> Unit) {
     val context = LocalContext.current
     PageScaffold(stringResource(R.string.page_typing), onBack) {
-        Section(stringResource(R.string.page_typing_text)) {
-            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v ->
+        Section(stringResource(R.string.section_assist)) {
+            SwitchRow(stringResource(R.string.assist_master), s.assistEnabled) { v ->
+                update { it.copy(assistEnabled = v, assistPaused = false) }
+            }
+            Text(stringResource(R.string.assist_master_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect, enabled = s.assistEnabled) { v ->
                 update { it.copy(autoCorrect = v) }
             }
+            SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation, enabled = s.assistEnabled) { v ->
+                update { it.copy(smartPunctuation = v) }
+            }
+            Text(stringResource(R.string.smart_punctuation_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.long_context), s.longContext, enabled = s.assistEnabled) { v ->
+                update { it.copy(longContext = v) }
+            }
+            Text(stringResource(R.string.long_context_hint), style = MaterialTheme.typography.bodySmall)
+        }
+        Section(stringResource(R.string.page_typing_text)) {
             SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v ->
                 update { it.copy(autoCapitalize = v) }
             }
             SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v ->
                 update { it.copy(doubleSpacePeriod = v) }
-            }
-            SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation) { v ->
-                update { it.copy(smartPunctuation = v) }
             }
         }
         Section(stringResource(R.string.page_typing_keys)) {
@@ -572,19 +617,16 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
                 update { it.copy(backspaceSwipe = v) }
             }
             SwitchRow(stringResource(R.string.space_cursor), s.spaceCursor) { v -> update { it.copy(spaceCursor = v) } }
-            SwitchRow(stringResource(R.string.long_context), s.longContext) { v -> update { it.copy(longContext = v) } }
-            Text(stringResource(R.string.long_context_hint), style = MaterialTheme.typography.bodySmall)
+            SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
+                update { it.copy(spaceSwipeSwitchesLanguage = v) }
+            }
             SwitchRow(stringResource(R.string.learn_touch), s.learnTouch) { v -> update { it.copy(learnTouch = v) } }
             Text(stringResource(R.string.learn_touch_hint), style = MaterialTheme.typography.bodySmall)
-            val context = androidx.compose.ui.platform.LocalContext.current
-            var touchForgotten by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            var touchForgotten by remember { mutableStateOf(false) }
             ActionButton(onClick = {
                 com.offlinekeyboard.keyboard.TouchModel.reset(context)
                 touchForgotten = true
             }) { Text(stringResource(if (touchForgotten) R.string.learn_touch_forgotten else R.string.learn_touch_reset)) }
-            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
-                update { it.copy(compactToolbar = v) }
-            }
             SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v ->
                 update { it.copy(mobileCursorRow = v) }
             }
@@ -593,11 +635,26 @@ private fun TypingPage(s: KeyboardSettings, update: UpdateSettings, onBack: () -
             if (s.mobileCursorRow && s.keyHeightScale < 0.9f) {
                 Text(stringResource(R.string.cursor_row_small_keys), style = MaterialTheme.typography.bodySmall, color = Tone.Danger)
             }
+        }
+        Section(stringResource(R.string.section_buttons)) {
+            SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v ->
+                update { it.copy(compactToolbar = v) }
+            }
             SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v ->
                 update { it.copy(hideToolbarButtons = v) }
             }
             Text(stringResource(R.string.hide_toolbar_buttons_hint), style = MaterialTheme.typography.bodySmall)
-            // With the compact strip as well, nearly every button is out of sight: said so.
+            SwitchRow(stringResource(R.string.clipboard_button_show), s.clipboardButton) { v ->
+                update { it.copy(clipboardButton = v) }
+            }
+            SwitchRow(stringResource(R.string.sound_button_show), s.soundButton) { v ->
+                update { it.copy(soundButton = v) }
+            }
+            SwitchRow(stringResource(R.string.computer_button_show), s.computerButton) { v ->
+                update { it.copy(computerButton = v) }
+            }
+            Text(stringResource(R.string.computer_button_hint), style = MaterialTheme.typography.bodySmall)
+            // Nearly every button out of sight: said so (a tap on the strip shows them).
             if (s.compactToolbar && s.hideToolbarButtons) {
                 Text(stringResource(R.string.compact_and_hidden), style = MaterialTheme.typography.bodySmall)
             }
@@ -620,9 +677,6 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (
                 }
             }
             Text(stringResource(R.string.language_switch_hint), style = MaterialTheme.typography.bodySmall)
-            SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v ->
-                update { it.copy(spaceSwipeSwitchesLanguage = v) }
-            }
         }
         Section(stringResource(R.string.default_mode)) {
             // The keyboard that opens now: switched on the keyboard itself, it shows here too.
@@ -642,8 +696,11 @@ private fun LanguagesPage(s: KeyboardSettings, update: UpdateSettings, onOpen: (
                 style = MaterialTheme.typography.bodySmall,
             )
         }
-        Section(stringResource(R.string.page_shortcuts)) {
-            NavRow(stringResource(R.string.page_shortcuts), stringResource(R.string.page_shortcuts_summary, s.shortcuts.size)) { onOpen(Page.SHORTCUTS) }
+        // Shortcuts are the computer keyboard's (Ctrl, Alt, Win): there only when that keyboard is chosen.
+        if (s.defaultMode == KeyboardMode.COMPUTER || s.startMode == KeyboardMode.COMPUTER) {
+            Section(stringResource(R.string.page_shortcuts)) {
+                NavRow(stringResource(R.string.page_shortcuts), stringResource(R.string.page_shortcuts_summary, s.shortcuts.size)) { onOpen(Page.SHORTCUTS) }
+            }
         }
     }
 }
@@ -666,53 +723,52 @@ private fun VoicePage(s: KeyboardSettings, update: UpdateSettings, onOpen: (Page
             NavRow(stringResource(R.string.page_glossary), stringResource(R.string.page_glossary_summary, glossarySize)) { onOpen(Page.GLOSSARY) }
         }
         Section(stringResource(R.string.section_voice)) {
-            Text(stringResource(R.string.voice_language), style = MaterialTheme.typography.titleSmall)
-            RadioRow(stringResource(R.string.voice_language_follow), s.voiceLanguage == null) {
-                update { it.copy(voiceLanguage = null) }
-            }
-            for (language in Language.entries) {
-                RadioRow(languageName(language), s.voiceLanguage == language) {
-                    update { it.copy(voiceLanguage = language) }
+            SwitchRow(stringResource(R.string.voice_button_show), s.voiceButton) { v -> update { it.copy(voiceButton = v) } }
+            Text(stringResource(R.string.voice_button_hint), style = MaterialTheme.typography.bodySmall)
+            if (s.voiceButton) {
+                Text(stringResource(R.string.voice_language), style = MaterialTheme.typography.titleSmall)
+                RadioRow(stringResource(R.string.voice_language_follow), s.voiceLanguage == null) {
+                    update { it.copy(voiceLanguage = null) }
                 }
+                for (language in Language.entries) {
+                    RadioRow(languageName(language), s.voiceLanguage == language) {
+                        update { it.copy(voiceLanguage = language) }
+                    }
+                }
+                SwitchRow(stringResource(R.string.voice_commands), s.voiceCommands) { v -> update { it.copy(voiceCommands = v) } }
+                Text(stringResource(R.string.voice_commands_hint), style = MaterialTheme.typography.bodySmall)
             }
-            SwitchRow(stringResource(R.string.voice_commands), s.voiceCommands) { v -> update { it.copy(voiceCommands = v) } }
-            Text(stringResource(R.string.voice_commands_hint), style = MaterialTheme.typography.bodySmall)
         }
 
         Section(stringResource(R.string.section_translation)) {
-            Text(stringResource(R.string.translation_how), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.translation_mode), style = MaterialTheme.typography.titleSmall)
-            RadioRow(stringResource(R.string.translation_mode_auto), s.translationAuto) {
-                update { it.copy(translationAuto = true) }
+            SwitchRow(stringResource(R.string.translate_button_show), s.translateButton) { v ->
+                update { it.copy(translateButton = v, translateEnabled = if (v) it.translateEnabled else false) }
             }
-            RadioRow(stringResource(R.string.translation_mode_manual), !s.translationAuto) {
-                update { it.copy(translationAuto = false) }
-            }
-            if (s.translationAuto) {
-                Text(stringResource(R.string.translation_pause), style = MaterialTheme.typography.titleSmall)
-                for ((ms, label) in listOf(
-                    1500 to stringResource(R.string.translation_pause_seconds, "1,5"),
-                    2000 to stringResource(R.string.translation_pause_seconds, "2"),
-                    3000 to stringResource(R.string.translation_pause_seconds, "3"),
-                    0 to stringResource(R.string.translation_pause_off),
+            Text(stringResource(R.string.translate_button_hint), style = MaterialTheme.typography.bodySmall)
+            if (s.translateButton) {
+                Text(stringResource(R.string.translation_mode), style = MaterialTheme.typography.titleSmall)
+                // Three plain choices (the pause in seconds and a second list of the same choices are gone).
+                for ((choice, label, description) in listOf(
+                    Triple(TranslationWhen.WORD, R.string.translation_when_word, R.string.translation_when_word_desc),
+                    Triple(TranslationWhen.SENTENCE, R.string.translation_when_sentence, R.string.translation_when_sentence_desc),
+                    Triple(TranslationWhen.ENTER, R.string.translation_when_enter, R.string.translation_when_enter_desc),
                 )) {
-                    RadioRow(label, s.translationPauseMs == ms) { update { it.copy(translationPauseMs = ms) } }
-                }
-            }
-            SwitchRow(stringResource(R.string.translation_accurate), s.translationAccurate) { v ->
-                update { it.copy(translationAccurate = v) }
-            }
-            Text(stringResource(R.string.translation_direction), style = MaterialTheme.typography.titleSmall)
-            for (target in Language.entries) {
-                RadioRow(languageName(target), s.translationDirection.target == target) {
-                    update {
-                        val current = it.translationDirection
-                        val source = if (current.source != target) current.source else current.target
-                        it.copy(translationDirection = TranslationDirection.of(source, target)!!)
+                    RadioRow(stringResource(label), s.translationWhen == choice, stringResource(description)) {
+                        update { it.withTranslationWhen(choice) }
                     }
                 }
+                Text(stringResource(R.string.translation_direction), style = MaterialTheme.typography.titleSmall)
+                for (target in Language.entries) {
+                    RadioRow(languageName(target), s.translationDirection.target == target) {
+                        update {
+                            val current = it.translationDirection
+                            val source = if (current.source != target) current.source else current.target
+                            it.copy(translationDirection = TranslationDirection.of(source, target)!!)
+                        }
+                    }
+                }
+                Text(stringResource(R.string.translation_direction_hint), style = MaterialTheme.typography.bodySmall)
             }
-            Text(stringResource(R.string.translation_direction_hint), style = MaterialTheme.typography.bodySmall)
         }
     }
 }

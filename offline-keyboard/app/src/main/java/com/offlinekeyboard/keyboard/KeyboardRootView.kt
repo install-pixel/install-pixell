@@ -80,7 +80,19 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val remoteOffered: Boolean = false,
         /** The keyboard's own settings are open (typing in them): the gear is dim and does nothing. */
         val inSettings: Boolean = false,
-    )
+        /** Each button below the strip has its own place; one not wanted in the settings leaves it empty. */
+        val textShown: Boolean = true,
+        /** Suggestions and corrections are on (the Text button was not tapped to pause them). */
+        val assistOn: Boolean = true,
+        val translateShown: Boolean = true,
+        val clipboardShown: Boolean = true,
+        val voiceShown: Boolean = true,
+        /** The computer / mobile keyboard button (taken away in the settings, back while it is needed). */
+        val modeKeyShown: Boolean = true,
+    ) {
+        /** Any button below the strip: none, and the row is not there at all. */
+        val modeRowShown: Boolean get() = textShown || translateShown || clipboardShown || voiceShown
+    }
 
     /** HIDDEN: the Bluetooth keyboard is off in settings; IDLE: on, typing goes to the phone; SENDING: to the computer. */
     /** WAITING: turned on, waiting for the computer to connect (ringed, dimmer); SENDING: connected. */
@@ -427,11 +439,11 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val visible = buttonsVisible()
         val bluetoothOn = lastState?.bluetooth?.let { it != BluetoothButton.HIDDEN } ?: false
         for ((button, present) in listOf(
-            modesButton to compact,
+            modesButton to (compact && lastState?.modeRowShown != false),
             soundButton to (lastState?.soundOn != null),
             remoteButton to (lastState?.remoteOffered == true),
             bluetoothButton to bluetoothOn,
-            modeButton to true,
+            modeButton to (lastState?.modeKeyShown != false),
             settingsButton to true,
         )) {
             val target = when {
@@ -1037,6 +1049,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         lastState = state
         recording = state.recording
         modeButton.icon = if (state.computerMode) Icon.PHONE else Icon.KEYBOARD
+        // A panel in place of the keys (clipboard, stickers, the remote): there are no keys to switch.
+        modeButton.isEnabled = keyboardView.visibility == View.VISIBLE
+        modeButton.alpha = restAlpha(modeButton)
         // Ringed at once when turned on (it used to wait for the computer to connect, so a tap seemed to do
         // nothing); dimmer until it is connected.
         val sending = state.bluetooth == BluetoothButton.SENDING || state.bluetooth == BluetoothButton.WAITING
@@ -1048,7 +1063,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             bluetoothButton.fill = if (sending) theme.accent else 0
             bluetoothButton.foreground = if (sending) theme.onAccent else theme.text
         }
-        bluetoothButton.alpha = if (state.bluetooth == BluetoothButton.WAITING) 0.6f else 1f
+        pulseBluetooth(state.bluetooth == BluetoothButton.WAITING)
         soundButton.icon = if (state.soundOn == false) Icon.SPEAKER_OFF else Icon.SPEAKER
         soundButton.alpha = restAlpha(soundButton)
         val remoteOpen = remoteShown
@@ -1067,9 +1082,16 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             if (state.recording) R.string.toolbar_voice_cancel_description else R.string.toolbar_settings_description,
         )
 
-        textChip.text = context.getString(R.string.mode_text)
+        // «Aa Текст» while suggestions and corrections work; tapped in text mode, they pause: «Текст» alone.
+        textChip.text = context.getString(if (state.assistOn) R.string.mode_text else R.string.mode_text_plain)
         // One mode down at a time, as latching keys: the open clipboard holds its plate down, Text comes up.
         styleChip(textChip, active = !state.translateActive && !state.recording && !clipboardShown, enabled = true)
+        // Its place kept (invisible), so the others never move when one is turned off in the settings.
+        // While translating, Text is there even when not wanted: it is the way back to plain typing.
+        textChip.visibility = if (state.textShown || state.translateActive) View.VISIBLE else View.INVISIBLE
+        translateChip.visibility = if (state.translateShown || state.translateActive) View.VISIBLE else View.INVISIBLE
+        clipboardChip.visibility = if (state.clipboardShown || clipboardShown) View.VISIBLE else View.INVISIBLE
+        voiceChip.visibility = if (state.voiceShown || state.recording) View.VISIBLE else View.INVISIBLE
         translateChip.icon = Icon.TRANSLATE
         translateChip.text = state.translateLabel
         styleChip(translateChip, active = state.translateActive, enabled = state.translateOffered)
@@ -1082,6 +1104,27 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         if (theme.styled && state.recording) voiceChip.foreground = theme.listening
         refreshModesRow()
         refreshCentre()
+    }
+
+    private var bluetoothPulse: android.animation.ValueAnimator? = null
+
+    /** Connecting: the Bluetooth button breathes (it stood still and looked dead while waiting). */
+    private fun pulseBluetooth(on: Boolean) {
+        if (on == (bluetoothPulse != null)) return
+        bluetoothPulse?.cancel()
+        bluetoothPulse = null
+        if (!on) {
+            bluetoothButton.alpha = 1f
+            return
+        }
+        bluetoothPulse = android.animation.ValueAnimator.ofFloat(1f, 0.35f).apply {
+            duration = BLUETOOTH_PULSE_MS
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            addUpdateListener { bluetoothButton.alpha = it.animatedValue as Float }
+            start()
+        }
     }
 
     /** Folds the modes row away again (the keyboard was hidden). */
@@ -1106,7 +1149,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         val open = if (busy) !foldedWhileBusy else modesExpanded
         // Lit while translating or dictating even when folded, so the mode is not forgotten.
         modesButton.fill = if (compact && (open || busy)) theme.function else 0
-        val showRow = !compact || open
+        val showRow = (!compact || open) && (lastState?.modeRowShown != false || busy)
         if (showRow && modeRow.visibility != View.VISIBLE) fadeIn(modeRow)
         modeRow.visibility = if (showRow) View.VISIBLE else View.GONE
         refreshButtons()
@@ -1126,6 +1169,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             keyboardView.visibility = View.VISIBLE
             fadeIn(keyboardView)
         }
+        lastState?.let(::updateToolbar)
     }
 
     /** Swaps the keys for the clipboard panel (same height) or back. */
@@ -1193,6 +1237,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         return when {
             view === settingsButton && state?.inSettings == true && !state.recording -> 0.35f
             view === soundButton && state?.soundOn == false -> 0.6f
+            view === modeButton && keyboardView.visibility != View.VISIBLE -> 0.35f
             else -> 1f
         }
     }
@@ -1244,7 +1289,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
      */
     private fun readMessage() {
         // The same message shown again (the strip refreshed while typing): it goes on drifting where it is.
-        val text = message?.toString()
+        val text = (message ?: liveText)?.toString()
         if (text == readingMessage && messageScroll?.isStarted == true) return
         readingMessage = text
         messageScroll?.cancel()
@@ -1258,6 +1303,8 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
             interpolator = android.view.animation.LinearInterpolator()
             start()
         }
+        // A live state (preparing the voice, listening) stays as long as it lasts; only a note has a time.
+        if (message == null) return
         removeCallbacks(clearMessage)
         postDelayed(clearMessage, maxOf(STATUS_MILLIS, MESSAGE_READ_DELAY_MS + ms + 1500L))
     }
@@ -1276,8 +1323,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
     }
 
     /** Text shown while dictating or translating (source text in auto mode); null to clear. */
-    fun showLive(text: CharSequence?, typedEnd: Int = -1) {
+    fun showLive(text: CharSequence?, typedEnd: Int = -1, read: Boolean = false) {
         if (text != null) dismissNote()
+        liveRead = read && text != null
         liveText = text
         liveTypedEnd = if (text != null) typedEnd.coerceAtMost(text.length) else -1
         refreshCentre()
@@ -1293,6 +1341,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         echoCursor = cursor
         refreshCentre()
     }
+
+    /** The live text is a state to read from its start (as the notes drift), not text growing at its end. */
+    private var liveRead = false
 
     /** Where the cursor is in [echo]: the text after it is shown dimmer. */
     private var echoCursor = 0
@@ -1354,10 +1405,12 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
                 // cursor is checked against the text shown now.
                 val layout = status.layout
                 val cursor = echoCursor
-                if (message != null) {
+                if (message != null || (liveRead && liveText != null)) {
                     readMessage()
                     return@post
                 }
+                messageScroll?.cancel()
+                readingMessage = null
                 val x = if (showingEcho && layout != null && cursor in 0 until layout.text.length) {
                     runCatching { status.totalPaddingLeft + layout.getPrimaryHorizontal(cursor) - statusScroll.width * 0.75f }
                         .getOrDefault(status.width.toFloat()).toInt()
@@ -1475,6 +1528,7 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         /** The keys' share of the width while the remote is beside them (landscape). */
         const val KEYS_BESIDE_REMOTE = 0.6f
         const val BUTTONS_SHOWN_MS = 6000L
+        const val BLUETOOTH_PULSE_MS = 650L
         const val PREDICTIONS = 3
         const val INACTIVE_CHIP_ALPHA = 0x70
         const val STATUS_MILLIS = 3500L

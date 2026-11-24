@@ -59,7 +59,7 @@ data class KeyboardSettings(
     val onboardingDone: Boolean = false,
     /** Typewriter key sounds (Black Typewriter style only for now) and their volume, 0–1. */
     val keySound: Boolean = true,
-    val keySoundVolume: Float = 0.6f,
+    val keySoundVolume: Float = 0.5f,
     /** The typewriter's margin bell near the end of a line (and the new sheet of paper). */
     val typewriterBell: Boolean = false,
     /** Fixes one-key slips into known words when a word ends; Backspace right after undoes it. */
@@ -89,7 +89,35 @@ data class KeyboardSettings(
     val themeMode: ThemeMode = ThemeMode.GLASS,
     /** The phone also works as a Bluetooth keyboard for a computer (off by default). */
     val bluetoothKeyboard: Boolean = false,
+    /** «Підказки й виправлення» in the settings: off, all of them are off and the Text button is gone. */
+    val assistEnabled: Boolean = true,
+    /** Paused from the keyboard (a tap on the Text button): the settings stay, nothing is suggested or fixed. */
+    val assistPaused: Boolean = false,
+    /** The buttons below the strip, each in its own place: shown only when wanted. */
+    val translateButton: Boolean = true,
+    val voiceButton: Boolean = true,
+    val clipboardButton: Boolean = true,
+    /** The sound button in the top row (the styles with sounds). */
+    val soundButton: Boolean = true,
+    /** The button that switches to the computer keyboard (and back). */
+    val computerButton: Boolean = true,
 ) {
+    /** When the translation goes into the field: after each word (a pause), after a sentence, or at Enter. */
+    val translationWhen: TranslationWhen get() = when {
+        !translationAuto -> TranslationWhen.ENTER
+        translationPauseMs > 0 -> TranslationWhen.WORD
+        else -> TranslationWhen.SENTENCE
+    }
+
+    fun withTranslationWhen(value: TranslationWhen): KeyboardSettings = when (value) {
+        TranslationWhen.WORD -> copy(translationAuto = true, translationPauseMs = 2000)
+        TranslationWhen.SENTENCE -> copy(translationAuto = true, translationPauseMs = 0)
+        TranslationWhen.ENTER -> copy(translationAuto = false)
+    }
+
+    /** At least one button of the row below the strip is wanted (none: the row is not there at all). */
+    val modeRowWanted: Boolean get() = assistEnabled || translateButton || voiceButton || clipboardButton
+
     val startMode: KeyboardMode get() = if (rememberLastMode) lastMode ?: defaultMode else defaultMode
 
     companion object {
@@ -158,6 +186,13 @@ class SettingsRepository(context: Context) {
             prefs[Keys.TRANSLATION_ACCURATE] = updated.translationAccurate
             prefs[Keys.THEME_MODE] = updated.themeMode.name
             prefs[Keys.BLUETOOTH_KEYBOARD] = updated.bluetoothKeyboard
+            prefs[Keys.ASSIST_ENABLED] = updated.assistEnabled
+            prefs[Keys.ASSIST_PAUSED] = updated.assistPaused
+            prefs[Keys.TRANSLATE_BUTTON] = updated.translateButton
+            prefs[Keys.VOICE_BUTTON] = updated.voiceButton
+            prefs[Keys.CLIPBOARD_BUTTON] = updated.clipboardButton
+            prefs[Keys.SOUND_BUTTON] = updated.soundButton
+            prefs[Keys.COMPUTER_BUTTON] = updated.computerButton
         }
     }
 
@@ -262,6 +297,13 @@ class SettingsRepository(context: Context) {
             // Old themes (system, light, dark, OLED) are gone: anything unknown opens as glass.
             themeMode = ThemeMode.entries.firstOrNull { it.name == this[Keys.THEME_MODE] } ?: ThemeMode.GLASS,
             bluetoothKeyboard = this[Keys.BLUETOOTH_KEYBOARD] ?: defaults.bluetoothKeyboard,
+            assistEnabled = this[Keys.ASSIST_ENABLED] ?: defaults.assistEnabled,
+            assistPaused = this[Keys.ASSIST_PAUSED] ?: defaults.assistPaused,
+            translateButton = this[Keys.TRANSLATE_BUTTON] ?: defaults.translateButton,
+            voiceButton = this[Keys.VOICE_BUTTON] ?: defaults.voiceButton,
+            clipboardButton = this[Keys.CLIPBOARD_BUTTON] ?: defaults.clipboardButton,
+            soundButton = this[Keys.SOUND_BUTTON] ?: defaults.soundButton,
+            computerButton = this[Keys.COMPUTER_BUTTON] ?: defaults.computerButton,
         )
     }
 
@@ -310,6 +352,13 @@ class SettingsRepository(context: Context) {
         val TRANSLATION_ACCURATE = booleanPreferencesKey("translation_accurate")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val BLUETOOTH_KEYBOARD = booleanPreferencesKey("bluetooth_keyboard")
+        val ASSIST_ENABLED = booleanPreferencesKey("assist_enabled")
+        val ASSIST_PAUSED = booleanPreferencesKey("assist_paused")
+        val TRANSLATE_BUTTON = booleanPreferencesKey("translate_button")
+        val VOICE_BUTTON = booleanPreferencesKey("voice_button")
+        val CLIPBOARD_BUTTON = booleanPreferencesKey("clipboard_button")
+        val SOUND_BUTTON = booleanPreferencesKey("sound_button")
+        val COMPUTER_BUTTON = booleanPreferencesKey("computer_button")
     }
 }
 
@@ -323,3 +372,5 @@ fun KeyboardSettings.withStyle(mode: ThemeMode): KeyboardSettings = when {
     themeMode.typewriter && !mode.typewriter -> copy(themeMode = mode, keyPreview = true)
     else -> copy(themeMode = mode)
 }
+
+enum class TranslationWhen { WORD, SENTENCE, ENTER }

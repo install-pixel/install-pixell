@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -104,7 +105,8 @@ internal fun ModelsPage(onBack: () -> Unit) {
 
     PageScaffold(stringResource(R.string.page_models), onBack) {
         Text(stringResource(R.string.models_intro), style = MaterialTheme.typography.bodyMedium)
-        Text(stringResource(R.string.models_how), style = MaterialTheme.typography.bodyMedium)
+        // The steps one under another, the number hanging at the left (it read as one block of text).
+        StepList(stringResource(R.string.models_how))
         ActionButton(enabled = busy == null, onClick = { filesPicker.launch(ZIP_TYPES) }) {
             Text(stringResource(R.string.models_install_downloaded))
         }
@@ -160,18 +162,16 @@ internal fun ModelsPage(onBack: () -> Unit) {
                 val file = TRANSLATION_FILES.getValue(direction)
                 val accurate = ACCURATE_FILES[direction]
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    StatusLine("${languageName(direction.source)} → ${languageName(direction.target)}", model != null)
-                    Text(
-                        model?.let {
-                            val kind = stringResource(if (isAccurate) R.string.models_kind_accurate else R.string.models_kind_standard)
-                            stringResource(R.string.models_installed_kind, kind, formatMb(it.sizeBytes))
-                        } ?: stringResource(R.string.models_not_installed),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    StatusLine("${languageName(direction.source)} → ${languageName(direction.target)}", model != null, bold = true)
+                    // Installed: the variant below carries the check mark and the size; only «not installed» is said here.
+                    if (model == null) {
+                        Text(stringResource(R.string.models_not_installed), style = MaterialTheme.typography.bodySmall, color = Tone.Danger)
+                    }
                     // Each size on its own line: the installed one carries the check mark.
                     ModelVariant(
                         label = stringResource(R.string.models_variant_standard, file.second),
                         installed = model != null && !isAccurate,
+                        installedSize = model?.takeIf { !isAccurate }?.let { formatMb(it.sizeBytes) },
                         download = stringResource(R.string.models_download_standard),
                         onDownload = { Links.open(context, Links.modelFile(file.first)) },
                     )
@@ -179,6 +179,7 @@ internal fun ModelsPage(onBack: () -> Unit) {
                         ModelVariant(
                             label = stringResource(R.string.models_variant_accurate, mb),
                             installed = isAccurate,
+                            installedSize = model?.takeIf { isAccurate }?.let { formatMb(it.sizeBytes) },
                             download = stringResource(R.string.models_download_accurate_short),
                             onDownload = { Links.open(context, Links.modelFile(name)) },
                         )
@@ -196,19 +197,27 @@ internal fun ModelsPage(onBack: () -> Unit) {
 
         Section(stringResource(R.string.models_custom)) {
             Text(stringResource(R.string.models_custom_text), style = MaterialTheme.typography.bodyMedium)
+            ActionButton(onClick = { Links.open(context, Links.VOSK_MODELS) }) { Text(stringResource(R.string.models_custom_open)) }
         }
     }
 }
 
 /** One size of a translation model: "✓ installed" when it is the one on the phone, else its download button. */
 @Composable
-private fun ModelVariant(label: String, installed: Boolean, download: String, onDownload: () -> Unit) {
+private fun ModelVariant(label: String, installed: Boolean, installedSize: String?, download: String, onDownload: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            // The installed one in full ink and bold, the other lighter: what is on the phone stands out.
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (installed) Tone.TextPrimary else Tone.TextSecondary,
+                fontWeight = if (installed) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+                modifier = Modifier.weight(1f),
+            )
             if (installed) {
                 Text(
-                    stringResource(R.string.models_variant_installed),
+                    stringResource(R.string.models_variant_installed) + (installedSize?.let { " · $it" } ?: ""),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.titleSmall,
                 )
@@ -231,4 +240,27 @@ internal fun describe(context: android.content.Context, imported: com.offlinekey
         ?: imported.direction?.let { context.getString(R.string.models_installed_translation, name(it.source), name(it.target)) }
         ?: imported.model.name
     return "✓ $what"
+}
+
+/** Numbered steps written one per line («1. …»): each its own paragraph, the number hanging at the left. */
+@Composable
+internal fun StepList(text: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (line in text.split('\n').filter { it.isNotBlank() }) {
+            val number = Regex("^(\\d+\\.)\\s*").find(line)
+            Row {
+                Text(
+                    number?.groupValues?.get(1) ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    modifier = Modifier.width(22.dp),
+                )
+                Text(
+                    if (number != null) line.substring(number.range.last + 1) else line,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
 }

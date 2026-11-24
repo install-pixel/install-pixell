@@ -675,9 +675,12 @@ half4 main(float2 p) {
     float2 g = (float2(r.r, r.g) - 0.5) * 3.0 * flip;
     half4 c = content.eval(p - g * bend);
     float s = r.b * 2.0 - 1.0;
-    float light = 1.0 + shade * s;
+    // A style's picture (drawn at alpha 254/255) gets a third of the paper's light and shade: it shows the
+    // style as it is, still lying on the paper.
+    float k0 = abs(c.a - 0.99608) < 0.002 ? 0.3 : 1.0;
+    float light = 1.0 + shade * k0 * s;
     // In the crease's shadow the pencil barely touched the paper: paler there.
-    float a = c.a * (1.0 - fade * clamp(-s, 0.0, 1.0));
+    float a = c.a * (1.0 - fade * k0 * clamp(-s, 0.0, 1.0));
     float k = c.a > 0.0 ? a / c.a : 0.0;
     return half4(clamp(c.rgb * light * k, 0.0, a), a);
 }

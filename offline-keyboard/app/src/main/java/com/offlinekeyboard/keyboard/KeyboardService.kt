@@ -140,7 +140,7 @@ class KeyboardService : InputMethodService(),
         controller.listener = this
         emojiUsage = EmojiUsage.decode(emojiPrefs().getString(EMOJI_USAGE_KEY, null))
         refreshEmojiPages()
-        translation.accurate = settings.translationAccurate
+        translation.accurate = true
         scope.launch {
             repository.settings.collect { applySettings(it) }
         }
@@ -158,7 +158,7 @@ class KeyboardService : InputMethodService(),
                     bluetoothSending = true
                     sentText.setLength(0)
                     leaveSegment()
-                    rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+                    rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: "", controller.language.code))
                 }
                 updateSuggestions()
                 render()
@@ -215,7 +215,8 @@ class KeyboardService : InputMethodService(),
         if (old.ownEmoji != new.ownEmoji) refreshEmojiPages()
         // Choosing a mode in the settings switches to it now (also while the last mode is remembered).
         if (old.startMode != new.startMode && controller.mode != new.startMode) controller.setMode(new.startMode)
-        translation.accurate = new.translationAccurate
+        // Always the best the model can do (several candidates weighed): a weaker phone takes the smaller model.
+        translation.accurate = true
         if (new.bluetoothKeyboard != old.bluetoothKeyboard) {
             if (new.bluetoothKeyboard) Bluetooth.start(this) else bluetoothSending = false
         }
@@ -225,6 +226,9 @@ class KeyboardService : InputMethodService(),
             lightBars(currentTheme())
         }
         if (!new.translateEnabled && old.translateEnabled) leaveSegment()
+        // The translate button taken away in the settings while translating: back to plain typing.
+        if (!new.translateButton && new.translateEnabled) setTranslateEnabled(false, new.translationDirection)
+        if (!new.voiceButton && old.voiceButton && speech.state != SpeechController.State.IDLE) speech.cancel()
         updateSuggestions()
         render()
     }
@@ -426,7 +430,7 @@ class KeyboardService : InputMethodService(),
      * typed, so that letter starts a new sentence and gets its capital already.
      */
     private fun sentenceEndCapsMode(ic: android.view.inputmethod.InputConnection): Int {
-        if (!settings.smartPunctuation || controller.mode != KeyboardMode.MOBILE || !currentField.allowsCorrection) return 0
+        if (!(assist && settings.smartPunctuation) || controller.mode != KeyboardMode.MOBILE || !currentField.allowsCorrection) return 0
         val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return 0
         if (before.length < 2 || before[1] !in "?!") return 0
         if (!before[0].isLetter() && before[0] != ')' && before[0] != '»' && before[0] != '"') return 0
@@ -521,7 +525,7 @@ class KeyboardService : InputMethodService(),
         handler.removeCallbacks(pauseRunnable)
         val (text, generation) = composer.beginTranslation() ?: return
         val direction = settings.translationDirection
-        rootView?.showLive(getString(R.string.translating, directionLabel(direction)))
+        rootView?.showLive(getString(R.string.translating, directionLabel(direction)), read = true)
         translation.translate(text, direction) { result ->
             when (result) {
                 is TranslationResult.Success -> {
@@ -631,7 +635,7 @@ class KeyboardService : InputMethodService(),
             }
             return
         }
-        rootView?.showLive(getString(R.string.translating, directionLabel(direction)))
+        rootView?.showLive(getString(R.string.translating, directionLabel(direction)), read = true)
         translation.translate(source, direction) { result ->
             rootView?.showLive(null)
             val conn = currentInputConnection
@@ -794,7 +798,15 @@ class KeyboardService : InputMethodService(),
 
     // ------------------------------------------------------------------ user dictionary
 
-    private val learningAllowed: Boolean get() = settings.learnWords && currentField.allowsLearning && !ownField
+    /**
+     * Suggestions, corrections, smart punctuation and learning: on in the settings («Підказки й виправлення»)
+     * and not paused from the keyboard (the Text button).
+     */
+    private val assist: Boolean get() = settings.assistEnabled && !settings.assistPaused
+
+    private val learningAllowed: Boolean get() = assist && settings.learnWords && currentField.allowsLearning && !ownField &&
+        // Search boxes report words while they are still being typed (and are no place to learn from).
+        currentField.imeOptions and EditorInfo.IME_MASK_ACTION != EditorInfo.IME_ACTION_SEARCH
 
     /** The field is in the keyboard's own app (see onStartInput). */
     private var ownField = false
@@ -806,6 +818,8 @@ class KeyboardService : InputMethodService(),
         if (!(first.isWhitespace() || first in ".,!?;:)…")) return
         val before = currentInputConnection?.getTextBeforeCursor(WORD_CONTEXT, 0) ?: return
         val word = WordRules.trailingWord(before)
+        // A common word cut short is not a new word: it is not kept (nor paired with the next one).
+        if (word.isNotEmpty() && BaseDictionary.isFragment(controller.language, word)) return
         if (word.isNotEmpty() && dictionary.dictionary.learn(controller.language, word, System.currentTimeMillis())) {
             dictionary.changed()
         }
@@ -828,7 +842,7 @@ class KeyboardService : InputMethodService(),
         val previous = previousWord(before) ?: return
         dictionary.pairs.learn(controller.language, previous, word)
         // And after the two words before it ("я тебе" → "люблю"), kept with the pairs.
-        if (settings.longContext) {
+        if (assist && settings.longContext) {
             wordBefore(before, previous)?.let { dictionary.pairs.learn(controller.language, "$it $previous", word) }
         }
         dictionary.changed()
@@ -875,7 +889,7 @@ class KeyboardService : InputMethodService(),
             if (!undoAvailable(back)) lastTranslation = null
         }
         root.showUndo(lastTranslation != null)
-        val show = settings.showSuggestions && currentField.allowsLearning && !translateActive &&
+        val show = assist && settings.showSuggestions && currentField.allowsLearning && !translateActive &&
             speech.state == SpeechController.State.IDLE
         if (!show || ic == null || !ic.getSelectedText(0).isNullOrEmpty()) {
             root.showSuggestions(emptyList())
@@ -892,7 +906,7 @@ class KeyboardService : InputMethodService(),
         // After a finished word: the words that usually come next (the user's own pairs first).
         val language = controller.language
         val previous = if (WordRules.continuesWord(after)) null else previousWord(before.takeLast(WORD_CONTEXT))
-        val earlier = if (previous != null && settings.longContext) wordBefore(before.takeLast(WORD_CONTEXT), previous) else null
+        val earlier = if (previous != null && assist && settings.longContext) wordBefore(before.takeLast(WORD_CONTEXT), previous) else null
         val next = previous?.let { NextWords.predict(language, it, dictionary.pairs, earlier = earlier) }.orEmpty()
         val capital = controller.modifiers.isActive(com.offlinekeyboard.core.ModifierKey.SHIFT)
         root.showSuggestions(emptyList())
@@ -1003,6 +1017,28 @@ class KeyboardService : InputMethodService(),
         return true
     }
 
+    /**
+     * Types [text] on the computer letter by letter, in the computer's current layout (as set for the keyboard
+     * language). Letters that layout cannot type are left out and named.
+     */
+    private fun typeOnComputer(text: String) {
+        val language = controller.language
+        val missing = StringBuilder()
+        for (c in text) {
+            val stroke = HidKeys.forText(c.toString(), language)
+            if (stroke == null) {
+                if (missing.length < 3 && c !in missing) missing.append(c)
+                continue
+            }
+            if (!Bluetooth.send(stroke)) {
+                rootView?.showStatus(getString(R.string.bluetooth_not_connected))
+                return
+            }
+            rememberSent(null, c.toString(), KeyMods())
+        }
+        if (missing.isNotEmpty()) rootView?.showStatus(getString(R.string.bluetooth_cannot_send, missing.toString()))
+    }
+
     private fun rememberSent(special: SpecialKey?, output: String?, mods: KeyMods) {
         if (mods.ctrl || mods.alt || mods.meta) return
         when (special) {
@@ -1025,11 +1061,13 @@ class KeyboardService : InputMethodService(),
         switchingTo = null
         val name = Bluetooth.pairedDevices(this).firstOrNull { it.address == target }?.let(Bluetooth::deviceName) ?: target
         rootView?.showStatus(getString(R.string.bluetooth_switch_failed, name), CHECK_WARNING_MS)
+        render()
     }
 
     /**
-     * The Bluetooth button held: on to the next of the devices chosen in the settings, then the phone itself,
-     * and round again. The device typed on now is let go first (a phone is a keyboard for one at a time).
+     * The Bluetooth button held: on to the next of the devices starred in the settings, round and round (the
+     * phone itself is a tap away). The device typed on now is let go first (a phone is a keyboard for one at
+     * a time). With one starred device, the press connects to it again.
      */
     override fun onToolbarBluetoothSwitch() {
         if (!bluetoothKeyboardSupported || !settings.bluetoothKeyboard) return
@@ -1038,31 +1076,30 @@ class KeyboardService : InputMethodService(),
             rootView?.showStatus(getString(R.string.bluetooth_switch_none), CHECK_WARNING_MS) { openSettings("bluetooth") }
             return
         }
-        val cycle: List<android.bluetooth.BluetoothDevice?> = hosts + listOf(null)
+        val cycle: List<android.bluetooth.BluetoothDevice> = hosts
         // From where typing goes now; while a switch is under way or failed (a device away), from the one
         // last tried, so every long press moves on whether or not the last one answered.
         val current = if (bluetoothSending && bluetoothConnected) Bluetooth.hostAddress else null
         val at = when {
-            current != null -> cycle.indexOfFirst { it?.address == current }
+            current != null -> cycle.indexOfFirst { it.address == current }
             switchPosition in cycle.indices -> switchPosition
             else -> cycle.lastIndex
         }
         val nextAt = (at + 1) % cycle.size
         switchPosition = nextAt
-        val next = cycle[nextAt]
+        connectTo(cycle[nextAt])
+    }
+
+    /** Typing goes to [next]: sent there now when it is connected already, otherwise connected first (the button pulses). */
+    private fun connectTo(next: android.bluetooth.BluetoothDevice) {
         handler.removeCallbacks(switchTimeout)
         leaveSegment()
-        if (next == null) {
-            switchingTo = null
-            bluetoothSending = false
-            Bluetooth.switchTo(null)
-            rootView?.showStatus(getString(R.string.bluetooth_switch_phone))
-        } else if (bluetoothConnected && Bluetooth.hostAddress == next.address) {
+        if (bluetoothConnected && Bluetooth.hostAddress == next.address) {
             // Already connected to it (typing went to the phone): only send there again.
             switchingTo = null
             bluetoothSending = true
             sentText.setLength(0)
-            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: "", controller.language.code))
         } else {
             switchingTo = next.address
             bluetoothSending = false
@@ -1080,13 +1117,20 @@ class KeyboardService : InputMethodService(),
             bluetoothSending = false
             rootView?.showStatus(getString(R.string.bluetooth_typing_here))
         } else if (!bluetoothConnected) {
-            Bluetooth.start(this)
-            rootView?.showStatus(getString(R.string.bluetooth_not_connected), CHECK_WARNING_MS) { openSettings("bluetooth") }
+            // Not connected: straight to the first device starred for switching, when there is one.
+            val first = if (settings.bluetoothKeyboard) Bluetooth.switchHosts(this).firstOrNull() else null
+            if (first != null) {
+                switchPosition = 0
+                connectTo(first)
+            } else {
+                Bluetooth.start(this)
+                rootView?.showStatus(getString(R.string.bluetooth_not_connected), CHECK_WARNING_MS) { openSettings("bluetooth") }
+            }
         } else {
             bluetoothSending = true
             sentText.setLength(0)
             leaveSegment()
-            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: ""))
+            rootView?.showStatus(getString(R.string.bluetooth_typing_there, Bluetooth.deviceName ?: "", controller.language.code))
         }
         updateSuggestions()
         render()
@@ -1154,7 +1198,17 @@ class KeyboardService : InputMethodService(),
 
     /** "Aa Text" chip: plain typing (turns translation off). */
     override fun onModeText() {
-        if (!settings.translateEnabled) return
+        if (!settings.translateEnabled) {
+            // Already typing plain text: the tap pauses suggestions and corrections, or brings them back.
+            if (!settings.assistEnabled) return
+            val paused = !settings.assistPaused
+            settings = settings.copy(assistPaused = paused)
+            scope.launch { repository.update { it.copy(assistPaused = paused) } }
+            rootView?.showStatus(getString(if (paused) R.string.assist_paused else R.string.assist_resumed), DONE_MESSAGE_MS)
+            updateSuggestions()
+            render()
+            return
+        }
         leaveSegment()
         setTranslateEnabled(false, settings.translationDirection)
         // The translation's note on the strip («Переклад Укр→Pol: …») goes with it, not seconds later.
@@ -1235,7 +1289,7 @@ class KeyboardService : InputMethodService(),
     /** Before a space or punctuation is typed: fixes a one-key slip in the word that just ended. */
     private fun autoCorrectBefore(separator: String) {
         lastCorrection = null
-        if (!settings.autoCorrect || controller.mode != KeyboardMode.MOBILE || !currentField.allowsCorrection) return
+        if (!(assist && settings.autoCorrect) || controller.mode != KeyboardMode.MOBILE || !currentField.allowsCorrection) return
         if (controller.modifiers.anyShortcutModifier) return
         val first = separator.firstOrNull() ?: return
         if (!(first.isWhitespace() || first in ".,!?;:…")) return
@@ -1310,7 +1364,7 @@ class KeyboardService : InputMethodService(),
      */
     private fun punctuate(text: String): Boolean {
         lastPunctuation = null
-        if (!settings.smartPunctuation || controller.mode != KeyboardMode.MOBILE) return false
+        if (!(assist && settings.smartPunctuation) || controller.mode != KeyboardMode.MOBILE) return false
         if (!currentField.allowsCorrection || controller.modifiers.anyShortcutModifier) return false
         val ic = currentInputConnection ?: return false
         if (!ic.getSelectedText(0).isNullOrEmpty()) return false
@@ -1514,7 +1568,8 @@ class KeyboardService : InputMethodService(),
     override fun onClipPicked(text: String) {
         rootView?.keyboardView?.panelTap()
         leaveSegment()
-        currentInputConnection?.commitText(text, 1)
+        // Typing goes to a computer: the copied text is typed there, as everything else is.
+        if (bluetoothSending) typeOnComputer(text) else currentInputConnection?.commitText(text, 1)
         rootView?.showClipboard(false)
     }
 
@@ -1650,6 +1705,7 @@ class KeyboardService : InputMethodService(),
                 SpeechController.State.LISTENING -> getString(R.string.voice_listening, language.code)
                 SpeechController.State.IDLE -> null
             },
+            read = true,
         )
         updateSuggestions()
         render()
@@ -1675,6 +1731,8 @@ class KeyboardService : InputMethodService(),
 
     override fun onLanguageChanged(language: Language) {
         scope.launch { repository.update { it.copy(lastLanguage = language) } }
+        // Typing goes to a device: its own language turns the keys into letters, so it is said which to set.
+        if (bluetoothSending) rootView?.showStatus(getString(R.string.bluetooth_device_language, language.code))
         syncTranslateSource(showProblems = true)
         updateSuggestions()
     }
@@ -1773,13 +1831,21 @@ class KeyboardService : InputMethodService(),
                 bluetooth = when {
                     !bluetoothKeyboardSupported || !settings.bluetoothKeyboard -> KeyboardRootView.BluetoothButton.HIDDEN
                     bluetoothSending && bluetoothConnected -> KeyboardRootView.BluetoothButton.SENDING
-                    bluetoothSending -> KeyboardRootView.BluetoothButton.WAITING
+                    bluetoothSending || switchingTo != null -> KeyboardRootView.BluetoothButton.WAITING
                     else -> KeyboardRootView.BluetoothButton.IDLE
                 },
-                soundOn = if (soundStyle) settings.keySound else null,
+                soundOn = if (soundStyle && settings.soundButton) settings.keySound else null,
                 soundVolume = settings.keySoundVolume,
                 remoteOffered = bluetoothKeyboardSupported && settings.bluetoothKeyboard && bluetoothSending && bluetoothConnected,
                 inSettings = ownField,
+                textShown = settings.assistEnabled,
+                assistOn = !settings.assistPaused,
+                translateShown = settings.translateButton,
+                clipboardShown = settings.clipboardButton,
+                voiceShown = settings.voiceButton,
+                // Taken away in the settings, it is still there while typing goes to another device (Ctrl, Esc,
+                // F-keys and arrows are needed there) and while the other keyboard is open (the way back).
+                modeKeyShown = settings.computerButton || bluetoothSending || controller.mode != settings.defaultMode,
             ),
         )
     }

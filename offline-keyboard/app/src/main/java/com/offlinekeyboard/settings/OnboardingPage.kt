@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.offlinekeyboard.R
 import com.offlinekeyboard.core.layout.Language
+import com.offlinekeyboard.core.layout.KeyboardMode
 import com.offlinekeyboard.keyboard.KeyboardService
 
 /** How the first setup sets the keyboard up: standard, minimum, or every setting with the helper. */
@@ -85,40 +86,90 @@ internal fun OnboardingFlow(s: KeyboardSettings, update: UpdateSettings, onDone:
                             }
                         }
                     }
-                    SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v -> update { it.copy(spaceSwipeSwitchesLanguage = v) } }
+                    GuideNote(HelpItems.languages_langs)
+                }
+                Section(stringResource(R.string.default_mode)) {
+                    RadioRow(stringResource(R.string.mode_mobile), s.defaultMode == KeyboardMode.MOBILE) {
+                        update { it.copy(defaultMode = KeyboardMode.MOBILE, lastMode = KeyboardMode.MOBILE) }
+                    }
+                    RadioRow(stringResource(R.string.mode_computer), s.defaultMode == KeyboardMode.COMPUTER) {
+                        update { it.copy(defaultMode = KeyboardMode.COMPUTER, lastMode = KeyboardMode.COMPUTER) }
+                    }
+                    GuideNote(HelpItems.languages_mode)
+                }
+                ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
+            }
+            STEP_G_ASSIST -> {
+                GuideIntro(R.string.section_assist, R.string.onb_g_assist)
+                Section(null) {
+                    SwitchRow(stringResource(R.string.assist_master), s.assistEnabled) { v -> update { it.copy(assistEnabled = v, assistPaused = false) } }
+                    GuideNote(HelpItems.assist_master)
+                }
+                Section(null) {
+                    SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect, enabled = s.assistEnabled) { v -> update { it.copy(autoCorrect = v) } }
+                    GuideNote(HelpItems.assist_autocorrect)
+                    SwitchRow(stringResource(R.string.dictionary_suggestions), s.showSuggestions, enabled = s.assistEnabled) { v -> update { it.copy(showSuggestions = v) } }
+                    GuideNote(HelpItems.assist_suggestions)
+                }
+                Section(null) {
+                    SwitchRow(stringResource(R.string.long_context), s.longContext, enabled = s.assistEnabled) { v -> update { it.copy(longContext = v) } }
+                    GuideNote(HelpItems.assist_nextword)
+                    SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation, enabled = s.assistEnabled) { v -> update { it.copy(smartPunctuation = v) } }
+                    GuideNote(HelpItems.assist_punctuation)
+                }
+                Section(null) {
+                    SwitchRow(stringResource(R.string.dictionary_learn), s.learnWords, enabled = s.assistEnabled) { v -> update { it.copy(learnWords = v) } }
+                    GuideNote(HelpItems.assist_learn)
                 }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
             STEP_G_TEXT -> {
-                GuideIntro(R.string.onb_g_text_title, R.string.onb_g_text)
+                GuideIntro(R.string.page_typing_text, R.string.onb_g_text)
                 Section(null) {
-                    SwitchRow(stringResource(R.string.auto_correct), s.autoCorrect) { v -> update { it.copy(autoCorrect = v) } }
                     SwitchRow(stringResource(R.string.auto_capitalize), s.autoCapitalize) { v -> update { it.copy(autoCapitalize = v) } }
+                    GuideNote(HelpItems.text_caps)
                     SwitchRow(stringResource(R.string.double_space_period), s.doubleSpacePeriod) { v -> update { it.copy(doubleSpacePeriod = v) } }
-                    SwitchRow(stringResource(R.string.smart_punctuation), s.smartPunctuation) { v -> update { it.copy(smartPunctuation = v) } }
-                }
-                ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
-            }
-            STEP_G_WORDS -> {
-                GuideIntro(R.string.onb_g_words_title, R.string.onb_g_words)
-                Section(null) {
-                    SwitchRow(stringResource(R.string.dictionary_suggestions), s.showSuggestions) { v -> update { it.copy(showSuggestions = v) } }
-                    SwitchRow(stringResource(R.string.dictionary_learn), s.learnWords) { v -> update { it.copy(learnWords = v) } }
-                    Text(stringResource(R.string.dictionary_learn_hint), style = MaterialTheme.typography.bodySmall)
-                    SwitchRow(stringResource(R.string.long_context), s.longContext) { v -> update { it.copy(longContext = v) } }
+                    GuideNote(HelpItems.text_doublespace)
                 }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
             STEP_G_KEYS -> {
-                GuideIntro(R.string.onb_g_keys_title, R.string.onb_g_keys)
+                GuideIntro(R.string.page_typing_keys, R.string.onb_g_keys)
                 Section(null) {
                     SwitchRow(stringResource(R.string.key_preview), s.keyPreview) { v -> update { it.copy(keyPreview = v) } }
+                    GuideNote(HelpItems.keys_preview)
                     SwitchRow(stringResource(R.string.backspace_swipe), s.backspaceSwipe) { v -> update { it.copy(backspaceSwipe = v) } }
+                    GuideNote(HelpItems.keys_bswipe)
+                }
+                Section(null) {
                     SwitchRow(stringResource(R.string.space_cursor), s.spaceCursor) { v -> update { it.copy(spaceCursor = v) } }
+                    GuideNote(HelpItems.keys_spacecursor)
+                    SwitchRow(stringResource(R.string.space_swipe), s.spaceSwipeSwitchesLanguage) { v -> update { it.copy(spaceSwipeSwitchesLanguage = v) } }
+                    GuideNote(HelpItems.keys_spaceswipe)
+                }
+                Section(null) {
                     SwitchRow(stringResource(R.string.learn_touch), s.learnTouch) { v -> update { it.copy(learnTouch = v) } }
-                    Text(stringResource(R.string.learn_touch_hint), style = MaterialTheme.typography.bodySmall)
+                    GuideNote(HelpItems.keys_learntouch)
                     SwitchRow(stringResource(R.string.mobile_cursor_row), s.mobileCursorRow) { v -> update { it.copy(mobileCursorRow = v) } }
+                    GuideNote(HelpItems.keys_cursorrow)
+                }
+                ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
+            }
+            STEP_G_BUTTONS -> {
+                GuideIntro(R.string.section_buttons, R.string.onb_g_buttons)
+                Section(null) {
                     SwitchRow(stringResource(R.string.compact_toolbar), s.compactToolbar) { v -> update { it.copy(compactToolbar = v) } }
+                    GuideNote(HelpItems.buttons_compact)
+                    SwitchRow(stringResource(R.string.hide_toolbar_buttons), s.hideToolbarButtons) { v -> update { it.copy(hideToolbarButtons = v) } }
+                    GuideNote(HelpItems.buttons_hide)
+                }
+                Section(null) {
+                    SwitchRow(stringResource(R.string.clipboard_button_show), s.clipboardButton) { v -> update { it.copy(clipboardButton = v) } }
+                    GuideNote(HelpItems.buttons_clipboard)
+                    SwitchRow(stringResource(R.string.sound_button_show), s.soundButton) { v -> update { it.copy(soundButton = v) } }
+                    GuideNote(HelpItems.buttons_sound)
+                    SwitchRow(stringResource(R.string.computer_button_show), s.computerButton) { v -> update { it.copy(computerButton = v) } }
+                    GuideNote(HelpItems.buttons_modekey)
                 }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
@@ -126,18 +177,35 @@ internal fun OnboardingFlow(s: KeyboardSettings, update: UpdateSettings, onDone:
                 GuideIntro(R.string.section_sound_feel, R.string.onb_g_sound)
                 Section(null) {
                     SwitchRow(stringResource(R.string.key_sound), s.keySound) { v ->
-                        update { it.copy(keySound = v, keySoundVolume = if (v && it.keySoundVolume <= 0f) 0.3f else it.keySoundVolume) }
+                        update { it.copy(keySound = v, keySoundVolume = if (v && it.keySoundVolume <= 0f) 0.5f else it.keySoundVolume) }
                     }
+                    GuideNote(HelpItems.look_keysound)
                     SwitchRow(stringResource(R.string.haptic), s.hapticFeedback) { v -> update { it.copy(hapticFeedback = v) } }
+                    GuideNote(HelpItems.look_haptic)
                 }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
             STEP_G_VOICE -> {
                 GuideIntro(R.string.page_voice, R.string.onb_g_voice)
+                Section(null) {
+                    SwitchRow(stringResource(R.string.voice_button_show), s.voiceButton) { v -> update { it.copy(voiceButton = v) } }
+                    GuideNote(HelpItems.voice_voiceon)
+                }
+                Section(null) {
+                    SwitchRow(stringResource(R.string.translate_button_show), s.translateButton) { v ->
+                        update { it.copy(translateButton = v, translateEnabled = if (v) it.translateEnabled else false) }
+                    }
+                    GuideNote(HelpItems.voice_translateon)
+                    GuideNote(HelpItems.voice_models)
+                }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
             STEP_G_COMPUTER -> {
                 GuideIntro(R.string.page_bluetooth, R.string.onb_g_computer)
+                Section(null) {
+                    GuideNote(HelpItems.devices_what)
+                    GuideNote(HelpItems.devices_add)
+                }
                 ActionButton(onClick = next) { Text(stringResource(R.string.onb_next)) }
             }
             STEP_ENABLE -> {
@@ -176,14 +244,17 @@ private const val STEP_ENABLE = 2
 private const val STEP_STYLE = 3
 private const val STEP_G_LANGUAGES = 10
 private const val STEP_G_TEXT = 11
-private const val STEP_G_WORDS = 12
 private const val STEP_G_KEYS = 13
 private const val STEP_G_SOUND = 14
 private const val STEP_G_VOICE = 15
 private const val STEP_G_COMPUTER = 16
+private const val STEP_G_ASSIST = 17
+private const val STEP_G_BUTTONS = 18
 
 /** Every group of settings, in the order of the menu, for «Go through every setting with the helper». */
-private val GUIDED_STEPS = listOf(STEP_G_LANGUAGES, STEP_G_TEXT, STEP_G_WORDS, STEP_G_KEYS, STEP_G_SOUND, STEP_G_VOICE, STEP_G_COMPUTER)
+private val GUIDED_STEPS = listOf(
+    STEP_G_LANGUAGES, STEP_G_ASSIST, STEP_G_TEXT, STEP_G_KEYS, STEP_G_BUTTONS, STEP_G_SOUND, STEP_G_VOICE, STEP_G_COMPUTER,
+)
 
 /** One helper step's title and what this group of settings is for. */
 @Composable
@@ -193,21 +264,47 @@ private fun GuideIntro(title: Int, text: Int) {
     }
 }
 
-/** Suggestions, corrections and a learning dictionary on; the phone's languages. */
-private fun recommended(s: KeyboardSettings, languages: List<Language>) = s.copy(
+/** Under a setting, the same explanation the help gives for it (what happens on and off). */
+@Composable
+private fun GuideNote(item: HelpItem) {
+    Text(stringResource(item.body), style = MaterialTheme.typography.bodyMedium, color = Tone.TextPlain)
+}
+
+/**
+ * What every way of setting up starts from, the same in all of them: a middle volume, the usual brightness and
+ * size, the letter above the finger (not on the typewriter, whose key goes down by itself).
+ */
+private fun common(s: KeyboardSettings, languages: List<Language>) = s.copy(
     enabledLanguages = languages,
     lastLanguage = languages.first(),
+    keySoundVolume = 0.5f,
+    keyBrightness = com.offlinekeyboard.keyboard.KeyboardTheme.DEFAULT_BRIGHTNESS,
+    keyHeightScale = 1f,
+    keyPreview = !s.themeMode.typewriter,
+    assistPaused = false,
+    translateEnabled = false,
+    // Translation and voice wait until they are turned on (their buttons appear then).
+    translateButton = false,
+    voiceButton = false,
+)
+
+/** Everything that helps typing on: suggestions, corrections, punctuation, learning words and taps. */
+private fun recommended(s: KeyboardSettings, languages: List<Language>) = common(s, languages).copy(
+    assistEnabled = true,
     showSuggestions = true,
     autoCorrect = true,
+    smartPunctuation = true,
     learnWords = true,
     longContext = true,
     learnTouch = true,
+    clipboardButton = true,
+    soundButton = true,
+    computerButton = true,
 )
 
-/** A plain keyboard: no suggestions, corrections, learning, smart punctuation or sounds; the phone's languages. */
-private fun minimum(s: KeyboardSettings, languages: List<Language>) = s.copy(
-    enabledLanguages = languages,
-    lastLanguage = languages.first(),
+/** Just a keyboard: no help while typing, nothing learned, no mode buttons (no row at all), no sound button. */
+private fun minimum(s: KeyboardSettings, languages: List<Language>) = common(s, languages).copy(
+    assistEnabled = false,
     showSuggestions = false,
     autoCorrect = false,
     learnWords = false,
@@ -215,6 +312,11 @@ private fun minimum(s: KeyboardSettings, languages: List<Language>) = s.copy(
     learnTouch = false,
     smartPunctuation = false,
     keySound = false,
+    clipboardButton = false,
+    soundButton = false,
+    computerButton = false,
+    defaultMode = KeyboardMode.MOBILE,
+    lastMode = KeyboardMode.MOBILE,
 )
 
 /** The keyboard's languages the phone uses, in the keyboard's order; Ukrainian when it uses none of them. */
