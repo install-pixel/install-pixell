@@ -190,7 +190,7 @@
     <string name="bluetooth_allow">Allow</string>
     <string name="bluetooth_open_settings">Open Bluetooth settings</string>
     <string name="bluetooth_section_pair">2. Add devices</string>
-    <string name="bluetooth_pair_steps">Tap «Make the phone visible», then on the device open Bluetooth → Add device and choose this phone. Add as many devices as you like, one by one. Next time they connect by themselves, or tap «Connect».</string>
+    <string name="bluetooth_pair_steps">Tap «Make the phone visible», then on the device: Bluetooth → Add device → this phone. Works with computers, tablets and TVs; add as many as you like. (A computer can also be added from the phone\'s Bluetooth settings.)</string>
     <string name="bluetooth_make_visible">Make the phone visible (2 min)</string>
     <string name="bluetooth_paired">Added devices</string>
     <string name="bluetooth_connect">Connect</string>
@@ -466,7 +466,7 @@
     <string name="help_buttons_bt_t">Bluetooth</string>
     <string name="help_buttons_bt_b">There when «Other devices» is on. A tap: typing goes to the connected device (the button lights up); another tap: back to the phone. Not connected: the tap connects to the first ★ device, and the button pulses while it connects. A long press: on to the next ★ device.</string>
     <string name="help_buttons_touchpad_t">Touchpad</string>
-    <string name="help_buttons_touchpad_b">There while typing goes to a device. In place of the keys: slide to move the mouse, tap to click, two fingers to scroll. The button in the corner switches to arrows (for a TV): a swipe is one arrow, a swipe held repeats it, a tap is Enter.</string>
+    <string name="help_buttons_touchpad_b">There while typing goes to a device. In place of the keys: slide to move the mouse, tap to click, two fingers to scroll. The button in the corner switches to arrows (for a TV): a swipe is one arrow, a swipe held repeats it, a tap is Enter. «АБВ»: back to the keys.</string>
     <string name="help_buttons_modes_t">Modes ▦</string>
     <string name="help_buttons_modes_b">With the compact toolbar the mode buttons are under this button; a tap opens their row. Lit while translating or dictating.</string>
     <string name="help_buttons_text_t">Aa Text</string>
@@ -575,7 +575,7 @@
     <string name="help_devices_what_t">What it is</string>
     <string name="help_devices_what_b">The phone becomes a Bluetooth keyboard and touchpad for a computer, a TV or a tablet; nothing to install on them. Android 9 or newer.</string>
     <string name="help_devices_add_t">Adding a device</string>
-    <string name="help_devices_add_b">«Other devices» → turn on → «Make the phone visible», then on the device: Bluetooth → Add device. There can be several devices.</string>
+    <string name="help_devices_add_b">«Other devices» → turn on → «Make the phone visible», then on the device: Bluetooth → Add device → this phone. Works everywhere, TVs too; there can be several devices. (A computer can also be added from the phone.)</string>
     <string name="help_devices_star_t">★ for switching</string>
     <string name="help_devices_star_b">Star ★ devices in the list; a long press on the Bluetooth button goes round them in the order you starred them.</string>
     <string name="help_devices_devlang_t">The language on the device</string>

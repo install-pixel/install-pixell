@@ -190,7 +190,7 @@
     <string name="bluetooth_allow">Zezwól</string>
     <string name="bluetooth_open_settings">Otwórz ustawienia Bluetooth</string>
     <string name="bluetooth_section_pair">2. Dodaj urządzenia</string>
-    <string name="bluetooth_pair_steps">Dotknij «Pokaż telefon», potem na urządzeniu otwórz Bluetooth → Dodaj urządzenie i wybierz ten telefon. Możesz dodać dowolnie wiele urządzeń, po jednym. Następnym razem połączą się same albo dotknij «Połącz».</string>
+    <string name="bluetooth_pair_steps">Dotknij «Pokaż telefon», potem na urządzeniu: Bluetooth → Dodaj urządzenie → ten telefon. Działa z komputerami, tabletami i telewizorami; urządzeń może być kilka. (Komputer można też dodać z ustawień Bluetooth telefonu.)</string>
     <string name="bluetooth_make_visible">Pokaż telefon (2 min)</string>
     <string name="bluetooth_paired">Dodane urządzenia</string>
     <string name="bluetooth_connect">Połącz</string>
@@ -466,7 +466,7 @@
     <string name="help_buttons_bt_t">Bluetooth</string>
     <string name="help_buttons_bt_b">Jest, gdy włączone są «Inne urządzenia». Dotknięcie — pisanie idzie na połączone urządzenie (przycisk świeci), jeszcze raz — z powrotem na telefon. Brak połączenia — dotknięcie łączy z pierwszym urządzeniem ★, przycisk pulsuje podczas łączenia. Długie naciśnięcie — następne urządzenie ★.</string>
     <string name="help_buttons_touchpad_t">Touchpad</string>
-    <string name="help_buttons_touchpad_b">Jest, gdy pisanie idzie na urządzenie. Zamiast klawiszy: przesuwaj palcem — mysz, dotknięcie — klik, dwa palce — przewijanie. Przycisk w rogu przełącza na strzałki (dla telewizora): przesunięcie — jedna strzałka, przesunięcie i przytrzymanie — powtarza, dotknięcie — Enter.</string>
+    <string name="help_buttons_touchpad_b">Jest, gdy pisanie idzie na urządzenie. Zamiast klawiszy: przesuwaj palcem — mysz, dotknięcie — klik, dwa palce — przewijanie. Przycisk w rogu przełącza na strzałki (dla telewizora): przesunięcie — jedna strzałka, przesunięcie i przytrzymanie — powtarza, dotknięcie — Enter. «АБВ» — z powrotem do klawiszy.</string>
     <string name="help_buttons_modes_t">Tryby ▦</string>
     <string name="help_buttons_modes_b">W kompaktowym pasku przyciski trybów są pod tym przyciskiem; dotknięcie otwiera ich rząd. Podświetlony podczas tłumaczenia lub dyktowania.</string>
     <string name="help_buttons_text_t">Aa Tekst</string>
@@ -575,7 +575,7 @@
     <string name="help_devices_what_t">Co to jest</string>
     <string name="help_devices_what_b">Telefon staje się klawiaturą i touchpadem Bluetooth dla komputera, telewizora lub tabletu; nic nie trzeba na nich instalować. Android 9 lub nowszy.</string>
     <string name="help_devices_add_t">Dodawanie urządzenia</string>
-    <string name="help_devices_add_b">«Inne urządzenia» → włącz → «Pokaż telefon», potem na urządzeniu: Bluetooth → Dodaj urządzenie. Urządzeń może być kilka.</string>
+    <string name="help_devices_add_b">«Inne urządzenia» → włącz → «Pokaż telefon», potem na urządzeniu: Bluetooth → Dodaj urządzenie → ten telefon. Działa wszędzie, też z telewizorami; urządzeń może być kilka. (Komputer można też dodać z telefonu.)</string>
     <string name="help_devices_star_t">★ do przełączania</string>
     <string name="help_devices_star_b">Oznacz ★ urządzenia na liście; długie naciśnięcie przycisku Bluetooth przełącza między nimi po kolei, w kolejności oznaczenia.</string>
     <string name="help_devices_devlang_t">Język na urządzeniu</string>

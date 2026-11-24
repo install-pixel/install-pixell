@@ -190,7 +190,7 @@
     <string name="bluetooth_allow">Дозволити</string>
     <string name="bluetooth_open_settings">Відкрити налаштування Bluetooth</string>
     <string name="bluetooth_section_pair">2. Додайте пристрої</string>
-    <string name="bluetooth_pair_steps">Торкніться «Зробити телефон видимим», потім на пристрої відкрийте Bluetooth → Додати пристрій і виберіть цей телефон. Пристроїв можна додати скільки завгодно, по одному. Наступного разу вони підключаться самі або торкніться «Підключити».</string>
+    <string name="bluetooth_pair_steps">Торкніться «Зробити телефон видимим», потім на пристрої: Bluetooth → Додати пристрій → цей телефон. Працює з комп\'ютерами, планшетами й телевізорами; пристроїв може бути кілька. (Комп\'ютер можна додати й з налаштувань Bluetooth телефона.)</string>
     <string name="bluetooth_make_visible">Зробити телефон видимим (2 хв)</string>
     <string name="bluetooth_paired">Додані пристрої</string>
     <string name="bluetooth_connect">Підключити</string>
@@ -466,7 +466,7 @@
     <string name="help_buttons_bt_t">Bluetooth</string>
     <string name="help_buttons_bt_b">Є, коли увімкнено «Інші пристрої». Дотик — друк іде на підключений пристрій (кнопка світиться), ще дотик — назад на телефон. Не підключено — дотик підключає до першого пристрою з ★, кнопка пульсує, поки підключається. Довгий натиск — наступний пристрій з ★.</string>
     <string name="help_buttons_touchpad_t">Тачпад</string>
-    <string name="help_buttons_touchpad_b">Є, поки друк іде на пристрій. Замість клавіш: ведіть пальцем — рухається миша, дотик — клік, два пальці — прокрутка. Кнопка в куті перемикає на стрілки (для телевізора): свайп — одна стрілка, свайп і тримати — повтор, дотик — Enter.</string>
+    <string name="help_buttons_touchpad_b">Є, поки друк іде на пристрій. Замість клавіш: ведіть пальцем — рухається миша, дотик — клік, два пальці — прокрутка. Кнопка в куті перемикає на стрілки (для телевізора): свайп — одна стрілка, свайп і тримати — повтор, дотик — Enter. «АБВ» — назад до клавіш.</string>
     <string name="help_buttons_modes_t">Режими ▦</string>
     <string name="help_buttons_modes_b">У компактній панелі кнопки режимів сховані під цією кнопкою; дотик відкриває їхній ряд. Підсвічена під час перекладу чи диктування.</string>
     <string name="help_buttons_text_t">Aa Текст</string>
@@ -575,7 +575,7 @@
     <string name="help_devices_what_t">Що це</string>
     <string name="help_devices_what_b">Телефон стає Bluetooth-клавіатурою й тачпадом для комп\'ютера, телевізора чи планшета; на них нічого встановлювати не треба. Android 9 або новіший.</string>
     <string name="help_devices_add_t">Додати пристрій</string>
-    <string name="help_devices_add_b">«Інші пристрої» → увімкнути → «Зробити телефон видимим», потім на пристрої: Bluetooth → Додати пристрій. Пристроїв може бути кілька.</string>
+    <string name="help_devices_add_b">«Інші пристрої» → увімкнути → «Зробити телефон видимим», потім на пристрої: Bluetooth → Додати пристрій → цей телефон. Працює скрізь, і з телевізорами; пристроїв може бути кілька. (Комп\'ютер можна додати й з телефона.)</string>
     <string name="help_devices_star_t">★ для перемикання</string>
     <string name="help_devices_star_b">Позначте ★ пристрої у списку; довгий натиск кнопки Bluetooth перемикає між ними по колу, у порядку позначення.</string>
     <string name="help_devices_devlang_t">Мова на пристрої</string>

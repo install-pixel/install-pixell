@@ -62,7 +62,8 @@ class RemotePanel(context: Context) : LinearLayout(context) {
         }
         bottom.addView(mouseButton(context.getString(com.offlinekeyboard.R.string.remote_left), 1), LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         bottom.addView(mouseButton(context.getString(com.offlinekeyboard.R.string.remote_right), 2), LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
-        keyboardButton = key(RowKey("", Icon.KEYBOARD) { listener?.onRemoteKeyboard() })
+        // «АБВ», as in the clipboard: back to the letters (the keyboard icon is the computer / mobile switch).
+        keyboardButton = key(RowKey(context.getString(com.offlinekeyboard.R.string.stickers_letters), null) { listener?.onRemoteKeyboard() })
         bottom.addView(keyboardButton, LayoutParams(dp(56), LayoutParams.MATCH_PARENT).apply { setMargins(dp(2), 0, dp(2), 0) })
         addView(bottom, LayoutParams(LayoutParams.MATCH_PARENT, dp(46)))
         pad.listener = { b, x, y, w -> listener?.onRemoteMouse(b, x, y, w) }
@@ -138,7 +139,8 @@ class RemotePanel(context: Context) : LinearLayout(context) {
                 RowKey("", Icon.SEEK_FORWARD, every = REPEAT_SEEK_MS) { listener?.onRemoteKey(HID_RIGHT, 0) },
                 RowKey("", Icon.NEXT, every = REPEAT_TRACK_MS) { listener?.onRemoteMedia(MEDIA_NEXT) },
                 RowKey("", Icon.VOLUME_UP, every = REPEAT_VOLUME_MS) { listener?.onRemoteMedia(MEDIA_VOLUME_UP) },
-                RowKey("", Icon.KEYBOARD, 0.95f) { media = false; fillKeyRow() },
+                // Back to the navigation keys: their arrows, where the tap leads.
+                RowKey("", Icon.ARROW_KEYS, 0.95f) { media = false; fillKeyRow() },
             )
         }
         for (k in keys) {
@@ -234,7 +236,7 @@ class RemotePanel(context: Context) : LinearLayout(context) {
             Icon.ENTER to "Enter", Icon.SPEAKER_OFF to "Mute", Icon.VOLUME_DOWN to "Volume down",
             Icon.VOLUME_UP to "Volume up", Icon.PREVIOUS to "Previous track", Icon.SEEK_BACK to "Seek back",
             Icon.PLAY_PAUSE to "Play / pause", Icon.SEEK_FORWARD to "Seek forward", Icon.NEXT to "Next track",
-            Icon.KEYBOARD to "Keys", Icon.MUSIC to "Music keys", Icon.WINDOWS to "Switch window",
+            Icon.ARROW_KEYS to "Navigation keys", Icon.MUSIC to "Music keys", Icon.WINDOWS to "Switch window",
             Icon.LEFT to "Left", Icon.RIGHT to "Right", Icon.UP to "Up", Icon.DOWN to "Down",
         )
         /** How long a key is held before it repeats, and how often it repeats then. */
