@@ -30,6 +30,7 @@ internal enum class HelpSection(val title: Int, val icon: Icon, val items: List<
         HelpItem(R.string.help_buttons_undo_t, R.string.help_buttons_undo_b, Icon.UNDO),
         HelpItem(R.string.help_buttons_compact_t, R.string.help_buttons_compact_b),
         HelpItem(R.string.help_buttons_hide_t, R.string.help_buttons_hide_b),
+        HelpItem(R.string.help_buttons_typedtext_t, R.string.help_buttons_typedtext_b),
     )),
     LOOK(R.string.help_s_look, Icon.SPEAKER, listOf(
         HelpItem(R.string.help_look_style_t, R.string.help_look_style_b),
@@ -121,6 +122,7 @@ internal object HelpItems {
     val buttons_undo get() = HelpSection.BUTTONS.items[12]
     val buttons_compact get() = HelpSection.BUTTONS.items[13]
     val buttons_hide get() = HelpSection.BUTTONS.items[14]
+    val buttons_typedtext get() = HelpSection.BUTTONS.items[15]
     val look_style get() = HelpSection.LOOK.items[0]
     val look_preview get() = HelpSection.LOOK.items[1]
     val look_seethrough get() = HelpSection.LOOK.items[2]

@@ -1064,10 +1064,17 @@ class KeyboardUiTest {
     }
 
     private fun useMode(mode: KeyboardMode) {
-        // The mobile keyboard hides its toolbar buttons until the strip is tapped: a tap where the
-        // hidden button is shows it, the next one switches.
+        // The buttons at the right may be folded away (menu button hidden, or writing): the menu button at the
+        // left opens them first.
         repeat(4) {
             if (service().modeForTest == mode) return
+            val button = toolbarButton(R.string.toolbar_mode_description)
+            var shown = false
+            instrumentation.runOnMainSync { shown = button.isShown }
+            if (!shown) {
+                tapView(toolbarButton(R.string.toolbar_modes_description))
+                Thread.sleep(400)
+            }
             tapView(toolbarButton(R.string.toolbar_mode_description))
         }
         assertEquals(mode, service().modeForTest)
