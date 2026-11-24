@@ -223,6 +223,15 @@ class SurfacePainter(private val density: Float) {
         else if (seeThrough) fill.alpha = if (light) 0xB0 else 0xA0
         canvas.drawRoundRect(rect, radius, radius, fill)
         fill.alpha = 0xFF
+        // Milky glass is white already, so a dimmer rim and sheen hardly showed: lower brightness also lays a
+        // cool grey veil over the glass (up to about a third at the lowest setting), seen but not heavy.
+        if (light && brightness < 1f) {
+            fill.shader = null
+            fill.color = LIGHT_GLASS_VEIL
+            fill.alpha = (LIGHT_GLASS_VEIL_MAX * ((1f - brightness) / 0.6f)).toInt().coerceIn(0, LIGHT_GLASS_VEIL_MAX)
+            canvas.drawRoundRect(rect, radius, radius, fill)
+            fill.alpha = 0xFF
+        }
         if (withSheen || light) {
             // Soft light inside the top, gone by half height (at most 120 dp); milky glass always has it.
             val glow = if (light) sheenLight else sheen
@@ -1043,6 +1052,9 @@ class SurfacePainter(private val density: Float) {
     }
 
     private companion object {
+        /** The grey laid over milky glass as its brightness goes down, and how strong at the lowest. */
+        const val LIGHT_GLASS_VEIL = 0xFF7D8794.toInt()
+        const val LIGHT_GLASS_VEIL_MAX = 0x5C
         val RUST = intArrayOf(0xFF602E14.toInt(), 0xFF78401E.toInt(), 0xFF3E1E0E.toInt(), 0xFF8A5028.toInt())
         // The rim's line of light: a wide faint stroke under a narrow bright one.
         val HIGHLIGHT = arrayOf(0.7f to 0.22f, 0.3f to 0.7f)

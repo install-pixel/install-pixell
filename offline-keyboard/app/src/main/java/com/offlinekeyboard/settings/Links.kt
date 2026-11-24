@@ -15,6 +15,9 @@ internal object Links {
     private const val REPO = "https://github.com/install-pixel/install-pixell"
     private const val BRANCH = "claude/offline-keyboard-android-w9kw2a"
 
+    /** The Vosk project's page of voice models (any uk, pl or en one can be imported). */
+    const val VOSK_MODELS = "https://alphacephei.com/vosk/models"
+
     fun modelFile(name: String) = "$REPO/releases/download/keyboard-models/$name"
 
     fun open(context: Context, url: String) {

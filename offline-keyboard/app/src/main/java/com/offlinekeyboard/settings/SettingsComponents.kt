@@ -182,11 +182,16 @@ internal fun SetupStep(title: String, done: Boolean, action: String, onClick: ()
 }
 
 @Composable
-internal fun StatusLine(label: String, ok: Boolean) {
+internal fun StatusLine(label: String, ok: Boolean, bold: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(if (ok) "✓" else "!", color = if (ok) Tone.TextPrimary else Tone.Danger, fontSize = 17.sp)
         Spacer(Modifier.width(8.dp))
-        Text(label, color = Tone.TextPrimary, fontSize = 17.sp)
+        Text(
+            label,
+            color = Tone.TextPrimary,
+            fontSize = 17.sp,
+            fontWeight = if (bold) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+        )
     }
 }
 
@@ -229,7 +234,12 @@ internal fun NavRow(title: String, subtitle: String?, leading: String? = null, o
  * that is on is simply written, one that is off is crossed out with a pencil; a tap does the opposite.
  */
 @Composable
-internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(label: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    // Under a main switch that is off: shown pale and left as it is (it comes back as it was).
+    if (!enabled) {
+        androidx.compose.foundation.layout.Box(Modifier.alpha(0.4f)) { SwitchRow(label, checked) {} }
+        return
+    }
     if (LocalLook.current == Look.SHEET) {
         CrossedRow(label, checked, Role.Switch, onChange)
         return

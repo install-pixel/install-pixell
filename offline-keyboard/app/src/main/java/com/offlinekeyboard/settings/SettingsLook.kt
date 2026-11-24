@@ -762,6 +762,9 @@ internal fun modeOf(family: StyleFamily, light: Boolean): ThemeMode = when (fami
 internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: String) {
     val family = familyOf(s.themeMode)
     val light = s.themeMode.light
+    // A collection tapped only opens its two variants; the keyboard changes when a variant is chosen (it
+    // switched to the dark one at once).
+    var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(family) }
     Section(title) {
         for ((f, label, description) in listOf(
             Triple(StyleFamily.GLASS, R.string.theme_glass, R.string.theme_glass_desc),
@@ -769,11 +772,11 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
             Triple(StyleFamily.TYPEWRITER, R.string.theme_typewriter, R.string.theme_typewriter_desc),
         )) {
             RadioRow(androidx.compose.ui.res.stringResource(label), family == f, androidx.compose.ui.res.stringResource(description)) {
-                update { it.withStyle(modeOf(f, light)) }
+                open = f
             }
             // Under the chosen collection its two variants, each shown as its keyboard (a separate «Tone» block
             // said nothing of what the variants look like).
-            if (family == f) {
+            if (open == f) {
                 androidx.compose.foundation.layout.Row(
                     Modifier.fillMaxWidth().padding(vertical = 6.dp),
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
@@ -782,7 +785,7 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
                         VariantCard(
                             preview = previewOf(f, lightOne),
                             name = androidx.compose.ui.res.stringResource(variantName(f, lightOne)),
-                            selected = light == lightOne,
+                            selected = family == f && light == lightOne,
                             modifier = Modifier.weight(1f),
                         ) { update { it.withStyle(modeOf(f, lightOne)) } }
                     }
@@ -791,7 +794,7 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
         }
     }
     if (family == StyleFamily.GLASS) {
-        Section(androidx.compose.ui.res.stringResource(R.string.glass_see_through)) {
+        Section(null) {
             SwitchRow(androidx.compose.ui.res.stringResource(R.string.glass_see_through), s.glassSeeThrough) { v ->
                 update { it.copy(glassSeeThrough = v) }
             }
@@ -802,23 +805,22 @@ internal fun StylePicker(s: KeyboardSettings, update: UpdateSettings, title: Str
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
             )
         }
-        // Whether the phone lets the glass lie over the blurred app, as the keyboard last found it.
+        // Said only when it matters: the see-through is on but this phone cannot show it.
         val context = androidx.compose.ui.platform.LocalContext.current
         val state = androidx.compose.runtime.remember { com.offlinekeyboard.keyboard.BlurState.load(context).first }
-        val text = androidx.compose.ui.res.stringResource(
-            when (state) {
-                com.offlinekeyboard.keyboard.BlurState.ON -> R.string.blur_state_on
-                com.offlinekeyboard.keyboard.BlurState.NOT_ALLOWED -> R.string.blur_state_not_allowed
-                com.offlinekeyboard.keyboard.BlurState.WINDOW -> R.string.blur_state_window
-                com.offlinekeyboard.keyboard.BlurState.OLD_ANDROID -> R.string.blur_state_old
-                com.offlinekeyboard.keyboard.BlurState.UNKNOWN -> R.string.blur_state_unknown
-            },
-        )
-        androidx.compose.material3.Text(
-            text,
-            color = Tone.TextSecondary,
-            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-        )
+        if (s.glassSeeThrough && state != com.offlinekeyboard.keyboard.BlurState.ON) {
+            val text = androidx.compose.ui.res.stringResource(
+                when (state) {
+                    com.offlinekeyboard.keyboard.BlurState.UNKNOWN -> R.string.blur_state_unknown
+                    else -> R.string.blur_state_not_allowed
+                },
+            )
+            androidx.compose.material3.Text(
+                text,
+                color = Tone.TextSecondary,
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+        }
     }
 }
