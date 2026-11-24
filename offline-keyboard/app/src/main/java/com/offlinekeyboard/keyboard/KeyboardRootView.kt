@@ -1579,9 +1579,9 @@ class KeyboardRootView(context: Context) : LinearLayout(context) {
         // its start was shown («Мари» for «Марихуани», three alike), while a tap put in the whole word.
         isSingleLine = true
         hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
-        breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
-        // The whole word always in sight: the places are shared by the words' lengths and the font gets smaller
-        // (see fitSuggestions); a word that still does not fit drifts slowly, never cut or ended in «…».
+        breakStrategy = android.graphics.text.LineBreaker.BREAK_STRATEGY_SIMPLE
+        // The whole word always in sight, at the strip.s size; words that do not fit together scroll sideways
+        // (see fitSuggestions), one longer than the strip drifts; never cut or ended in «…».
         ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         marqueeRepeatLimit = -1
         setTextSize(TypedValue.COMPLEX_UNIT_SP, SUGGESTION_SP)
