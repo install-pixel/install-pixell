@@ -1,0 +1,104 @@
+name: Supps APK
+
+on:
+  push:
+    paths:
+      - 'supplements/**'
+      - '.github/workflows/supplements.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: supplements-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supplements
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build, unit tests, lint
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleRelease 2>&1 | tee build.log
+
+      # Помилки компіляції й тестів — анотацією: їх видно без входу в GitHub (публічне API перевірок).
+      - name: Report errors
+        if: failure()
+        run: |
+          {
+            grep -E "^e: |error:|FAILED|What went wrong|Exception|expected:|AssertionError" build.log | grep -v "^> Task" | head -80
+          } > errors.txt || true
+          if [ -s errors.txt ]; then
+            msg=$(sed 's/%/%25/g' errors.txt | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Build failed::${msg}"
+          else
+            tail -60 build.log > tail.txt
+            msg=$(sed 's/%/%25/g' tail.txt | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Build failed (tail)::${msg}"
+          fi
+
+      - name: Show Room schema
+        run: |
+          for f in $(find app/schemas -name '*.json' 2>/dev/null); do
+            echo "=== $f"
+            cat "$f"
+          done
+
+      # Версія та коміт у назві файлу, щоб на телефоні не сплутати зі старим APK.
+      - name: Rename APK
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          APK="Supps-v${VERSION}-${GITHUB_SHA::7}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          # Копія з постійною назвою — одне посилання в закладках завжди дає найновішу збірку.
+          cp app/build/outputs/apk/release/app-release.apk Supps.apk
+          echo "APK=$APK" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supps-apk
+          path: |
+            supplements/${{ env.APK }}
+            supplements/app/build/reports/lint-results-debug.html
+            supplements/app/schemas/**
+
+      - name: Remove previous test release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete supps-latest --cleanup-tag --yes || true
+
+      # Постійне посилання для завантаження APK прямо на телефон.
+      - name: Publish rolling test release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: supps-latest
+          target_commitish: ${{ github.sha }}
+          name: Добавки v${{ env.VERSION }} (тестова збірка)
+          prerelease: true
+          make_latest: false
+          body: |
+            Остання тестова збірка «Добавок» з гілки ${{ github.ref_name }}.
+            Версія: ${{ env.VERSION }}
+            Коміт: ${{ github.sha }}
+            Постійне посилання: https://github.com/${{ github.repository }}/releases/download/supps-latest/Supps.apk
+          files: |
+            supplements/${{ env.APK }}
+            supplements/Supps.apk

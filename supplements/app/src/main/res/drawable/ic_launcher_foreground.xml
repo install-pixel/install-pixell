@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Капсула олівцем, нахилена, з поділкою посередині. -->
+    <group android:rotation="-35" android:pivotX="54" android:pivotY="54">
+        <path android:strokeColor="#EDEDED" android:strokeWidth="2.8" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M42,44 L66,43.6 A10,10 0 0,1 66.2,64.2 L42.2,64.4 A10.2,10.2 0 0,1 42,44 Z" />
+        <path android:strokeColor="#EDEDED" android:strokeWidth="2.8" android:strokeLineCap="round"
+            android:pathData="M54.2,43.8 L53.8,64.3" />
+        <path android:fillColor="#EDEDED" android:pathData="M54.2,45.5 L65.6,45.3 A8.4,8.4 0 0,1 65.8,62.4 L54,62.6 Z" />
+    </group>
+</vector>
