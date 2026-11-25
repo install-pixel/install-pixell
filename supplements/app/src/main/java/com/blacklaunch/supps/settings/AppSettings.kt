@@ -43,15 +43,23 @@ class AppSettings(context: Context) {
         get() = prefs.getString(KEY_CURRENCY, null) ?: "zł"
         set(value) = prefs.edit().putString(KEY_CURRENCY, value.trim().take(6)).apply()
 
-    /** Скільки питань у щоденній оцінці (1–4). */
-    var questionCount: Int
-        get() = prefs.getInt(KEY_Q_COUNT, 3).coerceIn(1, 4)
-        set(value) = prefs.edit().putInt(KEY_Q_COUNT, value.coerceIn(1, 4)).apply()
+    /** Скільки питань уранці / ввечері (0–3). */
+    fun questionCount(evening: Boolean): Int =
+        prefs.getInt(if (evening) KEY_EQ_COUNT else KEY_MQ_COUNT, if (evening) 3 else 2).coerceIn(0, 3)
+
+    fun setQuestionCount(evening: Boolean, value: Int) =
+        prefs.edit().putInt(if (evening) KEY_EQ_COUNT else KEY_MQ_COUNT, value.coerceIn(0, 3)).apply()
 
     /** Свій текст питання (порожньо — типовий текст із ресурсів). */
-    fun question(i: Int): String = prefs.getString("$KEY_Q$i", null).orEmpty()
+    fun question(evening: Boolean, i: Int): String = prefs.getString((if (evening) KEY_EQ else KEY_MQ) + i, null).orEmpty()
 
-    fun setQuestion(i: Int, text: String) = prefs.edit().putString("$KEY_Q$i", text.trim().take(40)).apply()
+    fun setQuestion(evening: Boolean, i: Int, text: String) =
+        prefs.edit().putString((if (evening) KEY_EQ else KEY_MQ) + i, text.trim().take(40)).apply()
+
+    /** Скільки хвилин між вечірнім прийомом і сном — для підрахунку сну з часу відміток. */
+    var sleepOffsetMinutes: Int
+        get() = prefs.getInt(KEY_SLEEP_OFFSET, 60).coerceIn(0, 240)
+        set(value) = prefs.edit().putInt(KEY_SLEEP_OFFSET, value.coerceIn(0, 240)).apply()
 
     companion object {
         private const val KEY_LANG = "language"
@@ -59,8 +67,11 @@ class AppSettings(context: Context) {
         private const val KEY_HIDE_STATUS = "hide_status"
         private const val KEY_DAY_START = "day_start"
         private const val KEY_CURRENCY = "currency"
-        private const val KEY_Q_COUNT = "q_count"
-        private const val KEY_Q = "q_"
+        private const val KEY_MQ_COUNT = "mq_count"
+        private const val KEY_EQ_COUNT = "eq_count"
+        private const val KEY_MQ = "mq_"
+        private const val KEY_EQ = "eq_"
+        private const val KEY_SLEEP_OFFSET = "sleep_offset"
 
         /** Мова, вибрана вручну, — як «перекриття» налаштувань активності (null — як у телефоні). */
         fun languageOverride(base: Context): Configuration? {

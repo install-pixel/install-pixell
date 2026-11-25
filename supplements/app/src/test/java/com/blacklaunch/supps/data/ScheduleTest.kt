@@ -79,16 +79,37 @@ class ScheduleTest {
     @Test
     fun compareSplitsDays() {
         val checkIns = listOf(
-            CheckIn(day = 1, a1 = 4, dayType = DayType.Shift1.name),
-            CheckIn(day = 2, a1 = 2, dayType = DayType.Shift2.name),
-            CheckIn(day = 3, a1 = 5, dayType = DayType.Shift1.name),
+            CheckIn(day = 1, e1 = 4, m1 = 3),
+            CheckIn(day = 2, e1 = 2, m1 = 5),
+            CheckIn(day = 3, e1 = 5, m1 = 2),
         )
-        val r = Stats.compare(setOf(1L, 3L), checkIns, 1, null).first()
-        assertEquals(4.5, r.withAvg!!, 1e-9)
-        assertEquals(2, r.withN)
-        assertEquals(2.0, r.withoutAvg!!, 1e-9)
-        val shift2 = Stats.compare(setOf(1L, 3L), checkIns, 1, DayType.Shift2).first()
-        assertNull(shift2.withAvg)
-        assertEquals(1, shift2.withoutN)
+        val q = listOf(Part.Evening to 0, Part.Morning to 0)
+        val r = Stats.compare(setOf(1L, 3L), eveningSupplement = false, checkIns = checkIns, questions = q)
+        assertEquals(4.5, r[0].withAvg!!, 1e-9)
+        assertEquals(2, r[0].withN)
+        assertEquals(2.0, r[0].withoutAvg!!, 1e-9)
+        // Вечірня добавка: ранок наступного дня. Прийнято в день 1 → ранок дня 2 (5) «з прийомом».
+        val ev = Stats.compare(setOf(1L), eveningSupplement = true, checkIns = checkIns, questions = q)
+        assertEquals(5.0, ev[1].withAvg!!, 1e-9)
+        assertEquals(1, ev[1].withN)
+    }
+
+    @Test
+    fun sleepFromTimestamps() {
+        val h = 3_600_000L
+        val wake = Supplement(id = 1, name = "w", slot = Slot.Wake.name)
+        val bed = Supplement(id = 2, name = "b", slot = Slot.Bed.name)
+        val base = 10L * 86_400_000L
+        val intakes = listOf(
+            Intake(supplementId = 2, day = 9, units = 1.0, at = base - 2 * h), // 22:00 напередодні
+            Intake(supplementId = 1, day = 10, units = 1.0, at = base + 7 * h), // 07:00
+            Intake(supplementId = 1, day = 11, units = 1.0, at = 0), // дописано заднім числом — без часу
+        )
+        val nights = Sleep.nights(10, 11, intakes, listOf(wake, bed), emptyList(), offsetMinutes = 60)
+        // Відбій 22:00 + 60 хв = 23:00 → підйом 07:00 = 8 год.
+        assertEquals(480, nights[0].minutes)
+        assertNull(nights[1].minutes)
+        val avg = Sleep.averageClock(listOf(base - h / 2, base + h / 2), java.time.ZoneOffset.UTC, 12)
+        assertEquals(0, avg)
     }
 }

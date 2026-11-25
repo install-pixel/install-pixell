@@ -1,5 +1,6 @@
 package com.blacklaunch.supps.ui
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.BackHandler
@@ -58,9 +59,8 @@ import kotlinx.coroutines.launch
 
 /** Повноекранні сторінки поверх головного екрана (стек: «Назад» — на крок). */
 sealed interface Screen {
+    data object Settings : Screen
     data class Edit(val id: Long?) : Screen
-    data class Detail(val id: Long) : Screen
-    data class Check(val day: Long) : Screen
 }
 
 private data class BannerMsg(val text: String, val action: String? = null, val onAction: () -> Unit = {}, val id: Long = System.nanoTime())
@@ -68,23 +68,29 @@ private data class BannerMsg(val text: String, val action: String? = null, val o
 /** Найбільший файл схеми, який читаємо (захист від випадково вибраного величезного файлу). */
 private const val MAX_FILE_BYTES = 5 * 1024 * 1024
 
+/**
+ * Дві сторінки — «Сьогодні» (з нею спілкуєшся щодня) й «Історія»; поруч — одна кнопка налаштувань, де зібране все
+ * інше: аптечка, банки, цикли, схема JSON, питання оцінки, вигляд.
+ */
 @Composable
 fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val data by vm.data.collectAsStateWithLifecycle()
     val today by vm.today.collectAsStateWithLifecycle()
+    val now by vm.now.collectAsStateWithLifecycle()
     var settingsVersion by remember { mutableIntStateOf(0) }
     val questions = activeQuestions(settingsVersion)
-    val currency = remember(settingsVersion) { AppSettings(context).currency }
+    val settings = remember { AppSettings(context) }
+    val currency = remember(settingsVersion) { settings.currency }
+    val sleepOffset = remember(settingsVersion) { settings.sleepOffsetMinutes }
     val stack = remember { mutableStateListOf<Screen>() }
-    val pager = rememberPagerState(initialPage = 0) { 3 }
+    val pager = rememberPagerState(initialPage = 0) { 2 }
 
-    var menuOpen by remember { mutableStateOf(false) }
-    var settingsOpen by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf<JsonIO.Parsed?>(null) }
     var groupFor by remember { mutableStateOf<Long?>(null) }
     var dayFor by remember { mutableStateOf<Long?>(null) }
+    var effectFor by remember { mutableStateOf<Long?>(null) }
     var banner by remember { mutableStateOf<BannerMsg?>(null) }
 
     fun show(text: String, action: String? = null, onAction: () -> Unit = {}) {
@@ -106,6 +112,7 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
     val msgExportFail = stringResource(R.string.backup_fail)
     val msgRestored = stringResource(R.string.restore_done)
     val msgAddedFmt = stringResource(R.string.import_done)
+    val msgTemplate = stringResource(R.string.template_copied)
 
     fun openParsed(text: String?) {
         if (text.isNullOrBlank()) {
@@ -139,9 +146,10 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
         }
     }
 
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+
     fun paste() {
-        val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        val text = runCatching { clip?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() }.getOrNull()
+        val text = runCatching { clipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() }.getOrNull()
         openParsed(text)
     }
 
@@ -159,39 +167,29 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
                     0 -> TodayPage(
                         data = data,
                         today = today,
+                        now = now,
                         questions = questions,
-                        currency = currency,
-                        onToggle = { vm.toggleIntake(it, today) },
-                        onOpen = { stack.add(Screen.Detail(it.id)) },
-                        onCheckIn = { stack.add(Screen.Check(today)) },
-                        onAdd = { stack.add(Screen.Edit(null)) },
-                        onPaste = { paste() },
+                        onToggle = { vm.toggleIntake(it, today, live = true) },
+                        onRate = { part, i, v -> vm.setRating(today, part, i, v, live = true) },
+                        onOpenSettings = { stack.add(Screen.Settings) },
                     )
-                    1 -> CabinetPage(
-                        data = data,
-                        today = today,
-                        currency = currency,
-                        onOpen = { stack.add(Screen.Detail(it.id)) },
-                        onGroup = { groupFor = it.id },
-                        onAdd = { stack.add(Screen.Edit(null)) },
-                        onPaste = { paste() },
-                    )
-                    else -> StatsPage(
+                    else -> HistoryPage(
                         data = data,
                         today = today,
                         questions = questions,
                         currency = currency,
+                        sleepOffset = sleepOffset,
                         onDay = { dayFor = it },
-                        onOpen = { stack.add(Screen.Detail(it.id)) },
+                        onSupplement = { effectFor = it.id },
                     )
                 }
             }
-            // Нижня панель: сторінки й «⋯».
+            // Нижня панель: дві сторінки й налаштування.
             Row(
                 Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val tabs = listOf(R.string.tab_today, R.string.tab_cabinet, R.string.tab_stats)
+                val tabs = listOf(R.string.tab_today, R.string.tab_history)
                 tabs.forEachIndexed { i, label ->
                     val selected = pager.currentPage == i
                     Box(
@@ -203,23 +201,23 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
                                 scope.launch { pager.animateScrollToPage(i) }
                             }
                             .drawBehind {
-                                if (selected) pencilStroke(size.height - 6.dp.toPx(), size.width * 0.22f, size.width * 0.78f, seed = i + 5, alpha = 0.9f)
+                                if (selected) pencilStroke(size.height - 6.dp.toPx(), size.width * 0.25f, size.width * 0.75f, seed = i + 5, alpha = 0.9f)
                             }
                             .padding(horizontal = 4.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        FitLabel(stringResource(label), color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 16.sp)
+                        FitLabel(stringResource(label), color = if (selected) Oled.TextPrimary else Oled.TextSecondary, fontSize = 17.sp)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                RoundButton(Glyph.More, stringResource(R.string.more), { menuOpen = true }, size = 48.dp)
+                RoundButton(Glyph.Settings, stringResource(R.string.settings_title), { stack.add(Screen.Settings) }, size = 48.dp)
             }
         }
 
         AnimatedContent(
             targetState = stack.lastOrNull(),
             transitionSpec = {
-                val forward = targetState != null
+                val forward = targetState != null && (initialState == null || targetState is Screen.Edit)
                 ((fadeIn(tween(260, delayMillis = 40)) + slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { (if (forward) it else -it) / 8 }) togetherWith
                     (fadeOut(tween(180)) + slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) { (if (forward) -it else it) / 8 }))
                     .using(null)
@@ -228,46 +226,47 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
         ) { screen ->
             when (screen) {
                 null -> Box(Modifier.fillMaxSize())
-                is Screen.Edit -> {
+                Screen.Settings -> Cover {
+                    SettingsScreen(
+                        data = data,
+                        today = today,
+                        currency = currency,
+                        onBack = { pop() },
+                        onAdd = { stack.add(Screen.Edit(null)) },
+                        onEdit = { stack.add(Screen.Edit(it.id)) },
+                        onGroup = { groupFor = it.id },
+                        onPaste = { paste() },
+                        onFile = { runCatching { openFile.launch(arrayOf("application/json", "text/plain", "*/*")) } },
+                        onExport = { runCatching { saveFile.launch("supps-" + dayOf(today) + ".json") } },
+                        onTemplate = {
+                            runCatching { clipboard?.setPrimaryClip(ClipData.newPlainText("supps", JsonIO.TEMPLATE)) }
+                            show(msgTemplate)
+                        },
+                        onLanguageChanged = onLanguageChanged,
+                        onChanged = {
+                            settingsVersion++
+                            vm.refreshToday()
+                        },
+                    )
+                }
+                is Screen.Edit -> Cover {
                     val original = screen.id?.let { id -> data.supplements.firstOrNull { it.id == id } }
-                    Box(Modifier.fillMaxSize().background(Oled.Black).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}) {
-                        EditorScreen(original, data, today, currency, onBack = { pop() }) { r ->
-                            vm.saveSupplement(r.supplement, r.doneDays, r.newGroupName, r.newGroupBreak)
+                    EditorScreen(
+                        original = original,
+                        data = data,
+                        today = today,
+                        currency = currency,
+                        onBack = { pop() },
+                        onSave = { r ->
+                            vm.saveSupplement(r.supplement, r.doneDays, r.newGroupName, r.newGroupBreak, r.purchase)
                             pop()
                             show(msgSaved)
-                        }
-                    }
-                }
-                is Screen.Detail -> {
-                    val s = data.supplements.firstOrNull { it.id == screen.id }
-                    Box(Modifier.fillMaxSize().background(Oled.Black).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}) {
-                        if (s != null) {
-                            DetailScreen(
-                                s = s,
-                                data = data,
-                                today = today,
-                                questions = questions,
-                                currency = currency,
-                                onBack = { pop() },
-                                onEdit = { stack.add(Screen.Edit(s.id)) },
-                                onDelete = {
-                                    vm.deleteSupplement(s) { deleted ->
-                                        show(msgDeleted, msgUndo) { vm.restore(deleted); banner = null }
-                                    }
-                                    stack.clear()
-                                },
-                                onPurchase = { units, price, add -> vm.addPurchase(s, units, price, add); show(msgSaved) },
-                                onStock = { left -> vm.saveSupplement(s.copy(unitsLeft = left), null, null, 0) },
-                            )
-                        }
-                    }
-                }
-                is Screen.Check -> Box(Modifier.fillMaxSize().background(Oled.Black).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}) {
-                    CheckInScreen(screen.day, data.checkIn(screen.day), questions, onBack = { pop() }) { c ->
-                        vm.saveCheckIn(c)
-                        pop()
-                        show(msgSaved)
-                    }
+                        },
+                        onDelete = { s ->
+                            vm.deleteSupplement(s) { deleted -> show(msgDeleted, msgUndo) { vm.restore(deleted); banner = null } }
+                            pop()
+                        },
+                    )
                 }
             }
         }
@@ -275,28 +274,6 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
         Banner(banner?.text, banner?.action, onAction = { banner?.onAction?.invoke() })
     }
 
-    if (menuOpen) {
-        MainMenu(
-            onDismiss = { menuOpen = false },
-            onCheckIn = { stack.add(Screen.Check(today)) },
-            onAdd = { stack.add(Screen.Edit(null)) },
-            onPaste = { paste() },
-            onFile = { runCatching { openFile.launch(arrayOf("application/json", "text/plain", "*/*")) } },
-            onSettings = { settingsOpen = true },
-        )
-    }
-    if (settingsOpen) {
-        SettingsDialog(
-            onDismiss = { settingsOpen = false },
-            onLanguageChanged = onLanguageChanged,
-            onChanged = {
-                settingsVersion++
-                vm.refreshToday()
-            },
-            onExport = { runCatching { saveFile.launch("supps-" + dayOf(today) + ".json") } },
-            onImport = { runCatching { openFile.launch(arrayOf("application/json", "text/plain", "*/*")) } },
-        )
-    }
     importing?.let { parsed ->
         ImportDialog(
             parsed = parsed,
@@ -308,13 +285,10 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
     }
     groupFor?.let { id ->
         val g = data.groups.firstOrNull { it.id == id }
-        if (g == null) {
-            groupFor = null
-        } else {
+        if (g != null) {
             GroupDialog(
                 group = g,
                 data = data,
-                today = today,
                 onDismiss = { groupFor = null },
                 onSave = { vm.saveGroup(it); show(msgSaved) },
                 onMove = { s, d -> vm.moveInGroup(s, d) },
@@ -325,14 +299,25 @@ fun AppRoot(vm: AppViewModel, onLanguageChanged: () -> Unit) {
     dayFor?.let { day ->
         DayDialog(
             day = day,
+            today = today,
             data = data,
             questions = questions,
+            sleepOffset = sleepOffset,
             onDismiss = { dayFor = null },
-            onToggle = { vm.toggleIntake(it, day) },
-            onCheckIn = {
-                dayFor = null
-                stack.add(Screen.Check(day))
-            },
+            onToggle = { vm.toggleIntake(it, day, live = day == today) },
+            onRate = { part, i, v -> vm.setRating(day, part, i, v, live = day == today) },
         )
+    }
+    effectFor?.let { id ->
+        val s = data.supplements.firstOrNull { it.id == id }
+        if (s != null) EffectDialog(s, data, today, questions) { effectFor = null }
+    }
+}
+
+/** Повноекранна сторінка на чорному тлі, що забирає дотики (під нею — головний екран). */
+@Composable
+private fun Cover(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Oled.Black).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}) {
+        content()
     }
 }

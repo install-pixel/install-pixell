@@ -11,6 +11,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -62,6 +64,9 @@ abstract class SuppsDao {
 
     @Upsert
     abstract suspend fun upsertCheckIn(c: CheckIn)
+
+    @Query("SELECT * FROM check_in WHERE day = :day")
+    abstract suspend fun checkIn(day: Long): CheckIn?
 
     @Query("DELETE FROM check_in WHERE day = :day")
     abstract suspend fun deleteCheckIn(day: Long)
@@ -132,7 +137,7 @@ abstract class SuppsDao {
 
 @Database(
     entities = [Supplement::class, AltGroup::class, Intake::class, CheckIn::class, Purchase::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -142,7 +147,27 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile private var instance: AppDatabase? = null
 
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "supps.db").build().also { instance = it }
+            instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "supps.db")
+                .addMigrations(MIGRATION_1_2)
+                .build()
+                .also { instance = it }
+        }
+
+        /**
+         * v1 → v2: оцінка дня ділиться на ранок і вечір (тип дня прибрано — час береться з відміток), у добавки —
+         * категорія. Старі відповіді: «Сон» → перше ранкове, «Настрій» і «Ясність» → перші вечірні.
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE supplement ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS check_in_new (day INTEGER NOT NULL, m1 INTEGER, m2 INTEGER, m3 INTEGER, " +
+                        "e1 INTEGER, e2 INTEGER, e3 INTEGER, morningAt INTEGER, eveningAt INTEGER, note TEXT NOT NULL, PRIMARY KEY(day))",
+                )
+                db.execSQL("INSERT INTO check_in_new (day, m1, e1, e2, note) SELECT day, a2, a1, a3, note FROM check_in")
+                db.execSQL("DROP TABLE check_in")
+                db.execSQL("ALTER TABLE check_in_new RENAME TO check_in")
+            }
         }
     }
 }

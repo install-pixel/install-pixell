@@ -8,6 +8,7 @@ import com.blacklaunch.supps.data.AppDatabase
 import com.blacklaunch.supps.data.CheckIn
 import com.blacklaunch.supps.data.Intake
 import com.blacklaunch.supps.data.JsonIO
+import com.blacklaunch.supps.data.Part
 import com.blacklaunch.supps.data.Plan
 import com.blacklaunch.supps.data.Purchase
 import com.blacklaunch.supps.data.Schedule
@@ -39,6 +40,10 @@ data class AppData(
     fun checkIn(day: Long): CheckIn? = checkIns.firstOrNull { it.day == day }
 
     fun taken(supplementId: Long, day: Long): Boolean = takenByDay[day]?.contains(supplementId) == true
+
+    private val intakeByKey: Map<Pair<Long, Long>, Intake> by lazy { intakes.associateBy { it.supplementId to it.day } }
+
+    fun intake(supplementId: Long, day: Long): Intake? = intakeByKey[supplementId to day]
 }
 
 /** Що повернути після видалення («Повернути»). */
@@ -57,6 +62,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Сьогоднішній день з урахуванням того, о котрій «починається» день (після нічної зміни). */
     val today: StateFlow<Long> = _today
 
+    private val _now = MutableStateFlow(System.currentTimeMillis())
+
+    /** Поточний час (оновлюється щопівхвилини) — щоб «ранок / вечір» на головній мінявся сам. */
+    val now: StateFlow<Long> = _now
+
     init {
         viewModelScope.launch {
             while (true) {
@@ -67,13 +77,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshToday() {
-        val now = computeToday()
-        if (now != _today.value) _today.value = now
+        _now.value = System.currentTimeMillis()
+        val day = computeToday()
+        if (day != _today.value) _today.value = day
     }
 
     private fun computeToday(): Long = LocalDateTime.now().minusHours(settings.dayStartHour.toLong()).toLocalDate().toEpochDay()
 
-    fun toggleIntake(s: Supplement, day: Long) {
+    /**
+     * Відмітити / зняти прийом. [live] — відмічаєш зараз (з часом, з нього рахується сон); дописане заднім числом
+     * часу не має.
+     */
+    fun toggleIntake(s: Supplement, day: Long, live: Boolean) {
         viewModelScope.launch {
             val existing = dao.intake(s.id, day)
             val fresh = dao.supplement(s.id) ?: return@launch
@@ -81,7 +96,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 dao.deleteIntake(existing)
                 fresh.unitsLeft?.let { dao.upsertSupplement(fresh.copy(unitsLeft = it + existing.units)) }
             } else {
-                dao.insertIntake(Intake(supplementId = s.id, day = day, units = fresh.unitsPerDose))
+                dao.insertIntake(Intake(supplementId = s.id, day = day, units = fresh.unitsPerDose, at = if (live) System.currentTimeMillis() else 0L))
                 fresh.unitsLeft?.let { dao.upsertSupplement(fresh.copy(unitsLeft = (it - fresh.unitsPerDose).coerceAtLeast(0.0))) }
             }
         }
@@ -91,7 +106,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Зберегти добавку. [doneDays] — «скільки днів уже приймаю» (null — не вказано). [newGroupName] — створити нову
      * групу чергування з такою назвою.
      */
-    fun saveSupplement(input: Supplement, doneDays: Int?, newGroupName: String?, newGroupBreak: Int) {
+    fun saveSupplement(input: Supplement, doneDays: Int?, newGroupName: String?, newGroupBreak: Int, purchase: Purchase? = null) {
         viewModelScope.launch {
             val today = _today.value
             var s = input
@@ -122,6 +137,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } else {
                 dao.upsertSupplement(s)
             }
+            if (purchase != null) dao.insertPurchase(purchase.copy(supplementId = s.id, day = today))
             if (s.planE == Plan.Group && doneDays != null) {
                 val groupId = s.groupId ?: return@launch
                 val g = createdGroup ?: data.value.groups.firstOrNull { it.id == groupId } ?: return@launch
@@ -151,21 +167,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun saveCheckIn(c: CheckIn) {
-        viewModelScope.launch { if (c.isEmpty) dao.deleteCheckIn(c.day) else dao.upsertCheckIn(c) }
-    }
-
-    /** Купив банку: у історію витрат; залишок — додати до поточного або почати з нової банки. */
-    fun addPurchase(s: Supplement, units: Int?, price: Double?, addToStock: Boolean) {
+    /**
+     * Оцінка: відповідь [value] (1–5 або null — зняти) на питання [index] ранку чи вечора. [live] — відповідаєш зараз:
+     * тоді запам'ятовується й час (підйом / відбій для статистики сну).
+     */
+    fun setRating(day: Long, part: Part, index: Int, value: Int?, live: Boolean) {
         viewModelScope.launch {
-            val fresh = dao.supplement(s.id) ?: return@launch
-            dao.insertPurchase(Purchase(supplementId = s.id, day = _today.value, units = units, price = price))
-            val stock = when {
-                units == null -> fresh.unitsLeft
-                addToStock && fresh.unitsLeft != null -> fresh.unitsLeft + units
-                else -> units.toDouble()
+            val old = dao.checkIn(day) ?: CheckIn(day = day)
+            var c = old.withAnswer(part, index, value)
+            if (live && value != null) {
+                val now = System.currentTimeMillis()
+                c = when (part) {
+                    Part.Morning -> if (c.morningAt == null) c.copy(morningAt = now) else c
+                    Part.Evening -> if (c.eveningAt == null) c.copy(eveningAt = now) else c
+                }
             }
-            dao.upsertSupplement(fresh.copy(unitsLeft = stock, packUnits = units ?: fresh.packUnits, packPrice = price ?: fresh.packPrice))
+            if (c.isEmpty) dao.deleteCheckIn(day) else dao.upsertCheckIn(c)
         }
     }
 

@@ -94,6 +94,7 @@ object JsonIO {
             packUnits = o.optDoubleOrNull("pack")?.toInt()?.takeIf { it > 0 },
             packPrice = o.optDoubleOrNull("price")?.takeIf { it >= 0 },
             note = o.optString("note").trim().take(NOTE_MAX),
+            category = o.optString("category").trim().take(CATEGORY_MAX),
         )
         val groupKey = if (plan == Plan.Group) schedule?.optString("group")?.trim()?.ifEmpty { null } else null
         return ParsedItem(s, groupKey, schedule?.optInt("doneDays", 0)?.coerceIn(0, 3650) ?: 0)
@@ -120,6 +121,7 @@ object JsonIO {
                 note = o.optString("note"),
                 sortOrder = o.optInt("sortOrder", 0),
                 archived = o.optBoolean("archived", false),
+                category = o.optString("category").take(CATEGORY_MAX),
             )
         },
         groups = b.optJSONArray("groups").objects().map { o ->
@@ -129,13 +131,18 @@ object JsonIO {
             Intake(supplementId = o.getLong("s"), day = o.getLong("d"), units = o.optDouble("u", 1.0), at = o.optLong("t", 0))
         },
         checkIns = b.optJSONArray("checkIns").objects().map { o ->
+            // Копії v0.1 мали a1 (настрій), a2 (сон), a3 (ясність) — переносимо так само, як міграція бази.
+            val old = o.has("a1") || o.has("a2") || o.has("a3")
             CheckIn(
                 day = o.getLong("d"),
-                a1 = o.optIntOrNull("a1"),
-                a2 = o.optIntOrNull("a2"),
-                a3 = o.optIntOrNull("a3"),
-                a4 = o.optIntOrNull("a4"),
-                dayType = if (o.has("type") && !o.isNull("type")) o.optString("type") else null,
+                m1 = if (old) o.optIntOrNull("a2") else o.optIntOrNull("m1"),
+                m2 = o.optIntOrNull("m2"),
+                m3 = o.optIntOrNull("m3"),
+                e1 = if (old) o.optIntOrNull("a1") else o.optIntOrNull("e1"),
+                e2 = if (old) o.optIntOrNull("a3") else o.optIntOrNull("e2"),
+                e3 = o.optIntOrNull("e3"),
+                morningAt = o.optDoubleOrNull("mAt")?.toLong(),
+                eveningAt = o.optDoubleOrNull("eAt")?.toLong(),
                 note = o.optString("note"),
             )
         },
@@ -188,7 +195,8 @@ object JsonIO {
                         .put("stock", s.unitsLeft ?: JSONObject.NULL)
                         .put("pack", s.packUnits ?: JSONObject.NULL)
                         .put("price", s.packPrice ?: JSONObject.NULL)
-                        .put("note", s.note),
+                        .put("note", s.note)
+                        .put("category", s.category),
                 )
             }
         })
@@ -201,7 +209,7 @@ object JsonIO {
                         .put("offDays", s.offDays).put("startDay", s.startDay).put("groupId", s.groupId ?: JSONObject.NULL)
                         .put("groupOrder", s.groupOrder).put("unitsLeft", s.unitsLeft ?: JSONObject.NULL)
                         .put("packUnits", s.packUnits ?: JSONObject.NULL).put("packPrice", s.packPrice ?: JSONObject.NULL)
-                        .put("note", s.note).put("sortOrder", s.sortOrder).put("archived", s.archived),
+                        .put("note", s.note).put("sortOrder", s.sortOrder).put("archived", s.archived).put("category", s.category),
                 )
             }
         })
@@ -214,9 +222,11 @@ object JsonIO {
         backup.put("checkIns", JSONArray().apply {
             checkIns.forEach { c ->
                 put(
-                    JSONObject().put("d", c.day).put("a1", c.a1 ?: JSONObject.NULL).put("a2", c.a2 ?: JSONObject.NULL)
-                        .put("a3", c.a3 ?: JSONObject.NULL).put("a4", c.a4 ?: JSONObject.NULL)
-                        .put("type", c.dayType ?: JSONObject.NULL).put("note", c.note),
+                    JSONObject().put("d", c.day)
+                        .put("m1", c.m1 ?: JSONObject.NULL).put("m2", c.m2 ?: JSONObject.NULL).put("m3", c.m3 ?: JSONObject.NULL)
+                        .put("e1", c.e1 ?: JSONObject.NULL).put("e2", c.e2 ?: JSONObject.NULL).put("e3", c.e3 ?: JSONObject.NULL)
+                        .put("mAt", c.morningAt ?: JSONObject.NULL).put("eAt", c.eveningAt ?: JSONObject.NULL)
+                        .put("note", c.note),
                 )
             }
         })
@@ -227,6 +237,32 @@ object JsonIO {
         return root.toString(2)
     }
 
+    /**
+     * Шаблон для нової схеми: приклад кожного виду розкладу з поясненнями в полі "_how" (програма його пропускає).
+     * Копіюється в буфер — зручно відправити в чат і попросити заповнити.
+     */
+    val TEMPLATE: String = """
+{
+  "format": "supps",
+  "version": 1,
+  "_how": "form: capsule|tablet|powder|drops|other. slot: wake (після пробудження) | day (вдень з їжею) | dinner (вечеря) | bed (перед сном). schedule.type: daily | cycle (on — днів прийому, off — днів перерви) | group (по черзі з іншими цієї групи, days — днів у блоці, order — місце в черзі) | asNeeded. mg — мг в одній одиниці. perDose — скільки одиниць за раз. stock — скільки лишилось, pack — у банці, price — ціна банки. doneDays — скільки днів уже приймаєш. Невідоме — null або не писати.",
+  "groups": [ { "key": "adapt", "name": "Адаптогени", "breakDays": 0 } ],
+  "supplements": [
+    { "name": "Омега-3", "category": "База", "form": "capsule", "mg": 750, "perDose": 2, "slot": "wake",
+      "schedule": { "type": "daily" }, "stock": null, "pack": 60, "price": null, "note": "з їжею" },
+    { "name": "Бакопа", "category": "Мозок", "form": "capsule", "perDose": 1, "slot": "dinner",
+      "schedule": { "type": "cycle", "on": 84, "off": 28, "doneDays": 0 } },
+    { "name": "Родіола", "category": "Мозок", "form": "capsule", "mg": 250, "perDose": 1, "slot": "wake",
+      "schedule": { "type": "group", "group": "adapt", "days": 56, "order": 0, "doneDays": 0 } },
+    { "name": "Ашваганда", "category": "Сон", "form": "capsule", "mg": 300, "perDose": 1, "slot": "bed",
+      "schedule": { "type": "group", "group": "adapt", "days": 56, "order": 1 } },
+    { "name": "Мелатонін", "category": "Сон", "form": "tablet", "mg": 1, "perDose": 1, "slot": "bed",
+      "schedule": { "type": "asNeeded" } }
+  ]
+}
+""".trim()
+
+    private const val CATEGORY_MAX = 40
     private const val NAME_MAX = 80
     private const val NOTE_MAX = 300
     private const val MAX_ITEMS = 300

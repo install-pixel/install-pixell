@@ -19,19 +19,20 @@ data class Compare(val question: Int, val withAvg: Double?, val withN: Int, val 
 
 object Stats {
     /**
-     * Порівняння для добавки: дні з відміткою прийому проти днів без неї (серед днів з оцінкою). [filter] — лише
-     * дні цього типу (null — усі).
+     * Порівняння для добавки: дні з відміткою прийому проти днів без неї (серед днів з оцінкою). [questions] — які
+     * питання (ранок/вечір, номер). Вечірня добавка впливає на ранок НАСТУПНОГО дня, тож для ранкових питань у
+     * вечірньої добавки [eveningSupplement] береться прийом напередодні.
      */
-    fun compare(takenDays: Set<Long>, checkIns: List<CheckIn>, questions: Int, filter: DayType?): List<Compare> =
-        (0 until questions).map { q ->
+    fun compare(takenDays: Set<Long>, eveningSupplement: Boolean, checkIns: List<CheckIn>, questions: List<Pair<Part, Int>>): List<Compare> =
+        questions.mapIndexed { qi, (part, index) ->
             var withSum = 0.0
             var withN = 0
             var withoutSum = 0.0
             var withoutN = 0
             checkIns.forEach { c ->
-                if (filter != null && c.dayTypeE != filter) return@forEach
-                val v = c.answer(q) ?: return@forEach
-                if (c.day in takenDays) {
+                val v = c.answer(part, index) ?: return@forEach
+                val day = if (part == Part.Morning && eveningSupplement) c.day - 1 else c.day
+                if (day in takenDays) {
                     withSum += v
                     withN++
                 } else {
@@ -39,19 +40,19 @@ object Stats {
                     withoutN++
                 }
             }
-            Compare(q, if (withN > 0) withSum / withN else null, withN, if (withoutN > 0) withoutSum / withoutN else null, withoutN)
+            Compare(qi, if (withN > 0) withSum / withN else null, withN, if (withoutN > 0) withoutSum / withoutN else null, withoutN)
         }
 
     /** Середня оцінка питання за дні [from]..[to] включно (null — немає оцінок). */
-    fun average(checkIns: List<CheckIn>, question: Int, from: Long, to: Long): Double? {
-        val values = checkIns.filter { it.day in from..to }.mapNotNull { it.answer(question) }
+    fun average(checkIns: List<CheckIn>, part: Part, index: Int, from: Long, to: Long): Double? {
+        val values = checkIns.filter { it.day in from..to }.mapNotNull { it.answer(part, index) }
         return if (values.isEmpty()) null else values.average()
     }
 
-    /** Середнє всіх відповідей за день (для графіка) або null. */
-    fun dayScore(c: CheckIn?, questions: Int): Double? {
+    /** Середнє всіх відповідей дня (для графіка) або null. */
+    fun dayScore(c: CheckIn?, questions: List<Pair<Part, Int>>): Double? {
         c ?: return null
-        val values = (0 until questions).mapNotNull { c.answer(it) }
+        val values = questions.mapNotNull { (part, i) -> c.answer(part, i) }
         return if (values.isEmpty()) null else values.average()
     }
 

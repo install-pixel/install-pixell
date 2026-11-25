@@ -8,7 +8,6 @@ import androidx.compose.ui.res.stringResource
 import com.blacklaunch.supps.R
 import com.blacklaunch.supps.data.AltGroup
 import com.blacklaunch.supps.data.DayStatus
-import com.blacklaunch.supps.data.DayType
 import com.blacklaunch.supps.data.Form
 import com.blacklaunch.supps.data.Phase
 import com.blacklaunch.supps.data.Plan
@@ -48,6 +47,19 @@ fun longDate(epochDay: Long, locale: Locale): String = dayOf(epochDay).format(Da
 /** «листопад 2026» */
 fun monthTitle(date: LocalDate, locale: Locale): String =
     date.format(DateTimeFormatter.ofPattern("LLLL yyyy", locale)).replaceFirstChar { it.titlecase(locale) }
+
+/** «07:12» — час доби з мілісекунд. */
+fun clock(ms: Long): String {
+    val t = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+    return String.format(Locale.ROOT, "%02d:%02d", t.hour, t.minute)
+}
+
+/** «07:12» — з хвилин від півночі. */
+fun clockOfMinutes(m: Int): String = String.format(Locale.ROOT, "%02d:%02d", (m / 60) % 24, m % 60)
+
+/** «7 год 35 хв». */
+@Composable
+fun durationText(minutes: Int): String = stringResource(R.string.duration_hm, minutes / 60, minutes % 60)
 
 /** Множина з ресурсів (дні, капсули): правильні форми для української й польської. */
 @Composable
@@ -93,16 +105,6 @@ fun planName(p: Plan): String = stringResource(
         Plan.Cycle -> R.string.plan_cycle
         Plan.Group -> R.string.plan_group
         Plan.AsNeeded -> R.string.plan_as_needed
-    },
-)
-
-@Composable
-fun dayTypeName(t: DayType): String = stringResource(
-    when (t) {
-        DayType.Shift1 -> R.string.day_shift1
-        DayType.Shift2 -> R.string.day_shift2
-        DayType.Off -> R.string.day_off
-        DayType.Other -> R.string.day_other
     },
 )
 

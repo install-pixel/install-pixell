@@ -1,5 +1,6 @@
 package com.blacklaunch.supps.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -13,8 +14,10 @@ enum class Slot { Wake, Day, Dinner, Bed }
 /** Схема прийому. */
 enum class Plan { Daily, Cycle, Group, AsNeeded }
 
-/** Тип дня для щоденної оцінки (зміни сильно впливають на сон і настрій). */
-enum class DayType { Shift1, Shift2, Off, Other }
+/** Ранок (після пробудження й удень) чи вечір (вечеря й перед сном). */
+enum class Part { Morning, Evening }
+
+val Slot.part: Part get() = if (this == Slot.Wake || this == Slot.Day) Part.Morning else Part.Evening
 
 inline fun <reified T : Enum<T>> enumOr(name: String?, fallback: T): T =
     enumValues<T>().firstOrNull { it.name == name } ?: fallback
@@ -52,6 +55,8 @@ data class Supplement(
     val note: String = "",
     val sortOrder: Int = 0,
     val archived: Boolean = false,
+    /** Своя категорія для порядку в аптечці («Мозок», «Сон», «Тіло»); порожньо — без категорії. */
+    @ColumnInfo(defaultValue = "") val category: String = "",
 ) {
     val formE: Form get() = enumOr(form, Form.Capsule)
     val slotE: Slot get() = enumOr(slot, Slot.Wake)
@@ -86,33 +91,36 @@ data class Intake(
     val at: Long = System.currentTimeMillis(),
 )
 
-/** Щоденна оцінка: до чотирьох відповідей 1–5 і тип дня. Усе необов'язкове. */
+/**
+ * Оцінка дня: ранкові (m1–m3, після пробудження) і вечірні (e1–e3, перед сном) відповіді 1–5 та коли їх дали
+ * ([morningAt], [eveningAt] — мілісекунди; null — невідомо). Усе необов'язкове.
+ */
 @Entity(tableName = "check_in")
 data class CheckIn(
     @PrimaryKey val day: Long,
-    val a1: Int? = null,
-    val a2: Int? = null,
-    val a3: Int? = null,
-    val a4: Int? = null,
-    val dayType: String? = null,
+    val m1: Int? = null,
+    val m2: Int? = null,
+    val m3: Int? = null,
+    val e1: Int? = null,
+    val e2: Int? = null,
+    val e3: Int? = null,
+    val morningAt: Long? = null,
+    val eveningAt: Long? = null,
     val note: String = "",
 ) {
-    fun answer(i: Int): Int? = when (i) {
-        0 -> a1
-        1 -> a2
-        2 -> a3
-        else -> a4
+    fun answer(part: Part, i: Int): Int? = when (part) {
+        Part.Morning -> when (i) { 0 -> m1; 1 -> m2; else -> m3 }
+        Part.Evening -> when (i) { 0 -> e1; 1 -> e2; else -> e3 }
     }
 
-    fun withAnswer(i: Int, v: Int?): CheckIn = when (i) {
-        0 -> copy(a1 = v)
-        1 -> copy(a2 = v)
-        2 -> copy(a3 = v)
-        else -> copy(a4 = v)
+    fun withAnswer(part: Part, i: Int, v: Int?): CheckIn = when (part) {
+        Part.Morning -> when (i) { 0 -> copy(m1 = v); 1 -> copy(m2 = v); else -> copy(m3 = v) }
+        Part.Evening -> when (i) { 0 -> copy(e1 = v); 1 -> copy(e2 = v); else -> copy(e3 = v) }
     }
 
-    val dayTypeE: DayType? get() = DayType.entries.firstOrNull { it.name == dayType }
-    val isEmpty: Boolean get() = a1 == null && a2 == null && a3 == null && a4 == null && dayType == null && note.isBlank()
+    fun answered(part: Part, count: Int): Boolean = (0 until count).all { answer(part, it) != null }
+
+    val isEmpty: Boolean get() = listOf(m1, m2, m3, e1, e2, e3).all { it == null } && note.isBlank()
 }
 
 /** Покупка банки: для історії витрат. Кількість і ціна — необов'язкові. */
